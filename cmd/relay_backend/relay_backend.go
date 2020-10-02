@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"expvar"
 	"fmt"
 	"net"
@@ -22,6 +23,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
+	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -32,15 +35,10 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
-
-// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
-// An equal number of valve relays will also be added
-const MaxRelayCount = 10
 
 var (
 	buildtime     string
@@ -135,6 +133,13 @@ func main() {
 		}
 	}
 
+	var customerID uint64
+	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+		customerPublicKey = customerPublicKey[8:]
+	}
+
 	var relayPublicKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
@@ -199,88 +204,7 @@ func main() {
 	}
 
 	if env == "local" {
-
-		fmt.Printf("creating dummy local seller\n")
-
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		valveSeller := routing.Seller{
-			ID:                        "valve",
-			Name:                      "valve",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		datacenter := routing.Datacenter{
-			ID:       crypto.HashID("local"),
-			Name:     "local",
-			Enabled:  true,
-			Location: routing.LocationNullIsland,
-		}
-
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddSeller(ctx, valveSeller); err != nil {
-			level.Error(logger).Log("msg", "could not add valve seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-
-		for i := int64(0); i < MaxRelayCount; i++ {
-			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
-			addr, err := net.ResolveUDPAddr("udp", addressString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddRelay(ctx, routing.Relay{
-				ID:          crypto.HashID(addr.String()),
-				Name:        addr.String(),
-				Addr:        *addr,
-				PublicKey:   relayPublicKey,
-				Seller:      seller,
-				Datacenter:  datacenter,
-				MaxSessions: 3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
-
-		for i := int64(0); i < MaxRelayCount; i++ {
-			addressString := "127.0.0.1:1001" + strconv.FormatInt(i, 10)
-			addr, err := net.ResolveUDPAddr("udp", addressString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddRelay(ctx, routing.Relay{
-				ID:          crypto.HashID(addr.String()),
-				Name:        addr.String(),
-				Addr:        *addr,
-				PublicKey:   relayPublicKey,
-				Seller:      valveSeller,
-				Datacenter:  datacenter,
-				MaxSessions: 3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
@@ -403,6 +327,7 @@ func main() {
 	statsdb := routing.NewStatsDatabase()
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
+	routeMatrix4 := &routing.RouteMatrix4{}
 
 	var routeMatrixMutex sync.RWMutex
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -418,6 +343,14 @@ func main() {
 		cm := costMatrix
 		costMatrixMutex.RUnlock()
 		return cm
+	}
+
+	var routeMatrix4Mutex sync.RWMutex
+	getRouteMatrix4Func := func() *routing.RouteMatrix4 {
+		routeMatrix4Mutex.RLock()
+		rm4 := routeMatrix4
+		routeMatrix4Mutex.RUnlock()
+		return rm4
 	}
 
 	// Get the max jitter and max packet loss env vars
@@ -453,7 +386,7 @@ func main() {
 	cleanupCallback := func(relayData *routing.RelayData) error {
 		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
 		statsdb.DeleteEntry(relayData.ID)
-		level.Warn(logger).Log("msg", "relay timed out", "relay ID", relayData, "relay addr", relayData.Addr.String(), "relay name", relayData.Name)
+		level.Warn(logger).Log("msg", "relay timed out", "relay ID", relayData.ID, "relay addr", relayData.Addr.String(), "relay name", relayData.Name)
 		return nil
 	}
 
@@ -519,7 +452,7 @@ func main() {
 				length := routing.TriMatrixLength(len(cpy.Entries))
 				if length > 0 { // prevent crash with only 1 relay
 					entries := make([]analytics.PingStatsEntry, length)
-					ids := make([]uint64, length)
+					ids := make([]uint64, len(cpy.Entries))
 
 					idx := 0
 					for k := range cpy.Entries {
@@ -758,6 +691,7 @@ func main() {
 			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
 			fmt.Printf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
 			fmt.Printf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
+			fmt.Printf("%d relays in map\n", relayMap.GetRelayCount())
 			fmt.Printf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
 			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
 			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
@@ -828,7 +762,7 @@ func main() {
 			valveOptimizeMetrics.Invocations.Add(1)
 
 			optimizeDurationStart := time.Now()
-			if err := valveCostMatrix.Optimize(newRouteMatrix, 1); err != nil {
+			if err := valveCostMatrix.Optimize(newRouteMatrix, 5); err != nil {
 				level.Warn(logger).Log("matrix", "valve_cost", "op", "optimize", "err", err)
 			}
 			optimizeDurationSince := time.Since(optimizeDurationStart)
@@ -874,6 +808,74 @@ func main() {
 				numRoutes += newRouteMatrix.Entries[i].NumRoutes
 			}
 			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
+
+			time.Sleep(syncInterval)
+		}
+	}()
+
+	// Generate a separate route matrix for SDK4
+	go func() {
+		for {
+			// For now, exclude all valve relays
+			relayIDs := make([]uint64, 0)
+			allRelayData := relayMap.GetAllRelayData()
+			for _, relayData := range allRelayData {
+				if relayData.Seller.ID != "valve" { // Filter out any relays whose seller has a Firestore key of "valve"
+					relayIDs = append(relayIDs, relayData.ID)
+				}
+			}
+
+			numRelays := len(relayIDs)
+			relayAddresses := make([]net.UDPAddr, numRelays)
+			relayNames := make([]string, numRelays)
+			relayLatitudes := make([]float32, numRelays)
+			relayLongitudes := make([]float32, numRelays)
+			relayDatacenterIDs := make([]uint64, numRelays)
+
+			for i, relayID := range relayIDs {
+				relay, err := db.Relay(relayID)
+				if err != nil {
+					continue
+				}
+
+				relayAddresses[i] = relay.Addr
+				relayNames[i] = relay.Name
+				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
+				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
+				relayDatacenterIDs[i] = relay.Datacenter.ID
+			}
+
+			costMatrix4 := statsdb.GenerateCostMatrix4(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+
+			numCPUs := runtime.NumCPU()
+			numSegments := numRelays
+			if numCPUs < numRelays {
+				numSegments = numRelays / 5
+				if numSegments == 0 {
+					numSegments = 1
+				}
+			}
+
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrix4, 5, relayDatacenterIDs)
+			if len(routeEntries) == 0 {
+				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+				time.Sleep(syncInterval)
+				continue
+			}
+
+			routeMatrix4New := &routing.RouteMatrix4{
+				RelayIDs:           relayIDs,
+				RelayAddresses:     relayAddresses,
+				RelayNames:         relayNames,
+				RelayLatitudes:     relayLatitudes,
+				RelayLongitudes:    relayLongitudes,
+				RelayDatacenterIDs: relayDatacenterIDs,
+				RouteEntries:       routeEntries,
+			}
+
+			routeMatrix4Mutex.Lock()
+			routeMatrix4 = routeMatrix4New
+			routeMatrix4Mutex.Unlock()
 
 			time.Sleep(syncInterval)
 		}
@@ -927,6 +929,41 @@ func main() {
 		}
 	}
 
+	routeMatrixBufferSize := 100000
+	if routeMatrixBufferSizeString, ok := os.LookupEnv("ROUTE_MATRIX_BUFFER_SIZE"); ok {
+		routeMatrixBufferSize, err = strconv.Atoi(routeMatrixBufferSizeString)
+		if err != nil {
+			level.Error(logger).Log("envvar", "ROUTE_MATRIX_BUFFER_SIZE", "value", routeMatrixBufferSize, "err", err)
+			os.Exit(1)
+		}
+	}
+
+	serveRouteMatrixSDK4Func := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		routeMatrix4 := getRouteMatrix4Func()
+
+		ws, err := encoding.CreateWriteStream(routeMatrixBufferSize)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to create write stream in SDK4 route entries serving function", "err", err)
+			return
+		}
+
+		if err := routeMatrix4.Serialize(ws); err != nil {
+			level.Error(logger).Log("msg", "failed to serialize route matrix in SDK4 route entries serving function", "err", err)
+			return
+		}
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		buffer := bytes.NewBuffer(data)
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
@@ -951,8 +988,10 @@ func main() {
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
+	router.HandleFunc("/route_matrix_sdk4", serveRouteMatrixSDK4Func).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/relay_dashboard4", transport.RelayDashboardHandlerFunc4(relayMap, getRouteMatrix4Func, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 

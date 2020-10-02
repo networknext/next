@@ -5,16 +5,18 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+
+	"github.com/networknext/backend/core"
 )
 
 type Buyer struct {
+	CompanyCode          string
 	ID                   uint64
-	Name                 string
-	Domain               string
-	Active               bool
 	Live                 bool
 	Debug                bool
 	PublicKey            []byte
+	RouteShader          core.RouteShader
+	InternalConfig       core.InternalConfig
 	RoutingRulesSettings RoutingRulesSettings
 }
 

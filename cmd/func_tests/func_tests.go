@@ -294,14 +294,16 @@ func client_check(client_counters []uint64, client_stdout *bytes.Buffer, server_
 
 func test_direct_default() {
 
-	fmt.Printf("test_direct_default\n")
+	fmt.Printf("test_direct_no_upgrade\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 10.0
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
-	server_cmd, server_stdout := server(&ServerConfig{})
+	serverConfig := &ServerConfig{}
+	serverConfig.no_upgrade = true
+	server_cmd, server_stdout := server(serverConfig)
 
 	client_cmd.Wait()
 
@@ -321,6 +323,10 @@ func test_direct_default() {
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
+
+	// todo: make sure raw direct packets are sent and received
+
+	// todo: make sure we don't have upgraded direct packets
 
 }
 
@@ -368,6 +374,10 @@ func test_direct_upgrade() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
+	// todo: check that we have mostly upgradde direct packets sent and received
+
+	// todo: check that we have at least some raw direct packets sent and received as well
+
 }
 
 /*
@@ -376,9 +386,9 @@ func test_direct_upgrade() {
 	relays.
 */
 
-func test_network_next() {
+func test_network_next_route() {
 
-	fmt.Printf("test_network_next\n")
+	fmt.Printf("test_network_next_route\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -1622,7 +1632,7 @@ func main() {
 	allTests := []test_function{
 		test_direct_default,
 		test_direct_upgrade,
-		test_network_next,
+		test_network_next_route,
 		test_fallback_to_direct,
 		test_disable_network_next_on_server,
 		test_disable_network_next_on_client,
@@ -1668,3 +1678,13 @@ func main() {
 }
 
 // todo: add test to verify that connection type and platform id are not zero on first slice
+
+// todo: test for fallback to direct
+
+// todo: add test for client bandwidth over limit
+
+// todo: add test for server bandwidth over limit
+
+// todo: add a test for session update retry
+
+// todo: add a test for out of order packets

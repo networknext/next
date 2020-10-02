@@ -15,18 +15,28 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
 
+type RelayVersion struct {
+	Major uint8
+	Minor uint8
+	Patch uint8
+}
+
+func (self *RelayVersion) String() string {
+	return fmt.Sprintf("%d.%d.%d", self.Major, self.Minor, self.Patch)
+}
+
 type RelayData struct {
 	SessionCount   uint64
-	Tx             uint64
-	Rx             uint64
-	Version        string
+	Version        RelayVersion
 	LastUpdateTime time.Time
 	CPU            float32
 	Mem            float32
+	TrafficStats   routing.RelayTrafficStats
 }
 
 type RelayStatsMap struct {
@@ -46,6 +56,87 @@ func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
 	relay, ok := (*r.Internal)[id]
 	r.mu.RUnlock()
 	return relay, ok
+}
+
+func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
+	index := 0
+
+	var version uint8
+	if !encoding.ReadUint8(data, &index, &version) {
+		return errors.New("unable to read relay stats version")
+	}
+
+	if version != routing.VersionNumberRelayMap {
+		return fmt.Errorf("incorrect relay map version number: %d", version)
+	}
+
+	var count uint64
+	if !encoding.ReadUint64(data, &index, &count) {
+		return errors.New("unable to read relay stats count")
+	}
+
+	m := make(map[uint64]RelayData)
+
+	for i := uint64(0); i < count; i++ {
+		var id uint64
+		if !encoding.ReadUint64(data, &index, &id) {
+			return errors.New("unable to read relay stats id")
+		}
+
+		var relay RelayData
+
+		if version == 0 {
+			if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
+				return errors.New("unable to read relay stats session count")
+			}
+
+			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesReceived) {
+				return errors.New("unable to read relay stats tx")
+			}
+
+			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesSent) {
+				return errors.New("unable to read relay stats rx")
+			}
+		} else if version == 1 {
+			if err := relay.TrafficStats.ReadFrom(data, &index); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("invalid relay map version: %d", version)
+		}
+
+		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
+			return errors.New("unable to relay stats major version")
+		}
+
+		if !encoding.ReadUint8(data, &index, &relay.Version.Minor) {
+			return errors.New("unable to relay stats minor version")
+		}
+
+		if !encoding.ReadUint8(data, &index, &relay.Version.Patch) {
+			return errors.New("unable to relay stats patch version")
+		}
+
+		var unixTime uint64
+		if !encoding.ReadUint64(data, &index, &unixTime) {
+			return errors.New("unable to read relay stats last update time")
+		}
+		relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
+
+		if !encoding.ReadFloat32(data, &index, &relay.CPU) {
+			return errors.New("unable to read relay stats cpu usage")
+		}
+
+		if !encoding.ReadFloat32(data, &index, &relay.Mem) {
+			return errors.New("unable to read relay stats memory usage")
+		}
+
+		m[id] = relay
+	}
+
+	r.Swap(&m)
+
+	return nil
 }
 
 func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
@@ -86,20 +177,28 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	ID   uint64 `json:"id"`
-	Name string `json:"name"`
+	CompanyName string `json:"company_name"`
+	CompanyCode string `json:"company_code"`
+	ID          uint64 `json:"id"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
+		company, err := s.Storage.Customer(b.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("Buyers() failed to find company: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:   b.ID,
-			Name: b.Name,
+			ID:          b.ID,
+			CompanyName: company.Name,
+			CompanyCode: company.Code,
 		})
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
-		return reply.Buyers[i].Name < reply.Buyers[j].Name
+		return reply.Buyers[i].CompanyName < reply.Buyers[j].CompanyName
 	})
 
 	return nil
@@ -272,36 +371,30 @@ type CustomersReply struct {
 
 type customer struct {
 	Name     string `json:"name"`
+	Code     string `json:"code"`
 	BuyerID  string `json:"buyer_id"`
 	SellerID string `json:"seller_id"`
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
+	var buyerID string
 
-	customers := map[string]customer{}
-
-	for _, b := range s.Storage.Buyers() {
-		customers[b.Name] = customer{
-			BuyerID: fmt.Sprintf("%x", b.ID),
-			Name:    b.Name,
-		}
-	}
-
-	for _, s := range s.Storage.Sellers() {
-		if _, ok := customers[s.Name]; ok {
-			cust := customers[s.Name]
-			cust.SellerID = s.ID
-			customers[s.Name] = cust
-		} else {
-			customers[s.Name] = customer{
-				SellerID: s.ID,
-				Name:     s.Name,
-			}
-		}
-	}
+	customers := s.Storage.Customers()
 
 	for _, c := range customers {
-		reply.Customers = append(reply.Customers, c)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(c.Code)
+		seller, _ := s.Storage.SellerWithCompanyCode(c.Code)
+		if buyer.ID == 0 {
+			buyerID = ""
+		} else {
+			buyerID = fmt.Sprintf("%x", buyer.ID)
+		}
+		reply.Customers = append(reply.Customers, customer{
+			Name:     c.Name,
+			Code:     c.Code,
+			BuyerID:  buyerID,
+			SellerID: seller.ID,
+		})
 	}
 
 	sort.Slice(reply.Customers, func(i int, j int) bool {
@@ -421,37 +514,36 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64                `json:"id"`
-	SignedID            int64                 `json:"signed_id"`
-	Name                string                `json:"name"`
-	Addr                string                `json:"addr"`
-	Latitude            float64               `json:"latitude"`
-	Longitude           float64               `json:"longitude"`
-	NICSpeedMbps        int32                 `json:"nicSpeedMpbs"`
-	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
-	State               string                `json:"state"`
-	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
-	ManagementAddr      string                `json:"management_addr"`
-	SSHUser             string                `json:"ssh_user"`
-	SSHPort             int64                 `json:"ssh_port"`
-	MaxSessionCount     uint32                `json:"maxSessionCount"`
-	SessionCount        uint64                `json:"sessionCount"`
-	BytesSent           uint64                `json:"bytesTx"`
-	BytesReceived       uint64                `json:"bytesRx"`
-	PublicKey           string                `json:"public_key"`
-	UpdateKey           string                `json:"update_key"`
-	FirestoreID         string                `json:"firestore_id"`
-	Version             string                `json:"relay_version"`
-	SellerName          string                `json:"seller_name"`
-	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
-	Overage             routing.Nibblin       `json:"overage"`
-	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
-	ContractTerm        int32                 `json:"contractTerm"`
-	StartDate           time.Time             `json:"startDate"`
-	EndDate             time.Time             `json:"endDate"`
-	Type                routing.MachineType   `json:"machineType"`
-	CPUUsage            float32               `json:"cpu_usage"`
-	MemUsage            float32               `json:"mem_usage"`
+	ID                  uint64                    `json:"id"`
+	SignedID            int64                     `json:"signed_id"`
+	Name                string                    `json:"name"`
+	Addr                string                    `json:"addr"`
+	Latitude            float64                   `json:"latitude"`
+	Longitude           float64                   `json:"longitude"`
+	NICSpeedMbps        int32                     `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int32                     `json:"includedBandwidthGB"`
+	State               string                    `json:"state"`
+	LastUpdateTime      time.Time                 `json:"lastUpdateTime"`
+	ManagementAddr      string                    `json:"management_addr"`
+	SSHUser             string                    `json:"ssh_user"`
+	SSHPort             int64                     `json:"ssh_port"`
+	MaxSessionCount     uint32                    `json:"maxSessionCount"`
+	SessionCount        uint64                    `json:"sessionCount"`
+	PublicKey           string                    `json:"public_key"`
+	UpdateKey           string                    `json:"update_key"`
+	FirestoreID         string                    `json:"firestore_id"`
+	Version             string                    `json:"relay_version"`
+	SellerName          string                    `json:"seller_name"`
+	MRC                 routing.Nibblin           `json:"monthlyRecurringChargeNibblins"`
+	Overage             routing.Nibblin           `json:"overage"`
+	BWRule              routing.BandWidthRule     `json:"bandwidthRule"`
+	ContractTerm        int32                     `json:"contractTerm"`
+	StartDate           time.Time                 `json:"startDate"`
+	EndDate             time.Time                 `json:"endDate"`
+	Type                routing.MachineType       `json:"machineType"`
+	CPUUsage            float32                   `json:"cpu_usage"`
+	MemUsage            float32                   `json:"mem_usage"`
+	TrafficStats        routing.RelayTrafficStats `json:"traffic_stats"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -486,12 +578,11 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.SessionCount = relayData.SessionCount
-			relay.BytesSent = relayData.Tx
-			relay.BytesReceived = relayData.Rx
-			relay.Version = relayData.Version
-			relay.LastUpdateTime = relayData.LastUpdateTime
+			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
+			relay.Version = relayData.Version.String()
+			relay.LastUpdateTime = relayData.LastUpdateTime
 		}
 
 		reply.Relays = append(reply.Relays, relay)
@@ -846,11 +937,18 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 			return err
 		}
 
+		company, err := s.Storage.Customer(buyer.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("ListDatacenterMaps() failed to find buyer company: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
-			BuyerName:      buyer.Name,
+			BuyerName:      company.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 		}
 
