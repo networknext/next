@@ -462,6 +462,188 @@ func TestUserAccount(t *testing.T) {
 	})
 }
 
+func TestDeleteAccount(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	IDs := []string{
+		"123",
+		"456",
+		"789",
+	}
+
+	emails := []string{
+		"test@test.com",
+		"test@test1.com",
+		"test@test2.com",
+	}
+
+	names := []string{
+		"Frank",
+		"George",
+		"Lenny",
+	}
+
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+		"rol_YfFrtom32or4vH89",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+		"Admin",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	userManager.Create(&management.User{
+		ID:    &IDs[0],
+		Email: &emails[0],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[0],
+			},
+		},
+		Name: &names[0],
+	})
+
+	userManager.AssignRoles(IDs[0], []*management.Role{
+		{
+			ID:          &roleTypes[2],
+			Name:        &roleNames[2],
+			Description: &roleDescriptions[2],
+		},
+	}...)
+
+	userManager.Create(&management.User{
+		ID:    &IDs[1],
+		Email: &emails[1],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[1],
+			},
+		},
+		Name: &names[1],
+	})
+
+	userManager.AssignRoles(IDs[1], []*management.Role{
+		{
+			ID:          &roleTypes[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
+	userManager.Create(&management.User{
+		ID:    &IDs[2],
+		Email: &emails[2],
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[2],
+			},
+		},
+		AppMetadata: map[string]interface{}{
+			"company_code": "test-test",
+		},
+		Name: &names[2],
+	})
+
+	userManager.AssignRoles(IDs[2], []*management.Role{
+		{
+			ID:          &roleTypes[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test", AutomaticSignInDomains: "google.com,test.com"})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test", ID: 123})
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test-test", Name: "Test Test"})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test-test", ID: 456})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AccountReply
+		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no id", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Owner",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountReply
+		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - same company", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountReply
+		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{UserID: "456"}, &reply)
+		assert.NoError(t, err)
+		users, err := userManager.List()
+		found := false
+		for _, u := range users.Users {
+			if *u.ID == "456" && u.AppMetadata["company_code"] != "" {
+				found = true
+			}
+		}
+		assert.False(t, found)
+	})
+
+	t.Run("failure - !same company - !admin", func(t *testing.T) {
+		var reply jsonrpc.AccountReply
+		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{UserID: "789"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - !same company - admin", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Admin",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountReply
+		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{UserID: "789"}, &reply)
+		assert.NoError(t, err)
+		users, err := userManager.List()
+		found := false
+		for _, u := range users.Users {
+			if *u.ID == "789" && u.AppMetadata["company_code"] != "" {
+				found = true
+			}
+		}
+		assert.False(t, found)
+	})
+}
+
 func TestRoleVerification(t *testing.T) {
 	db := storage.InMemory{}
 	db.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})

@@ -122,9 +122,9 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestCompany := r.Context().Value(Keys.CompanyKey)
-	if requestCompany == nil {
-		return fmt.Errorf("AllAcounts(): failed to get company from context")
+	requestCompany, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok {
+		return fmt.Errorf("AllAcounts(): user is not assigned to a company")
 	}
 
 	for _, a := range accountList.Users {
@@ -233,11 +233,28 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		s.Logger.Log("err", err)
 		return err
 	}
-	if err := s.UserManager.Update(args.UserID, &management.User{
-		AppMetadata: map[string]interface{}{
-			"company_code": "",
-		},
-	}); err != nil {
+	user, err := s.UserManager.Read(args.UserID)
+	if err != nil {
+		err = fmt.Errorf("DeleteUserAccount() failed to read user account: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userCompanyCode, ok := user.AppMetadata["company_code"].(string)
+	if !ok || userCompanyCode == "" {
+		return nil
+	}
+
+	// Non admin trying to delete user from another company
+	requestCompanyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if (!ok || requestCompanyCode != userCompanyCode) && !VerifyAllRoles(r, AdminRole) {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	user.AppMetadata["company_code"] = ""
+	if err := s.UserManager.Update(args.UserID, user); err != nil {
 		err = fmt.Errorf("DeleteUserAccount() failed to update user company code: %v", err)
 		s.Logger.Log("err", err)
 		return err
