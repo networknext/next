@@ -907,6 +907,108 @@ func TestAllRoles(t *testing.T) {
 	})
 }
 
+func TestUserRoles(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+		"rol_YfFrtom32or4vH89",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+		"Admin",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	IDs := []string{
+		"123",
+		"456",
+		"789",
+	}
+
+	emails := []string{
+		"test@test.com",
+		"test@test1.com",
+		"test@test2.com",
+	}
+
+	names := []string{
+		"Frank",
+		"George",
+		"Lenny",
+	}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RolesReply
+		err := svc.UserRoles(req, &jsonrpc.RolesArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no user ID", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Owner",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.RolesReply
+		err := svc.UserRoles(req, &jsonrpc.RolesArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	userManager.Create(&management.User{
+		ID:    &IDs[1],
+		Email: &emails[1],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[1],
+			},
+		},
+		Name: &names[1],
+	})
+
+	userManager.AssignRoles(IDs[1], []*management.Role{
+		{
+			ID:          &roleTypes[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RolesReply
+		err := svc.UserRoles(req, &jsonrpc.RolesArgs{UserID: "456"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(reply.Roles))
+		assert.Equal(t, roleTypes[0], *reply.Roles[0].ID)
+		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
+		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
+	})
+}
+
 func TestRoleVerification(t *testing.T) {
 	db := storage.InMemory{}
 	db.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})

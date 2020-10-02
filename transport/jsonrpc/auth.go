@@ -531,7 +531,6 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 	}
 
 	userRoles, err := s.UserManager.Roles(args.UserID)
-
 	if err != nil {
 		err := fmt.Errorf("UserRoles() failed to get user roles: %w", err)
 		s.Logger.Log("err", err)
