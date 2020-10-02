@@ -52,7 +52,10 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context;
-    verify_packet( packet_data, packet_bytes );
+    // verify_packet( packet_data, packet_bytes );
+    // todo:
+    next_assert( packet_bytes == 1 );
+    printf( "client received %d\n", packet_data[0] );
 }
 
 #define NEXT_CLIENT_COUNTER_MAX 64
@@ -122,6 +125,13 @@ int main()
         }
     }
 
+    double stop_sending_packets_time = -1.0;
+    const char * stop_sending_packets_time_env = getenv( "CLIENT_STOP_SENDING_PACKETS_TIME" );
+    if ( stop_sending_packets_time_env )
+    {
+        stop_sending_packets_time = atof( stop_sending_packets_time_env );
+    }
+
     next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
     if ( next_init( NULL, &config ) != NEXT_OK )
@@ -158,6 +168,14 @@ int main()
 
     bool second_connect_completed = false;
 
+    uint8_t packet_sequence = 0;
+
+    // IMPORTANT: Have to wait a bit here or the first packet will get dropped
+    // because of a race condition between the server getting set via OPEN_SESSION_COMMAND
+    // and the recvfrom for the response from the server.
+    next_client_update( client );
+    next_sleep( 0.25 );
+
     while ( stop_time < 0.0 || time < stop_time )
     {
         if ( quit )
@@ -176,14 +194,21 @@ int main()
 
         next_client_update( client );
 
-        uint8_t packet_data[NEXT_MTU];
-        memset( packet_data, 0, sizeof( packet_data ) );
+        if ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time )
+        {
+            uint8_t packet_data[NEXT_MTU];
+            memset( packet_data, 0, sizeof( packet_data ) );
 
-        int packet_bytes = 0;
+            /*
+            int packet_bytes = 0;
+            generate_packet( packet_data, packet_bytes );
+            */
 
-        generate_packet( packet_data, packet_bytes );
+            int packet_bytes = 1;
+            packet_data[0] = packet_sequence++;
 
-        next_client_send_packet( client, packet_data, packet_bytes );
+            next_client_send_packet( client, packet_data, packet_bytes );
+        }
 
         next_sleep( delta_time );
 
