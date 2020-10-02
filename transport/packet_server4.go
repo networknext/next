@@ -383,6 +383,7 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ABTest)
 	stream.SerializeBool(&sessionData.RouteState.A)
 	stream.SerializeBool(&sessionData.RouteState.B)
+	stream.SerializeBool(&sessionData.RouteState.ForcedNext)
 	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
 	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
 	stream.SerializeBool(&sessionData.RouteState.ProMode)

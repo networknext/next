@@ -171,10 +171,8 @@ func (e *SequenceNumbersOutOfSync) Error() string {
 
 func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicKey []byte, customerID uint64, customerPublicKey []byte) {
 	routeShader := core.NewRouteShader()
-	routeShader.AcceptableLatency = -1
-	routeShader.LatencyThreshold = -1
-
 	internalConfig := core.NewInternalConfig()
+	internalConfig.ForceNext = true
 
 	shouldFill := false
 	switch db := db.(type) {
