@@ -24,13 +24,12 @@ var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
 
-type contextType string
-
 type contextKeys struct {
-	AnonymousCallKey     contextType
-	RolesKey             contextType
-	CompanyKey           contextType
-	NewsletterConsentKey contextType
+	AnonymousCallKey     string
+	RolesKey             string
+	CompanyKey           string
+	NewsletterConsentKey string
+	UserKey              string
 }
 
 var Keys contextKeys = contextKeys{
@@ -38,12 +37,14 @@ var Keys contextKeys = contextKeys{
 	RolesKey:             "roles",
 	CompanyKey:           "company",
 	NewsletterConsentKey: "newsletter",
+	UserKey:              "user",
 }
 
 type AuthService struct {
-	Auth0   storage.Auth0
-	Storage storage.Storer
-	Logger  log.Logger
+	UserManager storage.UserManager
+	JobManager  storage.JobManager
+	Storage     storage.Storer
+	Logger      log.Logger
 }
 
 type AccountsArgs struct {
@@ -99,14 +100,14 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	}
 
 	reply.UserAccounts = make([]account, 0)
-	accountList, err := s.Auth0.Manager.User.List()
+	accountList, err := s.UserManager.List()
 	if err != nil {
 		err := fmt.Errorf("AllAcounts() failed to fetch user list: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	requestUser := r.Context().Value("user")
+	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err = fmt.Errorf("AllAcounts() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -120,9 +121,9 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestCompany := r.Context().Value(Keys.CompanyKey)
-	if requestCompany == nil {
-		return fmt.Errorf("AllAcounts(): failed to get company from context")
+	requestCompany, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok {
+		return fmt.Errorf("AllAcounts(): user is not assigned to a company")
 	}
 
 	for _, a := range accountList.Users {
@@ -133,7 +134,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		if !ok || requestCompany != companyCode {
 			continue
 		}
-		userRoles, err := s.Auth0.Manager.User.Roles(*a.ID)
+		userRoles, err := s.UserManager.Roles(*a.ID)
 		if err != nil {
 			err = fmt.Errorf("AllAcounts() failed to fetch user roles: %v", err)
 			s.Logger.Log("err", err)
@@ -163,7 +164,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	// Check if this is for authed user profile or other users
 
-	user := r.Context().Value("user")
+	user := r.Context().Value(Keys.UserKey)
 	if user == nil {
 		err := fmt.Errorf("UserAccount() failed to fetch calling user from token")
 		s.Logger.Log("err", err)
@@ -183,7 +184,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return err
 	}
 
-	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
+	userAccount, err := s.UserManager.Read(args.UserID)
 	if err != nil {
 		err := fmt.Errorf("UserAccount() failed to fetch user account: %w", err)
 		s.Logger.Log("err", err)
@@ -203,14 +204,14 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		}
 	}
 	buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
-	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
+	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
 		err := fmt.Errorf("UserAccount() failed to fetch user roles: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if VerifyAnyRole(r, AdminRole, OwnerRole) && requestID == args.UserID {
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
@@ -231,11 +232,28 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		s.Logger.Log("err", err)
 		return err
 	}
-	if err := s.Auth0.Manager.User.Update(args.UserID, &management.User{
-		AppMetadata: map[string]interface{}{
-			"company_code": "",
-		},
-	}); err != nil {
+	user, err := s.UserManager.Read(args.UserID)
+	if err != nil {
+		err = fmt.Errorf("DeleteUserAccount() failed to read user account: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userCompanyCode, ok := user.AppMetadata["company_code"].(string)
+	if !ok || userCompanyCode == "" {
+		return nil
+	}
+
+	// Non admin trying to delete user from another company
+	requestCompanyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if (!ok || requestCompanyCode != userCompanyCode) && !VerifyAllRoles(r, AdminRole) {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	user.AppMetadata["company_code"] = ""
+	if err := s.UserManager.Update(args.UserID, user); err != nil {
 		err = fmt.Errorf("DeleteUserAccount() failed to update user company code: %v", err)
 		s.Logger.Log("err", err)
 		return err
@@ -270,30 +288,9 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	}
 
 	// Gather request user information
-	requestUser := req.Context().Value("user")
-	if requestUser == nil {
-		err := fmt.Errorf("AddUserAccount() unable to parse user from token")
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
-	if !ok {
-		err := fmt.Errorf("AddUserAccount() unable to parse id from token")
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	userAccount, err := s.Auth0.Manager.User.Read(requestID)
-	if err != nil {
-		err := fmt.Errorf("AddUserAccount() failed to fetch user account: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	userCompanyCode, ok := userAccount.AppMetadata["company_code"].(string)
-	if !ok {
-		err := fmt.Errorf("AddUserAccount() user is not assigned to a company: %w", err)
+	userCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+	if !ok || userCompanyCode == "" {
+		err := fmt.Errorf("AddUserAccount() user is not assigned to a company")
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -302,14 +299,15 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	emails := args.Emails
 	falseValue := false
 
-	for _, b := range s.Storage.Buyers() {
-		if b.CompanyCode == userCompanyCode {
-			buyer = b
-		}
+	buyer, err := s.Storage.BuyerWithCompanyCode(userCompanyCode)
+	if err != nil {
+		err := fmt.Errorf("AddUserAccount() failed to fetch request buyer: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	registered := make(map[string]*management.User)
-	accountList, err := s.Auth0.Manager.User.List()
+	accountList, err := s.UserManager.List()
 	if err != nil {
 		err := fmt.Errorf("AddUserAccount() failed to get auth0 account list: %v", err)
 		s.Logger.Log("err", err)
@@ -345,12 +343,12 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 					"company_code": userCompanyCode,
 				},
 			}
-			if err = s.Auth0.Manager.User.Create(newUser); err != nil {
+			if err = s.UserManager.Create(newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to create new user: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
-			accountList, err := s.Auth0.Manager.User.List()
+			accountList, err := s.UserManager.List()
 			if err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to get auth0 account list: %v", err)
 				s.Logger.Log("err", err)
@@ -362,7 +360,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 					break
 				}
 			}
-			if err = s.Auth0.Manager.User.AssignRoles(userID, args.Roles...); err != nil {
+			if err = s.UserManager.AssignRoles(userID, args.Roles...); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
@@ -377,8 +375,10 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				AppMetadata: map[string]interface{}{
 					"company_code": userCompanyCode,
 				},
+				Identities: user.Identities,
+				Name:       user.Name,
 			}
-			if err = s.Auth0.Manager.User.Update(*user.ID, newUser); err != nil {
+			if err = s.UserManager.Update(*user.ID, newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to update user: %w", err)
 				s.Logger.Log("err", err)
 				return err
@@ -395,12 +395,12 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 					Description: &roleDescriptions[1],
 				},
 			}
-			if err = s.Auth0.Manager.User.RemoveRoles(*user.ID, roles...); err != nil {
+			if err = s.UserManager.RemoveRoles(*user.ID, roles...); err != nil {
 				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
-			if err = s.Auth0.Manager.User.AssignRoles(*user.ID, args.Roles...); err != nil {
+			if err = s.UserManager.AssignRoles(*user.ID, args.Roles...); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
@@ -484,31 +484,31 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	if VerifyAllRoles(r, AdminRole) {
 		reply.Roles = []*management.Role{
 			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
 			{
-				ID:          &roleNames[1],
-				Name:        &roleTypes[1],
+				ID:          &roleTypes[1],
+				Name:        &roleNames[1],
 				Description: &roleDescriptions[1],
 			},
 			{
-				ID:          &roleNames[2],
-				Name:        &roleTypes[2],
+				ID:          &roleTypes[2],
+				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
 		}
 	} else {
 		reply.Roles = []*management.Role{
 			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
 			{
-				ID:          &roleNames[1],
-				Name:        &roleTypes[1],
+				ID:          &roleTypes[1],
+				Name:        &roleNames[1],
 				Description: &roleDescriptions[1],
 			},
 		}
@@ -530,8 +530,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 		return err
 	}
 
-	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
-
+	userRoles, err := s.UserManager.Roles(args.UserID)
 	if err != nil {
 		err := fmt.Errorf("UserRoles() failed to get user roles: %w", err)
 		s.Logger.Log("err", err)
@@ -557,7 +556,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return err
 	}
 
-	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
+	userRoles, err := s.UserManager.Roles(args.UserID)
 	if err != nil {
 		err := fmt.Errorf("UpdateUserRoles() failed to fetch user roles: %w", err)
 		s.Logger.Log("err", err)
@@ -590,14 +589,14 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	if found {
-		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, removeRoles...)
+		err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
 		if err != nil {
 			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 	} else {
-		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
+		err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
 		if err != nil {
 			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
 			s.Logger.Log("err", err)
@@ -610,7 +609,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return nil
 	}
 
-	err = s.Auth0.Manager.User.AssignRoles(args.UserID, args.Roles...)
+	err = s.UserManager.AssignRoles(args.UserID, args.Roles...)
 	if err != nil {
 		err := fmt.Errorf("UpdateUserRoles() failed to assign role: %w", err)
 		s.Logger.Log("err", err)
@@ -649,7 +648,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	}
 
 	// grab request user information
-	requestUser := r.Context().Value("user")
+	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateCompanyInformation() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -726,7 +725,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				return err
 			}
 		}
-		if err = s.Auth0.Manager.User.Update(requestID, &management.User{
+		if err = s.UserManager.Update(requestID, &management.User{
 			AppMetadata: map[string]interface{}{
 				"company_code": args.CompanyCode,
 			},
@@ -736,7 +735,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			return err
 		}
 		if !VerifyAllRoles(r, AdminRole) {
-			if err = s.Auth0.Manager.User.AssignRoles(requestID, roles...); err != nil {
+			if err = s.UserManager.AssignRoles(requestID, roles...); err != nil {
 				err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
@@ -810,7 +809,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			s.Logger.Log("err", err)
 			return err
 		}
-		if err = s.Auth0.Manager.User.Update(requestID, &management.User{
+		if err = s.UserManager.Update(requestID, &management.User{
 			AppMetadata: map[string]interface{}{
 				"company_code": args.CompanyCode,
 			},
@@ -870,7 +869,7 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 
 	var updateUser management.User
 
-	requestUser := r.Context().Value("user")
+	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateAccountSettings() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -892,7 +891,7 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 		"newsletter": args.NewsLetterConsent,
 	}
 
-	err := s.Auth0.Manager.User.Update(requestID, &updateUser)
+	err := s.UserManager.Update(requestID, &updateUser)
 	if err != nil {
 		err = fmt.Errorf("UpdateAccountSettings() failed to update user password: %v", err)
 		s.Logger.Log("err", err)
@@ -923,7 +922,7 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 		UserID: &args.UserID,
 	}
 
-	err := s.Auth0.Manager.Job.VerifyEmail(job)
+	err := s.JobManager.VerifyEmail(job)
 	if err != nil {
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", err)
 		s.Logger.Log("err", err)
@@ -1002,6 +1001,7 @@ func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Han
 	}
 
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
+		UserProperty: Keys.UserKey,
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			// Check if OpsService token
 			claims := token.Claims.(jwt.MapClaims)
@@ -1100,7 +1100,7 @@ type RoleFunc func(req *http.Request) (bool, error)
 
 // Ops checks the request for the appropriate "scope" in the JWT
 var OpsRole = func(req *http.Request) (bool, error) {
-	user := req.Context().Value("user")
+	user := req.Context().Value(Keys.UserKey)
 
 	if user != nil {
 		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
@@ -1159,7 +1159,7 @@ var AnonymousRole = func(req *http.Request) (bool, error) {
 
 // Ops checks the request for the appropriate "scope" in the JWT
 var UnverifiedRole = func(req *http.Request) (bool, error) {
-	user := req.Context().Value("user")
+	user := req.Context().Value(Keys.UserKey)
 
 	if user == nil {
 		return false, fmt.Errorf("UnverifiedRole(): failed to fetch user from token")
