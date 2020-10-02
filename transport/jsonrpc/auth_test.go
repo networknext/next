@@ -1128,7 +1128,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
 	})
 
-	t.Run("success - !admin assigning !admin", func(t *testing.T) {
+	t.Run("success - admin assigning admin", func(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
 			"Admin",
