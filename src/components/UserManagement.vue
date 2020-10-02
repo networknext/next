@@ -246,7 +246,6 @@ export default class UserManagement extends Vue {
     Promise.all(promises)
       .then((responses: any) => {
         this.allRoles = responses[1].roles
-        console.log(this.allRoles)
         this.companyUsers = responses[0].accounts
         this.companyUsers.forEach((user: any) => {
           user.edit = false
