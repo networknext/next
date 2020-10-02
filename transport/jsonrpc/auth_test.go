@@ -92,12 +92,12 @@ func TestAllAccounts(t *testing.T) {
 		"Lenny",
 	}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -137,7 +137,7 @@ func TestAllAccounts(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -209,7 +209,7 @@ func TestAllAccounts(t *testing.T) {
 		assert.Equal(t, IDs[1], reply.UserAccounts[0].UserID)
 		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccounts[0].ID)
 		assert.Equal(t, roleNames[0], *reply.UserAccounts[0].Roles[0].Name)
-		assert.Equal(t, roleTypes[0], *reply.UserAccounts[0].Roles[0].ID)
+		assert.Equal(t, roleIDs[0], *reply.UserAccounts[0].Roles[0].ID)
 		assert.Equal(t, roleDescriptions[0], *reply.UserAccounts[0].Roles[0].Description)
 	})
 }
@@ -247,12 +247,12 @@ func TestUserAccount(t *testing.T) {
 		"Lenny",
 	}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -279,7 +279,7 @@ func TestUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
 		{
-			ID:          &roleTypes[2],
+			ID:          &roleIDs[2],
 			Name:        &roleNames[2],
 			Description: &roleDescriptions[2],
 		},
@@ -301,7 +301,7 @@ func TestUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -320,7 +320,7 @@ func TestUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[2], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -495,12 +495,12 @@ func TestDeleteAccount(t *testing.T) {
 		"Lenny",
 	}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -527,7 +527,7 @@ func TestDeleteAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
 		{
-			ID:          &roleTypes[2],
+			ID:          &roleIDs[2],
 			Name:        &roleNames[2],
 			Description: &roleDescriptions[2],
 		},
@@ -549,7 +549,7 @@ func TestDeleteAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -571,7 +571,7 @@ func TestDeleteAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[2], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -659,12 +659,12 @@ func TestAddUserAccount(t *testing.T) {
 		Logger:      logger,
 	}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -709,7 +709,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -740,7 +740,7 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleTypes[2],
+				ID:          &roleIDs[2],
 				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
@@ -752,7 +752,7 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleTypes[2],
+				ID:          &roleIDs[2],
 				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
@@ -764,7 +764,7 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
@@ -779,7 +779,7 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
@@ -796,7 +796,7 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
@@ -819,7 +819,7 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
@@ -834,12 +834,12 @@ func TestAllRoles(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -878,10 +878,10 @@ func TestAllRoles(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(reply.Roles))
 		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
-		assert.Equal(t, roleTypes[0], *reply.Roles[0].ID)
+		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
 		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
 		assert.Equal(t, roleNames[1], *reply.Roles[1].Name)
-		assert.Equal(t, roleTypes[1], *reply.Roles[1].ID)
+		assert.Equal(t, roleIDs[1], *reply.Roles[1].ID)
 		assert.Equal(t, roleDescriptions[1], *reply.Roles[1].Description)
 	})
 
@@ -896,13 +896,13 @@ func TestAllRoles(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(reply.Roles))
 		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
-		assert.Equal(t, roleTypes[0], *reply.Roles[0].ID)
+		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
 		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
 		assert.Equal(t, roleNames[1], *reply.Roles[1].Name)
-		assert.Equal(t, roleTypes[1], *reply.Roles[1].ID)
+		assert.Equal(t, roleIDs[1], *reply.Roles[1].ID)
 		assert.Equal(t, roleDescriptions[1], *reply.Roles[1].Description)
 		assert.Equal(t, roleNames[2], *reply.Roles[2].Name)
-		assert.Equal(t, roleTypes[2], *reply.Roles[2].ID)
+		assert.Equal(t, roleIDs[2], *reply.Roles[2].ID)
 		assert.Equal(t, roleDescriptions[2], *reply.Roles[2].Description)
 	})
 }
@@ -913,12 +913,12 @@ func TestUserRoles(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -991,7 +991,7 @@ func TestUserRoles(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -1003,7 +1003,7 @@ func TestUserRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleTypes[0], *reply.Roles[0].ID)
+		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
 		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
 		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
 	})
@@ -1015,12 +1015,12 @@ func TestUpdateUserRoles(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	roleNames := []string{
+	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
 		"rol_YfFrtom32or4vH89",
 	}
-	roleTypes := []string{
+	roleNames := []string{
 		"Viewer",
 		"Owner",
 		"Admin",
@@ -1093,7 +1093,7 @@ func TestUpdateUserRoles(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleTypes[0],
+			ID:          &roleIDs[0],
 			Name:        &roleNames[0],
 			Description: &roleDescriptions[0],
 		},
@@ -1103,7 +1103,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
-				ID:          &roleTypes[2],
+				ID:          &roleIDs[2],
 				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
@@ -1115,7 +1115,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
@@ -1123,7 +1123,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleTypes[0], *reply.Roles[0].ID)
+		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
 		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
 		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
 	})
@@ -1137,7 +1137,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
-				ID:          &roleTypes[2],
+				ID:          &roleIDs[2],
 				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
@@ -1145,9 +1145,251 @@ func TestUpdateUserRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleTypes[2], *reply.Roles[0].ID)
+		assert.Equal(t, roleIDs[2], *reply.Roles[0].ID)
 		assert.Equal(t, roleNames[2], *reply.Roles[0].Name)
 		assert.Equal(t, roleDescriptions[2], *reply.Roles[0].Description)
+	})
+}
+
+func TestUpdateCompanyInformation(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	IDs := []string{
+		"123",
+		"456",
+		"789",
+	}
+
+	emails := []string{
+		"test@test.com",
+		"test@test1.com",
+		"test@test2.com",
+	}
+
+	names := []string{
+		"Frank",
+		"George",
+		"Lenny",
+	}
+
+	roleIDs := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+		"rol_YfFrtom32or4vH89",
+	}
+	roleNames := []string{
+		"Viewer",
+		"Owner",
+		"Admin",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no company code", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email_verified": true,
+			},
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - malformed user", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		assert.Error(t, err)
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{},
+		})
+		req = req.WithContext(reqContext)
+		err = svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		assert.Error(t, err)
+		reqContext = req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "1234",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err = svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no company name", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub":   "123",
+				"email": "test@test.com",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	userManager.Create(&management.User{
+		ID:    &IDs[0],
+		Email: &emails[0],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[0],
+			},
+		},
+		Name: &names[0],
+	})
+
+	t.Run("success - unassigned - new company", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.NewRoles))
+		assert.Equal(t, roleNames[0], *reply.NewRoles[0].Name)
+		assert.Equal(t, roleIDs[0], *reply.NewRoles[0].ID)
+		assert.Equal(t, roleDescriptions[0], *reply.NewRoles[0].Description)
+		assert.Equal(t, roleNames[1], *reply.NewRoles[1].Name)
+		assert.Equal(t, roleIDs[1], *reply.NewRoles[1].ID)
+		assert.Equal(t, roleDescriptions[1], *reply.NewRoles[1].Description)
+		userRoles, err := userManager.Roles("123")
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(userRoles.Roles))
+		assert.Equal(t, roleNames[0], *userRoles.Roles[0].Name)
+		assert.Equal(t, roleIDs[0], *userRoles.Roles[0].ID)
+		assert.Equal(t, roleDescriptions[0], *userRoles.Roles[0].Description)
+		assert.Equal(t, roleNames[1], *userRoles.Roles[1].Name)
+		assert.Equal(t, roleIDs[1], *userRoles.Roles[1].ID)
+		assert.Equal(t, roleDescriptions[1], *userRoles.Roles[1].Description)
+		customers := storer.Customers()
+		assert.Equal(t, 1, len(customers))
+		assert.Equal(t, "test", customers[0].Code)
+		assert.Equal(t, "Test", customers[0].Name)
+	})
+
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test-test", Name: "Test Test", AutomaticSignInDomains: "test2.com"})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test-test", ID: 123})
+
+	t.Run("failure - unassigned - old company - wrong domain", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - assigned - different code - insufficient privileges", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test-test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - assigned - different code - company exists", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - assigned - different code - no company name", func(t *testing.T) {
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - assigned - different code", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Owner",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test", CompanyName: "Test Test Test"}, &reply)
+		assert.NoError(t, err)
+
+		customers := storer.Customers()
+		assert.Equal(t, 2, len(customers))
+		assert.Equal(t, "test-test-test", customers[1].Code)
+		assert.Equal(t, "Test Test Test", customers[1].Name)
+		buyer, err := storer.BuyerWithCompanyCode("test-test-test")
+		assert.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%016x", 123), fmt.Sprintf("%016x", buyer.ID))
+		assert.Equal(t, "test-test-test", buyer.CompanyCode)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-test-test", userAccount.AppMetadata["company_code"])
+	})
+
+	t.Run("failure - assigned - same code - insufficient privileges", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - assigned - same code - no name", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Owner",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - assigned - same code", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test-test-test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.CompanyNameReply
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test", CompanyName: "Test 3"}, &reply)
+		assert.NoError(t, err)
+
+		customer, err := storer.Customer("test-test-test")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-test-test", customer.Code)
+		assert.Equal(t, "Test 3", customer.Name)
+		buyer, err := storer.BuyerWithCompanyCode("test-test-test")
+		assert.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%016x", 123), fmt.Sprintf("%016x", buyer.ID))
+		assert.Equal(t, "test-test-test", buyer.CompanyCode)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-test-test", userAccount.AppMetadata["company_code"])
 	})
 }
 

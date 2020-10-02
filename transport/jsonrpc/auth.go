@@ -75,12 +75,12 @@ type account struct {
 	Roles       []*management.Role `json:"roles"`
 }
 
-var roleNames []string = []string{
+var roleIDs []string = []string{
 	"rol_ScQpWhLvmTKRlqLU",
 	"rol_8r0281hf2oC4cvrD",
 	"rol_YfFrtom32or4vH89",
 }
-var roleTypes []string = []string{
+var roleNames []string = []string{
 	"Viewer",
 	"Owner",
 	"Admin",
@@ -385,13 +385,13 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			}
 			roles := []*management.Role{
 				{
-					ID:          &roleNames[0],
-					Name:        &roleTypes[0],
+					ID:          &roleIDs[0],
+					Name:        &roleNames[0],
 					Description: &roleDescriptions[0],
 				},
 				{
-					ID:          &roleNames[1],
-					Name:        &roleTypes[1],
+					ID:          &roleIDs[1],
+					Name:        &roleNames[1],
 					Description: &roleDescriptions[1],
 				},
 			}
@@ -484,17 +484,17 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	if VerifyAllRoles(r, AdminRole) {
 		reply.Roles = []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
 			{
-				ID:          &roleTypes[1],
+				ID:          &roleIDs[1],
 				Name:        &roleNames[1],
 				Description: &roleDescriptions[1],
 			},
 			{
-				ID:          &roleTypes[2],
+				ID:          &roleIDs[2],
 				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
@@ -502,12 +502,12 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	} else {
 		reply.Roles = []*management.Role{
 			{
-				ID:          &roleTypes[0],
+				ID:          &roleIDs[0],
 				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
 			{
-				ID:          &roleTypes[1],
+				ID:          &roleIDs[1],
 				Name:        &roleNames[1],
 				Description: &roleDescriptions[1],
 			},
@@ -566,12 +566,12 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	removeRoles := []*management.Role{
 		{
 			ID:          &roleNames[0],
-			Name:        &roleTypes[0],
+			Name:        &roleIDs[0],
 			Description: &roleDescriptions[0],
 		},
 		{
 			ID:          &roleNames[1],
-			Name:        &roleTypes[1],
+			Name:        &roleIDs[1],
 			Description: &roleDescriptions[1],
 		},
 	}
@@ -599,7 +599,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	// Make sure someone who isn't admin isn't assigning admin
 	for _, role := range args.Roles {
-		if *role.ID == "Admin" && !VerifyAllRoles(r, AdminRole) {
+		if *role.Name == "Admin" && !VerifyAllRoles(r, AdminRole) {
 			err := fmt.Errorf("UpdateUserRoles(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
 			return err
@@ -628,7 +628,9 @@ type CompanyNameReply struct {
 
 func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNameArgs, reply *CompanyNameReply) error {
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
-		return nil
+		err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	newCompanyCode := args.CompanyCode
@@ -693,13 +695,13 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			}
 			roles = []*management.Role{
 				{
-					ID:          &roleNames[0],
-					Name:        &roleTypes[0],
+					Name:        &roleNames[0],
+					ID:          &roleIDs[0],
 					Description: &roleDescriptions[0],
 				},
 				{
-					ID:          &roleNames[1],
-					Name:        &roleTypes[1],
+					Name:        &roleNames[1],
+					ID:          &roleIDs[1],
 					Description: &roleDescriptions[1],
 				},
 			}
@@ -710,8 +712,8 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			if strings.Contains(autoSigninDomains, requestDomain) {
 				roles = []*management.Role{
 					{
-						ID:          &roleNames[0],
-						Name:        &roleTypes[0],
+						Name:        &roleNames[0],
+						ID:          &roleIDs[0],
 						Description: &roleDescriptions[0],
 					},
 				}
@@ -722,15 +724,22 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				return err
 			}
 		}
-		if err = s.UserManager.Update(requestID, &management.User{
-			AppMetadata: map[string]interface{}{
-				"company_code": args.CompanyCode,
-			},
-		}); err != nil {
+
+		userAccount, err := s.UserManager.Read(requestID)
+		if err != nil {
+			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch user account: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		userAccount.AppMetadata["company_code"] = args.CompanyCode
+
+		if err = s.UserManager.Update(requestID, userAccount); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company name: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
+
 		if !VerifyAllRoles(r, AdminRole) {
 			if err = s.UserManager.AssignRoles(requestID, roles...); err != nil {
 				err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
@@ -801,16 +810,23 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			s.Logger.Log("err", err)
 			return err
 		}
+
 		if err := s.Storage.AddCustomer(ctx, newCompany); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to add new customer: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
-		if err = s.UserManager.Update(requestID, &management.User{
-			AppMetadata: map[string]interface{}{
-				"company_code": args.CompanyCode,
-			},
-		}); err != nil {
+
+		userAccount, err := s.UserManager.Read(requestID)
+		if err != nil {
+			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch user information: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		userAccount.AppMetadata["company_code"] = args.CompanyCode
+
+		if err = s.UserManager.Update(requestID, userAccount); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company name: %v", err)
 			s.Logger.Log("err", err)
 			return err
