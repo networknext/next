@@ -211,6 +211,14 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
+	if sessionUpdate.PlatformType == transport.PlatformTypeUnknown {
+		panic("platform type is unknown")
+	}
+
+	if sessionUpdate.ConnectionType == transport.ConnectionTypeUnknown {
+		panic("connection type is unknown")
+	}
+
 	if sessionUpdate.FallbackToDirect {
 		fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
 		return
@@ -703,7 +711,6 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// New redis entry
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
 	if err != nil {
 		return

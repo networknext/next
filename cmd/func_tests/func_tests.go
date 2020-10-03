@@ -1684,15 +1684,11 @@ func main() {
 
 }
 
-// todo: add test to verify that connection type and platform id are not zero on first slice
-
 // todo: test for fallback to direct showing up on the backend
 
-// todo: add test for client bandwidth over limit
-
-// todo: add test for server bandwidth over limit
-
 // todo: add a test for session update retry
+
+// todo: add test for bandwidth over limit
 
 // todo: add test to verify packet loss tracker results gets up to backend
 
