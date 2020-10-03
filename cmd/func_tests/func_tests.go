@@ -1642,11 +1642,11 @@ func main() {
 		test_route_switching,
 		test_on_off,
 		test_on_on_off,
-		/*
 		test_reconnect_direct,
 		test_reconnect_next,
 		test_connect_to_another_server_direct,
 		test_connect_to_another_server_next,
+		/*
 		test_multipath,
 		test_multipath_next_packet_loss,
 		test_multipath_fallback_to_direct,
