@@ -1,7 +1,3 @@
-[submodule "sdk4"]
-	branch = 4.0.0
-	path = sdk4
-	url = git@github.com:networknext/sdk.git
 [submodule "relay"]
 	path = relay
 	url = git@github.com:networknext/relay
