@@ -1752,6 +1752,8 @@ func main() {
 
 // todo: add counters for bandwidth over limit client -> server, server -> client
 
+// todo: check that no bandwidth is over limit in regular tests (eg. network next route tests)
+
 // todo: add test for bandwidth over limit
 
 // todo: add test to verify packet loss tracker results gets up to backend
