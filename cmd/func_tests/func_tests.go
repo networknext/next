@@ -1694,6 +1694,8 @@ func main() {
 
 // todo: add a test for session update retry
 
-// todo: add a test for out of order packets
+// todo: add test to verify packet loss tracker results gets up to backend
 
-// todo: add func test for sending packets with network next disabled (calls send packet raw)
+// todo: add test to verify jitter tracker results get up to backend
+
+// todo: add test to verify out of order tracker results get up to backend
