@@ -6834,6 +6834,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 }
 
 #if NEXT_DEVELOPMENT
+bool next_fake_fallback_to_direct = false;
 float next_fake_direct_packet_loss = 0.0f;
 float next_fake_direct_rtt = 0.0f;
 float next_fake_next_packet_loss = 0.0f;
@@ -6896,6 +6897,12 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
 
 #if NEXT_DEVELOPMENT
+        if ( !fallback_to_direct && next_fake_fallback_to_direct )
+        {
+            next_platform_mutex_acquire( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_SESSION_UPDATE_TIMED_OUT );
+            next_platform_mutex_release( &client->route_manager_mutex );
+        }
         client->client_stats.direct_rtt += next_fake_direct_rtt;
         client->client_stats.direct_packet_loss += next_fake_direct_packet_loss;
         client->client_stats.next_rtt += next_fake_next_rtt;
