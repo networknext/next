@@ -229,6 +229,14 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
+	if sessionUpdate.ClientBandwidthOverLimit {
+		fmt.Printf("client bandwidth over limit\n")
+	}
+
+	if sessionUpdate.ServerBandwidthOverLimit {
+		fmt.Printf("server bandwidth over limit\n")
+	}
+
 	newSession := sessionUpdate.SliceNumber == 0
 
 	var sessionData transport.SessionData4
