@@ -52,10 +52,7 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context;
-    // verify_packet( packet_data, packet_bytes );
-    // todo:
-    next_assert( packet_bytes == 2 );
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client received %d", ( int(packet_data[1]) << 8 ) | int(packet_data[0]) );
+    verify_packet( packet_data, packet_bytes );
 }
 
 #define NEXT_CLIENT_COUNTER_MAX 64
@@ -168,8 +165,6 @@ int main()
 
     bool second_connect_completed = false;
 
-    int packet_sequence = 0;
-
     // IMPORTANT: Have to wait a bit here or the first packet will get dropped
     // because of a race condition between the server getting set via OPEN_SESSION_COMMAND
     // and the recvfrom for the response from the server.
@@ -199,15 +194,8 @@ int main()
             uint8_t packet_data[NEXT_MTU];
             memset( packet_data, 0, sizeof( packet_data ) );
 
-            /*
             int packet_bytes = 0;
             generate_packet( packet_data, packet_bytes );
-            */
-
-            int packet_bytes = 2;
-            packet_data[0] = uint8_t( packet_sequence & 0xFF );
-            packet_data[1] = uint8_t( ( packet_sequence >> 8 ) & 0xFF );
-            packet_sequence++;
 
             next_client_send_packet( client, packet_data, packet_bytes );
         }
