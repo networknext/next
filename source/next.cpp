@@ -7651,10 +7651,10 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( over_budget )
             {
+                next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps)", envelope_kbps_up );
                 send_over_network_next = false;
                 if ( !multipath )
                 {
-                    next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps). sending packet direct instead", envelope_kbps_up );
                     send_direct = true;
                 }
             }
@@ -11178,7 +11178,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_reported = packet.reported;
             session->stats_multipath = packet.multipath;
             session->stats_fallback_to_direct = packet.fallback_to_direct;
-            session->stats_client_bandwidth_over_limit |= packet.bandwidth_over_limit;
+            if ( packet.bandwidth_over_limit )
+            {
+                // todo
+                printf( "server sees client bandwidth over limit\n" );
+                session->stats_client_bandwidth_over_limit = true;
+            }
 
             session->stats_platform_id = packet.platform_id;
             session->stats_connection_type = packet.connection_type;
@@ -12279,13 +12284,13 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 if ( over_budget )
                 {
+                    next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps)", session_id, envelope_kbps_down );
                     next_platform_mutex_acquire( &server->internal->session_mutex );
                     internal_entry->stats_server_bandwidth_over_limit = true;
                     next_platform_mutex_release( &server->internal->session_mutex );
                     send_over_network_next = false;
                     if ( !multipath )
                     {
-                        next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps). sending direct instead", session_id, envelope_kbps_down );
                         send_upgraded_direct = true;
                     }
                 }
