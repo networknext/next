@@ -397,7 +397,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 1024, 1024, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
 			routeType = routing.RouteTypeNew
 		}
 

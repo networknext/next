@@ -34,12 +34,21 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void generate_packet( uint8_t * packet_data, int & packet_bytes )
+void generate_packet( uint8_t * packet_data, int & packet_bytes, bool high_bandwidth )
 {
-    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    if ( high_bandwidth )
+    {
+        packet_bytes = NEXT_MTU;
+    }
+    else
+    {
+        packet_bytes = 1 + ( rand() % NEXT_MTU ) / 10;
+    }
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
+    {
         packet_data[i] = (uint8_t) ( start + i ) % 256;
+    }
 }
 
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
@@ -168,6 +177,13 @@ int main()
         stop_time = atof( duration_env );
     }
 
+    bool high_bandwidth = false;
+    const char * high_bandwidth_env = getenv( "CLIENT_HIGH_BANDWIDTH" );
+    if ( high_bandwidth_env )
+    {
+        high_bandwidth = true;
+    }
+
     double time = 0.0;
     double delta_time = 1.0 / 60.0;
 
@@ -203,7 +219,7 @@ int main()
             memset( packet_data, 0, sizeof( packet_data ) );
 
             int packet_bytes = 0;
-            generate_packet( packet_data, packet_bytes );
+            generate_packet( packet_data, packet_bytes, high_bandwidth );
 
             next_client_send_packet( client, packet_data, packet_bytes );
         }
