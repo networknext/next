@@ -62,6 +62,7 @@ extern float next_fake_direct_rtt;
 extern float next_fake_next_packet_loss;
 extern float next_fake_next_rtt;
 extern bool next_packet_loss;
+extern bool next_fake_fallback_to_direct;
 
 int main()
 {
@@ -127,6 +128,13 @@ int main()
     if ( stop_sending_packets_time_env )
     {
         stop_sending_packets_time = atof( stop_sending_packets_time_env );
+    }
+
+    double fallback_to_direct_time = -1.0;
+    const char * fallback_to_direct_time_env = getenv( "CLIENT_FALLBACK_TO_DIRECT_TIME" );
+    if ( fallback_to_direct_time_env )
+    {
+        fallback_to_direct_time = atof( fallback_to_direct_time_env );
     }
 
     next_log_level( NEXT_LOG_LEVEL_DEBUG );
@@ -198,6 +206,11 @@ int main()
             generate_packet( packet_data, packet_bytes );
 
             next_client_send_packet( client, packet_data, packet_bytes );
+        }
+
+        if ( fallback_to_direct_time >= 0.0 && time > fallback_to_direct_time )
+        {
+            next_fake_fallback_to_direct = true;
         }
 
         next_sleep( delta_time );

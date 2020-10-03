@@ -98,6 +98,7 @@ type ClientConfig struct {
 	connect_time            	float64
 	connect_address         	string
 	stop_sending_packets_time 	float64
+	fallback_to_direct_time     float64
 }
 
 func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
@@ -152,6 +153,10 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 
 	if config.stop_sending_packets_time > 0.0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CLIENT_STOP_SENDING_PACKETS_TIME=%f", config.stop_sending_packets_time))
+	}
+
+	if config.fallback_to_direct_time > 0.0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CLIENT_FALLBACK_TO_DIRECT_TIME=%f", config.fallback_to_direct_time))
 	}
 
 	var stdout bytes.Buffer
@@ -479,7 +484,7 @@ func test_network_next_route() {
 	when our backend goes down in production we don't drop packets or disconnect players.
 */
 
-func test_fallback_to_direct() {
+func test_fallback_to_direct_backend_down() {
 
 	fmt.Printf("test_fallback_to_direct\n")
 
@@ -539,6 +544,65 @@ func test_fallback_to_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
    
+}
+
+func test_fallback_to_direct_client_side() {
+
+	fmt.Printf("fallback_to_direct_client_side\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.fallback_to_direct_time = 30.0
+	clientConfig.stop_sending_packets_time = 50.0
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	relay_1_cmd, relay_1_stdout := relay()
+	relay_2_cmd, relay_2_stdout := relay()
+	relay_3_cmd, relay_3_stdout := relay()
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
+	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] >= 30*60, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+
 }
 
 /*
@@ -1698,10 +1762,14 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
+		/*
 		test_direct_raw,
 		test_direct_upgraded,
 		test_network_next_route,
-		test_fallback_to_direct,
+		test_fallback_to_direct_backend,
+		*/
+		test_fallback_to_direct_client_side,
+		/*
 		test_disable_on_server,
 		test_disable_on_client,
 		test_route_switching,
@@ -1721,6 +1789,7 @@ func main() {
 		test_packet_loss_next,
 		test_server_under_load,
 		test_session_update_retry,
+		*/
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
