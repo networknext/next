@@ -11619,7 +11619,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
             session->stats_packets_lost_client_to_server += packets_lost;
             session->stats_packets_out_of_order_client_to_server = session->out_of_order_tracker.num_out_of_order_packets;
-            session->stats_jitter_client_to_server = session->jitter_tracker.jitter;
+            session->stats_jitter_client_to_server = session->jitter_tracker.jitter * 1000.0f;
             session->next_tracker_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
         }
     }
