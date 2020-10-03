@@ -1924,6 +1924,79 @@ func test_bandwidth_over_limit() {
 
 }
 
+/*
+	Create fake packet loss between the client and server.
+	Make sure the packet loss is reported up to the backend.
+*/
+
+func test_packet_loss() {
+
+	fmt.Printf("test_packet_loss\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.high_bandwidth = true
+	clientConfig.stop_sending_packets_time = 50.0
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	relayConfig := RelayConfig{
+		fake_packet_loss_percent:    1.0,
+		fake_packet_loss_start_time: 10.0,
+	}
+
+	relay_1_cmd, relay_1_stdout := relay(relayConfig)
+	relay_2_cmd, relay_2_stdout := relay(relayConfig)
+	relay_3_cmd, relay_3_stdout := relay(relayConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
+	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
+
+	backendSawClientToServerPacketLoss := strings.Contains(backend_stdout.String(), "client to server packets lost")
+	backendSawServerToClientPacketLoss := strings.Contains(backend_stdout.String(), "server to client packets lost")
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientToServerPacketLoss == true)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerToClientPacketLoss == true)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived < totalPacketsSent)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] != 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] != 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+
+}
+
 type test_function func()
 
 func main() {
@@ -1953,6 +2026,7 @@ func main() {
 		test_server_under_load,
 		test_session_update_retry,
 		test_bandwidth_over_limit,
+		test_packet_loss,
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
@@ -1979,8 +2053,6 @@ func main() {
 	}
 
 }
-
-// todo: add test to verify packet loss tracker results gets up to backend
 
 // todo: add test to verify jitter tracker results get up to backend
 
