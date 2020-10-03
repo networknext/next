@@ -6949,6 +6949,11 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.flags = flags;
         packet.reported = client->reported;
+        // todo
+        if ( client->bandwidth_over_limit )
+        {
+            printf( "*** client bandwidth over limit in packet ***\n" );
+        }
         packet.bandwidth_over_limit = client->bandwidth_over_limit;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
