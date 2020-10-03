@@ -11205,6 +11205,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
+            session->stats_jitter_server_to_client = packet.jitter_server_to_client;
             session->stats_user_flags |= packet.user_flags;
             session->last_client_stats_update = next_time();
         }
