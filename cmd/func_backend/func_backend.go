@@ -47,6 +47,7 @@ const BACKEND_MODE_USER_FLAGS = 9
 const BACKEND_MODE_FORCE_RETRY = 10
 const BACKEND_MODE_BANDWIDTH = 11
 const BACKEND_MODE_JITTER = 12
+const BACKEND_MODE_TAGS = 13
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -268,6 +269,12 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			if sessionUpdate.JitterServerToClient > 10 {
 				panic("jitter down too high")
 			}
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_TAGS {
+		if sessionUpdate.Tag != 0 {
+			fmt.Printf("tag %x\n", sessionUpdate.Tag)
 		}
 	}
 
@@ -542,6 +549,10 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "JITTER" {
 		backend.mode = BACKEND_MODE_JITTER
+	}
+
+	if os.Getenv("BACKEND_MODE") == "TAGS" {
+		backend.mode = BACKEND_MODE_TAGS
 	}
 
 	go OptimizeThread()
