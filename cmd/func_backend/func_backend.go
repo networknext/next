@@ -45,6 +45,8 @@ const BACKEND_MODE_UNCOMMITTED = 7
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 8
 const BACKEND_MODE_USER_FLAGS = 9
 const BACKEND_MODE_FORCE_RETRY = 10
+const BACKEND_MODE_BANDWIDTH = 11
+const BACKEND_MODE_JITTER = 12
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -243,6 +245,30 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if sessionUpdate.PacketsLostServerToClient > 0 {
 		fmt.Printf("%d server to client packets lost\n")
+	}
+
+	if backend.mode == BACKEND_MODE_BANDWIDTH {
+		if sessionUpdate.NextKbpsUp > 0 {
+			fmt.Printf("%d kbps up\n", sessionUpdate.NextKbpsUp)
+		}
+		if sessionUpdate.NextKbpsDown > 0 {
+			fmt.Printf("%d kbps down\n", sessionUpdate.NextKbpsDown)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_JITTER {
+		if sessionUpdate.JitterClientToServer > 0 {
+			fmt.Printf("%f jitter up\n", sessionUpdate.JitterClientToServer)
+			if sessionUpdate.JitterClientToServer > 10 {
+				panic("jitter up too high")
+			}
+		}
+		if sessionUpdate.JitterServerToClient > 0 {
+			fmt.Printf("%f jitter down\n", sessionUpdate.JitterServerToClient)
+			if sessionUpdate.JitterServerToClient > 10 {
+				panic("jitter down too high")
+			}
+		}
 	}
 
 	newSession := sessionUpdate.SliceNumber == 0
@@ -508,6 +534,14 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
 		backend.mode = BACKEND_MODE_FORCE_RETRY
+	}
+
+	if os.Getenv("BACKEND_MODE") == "BANDWIDTH" {
+		backend.mode = BACKEND_MODE_BANDWIDTH
+	}
+
+	if os.Getenv("BACKEND_MODE") == "JITTER" {
+		backend.mode = BACKEND_MODE_JITTER
 	}
 
 	go OptimizeThread()
