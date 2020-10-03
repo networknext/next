@@ -1097,6 +1097,7 @@ func test_multipath() {
 	fmt.Printf("test_multipath\n")
 
 	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
@@ -1133,10 +1134,10 @@ func test_multipath() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 3500)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 3500)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 2000)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 2000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] >= 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] >= 2500)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
@@ -1646,7 +1647,6 @@ func main() {
 		test_reconnect_next,
 		test_connect_to_another_server_direct,
 		test_connect_to_another_server_next,
-		/*
 		test_multipath,
 		test_multipath_next_packet_loss,
 		test_multipath_fallback_to_direct,
@@ -1656,7 +1656,6 @@ func main() {
 		test_packet_loss_direct,
 		test_packet_loss_next,
 		test_server_under_load,
-		*/
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
