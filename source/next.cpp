@@ -94,6 +94,7 @@
 #define NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED                14
 #define NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW                 15
 #define NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED            16
+#define NEXT_CLIENT_COUNTER_BANDWIDTH_OVER_BUDGET_CLIENT_TO_SERVER     17
 
 #define NEXT_CLIENT_COUNTER_MAX                                        64
 
@@ -7651,6 +7652,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( over_budget )
             {
+                client->counters[NEXT_CLIENT_COUNTER_BANDWIDTH_OVER_BUDGET_CLIENT_TO_SERVER]++;
                 send_over_network_next = false;
                 if ( !multipath )
                 {
