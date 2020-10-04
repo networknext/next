@@ -2306,6 +2306,10 @@ func test_next_stats() {
 
 }
 
+/*
+	Make sure all the near relay stats (RTT, jitter, PL) are uploaded to the backend.
+*/
+
 type test_function func()
 
 func main() {
@@ -2321,7 +2325,7 @@ func main() {
 		test_on_off,
 		test_on_on_off,
 		test_reconnect_direct,
-		test_reconnect_next,
+		test_reconnect_next,;
 		test_connect_to_another_server_direct,
 		test_connect_to_another_server_next,
 		test_multipath,
@@ -2342,7 +2346,7 @@ func main() {
 		test_direct_stats,
 		test_next_stats,
 	}
-
+  
 	// If there are command line arguments, use reflection to see what tests to run
 	var tests []test_function
 	prefix := "main."
@@ -2367,5 +2371,3 @@ func main() {
 	}
 
 }
-
-// todo: there should be a test for near relay stats

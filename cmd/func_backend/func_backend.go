@@ -50,6 +50,7 @@ const BACKEND_MODE_JITTER = 12
 const BACKEND_MODE_TAGS = 13
 const BACKEND_MODE_DIRECT_STATS = 14
 const BACKEND_MODE_NEXT_STATS = 15
+const BACKEND_MODE_NEAR_RELAY_STATS = 16
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -289,6 +290,12 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if backend.mode == BACKEND_MODE_NEXT_STATS {
 		if sessionUpdate.NextRTT > 0 && sessionUpdate.NextJitter > 0 && sessionUpdate.NextPacketLoss > 0 {
 			fmt.Printf("next rtt = %f, next jitter = %f, next packet loss = %f\n", sessionUpdate.NextRTT, sessionUpdate.NextJitter, sessionUpdate.NextPacketLoss)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
+		for i := 0; i <= int(sessionUpdate.NumNearRelays); i++ {
+			fmt.Printf("near relay: id = %x, rtt = %f, jitter = %f, packet loss = %f\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
 		}
 	}
 
