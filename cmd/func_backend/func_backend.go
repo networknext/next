@@ -48,6 +48,8 @@ const BACKEND_MODE_FORCE_RETRY = 10
 const BACKEND_MODE_BANDWIDTH = 11
 const BACKEND_MODE_JITTER = 12
 const BACKEND_MODE_TAGS = 13
+const BACKEND_MODE_DIRECT_STATS = 14
+const BACKEND_MODE_NEXT_STATS = 15
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -275,6 +277,18 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if backend.mode == BACKEND_MODE_TAGS {
 		if sessionUpdate.Tag != 0 {
 			fmt.Printf("tag %x\n", sessionUpdate.Tag)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_DIRECT_STATS {
+		if sessionUpdate.DirectRTT > 0 && sessionUpdate.DirectJitter > 0 && sessionUpdate.DirectPacketLoss > 0 {
+			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", sessionUpdate.DirectRTT, sessionUpdate.DirectJitter, sessionUpdate.DirectPacketLoss)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_NEXT_STATS {
+		if sessionUpdate.NextRTT > 0 && sessionUpdate.NextJitter > 0 && sessionUpdate.NextPacketLoss > 0 {
+			fmt.Printf("next rtt = %f, next jitter = %f, next packet loss = %f\n", sessionUpdate.NextRTT, sessionUpdate.NextJitter, sessionUpdate.NextPacketLoss)
 		}
 	}
 
@@ -553,6 +567,14 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "TAGS" {
 		backend.mode = BACKEND_MODE_TAGS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {
+		backend.mode = BACKEND_MODE_DIRECT_STATS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
+		backend.mode = BACKEND_MODE_NEXT_STATS
 	}
 
 	go OptimizeThread()
