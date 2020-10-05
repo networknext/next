@@ -172,9 +172,7 @@ export class JSONRPCService {
 }
 
 export const JSONRPCPlugin = {
-  service: {} as JSONRPCService,
   install (Vue: any) {
-    this.service = new JSONRPCService()
-    Vue.prototype.$apiService = this.service
+    Vue.$apiService = Vue.prototype.$apiService = new JSONRPCService()
   }
 }

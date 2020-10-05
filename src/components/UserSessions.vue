@@ -113,7 +113,7 @@ export default class UserSessions extends Vue {
 
     // TODO: Figure out how to get rid of this. this.$apiService should be possible...
     // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService.fetchUserSessions({ user_hash: this.searchID })
+    this.$apiService.fetchUserSessions({ user_hash: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
         this.showSessions = true

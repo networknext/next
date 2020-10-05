@@ -91,9 +91,7 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode || '' })
+    this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode || '' })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next

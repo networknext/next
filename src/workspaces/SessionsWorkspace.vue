@@ -151,7 +151,7 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private fetchSessions (): void {
-    (this as any).$apiService
+    this.$apiService
       .fetchTopSessions({
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })

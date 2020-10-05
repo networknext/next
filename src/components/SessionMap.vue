@@ -65,9 +65,7 @@ export default class SessionMap extends Vue {
   }
 
   private fetchMapSessions () {
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService
+    this.$apiService
       .fetchMapSessions({
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })

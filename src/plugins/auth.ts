@@ -108,9 +108,7 @@ export class AuthService {
 }
 
 export const AuthPlugin = {
-  service: {} as AuthService,
   install (Vue: any, options: any) {
-    this.service = new AuthService(options)
-    Vue.prototype.$authService = this.service
+    Vue.$authService = Vue.prototype.$authService = new AuthService(options)
   }
 }
