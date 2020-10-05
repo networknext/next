@@ -86,6 +86,10 @@ export class JSONRPCService {
     })
   }
 
+  public impersonate (args: any): Promise<any> {
+    return this.call('AuthService.Impersonate', args)
+  }
+
   public updateAccountSettings (args: any): Promise<any> {
     return this.call('AuthService.UpdateAccountSettings', args)
   }
@@ -168,9 +172,7 @@ export class JSONRPCService {
 }
 
 export const JSONRPCPlugin = {
-  service: {} as JSONRPCService,
   install (Vue: any) {
-    this.service = new JSONRPCService()
-    Vue.prototype.$apiService = this.service
+    Vue.$apiService = Vue.prototype.$apiService = new JSONRPCService()
   }
 }

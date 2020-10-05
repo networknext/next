@@ -16,7 +16,7 @@ blocks:
       jobs:
         - name: Portal
           commands:
+            - make build-portal-artifacts-local
             - make build-portal-artifacts-prod
-      secrets:
       secrets:
         - name: google-cloud-platform-prod

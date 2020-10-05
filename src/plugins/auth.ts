@@ -25,20 +25,16 @@ export class AuthService {
 
   public login () {
     this.authClient
-      .loginWithPopup({
-        redirect_uri: router.currentRoute.fullPath
-      })
-      .then(() => {
-        this.processAuthentication()
-      })
-      .catch((error: Error) => {
-        console.error(error)
+      .loginWithRedirect({
+        connection: 'Username-Password-Authentication',
+        redirect_uri: window.location.origin
       })
   }
 
   public signUp () {
-    this.authClient.loginWithPopup({
+    this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
+      redirect_uri: window.location.origin,
       screen_hint: 'signup'
     })
   }
@@ -51,65 +47,73 @@ export class AuthService {
   }
 
   private async processAuthentication () {
-    this.authClient
-      .isAuthenticated()
-      .then((isAuthenticated: boolean) => {
-        if (!isAuthenticated) {
-          return
-        }
-        const userProfile: UserProfile = {
-          auth0ID: '',
-          companyCode: '',
-          companyName: '',
-          email: '',
-          idToken: '',
-          name: '',
-          roles: [],
-          verified: false,
-          routeShader: null,
-          pubKey: '',
-          newsletterConsent: false,
-          domains: []
-        }
+    const query = window.location.search
 
-        this.authClient
-          .getIdTokenClaims()
-          .then((authResult: any) => {
-            const nnScope = authResult[
-              'https://networknext.com/userData'
-            ]
-            const roles: Array<any> = nnScope.roles || { roles: [] }
-            const companyCode: string = nnScope.company_code || ''
-            const newsletterConsent: boolean = nnScope.newsletter || false
-            const email = authResult.email || ''
-            const token = authResult.__raw
+    const isAuthenticated =
+      await this.authClient.isAuthenticated()
+        .catch((error: Error) => {
+          console.log('something went wrong checking auth status')
+          console.log(error)
+        })
+    if (isAuthenticated) {
+      const userProfile: UserProfile = {
+        auth0ID: '',
+        companyCode: '',
+        companyName: '',
+        email: '',
+        idToken: '',
+        name: '',
+        roles: [],
+        verified: false,
+        routeShader: null,
+        pubKey: '',
+        newsletterConsent: false,
+        domains: []
+      }
 
-            userProfile.roles = roles
-            userProfile.email = email
-            userProfile.idToken = token
-            userProfile.auth0ID = authResult.sub
-            userProfile.verified = authResult.email_verified
-            userProfile.companyCode = companyCode
-            userProfile.newsletterConsent = newsletterConsent
+      this.authClient
+        .getIdTokenClaims()
+        .then((authResult: any) => {
+          const nnScope = authResult[
+            'https://networknext.com/userData'
+          ]
+          const roles: Array<any> = nnScope.roles || { roles: [] }
+          const companyCode: string = nnScope.company_code || ''
+          const newsletterConsent: boolean = nnScope.newsletter || false
+          const email = authResult.email || ''
+          const token = authResult.__raw
 
-            store.commit('UPDATE_USER_PROFILE', userProfile)
-          })
-          .catch((error: Error) => {
-            console.log('Something went wrong fetching user details')
-            console.log(error.message)
-          })
-      })
-      .catch((error: Error) => {
-        console.log('something went wrong checking auth status')
-        console.log(error)
-      })
+          userProfile.roles = roles
+          userProfile.email = email
+          userProfile.idToken = token
+          userProfile.auth0ID = authResult.sub
+          userProfile.verified = authResult.email_verified
+          userProfile.companyCode = companyCode
+          userProfile.newsletterConsent = newsletterConsent
+
+          store.commit('UPDATE_USER_PROFILE', userProfile)
+          store.commit('UPDATE_CURRENT_FILTER', { companyCode: roles.includes('Admin') ? '' : companyCode })
+        })
+        .catch((error: Error) => {
+          console.log('Something went wrong fetching user details')
+          console.log(error.message)
+        })
+      return
+    }
+    if (query.includes('code=') && query.includes('state=')) {
+      await this.authClient.handleRedirectCallback()
+        .catch((error: Error) => {
+          console.log('something went wrong with parsing the redirect callback')
+          console.log(error)
+        })
+      this.processAuthentication()
+      router.push('/')
+    }
   }
 }
 
 export const AuthPlugin = {
-  service: {} as AuthService,
   install (Vue: any, options: any) {
-    this.service = new AuthService(options)
-    Vue.prototype.$authService = this.service
+    Vue.$authService = Vue.prototype.$authService = new AuthService(options)
   }
 }
