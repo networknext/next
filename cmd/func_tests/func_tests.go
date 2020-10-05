@@ -2325,7 +2325,7 @@ func main() {
 		test_on_off,
 		test_on_on_off,
 		test_reconnect_direct,
-		test_reconnect_next,;
+		test_reconnect_next,
 		test_connect_to_another_server_direct,
 		test_connect_to_another_server_next,
 		test_multipath,
