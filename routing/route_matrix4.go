@@ -1,12 +1,14 @@
 package routing
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"net"
 	"sort"
+	"sync"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/encoding"
@@ -21,6 +23,12 @@ type RouteMatrix4 struct {
 	RelayLongitudes    []float32
 	RelayDatacenterIDs []uint64
 	RouteEntries       []core.RouteEntry
+
+	cachedResponse      []byte
+	cachedResponseMutex sync.RWMutex
+
+	cachedAnalysis      []byte
+	cachedAnalysisMutex sync.RWMutex
 }
 
 func (m *RouteMatrix4) Serialize(stream encoding.Stream) error {
@@ -230,4 +238,45 @@ func (m *RouteMatrix4) WriteAnalysisTo(writer io.Writer) {
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
+}
+
+func (m *RouteMatrix4) GetResponseData() []byte {
+	m.cachedResponseMutex.RLock()
+	response := m.cachedResponse
+	m.cachedResponseMutex.RUnlock()
+	return response
+}
+
+func (m *RouteMatrix4) WriteResponseData(bufferSize int) error {
+	ws, err := encoding.CreateWriteStream(bufferSize)
+	if err != nil {
+		return fmt.Errorf("failed to create write stream in route_matrix4 WriteResponseData(): %v", err)
+	}
+
+	if err := m.Serialize(ws); err != nil {
+		return fmt.Errorf("failed to serialize route_matrix4 in WriteResponseData(): %v", err)
+	}
+
+	ws.Flush()
+
+	m.cachedResponseMutex.Lock()
+	m.cachedResponse = ws.GetData()[:ws.GetBytesProcessed()]
+	m.cachedResponseMutex.Unlock()
+	return nil
+}
+
+func (m *RouteMatrix4) GetAnalysisData() []byte {
+	m.cachedAnalysisMutex.RLock()
+	analysis := m.cachedAnalysis
+	m.cachedAnalysisMutex.RUnlock()
+	return analysis
+}
+
+func (m *RouteMatrix4) WriteAnalysisData() {
+	var buffer bytes.Buffer
+	m.WriteAnalysisTo(&buffer)
+
+	m.cachedAnalysisMutex.Lock()
+	m.cachedAnalysis = buffer.Bytes()
+	m.cachedAnalysisMutex.Unlock()
 }

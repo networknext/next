@@ -66,7 +66,9 @@ const (
 	FallbackFlagsContinueRequestTimedOut4    = (1 << 6)
 	FallbackFlagsClientTimedOut4             = (1 << 7)
 	FallbackFlagsUpgradeResponseTimedOut4    = (1 << 8)
-	FallbackFlagsCount4                      = 9
+	FallbackFlagsRouteUpdateTimedOut4        = (1 << 9)
+	FallbackFlagsDirectPongTimedOut4         = (1 << 10)
+	FallbackFlagsCount4                      = 11
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format

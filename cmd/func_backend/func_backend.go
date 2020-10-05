@@ -44,7 +44,13 @@ const BACKEND_MODE_ROUTE_SWITCHING = 6
 const BACKEND_MODE_UNCOMMITTED = 7
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 8
 const BACKEND_MODE_USER_FLAGS = 9
-const BACKEND_MODE_IDEMPOTENT = 10
+const BACKEND_MODE_FORCE_RETRY = 10
+const BACKEND_MODE_BANDWIDTH = 11
+const BACKEND_MODE_JITTER = 12
+const BACKEND_MODE_TAGS = 13
+const BACKEND_MODE_DIRECT_STATS = 14
+const BACKEND_MODE_NEXT_STATS = 15
+const BACKEND_MODE_NEAR_RELAY_STATS = 16
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -212,9 +218,85 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
+	if backend.mode == BACKEND_MODE_FORCE_RETRY && sessionUpdate.RetryNumber < 4 {
+		return
+	}	
+
+	if sessionUpdate.PlatformType == transport.PlatformTypeUnknown {
+		panic("platform type is unknown")
+	}
+
+	if sessionUpdate.ConnectionType == transport.ConnectionTypeUnknown {
+		panic("connection type is unknown")
+	}
+
 	if sessionUpdate.FallbackToDirect {
 		fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
 		return
+	}
+
+	if sessionUpdate.ClientBandwidthOverLimit {
+		fmt.Printf("client bandwidth over limit\n")
+	}
+
+	if sessionUpdate.ServerBandwidthOverLimit {
+		fmt.Printf("server bandwidth over limit\n")
+	}
+
+	if sessionUpdate.PacketsLostClientToServer > 0 {
+		fmt.Printf("%d client to server packets lost\n", sessionUpdate.PacketsLostClientToServer)
+	}
+
+	if sessionUpdate.PacketsLostServerToClient > 0 {
+		fmt.Printf("%d server to client packets lost\n", sessionUpdate.PacketsLostServerToClient)
+	}
+
+	if backend.mode == BACKEND_MODE_BANDWIDTH {
+		if sessionUpdate.NextKbpsUp > 0 {
+			fmt.Printf("%d kbps up\n", sessionUpdate.NextKbpsUp)
+		}
+		if sessionUpdate.NextKbpsDown > 0 {
+			fmt.Printf("%d kbps down\n", sessionUpdate.NextKbpsDown)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_JITTER {
+		if sessionUpdate.JitterClientToServer > 0 {
+			fmt.Printf("%f jitter up\n", sessionUpdate.JitterClientToServer)
+			if sessionUpdate.JitterClientToServer > 10 {
+				panic("jitter up too high")
+			}
+		}
+		if sessionUpdate.JitterServerToClient > 0 {
+			fmt.Printf("%f jitter down\n", sessionUpdate.JitterServerToClient)
+			if sessionUpdate.JitterServerToClient > 10 {
+				panic("jitter down too high")
+			}
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_TAGS {
+		if sessionUpdate.Tag != 0 {
+			fmt.Printf("tag %x\n", sessionUpdate.Tag)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_DIRECT_STATS {
+		if sessionUpdate.DirectRTT > 0 && sessionUpdate.DirectJitter > 0 && sessionUpdate.DirectPacketLoss > 0 {
+			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", sessionUpdate.DirectRTT, sessionUpdate.DirectJitter, sessionUpdate.DirectPacketLoss)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_NEXT_STATS {
+		if sessionUpdate.NextRTT > 0 && sessionUpdate.NextJitter > 0 && sessionUpdate.NextPacketLoss > 0 {
+			fmt.Printf("next rtt = %f, next jitter = %f, next packet loss = %f\n", sessionUpdate.NextRTT, sessionUpdate.NextJitter, sessionUpdate.NextPacketLoss)
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
+		for i := 0; i <= int(sessionUpdate.NumNearRelays); i++ {
+			fmt.Printf("near relay: id = %x, rtt = %f, jitter = %f, packet loss = %f\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
+		}
 	}
 
 	newSession := sessionUpdate.SliceNumber == 0
@@ -242,10 +324,6 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	var sessionResponse *transport.SessionResponsePacket4
 
 	takeNetworkNext := len(nearRelays) > 0
-
-	if backend.mode == BACKEND_MODE_IDEMPOTENT && rand.Intn(10) == 0 {
-		return
-	}
 
 	if backend.mode == BACKEND_MODE_FORCE_DIRECT {
 		takeNetworkNext = false
@@ -381,7 +459,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 1024, 1024, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
 			routeType = routing.RouteTypeNew
 		}
 
@@ -482,8 +560,28 @@ func main() {
 		backend.mode = BACKEND_MODE_USER_FLAGS
 	}
 
-	if os.Getenv("BACKEND_MODE") == "IDEMPOTENT" {
-		backend.mode = BACKEND_MODE_IDEMPOTENT
+	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
+		backend.mode = BACKEND_MODE_FORCE_RETRY
+	}
+
+	if os.Getenv("BACKEND_MODE") == "BANDWIDTH" {
+		backend.mode = BACKEND_MODE_BANDWIDTH
+	}
+
+	if os.Getenv("BACKEND_MODE") == "JITTER" {
+		backend.mode = BACKEND_MODE_JITTER
+	}
+
+	if os.Getenv("BACKEND_MODE") == "TAGS" {
+		backend.mode = BACKEND_MODE_TAGS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {
+		backend.mode = BACKEND_MODE_DIRECT_STATS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
+		backend.mode = BACKEND_MODE_NEXT_STATS
 	}
 
 	go OptimizeThread()
@@ -712,7 +810,6 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// New redis entry
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
 	if err != nil {
 		return
