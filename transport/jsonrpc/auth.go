@@ -396,7 +396,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				},
 			}
 			if err = s.UserManager.RemoveRoles(*user.ID, roles...); err != nil {
-				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				err := fmt.Errorf("AddUserAccount() failed to remove current user role: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
@@ -576,19 +576,21 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		},
 	}
 
-	if VerifyAllRoles(r, AdminRole) {
-		err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
-		if err != nil {
-			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	} else {
-		err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
-		if err != nil {
-			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
-			s.Logger.Log("err", err)
-			return err
+	if len(userRoles.Roles) > 0 {
+		if VerifyAllRoles(r, AdminRole) {
+			err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
+			if err != nil {
+				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+		} else {
+			err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
+			if err != nil {
+				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				s.Logger.Log("err", err)
+				return err
+			}
 		}
 	}
 
