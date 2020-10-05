@@ -1581,7 +1581,7 @@ func TestUpdateAutoSignupDomains(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("failure - no company", func(t *testing.T) {
+	t.Run("failure - no company code", func(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
 		req = req.WithContext(reqContext)
