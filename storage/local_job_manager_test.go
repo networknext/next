@@ -10,18 +10,18 @@ import (
 
 func TestLocalJobManager(t *testing.T) {
 	manager := storage.LocalJobManager{}
-	fail := "FAIL"
-	success := "SUCCESS"
+	emptyID := ""
 	job := management.Job{
-		Status: &fail,
+		UserID: &emptyID,
 	}
-	t.Run("failure", func(t *testing.T) {
+
+	t.Run("failure - no user ID", func(t *testing.T) {
 		err := manager.VerifyEmail(&job)
 		assert.Error(t, err)
 	})
-	job = management.Job{
-		Status: &success,
-	}
+
+	*job.UserID = "123"
+
 	t.Run("success", func(t *testing.T) {
 		err := manager.VerifyEmail(&job)
 		assert.NoError(t, err)

@@ -877,10 +877,10 @@ type AccountSettingsReply struct {
 
 func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettingsArgs, reply *AccountSettingsReply) error {
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
-		return nil
+		err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
 	}
-
-	var updateUser management.User
 
 	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
@@ -896,17 +896,24 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 		return err
 	}
 
-	if args.Password != "" {
-		updateUser.Password = &args.Password
+	userAccount, err := s.UserManager.Read(requestID)
+	if err != nil {
+		err := fmt.Errorf("UpdateAccountSettings() failed to fetch user account")
+		s.Logger.Log("err", err)
+		return err
 	}
 
-	updateUser.AppMetadata = map[string]interface{}{
+	if args.Password != "" {
+		userAccount.Password = &args.Password
+	}
+
+	userAccount.AppMetadata = map[string]interface{}{
 		"newsletter": args.NewsLetterConsent,
 	}
 
-	err := s.UserManager.Update(requestID, &updateUser)
+	err = s.UserManager.Update(requestID, userAccount)
 	if err != nil {
-		err = fmt.Errorf("UpdateAccountSettings() failed to update user password: %v", err)
+		err = fmt.Errorf("UpdateAccountSettings() failed to update user: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -1177,7 +1184,11 @@ var UnverifiedRole = func(req *http.Request) (bool, error) {
 	if user == nil {
 		return false, fmt.Errorf("UnverifiedRole(): failed to fetch user from token")
 	}
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	claims, ok := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+	if !ok {
+		return false, fmt.Errorf("UnverifiedRole(): failed to fetch verified claim")
+	}
 
 	if verified, ok := claims["email_verified"]; ok && !verified.(bool) {
 		return true, nil

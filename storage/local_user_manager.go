@@ -20,7 +20,7 @@ func NewLocalUserManager() *LocalUserManager {
 	}
 }
 
-func (ljm *LocalUserManager) Create(user *management.User) error {
+func (lum *LocalUserManager) Create(user *management.User) error {
 	emptyName := ""
 	if user.ID == nil {
 		newID := fmt.Sprintf("%d", rand.Intn(10000))
@@ -32,18 +32,18 @@ func (ljm *LocalUserManager) Create(user *management.User) error {
 		}
 		user.Name = &emptyName
 	}
-	for _, u := range ljm.localUsers {
+	for _, u := range lum.localUsers {
 		if u.ID == user.ID {
 			return &AlreadyExistsError{resourceType: "user", resourceRef: user.ID}
 		}
 	}
 
-	ljm.localUsers = append(ljm.localUsers, user)
+	lum.localUsers = append(lum.localUsers, user)
 	return nil
 }
-func (ljm *LocalUserManager) Delete(id string) error {
+func (lum *LocalUserManager) Delete(id string) error {
 	userIndex := -1
-	for i, user := range ljm.localUsers {
+	for i, user := range lum.localUsers {
 		if *user.ID == id {
 			userIndex = i
 		}
@@ -53,29 +53,29 @@ func (ljm *LocalUserManager) Delete(id string) error {
 		return &DoesNotExistError{resourceType: "user", resourceRef: id}
 	}
 
-	if userIndex+1 == len(ljm.localUsers) {
-		ljm.localUsers = ljm.localUsers[:userIndex]
+	if userIndex+1 == len(lum.localUsers) {
+		lum.localUsers = lum.localUsers[:userIndex]
 		return nil
 	}
 
-	frontSlice := ljm.localUsers[:userIndex]
-	backSlice := ljm.localUsers[userIndex+1:]
-	ljm.localUsers = append(frontSlice, backSlice...)
+	frontSlice := lum.localUsers[:userIndex]
+	backSlice := lum.localUsers[userIndex+1:]
+	lum.localUsers = append(frontSlice, backSlice...)
 	return nil
 }
-func (ljm *LocalUserManager) List(opts ...management.ListOption) (*management.UserList, error) {
+func (lum *LocalUserManager) List(opts ...management.ListOption) (*management.UserList, error) {
 	var userList management.UserList
-	users := make([]*management.User, len(ljm.localUsers))
+	users := make([]*management.User, len(lum.localUsers))
 	for i := range users {
-		users[i] = ljm.localUsers[i]
+		users[i] = lum.localUsers[i]
 	}
 
 	userList.Users = users
 
 	return &userList, nil
 }
-func (ljm *LocalUserManager) Read(id string) (*management.User, error) {
-	for _, user := range ljm.localUsers {
+func (lum *LocalUserManager) Read(id string) (*management.User, error) {
+	for _, user := range lum.localUsers {
 		if *user.ID == id {
 			return user, nil
 		}
@@ -83,16 +83,16 @@ func (ljm *LocalUserManager) Read(id string) (*management.User, error) {
 
 	return &management.User{}, &DoesNotExistError{resourceType: "user", resourceRef: id}
 }
-func (ljm *LocalUserManager) AssignRoles(id string, roles ...*management.Role) error {
-	ljm.rolesMutex.Lock()
-	ljm.localRoles[id] = roles
-	ljm.rolesMutex.Unlock()
+func (lum *LocalUserManager) AssignRoles(id string, roles ...*management.Role) error {
+	lum.rolesMutex.Lock()
+	lum.localRoles[id] = roles
+	lum.rolesMutex.Unlock()
 	return nil
 }
-func (ljm *LocalUserManager) RemoveRoles(id string, roles ...*management.Role) error {
-	ljm.rolesMutex.RLock()
-	oldRoles, ok := ljm.localRoles[id]
-	ljm.rolesMutex.RUnlock()
+func (lum *LocalUserManager) RemoveRoles(id string, roles ...*management.Role) error {
+	lum.rolesMutex.RLock()
+	oldRoles, ok := lum.localRoles[id]
+	lum.rolesMutex.RUnlock()
 
 	if !ok {
 		return &DoesNotExistError{resourceType: "user", resourceRef: id}
@@ -108,16 +108,16 @@ func (ljm *LocalUserManager) RemoveRoles(id string, roles ...*management.Role) e
 		}
 	}
 
-	ljm.rolesMutex.Lock()
-	ljm.localRoles[id] = newRoles
-	ljm.rolesMutex.Unlock()
+	lum.rolesMutex.Lock()
+	lum.localRoles[id] = newRoles
+	lum.rolesMutex.Unlock()
 	return nil
 }
 
-func (ljm *LocalUserManager) Roles(id string, opts ...management.ListOption) (*management.RoleList, error) {
-	ljm.rolesMutex.RLock()
-	oldRoles, ok := ljm.localRoles[id]
-	ljm.rolesMutex.RUnlock()
+func (lum *LocalUserManager) Roles(id string, opts ...management.ListOption) (*management.RoleList, error) {
+	lum.rolesMutex.RLock()
+	oldRoles, ok := lum.localRoles[id]
+	lum.rolesMutex.RUnlock()
 
 	if !ok {
 		return &management.RoleList{}, &DoesNotExistError{resourceType: "user", resourceRef: id}
@@ -127,10 +127,10 @@ func (ljm *LocalUserManager) Roles(id string, opts ...management.ListOption) (*m
 	return &roleList, nil
 }
 
-func (ljm *LocalUserManager) Update(id string, u *management.User) error {
-	for i := range ljm.localUsers {
-		if *ljm.localUsers[i].ID == id {
-			ljm.localUsers[i] = u
+func (lum *LocalUserManager) Update(id string, u *management.User) error {
+	for i := range lum.localUsers {
+		if *lum.localUsers[i].ID == id {
+			lum.localUsers[i] = u
 			return nil
 		}
 	}

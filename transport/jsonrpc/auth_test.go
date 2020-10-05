@@ -1393,6 +1393,212 @@ func TestUpdateCompanyInformation(t *testing.T) {
 	})
 }
 
+func TestUpdateAccountInformation(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	IDs := []string{
+		"123",
+		"456",
+		"789",
+	}
+
+	emails := []string{
+		"test@test.com",
+		"test@test1.com",
+		"test@test2.com",
+	}
+
+	names := []string{
+		"Frank",
+		"George",
+		"Lenny",
+	}
+
+	userManager.Create(&management.User{
+		ID:    &IDs[0],
+		Email: &emails[0],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[0],
+			},
+		},
+		Name: &names[0],
+	})
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AccountSettingsReply
+		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - malformed user context", func(t *testing.T) {
+		req = jsonrpc.SetIsAnonymous(req, false)
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email_verified": true,
+			},
+		})
+		req = req.WithContext(reqContext)
+
+		var reply jsonrpc.AccountSettingsReply
+		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - no newsletter", func(t *testing.T) {
+		var reply jsonrpc.AccountSettingsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email": "test@test.com",
+				"sub":   "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{NewsLetterConsent: false}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.False(t, userAccount.AppMetadata["newsletter"].(bool))
+	})
+
+	t.Run("success - yes newsletter", func(t *testing.T) {
+		var reply jsonrpc.AccountSettingsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{NewsLetterConsent: true}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.True(t, userAccount.AppMetadata["newsletter"].(bool))
+	})
+}
+
+func TestSendVerificationEmail(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email_verified": true,
+			},
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.VerifyEmailReply
+		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no ID", func(t *testing.T) {
+		var reply jsonrpc.VerifyEmailReply
+		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email_verified": false,
+			},
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.VerifyEmailReply
+		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{UserID: "123"}, &reply)
+		assert.NoError(t, err)
+	})
+}
+
+func TestUpdateAutoSignupDomains(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateDomainsReply
+		err := svc.UpdateAutoSignupDomains(req, &jsonrpc.UpdateDomainsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no company code", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Owner",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.UpdateDomainsReply
+		err := svc.UpdateAutoSignupDomains(req, &jsonrpc.UpdateDomainsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no company", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.UpdateDomainsReply
+		err := svc.UpdateAutoSignupDomains(req, &jsonrpc.UpdateDomainsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test"})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.UpdateDomainsReply
+		err := svc.UpdateAutoSignupDomains(req, &jsonrpc.UpdateDomainsArgs{}, &reply)
+		assert.NoError(t, err)
+	})
+}
+
 func TestRoleVerification(t *testing.T) {
 	db := storage.InMemory{}
 	db.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
