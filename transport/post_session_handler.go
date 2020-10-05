@@ -23,13 +23,13 @@ type PostSessionHandler struct {
 	portalPublishMaxRetries   int
 	biller                    billing.Biller
 	logger                    log.Logger
-	metrics                   *metrics.SessionMetrics
+	metrics                   *metrics.PostSessionMetrics
 
 	maxBufferSize int
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, portalPublishMaxRetries int,
-	biller billing.Biller, logger log.Logger, metrics *metrics.SessionMetrics) *PostSessionHandler {
+	biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
 		numGoroutines:             numGoroutines,
 		postSessionBillingChannel: make(chan *billing.BillingEntry, chanBufferSize),
@@ -51,10 +51,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				case billingEntry := <-post.postSessionBillingChannel:
 					if err := post.biller.Bill(ctx, billingEntry); err != nil {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-						post.metrics.ErrorMetrics.BillingFailure.Add(1)
+						post.metrics.BillingFailure.Add(1)
 					}
 
-					post.metrics.PostSessionBillingEntriesFinished.Add(1)
+					post.metrics.BillingEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
@@ -69,12 +69,12 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
 					if portalDataBytes, err := postSessionPortalData.ProcessPortalData(post.portalPublisher, post.portalPublishMaxRetries); err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
-						post.metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+						post.metrics.PortalFailure.Add(1)
 					} else {
 						level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					}
 
-					post.metrics.PostSessionPortalEntriesFinished.Add(1)
+					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
