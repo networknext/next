@@ -1,44 +1,30 @@
 declare module '*.vue' {
-  import Vue from 'vue'
+  import _Vue from 'vue'
 
-  export default Vue
-}
-
-declare module "vue-next" {
-  import _Vue from "vue"
-
-  namespace JSONRPCService {
-    interface JSONRPCService {
-    }
-  }
-
-  namespace AuthService {
-    interface AuthService {
-    }
-  }
+  export default _Vue
 
   export interface VueJSONRPCService {
-    impersonate (args: any): Promise<any>
-    updateAccountSettings (args: any): Promise<any>
-    updateAutoSignupDomains (args: any): Promise<any>
-    updateCompanyInformation (args: any): Promise<any>
-    upgradeAccount (args: any): Promise<any>
-    fetchTotalSessionCounts (args: any): Promise<any>
-    fetchMapSessions (args: any): Promise<any>
-    fetchSessionDetails (args: any): Promise<any>
-    fetchTopSessions (args: any): Promise<any>
-    fetchAllBuyers (): Promise<any>
-    fetchUserSessions (args: any): Promise<any>
-    fetchAllRoles (): Promise<any>
-    fetchAllAccounts (): Promise<any>
-    updateUserRoles (args: any): Promise<any>
-    deleteUserAccount (args: any): Promise<any>
-    addNewUserAccounts (args: any): Promise<any>
-    fetchUserAccount (args: any): Promise<any>
-    fetchGameConfiguration (): Promise<any>
-    updateRouteShader (args: any): Promise<any>
-    updateGameConfiguration (args: any): Promise<any>
-    resendVerificationEmail (args: any): Promise<any>
+    impersonate (args: any): Promise<any>;
+    updateAccountSettings (args: any): Promise<any>;
+    updateAutoSignupDomains (args: any): Promise<any>;
+    updateCompanyInformation (args: any): Promise<any>;
+    upgradeAccount (args: any): Promise<any>;
+    fetchTotalSessionCounts (args: any): Promise<any>;
+    fetchMapSessions (args: any): Promise<any>;
+    fetchSessionDetails (args: any): Promise<any>;
+    fetchTopSessions (args: any): Promise<any>;
+    fetchAllBuyers (): Promise<any>;
+    fetchUserSessions (args: any): Promise<any>;
+    fetchAllRoles (): Promise<any>;
+    fetchAllAccounts (): Promise<any>;
+    updateUserRoles (args: any): Promise<any>;
+    deleteUserAccount (args: any): Promise<any>;
+    addNewUserAccounts (args: any): Promise<any>;
+    fetchUserAccount (args: any): Promise<any>;
+    fetchGameConfiguration (): Promise<any>;
+    updateRouteShader (args: any): Promise<any>;
+    updateGameConfiguration (args: any): Promise<any>;
+    resendVerificationEmail (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {
@@ -48,10 +34,10 @@ declare module "vue-next" {
   }
 
   export interface VueAuthService {
-    logout (): void
-    login (): void
-    signUp (): void
-    refreshToken (): void
+    logout (): void;
+    login (): void;
+    signUp (): void;
+    refreshToken (): void;
   }
 
   export class VueAuthServicePlugin {
@@ -60,10 +46,10 @@ declare module "vue-next" {
     ): void
   }
 
-  module "vue/types/vue" {
+  module 'vue/types/vue' {
     interface Vue {
-      $apiService: VueJSONRPCService,
-      $authService: VueAuthService
+      $apiService: VueJSONRPCService;
+      $authService: VueAuthService;
     }
   }
 }

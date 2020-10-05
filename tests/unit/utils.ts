@@ -1,6 +1,5 @@
 import { Wrapper } from '@vue/test-utils'
 import { CombinedVueInstance } from 'vue/types/vue'
-import { reject } from 'lodash'
 
 export function waitFor (
   wrapper:

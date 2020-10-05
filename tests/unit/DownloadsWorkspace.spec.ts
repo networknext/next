@@ -7,7 +7,6 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 describe('Alert.vue', () => {
-
   const localVue = createLocalVue()
 
   const ICONS = [
@@ -19,7 +18,6 @@ describe('Alert.vue', () => {
   localVue.component('font-awesome-icon', FontAwesomeIcon)
 
   describe('DownloadsWorkspace.vue', () => {
-
     it('mounts the downloads workspace successfully', () => {
       const wrapper = shallowMount(DownloadsWorkspace, { localVue })
       expect(wrapper.exists()).toBe(true)
