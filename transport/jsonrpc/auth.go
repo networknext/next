@@ -565,13 +565,13 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	removeRoles := []*management.Role{
 		{
-			ID:          &roleNames[0],
-			Name:        &roleIDs[0],
+			Name:        &roleNames[0],
+			ID:          &roleIDs[0],
 			Description: &roleDescriptions[0],
 		},
 		{
-			ID:          &roleNames[1],
-			Name:        &roleIDs[1],
+			Name:        &roleNames[1],
+			ID:          &roleIDs[1],
 			Description: &roleDescriptions[1],
 		},
 	}
