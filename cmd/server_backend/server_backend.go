@@ -679,7 +679,7 @@ func main() {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, int(postSessionPortalMaxRetries), biller, logger, sessionUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, int(postSessionPortalMaxRetries), biller, logger, &serverBackendMetrics.PostSessionMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
 	// Setup the stats print routine
@@ -716,8 +716,8 @@ func main() {
 				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
 				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
 
-				sessionUpdateMetrics.PostSessionBillingBufferLength.Set(float64(postSessionHandler.BillingBufferSize()))
-				sessionUpdateMetrics.PostSessionPortalBufferLength.Set(float64(postSessionHandler.PortalBufferSize()))
+				serverBackendMetrics.PostSessionMetrics.BillingBufferLength.Set(float64(postSessionHandler.BillingBufferSize()))
+				serverBackendMetrics.PostSessionMetrics.PortalBufferLength.Set(float64(postSessionHandler.PortalBufferSize()))
 
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
@@ -734,12 +734,12 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
-				fmt.Printf("%d post session billing entries sent\n", int(sessionUpdateMetrics.PostSessionBillingEntriesSent.Value()))
-				fmt.Printf("%d post session billing entries queued\n", int(sessionUpdateMetrics.PostSessionBillingBufferLength.Value()))
-				fmt.Printf("%d post session billing entries finished\n", int(sessionUpdateMetrics.PostSessionBillingEntriesFinished.Value()))
-				fmt.Printf("%d post session portal entries sent\n", int(sessionUpdateMetrics.PostSessionPortalEntriesSent.Value()))
-				fmt.Printf("%d post session portal entries queued\n", int(sessionUpdateMetrics.PostSessionPortalBufferLength.Value()))
-				fmt.Printf("%d post session portal entries finished\n", int(sessionUpdateMetrics.PostSessionPortalEntriesFinished.Value()))
+				fmt.Printf("%d post session billing entries sent\n", int(serverBackendMetrics.PostSessionMetrics.BillingEntriesSent.Value()))
+				fmt.Printf("%d post session billing entries queued\n", int(serverBackendMetrics.PostSessionMetrics.BillingBufferLength.Value()))
+				fmt.Printf("%d post session billing entries finished\n", int(serverBackendMetrics.PostSessionMetrics.BillingEntriesFinished.Value()))
+				fmt.Printf("%d post session portal entries sent\n", int(serverBackendMetrics.PostSessionMetrics.PortalEntriesSent.Value()))
+				fmt.Printf("%d post session portal entries queued\n", int(serverBackendMetrics.PostSessionMetrics.PortalBufferLength.Value()))
+				fmt.Printf("%d post session portal entries finished\n", int(serverBackendMetrics.PostSessionMetrics.PortalEntriesFinished.Value()))
 				fmt.Printf("%d datacenters\n", int(serverBackendMetrics.RouteMatrix.DatacenterCount.Value()))
 				fmt.Printf("%d relays\n", int(serverBackendMetrics.RouteMatrix.RelayCount.Value()))
 				fmt.Printf("%d routes\n", int(serverBackendMetrics.RouteMatrix.RouteCount.Value()))
