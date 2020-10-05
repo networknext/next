@@ -65,35 +65,35 @@ func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessio
 	return nil
 }
 
-func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerInit4Metrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
-		metrics.Invocations.Add(1)
+		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
-			metrics.DurationGauge.Set(milliseconds)
+			metrics.HandlerMetrics.Duration.Set(milliseconds)
 
 			if milliseconds > 100 {
-				metrics.LongDuration.Add(1)
+				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
 		}()
 
 		var packet ServerInitRequestPacket4
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read server init packet", "err", err)
-			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			metrics.ReadPacketFailure.Add(1)
 			return
 		}
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
 			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
-			metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			metrics.BuyerNotFound.Add(1)
 
 			if err := writeServerInitResponse4(w, &packet, InitResponseUnknownCustomer); err != nil {
 				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
-				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				metrics.WriteResponseFailure.Add(1)
 			}
 
 			return
@@ -101,11 +101,11 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 
 		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
 			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
-			metrics.ErrorMetrics.SDKTooOld.Add(1)
+			metrics.SDKTooOld.Add(1)
 
 			if err := writeServerInitResponse4(w, &packet, InitResponseOldSDKVersion); err != nil {
 				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
-				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				metrics.WriteResponseFailure.Add(1)
 			}
 
 			return
@@ -119,7 +119,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 		defer func() {
 			if datacenter.ID == routing.UnknownDatacenter.ID {
 				level.Warn(logger).Log("err", "received server init request with unknown datacenter", "datacenter", packet.DatacenterName)
-				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				metrics.DatacenterNotFound.Add(1)
 
 				datacenterTracker.AddUnknownDatacenterName(packet.DatacenterName)
 			}
@@ -140,7 +140,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 
 						if err := writeServerInitResponse4(w, &packet, InitResponseUnknownDatacenter); err != nil {
 							level.Error(logger).Log("msg", "failed to write server init response", "err", err)
-							metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+							metrics.WriteResponseFailure.Add(1)
 						}
 
 						return
@@ -154,7 +154,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 
 		if err := writeServerInitResponse4(w, &packet, InitResponseOK); err != nil {
 			level.Error(logger).Log("msg", "failed to write server init response", "err", err)
-			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			metrics.WriteResponseFailure.Add(1)
 			return
 		}
 
@@ -162,37 +162,37 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 	}
 }
 
-func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerUpdate4Metrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
-		metrics.Invocations.Add(1)
+		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
-			metrics.DurationGauge.Set(milliseconds)
+			metrics.HandlerMetrics.Duration.Set(milliseconds)
 
 			if milliseconds > 100 {
-				metrics.LongDuration.Add(1)
+				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
 		}()
 
 		var packet ServerUpdatePacket4
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read server update packet", "err", err)
-			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			metrics.ReadPacketFailure.Add(1)
 			return
 		}
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
 			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
-			metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			metrics.BuyerNotFound.Add(1)
 			return
 		}
 
 		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
 			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
-			metrics.ErrorMetrics.SDKTooOld.Add(1)
+			metrics.SDKTooOld.Add(1)
 			return
 		}
 
@@ -204,7 +204,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 		defer func() {
 			if datacenter.ID == routing.UnknownDatacenter.ID {
 				level.Warn(logger).Log("err", "received server update request with unknown datacenter", "datacenter", packet.DatacenterID)
-				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				metrics.DatacenterNotFound.Add(1)
 
 				datacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
 			}
@@ -231,31 +231,31 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionUpdate4Metrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
-		metrics.Invocations.Add(1)
+		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
-			metrics.DurationGauge.Set(milliseconds)
+			metrics.HandlerMetrics.Duration.Set(milliseconds)
 
 			if milliseconds > 100 {
-				metrics.LongDuration.Add(1)
+				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
 		}()
 
 		var packet SessionUpdatePacket4
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read session update packet", "err", err)
-			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			metrics.ReadPacketFailure.Add(1)
 			return
 		}
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
 			level.Error(logger).Log("msg", "buyer not found", "err", err)
-			metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			metrics.BuyerNotFound.Add(1)
 			return
 		}
 
@@ -284,11 +284,11 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		defer func() {
 			if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
 				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				metrics.WriteResponseFailure.Add(1)
 				return
 			}
 
-			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, metrics)
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
 		}()
 
 		if newSession {
@@ -301,25 +301,25 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
-				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+				metrics.ClientLocateFailure.Add(1)
 				return
 			}
 		} else {
 			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
-				metrics.SessionDataMetrics.ReadSessionDataFailure.Add(1)
+				metrics.ReadSessionDataFailure.Add(1)
 				return
 			}
 
 			if sessionData.SessionID != packet.SessionID {
 				level.Error(logger).Log("err", "bad session ID in session data")
-				metrics.SessionDataMetrics.BadSessionID.Add(1)
+				metrics.BadSessionID.Add(1)
 				return
 			}
 
 			if sessionData.SliceNumber != uint32(packet.SliceNumber) {
 				level.Error(logger).Log("err", "bad sequence number in session data")
-				metrics.SessionDataMetrics.BadSliceNumber.Add(1)
+				metrics.BadSliceNumber.Add(1)
 				return
 			}
 
@@ -329,7 +329,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		// Don't accelerate any sessions if the buyer is not yet live
 		if !buyer.Live {
-			metrics.DecisionMetrics.BuyerNotLive.Add(1)
+			metrics.BuyerNotLive.Add(1)
 			return
 		}
 
@@ -355,7 +355,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 			if !aliasFound {
 				level.Error(logger).Log("msg", "datacenter not found", "err", err)
-				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				metrics.DatacenterNotFound.Add(1)
 				return
 			}
 		}
@@ -363,7 +363,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, MaxNearRelays)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to get near relays", "err", err)
-			metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
+			metrics.NearRelaysLocateFailure.Add(1)
 			return
 		}
 
@@ -407,7 +407,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		destRelayIDs = routeMatrix.GetDatacenterRelayIDs(datacenter.ID)
 		if len(destRelayIDs) == 0 {
 			level.Error(logger).Log("msg", "failed to get dest relays")
-			metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
+			metrics.NoRelaysInDatacenter.Add(1)
 			return
 		}
 
@@ -458,12 +458,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 					// Route was vetoed - check to see why
 					if sessionData.RouteState.NoRoute {
 						level.Warn(logger).Log("warn", "route no longer exists")
-						metrics.ErrorMetrics.RouteFailure.Add(1)
+						metrics.NoRoute.Add(1)
 					}
 
 					if sessionData.RouteState.MultipathOverload {
 						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
-						metrics.DecisionMetrics.MultipathVetoRTT.Add(1)
+						metrics.MultipathOverload.Add(1)
 
 						// We will handling updating the multipath veto redis in the post session update
 						// to avoid blocking the routing response
@@ -471,7 +471,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 					if sessionData.RouteState.LatencyWorse {
 						level.Warn(logger).Log("warn", "this route makes latency worse")
-						metrics.DecisionMetrics.VetoRTT.Add(1)
+						metrics.LatencyWorse.Add(1)
 					}
 				}
 			}
@@ -578,7 +578,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -652,9 +652,9 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 
 	if !postSessionHandler.IsBillingBufferFull() {
 		postSessionHandler.SendBillingEntry(billingEntry)
-		metrics.PostSessionBillingEntriesSent.Add(1)
+		postSessionHandler.metrics.BillingEntriesSent.Add(1)
 	} else {
-		metrics.PostSessionBillingBufferFull.Add(1)
+		postSessionHandler.metrics.BillingBufferFull.Add(1)
 	}
 
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
@@ -728,9 +728,9 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 	if !postSessionHandler.IsPortalBufferFull() {
 		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
 			postSessionHandler.SendPortalData(portalData)
-			metrics.PostSessionPortalEntriesSent.Add(1)
+			postSessionHandler.metrics.PortalEntriesSent.Add(1)
 		}
 	} else {
-		metrics.PostSessionPortalBufferFull.Add(1)
+		postSessionHandler.metrics.PortalBufferFull.Add(1)
 	}
 }

@@ -34,21 +34,26 @@ func (locator *goodIPLocator) LocateIP(ip net.IP) (routing.Location, error) {
 	return routing.LocationNullIsland, nil
 }
 
-func assertAllMetricsEqual(t *testing.T, expectedSessionMetrics metrics.SessionErrorMetrics, expectedSessionDataMetrics metrics.SessionDataErrorMetrics, actualSessionMetrics metrics.SessionErrorMetrics, actualSessionDataMetrics metrics.SessionDataErrorMetrics) {
-	expectedMetricsValue := reflect.ValueOf(expectedSessionMetrics)
-	actualMetricsValue := reflect.ValueOf(actualSessionMetrics)
+func assertAllMetricsEqual(t *testing.T, expectedMetrics metrics.SessionUpdate4Metrics, actualMetrics metrics.SessionUpdate4Metrics) {
+	expectedMetricsValue := reflect.ValueOf(expectedMetrics)
+	actualMetricsValue := reflect.ValueOf(actualMetrics)
 	for i := 0; i < actualMetricsValue.NumField(); i++ {
-		expectedField := expectedMetricsValue.Field(i).Interface()
-		actualField := actualMetricsValue.Field(i).Interface()
-		assert.Equal(t, expectedField.(metrics.Valuer).Value(), actualField.(metrics.Valuer).Value(), expectedMetricsValue.Type().Field(i).Name)
-	}
+		if expectedMetricsValue.Field(i).CanInterface() && actualMetricsValue.Field(i).CanInterface() {
+			expectedField := expectedMetricsValue.Field(i).Interface()
+			actualField := actualMetricsValue.Field(i).Interface()
 
-	expectedMetricsValue = reflect.ValueOf(expectedSessionDataMetrics)
-	actualMetricsValue = reflect.ValueOf(actualSessionDataMetrics)
-	for i := 0; i < actualMetricsValue.NumField(); i++ {
-		expectedField := expectedMetricsValue.Field(i).Interface()
-		actualField := actualMetricsValue.Field(i).Interface()
-		assert.Equal(t, expectedField.(metrics.Valuer).Value(), actualField.(metrics.Valuer).Value())
+			expectedValuer, ok := expectedField.(metrics.Valuer)
+			if !ok {
+				continue
+			}
+
+			actualValuer, ok := actualField.(metrics.Valuer)
+			if !ok {
+				continue
+			}
+
+			assert.Equal(t, expectedValuer.Value(), actualValuer.Value(), expectedMetricsValue.Type().Field(i).Name)
+		}
 	}
 }
 
@@ -161,23 +166,23 @@ func TestGetRouteAddressesAndPublicKeysSuccess(t *testing.T) {
 func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, [crypto.KeySize]byte{}, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, [crypto.KeySize]byte{}, nil, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
 
 	assert.Nil(t, responseBuffer.Bytes())
-	assert.Equal(t, metrics.ErrorMetrics.ReadPacketFailure.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.ReadPacketFailure.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -190,19 +195,19 @@ func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, storer, [crypto.KeySize]byte{}, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, storer, [crypto.KeySize]byte{}, nil, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	assert.Nil(t, responseBuffer.Bytes())
-	assert.Equal(t, metrics.ErrorMetrics.BuyerNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.BuyerNotFound.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -248,8 +253,8 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -265,15 +270,13 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.ErrorMetrics.ClientLocateFailure.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.ClientLocateFailure.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	sessionDataMetrics, err := metrics.NewSessionDataMetrics(context.Background(), &metricsHandler)
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
-	metrics.SessionDataMetrics = *sessionDataMetrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -315,8 +318,8 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -332,15 +335,13 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.SessionDataMetrics.ReadSessionDataFailure.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.ReadSessionDataFailure.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	sessionDataMetrics, err := metrics.NewSessionDataMetrics(context.Background(), &metricsHandler)
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
-	metrics.SessionDataMetrics = *sessionDataMetrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -402,8 +403,8 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -419,15 +420,13 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.SessionDataMetrics.BadSessionID.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.BadSessionID.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	sessionDataMetrics, err := metrics.NewSessionDataMetrics(context.Background(), &metricsHandler)
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
-	metrics.SessionDataMetrics = *sessionDataMetrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -489,8 +488,8 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -506,13 +505,13 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.SessionDataMetrics.BadSliceNumber.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.BadSliceNumber.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4BuyerNotLive(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -558,8 +557,8 @@ func TestSessionUpdateHandler4BuyerNotLive(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -575,13 +574,13 @@ func TestSessionUpdateHandler4BuyerNotLive(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.DecisionMetrics.BuyerNotLive.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.BuyerNotLive.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -626,8 +625,8 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -643,13 +642,13 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.DatacenterNotFound.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -695,8 +694,8 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -712,14 +711,14 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.ErrorMetrics.NearRelaysLocateFailure.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.NearRelaysLocateFailure.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -789,8 +788,8 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -806,13 +805,13 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -899,8 +898,8 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -916,14 +915,14 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.ErrorMetrics.NoRelaysInDatacenter.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.NoRelaysInDatacenter.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -1010,8 +1009,8 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1027,7 +1026,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4NextRoute(t *testing.T) {
@@ -1036,8 +1035,8 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -1200,8 +1199,8 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1226,7 +1225,7 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
@@ -1235,8 +1234,8 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -1403,8 +1402,8 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1429,7 +1428,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
@@ -1438,8 +1437,8 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -1609,8 +1608,8 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1635,7 +1634,7 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
@@ -1644,8 +1643,8 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -1815,8 +1814,8 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1841,7 +1840,7 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
@@ -1850,7 +1849,7 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -1992,8 +1991,8 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -2018,7 +2017,7 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assert.Equal(t, 1.0, metrics.ErrorMetrics.RouteFailure.Value())
+	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.NoRoute.Value())
 }
 
 func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
@@ -2027,7 +2026,7 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -2188,8 +2187,8 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -2214,7 +2213,7 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assert.Equal(t, 1.0, metrics.DecisionMetrics.MultipathVetoRTT.Value())
+	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.MultipathOverload.Value())
 }
 
 func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
@@ -2223,7 +2222,7 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -2380,8 +2379,8 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -2406,7 +2405,7 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assert.Equal(t, 1.0, metrics.DecisionMetrics.VetoRTT.Value())
+	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.LatencyWorse.Value())
 }
 
 func TestSessionUpdateHandler4CommitPending(t *testing.T) {
@@ -2415,8 +2414,8 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -2589,8 +2588,8 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -2615,7 +2614,7 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
 func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
@@ -2624,8 +2623,8 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	expectedMetrics := metrics.EmptySessionMetrics
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
@@ -2786,8 +2785,8 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -2812,5 +2811,5 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
-	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
