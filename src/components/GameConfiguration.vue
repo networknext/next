@@ -100,11 +100,7 @@ export default class GameConfiguration extends Vue {
   }
 
   private updatePubKey () {
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
-    const vm = (this as any)
-
-    vm.$apiService
+    this.$apiService
       .updateGameConfiguration({
         new_public_key: this.pubKey
       })
@@ -116,7 +112,7 @@ export default class GameConfiguration extends Vue {
         setTimeout(() => {
           this.message = ''
         }, 5000)
-        vm.$apiService.fetchAllBuyers()
+        this.$apiService.fetchAllBuyers()
           .then((response: any) => {
             const allBuyers = response.buyers
             this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)

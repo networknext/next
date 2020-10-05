@@ -163,11 +163,11 @@ export default class NavBar extends Vue {
   }
 
   private login (): void {
-    (this as any).$authService.login()
+    this.$authService.login()
   }
 
   private logout (): void {
-    (this as any).$authService.logout()
+    this.$authService.logout()
   }
 
   private signUp (): void {
@@ -177,13 +177,13 @@ export default class NavBar extends Vue {
         event_label: 'Sign up'
       })
     }
-    (this as any).$authService.signUp()
+    this.$authService.signUp()
   }
 
   private impersonate (companyCode: string): void {
-    (this as any).$apiService.impersonate({ company_code: companyCode })
+    this.$apiService.impersonate({ company_code: companyCode })
       .then((response: any) => {
-        (this as any).$authService.refreshToken()
+        this.$authService.refreshToken()
       })
       .catch((error: Error) => {
         console.log('something went wrong with impersonating')
