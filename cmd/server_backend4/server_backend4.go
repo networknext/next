@@ -179,22 +179,9 @@ func mainReturnWithCode() int {
 	}
 
 	// Create metrics
-	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	backendMetrics, err := metrics.NewServerBackend4Metrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
-		return 1
-	}
-
-	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		return 1
-	}
-
-	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session update metrics", "err", err)
-		return 1
+		level.Error(logger).Log("msg", "failed to create server_backend4 metrics", "err", err)
 	}
 
 	// Create maxmindb sync metrics
@@ -202,19 +189,6 @@ func mainReturnWithCode() int {
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
-
-	// Create server backend metrics
-	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
-	}
-
-	sessionDataMetrics, err := metrics.NewSessionDataMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session data metrics", "err", err)
-		return 1
-	}
-	sessionUpdateMetrics.SessionDataMetrics = *sessionDataMetrics
 
 	// Create an in-memory storer
 	var storer storage.Storer = &storage.InMemory{
@@ -442,8 +416,9 @@ func mainReturnWithCode() int {
 						continue // Don't swap route matrix if we fail to read
 					}
 
+					var newRouteMatrix4 routing.RouteMatrix4
 					rs := encoding.CreateReadStream(buffer)
-					if err := routeMatrix4.Serialize(rs); err != nil {
+					if err := newRouteMatrix4.Serialize(rs); err != nil {
 						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue // Don't swap route matrix if we fail to serialize
@@ -451,18 +426,22 @@ func mainReturnWithCode() int {
 
 					routeEntriesTime := time.Since(start)
 
-					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeEntriesTime.Milliseconds()))
+					backendMetrics.RouteMatrixUpdateDuration.Set(float64(routeEntriesTime.Milliseconds()))
 
 					if routeEntriesTime.Seconds() > 1.0 {
-						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
+						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 					}
 
 					numRoutes := int32(0)
-					for i := range routeMatrix4.RouteEntries {
-						numRoutes += routeMatrix4.RouteEntries[i].NumRoutes
+					for i := range newRouteMatrix4.RouteEntries {
+						numRoutes += newRouteMatrix4.RouteEntries[i].NumRoutes
 					}
-					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
-					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(len(buffer)))
+					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+
+					routeMatrix4Mutex.Lock()
+					routeMatrix4 = &newRouteMatrix4
+					routeMatrix4Mutex.Unlock()
 
 					time.Sleep(syncInterval)
 				}
@@ -473,7 +452,7 @@ func mainReturnWithCode() int {
 	// Create a local biller
 	var biller billing.Biller = &billing.LocalBiller{
 		Logger:  logger,
-		Metrics: &serverBackendMetrics.BillingMetrics,
+		Metrics: backendMetrics.BillingMetrics,
 	}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -517,7 +496,7 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				return 1
@@ -568,7 +547,7 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, sessionUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
@@ -675,9 +654,9 @@ func mainReturnWithCode() int {
 
 	connections := make([]*net.UDPConn, numThreads)
 
-	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, serverInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

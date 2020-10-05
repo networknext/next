@@ -1282,19 +1282,19 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 
 	if !postSessionHandler.IsBillingBufferFull() {
 		postSessionHandler.SendBillingEntry(buildBillingEntry(params))
-		params.sessionUpdateParams.Metrics.PostSessionBillingEntriesSent.Add(1)
+		postSessionHandler.metrics.BillingEntriesSent.Add(1)
 	} else {
-		params.sessionUpdateParams.Metrics.PostSessionBillingBufferFull.Add(1)
+		postSessionHandler.metrics.BillingBufferFull.Add(1)
 	}
 
 	if !postSessionHandler.IsPortalBufferFull() {
 		portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
 		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
 			postSessionHandler.SendPortalData(portalData)
-			params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
+			postSessionHandler.metrics.PortalEntriesSent.Add(1)
 		}
 	} else {
-		params.sessionUpdateParams.Metrics.PostSessionPortalBufferFull.Add(1)
+		postSessionHandler.metrics.PortalBufferFull.Add(1)
 	}
 }
 

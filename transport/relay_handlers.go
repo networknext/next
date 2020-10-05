@@ -670,10 +670,7 @@ func RelayDashboardHandlerFunc4(relayMap *routing.RelayMap, GetRouteMatrix func(
 		var res response
 
 		routeMatrix := GetRouteMatrix()
-
-		var buffer bytes.Buffer
-		routeMatrix.WriteAnalysisTo(&buffer)
-		res.Analysis = buffer.String()
+		res.Analysis = string(routeMatrix.GetAnalysisData())
 
 		allRelayData := relayMap.GetAllRelayData()
 
