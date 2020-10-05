@@ -244,11 +244,11 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if sessionUpdate.PacketsLostClientToServer > 0 {
-		fmt.Printf("%d client to server packets lost\n")
+		fmt.Printf("%d client to server packets lost\n", sessionUpdate.PacketsLostClientToServer)
 	}
 
 	if sessionUpdate.PacketsLostServerToClient > 0 {
-		fmt.Printf("%d server to client packets lost\n")
+		fmt.Printf("%d server to client packets lost\n", sessionUpdate.PacketsLostServerToClient)
 	}
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
