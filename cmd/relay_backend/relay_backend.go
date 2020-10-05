@@ -24,7 +24,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/core"
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -813,6 +812,15 @@ func main() {
 		}
 	}()
 
+	routeMatrixBufferSize := 100000
+	if routeMatrixBufferSizeString, ok := os.LookupEnv("ROUTE_MATRIX_BUFFER_SIZE"); ok {
+		routeMatrixBufferSize, err = strconv.Atoi(routeMatrixBufferSizeString)
+		if err != nil {
+			level.Error(logger).Log("envvar", "ROUTE_MATRIX_BUFFER_SIZE", "value", routeMatrixBufferSize, "err", err)
+			os.Exit(1)
+		}
+	}
+
 	// Generate a separate route matrix for SDK4
 	go func() {
 		for {
@@ -873,6 +881,14 @@ func main() {
 				RouteEntries:       routeEntries,
 			}
 
+			if err := routeMatrix4New.WriteResponseData(routeMatrixBufferSize); err != nil {
+				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
+				time.Sleep(syncInterval)
+				continue
+			}
+
+			routeMatrix4New.WriteAnalysisData()
+
 			routeMatrix4Mutex.Lock()
 			routeMatrix4 = routeMatrix4New
 			routeMatrix4Mutex.Unlock()
@@ -929,36 +945,15 @@ func main() {
 		}
 	}
 
-	routeMatrixBufferSize := 100000
-	if routeMatrixBufferSizeString, ok := os.LookupEnv("ROUTE_MATRIX_BUFFER_SIZE"); ok {
-		routeMatrixBufferSize, err = strconv.Atoi(routeMatrixBufferSizeString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ROUTE_MATRIX_BUFFER_SIZE", "value", routeMatrixBufferSize, "err", err)
-			os.Exit(1)
-		}
-	}
-
 	serveRouteMatrixSDK4Func := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		routeMatrix4 := getRouteMatrix4Func()
 
-		ws, err := encoding.CreateWriteStream(routeMatrixBufferSize)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to create write stream in SDK4 route entries serving function", "err", err)
-			return
-		}
-
-		if err := routeMatrix4.Serialize(ws); err != nil {
-			level.Error(logger).Log("msg", "failed to serialize route matrix in SDK4 route entries serving function", "err", err)
-			return
-		}
-
-		ws.Flush()
-		data := ws.GetData()[:ws.GetBytesProcessed()]
+		data := routeMatrix4.GetResponseData()
 
 		buffer := bytes.NewBuffer(data)
-		_, err = buffer.WriteTo(w)
+		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
