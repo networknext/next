@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -111,21 +110,9 @@ func main() {
 
 	bin = nil
 
-	numThreads := uint64(runtime.NumCPU())
-	if val, ok := os.LookupEnv("GHOST_ARMY_THREADS"); ok {
-		if val, err := strconv.ParseUint(val, 10, 64); err == nil {
-			numThreads = val
-		} else {
-			fmt.Printf("GHOST_ARMY_THREADS env var set but invalid value, defaulting to %d\n", numThreads)
-		}
-	}
-
 	// publish to zero mq, sleep for 10 seconds, repeat
 
-	publishChans := make([]chan transport.SessionPortalData, numThreads)
-	for i := uint64(0); i < numThreads; i++ {
-		publishChans[i] = make(chan transport.SessionPortalData)
-	}
+	publishChan := make(chan transport.SessionPortalData)
 
 	ctx := context.Background()
 
@@ -160,23 +147,21 @@ func main() {
 		portalPublisher = portalCruncherPublisher
 	}
 
-	for i := uint64(0); i < numThreads; i++ {
-		go func(index uint64) {
-			for {
-				select {
-				case slice := <-publishChans[index]:
-					sessionBytes, err := slice.MarshalBinary()
-					if err != nil {
-						fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
-						continue
-					}
-					portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
-				case <-ctx.Done():
-					return
+	go func() {
+		for {
+			select {
+			case slice := <-publishChan:
+				sessionBytes, err := slice.MarshalBinary()
+				if err != nil {
+					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
+					continue
 				}
+				portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+			case <-ctx.Done():
+				return
 			}
-		}(i)
-	}
+		}
+	}()
 
 	go func() {
 		getLastMidnight := func() time.Time {
@@ -233,7 +218,7 @@ func main() {
 				// so adjust the timestamp by the time the loop was started
 				slice.Slice.Timestamp = dateOffset.Add(time.Second * time.Duration(slice.Slice.Timestamp.Unix()))
 
-				publishChans[slice.Meta.ID%numThreads] <- slice
+				publishChan <- slice
 				i++
 			}
 
