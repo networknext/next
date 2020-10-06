@@ -190,6 +190,22 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
+	// Create a goroutine to update metrics
+	go func() {
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		for {
+			backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+			time.Sleep(time.Second * 10)
+		}
+	}()
+
 	// Create an in-memory storer
 	var storer storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -262,18 +278,20 @@ func mainReturnWithCode() int {
 	datacenterTracker := transport.NewDatacenterTracker()
 
 	go func() {
-		unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
-		emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
+		for {
+			unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
+			emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
 
-		for _, datacenter := range unknownDatacenters {
-			level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+			for _, datacenter := range unknownDatacenters {
+				level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+			}
+
+			for _, datacenter := range emptyDatacenters {
+				level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
+			}
+
+			time.Sleep(10 * time.Second)
 		}
-
-		for _, datacenter := range emptyDatacenters {
-			level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
-		}
-
-		time.Sleep(10 * time.Second)
 	}()
 
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
@@ -426,9 +444,10 @@ func mainReturnWithCode() int {
 
 					routeEntriesTime := time.Since(start)
 
-					backendMetrics.RouteMatrixUpdateDuration.Set(float64(routeEntriesTime.Milliseconds()))
+					duration := float64(routeEntriesTime.Milliseconds())
+					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
 
-					if routeEntriesTime.Seconds() > 1.0 {
+					if duration > 100 {
 						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 					}
 
