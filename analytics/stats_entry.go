@@ -3,6 +3,7 @@ package analytics
 import (
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
 )
 
 const (
@@ -18,6 +19,40 @@ type PingStatsEntry struct {
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
+}
+
+func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
+	length := routing.TriMatrixLength(len(statsdb.Entries))
+	entries := make([]PingStatsEntry, length)
+
+	if length > 0 { // prevent crash with only 1 relay
+		ids := make([]uint64, len(statsdb.Entries))
+
+		idx := 0
+		for k := range statsdb.Entries {
+			ids[idx] = k
+			idx++
+		}
+
+		for i := 1; i < len(ids); i++ {
+			for j := 0; j < i; j++ {
+				idA := ids[i]
+				idB := ids[j]
+
+				rtt, jitter, pl := statsdb.GetSample(idA, idB)
+
+				entries[routing.TriMatrixIndex(i, j)] = PingStatsEntry{
+					RelayA:     idA,
+					RelayB:     idB,
+					RTT:        rtt,
+					Jitter:     jitter,
+					PacketLoss: pl,
+				}
+			}
+		}
+	}
+
+	return entries
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {

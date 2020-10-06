@@ -448,38 +448,10 @@ func main() {
 			for {
 				time.Sleep(sleepTime)
 				cpy := statsdb.MakeCopy()
-				length := routing.TriMatrixLength(len(cpy.Entries))
-				if length > 0 { // prevent crash with only 1 relay
-					entries := make([]analytics.PingStatsEntry, length)
-					ids := make([]uint64, len(cpy.Entries))
-
-					idx := 0
-					for k := range cpy.Entries {
-						ids[idx] = k
-						idx++
-					}
-
-					for i := 1; i < len(cpy.Entries); i++ {
-						for j := 0; j < i; j++ {
-							idA := ids[i]
-							idB := ids[j]
-
-							rtt, jitter, pl := cpy.GetSample(idA, idB)
-
-							entries[routing.TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
-								RelayA:     idA,
-								RelayB:     idB,
-								RTT:        rtt,
-								Jitter:     jitter,
-								PacketLoss: pl,
-							}
-						}
-					}
-
-					if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
+				entries := analytics.ExtractPingStats(cpy)
+				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
 				}
 			}
 		}()
