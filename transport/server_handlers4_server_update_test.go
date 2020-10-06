@@ -20,17 +20,17 @@ func TestServerUpdateHandler4ReadPacketFailure(t *testing.T) {
 	storer := &storage.InMemory{}
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
 
 	assert.Nil(t, responseBuffer.Bytes())
-	assert.Equal(t, metrics.ErrorMetrics.ReadPacketFailure.Value(), 1.0)
+	assert.Equal(t, metrics.ServerUpdateMetrics.ReadPacketFailure.Value(), 1.0)
 }
 
 func TestServerUpdateHandler4BuyerNotFound(t *testing.T) {
@@ -38,7 +38,7 @@ func TestServerUpdateHandler4BuyerNotFound(t *testing.T) {
 	storer := &storage.InMemory{}
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -46,12 +46,12 @@ func TestServerUpdateHandler4BuyerNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	assert.Equal(t, metrics.ErrorMetrics.BuyerNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.ServerUpdateMetrics.BuyerNotFound.Value(), 1.0)
 }
 
 func TestServerUpdateHandler4SDKTooOld(t *testing.T) {
@@ -65,7 +65,7 @@ func TestServerUpdateHandler4SDKTooOld(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -76,12 +76,12 @@ func TestServerUpdateHandler4SDKTooOld(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	assert.Equal(t, metrics.ErrorMetrics.SDKTooOld.Value(), 1.0)
+	assert.Equal(t, metrics.ServerUpdateMetrics.SDKTooOld.Value(), 1.0)
 }
 
 func TestServerUpdateHandler4MisconfiguredDatacenterAlias(t *testing.T) {
@@ -102,7 +102,7 @@ func TestServerUpdateHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -114,12 +114,12 @@ func TestServerUpdateHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.ServerUpdateMetrics.DatacenterNotFound.Value(), 1.0)
 
 	unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
 	assert.Equal(t, []string{fmt.Sprintf("%016x", crypto.HashID("datacenter.alias"))}, unknownDatacenters)
@@ -136,7 +136,7 @@ func TestServerUpdateHandler4DatacenterAndAliasNotFound(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -148,12 +148,12 @@ func TestServerUpdateHandler4DatacenterAndAliasNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.ServerUpdateMetrics.DatacenterNotFound.Value(), 1.0)
 
 	unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
 	assert.Equal(t, []string{fmt.Sprintf("%016x", crypto.HashID("datacenter.alias"))}, unknownDatacenters)
@@ -176,7 +176,7 @@ func TestServerUpdateHandler4Success(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -188,7 +188,7 @@ func TestServerUpdateHandler4Success(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -221,7 +221,7 @@ func TestServerUpdateHandler4SuccessDatacenterAliasFound(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerUpdateMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -233,7 +233,7 @@ func TestServerUpdateHandler4SuccessDatacenterAliasFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})

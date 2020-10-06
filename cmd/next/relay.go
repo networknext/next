@@ -100,6 +100,28 @@ const (
 	PortCheckScript = `echo "$(sudo lsof -i -P -n 2>/dev/null | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
+func unitFormat(bits uint64) string {
+	const (
+		kilo = 1000
+		mega = 1000000
+		giga = 1000000000
+	)
+
+	if bits > giga {
+		return fmt.Sprintf("%.02fGb/s", float64(bits)/float64(giga))
+	}
+
+	if bits > mega {
+		return fmt.Sprintf("%.02fMb/s", float64(bits)/float64(mega))
+	}
+
+	if bits > kilo {
+		return fmt.Sprintf("%.02fKb/s", float64(bits)/float64(kilo))
+	}
+
+	return fmt.Sprintf("%d", bits)
+}
+
 type relayInfo struct {
 	id          uint64
 	name        string
@@ -810,4 +832,42 @@ func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes
 			}
 		}
 	}
+}
+
+func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	type trafficStats struct {
+		Name      string `table:"Name"`
+		PingsTx   string `table:"Pings Tx"`
+		PingsRx   string `table:"Pings Rx"`
+		GameTx    string `table:"Game Tx"`
+		GameRx    string `table:"Game Rx"`
+		UnknownRx string `table:"Unknown Rx"`
+	}
+
+	statsList := []trafficStats{}
+
+	for i := range reply.Relays {
+		relay := &reply.Relays[i]
+
+		statsList = append(statsList, trafficStats{
+			Name:      relay.Name,
+			PingsTx:   unitFormat(relay.TrafficStats.OtherStatsTx() * 8),
+			PingsRx:   unitFormat(relay.TrafficStats.OtherStatsRx() * 8),
+			GameTx:    unitFormat(relay.TrafficStats.GameStatsTx() * 8),
+			GameRx:    unitFormat(relay.TrafficStats.GameStatsRx() * 8),
+			UnknownRx: unitFormat(relay.TrafficStats.UnknownRx * 8),
+		})
+	}
+
+	table.Output(statsList)
 }

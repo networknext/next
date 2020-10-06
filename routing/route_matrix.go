@@ -67,7 +67,7 @@ type NearRelayData struct {
 	ID          uint64
 	Addr        *net.UDPAddr
 	Name        string
-	distance    int
+	Distance    int
 	ClientStats Stats
 }
 
@@ -108,7 +108,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 		nearRelayData[i].Name = m.RelayNames[i]
 		lat2 := m.RelayLatitude[i]
 		long2 := m.RelayLongitude[i]
-		nearRelayData[i].distance = int(HaversineDistance(lat1, long1, lat2, long2))
+		nearRelayData[i].Distance = int(HaversineDistance(lat1, long1, lat2, long2))
 	}
 
 	// IMPORTANT: Sort near relays by distance using a *stable sort*
@@ -116,7 +116,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 	// even when some relays have the same integer distance from the client. Without this
 	// the set of near relays passed down to the SDK can be different from one slice to the next!
 
-	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].distance < nearRelayData[j].distance })
+	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
 	if len(nearRelayData) > maxNearRelays {
 		nearRelayData = nearRelayData[:maxNearRelays]
@@ -130,8 +130,8 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 }
 
 // GetDatacenterRelays will return the set of Relays in the provided Datacenter
-func (m *RouteMatrix) GetDatacenterRelayIDs(d Datacenter) []uint64 {
-	relayIDs, ok := m.DatacenterRelays[d.ID]
+func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
+	relayIDs, ok := m.DatacenterRelays[datacenterID]
 	if !ok {
 		return nil
 	}

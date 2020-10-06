@@ -19,17 +19,17 @@ func TestServerInitHandler4ReadPacketFailure(t *testing.T) {
 	storer := &storage.InMemory{}
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
 
 	assert.Nil(t, responseBuffer.Bytes())
-	assert.Equal(t, metrics.ErrorMetrics.ReadPacketFailure.Value(), 1.0)
+	assert.Equal(t, metrics.ServerInitMetrics.ReadPacketFailure.Value(), 1.0)
 }
 
 func TestServerInitHandler4BuyerNotFound(t *testing.T) {
@@ -37,7 +37,7 @@ func TestServerInitHandler4BuyerNotFound(t *testing.T) {
 	storer := &storage.InMemory{}
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -45,19 +45,19 @@ func TestServerInitHandler4BuyerNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
 	assert.Equal(t, uint32(transport.InitResponseUnknownCustomer), responsePacket.Response)
 
-	assert.Equal(t, metrics.ErrorMetrics.BuyerNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.ServerInitMetrics.BuyerNotFound.Value(), 1.0)
 }
 
 func TestServerInitHandler4SDKTooOld(t *testing.T) {
@@ -71,7 +71,7 @@ func TestServerInitHandler4SDKTooOld(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -82,19 +82,19 @@ func TestServerInitHandler4SDKTooOld(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
 	assert.Equal(t, uint32(transport.InitResponseOldSDKVersion), responsePacket.Response)
 
-	assert.Equal(t, metrics.ErrorMetrics.SDKTooOld.Value(), 1.0)
+	assert.Equal(t, metrics.ServerInitMetrics.SDKTooOld.Value(), 1.0)
 }
 
 func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
@@ -115,7 +115,7 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -128,19 +128,19 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
 	assert.Equal(t, uint32(transport.InitResponseUnknownDatacenter), responsePacket.Response)
 
-	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.ServerInitMetrics.DatacenterNotFound.Value(), 1.0)
 
 	unknownDatacenterNames := datacenterTracker.GetUnknownDatacentersNames()
 	assert.Equal(t, []string{"datacenter.alias"}, unknownDatacenterNames)
@@ -157,7 +157,7 @@ func TestServerInitHandler4DatacenterAndAliasNotFound(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -170,19 +170,19 @@ func TestServerInitHandler4DatacenterAndAliasNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
 	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
 
-	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
+	assert.Equal(t, metrics.ServerInitMetrics.DatacenterNotFound.Value(), 1.0)
 
 	unknownDatacenterNames := datacenterTracker.GetUnknownDatacentersNames()
 	assert.Equal(t, []string{"datacenter.alias"}, unknownDatacenterNames)
@@ -205,7 +205,7 @@ func TestServerInitHandler4Success(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -218,13 +218,13 @@ func TestServerInitHandler4Success(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
@@ -258,7 +258,7 @@ func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
 
 	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
@@ -271,13 +271,13 @@ func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)

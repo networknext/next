@@ -60,15 +60,7 @@
 #define RELAY_PUBLIC_KEY_BYTES                                    32
 #define RELAY_PRIVATE_KEY_BYTES                                   32
 
-#define RELAY_MAX_UPDATE_ATTEMPTS                                 10
-
-static const uint8_t relay_packet_hash_key[] =
-{
-    0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37,
-    0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c,
-    0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c,
-    0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24
-};
+#define RELAY_MAX_UPDATE_ATTEMPTS                                 30
 
 // -------------------------------------------------------------------------------------
 
@@ -4674,7 +4666,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( ret != 0 )
     {
-        relay_printf( "\nerror: could not post relay update\n\n" );
+        // relay_printf( "\nerror: could not post relay update\n\n" );
         return RELAY_ERROR;
     }
 
@@ -4682,7 +4674,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
     if ( code != 200 )
     {
-        relay_printf( "\nerror: relay update response was %d, expected 200\n\n", int(code) );
+        // relay_printf( "\nerror: relay update response was %d, expected 200\n\n", int(code) );
         return RELAY_ERROR;
     }
 
@@ -4696,7 +4688,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( version != update_response_version )
     {
-        relay_printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
+        // relay_printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
         return RELAY_ERROR;
     }
 
@@ -4707,7 +4699,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( num_relays > MAX_RELAYS )
     {
-        relay_printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, num_relays );
+        // relay_printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, num_relays );
         return RELAY_ERROR;
     }
 
@@ -4735,7 +4727,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( error )
     {
-        relay_printf( "\nerror: error while reading set of relays to ping in update response\n\n" );
+        // relay_printf( "\nerror: error while reading set of relays to ping in update response\n\n" );
         return RELAY_ERROR;
     }
 
@@ -5573,13 +5565,11 @@ int main( int argc, const char ** argv )
         {
             if ( update_attempts++ >= RELAY_MAX_UPDATE_ATTEMPTS )
             {
-                printf( "could not update relay, max attempts reached, aborting program" );
+                printf( "error: could not update relay %d times in a row. shutting down", RELAY_MAX_UPDATE_ATTEMPTS );
                 aborted = true;
                 quit = 1;
                 break;
             }
-
-            printf( "error: could not update relay\n\n" );
         }
 
         relay_platform_sleep( 1.0 );
