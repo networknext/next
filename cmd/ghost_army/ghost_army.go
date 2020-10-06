@@ -29,7 +29,7 @@ func main() {
 		if num, err := strconv.ParseInt(v, 10, 64); err == nil {
 			estimatedPeakSessionCount = int(num)
 		} else {
-			fmt.Println("could not parse GHOST_ARMY_PEAK_SESSION_COUNT: %v", err)
+			fmt.Printf("could not parse GHOST_ARMY_PEAK_SESSION_COUNT: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
