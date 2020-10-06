@@ -54,6 +54,28 @@ var (
 	tag           string
 )
 
+// A mock locator used in staging to set each client VM to a random, unique lat/long
+type stagingLocator struct{}
+
+func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	// Generate a random lat/long from the client's IP address
+	ipHashBytes := [8]byte{}
+	ipHash := crypto.HashID(ip.String())
+	binary.LittleEndian.PutUint64(ipHashBytes[0:8], ipHash)
+
+	// Randomize the location by using 4 bits of the IP hash for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(ipHashBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(ipHashBytes[4:8])
+
+	lat := (float64(latBits)) / 0xFFFFFFFF
+	long := (float64(longBits)) / 0xFFFFFFFF
+
+	return routing.Location{
+		Latitude:  -90.0 + lat*180.0,
+		Longitude: -180.0 + long*360.0,
+	}, nil
+}
+
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func main() {
@@ -376,6 +398,14 @@ func mainReturnWithCode() int {
 		// 		}
 		// 	}()
 		// }
+	}
+
+	// Use a custom IP locator for staging so that clients
+	// have different, random lat/longs
+	if env == "staging" {
+		getIPLocatorFunc = func() routing.IPLocator {
+			return &stagingLocator{}
+		}
 	}
 
 	routeMatrix4 := &routing.RouteMatrix4{}
