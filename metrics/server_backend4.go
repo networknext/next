@@ -235,8 +235,8 @@ func NewServerBackend4Metrics(ctx context.Context, handler Handler) (*ServerBack
 		DisplayName: "Route Matrix Bytes",
 		ServiceName: serviceName,
 		ID:          "route_matrix_update.bytes",
-		Unit:        "MB",
-		Description: "The number of bytes read from the route matrix in megabytes.",
+		Unit:        "bytes",
+		Description: "The number of bytes read from the route matrix.",
 	})
 	if err != nil {
 		return nil, err
@@ -515,6 +515,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".latency_worse",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + "'s latency was made worse by network next.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.WriteResponseFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Write Response Failure",
+		ServiceName: serviceName,
+		ID:          handlerID + ".write_response_failure",
+		Unit:        "errors",
+		Description: "The number of times we failed to write a response to a " + packetDescription + ".",
 	})
 	if err != nil {
 		return nil, err
