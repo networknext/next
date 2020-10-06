@@ -270,7 +270,12 @@ func readJSONData(entity string, args []string) []byte {
 
 		data, err = ioutil.ReadFile(args[0])
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error reading %s JSON file: %v\n", entity, err), 1)
+			// Can't read the file, assume it is raw json data
+			data = []byte(args[0])
+			if !json.Valid(data) {
+				// It's not valid json, so error out
+				handleRunTimeError("invalid input, not a valid filepath or valid JSON", 1)
+			}
 		}
 	}
 
@@ -335,9 +340,10 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name     string
-	Enabled  bool
-	Location routing.Location
+	Name      string
+	Enabled   bool
+	Latitude  float64
+	Longitude float64
 }
 
 // used to decode dcMap hex strings from json
@@ -1279,7 +1285,10 @@ func main() {
 						SignedID: int64(did),
 						Name:     datacenter.Name,
 						Enabled:  datacenter.Enabled,
-						Location: datacenter.Location,
+						Location: routing.Location{
+							Latitude:  datacenter.Latitude,
+							Longitude: datacenter.Longitude,
+						},
 					}
 
 					// Add the Datacenter to storage
@@ -1293,9 +1302,10 @@ func main() {
 						ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							example := datacenter{
-								Name:     "amazon.ohio.2",
-								Enabled:  false,
-								Location: routing.LocationNullIsland,
+								Name:      "amazon.ohio.2",
+								Enabled:   false,
+								Latitude:  90,
+								Longitude: 180,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
