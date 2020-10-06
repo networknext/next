@@ -321,8 +321,12 @@ func parseLine(line []string, lineNum int, entry *ghostarmy.Entry, dcmap ghostar
 	checkErr(err, lineNum)
 	i++
 
-	entry.Userhash, err = strconv.ParseInt(line[i], 10, 64)
-	checkErr(err, lineNum)
+	if line[i] != "" {
+		entry.Userhash, err = strconv.ParseInt(line[i], 10, 64)
+		checkErr(err, lineNum)
+	} else {
+		entry.Userhash = entry.SessionID ^ entry.DatacenterID
+	}
 	i++
 
 	if line[i] == "" {
