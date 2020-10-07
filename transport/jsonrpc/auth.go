@@ -727,17 +727,12 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			}
 		}
 
-		userAccount, err := s.UserManager.Read(requestID)
-		if err != nil {
-			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch user account: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-
-		userAccount.AppMetadata["company_code"] = args.CompanyCode
-
-		if err = s.UserManager.Update(requestID, userAccount); err != nil {
-			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company name: %v", err)
+		if err = s.UserManager.Update(requestID, &management.User{
+			AppMetadata: map[string]interface{}{
+				"company_code": args.CompanyCode,
+			},
+		}); err != nil {
+			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -819,17 +814,12 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			return err
 		}
 
-		userAccount, err := s.UserManager.Read(requestID)
-		if err != nil {
-			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch user information: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-
-		userAccount.AppMetadata["company_code"] = args.CompanyCode
-
-		if err = s.UserManager.Update(requestID, userAccount); err != nil {
-			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company name: %v", err)
+		if err = s.UserManager.Update(requestID, &management.User{
+			AppMetadata: map[string]interface{}{
+				"company_code": args.CompanyCode,
+			},
+		}); err != nil {
+			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
