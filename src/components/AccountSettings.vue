@@ -252,10 +252,10 @@ export default class AccountSettings extends Vue {
   }
 
   private updateCompanyInformation () {
-    (this as any).$apiService
+    this.$apiService
       .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
       .then((response: any) => {
-        (this as any).$authService.refreshToken()
+        this.$authService.refreshToken()
         this.message = 'Company name updated successfully'
         this.alertType = AlertTypes.SUCCESS
         setTimeout(() => {
@@ -276,7 +276,7 @@ export default class AccountSettings extends Vue {
   }
 
   private updateAccountSettings () {
-    (this as any).$apiService
+    this.$apiService
       .updateAccountSettings({ newPassword: this.newPassword, newsletter: this.newsletterConsent })
       .then((response: any) => {
         this.message = 'Account settings updated successfully'

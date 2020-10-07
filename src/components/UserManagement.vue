@@ -240,8 +240,8 @@ export default class UserManagement extends Vue {
     const promises = [
       // TODO: Figure out how to get rid of this. this.$apiService should be possible...
       // HACK: This is a hack to get tests to work properly
-      (this as any).$apiService.fetchAllAccounts(),
-      (this as any).$apiService.fetchAllRoles()
+      this.$apiService.fetchAllAccounts(),
+      this.$apiService.fetchAllRoles()
     ]
     Promise.all(promises)
       .then((responses: any) => {
@@ -264,11 +264,9 @@ export default class UserManagement extends Vue {
     const domains = this.autoSignupDomains
       .split(/(,|\n)/g)
       .map((x) => x.trim())
-      .filter((x) => x !== '' && x !== ',');
+      .filter((x) => x !== '' && x !== ',')
 
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService
+    this.$apiService
       .updateAutoSignupDomains({ domains: domains })
       .then((response: any) => {
         this.userProfile.domains = domains
@@ -292,12 +290,8 @@ export default class UserManagement extends Vue {
 
   private saveUser (account: any, index: number): void {
     if (account.edit) {
-      // HACK because eslint likes to complain...
-      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-      // HACK: This is a hack to get tests to work properly
-      const vm = (this as any)
       const roles = account.roles
-      vm.$apiService
+      this.$apiService
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
@@ -324,7 +318,7 @@ export default class UserManagement extends Vue {
     if (account.delete) {
       // TODO: Figure out how to get rid of this. this.$apiService should be possible...
       // HACK: This is a hack to get tests to work properly
-      (this as any).$apiService
+      this.$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
@@ -377,7 +371,7 @@ export default class UserManagement extends Vue {
     }
     // TODO: Figure out how to get rid of this. this.$apiService should be possible...
     // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService
+    this.$apiService
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {
         const newAccounts: Array<any> = response.accounts

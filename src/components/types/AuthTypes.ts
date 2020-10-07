@@ -10,5 +10,5 @@ export interface UserProfile {
   verified: boolean;
   routeShader: any;
   pubKey: string;
-  newsletterConsent: boolean
+  newsletterConsent: boolean;
 }

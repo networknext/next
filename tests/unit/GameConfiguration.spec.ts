@@ -6,7 +6,6 @@ import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { UserProfile } from '@/components/types/AuthTypes'
 
 describe('GameConfiguration.vue', () => {
-
   const localVue = createLocalVue()
 
   localVue.use(Vuex)
@@ -84,7 +83,7 @@ describe('GameConfiguration.vue', () => {
       const input = wrapper.findAll('input')
       const textArea = wrapper.findAll('textarea')
       expect(input.length).toBe(1)
-      expect(input.at(0).attributes('disabled')).toBe("disabled")
+      expect(input.at(0).attributes('disabled')).toBe('disabled')
       expect(textArea.length).toBe(1)
       expect(textArea.at(0).attributes('disabled')).toBe(undefined)
 

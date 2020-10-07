@@ -77,6 +77,19 @@
         <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
       </li>
     </ul>
+    <ul class="navbar-nav px-3" v-if="false && $store.getters.isAdmin"><!-- DISABLED -->
+      <li class="nav-item text-nowrap">
+        <select v-on:change="impersonate($event.target.value)">
+          <option :value="''">Impersonate</option>
+          <option
+            :value="buyer.company_code"
+            v-for="buyer in allBuyers"
+            v-bind:key="buyer.company_code"
+            :selected="buyer.company_code === companyCode"
+          >{{ buyer.company_name }}</option>
+        </select>
+      </li>
+    </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
         <a
@@ -84,7 +97,7 @@
           class="signup btn-sm btn-primary"
           href="#"
           @click="signUp()"
-        >Sign up</a>
+        >Get Access</a>
       </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
@@ -97,6 +110,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { UserProfile } from './types/AuthTypes'
 
 /**
  * This component opens up the main Vue router handlers to user interaction in the form of a navigation bar
@@ -108,29 +122,73 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class NavBar extends Vue {
+  get allBuyers () {
+    if (!this.$store.getters.isAdmin) {
+      return []
+    }
+    return this.$store.getters.allBuyers
+  }
+
+  private companyCode: string
   private portalVersion: string
-  private vueInstance: any
+  private unwatch: any
 
   constructor () {
     super()
     this.portalVersion = ''
-    this.vueInstance = Vue
+    this.companyCode = ''
   }
 
   private created () {
     this.fetchPortalVersion()
   }
 
+  private mounted () {
+    if (!this.$store.getters.userProfile) {
+      this.unwatch = this.$store.watch(
+        (_, getters: any) => getters.userProfile,
+        (userProfile: any) => {
+          this.checkUserProfile(userProfile)
+        }
+      )
+    } else {
+      this.checkUserProfile(this.$store.getters.userProfile)
+    }
+  }
+
+  private checkUserProfile (userProfile: UserProfile) {
+    if (this.companyCode === '') {
+      this.companyCode = userProfile.companyCode || ''
+    }
+  }
+
   private login (): void {
-    (this as any).$authService.login()
+    this.$authService.login()
   }
 
   private logout (): void {
-    (this as any).$authService.logout()
+    this.$authService.logout()
   }
 
   private signUp (): void {
-    (this as any).$authService.signUp()
+    if (process.env.VUE_APP_MODE === 'prod') {
+      this.$gtag.event('clicked sign up', {
+        event_category: 'Account Creation',
+        event_label: 'Sign up'
+      })
+    }
+    this.$authService.signUp()
+  }
+
+  private impersonate (companyCode: string): void {
+    this.$apiService.impersonate({ company_code: companyCode })
+      .then((response: any) => {
+        this.$authService.refreshToken()
+      })
+      .catch((error: Error) => {
+        console.log('something went wrong with impersonating')
+        console.log(error)
+      })
   }
 
   private fetchPortalVersion (): void {
