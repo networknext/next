@@ -231,7 +231,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionUpdate4Metrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID uint64) routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, maxNearRelays int, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionUpdate4Metrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -263,7 +263,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		var sessionData SessionData4
 
-		ipLocator := getIPLocator()
+		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix4()
 		nearRelays := []routing.NearRelayData{}
 		destRelayIDs := []uint64{}
@@ -360,7 +360,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			}
 		}
 
-		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, MaxNearRelays)
+		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, maxNearRelays)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 			metrics.NearRelaysLocateFailure.Add(1)
@@ -432,7 +432,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			"selection_percent", buyer.RouteShader.SelectionPercent,
 			"route_switch_threshold", buyer.InternalConfig.RouteSwitchThreshold)
 
-		if !sessionData.RouteState.Next {
+		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
+			sessionData.RouteState.Next = false
 			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
@@ -465,7 +466,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
 						metrics.MultipathOverload.Add(1)
 
-						// We will handling updating the multipath veto redis in the post session update
+						// We will handle updating the multipath veto redis in the post session update
 						// to avoid blocking the routing response
 					}
 
