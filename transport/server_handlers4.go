@@ -231,7 +231,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, maxNearRelays int, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionUpdate4Metrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID uint64) routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, maxNearRelays int, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionUpdate4Metrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -263,7 +263,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		var sessionData SessionData4
 
-		ipLocator := getIPLocator()
+		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix4()
 		nearRelays := []routing.NearRelayData{}
 		destRelayIDs := []uint64{}

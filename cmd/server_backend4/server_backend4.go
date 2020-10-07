@@ -54,24 +54,25 @@ var (
 	tag           string
 )
 
-// A mock locator used in staging to set each client VM to a random, unique lat/long
-type stagingLocator struct{}
+// A mock locator used in staging to set each session to a random, unique lat/long
+type stagingLocator struct {
+	SessionID uint64
+}
 
 func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	// Generate a random lat/long from the client's IP address
-	ipHashBytes := [8]byte{}
-	ipHash := crypto.HashID(ip.String())
-	binary.LittleEndian.PutUint64(ipHashBytes[0:8], ipHash)
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], locator.SessionID)
 
-	// Randomize the location by using 4 bits of the IP hash for the lat, and the other 4 for the long
-	latBits := binary.LittleEndian.Uint32(ipHashBytes[0:4])
-	longBits := binary.LittleEndian.Uint32(ipHashBytes[4:8])
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
 
 	lat := (float64(latBits)) / 0xFFFFFFFF
 	long := (float64(longBits)) / 0xFFFFFFFF
 
 	return routing.Location{
-		Latitude:  -90.0 + lat*180.0,
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
 		Longitude: -180.0 + long*360.0,
 	}, nil
 }
@@ -342,7 +343,7 @@ func mainReturnWithCode() int {
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
-	getIPLocatorFunc := func() routing.IPLocator {
+	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return routing.NullIsland
 	}
 
@@ -357,7 +358,7 @@ func mainReturnWithCode() int {
 		}
 		var mmdbMutex sync.RWMutex
 
-		getIPLocatorFunc = func() routing.IPLocator {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
 			mmdbMutex.RLock()
 			defer mmdbMutex.RUnlock()
 
@@ -409,8 +410,10 @@ func mainReturnWithCode() int {
 	// Use a custom IP locator for staging so that clients
 	// have different, random lat/longs
 	if env == "staging" {
-		getIPLocatorFunc = func() routing.IPLocator {
-			return &stagingLocator{}
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
+			return &stagingLocator{
+				SessionID: sessionID,
+			}
 		}
 	}
 
