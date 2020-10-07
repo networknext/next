@@ -48,6 +48,7 @@ export class JSONRPCService {
         userProfile.domains = responses[0].domains || []
         store.commit('UPDATE_USER_PROFILE', userProfile)
         store.commit('UPDATE_ALL_BUYERS', allBuyers)
+        store.commit('UPDATE_CURRENT_FILTER', { companyCode: userProfile.buyerID === '' ? '' : userProfile.companyCode })
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')

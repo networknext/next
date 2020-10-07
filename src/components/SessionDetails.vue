@@ -342,11 +342,11 @@ export default class SessionDetails extends Vue {
   }
 
   // TODO: Move this somewhere with other helper functions
-  private getCustomerName (buyerId: string) {
+  private getCustomerName (buyerID: string) {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0
     for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].id === buyerId) {
+      if (allBuyers[i].id === buyerID) {
         return allBuyers[i].company_name
       }
     }

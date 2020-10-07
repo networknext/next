@@ -58,6 +58,7 @@ export class AuthService {
     if (isAuthenticated) {
       const userProfile: UserProfile = {
         auth0ID: '',
+        buyerID: '',
         companyCode: '',
         companyName: '',
         email: '',
@@ -92,7 +93,6 @@ export class AuthService {
           userProfile.newsletterConsent = newsletterConsent
 
           store.commit('UPDATE_USER_PROFILE', userProfile)
-          store.commit('UPDATE_CURRENT_FILTER', { companyCode: roles.includes('Admin') || userProfile.pubKey === '' ? '' : companyCode })
         })
         .catch((error: Error) => {
           console.log('Something went wrong fetching user details')
