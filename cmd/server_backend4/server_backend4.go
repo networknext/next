@@ -54,6 +54,28 @@ var (
 	tag           string
 )
 
+// A mock locator used in staging to set each client VM to a random, unique lat/long
+type stagingLocator struct{}
+
+func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	// Generate a random lat/long from the client's IP address
+	ipHashBytes := [8]byte{}
+	ipHash := crypto.HashID(ip.String())
+	binary.LittleEndian.PutUint64(ipHashBytes[0:8], ipHash)
+
+	// Randomize the location by using 4 bits of the IP hash for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(ipHashBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(ipHashBytes[4:8])
+
+	lat := (float64(latBits)) / 0xFFFFFFFF
+	long := (float64(longBits)) / 0xFFFFFFFF
+
+	return routing.Location{
+		Latitude:  -90.0 + lat*180.0,
+		Longitude: -180.0 + long*360.0,
+	}, nil
+}
+
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func main() {
@@ -115,6 +137,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 	env := envvar.Get("ENV", "")
+
+	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
 	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
@@ -190,6 +218,22 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
+	// Create a goroutine to update metrics
+	go func() {
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		for {
+			backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+			time.Sleep(time.Second * 10)
+		}
+	}()
+
 	// Create an in-memory storer
 	var storer storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -262,18 +306,20 @@ func mainReturnWithCode() int {
 	datacenterTracker := transport.NewDatacenterTracker()
 
 	go func() {
-		unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
-		emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
+		for {
+			unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
+			emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
 
-		for _, datacenter := range unknownDatacenters {
-			level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+			for _, datacenter := range unknownDatacenters {
+				level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+			}
+
+			for _, datacenter := range emptyDatacenters {
+				level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
+			}
+
+			time.Sleep(10 * time.Second)
 		}
-
-		for _, datacenter := range emptyDatacenters {
-			level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
-		}
-
-		time.Sleep(10 * time.Second)
 	}()
 
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
@@ -360,6 +406,14 @@ func mainReturnWithCode() int {
 		// }
 	}
 
+	// Use a custom IP locator for staging so that clients
+	// have different, random lat/longs
+	if env == "staging" {
+		getIPLocatorFunc = func() routing.IPLocator {
+			return &stagingLocator{}
+		}
+	}
+
 	routeMatrix4 := &routing.RouteMatrix4{}
 	var routeMatrix4Mutex sync.RWMutex
 
@@ -426,9 +480,10 @@ func mainReturnWithCode() int {
 
 					routeEntriesTime := time.Since(start)
 
-					backendMetrics.RouteMatrixUpdateDuration.Set(float64(routeEntriesTime.Milliseconds()))
+					duration := float64(routeEntriesTime.Milliseconds())
+					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
 
-					if routeEntriesTime.Seconds() > 1.0 {
+					if duration > 100 {
 						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 					}
 
@@ -656,7 +711,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
