@@ -1,14 +1,16 @@
 package analytics
 
 import (
+	"unsafe"
+
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 )
 
 const (
-	PingStatsEntryVersion  = uint8(1)
-	RelayStatsEntryVersion = uint8(1)
+	PingStatsEntryVersion  = uint8(2)
+	RelayStatsEntryVersion = uint8(2)
 )
 
 type PingStatsEntry struct {
@@ -19,6 +21,7 @@ type PingStatsEntry struct {
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
+	Routable   bool
 }
 
 func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
@@ -47,6 +50,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
 					RTT:        rtt,
 					Jitter:     jitter,
 					PacketLoss: pl,
+					Routable:   rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue,
 				}
 			}
 		}
@@ -133,21 +137,36 @@ func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 type RelayStatsEntry struct {
 	Timestamp uint64
 
-	ID          uint64
-	NumSessions uint64
-	CPUUsage    float32
-	MemUsage    float32
-	Tx          uint64
-	Rx          uint64
+	ID uint64
 
-	// Maximum traffic stats since the last upload for this relay
-	PeakSessions              uint64
-	PeakSentBandwidthMbps     float32
-	PeakReceivedBandwidthMbps float32
+	CPUUsage float32
+	MemUsage float32
+
+	// percent = (sent||received) / nic speed
+
+	BandwidthSentPercent     float32
+	BandwidthReceivedPercent float32
+
+	// percent = bandwidth_(sent||received) / envelope_(sent||received)
+
+	EnvelopeSentPercent     float32
+	EnvelopeReceivedPercent float32
+
+	BandwidthSentMbps     float32
+	BandwidthReceivedMbps float32
+
+	EnvelopeSentMbps     float32
+	EnvelopeReceivedMbps float32
+
+	NumSessions uint64
+	MaxSessions uint64
+
+	NumRoutable   uint64
+	NumUnroutable uint64
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+8+8+8+4+4)
+	length := 1 + 8 + len(entries)*int(unsafe.Sizeof(RelayStatsEntry{}))
 	data := make([]byte, length)
 
 	index := 0
@@ -157,14 +176,20 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 	for i := range entries {
 		entry := &entries[i]
 		encoding.WriteUint64(data, &index, entry.ID)
-		encoding.WriteUint64(data, &index, entry.NumSessions)
 		encoding.WriteFloat32(data, &index, entry.CPUUsage)
 		encoding.WriteFloat32(data, &index, entry.MemUsage)
-		encoding.WriteUint64(data, &index, entry.Tx)
-		encoding.WriteUint64(data, &index, entry.Rx)
-		encoding.WriteUint64(data, &index, entry.PeakSessions)
-		encoding.WriteFloat32(data, &index, entry.PeakSentBandwidthMbps)
-		encoding.WriteFloat32(data, &index, entry.PeakReceivedBandwidthMbps)
+		encoding.WriteFloat32(data, &index, entry.BandwidthSentPercent)
+		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedPercent)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeSentPercent)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedPercent)
+		encoding.WriteFloat32(data, &index, entry.BandwidthSentMbps)
+		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedMbps)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeSentMbps)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedMbps)
+		encoding.WriteUint64(data, &index, entry.NumSessions)
+		encoding.WriteUint64(data, &index, entry.MaxSessions)
+		encoding.WriteUint64(data, &index, entry.NumRoutable)
+		encoding.WriteUint64(data, &index, entry.NumUnroutable)
 	}
 
 	return data
@@ -192,10 +217,6 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.NumSessions) {
-			return nil, false
-		}
-
 		if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
 			return nil, false
 		}
@@ -204,23 +225,51 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.Tx) {
+		if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentPercent) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.Rx) {
+		if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedPercent) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.PeakSessions) {
+		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentPercent) {
 			return nil, false
 		}
 
-		if !encoding.ReadFloat32(data, &index, &entry.PeakSentBandwidthMbps) {
+		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedPercent) {
 			return nil, false
 		}
 
-		if !encoding.ReadFloat32(data, &index, &entry.PeakReceivedBandwidthMbps) {
+		if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentMbps) {
+			return nil, false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedMbps) {
+			return nil, false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentMbps) {
+			return nil, false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedMbps) {
+			return nil, false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.NumSessions) {
+			return nil, false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.MaxSessions) {
+			return nil, false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.NumRoutable) {
+			return nil, false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.NumUnroutable) {
 			return nil, false
 		}
 	}
@@ -234,15 +283,21 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
 	bqEntry["timestamp"] = int(e.Timestamp)
-	bqEntry["relayID"] = int(e.ID)
-	bqEntry["numSessions"] = int(e.NumSessions)
-	bqEntry["cpu"] = e.CPUUsage
-	bqEntry["mem"] = e.MemUsage
-	bqEntry["tx"] = e.Tx
-	bqEntry["rx"] = e.Rx
-	bqEntry["peakSessions"] = e.PeakSessions
-	bqEntry["peakSentBandwidthMbps"] = e.PeakSentBandwidthMbps
-	bqEntry["peakReceivedBandwidthMbps"] = e.PeakReceivedBandwidthMbps
+	bqEntry["relay_id"] = int(e.ID)
+	bqEntry["cpu_percent"] = e.CPUUsage
+	bqEntry["memory_percent"] = e.MemUsage
+	bqEntry["actual_bandwidth_send_percent"] = e.BandwidthSentPercent
+	bqEntry["actual_bandwidth_receive_percent"] = e.BandwidthReceivedPercent
+	bqEntry["envelope_bandwidth_send_percent"] = e.EnvelopeSentPercent
+	bqEntry["envelope_bandwidth_received_percent"] = e.EnvelopeReceivedPercent
+	bqEntry["actual_bandwidth_send_mbps"] = e.BandwidthSentMbps
+	bqEntry["actual_bandwidth_receive_mbps"] = e.BandwidthReceivedMbps
+	bqEntry["envelope_bandwidth_send_mbps"] = e.EnvelopeSentMbps
+	bqEntry["envelope_bandwidth_receive_mbps"] = e.EnvelopeReceivedMbps
+	bqEntry["num_sessions"] = int(e.NumSessions)
+	bqEntry["max_sessions"] = int(e.MaxSessions)
+	bqEntry["num_routable"] = e.NumRoutable
+	bqEntry["num_unroutable"] = e.NumUnroutable
 
 	return bqEntry, "", nil
 }

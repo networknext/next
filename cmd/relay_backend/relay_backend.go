@@ -523,15 +523,21 @@ func main() {
 					relay.PeakTrafficStats.BytesReceivedPerSecond = 0
 
 					entries[i] = analytics.RelayStatsEntry{
-						ID:                        relay.ID,
-						NumSessions:               relay.TrafficStats.SessionCount,
-						CPUUsage:                  relay.CPUUsage,
-						MemUsage:                  relay.MemUsage,
-						Tx:                        relay.TrafficStats.BytesSent,
-						Rx:                        relay.TrafficStats.BytesReceived,
-						PeakSessions:              peakSessions,
-						PeakSentBandwidthMbps:     float32(peakSent),
-						PeakReceivedBandwidthMbps: float32(peakReceived),
+						ID:                       relay.ID,
+						CPUUsage:                 relay.CPUUsage,
+						MemUsage:                 relay.MemUsage,
+						BandwidthSentPercent:     0, // TODO
+						BandwidthReceivedPercent: 0, // TODO
+						EnvelopeSentPercent:      0, // TODO
+						EnvelopeReceivedPercent:  0, // TODO
+						BandwidthSentMbps:        0, // TODO
+						BandwidthReceivedMbps:    0, // TODO
+						EnvelopeSentMbps:         0, // TODO
+						EnvelopeReceivedMbps:     0, // TODO
+						NumSessions:              relay.TrafficStats.SessionCount,
+						MaxSessions:              0, // TODO
+						NumRoutable:              0, // TODO
+						NumUnroutable:            0, // TODO
 					}
 				}
 
