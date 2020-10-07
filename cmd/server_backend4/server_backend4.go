@@ -139,6 +139,12 @@ func mainReturnWithCode() int {
 	}
 	env := envvar.Get("ENV", "")
 
+	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
@@ -708,7 +714,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
