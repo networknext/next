@@ -123,12 +123,14 @@
                     <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
                   </dd>
                 </div>
-                <dt>
-                    User IP Address
-                </dt>
-                <dd>
-                    {{ this.meta.client_addr }}
-                </dd>
+                <div v-if="(!$store.getters.isAnonymous && getCustomerName(this.meta.customer_id) !== 'Private') || !$store.getters.isAdmin">
+                  <dt>
+                      User IP Address
+                  </dt>
+                  <dd>
+                      {{ this.meta.client_addr }}
+                  </dd>
+                </div>
                 <dt>
                     Platform
                 </dt>
