@@ -28,7 +28,7 @@ namespace core
 
       length = packet.length - 16;
 
-      packet.buffer[0] = static_cast<uint8_t>(PacketType::NearPong);
+      packet.buffer[0] = static_cast<uint8_t>(PacketType::NearPong4);
 
       recorder.near_ping_tx.add(length);
 
