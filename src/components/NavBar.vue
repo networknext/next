@@ -97,7 +97,7 @@
           class="signup btn-sm btn-primary"
           href="#"
           @click="signUp()"
-        >Sign up</a>
+        >Get Access</a>
       </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
