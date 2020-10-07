@@ -223,7 +223,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	var badIPLocator badIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &badIPLocator
 	}
 
@@ -293,7 +293,7 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -373,7 +373,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -458,7 +458,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -527,7 +527,7 @@ func TestSessionUpdateHandler4BuyerNotLive(t *testing.T) {
 	assert.NoError(t, err)
 
 	var ipLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &ipLocator
 	}
 
@@ -595,7 +595,7 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -664,7 +664,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -741,7 +741,7 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -851,7 +851,7 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -962,7 +962,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -1118,7 +1118,7 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -1324,7 +1324,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -1527,7 +1527,7 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -1733,7 +1733,7 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -1937,7 +1937,7 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -2119,7 +2119,7 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -2312,7 +2312,7 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -2509,7 +2509,7 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
@@ -2718,7 +2718,7 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &goodIPLocator
 	}
 
