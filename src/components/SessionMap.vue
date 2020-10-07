@@ -29,7 +29,7 @@ import mapboxgl from 'mapbox-gl'
 export default class SessionMap extends Vue {
   private deckGlInstance: any
   private mapInstance: any
-  private mapLoop: number
+  private mapLoop: any
   private viewState: any
   private unwatch: any
 
@@ -44,7 +44,6 @@ export default class SessionMap extends Vue {
       minZoom: 2,
       maxZoom: 16
     }
-    this.mapLoop = -1
   }
 
   private mounted () {
@@ -66,9 +65,7 @@ export default class SessionMap extends Vue {
   }
 
   private fetchMapSessions () {
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService
+    this.$apiService
       .fetchMapSessions({
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
@@ -94,18 +91,12 @@ export default class SessionMap extends Vue {
           onNN = sessions
         } else {
           onNN = sessions.filter((point: any) => {
-            return (point[2] === 1)
+            return (point[2] === true)
           })
           direct = sessions.filter((point: any) => {
-            return (point[2] === 0)
+            return (point[2] === false)
           })
         }
-        /* const onNN = sessions.filter((point: any) => {
-          return point[2] === true
-        })
-        const direct = sessions.filter((point: any) => {
-          return point[2] === false
-        }) */
 
         const cellSize = 10
         const aggregation = 'MEAN'
@@ -170,6 +161,9 @@ export default class SessionMap extends Vue {
   }
 
   private restartLoop () {
+    if (this.mapLoop) {
+      clearInterval(this.mapLoop)
+    }
     this.fetchMapSessions()
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()

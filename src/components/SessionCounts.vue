@@ -58,13 +58,16 @@ interface TotalSessionsReply {
 export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
-  private countLoop: number
+  private countLoop: any
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
   }
 
   get allBuyers () {
+    if (!this.$store.getters.isAdmin) {
+      return []
+    }
     return this.$store.getters.allBuyers.filter((buyer: any) => {
       return buyer.is_live || this.$store.getters.isAdmin
     })
@@ -76,7 +79,6 @@ export default class SessionCounts extends Vue {
       direct: 0,
       onNN: 0
     }
-    this.countLoop = -1
     this.showCount = false
   }
 
@@ -89,9 +91,7 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
-    (this as any).$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode || '' })
+    this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode || '' })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next
@@ -119,7 +119,7 @@ export default class SessionCounts extends Vue {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0
     for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_name === this.$store.getters.userProfile.companyName) {
+      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
         return allBuyers[i].company_name
       }
     }
@@ -132,6 +132,9 @@ export default class SessionCounts extends Vue {
   }
 
   private restartLoop () {
+    if (this.countLoop) {
+      clearInterval(this.countLoop)
+    }
     this.fetchSessionCounts()
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()

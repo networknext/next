@@ -220,7 +220,7 @@ describe('UserSessions.vue no sessions', () => {
         direct_rtt: 100,
         next_rtt: 100,
         delta_rtt: 0
-      },
+      }
     ]
     const spy = jest.spyOn(localVue.prototype.$apiService, 'fetchTopSessions').mockImplementationOnce(() => {
       return Promise.resolve({ sessions: sessions })

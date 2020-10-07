@@ -22,7 +22,7 @@ export default {
       commit('UPDATE_CURRENT_PAGE', currentPage)
     },
     updateCurrentFilter ({ commit }: any, currentFilter: string) {
-      commit('UPDATE_CURRENT_PAGE', currentFilter)
+      commit('UPDATE_CURRENT_FILTER', currentFilter)
     }
   },
   mutations: {
