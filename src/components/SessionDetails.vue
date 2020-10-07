@@ -123,7 +123,7 @@
                     <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
                   </dd>
                 </div>
-                <div v-if="(!$store.getters.isAnonymous && getCustomerName(this.meta.customer_id) !== 'Private') || !$store.getters.isAdmin">
+                <div v-if="(!$store.getters.isAnonymous && this.meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
                   <dt>
                       User IP Address
                   </dt>
