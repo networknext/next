@@ -54,6 +54,29 @@ var (
 	tag           string
 )
 
+// A mock locator used in staging to set each session to a random, unique lat/long
+type stagingLocator struct {
+	SessionID uint64
+}
+
+func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], locator.SessionID)
+
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+	lat := (float64(latBits)) / 0xFFFFFFFF
+	long := (float64(longBits)) / 0xFFFFFFFF
+
+	return routing.Location{
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
+		Longitude: -180.0 + long*360.0,
+	}, nil
+}
+
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func main() {
@@ -115,6 +138,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 	env := envvar.Get("ENV", "")
+
+	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
 	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
@@ -314,7 +343,7 @@ func mainReturnWithCode() int {
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
-	getIPLocatorFunc := func() routing.IPLocator {
+	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return routing.NullIsland
 	}
 
@@ -329,7 +358,7 @@ func mainReturnWithCode() int {
 		}
 		var mmdbMutex sync.RWMutex
 
-		getIPLocatorFunc = func() routing.IPLocator {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
 			mmdbMutex.RLock()
 			defer mmdbMutex.RUnlock()
 
@@ -376,6 +405,16 @@ func mainReturnWithCode() int {
 		// 		}
 		// 	}()
 		// }
+	}
+
+	// Use a custom IP locator for staging so that clients
+	// have different, random lat/longs
+	if env == "staging" {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
+			return &stagingLocator{
+				SessionID: sessionID,
+			}
+		}
 	}
 
 	routeMatrix4 := &routing.RouteMatrix4{}
@@ -675,7 +714,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
