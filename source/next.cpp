@@ -157,7 +157,7 @@
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
-static const uint8_t next_backend_public_key[] = 
+static uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
     160, 181, 151, 195, 202, 224, 207, 113, 
@@ -165,7 +165,7 @@ static const uint8_t next_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64 
 };
 
-static const uint8_t next_router_public_key[] = 
+static uint8_t next_router_public_key[] = 
 { 
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34, 
     0xa7, 0x55, 0x50, 0xeb, 0xab, 0x03, 0xde, 0xa9, 
@@ -3813,6 +3813,42 @@ int next_init( void * context, next_config_t * config_in )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override next hostname: '%s'", next_hostname_override );
         strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) - 1 );
+    }
+
+    const char * backend_public_key_env = next_platform_getenv( "NEXT_BACKEND_PUBLIC_KEY" );
+    if ( backend_public_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "backend public key override" );
+        
+        if ( next_base64_decode_data( backend_public_key_env, next_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid backend public key" );
+        }
+        else
+        {
+            if ( backend_public_key_env[0] != '\0' )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "backend public key is invalid: \"%s\"", backend_public_key_env );
+            }
+        }
+    }
+
+    const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
+    if ( router_public_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override" );
+        
+        if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid router public key" );
+        }
+        else
+        {
+            if ( router_public_key_env[0] != '\0' )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "router public key is invalid: \"%s\"", router_public_key_env );
+            }
+        }
     }
 
     next_global_config = config;
@@ -12336,6 +12372,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
         memcpy( buffer + 1, packet_data, packet_bytes );
+
         next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
     }
 }
