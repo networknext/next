@@ -23,8 +23,6 @@ type PostSessionHandler struct {
 	biller                    billing.Biller
 	logger                    log.Logger
 	metrics                   *metrics.PostSessionMetrics
-
-	maxBufferSize int
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, portalPublishMaxRetries int,
@@ -38,7 +36,6 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		biller:                    biller,
 		logger:                    logger,
 		metrics:                   metrics,
-		maxBufferSize:             chanBufferSize,
 	}
 }
 
