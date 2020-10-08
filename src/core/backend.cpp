@@ -402,12 +402,13 @@ namespace core
     }
 
     // send request
-
+    LOG(DEBUG, "sending init request");
     if (!this->http_client.send_request(this->hostname, INIT_ENDPOINT, request_data, response_data)) {
       LOG(ERROR, "init request failed");
       return false;
     }
 
+    LOG(DEBUG, "processing init response");
     // deserialize response
     {
       InitResponse response;

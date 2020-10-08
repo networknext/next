@@ -137,17 +137,21 @@ namespace
   {
     auto graceful_shutdown_handler = [](int) {
       if (Globals.alive) {
+        LOG(INFO, "gracefully shutting down");
         Globals.alive = false;
       } else {
+        LOG(INFO, "hard shutdown");
         std::exit(1);
       }
     };
 
     auto clean_shutdown_handler = [](int) {
       if (Globals.alive) {
+        LOG(INFO, "clean shutdown flagged");
         Globals.should_clean_shutdown = true;
         Globals.alive = false;
       } else {
+        LOG(INFO, "hard shutdown");
         std::exit(1);
       }
     };
@@ -276,6 +280,8 @@ int main(int argc, const char* argv[])
     sockets.push_back(socket);
     threads.push_back(thread);
   }
+
+  LOG(DEBUG, "Globals.alive = ", Globals.alive ? "true" : "false");
 
   // new backend setup
   if (Globals.alive) {
