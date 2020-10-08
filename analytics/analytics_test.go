@@ -76,7 +76,7 @@ func TestNoOp(t *testing.T) {
 }
 
 func TestExtractPingStats(t *testing.T) {
-	numRelays := 300
+	numRelays := 10
 
 	statsdb := routing.NewStatsDatabase()
 

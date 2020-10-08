@@ -233,7 +233,7 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 		}
 
 		encoding.WriteUint64(data, &index, relay.ID)
-		relay.TrafficStats.WriteTo(data, &index)
+		relay.TrafficStats.WriteTo(data, &index, 2)
 		encoding.WriteUint8(data, &index, major)
 		encoding.WriteUint8(data, &index, minor)
 		encoding.WriteUint8(data, &index, patch)

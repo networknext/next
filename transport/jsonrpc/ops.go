@@ -85,10 +85,26 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 
 		var relay RelayData
 
-		if err := relay.TrafficStats.ReadFrom(data, &index, version); err != nil {
-			return err
+		// currently map version & traffic stats match up, but not binding them together in case one changes and the other doesn't
+		switch version {
+		case 0:
+			if err := relay.TrafficStats.ReadFrom(data, &index, 0); err != nil {
+				return err
+			}
+		case 1:
+			if err := relay.TrafficStats.ReadFrom(data, &index, 1); err != nil {
+				return err
+			}
+		case 2:
+			if err := relay.TrafficStats.ReadFrom(data, &index, 2); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("invalid relay map version: %d", version)
 		}
 
+		// result of a merge with master, relay.SessionCount was supposed to be removed but the merge put it back in
+		// once this code is in prod for compatability, relay.SessionCount can be removed
 		if version == 0 {
 			relay.TrafficStats.SessionCount = relay.SessionCount
 		} else {

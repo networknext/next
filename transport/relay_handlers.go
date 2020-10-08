@@ -328,8 +328,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			"addr", relayDataReadOnly.Addr.String(),
 			"datacenter", relayDataReadOnly.Datacenter.Name,
 			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
-			"bytes_received", relayUpdateRequest.TrafficStats.GameStatsRx()+relayUpdateRequest.TrafficStats.OtherStatsRx(),
-			"bytes_send", relayUpdateRequest.TrafficStats.GameStatsTx()+relayUpdateRequest.TrafficStats.OtherStatsTx(),
+			"bytes_received", relayUpdateRequest.TrafficStats.AllRx(),
+			"bytes_send", relayUpdateRequest.TrafficStats.AllTx(),
 		)
 
 		level.Debug(locallogger).Log("msg", "relay updated")

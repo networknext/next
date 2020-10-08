@@ -144,7 +144,7 @@ func TestRelayMapMarshalBinary(t *testing.T) {
 			var relay routing.RelayData
 			assert.True(t, encoding.ReadUint64(bin, &index, &relay.ID))
 
-			assert.NoError(t, relay.TrafficStats.ReadFrom(bin, &index))
+			assert.NoError(t, relay.TrafficStats.ReadFrom(bin, &index, 2))
 
 			var major, minor, patch uint8
 			assert.True(t, encoding.ReadUint8(bin, &index, &major))

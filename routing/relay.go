@@ -265,7 +265,7 @@ func (rts *TrafficStats) GameStatsTx() uint64 {
 }
 
 func (rts *TrafficStats) AllRx() uint64 {
-	return rts.OtherStatsRx() + rts.GameStatsRx()
+	return rts.OtherStatsRx() + rts.GameStatsRx() + rts.UnknownRx
 }
 
 func (rts *TrafficStats) AllTx() uint64 {
@@ -295,8 +295,6 @@ func (rts *TrafficStats) writeToV0(data []byte, index *int) {
 
 func (rts *TrafficStats) writeToV1(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.SessionCount)
-	encoding.WriteUint64(data, index, rts.BytesSent)
-	encoding.WriteUint64(data, index, rts.BytesReceived)
 	encoding.WriteUint64(data, index, rts.OutboundPingTx)
 	encoding.WriteUint64(data, index, rts.RouteRequestRx)
 	encoding.WriteUint64(data, index, rts.RouteRequestTx)
@@ -366,7 +364,7 @@ func (rts *TrafficStats) ReadFrom(data []byte, index *int, version uint8) error 
 
 func (rts *TrafficStats) readFromV0(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
-		return errors.New("unable to read relay stats session count")
+		return errors.New("invalid data, could not read session count")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
@@ -381,7 +379,7 @@ func (rts *TrafficStats) readFromV0(data []byte, index *int) error {
 }
 func (rts *TrafficStats) readFromV1(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
-		return errors.New("unable to read relay stats session count")
+		return errors.New("invalid data, could not read session count")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
@@ -471,7 +469,7 @@ func (rts *TrafficStats) readFromV1(data []byte, index *int) error {
 
 func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
-		return errors.New("unable to read relay stats session count")
+		return errors.New("invalid data, could not read session count")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {

@@ -136,6 +136,7 @@ func (r *RelayInitRequest) marshalBinaryV1() ([]byte, error) {
 	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
 	encoding.WriteString(data, &index, r.Address.String(), uint32(len(r.Address.String())))
 	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedRelayTokenSize)
+	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
 
 	return data, nil
 }

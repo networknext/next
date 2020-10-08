@@ -22,89 +22,147 @@ import (
 func TestRelayInitRequestUnmarshalBinary(t *testing.T) {
 	t.Parallel()
 
-	t.Run("returns 'invalid packet' when missing magic number", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
-	})
+	t.Run("version 0", func(t *testing.T) {
+		t.Run("returns 'invalid packet' when missing magic number", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet, unable to read magic number"))
+		})
 
-	t.Run("missing request version", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		buff := make([]byte, 4)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32()) // can be anything for testing purposes
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
+		t.Run("missing request version", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			buff := make([]byte, 4)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32()) // can be anything for testing purposes
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read packet version"))
+		})
 
-	t.Run("missing nonce bytes", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		buff := make([]byte, 8)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
+		t.Run("missing nonce bytes", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			buff := make([]byte, 8)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32()) // can be anything for testing purposes
+			encoding.WriteUint32(buff, &index, 0)
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read nonce"))
+		})
 
-	t.Run("missing relay address", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		buff := make([]byte, 8+crypto.NonceSize)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
+		t.Run("missing relay address", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			buff := make([]byte, 8+crypto.NonceSize)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32()) // can be anything for testing purposes
+			encoding.WriteUint32(buff, &index, 0)
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read relay address"))
+		})
 
-	t.Run("missing encryption token", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 8+crypto.NonceSize+4+len(addr)) // 4 is the uint32 for address length
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
-		copy(buff[12+crypto.NonceSize:], addr)
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
+		t.Run("missing encryption token", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)) // 4 is the uint32 for address length
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 0)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read encrypted token"))
+		})
 
-	t.Run("address not formatted correctly", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		addr := "invalid"
-		buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
-		copy(buff[12+crypto.NonceSize:], addr)
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
-	})
+		t.Run("address not formatted correctly", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "invalid"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 0)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
+		})
 
-	t.Run("valid", func(t *testing.T) {
-		var packet transport.RelayInitRequest
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
-		copy(buff[12+crypto.NonceSize:], addr)
-		assert.Nil(t, packet.UnmarshalBinary(buff))
+		t.Run("valid", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 0)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			assert.Nil(t, packet.UnmarshalBinary(buff))
+		})
 	})
 }
 
 func TestRelayInitRequestMarshalBinary(t *testing.T) {
-	nonce := make([]byte, crypto.NonceSize)
-	token := make([]byte, routing.EncryptedRelayTokenSize)
-	rand.Read(nonce)
-	rand.Read(token)
+	t.Run("version 0", func(t *testing.T) {
+		nonce := make([]byte, crypto.NonceSize)
+		token := make([]byte, routing.EncryptedRelayTokenSize)
+		rand.Read(nonce)
+		rand.Read(token)
 
-	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	expected := transport.RelayInitRequest{
-		Magic:          rand.Uint32(),
-		Version:        rand.Uint32(),
-		Nonce:          nonce,
-		Address:        *udp,
-		EncryptedToken: token,
-	}
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		expected := transport.RelayInitRequest{
+			Magic:          rand.Uint32(),
+			Version:        0,
+			Nonce:          nonce,
+			Address:        *udp,
+			EncryptedToken: token,
+		}
 
-	var actual transport.RelayInitRequest
+		var actual transport.RelayInitRequest
 
-	data, _ := expected.MarshalBinary()
+		data, _ := expected.MarshalBinary()
 
-	assert.Nil(t, actual.UnmarshalBinary(data))
-	assert.Equal(t, expected, actual)
+		assert.Nil(t, actual.UnmarshalBinary(data))
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("version 1", func(t *testing.T) {
+		nonce := make([]byte, crypto.NonceSize)
+		token := make([]byte, routing.EncryptedRelayTokenSize)
+		rand.Read(nonce)
+		rand.Read(token)
+
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		expected := transport.RelayInitRequest{
+			Magic:          rand.Uint32(),
+			Version:        1,
+			Nonce:          nonce,
+			Address:        *udp,
+			EncryptedToken: token,
+			RelayVersion:   "1.0.0",
+		}
+
+		var actual transport.RelayInitRequest
+
+		data, _ := expected.MarshalBinary()
+
+		assert.Nil(t, actual.UnmarshalBinary(data))
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("invalid version", func(t *testing.T) {
+		nonce := make([]byte, crypto.NonceSize)
+		token := make([]byte, routing.EncryptedRelayTokenSize)
+		rand.Read(nonce)
+		rand.Read(token)
+
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		expected := transport.RelayInitRequest{
+			Magic:          rand.Uint32(),
+			Version:        math.MaxUint32,
+			Nonce:          nonce,
+			Address:        *udp,
+			EncryptedToken: token,
+			RelayVersion:   "1.0.0",
+		}
+
+		var actual transport.RelayInitRequest
+
+		data, _ := expected.MarshalBinary()
+
+		assert.Error(t, actual.UnmarshalBinary(data))
+		assert.NotEqual(t, expected, actual)
+	})
 }
 
 func TestRelayInitResponseMarshalBinary(t *testing.T) {
@@ -292,7 +350,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32())) // packet loss
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read session count"))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid data, could not read session count"))
 		})
 
 		t.Run("missing bytes sent", func(t *testing.T) {
@@ -308,7 +366,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64()) // session count
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read bytes sent"))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid data, could not read bytes sent"))
 		})
 
 		t.Run("missing bytes received", func(t *testing.T) {
@@ -325,7 +383,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
 			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64()) // bytes sent
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read bytes received"))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid data, could not read bytes received"))
 		})
 
 		t.Run("missing shutdown flag", func(t *testing.T) {
@@ -537,7 +595,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read session count"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read session count"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing outbound ping tx", func(t *testing.T) {
@@ -549,7 +607,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read outbound ping tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read outbound ping tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing route request rx", func(t *testing.T) {
@@ -561,7 +619,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read route request rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read route request rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing route request tx", func(t *testing.T) {
@@ -573,7 +631,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read route request tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read route request tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing route response rx", func(t *testing.T) {
@@ -585,7 +643,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read route response rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read route response rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing route response tx", func(t *testing.T) {
@@ -597,7 +655,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read route response tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read route response tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing client to server rx", func(t *testing.T) {
@@ -609,7 +667,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read client to server rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read client to server rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing client to server tx", func(t *testing.T) {
@@ -621,7 +679,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read client to server tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read client to server tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing server to client rx", func(t *testing.T) {
@@ -633,7 +691,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read server to client rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read server to client rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing server to client tx", func(t *testing.T) {
@@ -645,7 +703,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read server to client tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read server to client tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing inbound ping rx", func(t *testing.T) {
@@ -657,7 +715,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read inbound ping rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read inbound ping rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing inbound ping tx", func(t *testing.T) {
@@ -669,7 +727,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read inbound ping tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read inbound ping tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing pong rx", func(t *testing.T) {
@@ -681,7 +739,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read pong rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read pong rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing session ping rx", func(t *testing.T) {
@@ -693,7 +751,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read session ping rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read session ping rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing session ping tx", func(t *testing.T) {
@@ -705,7 +763,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read session ping tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read session ping tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing session pong rx", func(t *testing.T) {
@@ -717,7 +775,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read session pong rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read session pong rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing session pong tx", func(t *testing.T) {
@@ -729,7 +787,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read session pong tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read session pong tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing continue request rx", func(t *testing.T) {
@@ -741,7 +799,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read continue request rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read continue request rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing continue request tx", func(t *testing.T) {
@@ -753,7 +811,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read continue request tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read continue request tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing continue response rx", func(t *testing.T) {
@@ -765,7 +823,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read continue response rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read continue response rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing continue response tx", func(t *testing.T) {
@@ -777,7 +835,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read continue response tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read continue response tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing near ping rx", func(t *testing.T) {
@@ -789,7 +847,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read near ping rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read near ping rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing near ping tx", func(t *testing.T) {
@@ -801,7 +859,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read near ping tx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read near ping tx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing near unknown rx", func(t *testing.T) {
@@ -813,7 +871,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
 			index += crypto.KeySize
 			encoding.WriteUint32(buff, &index, 1)
-			assert.Equal(t, errors.New("invalid packet, could not read unknown rx"), packet.UnmarshalBinary(buff))
+			assert.Equal(t, errors.New("invalid data, could not read unknown rx"), packet.UnmarshalBinary(buff))
 		})
 
 		t.Run("missing shutdown flag", func(t *testing.T) {
@@ -986,7 +1044,7 @@ func TestRelayUpdateRequestMarshalBinary(t *testing.T) {
 
 	t.Run("bad version", func(t *testing.T) {
 		expected := transport.RelayUpdateRequest{
-			Version: transport.VersionNumberUpdateRequest + 1,
+			Version: math.MaxUint32,
 		}
 
 		data, err := expected.MarshalBinary()
