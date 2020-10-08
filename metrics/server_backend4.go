@@ -49,6 +49,7 @@ type SessionUpdate4Metrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
 	ReadPacketFailure       Counter
+	FallbackToDirect        Counter
 	BuyerNotFound           Counter
 	ClientLocateFailure     Counter
 	ReadSessionDataFailure  Counter
@@ -68,6 +69,7 @@ type SessionUpdate4Metrics struct {
 var EmptySessionUpdate4Metrics = SessionUpdate4Metrics{
 	HandlerMetrics:          &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:       &EmptyCounter{},
+	FallbackToDirect:        &EmptyCounter{},
 	BuyerNotFound:           &EmptyCounter{},
 	ClientLocateFailure:     &EmptyCounter{},
 	ReadSessionDataFailure:  &EmptyCounter{},
@@ -383,6 +385,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".read_packet_failure",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " failed to read.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.FallbackToDirect, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Fallback To Direct",
+		ServiceName: serviceName,
+		ID:          handlerID + ".fallback_to_direct",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a fallback to direct signal.",
 	})
 	if err != nil {
 		return nil, err
