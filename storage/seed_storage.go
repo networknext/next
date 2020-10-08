@@ -15,7 +15,14 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicKey []byte, customerID uint64, customerPublicKey []byte) {
+func SeedStorage(
+	logger log.Logger,
+	ctx context.Context,
+	db Storer,
+	relayPublicKey []byte,
+	customerID uint64,
+	customerPublicKey []byte,
+) error {
 	routeShader := core.NewRouteShader()
 	internalConfig := core.NewInternalConfig()
 	internalConfig.ForceNext = true
@@ -28,10 +35,12 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 		if err != nil {
 			level.Error(logger).Log("msg", "unable to check sequence number, attempting to reset value", "err", err)
 			if err := db.SetSequenceNumber(ctx, 0); err != nil {
-				level.Error(logger).Log("msg", "unable to set sequence number", "err", err)
+				err = fmt.Errorf("unable to set sequence number, err: %v", err)
+				return err
 			}
 			if err := db.IncrementSequenceNumber(ctx); err != nil {
-				level.Error(logger).Log("msg", "unable to increment sequence number", "err", err)
+				err = fmt.Errorf("unable to increment sequence number, err: %v", err)
+				return err
 			}
 			shouldFill = true
 		}
@@ -45,8 +54,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			Active:                 true,
 			AutomaticSignInDomains: "networknext.com",
 		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add customer to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
@@ -54,8 +63,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add customer to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Local",
@@ -63,8 +72,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add customer to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Valve",
@@ -72,8 +81,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add customer to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   customerID,
@@ -84,8 +93,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			InternalConfig:       internalConfig,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add buyer to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   0,
@@ -96,8 +105,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			InternalConfig:       internalConfig,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add buyer to storage, err: %v", err)
+			return err
 		}
 		seller := routing.Seller{
 			ID:                        "sellerID",
@@ -121,16 +130,16 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			SupplierName: "usw2-az4",
 		}
 		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add seller to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddSeller(ctx, valveSeller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add seller to storage, err: %v", err)
+			return err
 		}
 		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
+			err = fmt.Errorf("could not add datacenter to storage, err: %v", err)
+			return err
 		}
 		if val, ok := os.LookupEnv("LOCAL_RELAYS"); ok {
 			numRelays := uint64(10)
@@ -163,8 +172,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 					Type:           routing.BareMetal,
 					State:          routing.RelayStateOffline,
 				}); err != nil {
-					level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-					os.Exit(1)
+					err = fmt.Errorf("could not add relay to storage, err: %v", err)
+					return err
 				}
 				if i%25 == 0 {
 					time.Sleep(time.Millisecond * 500)
@@ -193,8 +202,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				EndDate:        time.Now(),
 				Type:           routing.BareMetal,
 			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
+				err = fmt.Errorf("could not add relay to storage, err: %v", err)
+				return err
 			}
 			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
 			rid2 := crypto.HashID(addr2.String())
@@ -211,8 +220,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				SSHPort:        22,
 				MaxSessions:    3000,
 			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
+				err = fmt.Errorf("could not add relay to storage, err: %v", err)
+				return err
 			}
 			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
 			rid3 := crypto.HashID(addr3.String())
@@ -229,9 +238,10 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				SSHPort:        22,
 				MaxSessions:    3000,
 			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
+				err = fmt.Errorf("could not add relay to storage, err: %v", err)
+				return err
 			}
 		}
 	}
+	return nil
 }

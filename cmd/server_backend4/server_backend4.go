@@ -239,7 +239,7 @@ func mainReturnWithCode() int {
 	storer, err := storage.NewStorage(ctx, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		return 1
 	}
 	// Create dummy entries in storer for local testing
 	if env == "local" {
@@ -267,7 +267,10 @@ func mainReturnWithCode() int {
 		}
 
 		// Create dummy buyer and datacenter for local testing
-		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
+		if err = storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey); err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 	}
 
 	// Create datacenter tracker

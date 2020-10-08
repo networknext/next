@@ -193,7 +193,10 @@ func main() {
 	}
 
 	if env == "local" {
-		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+		if err = storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
 	}
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
 	// is commented out in the ops service.
