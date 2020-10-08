@@ -1280,21 +1280,11 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 		}
 	}
 
-	if !postSessionHandler.IsBillingBufferFull() {
-		postSessionHandler.SendBillingEntry(buildBillingEntry(params))
-		postSessionHandler.metrics.BillingEntriesSent.Add(1)
-	} else {
-		postSessionHandler.metrics.BillingBufferFull.Add(1)
-	}
+	postSessionHandler.SendBillingEntry(buildBillingEntry(params))
 
-	if !postSessionHandler.IsPortalBufferFull() {
-		portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			postSessionHandler.SendPortalData(portalData)
-			postSessionHandler.metrics.PortalEntriesSent.Add(1)
-		}
-	} else {
-		postSessionHandler.metrics.PortalBufferFull.Add(1)
+	portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
+	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+		postSessionHandler.SendPortalData(portalData)
 	}
 }
 
