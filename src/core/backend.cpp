@@ -19,6 +19,7 @@ namespace
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
   const double UPDATE_TIMEOUT_SECS = 30.0;
+  const double CLEAN_SHUTDOWN_TIMEOUT_SECS = 60.0;
 }  // namespace
 
 namespace core
@@ -163,6 +164,12 @@ namespace core
     }
 
     if (!encoding::read_uint64(v, index, this->session_count)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->envelope_up)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->envelope_down)) {
       return false;
     }
     if (!encoding::read_uint64(v, index, this->outbound_ping_tx)) {
@@ -436,14 +443,15 @@ namespace core
     bool success = true;
 
     while (should_loop) {
+      LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
       switch (update(recorder, false, should_loop)) {
         case UpdateResult::FailureMaxAttemptsReached: {
           LOG(ERROR, "could not update relay, max attempts reached, aborting program");
-          should_loop = false;
+          success = should_loop = false;
         } break;
         case UpdateResult::FailureTimeoutReached: {
           LOG(ERROR, "could not update relay for over 30 seconds, aborting program");
-          should_loop = false;
+          success = should_loop = false;
         } break;
         default: {
           sessions.purge(this->router_info.current_time());
@@ -453,11 +461,17 @@ namespace core
       }
     }
 
+    LOG(DEBUG, "exiting update loop");
+
     Clock backend_timeout;
     if (should_clean_shutdown) {
+      LOG(DEBUG, "starting clean shutdown");
       double time_since_last_update = backend_timeout.elapsed<Second>();
       // should_loop will be false here
-      while (time_since_last_update < 60.0 && update(recorder, true, should_loop) != UpdateResult::Success) {
+      while (update(recorder, true, should_loop) != UpdateResult::Success &&
+             time_since_last_update < CLEAN_SHUTDOWN_TIMEOUT_SECS) {
+        time_since_last_update = backend_timeout.elapsed<Second>();
+        LOG(DEBUG, "time since last update = ", time_since_last_update);
         std::this_thread::sleep_for(1s);
       }
 
@@ -485,6 +499,8 @@ namespace core
                                   4 +                             // number of relay ping stats
                                   stats.num_relays * 20 +         // relay ping stats
                                   8 +                             // session count
+                                  8 +                             // envelope up
+                                  8 +                             // envelope down
                                   8 +                             // outbound ping tx
                                   8 +                             // route request rx
                                   8 +                             // route request tx
@@ -508,8 +524,6 @@ namespace core
                                   8 +                             // near ping rx
                                   8 +                             // near ping tx
                                   8 +                             // unknown Rx
-                                  8 +                             // envelope up
-                                  8 +                             // envelope down
                                   1 +                             // shut down flag
                                   8 +                             // cpu usage
                                   8 +                             // memory usage
@@ -531,6 +545,8 @@ namespace core
       }
 
       encoding::write_uint64(req, index, this->session_map.size());
+      encoding::write_uint64(req, index, this->session_map.envelope_up_total());
+      encoding::write_uint64(req, index, this->session_map.envelope_down_total());
 
       util::ThroughputRecorder traffic_stats(std::move(recorder));
 
@@ -570,10 +586,6 @@ namespace core
 
       encoding::write_uint64(req, index, traffic_stats.unknown_rx.num_bytes.load());
 
-      encoding::write_uint64(req, index, this->session_map.envelope_up_total());
-
-      encoding::write_uint64(req, index, this->session_map.envelope_down_total());
-
       encoding::write_uint8(req, index, shutdown);
 
       auto sys_stats = os::GetUsage();
@@ -581,13 +593,16 @@ namespace core
       encoding::write_double(req, index, sys_stats.Mem);
     }
 
+    LOG(DEBUG, "sending request");
     util::Clock timeout;
     double elapsed_seconds = timeout.elapsed<Second>();
     size_t num_retries = 0;
-    while (!this->http_client.send_request(this->hostname, UPDATE_ENDPOINT, req, res) && should_retry &&
+    bool request_success = false;
+    while (!(request_success = this->http_client.send_request(this->hostname, UPDATE_ENDPOINT, req, res)) && should_retry &&
            num_retries < MAX_UPDATE_ATTEMPTS && elapsed_seconds < UPDATE_TIMEOUT_SECS) {
       num_retries++;
       elapsed_seconds = timeout.elapsed<Second>();
+      LOG(DEBUG, "elapsed seconds = ", elapsed_seconds, ", num retries = ", num_retries);
       std::this_thread::sleep_for(1s);
     }
 
@@ -599,10 +614,16 @@ namespace core
       return UpdateResult::FailureTimeoutReached;
     }
 
+    if (!request_success) {
+      return UpdateResult::FailureOther;
+    }
+
     // early return if shutting down since the response won't be valid
     if (shutdown) {
       return UpdateResult::Success;
     }
+
+    LOG(DEBUG, "parsing response");
 
     // parse response
     {

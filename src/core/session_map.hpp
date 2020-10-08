@@ -15,7 +15,7 @@ namespace core
   class SessionMap
   {
    public:
-    SessionMap() = default;
+    SessionMap();
 
     /* Emplace a new entry into the map */
     void set(uint64_t key, SessionPtr val);
@@ -46,10 +46,12 @@ namespace core
     std::atomic<size_t> envelope_bandwidth_kbps_down;
   };
 
+  INLINE SessionMap::SessionMap(): envelope_bandwidth_kbps_up(0), envelope_bandwidth_kbps_down(0) {}
+
   inline void SessionMap::set(uint64_t key, SessionPtr val)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
-    this->internal_map.emplace(key, val);
+    this->internal_map[key] = val;
     this->envelope_bandwidth_kbps_up += val->kbps_up;
     this->envelope_bandwidth_kbps_down += val->kbps_down;
   }
@@ -57,7 +59,8 @@ namespace core
   inline auto SessionMap::get(uint64_t key) -> SessionPtr
   {
     std::lock_guard<std::mutex> lk(this->mutex);
-    return this->internal_map[key];
+    // don't create an entry if it doesn't exist
+    return this->internal_map.find(key) != this->internal_map.end() ? this->internal_map[key] : nullptr;
   }
 
   inline auto SessionMap::erase(uint64_t key) -> bool

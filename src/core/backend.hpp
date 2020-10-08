@@ -65,6 +65,8 @@ namespace core
     GenericKey public_key;
     RelayStats ping_stats;
     uint64_t session_count;
+    uint64_t envelope_up;
+    uint64_t envelope_down;
     uint64_t outbound_ping_tx;
     uint64_t route_request_rx;
     uint64_t route_request_tx;
