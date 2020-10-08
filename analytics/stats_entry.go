@@ -1,8 +1,6 @@
 package analytics
 
 import (
-	"unsafe"
-
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -172,7 +170,7 @@ type RelayStatsEntry struct {
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*int(unsafe.Sizeof(RelayStatsEntry{}))
+	length := 1 + 8 + len(entries)*int(8+4+4+4+4+4+4+4+4+4+4+4+4+4+4)
 	data := make([]byte, length)
 
 	index := 0

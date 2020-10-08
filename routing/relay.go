@@ -152,9 +152,9 @@ func (r *Relay) EncodedPublicKey() string {
 
 // TrafficStats describes the measured relay traffic statistics reported from the relay
 type TrafficStats struct {
-	SessionCount uint64
-	EnvelopeUp   uint64
-	EnvelopeDown uint64
+	SessionCount  uint64
+	BytesSent     uint64
+	BytesReceived uint64
 
 	OutboundPingTx uint64
 
@@ -191,6 +191,9 @@ type TrafficStats struct {
 	NearPingTx uint64
 
 	UnknownRx uint64
+
+	EnvelopeUp   uint64
+	EnvelopeDown uint64
 }
 
 func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
@@ -268,8 +271,8 @@ func (rts *TrafficStats) AllTx() uint64 {
 
 func (rts *TrafficStats) WriteTo(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.SessionCount)
-	encoding.WriteUint64(data, index, rts.EnvelopeUp)
-	encoding.WriteUint64(data, index, rts.EnvelopeDown)
+	encoding.WriteUint64(data, index, rts.BytesSent)
+	encoding.WriteUint64(data, index, rts.BytesReceived)
 	encoding.WriteUint64(data, index, rts.OutboundPingTx)
 	encoding.WriteUint64(data, index, rts.RouteRequestRx)
 	encoding.WriteUint64(data, index, rts.RouteRequestTx)
@@ -293,6 +296,8 @@ func (rts *TrafficStats) WriteTo(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.NearPingRx)
 	encoding.WriteUint64(data, index, rts.NearPingTx)
 	encoding.WriteUint64(data, index, rts.UnknownRx)
+	encoding.WriteUint64(data, index, rts.EnvelopeUp)
+	encoding.WriteUint64(data, index, rts.EnvelopeDown)
 }
 
 func (rts *TrafficStats) ReadFrom(data []byte, index *int) error {
@@ -300,12 +305,12 @@ func (rts *TrafficStats) ReadFrom(data []byte, index *int) error {
 		return errors.New("unable to read relay stats session count")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {
-		return errors.New("invalid data, could not read envelope up")
+	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
+		return errors.New("invalid data, could not read bytes sent")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.EnvelopeDown) {
-		return errors.New("invalid data, could not read envelope down")
+	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
+		return errors.New("invalid data, could not read bytes received")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
@@ -388,6 +393,14 @@ func (rts *TrafficStats) ReadFrom(data []byte, index *int) error {
 
 	if !encoding.ReadUint64(data, index, &rts.UnknownRx) {
 		return errors.New("invalid data, could not read unknown rx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {
+		return errors.New("invalid data, could not read envelope up")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeDown) {
+		return errors.New("invalid data, could not read envelope down")
 	}
 
 	return nil

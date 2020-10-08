@@ -17,7 +17,7 @@ func newRelay() *routing.RelayData {
 	relay := new(routing.RelayData)
 	relay.ID = rand.Uint64()
 
-	bufflen := 26 * 8
+	bufflen := 28 * 8
 	buff := make([]byte, bufflen)
 	for i := 0; i < bufflen; i++ {
 		buff[i] = byte(rand.Int())
@@ -43,7 +43,7 @@ func TestRelayMapTimeoutLoop(t *testing.T) {
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12345")
 	relay.Addr = *addr
 	relay.LastUpdateTime = time.Unix(time.Now().Unix()-2, 0)
-	rmap.UpdateRelayData(relay.Addr.String(), &relay)
+	rmap.AddRelayDataEntry(relay.Addr.String(), &relay)
 
 	ctx := context.Background()
 
@@ -70,7 +70,7 @@ func TestRelayMapGetAllRelayData(t *testing.T) {
 		relays[i] = relay
 		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", 10000+i))
 		relay.Addr = *addr
-		rmap.UpdateRelayData(relay.Addr.String(), relay)
+		rmap.AddRelayDataEntry(relay.Addr.String(), relay)
 	}
 
 	for _, relay := range rmap.GetAllRelayData() {
@@ -92,7 +92,7 @@ func TestRelayMapRemoveRelay(t *testing.T) {
 	for i := 0; i < len(relays); i++ {
 		relay := newRelay()
 		relays[i] = relay
-		rmap.UpdateRelayData(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
+		rmap.AddRelayDataEntry(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
 	}
 
 	rmap.RemoveRelayData("127.0.0.1:10000")
@@ -106,7 +106,7 @@ func TestRelayMapMarshalBinary(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			relay := newRelay()
 			relay.Version = "invalid version"
-			rmap.UpdateRelayData(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
+			rmap.AddRelayDataEntry(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
 		}
 
 		bin, err := rmap.MarshalBinary()
@@ -120,7 +120,7 @@ func TestRelayMapMarshalBinary(t *testing.T) {
 		for i := 0; i < len(relays); i++ {
 			relay := newRelay()
 			relays[i] = relay
-			rmap.UpdateRelayData(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
+			rmap.AddRelayDataEntry(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
 		}
 
 		bin, err := rmap.MarshalBinary()

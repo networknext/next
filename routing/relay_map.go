@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	VersionNumberRelayMap = 1
+	VersionNumberRelayMap = 2
 
 	RelayDataBytes = 8 + // id
 		8 + // sessions
