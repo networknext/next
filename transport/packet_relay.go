@@ -244,24 +244,13 @@ func (r *RelayUpdateRequest) unmarshalBinaryV0(buff []byte, index int) error {
 		}
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionCount) {
-		return errors.New("invalid packet, could not read session count")
+	if err := r.TrafficStats.ReadFrom(buff, &index, 0); err != nil {
+		return err
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesSent) {
-		return errors.New("invalid packet, could not read bytes sent")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesReceived) {
-		return errors.New("invalid packet, could not read bytes received")
-	}
-
-	var shuttingDown uint8
-	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
+	if !encoding.ReadBool(buff, &index, &r.ShuttingDown) {
 		return errors.New("invalid packet, could not read shutdown flag")
 	}
-
-	r.ShuttingDown = shuttingDown != 0
 
 	if !encoding.ReadFloat64(buff, &index, &r.CPUUsage) {
 		return errors.New("invalid packet, could not read cpu usage")
@@ -306,102 +295,17 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 		}
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionCount) {
-		return errors.New("invalid packet, could not read session count")
+	if err := r.TrafficStats.ReadFrom(buff, &index, 1); err != nil {
+		return err
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.OutboundPingTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
-	}
+	r.TrafficStats.BytesReceived = r.TrafficStats.AllRx()
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestRx) {
-		return errors.New("invalid packet, could not read route request rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestTx) {
-		return errors.New("invalid packet, could not read route request tx")
-	}
+	r.TrafficStats.BytesSent = r.TrafficStats.AllTx()
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseRx) {
-		return errors.New("invalid packet, could not read route response rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseTx) {
-		return errors.New("invalid packet, could not read route response tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerRx) {
-		return errors.New("invalid packet, could not read client to server rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerTx) {
-		return errors.New("invalid packet, could not read client to server tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientRx) {
-		return errors.New("invalid packet, could not read server to client rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientTx) {
-		return errors.New("invalid packet, could not read server to client tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingRx) {
-		return errors.New("invalid packet, could not read inbound ping rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingTx) {
-		return errors.New("invalid packet, could not read inbound ping tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.PongRx) {
-		return errors.New("invalid packet, could not read pong rx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingRx) {
-		return errors.New("invalid packet, could not read session ping rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingTx) {
-		return errors.New("invalid packet, could not read session ping tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongRx) {
-		return errors.New("invalid packet, could not read session pong rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongTx) {
-		return errors.New("invalid packet, could not read session pong tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestRx) {
-		return errors.New("invalid packet, could not read continue request rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestTx) {
-		return errors.New("invalid packet, could not read continue request tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseRx) {
-		return errors.New("invalid packet, could not read continue response rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseTx) {
-		return errors.New("invalid packet, could not read continue response tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingRx) {
-		return errors.New("invalid packet, could not read near ping rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingTx) {
-		return errors.New("invalid packet, could not read near ping tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.UnknownRx) {
-		return errors.New("invalid packet, could not read unknown rx")
-	}
-
-	r.TrafficStats.BytesReceived = r.TrafficStats.OtherStatsRx() + r.TrafficStats.GameStatsRx() + r.TrafficStats.UnknownRx
-
-	r.TrafficStats.BytesSent = r.TrafficStats.OtherStatsTx() + r.TrafficStats.GameStatsTx()
-
-	var shuttingDown uint8
-	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
+	if !encoding.ReadBool(buff, &index, &r.ShuttingDown) {
 		return errors.New("invalid packet, could not read shutdown flag")
 	}
-
-	r.ShuttingDown = shuttingDown != 0
 
 	if !encoding.ReadFloat64(buff, &index, &r.CPUUsage) {
 		return errors.New("invalid packet, could not read cpu usage")
@@ -446,110 +350,17 @@ func (r *RelayUpdateRequest) unmarshalBinaryV2(buff []byte, index int) error {
 		}
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionCount) {
-		return errors.New("invalid packet, could not read session count")
+	if err := r.TrafficStats.ReadFrom(buff, &index, 2); err != nil {
+		return err
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.OutboundPingTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
-	}
+	r.TrafficStats.BytesReceived = r.TrafficStats.AllRx()
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestRx) {
-		return errors.New("invalid packet, could not read route request rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestTx) {
-		return errors.New("invalid packet, could not read route request tx")
-	}
+	r.TrafficStats.BytesSent = r.TrafficStats.AllTx()
 
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseRx) {
-		return errors.New("invalid packet, could not read route response rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseTx) {
-		return errors.New("invalid packet, could not read route response tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerRx) {
-		return errors.New("invalid packet, could not read client to server rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerTx) {
-		return errors.New("invalid packet, could not read client to server tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientRx) {
-		return errors.New("invalid packet, could not read server to client rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientTx) {
-		return errors.New("invalid packet, could not read server to client tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingRx) {
-		return errors.New("invalid packet, could not read inbound ping rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingTx) {
-		return errors.New("invalid packet, could not read inbound ping tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.PongRx) {
-		return errors.New("invalid packet, could not read pong rx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingRx) {
-		return errors.New("invalid packet, could not read session ping rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingTx) {
-		return errors.New("invalid packet, could not read session ping tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongRx) {
-		return errors.New("invalid packet, could not read session pong rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongTx) {
-		return errors.New("invalid packet, could not read session pong tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestRx) {
-		return errors.New("invalid packet, could not read continue request rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestTx) {
-		return errors.New("invalid packet, could not read continue request tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseRx) {
-		return errors.New("invalid packet, could not read continue response rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseTx) {
-		return errors.New("invalid packet, could not read continue response tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingRx) {
-		return errors.New("invalid packet, could not read near ping rx")
-	}
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingTx) {
-		return errors.New("invalid packet, could not read near ping tx")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.UnknownRx) {
-		return errors.New("invalid packet, could not read unknown rx")
-	}
-
-	r.TrafficStats.BytesReceived = r.TrafficStats.OtherStatsRx() + r.TrafficStats.GameStatsRx() + r.TrafficStats.UnknownRx
-
-	r.TrafficStats.BytesSent = r.TrafficStats.OtherStatsTx() + r.TrafficStats.GameStatsTx()
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.EnvelopeUp) {
-		return errors.New("invalid packet, could not read envelope up")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.EnvelopeDown) {
-		return errors.New("invalid packet, could not read envelope down")
-	}
-
-	var shuttingDown uint8
-	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
+	if !encoding.ReadBool(buff, &index, &r.ShuttingDown) {
 		return errors.New("invalid packet, could not read shutdown flag")
 	}
-
-	r.ShuttingDown = shuttingDown != 0
 
 	if !encoding.ReadFloat64(buff, &index, &r.CPUUsage) {
 		return errors.New("invalid packet, could not read cpu usage")
@@ -569,6 +380,8 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 		return r.marshalBinaryV0()
 	case 1:
 		return r.marshalBinaryV1()
+	case 2:
+		return r.marshalBinaryV2()
 	default:
 		return nil, fmt.Errorf("invalid update request version: %d", r.Version)
 	}
@@ -592,16 +405,8 @@ func (r RelayUpdateRequest) marshalBinaryV0() ([]byte, error) {
 		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
 	}
 
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
-	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
-	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
-	var shutdownFlag uint8
-	if r.ShuttingDown {
-		shutdownFlag = 1
-	} else {
-		shutdownFlag = 0
-	}
-	encoding.WriteUint8(data, &index, shutdownFlag)
+	r.TrafficStats.WriteTo(data, &index, 0)
+	encoding.WriteBool(data, &index, r.ShuttingDown)
 	encoding.WriteFloat64(data, &index, r.CPUUsage)
 	encoding.WriteFloat64(data, &index, r.MemUsage)
 	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
@@ -627,39 +432,8 @@ func (r RelayUpdateRequest) marshalBinaryV1() ([]byte, error) {
 		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
 	}
 
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
-	encoding.WriteUint64(data, &index, r.TrafficStats.OutboundPingTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.RouteRequestRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.RouteRequestTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.RouteResponseRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.RouteResponseTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ClientToServerRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ClientToServerTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ServerToClientRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ServerToClientTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.InboundPingRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.InboundPingTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.PongRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionPingRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionPingTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionPongRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionPongTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ContinueRequestRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ContinueRequestTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ContinueResponseRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.ContinueResponseTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.NearPingRx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.NearPingTx)
-	encoding.WriteUint64(data, &index, r.TrafficStats.UnknownRx)
-
-	var shutdownFlag uint8
-	if r.ShuttingDown {
-		shutdownFlag = 1
-	} else {
-		shutdownFlag = 0
-	}
-
-	encoding.WriteUint8(data, &index, shutdownFlag)
+	r.TrafficStats.WriteTo(data, &index, 1)
+	encoding.WriteBool(data, &index, r.ShuttingDown)
 	encoding.WriteFloat64(data, &index, r.CPUUsage)
 	encoding.WriteFloat64(data, &index, r.MemUsage)
 	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
@@ -667,6 +441,52 @@ func (r RelayUpdateRequest) marshalBinaryV1() ([]byte, error) {
 	return data[:index], nil
 }
 
+func (r *RelayUpdateRequest) marshalBinaryV2() ([]byte, error) {
+	data := make([]byte, r.sizeV2())
+
+	index := 0
+	encoding.WriteUint32(data, &index, r.Version)
+	encoding.WriteString(data, &index, r.Address.String(), math.MaxInt32)
+	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
+	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
+
+	for i := 0; i < len(r.PingStats); i++ {
+		stats := &r.PingStats[i]
+
+		encoding.WriteUint64(data, &index, stats.RelayID)
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.RTT))
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.Jitter))
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
+	}
+
+	r.TrafficStats.WriteTo(data, &index, 2)
+	encoding.WriteBool(data, &index, r.ShuttingDown)
+	encoding.WriteFloat64(data, &index, r.CPUUsage)
+	encoding.WriteFloat64(data, &index, r.MemUsage)
+
+	return data[:index], nil
+}
+
+func (r *RelayUpdateRequest) sizeV0() uint {
+	return uint(4 + // version
+		4 + // address length
+		len(r.Address.String()) + // address
+		crypto.KeySize + // public key
+		4 + // number of ping stats
+		20*len(r.PingStats) + // ping stats list
+		8 + // session count
+		8 + // bytes sent
+		8 + // bytes received
+		1 + // shutdown flag
+		8 + // cpu usage
+		8 + // memory usage
+		4 + // length of relay version
+		len(r.RelayVersion)) // relay version string
+}
+
+// Changes from v0
+// Removed bytes sent/received
+// Added individual stats
 func (r *RelayUpdateRequest) sizeV1() uint {
 	return uint(4 + // version
 		4 + // address length
@@ -705,7 +525,10 @@ func (r *RelayUpdateRequest) sizeV1() uint {
 		len(r.RelayVersion)) // relay version string
 }
 
-func (r *RelayUpdateRequest) sizeV0() uint {
+// Changes from v1:
+// Added envelope up/down
+// Removed version string
+func (r *RelayUpdateRequest) sizeV2() uint {
 	return uint(4 + // version
 		4 + // address length
 		len(r.Address.String()) + // address
@@ -713,13 +536,34 @@ func (r *RelayUpdateRequest) sizeV0() uint {
 		4 + // number of ping stats
 		20*len(r.PingStats) + // ping stats list
 		8 + // session count
-		8 + // bytes sent
-		8 + // bytes received
+		8 + // envelope up
+		8 + // envelope down
+		8 + // outbound ping tx
+		8 + // route request rx
+		8 + // route request tx
+		8 + // route response rx
+		8 + // route response tx
+		8 + // client to server rx
+		8 + // client to server tx
+		8 + // server to client rx
+		8 + // server to client tx
+		8 + // inbound ping rx
+		8 + // inbound ping tx
+		8 + // pong rx
+		8 + // session ping rx
+		8 + // session ping tx
+		8 + // session pong rx
+		8 + // session pong tx
+		8 + // continue request rx
+		8 + // continue request tx
+		8 + // continue response rx
+		8 + // continue response tx
+		8 + // near ping rx
+		8 + // near ping tx
+		8 + // unknown Rx
 		1 + // shutdown flag
 		8 + // cpu usage
-		8 + // memory usage
-		4 + // length of relay version
-		len(r.RelayVersion)) // relay version string
+		8) // memory usage
 }
 
 type RelayUpdateResponse struct {

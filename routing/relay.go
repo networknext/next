@@ -152,9 +152,9 @@ func (r *Relay) EncodedPublicKey() string {
 
 // TrafficStats describes the measured relay traffic statistics reported from the relay
 type TrafficStats struct {
-	SessionCount  uint64
-	BytesSent     uint64
-	BytesReceived uint64
+	SessionCount uint64
+	EnvelopeUp   uint64
+	EnvelopeDown uint64
 
 	OutboundPingTx uint64
 
@@ -192,16 +192,16 @@ type TrafficStats struct {
 
 	UnknownRx uint64
 
-	EnvelopeUp   uint64
-	EnvelopeDown uint64
+	BytesSent     uint64
+	BytesReceived uint64
 }
 
 func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
 	return TrafficStats{
 		SessionCount: rts.SessionCount + other.SessionCount,
 
-		BytesSent:     rts.BytesSent + other.BytesSent,
-		BytesReceived: rts.BytesReceived + other.BytesReceived,
+		EnvelopeUp:   rts.EnvelopeUp + other.EnvelopeUp,
+		EnvelopeDown: rts.EnvelopeDown + other.EnvelopeDown,
 
 		OutboundPingTx: rts.OutboundPingTx + other.OutboundPingTx,
 
@@ -239,8 +239,8 @@ func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
 
 		UnknownRx: rts.UnknownRx + other.UnknownRx,
 
-		EnvelopeUp:   rts.EnvelopeUp + other.EnvelopeUp,
-		EnvelopeDown: rts.EnvelopeDown + other.EnvelopeDown,
+		BytesSent:     rts.BytesSent + other.BytesSent,
+		BytesReceived: rts.BytesReceived + other.BytesReceived,
 	}
 }
 
@@ -272,7 +272,28 @@ func (rts *TrafficStats) AllTx() uint64 {
 	return rts.OtherStatsTx() + rts.GameStatsTx()
 }
 
-func (rts *TrafficStats) WriteTo(data []byte, index *int) {
+func (rts *TrafficStats) WriteTo(data []byte, index *int, version uint8) error {
+	switch version {
+	case 0:
+		rts.writeToV0(data, index)
+	case 1:
+		rts.writeToV1(data, index)
+	case 2:
+		rts.writeToV2(data, index)
+	default:
+		return fmt.Errorf("invalid traffic stats version: %d", version)
+	}
+
+	return nil
+}
+
+func (rts *TrafficStats) writeToV0(data []byte, index *int) {
+	encoding.WriteUint64(data, index, rts.SessionCount)
+	encoding.WriteUint64(data, index, rts.BytesSent)
+	encoding.WriteUint64(data, index, rts.BytesReceived)
+}
+
+func (rts *TrafficStats) writeToV1(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.SessionCount)
 	encoding.WriteUint64(data, index, rts.BytesSent)
 	encoding.WriteUint64(data, index, rts.BytesReceived)
@@ -299,8 +320,35 @@ func (rts *TrafficStats) WriteTo(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.NearPingRx)
 	encoding.WriteUint64(data, index, rts.NearPingTx)
 	encoding.WriteUint64(data, index, rts.UnknownRx)
+}
+
+func (rts *TrafficStats) writeToV2(data []byte, index *int) {
+	encoding.WriteUint64(data, index, rts.SessionCount)
 	encoding.WriteUint64(data, index, rts.EnvelopeUp)
 	encoding.WriteUint64(data, index, rts.EnvelopeDown)
+	encoding.WriteUint64(data, index, rts.OutboundPingTx)
+	encoding.WriteUint64(data, index, rts.RouteRequestRx)
+	encoding.WriteUint64(data, index, rts.RouteRequestTx)
+	encoding.WriteUint64(data, index, rts.RouteResponseRx)
+	encoding.WriteUint64(data, index, rts.RouteResponseTx)
+	encoding.WriteUint64(data, index, rts.ClientToServerRx)
+	encoding.WriteUint64(data, index, rts.ClientToServerTx)
+	encoding.WriteUint64(data, index, rts.ServerToClientRx)
+	encoding.WriteUint64(data, index, rts.ServerToClientTx)
+	encoding.WriteUint64(data, index, rts.InboundPingRx)
+	encoding.WriteUint64(data, index, rts.InboundPingTx)
+	encoding.WriteUint64(data, index, rts.PongRx)
+	encoding.WriteUint64(data, index, rts.SessionPingRx)
+	encoding.WriteUint64(data, index, rts.SessionPingTx)
+	encoding.WriteUint64(data, index, rts.SessionPongRx)
+	encoding.WriteUint64(data, index, rts.SessionPongTx)
+	encoding.WriteUint64(data, index, rts.ContinueRequestRx)
+	encoding.WriteUint64(data, index, rts.ContinueRequestTx)
+	encoding.WriteUint64(data, index, rts.ContinueResponseRx)
+	encoding.WriteUint64(data, index, rts.ContinueResponseTx)
+	encoding.WriteUint64(data, index, rts.NearPingRx)
+	encoding.WriteUint64(data, index, rts.NearPingTx)
+	encoding.WriteUint64(data, index, rts.UnknownRx)
 }
 
 func (rts *TrafficStats) ReadFrom(data []byte, index *int, version uint8) error {
@@ -334,14 +382,6 @@ func (rts *TrafficStats) readFromV0(data []byte, index *int) error {
 func (rts *TrafficStats) readFromV1(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
 		return errors.New("unable to read relay stats session count")
-	}
-
-	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
-		return errors.New("invalid data, could not read bytes sent")
-	}
-
-	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
-		return errors.New("invalid data, could not read bytes received")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
@@ -434,12 +474,12 @@ func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 		return errors.New("unable to read relay stats session count")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
-		return errors.New("invalid data, could not read bytes sent")
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {
+		return errors.New("invalid data, could not read envelope up")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
-		return errors.New("invalid data, could not read bytes received")
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeDown) {
+		return errors.New("invalid data, could not read envelope down")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
@@ -522,14 +562,6 @@ func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 
 	if !encoding.ReadUint64(data, index, &rts.UnknownRx) {
 		return errors.New("invalid data, could not read unknown rx")
-	}
-
-	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {
-		return errors.New("invalid data, could not read envelope up")
-	}
-
-	if !encoding.ReadUint64(data, index, &rts.EnvelopeDown) {
-		return errors.New("invalid data, could not read envelope down")
 	}
 
 	return nil

@@ -17,13 +17,13 @@ func newRelay() *routing.RelayData {
 	relay := new(routing.RelayData)
 	relay.ID = rand.Uint64()
 
-	bufflen := 28 * 8
+	bufflen := 26 * 8
 	buff := make([]byte, bufflen)
 	for i := 0; i < bufflen; i++ {
 		buff[i] = byte(rand.Int())
 	}
 	index := 0
-	relay.TrafficStats.ReadFrom(buff, &index)
+	relay.TrafficStats.ReadFrom(buff, &index, 2)
 	relay.Version = fmt.Sprintf("%d.%d.%d", byte(rand.Uint32()), byte(rand.Uint32()), byte(rand.Uint32()))
 	relay.LastUpdateTime = time.Unix(rand.Int63(), 0)
 	relay.CPUUsage = rand.Float32()
