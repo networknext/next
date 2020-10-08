@@ -319,11 +319,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		// Update the relay data
-		fmt.Println("before")
 		params.RelayMap.Lock()
 		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 		params.RelayMap.Unlock()
-		fmt.Println("after")
 
 		level.Debug(relayslogger).Log(
 			"id", relayDataReadOnly.ID,
