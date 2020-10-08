@@ -131,7 +131,11 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 	entry.MemUsage = memUsage
 
 	// send these traffic stats into the channel
-	entry.TrafficChan <- newTraffic
+	// when local odds are most of us won't have pubsub & analytics
+	// running so the channel won't be emptied, thus discard the extra traffic struct
+	if len(entry.TrafficChan) != cap(entry.TrafficChan) {
+		entry.TrafficChan <- newTraffic
+	}
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
