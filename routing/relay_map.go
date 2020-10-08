@@ -73,7 +73,7 @@ type RelayData struct {
 
 func NewRelayData() *RelayData {
 	return &RelayData{
-		TrafficChan: make(chan TrafficStats, 10),
+		TrafficChan: make(chan TrafficStats, 10), // 10 because a relay will update at most 10 times within the stats publish interval
 	}
 }
 
@@ -130,12 +130,7 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 	entry.CPUUsage = cpuUsage
 	entry.MemUsage = memUsage
 
-	// send these traffic stats into the channel
-	// when local odds are most of us won't have pubsub & analytics
-	// running so the channel won't be emptied, thus discard the extra traffic struct
-	if len(entry.TrafficChan) != cap(entry.TrafficChan) {
-		entry.TrafficChan <- newTraffic
-	}
+	entry.TrafficChan <- newTraffic
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {

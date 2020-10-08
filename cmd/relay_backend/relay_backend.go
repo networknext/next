@@ -515,9 +515,15 @@ func main() {
 					// convert peak to mbps
 
 					var traffic routing.TrafficStats
-					for stats := range relay.TrafficChan {
-						traffic = traffic.Add(&stats)
+					for more_stats := true; more_stats; {
+						select {
+						case stat := <-relay.TrafficChan:
+							traffic = traffic.Add(&stat)
+						default:
+							more_stats = false
+						}
 					}
+
 					elapsed := time.Since(relay.LastStatsPublishTime)
 					relay.LastStatsPublishTime = time.Now()
 
