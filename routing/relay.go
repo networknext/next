@@ -200,8 +200,8 @@ func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
 	return TrafficStats{
 		SessionCount: rts.SessionCount + other.SessionCount,
 
-		EnvelopeUp:   rts.EnvelopeUp + other.EnvelopeUp,
-		EnvelopeDown: rts.EnvelopeDown + other.EnvelopeDown,
+		BytesSent:     rts.BytesSent + other.BytesSent,
+		BytesReceived: rts.BytesReceived + other.BytesReceived,
 
 		OutboundPingTx: rts.OutboundPingTx + other.OutboundPingTx,
 
@@ -238,6 +238,9 @@ func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
 		NearPingTx: rts.NearPingTx + other.NearPingTx,
 
 		UnknownRx: rts.UnknownRx + other.UnknownRx,
+
+		EnvelopeUp:   rts.EnvelopeUp + other.EnvelopeUp,
+		EnvelopeDown: rts.EnvelopeDown + other.EnvelopeDown,
 	}
 }
 
@@ -300,7 +303,133 @@ func (rts *TrafficStats) WriteTo(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.EnvelopeDown)
 }
 
-func (rts *TrafficStats) ReadFrom(data []byte, index *int) error {
+func (rts *TrafficStats) ReadFrom(data []byte, index *int, version uint8) error {
+	switch version {
+	case 0:
+		return rts.readFromV0(data, index)
+	case 1:
+		return rts.readFromV1(data, index)
+	case 2:
+		return rts.readFromV2(data, index)
+	default:
+		return fmt.Errorf("invalid traffic stats version: %d", version)
+	}
+}
+
+func (rts *TrafficStats) readFromV0(data []byte, index *int) error {
+	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
+		return errors.New("unable to read relay stats session count")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
+		return errors.New("invalid data, could not read bytes sent")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
+		return errors.New("invalid data, could not read bytes received")
+	}
+
+	return nil
+}
+func (rts *TrafficStats) readFromV1(data []byte, index *int) error {
+	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
+		return errors.New("unable to read relay stats session count")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
+		return errors.New("invalid data, could not read bytes sent")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
+		return errors.New("invalid data, could not read bytes received")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
+		return errors.New("invalid data, could not read outbound ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.RouteRequestRx) {
+		return errors.New("invalid data, could not read route request rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.RouteRequestTx) {
+		return errors.New("invalid data, could not read route request tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.RouteResponseRx) {
+		return errors.New("invalid data, could not read route response rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.RouteResponseTx) {
+		return errors.New("invalid data, could not read route response tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ClientToServerRx) {
+		return errors.New("invalid data, could not read client to server rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ClientToServerTx) {
+		return errors.New("invalid data, could not read client to server tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ServerToClientRx) {
+		return errors.New("invalid data, could not read server to client rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ServerToClientTx) {
+		return errors.New("invalid data, could not read server to client tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.InboundPingRx) {
+		return errors.New("invalid data, could not read inbound ping rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.InboundPingTx) {
+		return errors.New("invalid data, could not read inbound ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.PongRx) {
+		return errors.New("invalid data, could not read pong rx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.SessionPingRx) {
+		return errors.New("invalid data, could not read session ping rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.SessionPingTx) {
+		return errors.New("invalid data, could not read session ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.SessionPongRx) {
+		return errors.New("invalid data, could not read session pong rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.SessionPongTx) {
+		return errors.New("invalid data, could not read session pong tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ContinueRequestRx) {
+		return errors.New("invalid data, could not read continue request rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ContinueRequestTx) {
+		return errors.New("invalid data, could not read continue request tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ContinueResponseRx) {
+		return errors.New("invalid data, could not read continue response rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ContinueResponseTx) {
+		return errors.New("invalid data, could not read continue response tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.NearPingRx) {
+		return errors.New("invalid data, could not read near ping rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.NearPingTx) {
+		return errors.New("invalid data, could not read near ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.UnknownRx) {
+		return errors.New("invalid data, could not read unknown rx")
+	}
+
+	return nil
+}
+
+func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
 		return errors.New("unable to read relay stats session count")
 	}

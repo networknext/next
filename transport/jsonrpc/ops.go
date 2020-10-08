@@ -85,122 +85,14 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 
 		var relay RelayData
 
-		switch version {
-		case 0:
-			if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
-				return errors.New("unable to read relay stats session count")
-			}
+		if err := relay.TrafficStats.ReadFrom(data, &index, version); err != nil {
+			return err
+		}
 
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesReceived) {
-				return errors.New("unable to read relay stats tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesSent) {
-				return errors.New("unable to read relay stats rx")
-			}
-
+		if version == 0 {
 			relay.TrafficStats.SessionCount = relay.SessionCount
-		case 1:
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionCount) {
-				return errors.New("unable to read relay stats session count")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesSent) {
-				return errors.New("invalid data, could not read bytes sent")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesReceived) {
-				return errors.New("invalid data, could not read bytes received")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.OutboundPingTx) {
-				return errors.New("invalid data, could not read outbound ping tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteRequestRx) {
-				return errors.New("invalid data, could not read route request rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteRequestTx) {
-				return errors.New("invalid data, could not read route request tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteResponseRx) {
-				return errors.New("invalid data, could not read route response rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteResponseTx) {
-				return errors.New("invalid data, could not read route response tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ClientToServerRx) {
-				return errors.New("invalid data, could not read client to server rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ClientToServerTx) {
-				return errors.New("invalid data, could not read client to server tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ServerToClientRx) {
-				return errors.New("invalid data, could not read server to client rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ServerToClientTx) {
-				return errors.New("invalid data, could not read server to client tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.InboundPingRx) {
-				return errors.New("invalid data, could not read inbound ping rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.InboundPingTx) {
-				return errors.New("invalid data, could not read inbound ping tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.PongRx) {
-				return errors.New("invalid data, could not read pong rx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPingRx) {
-				return errors.New("invalid data, could not read session ping rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPingTx) {
-				return errors.New("invalid data, could not read session ping tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPongRx) {
-				return errors.New("invalid data, could not read session pong rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPongTx) {
-				return errors.New("invalid data, could not read session pong tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueRequestRx) {
-				return errors.New("invalid data, could not read continue request rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueRequestTx) {
-				return errors.New("invalid data, could not read continue request tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueResponseRx) {
-				return errors.New("invalid data, could not read continue response rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueResponseTx) {
-				return errors.New("invalid data, could not read continue response tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.NearPingRx) {
-				return errors.New("invalid data, could not read near ping rx")
-			}
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.NearPingTx) {
-				return errors.New("invalid data, could not read near ping tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.UnknownRx) {
-				return errors.New("invalid data, could not read unknown rx")
-			}
-			relay.SessionCount = relay.TrafficStats.SessionCount
-		case 2:
-			if err := relay.TrafficStats.ReadFrom(data, &index); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("invalid relay map version: %d", version)
+		} else {
+			relay.TrafficStats.SessionCount = relay.SessionCount
 		}
 
 		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {

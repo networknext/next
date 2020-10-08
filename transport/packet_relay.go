@@ -536,6 +536,14 @@ func (r *RelayUpdateRequest) unmarshalBinaryV2(buff []byte, index int) error {
 
 	r.TrafficStats.BytesSent = r.TrafficStats.OtherStatsTx() + r.TrafficStats.GameStatsTx()
 
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.EnvelopeUp) {
+		return errors.New("invalid packet, could not read envelope up")
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.EnvelopeDown) {
+		return errors.New("invalid packet, could not read envelope down")
+	}
+
 	var shuttingDown uint8
 	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
 		return errors.New("invalid packet, could not read shutdown flag")
