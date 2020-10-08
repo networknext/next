@@ -3,7 +3,11 @@ package storage
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 )
 
@@ -118,45 +122,78 @@ type Storer interface {
 	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 }
 
-type UnmarshalError struct {
-	err error
-}
+// NewStorage returns a pointer to the storage solution specified for the provide environment. The
+// database targets are currently gcp/Firestore but will move to gcp/PostgreSQL
+//
+//	 prod: production database
+//    dev: development database
+//  local: local PostgreSQL install
+//  local: local SQLite file
+//
+// dev and prod connections to Cloud SQL will be made by proxy and are project-specific:
+// https://cloud.google.com/sql/docs/postgres/connect-compute-engine#gce-connect-proxy
+func NewStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 
-func (e *UnmarshalError) Error() string {
-	return fmt.Sprintf("unmarshal error: %v", e.err)
-}
+	var storage Storer
 
-type DoesNotExistError struct {
-	resourceType string
-	resourceRef  interface{}
-}
+	// for now simply follow current Firestore/InMemory layout
 
-func (e *DoesNotExistError) Error() string {
-	return fmt.Sprintf("%s with reference %v not found", e.resourceType, e.resourceRef)
-}
+	// gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		level.Error(logger).Log("err", "ENV not set")
+		os.Exit(1)
+	} else {
+		fmt.Printf("env is set to %s\n", env)
+	}
 
-type AlreadyExistsError struct {
-	resourceType string
-	resourceRef  interface{}
-}
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if emulatorOK {
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
 
-func (e *AlreadyExistsError) Error() string {
-	return fmt.Sprintf("%s with reference %v already exists", e.resourceType, e.resourceRef)
-}
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpOK || emulatorOK {
+		fmt.Println("if gcpOK || emulatorOK")
 
-type HexStringConversionError struct {
-	hexString string
-}
+		// Firestore
+		{
+			fmt.Printf("initializing firestore\n")
 
-func (e *HexStringConversionError) Error() string {
-	return fmt.Sprintf("error converting hex string %s to uint64", e.hexString)
-}
+			// Create a Firestore Storer
+			fs, err := NewFirestore(ctx, gcpProjectID, logger)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
 
-type SequenceNumbersOutOfSync struct {
-	localSequenceNumber  int64
-	remoteSequenceNumber int64
-}
+			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(fssyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+				os.Exit(1)
+			}
+			// Start a goroutine to sync from Firestore
+			go func() {
 
-func (e *SequenceNumbersOutOfSync) Error() string {
-	return fmt.Sprintf("sequence number out of sync: remote %d != local %d", e.remoteSequenceNumber, e.localSequenceNumber)
+				ticker := time.NewTicker(syncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
+
+			// Set the Firestore Storer to give to handlers
+			fmt.Println("setting storage = fs")
+			storage = fs
+		}
+	} else {
+		storage = &InMemory{
+			LocalMode: true,
+		}
+	}
+
+	fmt.Println("returning from NewStorage()")
+	return storage, nil
 }

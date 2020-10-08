@@ -120,9 +120,9 @@ func main() {
 	if !ok {
 		level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
+	} else {
+		fmt.Printf("env is %s\n", env)
 	}
-
-	fmt.Printf("env is %s\n", env)
 
 	var customerPublicKey []byte
 	{
@@ -156,8 +156,11 @@ func main() {
 		}
 	}
 
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
+	// var db storage.Storer
+	db, err := storage.NewStorage(ctx, logger)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
 	}
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
@@ -166,40 +169,6 @@ func main() {
 		fmt.Printf("using firestore emulator\n")
 		gcpProjectID = "local"
 		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	if gcpOK || emulatorOK {
-
-		// Firestore
-		{
-			fmt.Printf("initializing firestore\n")
-
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		}
 	}
 
 	if env == "local" {
