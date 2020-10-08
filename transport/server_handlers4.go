@@ -657,12 +657,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		PredictedNextRTT:          float32(sessionData.RouteCost),
 	}
 
-	if !postSessionHandler.IsBillingBufferFull() {
-		postSessionHandler.SendBillingEntry(billingEntry)
-		postSessionHandler.metrics.BillingEntriesSent.Add(1)
-	} else {
-		postSessionHandler.metrics.BillingBufferFull.Add(1)
-	}
+	postSessionHandler.SendBillingEntry(billingEntry)
 
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
 	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
@@ -732,12 +727,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		},
 	}
 
-	if !postSessionHandler.IsPortalBufferFull() {
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			postSessionHandler.SendPortalData(portalData)
-			postSessionHandler.metrics.PortalEntriesSent.Add(1)
-		}
-	} else {
-		postSessionHandler.metrics.PortalBufferFull.Add(1)
+	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+		postSessionHandler.SendPortalData(portalData)
 	}
 }
