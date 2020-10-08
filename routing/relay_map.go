@@ -73,7 +73,7 @@ type RelayData struct {
 
 func NewRelayData() *RelayData {
 	return &RelayData{
-		TrafficChan: make(chan TrafficStats),
+		TrafficChan: make(chan TrafficStats, 10),
 	}
 }
 

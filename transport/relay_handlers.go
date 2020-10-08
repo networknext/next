@@ -89,7 +89,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		if relayInitRequest.Version != VersionNumberInitRequest {
+		if relayInitRequest.Version > VersionNumberInitRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
@@ -115,14 +115,15 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 
 		params.RelayMap.Lock()
-		defer params.RelayMap.Unlock()
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
 			http.Error(writer, "relay already initialized", http.StatusConflict)
 			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
+			params.RelayMap.Unlock()
 			return
 		}
+		params.RelayMap.Unlock()
 
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
@@ -318,9 +319,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		// Update the relay data
+		fmt.Println("before")
 		params.RelayMap.Lock()
 		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 		params.RelayMap.Unlock()
+		fmt.Println("after")
 
 		level.Debug(relayslogger).Log(
 			"id", relayDataReadOnly.ID,

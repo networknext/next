@@ -14,7 +14,7 @@ import (
 const (
 	VersionNumberInitRequest    = 1
 	VersionNumberInitResponse   = 0
-	VersionNumberUpdateRequest  = 1
+	VersionNumberUpdateRequest  = 2
 	VersionNumberUpdateResponse = 0
 
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
