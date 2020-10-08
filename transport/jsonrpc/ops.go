@@ -36,7 +36,7 @@ type RelayData struct {
 	LastUpdateTime time.Time
 	CPU            float32
 	Mem            float32
-	TrafficStats   routing.RelayTrafficStats
+	TrafficStats   routing.TrafficStats
 }
 
 type RelayStatsMap struct {
@@ -514,36 +514,36 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64                    `json:"id"`
-	SignedID            int64                     `json:"signed_id"`
-	Name                string                    `json:"name"`
-	Addr                string                    `json:"addr"`
-	Latitude            float64                   `json:"latitude"`
-	Longitude           float64                   `json:"longitude"`
-	NICSpeedMbps        int32                     `json:"nicSpeedMbps"`
-	IncludedBandwidthGB int32                     `json:"includedBandwidthGB"`
-	State               string                    `json:"state"`
-	LastUpdateTime      time.Time                 `json:"lastUpdateTime"`
-	ManagementAddr      string                    `json:"management_addr"`
-	SSHUser             string                    `json:"ssh_user"`
-	SSHPort             int64                     `json:"ssh_port"`
-	MaxSessionCount     uint32                    `json:"maxSessionCount"`
-	SessionCount        uint64                    `json:"sessionCount"`
-	PublicKey           string                    `json:"public_key"`
-	UpdateKey           string                    `json:"update_key"`
-	FirestoreID         string                    `json:"firestore_id"`
-	Version             string                    `json:"relay_version"`
-	SellerName          string                    `json:"seller_name"`
-	MRC                 routing.Nibblin           `json:"monthlyRecurringChargeNibblins"`
-	Overage             routing.Nibblin           `json:"overage"`
-	BWRule              routing.BandWidthRule     `json:"bandwidthRule"`
-	ContractTerm        int32                     `json:"contractTerm"`
-	StartDate           time.Time                 `json:"startDate"`
-	EndDate             time.Time                 `json:"endDate"`
-	Type                routing.MachineType       `json:"machineType"`
-	CPUUsage            float32                   `json:"cpu_usage"`
-	MemUsage            float32                   `json:"mem_usage"`
-	TrafficStats        routing.RelayTrafficStats `json:"traffic_stats"`
+	ID                  uint64                `json:"id"`
+	SignedID            int64                 `json:"signed_id"`
+	Name                string                `json:"name"`
+	Addr                string                `json:"addr"`
+	Latitude            float64               `json:"latitude"`
+	Longitude           float64               `json:"longitude"`
+	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
+	State               string                `json:"state"`
+	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
+	ManagementAddr      string                `json:"management_addr"`
+	SSHUser             string                `json:"ssh_user"`
+	SSHPort             int64                 `json:"ssh_port"`
+	MaxSessionCount     uint32                `json:"maxSessionCount"`
+	SessionCount        uint64                `json:"sessionCount"`
+	PublicKey           string                `json:"public_key"`
+	UpdateKey           string                `json:"update_key"`
+	FirestoreID         string                `json:"firestore_id"`
+	Version             string                `json:"relay_version"`
+	SellerName          string                `json:"seller_name"`
+	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
+	Overage             routing.Nibblin       `json:"overage"`
+	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
+	ContractTerm        int32                 `json:"contractTerm"`
+	StartDate           time.Time             `json:"startDate"`
+	EndDate             time.Time             `json:"endDate"`
+	Type                routing.MachineType   `json:"machineType"`
+	CPUUsage            float32               `json:"cpu_usage"`
+	MemUsage            float32               `json:"mem_usage"`
+	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {

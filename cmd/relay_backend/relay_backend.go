@@ -508,40 +508,65 @@ func main() {
 				time.Sleep(sleepTime)
 
 				allRelayData := relayMap.GetAllRelayData()
-
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
-				for i, relay := range allRelayData {
+				count := 0
+				for _, relay := range allRelayData {
 					// convert peak to mbps
-					peakSessions := relay.PeakTrafficStats.SessionCount
-					peakSent := float64(relay.PeakTrafficStats.BytesSentPerSecond) * 8.0 / 1024.0 / 1024.0
-					peakReceived := float64(relay.PeakTrafficStats.BytesReceivedPerSecond) * 8.0 / 1024.0 / 1024.0
 
-					// reset the peak so the next update takes affect
-					relay.PeakTrafficStats.SessionCount = 0
-					relay.PeakTrafficStats.BytesSentPerSecond = 0
-					relay.PeakTrafficStats.BytesReceivedPerSecond = 0
+					var traffic routing.TrafficStats
+					for stats := range relay.TrafficChan {
+						traffic = traffic.Add(&stats)
+					}
+					elapsed := time.Since(relay.LastStatsPublishTime)
+					relay.LastStatsPublishTime = time.Now()
 
-					entries[i] = analytics.RelayStatsEntry{
+					fsrelay, err := db.Relay(relay.ID)
+					if err != nil {
+						continue
+					}
+
+					bwSentMbps := float32(float64(traffic.AllTx()) / 1000000 / elapsed.Seconds())
+					bwRecvMbps := float32(float64(traffic.AllRx()) / 1000000 / elapsed.Seconds())
+
+					envSentMbps := float32(float64(relay.TrafficStats.EnvelopeUp) / 1000000)
+					envRecvMbps := float32(float64(relay.TrafficStats.EnvelopeDown / 1000000))
+
+					// n^2 need better way to do this
+					var numRouteable uint32 = 0
+					for _, otherRelay := range allRelayData {
+						if relay.ID == otherRelay.ID {
+							continue
+						}
+
+						rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
+						if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
+							numRouteable++
+						}
+					}
+
+					entries[count] = analytics.RelayStatsEntry{
 						ID:                       relay.ID,
 						CPUUsage:                 relay.CPUUsage,
 						MemUsage:                 relay.MemUsage,
-						BandwidthSentPercent:     0, // TODO
-						BandwidthReceivedPercent: 0, // TODO
-						EnvelopeSentPercent:      0, // TODO
-						EnvelopeReceivedPercent:  0, // TODO
-						BandwidthSentMbps:        0, // TODO
-						BandwidthReceivedMbps:    0, // TODO
-						EnvelopeSentMbps:         0, // TODO
-						EnvelopeReceivedMbps:     0, // TODO
-						NumSessions:              relay.TrafficStats.SessionCount,
-						MaxSessions:              0, // TODO
-						NumRoutable:              0, // TODO
-						NumUnroutable:            0, // TODO
+						BandwidthSentPercent:     bwSentMbps / float32(fsrelay.NICSpeedMbps), // TODO confirm
+						BandwidthReceivedPercent: bwRecvMbps / float32(fsrelay.NICSpeedMbps), // TODO confirm
+						EnvelopeSentPercent:      bwSentMbps / envSentMbps,                   // TODO confirm
+						EnvelopeReceivedPercent:  bwRecvMbps / envRecvMbps,                   // TODO confirm
+						BandwidthSentMbps:        bwSentMbps,
+						BandwidthReceivedMbps:    bwRecvMbps,
+						EnvelopeSentMbps:         envSentMbps,
+						EnvelopeReceivedMbps:     envRecvMbps,
+						NumSessions:              uint32(relay.TrafficStats.SessionCount),
+						MaxSessions:              relay.MaxSessions,
+						NumRoutable:              numRouteable,
+						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
 					}
+
+					count++
 				}
 
-				if err := relayStatsPublisher.Publish(ctx, entries); err != nil {
+				if err := relayStatsPublisher.Publish(ctx, entries[:count]); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}

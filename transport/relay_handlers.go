@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"html/template"
@@ -70,8 +69,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		var relayInitRequest RelayInitRequest
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			err = relayInitRequest.UnmarshalJSON(body)
 		case "application/octet-stream":
 			err = relayInitRequest.UnmarshalBinary(body)
 		default:
@@ -127,20 +124,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		// Ideally the ID and address should be the same as firestore,
-		// but when running locally they're not, so take them from the request packet
-		relayData = &routing.RelayData{
-			ID:             id,
-			Name:           relay.Name,
-			Addr:           relayInitRequest.Address,
-			PublicKey:      relay.PublicKey,
-			Seller:         relay.Seller,
-			Datacenter:     relay.Datacenter,
-			LastUpdateTime: time.Now(),
-			MaxSessions:    relay.MaxSessions,
-		}
-
-		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relayData.PublicKey, params.RouterPrivateKey); !ok {
+		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
 			params.Metrics.ErrorMetrics.DecryptionFailure.Add(1)
@@ -158,7 +142,24 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		params.RelayMap.UpdateRelayData(relayData.Addr.String(), relayData)
+		// Ideally the ID and address should be the same as firestore,
+		// but when running locally they're not, so take them from the request packet
+		relayData = routing.NewRelayData()
+		{
+			relayData.ID = id
+			relayData.Name = relay.Name
+			relayData.Addr = relayInitRequest.Address
+			relayData.PublicKey = relay.PublicKey
+			relayData.Seller = relay.Seller
+			relayData.Datacenter = relay.Datacenter
+			relayData.LastUpdateTime = time.Now()
+			relayData.MaxSessions = relay.MaxSessions
+			relayData.Version = relayInitRequest.RelayVersion
+		}
+
+		params.RelayMap.Lock()
+		params.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
+		params.RelayMap.Unlock()
 
 		level.Debug(locallogger).Log("msg", "relay initialized")
 
@@ -170,14 +171,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			response.Timestamp = response.Timestamp * 1000
-
-			responseData, err = response.MarshalJSON()
-			if err != nil {
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 		case "application/octet-stream":
 			responseData, err = response.MarshalBinary()
 			if err != nil {
@@ -215,8 +208,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		var relayUpdateRequest RelayUpdateRequest
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			err = relayUpdateRequest.UnmarshalJSON(body)
 		case "application/octet-stream":
 			err = relayUpdateRequest.UnmarshalBinary(body)
 		default:
@@ -326,41 +317,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			}
 		}
 
-		updateTime := time.Now()
-
-		// LastUpdateTime is set in init so it will always have a non-zero value here
-		diff := updateTime.Sub(relayDataReadOnly.LastUpdateTime)
-		peakTrafficStats := routing.PeakRelayTrafficStats{
-			SessionCount:           relayUpdateRequest.TrafficStats.SessionCount,
-			BytesSentPerSecond:     relayUpdateRequest.TrafficStats.BytesSent,
-			BytesReceivedPerSecond: relayUpdateRequest.TrafficStats.BytesReceived,
-		}
-
-		// estimate number per second
-		peakTrafficStats.BytesSentPerSecond = uint64(float64(peakTrafficStats.BytesSentPerSecond) / diff.Seconds())
-		peakTrafficStats.BytesReceivedPerSecond = uint64(float64(peakTrafficStats.BytesReceivedPerSecond) / diff.Seconds())
-
-		peakTrafficStats = relayDataReadOnly.PeakTrafficStats.MaxValues(&peakTrafficStats)
-
-		relayData := &routing.RelayData{
-			ID:               relay.ID,
-			Name:             relay.Name,
-			Addr:             relay.Addr,
-			PublicKey:        relay.PublicKey,
-			Seller:           relay.Seller,
-			Datacenter:       relay.Datacenter,
-			LastUpdateTime:   updateTime,
-			TrafficStats:     relayUpdateRequest.TrafficStats,
-			PeakTrafficStats: peakTrafficStats,
-			MaxSessions:      relay.MaxSessions,
-			CPUUsage:         float32(relayUpdateRequest.CPUUsage) * 100.0,
-			MemUsage:         float32(relayUpdateRequest.MemUsage) * 100.0,
-			Version:          relayUpdateRequest.RelayVersion,
-		}
-
 		// Update the relay data
 		params.RelayMap.Lock()
-		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
+		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 		params.RelayMap.Unlock()
 
 		level.Debug(relayslogger).Log(
@@ -369,8 +328,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			"addr", relayDataReadOnly.Addr.String(),
 			"datacenter", relayDataReadOnly.Datacenter.Name,
 			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
-			"bytes_received", relayUpdateRequest.TrafficStats.BytesReceived,
-			"bytes_send", relayUpdateRequest.TrafficStats.BytesSent,
+			"bytes_received", relayUpdateRequest.TrafficStats.GameStatsRx()+relayUpdateRequest.TrafficStats.OtherStatsRx(),
+			"bytes_send", relayUpdateRequest.TrafficStats.GameStatsTx()+relayUpdateRequest.TrafficStats.OtherStatsTx(),
 		)
 
 		level.Debug(locallogger).Log("msg", "relay updated")
@@ -378,27 +337,15 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		var responseData []byte
 		response := RelayUpdateResponse{}
 		for _, pingData := range relaysToPing {
-			var token routing.LegacyPingToken
-			token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
-			token.RelayID = crypto.HashID(relayUpdateRequest.Address.String())
-			bin, _ := token.MarshalBinary()
-
-			var legacy routing.LegacyPingData
+			var legacy routing.RelayPingData
 			legacy.ID = pingData.ID
 			legacy.Address = pingData.Address
-			legacy.PingToken = base64.StdEncoding.EncodeToString(bin)
 
 			response.RelaysToPing = append(response.RelaysToPing, legacy)
 		}
 		response.Timestamp = time.Now().Unix()
 
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			responseData, err = response.MarshalJSON()
-			if err != nil {
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 		case "application/octet-stream":
 			responseData, err = response.MarshalBinary()
 			if err != nil {

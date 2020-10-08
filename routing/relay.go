@@ -119,7 +119,7 @@ type Relay struct {
 	SSHUser        string `json:"ssh_user"`
 	SSHPort        int64  `json:"ssh_port"`
 
-	TrafficStats RelayTrafficStats `json:"traffic_stats"`
+	TrafficStats TrafficStats `json:"traffic_stats"`
 
 	MaxSessions uint32 `json:"max_sessions"`
 
@@ -150,11 +150,11 @@ func (r *Relay) EncodedPublicKey() string {
 	return base64.StdEncoding.EncodeToString(r.PublicKey)
 }
 
-// RelayTrafficStats describes the measured relay traffic statistics reported from the relay
-type RelayTrafficStats struct {
-	SessionCount  uint64
-	BytesSent     uint64
-	BytesReceived uint64
+// TrafficStats describes the measured relay traffic statistics reported from the relay
+type TrafficStats struct {
+	SessionCount uint64
+	EnvelopeUp   uint64
+	EnvelopeDown uint64
 
 	OutboundPingTx uint64
 
@@ -193,30 +193,83 @@ type RelayTrafficStats struct {
 	UnknownRx uint64
 }
 
+func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
+	return TrafficStats{
+		SessionCount: rts.SessionCount + other.SessionCount,
+
+		EnvelopeUp:   rts.EnvelopeUp + other.EnvelopeUp,
+		EnvelopeDown: rts.EnvelopeDown + other.EnvelopeDown,
+
+		OutboundPingTx: rts.OutboundPingTx + other.OutboundPingTx,
+
+		RouteRequestRx: rts.RouteRequestRx + other.RouteRequestRx,
+		RouteRequestTx: rts.RouteRequestTx + other.RouteRequestTx,
+
+		RouteResponseRx: rts.RouteResponseRx + other.RouteResponseRx,
+		RouteResponseTx: rts.RouteResponseTx + other.RouteResponseTx,
+
+		ClientToServerRx: rts.ClientToServerRx + other.ClientToServerRx,
+		ClientToServerTx: rts.ClientToServerTx + other.ClientToServerTx,
+
+		ServerToClientRx: rts.ServerToClientRx + other.ServerToClientRx,
+		ServerToClientTx: rts.ServerToClientTx + other.ServerToClientTx,
+
+		InboundPingRx: rts.InboundPingRx + other.InboundPingRx,
+		InboundPingTx: rts.InboundPingTx + other.InboundPingTx,
+
+		PongRx: rts.PongRx + other.PongRx,
+
+		SessionPingRx: rts.SessionPingRx + other.SessionPingRx,
+		SessionPingTx: rts.SessionPingTx + other.SessionPingTx,
+
+		SessionPongRx: rts.SessionPongRx + other.SessionPongRx,
+		SessionPongTx: rts.SessionPongTx + other.SessionPongTx,
+
+		ContinueRequestRx: rts.ContinueRequestRx + other.ContinueRequestRx,
+		ContinueRequestTx: rts.ContinueRequestTx + other.ContinueRequestTx,
+
+		ContinueResponseRx: rts.ContinueResponseRx + other.ContinueResponseRx,
+		ContinueResponseTx: rts.ContinueResponseTx + other.ContinueResponseTx,
+
+		NearPingRx: rts.NearPingRx + other.NearPingRx,
+		NearPingTx: rts.NearPingTx + other.NearPingTx,
+
+		UnknownRx: rts.UnknownRx + other.UnknownRx,
+	}
+}
+
 // OtherStatsRx returns the relay to relay rx stats
-func (rts *RelayTrafficStats) OtherStatsRx() uint64 {
+func (rts *TrafficStats) OtherStatsRx() uint64 {
 	return rts.PongRx + rts.InboundPingRx
 }
 
 // OtherStatsTx returns the relay to relay tx stats
-func (rts *RelayTrafficStats) OtherStatsTx() uint64 {
+func (rts *TrafficStats) OtherStatsTx() uint64 {
 	return rts.OutboundPingTx + rts.InboundPingTx
 }
 
 // GameStatsRx returns the game <-> relay rx stats
-func (rts *RelayTrafficStats) GameStatsRx() uint64 {
+func (rts *TrafficStats) GameStatsRx() uint64 {
 	return rts.RouteRequestRx + rts.RouteResponseRx + rts.ClientToServerRx + rts.ServerToClientRx + rts.SessionPingRx + rts.SessionPongRx + rts.ContinueRequestRx + rts.ContinueResponseRx + rts.NearPingRx
 }
 
 // GameStatsTx returns the game <-> relay tx stats
-func (rts *RelayTrafficStats) GameStatsTx() uint64 {
+func (rts *TrafficStats) GameStatsTx() uint64 {
 	return rts.RouteRequestTx + rts.RouteResponseTx + rts.ClientToServerTx + rts.ServerToClientTx + rts.SessionPingTx + rts.SessionPongTx + rts.ContinueRequestTx + rts.ContinueResponseTx + rts.NearPingTx
 }
 
-func (rts *RelayTrafficStats) WriteTo(data []byte, index *int) {
+func (rts *TrafficStats) AllRx() uint64 {
+	return rts.OtherStatsRx() + rts.GameStatsRx()
+}
+
+func (rts *TrafficStats) AllTx() uint64 {
+	return rts.OtherStatsTx() + rts.GameStatsTx()
+}
+
+func (rts *TrafficStats) WriteTo(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.SessionCount)
-	encoding.WriteUint64(data, index, rts.BytesSent)
-	encoding.WriteUint64(data, index, rts.BytesReceived)
+	encoding.WriteUint64(data, index, rts.EnvelopeUp)
+	encoding.WriteUint64(data, index, rts.EnvelopeDown)
 	encoding.WriteUint64(data, index, rts.OutboundPingTx)
 	encoding.WriteUint64(data, index, rts.RouteRequestRx)
 	encoding.WriteUint64(data, index, rts.RouteRequestTx)
@@ -242,17 +295,17 @@ func (rts *RelayTrafficStats) WriteTo(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.UnknownRx)
 }
 
-func (rts *RelayTrafficStats) ReadFrom(data []byte, index *int) error {
+func (rts *TrafficStats) ReadFrom(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
 		return errors.New("unable to read relay stats session count")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
-		return errors.New("invalid data, unable to read bytes sent")
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {
+		return errors.New("invalid data, could not read envelope up")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
-		return errors.New("invalid data, unable to read bytes received")
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeDown) {
+		return errors.New("invalid data, could not read envelope down")
 	}
 
 	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
@@ -336,38 +389,8 @@ func (rts *RelayTrafficStats) ReadFrom(data []byte, index *int) error {
 	if !encoding.ReadUint64(data, index, &rts.UnknownRx) {
 		return errors.New("invalid data, could not read unknown rx")
 	}
+
 	return nil
-}
-
-type PeakRelayTrafficStats struct {
-	SessionCount           uint64
-	BytesSentPerSecond     uint64
-	BytesReceivedPerSecond uint64
-}
-
-// MaxValues returns the maximum values between the receiving instance and the given one
-func (rts *PeakRelayTrafficStats) MaxValues(other *PeakRelayTrafficStats) PeakRelayTrafficStats {
-	var retval PeakRelayTrafficStats
-
-	if rts.SessionCount > other.SessionCount {
-		retval.SessionCount = rts.SessionCount
-	} else {
-		retval.SessionCount = other.SessionCount
-	}
-
-	if rts.BytesSentPerSecond > other.BytesSentPerSecond {
-		retval.BytesSentPerSecond = rts.BytesSentPerSecond
-	} else {
-		retval.BytesSentPerSecond = other.BytesSentPerSecond
-	}
-
-	if rts.BytesReceivedPerSecond > other.BytesReceivedPerSecond {
-		retval.BytesReceivedPerSecond = rts.BytesReceivedPerSecond
-	} else {
-		retval.BytesReceivedPerSecond = other.BytesReceivedPerSecond
-	}
-
-	return retval
 }
 
 type Stats struct {
@@ -409,26 +432,6 @@ func (s *Stats) ParseRedisString(values []string) error {
 type RelayPingData struct {
 	ID      uint64 `json:"relay_id"`
 	Address string `json:"relay_address"`
-}
-
-type LegacyPingToken struct {
-	Timeout uint64
-	RelayID uint64
-	HMac    [32]byte
-}
-
-func (l LegacyPingToken) MarshalBinary() (data []byte, err error) {
-	data = make([]byte, 48) // ping token binary is 57 bytes
-	index := 0
-	encoding.WriteUint64(data, &index, l.Timeout)
-	encoding.WriteUint64(data, &index, l.RelayID)
-	encoding.WriteBytes(data, &index, l.HMac[:], len(l.HMac))
-	return data, nil
-}
-
-type LegacyPingData struct {
-	RelayPingData
-	PingToken string `json:"ping_info"` // base64 of LegacyPingToken binary form
 }
 
 func RelayAddrs(relays []Relay) string {

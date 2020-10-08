@@ -60,7 +60,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+4)
+	length := 1 + 8 + len(entries)*(8+8+4+4+4+1)
 	data := make([]byte, length)
 
 	index := 0
@@ -74,6 +74,7 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.RTT)
 		encoding.WriteFloat32(data, &index, entry.Jitter)
 		encoding.WriteFloat32(data, &index, entry.PacketLoss)
+		encoding.WriteBool(data, &index, entry.Routable)
 	}
 
 	return data
@@ -116,6 +117,10 @@ func ReadPingStatsEntries(data []byte) ([]PingStatsEntry, bool) {
 		if !encoding.ReadFloat32(data, &index, &entry.PacketLoss) {
 			return nil, false
 		}
+
+		if !encoding.ReadBool(data, &index, &entry.Routable) {
+			return nil, false
+		}
 	}
 
 	return entries, true
@@ -125,11 +130,12 @@ func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
 	bqEntry["timestamp"] = int(e.Timestamp)
-	bqEntry["relayA"] = int(e.RelayA)
-	bqEntry["relayB"] = int(e.RelayB)
+	bqEntry["relay_a"] = int(e.RelayA)
+	bqEntry["relay_b"] = int(e.RelayB)
 	bqEntry["rtt"] = e.RTT
 	bqEntry["jitter"] = e.Jitter
-	bqEntry["packetLoss"] = e.PacketLoss
+	bqEntry["packet_loss"] = e.PacketLoss
+	bqEntry["routable"] = e.Routable
 
 	return bqEntry, "", nil
 }
@@ -158,11 +164,11 @@ type RelayStatsEntry struct {
 	EnvelopeSentMbps     float32
 	EnvelopeReceivedMbps float32
 
-	NumSessions uint64
-	MaxSessions uint64
+	NumSessions uint32
+	MaxSessions uint32
 
-	NumRoutable   uint64
-	NumUnroutable uint64
+	NumRoutable   uint32
+	NumUnroutable uint32
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
@@ -186,10 +192,10 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedMbps)
 		encoding.WriteFloat32(data, &index, entry.EnvelopeSentMbps)
 		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedMbps)
-		encoding.WriteUint64(data, &index, entry.NumSessions)
-		encoding.WriteUint64(data, &index, entry.MaxSessions)
-		encoding.WriteUint64(data, &index, entry.NumRoutable)
-		encoding.WriteUint64(data, &index, entry.NumUnroutable)
+		encoding.WriteUint32(data, &index, entry.NumSessions)
+		encoding.WriteUint32(data, &index, entry.MaxSessions)
+		encoding.WriteUint32(data, &index, entry.NumRoutable)
+		encoding.WriteUint32(data, &index, entry.NumUnroutable)
 	}
 
 	return data
@@ -257,19 +263,19 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.NumSessions) {
+		if !encoding.ReadUint32(data, &index, &entry.NumSessions) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.MaxSessions) {
+		if !encoding.ReadUint32(data, &index, &entry.MaxSessions) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.NumRoutable) {
+		if !encoding.ReadUint32(data, &index, &entry.NumRoutable) {
 			return nil, false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.NumUnroutable) {
+		if !encoding.ReadUint32(data, &index, &entry.NumUnroutable) {
 			return nil, false
 		}
 	}

@@ -51,19 +51,30 @@ const (
 )
 
 type RelayData struct {
-	ID               uint64
-	Name             string
-	Addr             net.UDPAddr
-	PublicKey        []byte
-	Seller           Seller
-	Datacenter       Datacenter
-	LastUpdateTime   time.Time
-	TrafficStats     RelayTrafficStats
-	PeakTrafficStats PeakRelayTrafficStats
-	MaxSessions      uint32
-	CPUUsage         float32
-	MemUsage         float32
-	Version          string
+	ID             uint64
+	Name           string
+	Addr           net.UDPAddr
+	PublicKey      []byte
+	Seller         Seller
+	Datacenter     Datacenter
+	LastUpdateTime time.Time
+	TrafficStats   TrafficStats
+	MaxSessions    uint32
+	CPUUsage       float32
+	MemUsage       float32
+	Version        string
+
+	// contains all the traffic stats updates since the last publish
+	TrafficChan chan TrafficStats
+
+	// only modified within the stats publish loop, so no need to lock access
+	LastStatsPublishTime time.Time
+}
+
+func NewRelayData() *RelayData {
+	return &RelayData{
+		TrafficChan: make(chan TrafficStats),
+	}
 }
 
 // RelayCleanupCallback is a callback function that will be called
@@ -101,12 +112,26 @@ func (rmap *RelayMap) RUnlock() {
 	rmap.mutex.RUnlock()
 }
 
-func (relayMap *RelayMap) GetRelayCount() uint64 {
-	return uint64(len(relayMap.relays))
+func (rmap *RelayMap) GetRelayCount() uint64 {
+	return uint64(len(rmap.relays))
 }
 
-func (relayMap *RelayMap) UpdateRelayData(relayAddress string, relayData *RelayData) {
-	relayMap.relays[relayAddress] = relayData
+// NewRelayData inserts a new entry into the map and returns the pointer
+func (rmap *RelayMap) AddRelayDataEntry(relayAddress string, data *RelayData) {
+	rmap.relays[relayAddress] = data
+}
+
+// UpdateRelayDataEntry updates specific fields that may change per update
+func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic TrafficStats, cpuUsage float32, memUsage float32) {
+	entry := relayMap.relays[relayAddress]
+	entry.LastUpdateTime = time.Now()
+
+	entry.TrafficStats = newTraffic
+	entry.CPUUsage = cpuUsage
+	entry.MemUsage = memUsage
+
+	// send these traffic stats into the channel
+	entry.TrafficChan <- newTraffic
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {

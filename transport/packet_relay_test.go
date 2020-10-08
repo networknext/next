@@ -2,7 +2,6 @@ package transport_test
 
 import (
 	crand "crypto/rand"
-	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -19,127 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/nacl/box"
 )
-
-func TestRelayInitRequestUnmarshalJSON(t *testing.T) {
-	t.Parallel()
-
-	t.Run("unparsable json", func(t *testing.T) {
-		jsonRequest := []byte("{")
-
-		var packet transport.RelayInitRequest
-
-		assert.Error(t, packet.UnmarshalJSON(jsonRequest))
-	})
-
-	t.Run("nonce is invalid base64", func(t *testing.T) {
-		jsonRequest := []byte(`{
-			"magic_request_protection": 1,
-			"version": 1,
-			"relay_address": "127.0.0.1:1111",
-			"nonce": "\n\ninvalid\t\t",
-			"encrypted_token": ""
-		}`)
-
-		var packet transport.RelayInitRequest
-
-		assert.Error(t, packet.UnmarshalJSON(jsonRequest))
-	})
-
-	t.Run("address is invalid", func(t *testing.T) {
-		nonce := make([]byte, crypto.NonceSize)
-		crand.Read(nonce)
-
-		jsonRequest := []byte(`{
-			"magic_request_protection": 1,
-			"version": 1,
-			"relay_address": "invalid",
-			"nonce": "` + base64.StdEncoding.EncodeToString(nonce) + `",
-			"encrypted_token": ""
-		}`)
-
-		var packet transport.RelayInitRequest
-
-		assert.Error(t, packet.UnmarshalJSON(jsonRequest))
-	})
-
-	t.Run("token is invalid base64", func(t *testing.T) {
-		nonce := make([]byte, crypto.NonceSize)
-		crand.Read(nonce)
-
-		jsonRequest := []byte(`{
-			"magic_request_protection": 1,
-			"version": 1,
-			"relay_address": "127.0.0.1:1111",
-			"nonce": "` + base64.StdEncoding.EncodeToString(nonce) + `",
-			"encrypted_token": "\n\ninvalid\t\t"
-		}`)
-
-		var packet transport.RelayInitRequest
-
-		assert.Error(t, packet.UnmarshalJSON(jsonRequest))
-	})
-
-	t.Run("valid", func(t *testing.T) {
-		nonce := make([]byte, crypto.NonceSize)
-		crand.Read(nonce)
-		b64Nonce := base64.StdEncoding.EncodeToString(nonce)
-
-		routerPublicKey, _, err := box.GenerateKey(crand.Reader)
-		assert.NoError(t, err)
-
-		_, relayPrivateKey, err := box.GenerateKey(crand.Reader)
-		assert.NoError(t, err)
-
-		token := make([]byte, crypto.KeySize)
-		crand.Read(token)
-		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-		b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
-
-		expectedPacket := transport.RelayInitRequest{
-			Magic:          1,
-			Version:        1,
-			Address:        net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 1111},
-			Nonce:          nonce,
-			EncryptedToken: encryptedToken,
-		}
-
-		jsonRequest := []byte(`{
-			"magic_request_protection": 1,
-			"version": 1,
-			"relay_address": "127.0.0.1:1111",
-			"nonce": "` + b64Nonce + `",
-			"encrypted_token": "` + b64EncToken + `"
-		}`)
-
-		var packet transport.RelayInitRequest
-
-		assert.NoError(t, packet.UnmarshalJSON(jsonRequest))
-		assert.Equal(t, expectedPacket, packet)
-	})
-}
-
-func TestRelayInitRequestMarshalJSON(t *testing.T) {
-	nonce := make([]byte, crypto.NonceSize)
-	token := make([]byte, routing.EncryptedRelayTokenSize)
-	rand.Read(nonce)
-	rand.Read(token)
-
-	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	expected := transport.RelayInitRequest{
-		Magic:          rand.Uint32(),
-		Version:        rand.Uint32(),
-		Nonce:          nonce,
-		Address:        *udp,
-		EncryptedToken: token,
-	}
-
-	var actual transport.RelayInitRequest
-
-	data, _ := expected.MarshalJSON()
-
-	assert.Nil(t, actual.UnmarshalJSON(data))
-	assert.Equal(t, expected, actual)
-}
 
 func TestRelayInitRequestUnmarshalBinary(t *testing.T) {
 	t.Parallel()
@@ -229,19 +107,6 @@ func TestRelayInitRequestMarshalBinary(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestRelayInitResponseMarshalJSON(t *testing.T) {
-	res := transport.RelayInitResponse{
-		Version:   12345,
-		Timestamp: 12345,
-		PublicKey: []byte{0x13, 0x14},
-	}
-
-	jsonRes, err := res.MarshalJSON()
-	assert.NoError(t, err)
-
-	assert.JSONEq(t, `{"PublicKey": "ExQ=", "Timestamp":12345, "Version":0}`, string(jsonRes))
-}
-
 func TestRelayInitResponseMarshalBinary(t *testing.T) {
 	res := transport.RelayInitResponse{
 		Version:   12345,
@@ -315,117 +180,6 @@ func TestRelayInitResponseUnmarshalBinary(t *testing.T) {
 
 		err = response.UnmarshalBinary(buff)
 		assert.NoError(t, err)
-	})
-}
-
-func TestRelayUpdateRequestUnmarshalJSON(t *testing.T) {
-	t.Parallel()
-
-	t.Run("invalid address", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-
-		// no port
-		jsonRequest := []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1"
-		}`)
-		assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "address 127.0.0.1: missing port in address")
-
-		// bad port
-		jsonRequest = []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1:x"
-		}`)
-		assert.Error(t, packet.UnmarshalJSON(jsonRequest))
-
-		// invalid address
-		jsonRequest = []byte(`{
-			"version": 1,
-			"relay_address": "127.0:1111"
-		}`)
-		assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "invalid relay_address")
-	})
-
-	t.Run("invalid token size", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-
-		jsonRequest := []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1:40000",
-			"Metadata": {
-				"PublicKey": "this is a test"
-			}
-		}`)
-		assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "illegal base64 data at input byte 4")
-
-		jsonRequest = []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1:40000",
-			"Metadata": {
-				"PublicKey": "AAAA"
-			}
-		}`)
-		assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "invalid token size")
-	})
-
-	t.Run("invalid ping stats", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-
-		jsonRequest := []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1:40000",
-			"Metadata": {
-				"PublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-			}
-		}`)
-		assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "unexpected end of JSON input")
-
-		jsonRequest = []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1:40000",
-			"Metadata": {
-				"PublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-			}
-			"PingStats": 0
-		}`)
-		assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "json: cannot unmarshal number into Go value of type []routing.RelayStatsPing")
-	})
-
-	t.Run("valid", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-
-		jsonRequest := []byte(`{
-			"version": 1,
-			"relay_address": "127.0.0.1:40000",
-			"Metadata": {
-				"PublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-			}
-			"TrafficStats": {
-				"BytesMeasurementRx": 100
-			},
-			"PingStats": [{
-				"RelayID": 1,
-				"RTT": 2,
-				"Jitter": 3,
-				"PacketLoss": 4
-			}],
-			"shutting_down": true
-		}`)
-		assert.NoError(t, packet.UnmarshalJSON(jsonRequest))
-
-		expected := transport.RelayUpdateRequest{
-			Version: 1,
-			Address: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000},
-			Token:   make([]byte, crypto.KeySize),
-			TrafficStats: routing.RelayTrafficStats{
-				BytesReceived: 100,
-			},
-			PingStats: []routing.RelayStatsPing{
-				{RelayID: 1, RTT: 2, Jitter: 3, PacketLoss: 4},
-			},
-			ShuttingDown: true,
-		}
-		assert.Equal(t, expected, packet)
 	})
 }
 
@@ -1126,56 +880,6 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 	})
 }
 
-func TestRelayUpdateRequestMarshalJSON(t *testing.T) {
-	stats := make([]routing.RelayStatsPing, 1)
-
-	stat := &stats[0]
-	stat.RelayID = rand.Uint64()
-	stat.RTT = rand.Float32()
-	stat.Jitter = rand.Float32()
-	stat.PacketLoss = rand.Float32()
-
-	token := make([]byte, crypto.KeySize)
-	rand.Read(token)
-
-	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	version := rand.Uint32()
-	req := transport.RelayUpdateRequest{
-		Version:   version,
-		Address:   *udp,
-		Token:     token,
-		PingStats: stats,
-		TrafficStats: routing.RelayTrafficStats{
-			SessionCount:  rand.Uint64(),
-			BytesSent:     rand.Uint64(),
-			BytesReceived: rand.Uint64(),
-		},
-	}
-
-	jsonRes, err := req.MarshalJSON()
-	assert.NoError(t, err)
-
-	assert.JSONEq(t, fmt.Sprintf(`{
-		"version":%d,
-		"relay_address":"127.0.0.1:40000",
-		"PingStats":[{
-			"RelayId":%d,
-			"RTT":%v,
-			"Jitter":%v,
-			"PacketLoss":%v
-		}],
-		"TrafficStats":{
-			"SessionCount":%d,
-			"BytesMeasurementTx":%d,
-			"BytesMeasurementRx":%d
-		},
-		"Metadata":{
-			"PublicKey":"%s"
-		},
-		"shutting_down":false
-	}`, version, stat.RelayID, stat.RTT, stat.Jitter, stat.PacketLoss, req.TrafficStats.SessionCount, req.TrafficStats.BytesSent, req.TrafficStats.BytesReceived, base64.StdEncoding.EncodeToString(token)), string(jsonRes))
-}
-
 func TestRelayUpdateRequestMarshalBinary(t *testing.T) {
 	t.Parallel()
 
@@ -1202,7 +906,7 @@ func TestRelayUpdateRequestMarshalBinary(t *testing.T) {
 			CPUUsage:     10.0,
 			MemUsage:     20.0,
 			RelayVersion: "1.0.0",
-			TrafficStats: routing.RelayTrafficStats{
+			TrafficStats: routing.TrafficStats{
 				SessionCount:  1,
 				BytesSent:     10,
 				BytesReceived: 20,
@@ -1241,7 +945,7 @@ func TestRelayUpdateRequestMarshalBinary(t *testing.T) {
 			CPUUsage:     10.0,
 			MemUsage:     20.0,
 			RelayVersion: "1.0.0",
-			TrafficStats: routing.RelayTrafficStats{
+			TrafficStats: routing.TrafficStats{
 				SessionCount:       1,
 				OutboundPingTx:     2,
 				RouteRequestRx:     3,
@@ -1352,58 +1056,14 @@ func TestRelayUpdateResponseUnmarshalBinary(t *testing.T) {
 	})
 }
 
-func TestRelayUpdateResponseMarshalJSON(t *testing.T) {
-	addr := "127.0.0.1:40000"
-
-	pingToken := routing.LegacyPingToken{
-		Timeout: 0,
-		RelayID: 0,
-		HMac:    [32]byte{},
-	}
-
-	pingTokenData, err := pingToken.MarshalBinary()
-	assert.NoError(t, err)
-
-	relaysToPing := []routing.LegacyPingData{
-		{
-			RelayPingData: routing.RelayPingData{
-				ID:      crypto.HashID(addr),
-				Address: addr,
-			},
-			PingToken: base64.StdEncoding.EncodeToString(pingTokenData),
-		},
-	}
-
-	response := transport.RelayUpdateResponse{
-		RelaysToPing: relaysToPing,
-		Timestamp:    12345,
-	}
-
-	expected := `{
-		"ping_data":[{
-			"relay_id":14990044260459612264,
-			"relay_address":"127.0.0.1:40000",
-			"ping_info":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-		}],
-		"version":0,
-		"timestamp":12345
-	}`
-
-	buff, err := response.MarshalJSON()
-	assert.NoError(t, err)
-	assert.JSONEq(t, expected, string(buff))
-}
-
 func TestRelayUpdateResponseMarshalBinary(t *testing.T) {
 	addr := "127.0.0.1:40000"
 
 	expected := transport.RelayUpdateResponse{
-		RelaysToPing: []routing.LegacyPingData{
+		RelaysToPing: []routing.RelayPingData{
 			{
-				RelayPingData: routing.RelayPingData{
-					ID:      crypto.HashID(addr),
-					Address: addr,
-				},
+				ID:      crypto.HashID(addr),
+				Address: addr,
 			},
 		},
 	}
