@@ -3,15 +3,11 @@ package storage
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/core"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -126,266 +122,78 @@ type Storer interface {
 	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 }
 
-type UnmarshalError struct {
-	err error
-}
+// NewStorage returns a pointer to the storage solution specified for the provide environment. The
+// database targets are currently gcp/Firestore but will move to gcp/PostgreSQL
+//
+//	 prod: production database
+//    dev: development database
+//  local: local PostgreSQL install
+//  local: local SQLite file
+//
+// dev and prod connections to Cloud SQL will be made by proxy and are project-specific:
+// https://cloud.google.com/sql/docs/postgres/connect-compute-engine#gce-connect-proxy
+func NewStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 
-func (e *UnmarshalError) Error() string {
-	return fmt.Sprintf("unmarshal error: %v", e.err)
-}
+	var storage Storer
 
-type DoesNotExistError struct {
-	resourceType string
-	resourceRef  interface{}
-}
+	// for now simply follow current Firestore/InMemory layout
 
-func (e *DoesNotExistError) Error() string {
-	return fmt.Sprintf("%s with reference %v not found", e.resourceType, e.resourceRef)
-}
-
-type AlreadyExistsError struct {
-	resourceType string
-	resourceRef  interface{}
-}
-
-func (e *AlreadyExistsError) Error() string {
-	return fmt.Sprintf("%s with reference %v already exists", e.resourceType, e.resourceRef)
-}
-
-type HexStringConversionError struct {
-	hexString string
-}
-
-func (e *HexStringConversionError) Error() string {
-	return fmt.Sprintf("error converting hex string %s to uint64", e.hexString)
-}
-
-type SequenceNumbersOutOfSync struct {
-	localSequenceNumber  int64
-	remoteSequenceNumber int64
-}
-
-func (e *SequenceNumbersOutOfSync) Error() string {
-	return fmt.Sprintf("sequence number out of sync: remote %d != local %d", e.remoteSequenceNumber, e.localSequenceNumber)
-}
-
-func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicKey []byte, customerID uint64, customerPublicKey []byte) {
-	routeShader := core.NewRouteShader()
-	internalConfig := core.NewInternalConfig()
-	internalConfig.ForceNext = true
-
-	shouldFill := false
-	switch db := db.(type) {
-	case *Firestore:
-		level.Info(logger).Log("msg", "adding sequence number to firestore emulator")
-		_, err := db.CheckSequenceNumber(ctx)
-		if err != nil {
-			level.Error(logger).Log("msg", "unable to check sequence number, attempting to reset value", "err", err)
-			if err := db.SetSequenceNumber(ctx, 0); err != nil {
-				level.Error(logger).Log("msg", "unable to set sequence number", "err", err)
-			}
-			if err := db.IncrementSequenceNumber(ctx); err != nil {
-				level.Error(logger).Log("msg", "unable to increment sequence number", "err", err)
-			}
-			shouldFill = true
-		}
-	default:
-		shouldFill = true
+	// gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		level.Error(logger).Log("err", "ENV not set")
+		os.Exit(1)
+	} else {
+		fmt.Printf("env is set to %s\n", env)
 	}
-	if shouldFill {
-		if err := db.AddCustomer(ctx, routing.Customer{
-			Name:                   "Network Next",
-			Code:                   "next",
-			Active:                 true,
-			AutomaticSignInDomains: "networknext.com",
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddCustomer(ctx, routing.Customer{
-			Name:                   "Ghost Army",
-			Code:                   "ghost-army",
-			Active:                 true,
-			AutomaticSignInDomains: "",
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddCustomer(ctx, routing.Customer{
-			Name:                   "Local",
-			Code:                   "local",
-			Active:                 true,
-			AutomaticSignInDomains: "",
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddCustomer(ctx, routing.Customer{
-			Name:                   "Valve",
-			Code:                   "valve",
-			Active:                 true,
-			AutomaticSignInDomains: "",
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   customerID,
-			CompanyCode:          "local",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RouteShader:          routeShader,
-			InternalConfig:       internalConfig,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   0,
-			CompanyCode:          "ghost-army",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RouteShader:          routeShader,
-			InternalConfig:       internalConfig,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			CompanyCode:               "local",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.2 * 1e9,
-		}
-		valveSeller := routing.Seller{
-			ID:                        "valve",
-			CompanyCode:               "valve",
-			Name:                      "Valve",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-		did := crypto.HashID("local")
-		datacenter := routing.Datacenter{
-			ID:           did,
-			SignedID:     int64(did),
-			Name:         "local",
-			SupplierName: "usw2-az4",
-		}
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddSeller(ctx, valveSeller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-		if val, ok := os.LookupEnv("LOCAL_RELAYS"); ok {
-			numRelays := uint64(10)
-			numRelays, err := strconv.ParseUint(val, 10, 64)
+
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if emulatorOK {
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
+
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpOK || emulatorOK {
+		fmt.Println("if gcpOK || emulatorOK")
+
+		// Firestore
+		{
+			fmt.Printf("initializing firestore\n")
+
+			// Create a Firestore Storer
+			fs, err := NewFirestore(ctx, gcpProjectID, logger)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v\n", err))
-			}
-			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore\n", numRelays))
-			for i := uint64(0); i < numRelays; i++ {
-				addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
-				id := crypto.HashID(addr.String())
-				if err := db.AddRelay(ctx, routing.Relay{
-					Name:           fmt.Sprintf("local.test_relay.%d", i),
-					ID:             id,
-					SignedID:       int64(id),
-					Addr:           addr,
-					PublicKey:      relayPublicKey,
-					Seller:         seller,
-					Datacenter:     datacenter,
-					ManagementAddr: addr.String(),
-					SSHUser:        "root",
-					SSHPort:        22,
-					MaxSessions:    3000,
-					MRC:            19700000000000,
-					Overage:        26000000000000,
-					BWRule:         routing.BWRuleBurst,
-					ContractTerm:   12,
-					StartDate:      time.Now(),
-					EndDate:        time.Now(),
-					Type:           routing.BareMetal,
-					State:          routing.RelayStateOffline,
-				}); err != nil {
-					level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-					os.Exit(1)
-				}
-				if i%25 == 0 {
-					time.Sleep(time.Millisecond * 500)
-				}
-			}
-		} else {
-			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			rid1 := crypto.HashID(addr1.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.a",
-				ID:             rid1,
-				SignedID:       int64(rid1),
-				Addr:           addr1,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-				MaxSessions:    3000,
-				MRC:            19700000000000,
-				Overage:        26000000000000,
-				BWRule:         routing.BWRuleBurst,
-				ContractTerm:   12,
-				StartDate:      time.Now(),
-				EndDate:        time.Now(),
-				Type:           routing.BareMetal,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
-			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			rid2 := crypto.HashID(addr2.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.b",
-				ID:             rid2,
-				SignedID:       int64(rid2),
-				Addr:           addr2,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-				MaxSessions:    3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+
+			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(fssyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
 				os.Exit(1)
 			}
-			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			rid3 := crypto.HashID(addr3.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "abc.xyz",
-				ID:             rid3,
-				SignedID:       int64(rid3),
-				Addr:           addr3,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-				MaxSessions:    3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
+			// Start a goroutine to sync from Firestore
+			go func() {
+
+				ticker := time.NewTicker(syncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
+
+			// Set the Firestore Storer to give to handlers
+			fmt.Println("setting storage = fs")
+			storage = fs
+		}
+	} else {
+		storage = &InMemory{
+			LocalMode: true,
 		}
 	}
+
+	fmt.Println("returning from NewStorage()")
+	return storage, nil
 }
