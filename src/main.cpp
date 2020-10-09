@@ -115,6 +115,7 @@ namespace
         LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
       }
     }
+
     return num_cpus;
   }
 
@@ -237,30 +238,76 @@ int main(int argc, const char* argv[])
   config.send_buffer_size = socket_send_buff_size;
   config.recv_buffer_size = socket_recv_buff_size;
 
-  size_t num_threads = (num_cpus == 1) ? num_cpus : num_cpus - 1;
+  size_t num_threads = num_cpus - 1;
   LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
-  // packet processing setup
-  for (size_t i = 1; i <= num_threads && Globals.alive; i++) {
-    auto socket = make_socket(relay_addr, config);
-    if (!socket) {
-      LOG(ERROR, "could not create socket");
-      Globals.alive = false;
-    }
+  // case 0: create 1 thread and assign it to core 0
+  // case 1: create 1 thread and assign it to core 1
+  // default: create num_cpus - 1 threads and assign it to cores 1-n
+  switch (num_threads) {
+    case 0: {
+      auto socket = make_socket(relay_addr, config);
+      if (!socket) {
+        LOG(ERROR, "could not create socket");
+        Globals.alive = false;
+      }
 
-    auto thread = std::make_shared<std::thread>([&, socket, i] {
-      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
-      LOG(DEBUG, "exiting recv loop #", i);
-    });
+      auto thread = std::make_shared<std::thread>([&, socket] {
+        core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+      });
 
-    int core_id = num_cpus == 1 ? 0 : i;
-    set_thread_affinity(*thread, core_id);
-    LOG(DEBUG, "assigning packet procssing thread #", i, " to core id: ", core_id);
+      set_thread_affinity(*thread, 0);
 
-    set_thread_sched_max(*thread);
+      set_thread_sched_max(*thread);
 
-    sockets.push_back(socket);
-    threads.push_back(thread);
+      sockets.push_back(socket);
+      threads.push_back(thread);
+
+      LOG(DEBUG, "created 1 packet processing thread assigned to core 0");
+    } break;
+    case 1: {
+      auto socket = make_socket(relay_addr, config);
+      if (!socket) {
+        LOG(ERROR, "could not create socket");
+        Globals.alive = false;
+      }
+
+      auto thread = std::make_shared<std::thread>([&, socket] {
+        core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+      });
+
+      set_thread_affinity(*thread, 1);
+
+      set_thread_sched_max(*thread);
+
+      sockets.push_back(socket);
+      threads.push_back(thread);
+
+      LOG(DEBUG, "created 1 packet processing thread assigned to core 1");
+    } break;
+    default: {
+      for (size_t i = 0; i < num_threads && Globals.alive; i++) {
+        auto socket = make_socket(relay_addr, config);
+        if (!socket) {
+          LOG(ERROR, "could not create socket");
+          Globals.alive = false;
+        }
+
+        auto thread = std::make_shared<std::thread>([&, socket, i] {
+          core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+          LOG(DEBUG, "exiting recv loop #", i);
+        });
+
+        set_thread_affinity(*thread, i + 1);
+
+        set_thread_sched_max(*thread);
+
+        sockets.push_back(socket);
+        threads.push_back(thread);
+
+        LOG(DEBUG, "created packet processing thread ", i, " assigned to core ", i + 1);
+      }
+    } break;
   }
 
   // ping processing setup
