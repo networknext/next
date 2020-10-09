@@ -188,7 +188,7 @@ int main(int argc, const char* argv[])
 
   LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
 
-  unsigned int num_cpus = get_num_cpus(env.max_cpus);
+  size_t num_cpus = get_num_cpus(env.max_cpus);
   int socket_recv_buff_size = get_buffer_size(env.recv_buffer_size);
   int socket_send_buff_size = get_buffer_size(env.send_buffer_size);
 
@@ -241,7 +241,7 @@ int main(int argc, const char* argv[])
   LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
   // packet processing setup
-  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && Globals.alive; i++) {
+  for (size_t i = 1; i <= num_threads && Globals.alive; i++) {
     auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
@@ -253,7 +253,9 @@ int main(int argc, const char* argv[])
       LOG(DEBUG, "exiting recv loop #", i);
     });
 
-    set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
+    int core_id = num_cpus == 1 ? 0 : i;
+    set_thread_affinity(*thread, core_id);
+    LOG(DEBUG, "assigning packet procssing thread #", i, " to core id: ", core_id);
 
     set_thread_sched_max(*thread);
 
