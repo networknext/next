@@ -48,6 +48,9 @@ var EmptyServerUpdate4Metrics = ServerUpdate4Metrics{
 type SessionUpdate4Metrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
+	DirectSlices Counter
+	NextSlices   Counter
+
 	ReadPacketFailure       Counter
 	FallbackToDirect        Counter
 	BuyerNotFound           Counter
@@ -68,6 +71,8 @@ type SessionUpdate4Metrics struct {
 // EmptySessionUpdate4Metrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptySessionUpdate4Metrics = SessionUpdate4Metrics{
 	HandlerMetrics:          &EmptyPacketHandlerMetrics,
+	DirectSlices:            &EmptyCounter{},
+	NextSlices:              &EmptyCounter{},
 	ReadPacketFailure:       &EmptyCounter{},
 	FallbackToDirect:        &EmptyCounter{},
 	BuyerNotFound:           &EmptyCounter{},
@@ -375,6 +380,28 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	m := &SessionUpdate4Metrics{}
 
 	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
+	if err != nil {
+		return nil, err
+	}
+
+	m.DirectSlices, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Direct Slices",
+		ServiceName: serviceName,
+		ID:          handlerID + ".direct_slices",
+		Unit:        "slices",
+		Description: "The number of slices taking a direct route.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.NextSlices, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Next Slices",
+		ServiceName: serviceName,
+		ID:          handlerID + ".next_slices",
+		Unit:        "slices",
+		Description: "The number of slices taking a network next route.",
+	})
 	if err != nil {
 		return nil, err
 	}
