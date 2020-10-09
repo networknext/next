@@ -294,6 +294,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 				return
 			}
 
+			if sessionData.RouteState.Next {
+				metrics.NextSlices.Add(1)
+			} else {
+				metrics.DirectSlices.Add(1)
+			}
+
 			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
 		}()
 
