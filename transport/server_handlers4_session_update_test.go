@@ -743,7 +743,15 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.DirectSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.DirectSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -947,7 +955,15 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.DirectSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.DirectSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -1061,7 +1077,15 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -1260,7 +1284,15 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -1463,7 +1495,15 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -1669,7 +1709,15 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -2440,7 +2488,15 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -2649,7 +2705,15 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
+
 	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdate4Metrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.DirectSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.DirectSlices.Add(1)
+
 	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)

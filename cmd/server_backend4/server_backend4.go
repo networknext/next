@@ -474,11 +474,13 @@ func mainReturnWithCode() int {
 					}
 
 					var newRouteMatrix4 routing.RouteMatrix4
-					rs := encoding.CreateReadStream(buffer)
-					if err := newRouteMatrix4.Serialize(rs); err != nil {
-						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
-						time.Sleep(syncInterval)
-						continue // Don't swap route matrix if we fail to serialize
+					if len(buffer) > 0 {
+						rs := encoding.CreateReadStream(buffer)
+						if err := newRouteMatrix4.Serialize(rs); err != nil {
+							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+							time.Sleep(syncInterval)
+							continue // Don't swap route matrix if we fail to serialize
+						}
 					}
 
 					routeEntriesTime := time.Since(start)
