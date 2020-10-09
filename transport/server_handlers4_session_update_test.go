@@ -179,6 +179,32 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	assert.Equal(t, metrics.SessionUpdateMetrics.ReadPacketFailure.Value(), 1.0)
 }
 
+func TestSessionUpdateHandler4FallbackToDirect(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+
+	requestPacket := transport.SessionUpdatePacket4{
+		SessionID:            1111,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+		FallbackToDirect:     true,
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, storer, 32, [crypto.KeySize]byte{}, nil, metrics.SessionUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Nil(t, responseBuffer.Bytes())
+	assert.Equal(t, metrics.SessionUpdateMetrics.FallbackToDirect.Value(), 1.0)
+}
+
 func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
