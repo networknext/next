@@ -139,13 +139,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// var db storage.Storer
-	db, err := storage.NewStorage(ctx, logger)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-
 	manager, err := management.New(
 		os.Getenv("AUTH_DOMAIN"),
 		os.Getenv("AUTH_CLIENTID"),
@@ -161,6 +154,12 @@ func main() {
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
+	// var db storage.Storer
+	db, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then

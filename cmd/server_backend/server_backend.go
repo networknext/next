@@ -172,8 +172,10 @@ func main() {
 		}
 	}
 
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+
 	// var db storage.Storer
-	db, err := storage.NewStorage(ctx, logger)
+	db, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
@@ -183,8 +185,6 @@ func main() {
 
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
 	// Create dummy buyer and datacenter for local testing
 	if env == "local" {

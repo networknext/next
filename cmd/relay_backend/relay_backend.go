@@ -156,19 +156,13 @@ func main() {
 		}
 	}
 
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+
 	// var db storage.Storer
-	db, err := storage.NewStorage(ctx, logger)
+	db, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
-	}
-
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		fmt.Printf("using firestore emulator\n")
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
 
 	if env == "local" {
@@ -370,7 +364,7 @@ func main() {
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
 		// Create a no-op publisher
-		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
 		if gcpOK || emulatorOK {
 
 			pubsubCtx := ctx
@@ -457,7 +451,7 @@ func main() {
 	// relay stats
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	{
-		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
 		if gcpOK || emulatorOK {
 
 			pubsubCtx := ctx

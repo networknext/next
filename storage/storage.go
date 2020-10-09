@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
+	"strconv"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 )
 
@@ -104,7 +103,7 @@ type Storer interface {
 	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
 	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
 
-	// DatacenterMaps returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
+	// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
 	GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap
 
@@ -132,68 +131,62 @@ type Storer interface {
 //
 // dev and prod connections to Cloud SQL will be made by proxy and are project-specific:
 // https://cloud.google.com/sql/docs/postgres/connect-compute-engine#gce-connect-proxy
-func NewStorage(ctx context.Context, logger log.Logger) (Storer, error) {
+//
+// Environment Variables:
+// 	ENV=local|dev|prod|staging
+//		required
+//	GOOGLE_PROJECT_ID=network-next-v3-dev
+//		required for dev and prod services
+//	PGSQL=true|false
+//		for local usage
+//			true: overrides the default (SQLite)
+//         false: local testing/happy path will use SQLite
+// 	CGO_ENABLED=1
+//		required for the cgo go-sqlite3 package
+//	DB_SYNC_INTERVAL
+func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 
-	var storage Storer
+	var db, storage Storer
 
 	// for now simply follow current Firestore/InMemory layout
 
 	// gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
+		err := fmt.Errorf("ENV var not set")
+		return nil, err
 	} else {
 		fmt.Printf("env is set to %s\n", env)
 	}
 
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
+	if env == "local" {
+		pgsqlStr, ok := os.LookupEnv("PGSQL")
+		if !ok {
+			err := fmt.Errorf("ENV var not set")
+			return nil, err
+		}
+
+		pgsql, err := strconv.ParseBool(pgsqlStr)
+		if err != nil {
+			err := fmt.Errorf("NewStorage() error decoding PGSQL (%s): %w", pgsqlStr, err)
+			return nil, err
+		}
+		if pgsql {
+			db, err = NewPostgreSQL(logger)
+			if err != nil {
+				err := fmt.Errorf("NewPostgreSQL() error loading sqlite3: %w", err)
+				return nil, err
+			}
+		} else {
+			db, err = NewSQLite3(logger)
+			if err != nil {
+				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)
+				return nil, err
+			}
+		}
+
+		storage = db
 	}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	if gcpOK || emulatorOK {
-		fmt.Println("if gcpOK || emulatorOK")
-
-		// Firestore
-		{
-			fmt.Printf("initializing firestore\n")
-
-			// Create a Firestore Storer
-			fs, err := NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			fmt.Println("setting storage = fs")
-			storage = fs
-		}
-	} else {
-		storage = &InMemory{
-			LocalMode: true,
-		}
-	}
-
-	fmt.Println("returning from NewStorage()")
 	return storage, nil
 }

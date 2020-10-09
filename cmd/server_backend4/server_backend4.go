@@ -236,7 +236,7 @@ func mainReturnWithCode() int {
 	}()
 
 	// var db storage.Storer
-	storer, err := storage.NewStorage(ctx, logger)
+	storer, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
