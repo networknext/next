@@ -165,12 +165,6 @@ func (e *FirestoreError) Error() string {
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
 
-	var fs *Firestore
-
-	var db Storer = &InMemory{
-		LocalMode: true,
-	}
-
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
 		err := fmt.Errorf("ENV var not set")
@@ -188,9 +182,6 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 
 	gcpOK := gcpProjectID != ""
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
 	if gcpOK || emulatorOK {
 
 		// Firestore
@@ -202,7 +193,7 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 			return nil, err
 		}
 
-		fs = &Firestore{
+		fs := &Firestore{
 			Client:             client,
 			Logger:             logger,
 			datacenters:        make(map[uint64]routing.Datacenter),
@@ -227,10 +218,10 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
-		db = fs
+		return fs, nil
 	}
 
-	return db.(*Firestore), nil
+	return nil, nil
 
 }
 

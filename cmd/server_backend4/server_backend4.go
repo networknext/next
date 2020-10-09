@@ -235,12 +235,20 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	// var db storage.Storer
-	storer, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	// hardcoded dependency on InMemory will have to stay until we
+	// move to NewSQL()
+	var storer storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
+	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	if fs != nil {
+		storer = fs
+	}
+
 	// Create dummy entries in storer for local testing
 	if env == "local" {
 		if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {

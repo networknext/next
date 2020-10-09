@@ -154,12 +154,20 @@ func main() {
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
-	// var db storage.Storer
-	db, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	// hardcoded dependency on InMemory will have to stay until we
+	// move to NewSQL()
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
+	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
+	if fs != nil {
+		db = fs
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then

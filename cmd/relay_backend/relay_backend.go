@@ -158,11 +158,18 @@ func main() {
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
-	// var db storage.Storer
-	db, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	// hardcoded dependency on InMemory will have to stay until we
+	// move to NewSQL()
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
+	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
+	}
+	if fs != nil {
+		db = fs
 	}
 
 	if env == "local" {
