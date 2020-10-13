@@ -125,7 +125,7 @@
                 </div>
                 <div v-if="(!$store.getters.isAnonymous && this.meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
                   <dt>
-                      User IP Address
+                      IP Address
                   </dt>
                   <dd>
                       {{ this.meta.client_addr }}
