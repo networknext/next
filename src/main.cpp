@@ -193,6 +193,10 @@ int main(int argc, const char* argv[])
 
   LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
 
+  size_t num_cpus = get_num_cpus(env.max_cpus);
+  int socket_recv_buff_size = get_buffer_size(env.recv_buffer_size);
+  int socket_send_buff_size = get_buffer_size(env.send_buffer_size);
+
   if (sodium_init() == -1) {
     LOG(FATAL, "failed to initialize sodium");
   }
@@ -235,40 +239,55 @@ int main(int argc, const char* argv[])
   SocketConfig config;
   config.socket_type = SocketType::Blocking;
   config.reuse_port = true;
-  config.send_buffer_size = get_buffer_size(env.send_buffer_size);
-  config.recv_buffer_size = get_buffer_size(env.recv_buffer_size);
+  config.send_buffer_size = socket_send_buff_size;
+  config.recv_buffer_size = socket_recv_buff_size;
 
-  // packet processing setup
-  size_t hw_thread_count = std::thread::hardware_concurrency();
+  size_t last_packet_processing_core_id = num_cpus - 1;
+  LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
-  size_t num_threads = get_num_cpus(env.max_cpus) - 1;
-  if (num_threads < 1) {
-    num_threads = 1;
-  } else if (num_threads > hw_thread_count) {
-    num_threads = hw_thread_count - 1;
-    LOG(WARN, "number of threads exceeds maximum available, reducing to number of detected hardware threads");
-  }
-
-  LOG(DEBUG, "number of packet receiving threads: ", num_threads);
-
-  for (unsigned int i = 1; i <= num_threads && Globals.alive; i++) {
+  if (last_packet_processing_core_id == 0) {
+    //  create 1 thread and assign it to core 0
     auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
       Globals.alive = false;
     }
 
-    auto thread = std::make_shared<std::thread>([&, socket, i] {
+    auto thread = std::make_shared<std::thread>([&, socket] {
       core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
-      LOG(DEBUG, "exiting recv loop #", i);
     });
 
-    set_thread_affinity(*thread, (hw_thread_count == 1) ? 0 : i);
+    set_thread_affinity(*thread, 0);
 
     set_thread_sched_max(*thread);
 
     sockets.push_back(socket);
     threads.push_back(thread);
+
+    LOG(DEBUG, "created 1 packet processing thread assigned to core 0");
+  } else {
+    // create num_cpus - 1 threads and assign it to cores 1-n
+    for (size_t i = 0; i < last_packet_processing_core_id && Globals.alive; i++) {
+      auto socket = make_socket(relay_addr, config);
+      if (!socket) {
+        LOG(ERROR, "could not create socket");
+        Globals.alive = false;
+      }
+
+      auto thread = std::make_shared<std::thread>([&, socket, i] {
+        core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+        LOG(DEBUG, "exiting recv loop #", i);
+      });
+
+      set_thread_affinity(*thread, i + 1);
+
+      set_thread_sched_max(*thread);
+
+      sockets.push_back(socket);
+      threads.push_back(thread);
+
+      LOG(DEBUG, "created packet processing thread ", i, " assigned to core ", i + 1);
+    }
   }
 
   // ping processing setup
