@@ -105,8 +105,12 @@ export default class SessionMap extends Vue {
         let gpuAggregation = navigator.appVersion.indexOf('Win') === -1
         gpuAggregation = gpuAggregation ? navigator.appVersion.indexOf('Macintosh') === -1 : false
 
-        const MAX_SESSIONS = 400000
+        const MAX_SESSIONS = 300000
 
+        console.log('nn received')
+        console.log(onNN.length)
+        console.log('expected number of layers - 1')
+        console.log(Math.floor(onNN.length / MAX_SESSIONS))
         const nnLayerNum = Math.floor(onNN.length / MAX_SESSIONS) + 1
         const onNNLayers = []
 
