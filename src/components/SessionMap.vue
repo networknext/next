@@ -98,6 +98,13 @@ export default class SessionMap extends Vue {
           })
         }
 
+        console.log(onNN[0])
+        console.log(onNN[1])
+        console.log(onNN[2])
+        console.log(onNN[3])
+        console.log(onNN[4])
+        console.log(onNN[5])
+
         const cellSize = 10
         const aggregation = 'MEAN'
         let nnLayer = null
