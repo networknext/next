@@ -100,7 +100,7 @@ export default class SessionMap extends Vue {
 
         const cellSize = 10
         const aggregation = 'MEAN'
-        const gpuAggregation = navigator.appVersion.indexOf('Win') || navigator.appVersion.indexOf('Mac') === -1
+        const gpuAggregation = navigator.appVersion.indexOf('Win') || navigator.appVersion.indexOf('Macintosh') === -1
 
         const nnLayer = new ScreenGridLayer({
           id: 'nn-layer',
