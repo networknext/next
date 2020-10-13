@@ -20,14 +20,14 @@
           <option
             :value="getBuyerCode()"
             v-if="!$store.getters.isAdmin && $store.getters.isBuyer"
-            :selected="getBuyerCode() == $store.getters.currentFilter"
+            :selected="getBuyerCode() === $store.getters.currentFilter"
           >{{ getBuyerName() }}</option>
-          <option :value="''" :selected="'' == $store.getters.currentFilter">All</option>
+          <option :value="''" :selected="$store.getters.currentFilter === ''">All</option>
           <option
             :value="buyer.company_code"
             v-for="buyer in allBuyers"
             v-bind:key="buyer.company_code"
-            :selected="buyer.company_code == $store.getters.currentFilter"
+            :selected="buyer.company_code === $store.getters.currentFilter"
           >{{ buyer.company_name }}</option>
         </select>
       </div>
