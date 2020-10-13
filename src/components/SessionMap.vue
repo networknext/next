@@ -109,7 +109,7 @@ export default class SessionMap extends Vue {
 
         console.log('nn received')
         console.log(onNN.length)
-        console.log('expected number of layers - 1')
+        console.log('expected number of nn layers - 1')
         console.log(Math.floor(onNN.length / MAX_SESSIONS))
         const nnLayerNum = Math.floor(onNN.length / MAX_SESSIONS) + 1
         const onNNLayers = []
@@ -149,8 +149,17 @@ export default class SessionMap extends Vue {
           onNNLayers.push(nnLayer)
         }
 
+        console.log('direct received')
+        console.log(direct.length)
+        console.log('expected number of direct layers - 1')
+        console.log(Math.floor(direct.length / MAX_SESSIONS))
+
         const directLayerNum = Math.floor(direct.length / MAX_SESSIONS) + 1
         const directLayers = []
+
+        console.log('numDirectLayers')
+        console.log(directLayerNum)
+
         for (let i = 0; i < directLayerNum - 1; i++) {
           const currentSlice = direct.splice(0, MAX_SESSIONS)
           direct = direct.splice(-MAX_SESSIONS)
