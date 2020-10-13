@@ -105,13 +105,18 @@ export default class SessionMap extends Vue {
         let gpuAggregation = navigator.appVersion.indexOf('Win') === -1
         gpuAggregation = gpuAggregation ? navigator.appVersion.indexOf('Macintosh') === -1 : false
 
-        const nnLayerNum = Math.floor(onNN.length / 400000) + 1
+        const MAX_SESSIONS = 400000
+
+        const nnLayerNum = Math.floor(onNN.length / MAX_SESSIONS) + 1
         const onNNLayers = []
+
+        console.log('numNNLayers')
+        console.log(nnLayerNum)
 
         for (let i = 0; i < nnLayerNum - 1; i++) {
           console.log('In For Loop NN')
-          const currentSlice = onNN.splice(0, 400000)
-          onNN = onNN.splice(-400000)
+          const currentSlice = onNN.splice(0, MAX_SESSIONS)
+          onNN = onNN.splice(-MAX_SESSIONS)
           nnLayer = new ScreenGridLayer({
             id: 'nn-layer-' + i,
             data: currentSlice,
@@ -140,11 +145,11 @@ export default class SessionMap extends Vue {
           onNNLayers.push(nnLayer)
         }
 
-        const directLayerNum = Math.floor(direct.length / 400000) + 1
+        const directLayerNum = Math.floor(direct.length / MAX_SESSIONS) + 1
         const directLayers = []
         for (let i = 0; i < directLayerNum - 1; i++) {
-          const currentSlice = direct.splice(0, 400000)
-          direct = direct.splice(-400000)
+          const currentSlice = direct.splice(0, MAX_SESSIONS)
+          direct = direct.splice(-MAX_SESSIONS)
           directLayer = new ScreenGridLayer({
             id: 'direct-layer-' + i,
             data: currentSlice,
@@ -181,6 +186,10 @@ export default class SessionMap extends Vue {
           layers = layers.concat(onNNLayers)
         }
 
+        console.log('onNNLayers')
+        console.log(onNNLayers.length)
+
+        console.log('all layers')
         console.log(layers.length)
         console.log(layers)
 
