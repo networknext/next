@@ -100,8 +100,7 @@ export default class SessionMap extends Vue {
 
         const cellSize = 10
         const aggregation = 'MEAN'
-        let gpuAggregation = navigator.appVersion.indexOf('Win') === -1
-        gpuAggregation = gpuAggregation ? navigator.appVersion.indexOf('Macintosh') === -1 : false
+        const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
         const nnLayer = new ScreenGridLayer({
           id: 'nn-layer',
@@ -152,7 +151,8 @@ export default class SessionMap extends Vue {
                 maxZoom: 16
               })
             },
-            layers: layers
+            layers: layers,
+            useDevicePixels: false
           })
         } else {
           this.deckGlInstance.setProps({ layers: [] })
