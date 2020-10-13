@@ -117,8 +117,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		params.RelayMap.Lock(relayInitRequest.Address.String())
-		defer params.RelayMap.Unlock(relayInitRequest.Address.String())
+		params.RelayMap.Lock()
+		defer params.RelayMap.Unlock()
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
@@ -229,7 +229,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
+		if relayUpdateRequest.Version > VersionNumberUpdateRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
@@ -243,9 +243,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		params.RelayMap.RLock(relayUpdateRequest.Address.String())
+		params.RelayMap.RLock()
 		relayDataReadOnly := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
-		params.RelayMap.RUnlock(relayUpdateRequest.Address.String())
+		params.RelayMap.RUnlock()
 
 		if relayDataReadOnly == nil {
 			level.Warn(locallogger).Log("msg", "relay not initialized")
@@ -284,7 +284,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				return
 			}
 
+			params.RelayMap.Lock()
 			params.RelayMap.RemoveRelayData(relayUpdateRequest.Address.String())
+			params.RelayMap.Unlock()
 			return
 		}
 
@@ -297,7 +299,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
 		if relay.State != routing.RelayStateEnabled {
-			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr, "relay_state", relay.State)
+			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr.String(), "relay_state", relay.State)
 			http.Error(writer, "cannot allow non-enabled relay to update", http.StatusUnauthorized)
 			params.Metrics.ErrorMetrics.RelayNotEnabled.Add(1)
 			return
@@ -357,9 +359,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		// Update the relay data
-		params.RelayMap.Lock(relayUpdateRequest.Address.String())
+		params.RelayMap.Lock()
 		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
-		params.RelayMap.Unlock(relayUpdateRequest.Address.String())
+		params.RelayMap.Unlock()
 
 		level.Debug(relayslogger).Log(
 			"id", relayDataReadOnly.ID,
@@ -472,6 +474,130 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 }
 
 func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
+	type displayRelay struct {
+		ID         uint64
+		Name       string
+		Addr       string
+		Datacenter routing.Datacenter
+	}
+
+	type response struct {
+		Analysis string
+		Relays   []displayRelay
+		Stats    map[string]map[string]routing.Stats
+	}
+
+	MaxJitter = maxJitter
+
+	funcmap := template.FuncMap{
+		"statsTable": statsTable,
+	}
+
+	tmpl := template.Must(template.New("dashboard").Funcs(funcmap).Parse(`
+		<html>
+			<head>
+				<title>Relay Dashboard</title>
+				<style>
+					body { font-family: monospace; }
+					table { width: 100%; border-collapse: collapse; }
+					table, th, td { padding: 3px; border: 1px solid black; }
+					td { text-align: center; }
+				</style>
+			</head>
+			<body>
+				<h1>Relay Dashboard</h1>
+
+				<h2>Route Matrix Analysis</h2>
+				<pre>{{ .Analysis }}</pre>
+
+				<h2>{{ len .Relays }} Relays</h2>
+				<table>
+					<tr>
+						<th>Name</th>
+						<th>Address</th>
+						<th>Datacenter</th>
+						<th>Lat / Long</th>
+					</tr>
+					{{ range .Relays }}
+					<tr>
+						<td>{{ .Name }}</td>
+						<td>{{ .Addr }}</td>
+						<td>{{ .Datacenter.Name }}</td>
+						<td>{{ printf "%.2f" .Datacenter.Location.Latitude }} / {{ printf "%.2f" .Datacenter.Location.Longitude }}</td>
+					</tr>
+					{{ end }}
+				</table>
+
+				<h2>Stats</h2>
+				{{ .Stats | statsTable }}
+			</body>
+		</html>
+	`))
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := request.BasicAuth()
+		if u != username && p != password {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var res response
+
+		routeMatrix := GetRouteMatrix()
+		res.Analysis = string(routeMatrix.GetAnalysisData())
+
+		allRelayData := relayMap.GetAllRelayData()
+
+		for _, relayData := range allRelayData {
+			display := displayRelay{
+				ID:   relayData.ID,
+				Name: relayData.Name,
+				// needs to be stringified before html,
+				//otherwise braces are displayed surrounding the ip
+				Addr:       relayData.Addr.String(),
+				Datacenter: relayData.Datacenter,
+			}
+			if display.Name == "" {
+				display.Name = display.Addr
+			}
+			res.Relays = append(res.Relays, display)
+		}
+
+		sort.Slice(res.Relays, func(i int, j int) bool {
+			return res.Relays[i].Name < res.Relays[j].Name
+		})
+
+		res.Stats = make(map[string]map[string]routing.Stats)
+		for _, a := range res.Relays {
+			aKey := a.Name
+			if aKey == "" {
+				aKey = a.Addr
+			}
+
+			res.Stats[aKey] = make(map[string]routing.Stats)
+
+			for _, b := range res.Relays {
+				bKey := b.Name
+				if bKey == "" {
+					bKey = b.Addr
+				}
+
+				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
+				res.Stats[aKey][bKey] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+			}
+		}
+
+		if err := tmpl.Execute(writer, res); err != nil {
+			fmt.Println(err)
+		}
+	}
+}
+
+func RelayDashboardHandlerFunc4(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix4, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
 		ID         uint64
 		Name       string

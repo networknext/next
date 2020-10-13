@@ -22,13 +22,11 @@ type PostSessionHandler struct {
 	portalPublishMaxRetries   int
 	biller                    billing.Biller
 	logger                    log.Logger
-	metrics                   *metrics.SessionMetrics
-
-	maxBufferSize int
+	metrics                   *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, portalPublishMaxRetries int,
-	biller billing.Biller, logger log.Logger, metrics *metrics.SessionMetrics) *PostSessionHandler {
+	biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
 		numGoroutines:             numGoroutines,
 		postSessionBillingChannel: make(chan *billing.BillingEntry, chanBufferSize),
@@ -38,7 +36,6 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		biller:                    biller,
 		logger:                    logger,
 		metrics:                   metrics,
-		maxBufferSize:             chanBufferSize,
 	}
 }
 
@@ -50,10 +47,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				case billingEntry := <-post.postSessionBillingChannel:
 					if err := post.biller.Bill(ctx, billingEntry); err != nil {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-						post.metrics.ErrorMetrics.BillingFailure.Add(1)
+						post.metrics.BillingFailure.Add(1)
 					}
 
-					post.metrics.PostSessionBillingEntriesFinished.Add(1)
+					post.metrics.BillingEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
@@ -68,12 +65,12 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
 					if portalDataBytes, err := postSessionPortalData.ProcessPortalData(post.portalPublisher, post.portalPublishMaxRetries); err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
-						post.metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+						post.metrics.PortalFailure.Add(1)
 					} else {
 						level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					}
 
-					post.metrics.PostSessionPortalEntriesFinished.Add(1)
+					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
@@ -83,11 +80,23 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 }
 
 func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEntry) {
-	post.postSessionBillingChannel <- billingEntry
+	select {
+	case post.postSessionBillingChannel <- billingEntry:
+		post.metrics.BillingEntriesSent.Add(1)
+	default:
+		post.metrics.BillingBufferFull.Add(1)
+	}
+
 }
 
 func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalData) {
-	post.sessionPortalDataChannel <- sessionPortalData
+	select {
+	case post.sessionPortalDataChannel <- sessionPortalData:
+		post.metrics.PortalEntriesSent.Add(1)
+	default:
+		post.metrics.PortalBufferFull.Add(1)
+	}
+
 }
 
 func (post *PostSessionHandler) BillingBufferSize() uint64 {
@@ -96,14 +105,6 @@ func (post *PostSessionHandler) BillingBufferSize() uint64 {
 
 func (post *PostSessionHandler) PortalBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
-}
-
-func (post *PostSessionHandler) IsBillingBufferFull() bool {
-	return len(post.postSessionBillingChannel) >= post.maxBufferSize
-}
-
-func (post *PostSessionHandler) IsPortalBufferFull() bool {
-	return len(post.sessionPortalDataChannel) >= post.maxBufferSize
 }
 
 func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, maxRetries int) (int, error) {

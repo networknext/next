@@ -8,13 +8,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"expvar"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"runtime"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
@@ -51,6 +53,29 @@ var (
 	sha           string
 	tag           string
 )
+
+// A mock locator used in staging to set each session to a random, unique lat/long
+type stagingLocator struct {
+	SessionID uint64
+}
+
+func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], locator.SessionID)
+
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+	lat := (float64(latBits)) / 0xFFFFFFFF
+	long := (float64(longBits)) / 0xFFFFFFFF
+
+	return routing.Location{
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
+		Longitude: -180.0 + long*360.0,
+	}, nil
+}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -113,6 +138,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 	env := envvar.Get("ENV", "")
+
+	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
 	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
@@ -177,22 +208,9 @@ func mainReturnWithCode() int {
 	}
 
 	// Create metrics
-	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	backendMetrics, err := metrics.NewServerBackend4Metrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
-		return 1
-	}
-
-	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		return 1
-	}
-
-	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session update metrics", "err", err)
-		return 1
+		level.Error(logger).Log("msg", "failed to create server_backend4 metrics", "err", err)
 	}
 
 	// Create maxmindb sync metrics
@@ -201,18 +219,21 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
-	// Create server backend metrics
-	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
-	}
+	// Create a goroutine to update metrics
+	go func() {
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
 
-	sessionDataMetrics, err := metrics.NewSessionDataMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session data metrics", "err", err)
-		return 1
-	}
-	sessionUpdateMetrics.SessionDataMetrics = *sessionDataMetrics
+		for {
+			backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+			time.Sleep(time.Second * 10)
+		}
+	}()
 
 	// Create an in-memory storer
 	var storer storage.Storer = &storage.InMemory{
@@ -231,6 +252,7 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
+		customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
 
 		if !envvar.Exists("RELAY_PUBLIC_KEY") {
 			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
@@ -243,95 +265,8 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		if err := storer.AddBuyer(ctx, routing.Buyer{
-			ID:                   13672574147039585173,
-			CompanyCode:          "local",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			return 1
-		}
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		valveSeller := routing.Seller{
-			ID:                        "valve",
-			Name:                      "valve",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		datacenter := routing.Datacenter{
-			ID:       crypto.HashID("local"),
-			Name:     "local",
-			Enabled:  true,
-			Location: routing.LocationNullIsland,
-		}
-
-		if err := storer.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			return 1
-		}
-
-		if err := storer.AddSeller(ctx, valveSeller); err != nil {
-			level.Error(logger).Log("msg", "could not add valve seller to storage", "err", err)
-			return 1
-		}
-
-		if err := storer.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			return 1
-		}
-
-		for i := int64(0); i < MaxRelayCount; i++ {
-			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
-			addr, err := net.ResolveUDPAddr("udp", addressString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				return 1
-			}
-
-			if err := storer.AddRelay(ctx, routing.Relay{
-				ID:          crypto.HashID(addr.String()),
-				Name:        addr.String(),
-				Addr:        *addr,
-				PublicKey:   relayPublicKey,
-				Seller:      seller,
-				Datacenter:  datacenter,
-				MaxSessions: 3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				return 1
-			}
-		}
-
-		for i := int64(0); i < MaxRelayCount; i++ {
-			addressString := "127.0.0.1:1001" + strconv.FormatInt(i, 10)
-			addr, err := net.ResolveUDPAddr("udp", addressString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				return 1
-			}
-
-			if err := storer.AddRelay(ctx, routing.Relay{
-				ID:          crypto.HashID(addr.String()),
-				Name:        addr.String(),
-				Addr:        *addr,
-				PublicKey:   relayPublicKey,
-				Seller:      valveSeller,
-				Datacenter:  datacenter,
-				MaxSessions: 3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				return 1
-			}
-		}
+		// Create dummy buyer and datacenter for local testing
+		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	// Check for the firestore emulator
@@ -371,6 +306,23 @@ func mainReturnWithCode() int {
 	// Create datacenter tracker
 	datacenterTracker := transport.NewDatacenterTracker()
 
+	go func() {
+		for {
+			unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
+			emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
+
+			for _, datacenter := range unknownDatacenters {
+				level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+			}
+
+			for _, datacenter := range emptyDatacenters {
+				level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
+			}
+
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
 		return 1
@@ -382,13 +334,16 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	routerPrivateKey, err := envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", nil)
+	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	getIPLocatorFunc := func() routing.IPLocator {
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], routerPrivateKeySlice)
+
+	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return routing.NullIsland
 	}
 
@@ -403,7 +358,7 @@ func mainReturnWithCode() int {
 		}
 		var mmdbMutex sync.RWMutex
 
-		getIPLocatorFunc = func() routing.IPLocator {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
 			mmdbMutex.RLock()
 			defer mmdbMutex.RUnlock()
 
@@ -452,14 +407,24 @@ func mainReturnWithCode() int {
 		// }
 	}
 
-	routeMatrix := &routing.RouteMatrix{}
-	var routeMatrixMutex sync.RWMutex
+	// Use a custom IP locator for staging so that clients
+	// have different, random lat/longs
+	if env == "staging" {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
+			return &stagingLocator{
+				SessionID: sessionID,
+			}
+		}
+	}
 
-	getRouteMatrixFunc := func() transport.RouteProvider {
-		routeMatrixMutex.RLock()
-		rm := routeMatrix
-		routeMatrixMutex.RUnlock()
-		return rm
+	routeMatrix4 := &routing.RouteMatrix4{}
+	var routeMatrix4Mutex sync.RWMutex
+
+	getRouteMatrix4Func := func() *routing.RouteMatrix4 {
+		routeMatrix4Mutex.RLock()
+		rm4 := routeMatrix4
+		routeMatrix4Mutex.RUnlock()
+		return rm4
 	}
 
 	// Sync route matrix
@@ -477,25 +442,29 @@ func mainReturnWithCode() int {
 					Timeout: time.Second * 2,
 				}
 				for {
-					newRouteMatrix := routing.RouteMatrix{}
-					var matrixReader io.ReadCloser
+					var routeEntriesReader io.ReadCloser
 
 					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
-						matrixReader = f
+						routeEntriesReader = f
 					}
 
 					// Prefer to get it remotely if possible
 					if r, err := httpClient.Get(uri); err == nil {
-						matrixReader = r.Body
+						routeEntriesReader = r.Body
 					}
 
 					start := time.Now()
 
-					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					if routeEntriesReader == nil {
+						time.Sleep(syncInterval)
+						continue
+					}
 
-					if matrixReader != nil {
-						matrixReader.Close()
+					buffer, err := ioutil.ReadAll(routeEntriesReader)
+
+					if routeEntriesReader != nil {
+						routeEntriesReader.Close()
 					}
 
 					if err != nil {
@@ -504,30 +473,35 @@ func mainReturnWithCode() int {
 						continue // Don't swap route matrix if we fail to read
 					}
 
-					routeMatrixTime := time.Since(start)
-
-					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTime.Milliseconds()))
-
-					if routeMatrixTime.Seconds() > 1.0 {
-						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
+					var newRouteMatrix4 routing.RouteMatrix4
+					if len(buffer) > 0 {
+						rs := encoding.CreateReadStream(buffer)
+						if err := newRouteMatrix4.Serialize(rs); err != nil {
+							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+							time.Sleep(syncInterval)
+							continue // Don't swap route matrix if we fail to serialize
+						}
 					}
 
-					serverBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
-					serverBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+					routeEntriesTime := time.Since(start)
 
-					// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+					duration := float64(routeEntriesTime.Milliseconds())
+					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+
+					if duration > 100 {
+						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+					}
+
 					numRoutes := int32(0)
-					for i := range newRouteMatrix.Entries {
-						numRoutes += newRouteMatrix.Entries[i].NumRoutes
+					for i := range newRouteMatrix4.RouteEntries {
+						numRoutes += newRouteMatrix4.RouteEntries[i].NumRoutes
 					}
-					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
-					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(bytes))
+					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
-					// Swap the route matrix pointer to the new one
-					// This double buffered route matrix approach makes the route matrix lockless
-					routeMatrixMutex.Lock()
-					routeMatrix = &newRouteMatrix
-					routeMatrixMutex.Unlock()
+					routeMatrix4Mutex.Lock()
+					routeMatrix4 = &newRouteMatrix4
+					routeMatrix4Mutex.Unlock()
 
 					time.Sleep(syncInterval)
 				}
@@ -538,7 +512,7 @@ func mainReturnWithCode() int {
 	// Create a local biller
 	var biller billing.Biller = &billing.LocalBiller{
 		Logger:  logger,
-		Metrics: &serverBackendMetrics.BillingMetrics,
+		Metrics: backendMetrics.BillingMetrics,
 	}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -582,7 +556,7 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				return 1
@@ -633,8 +607,45 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, sessionUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
 	postSessionHandler.StartProcessing(ctx)
+
+	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
+	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
+	multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if err := multipathVetoHandler.Sync(); err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Start a routine to sync multipath vetoed users from redis to this instance
+	{
+		ticker := time.NewTicker(multipathVetoSyncFrequency)
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ticker.C:
+					if err := multipathVetoHandler.Sync(); err != nil {
+						level.Error(logger).Log("err", err)
+					}
+					break
+				case <-ctx.Done():
+					break
+				}
+			}
+		}(ctx)
+	}
 
 	// Start HTTP server
 	{
@@ -703,9 +714,9 @@ func mainReturnWithCode() int {
 
 	connections := make([]*net.UDPConn, numThreads)
 
-	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -748,10 +759,10 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				data = data[crypto.PacketHashSize:size]
+				packetType := data[0]
+				data = data[crypto.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
-				packetType := data[0]
 				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
 
 				switch packetType {
@@ -770,7 +781,7 @@ func mainReturnWithCode() int {
 
 					// Sign and hash the response
 					response = crypto.SignPacket(privateKey, response)
-					response = crypto.HashPacket(crypto.PacketHashKey, response)
+					crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)

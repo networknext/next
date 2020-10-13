@@ -56,7 +56,7 @@ int main()
 
     srand( uint64_t( next_time() * 10000ULL ) );
 
-    next_sleep( (rand() % 120) );
+    next_sleep( (rand() % 1) );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
@@ -73,9 +73,13 @@ int main()
     std::vector<std::string> servers;
 
     std::string line;
-    while ( std::getline( std::cin, line ) )
+    std::getline( std::cin, line );
+    std::stringstream ss( line );
+
+    std::string ip;
+    while ( ss >> ip )
     {
-        servers.push_back( line );
+        servers.push_back( ip );
     }
 
     const char * cores_str = std::getenv( "CORES" );

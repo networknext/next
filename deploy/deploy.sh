@@ -15,10 +15,15 @@ ARTIFACT_NAME=
 TYPE=
 
 deploy-backend() {
-  COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/bootstrap.sh . && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${ARTIFACT_NAME}.${ENV}.tar.gz"
+  bootstrap='bootstrap.sh'
+  if [ "$ARTIFACT_NAME" = 'ghost_army' ]; then
+    bootstrap='ghost_army_bootstrap.sh'
+  fi
+
+  COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/$bootstrap ./bootstrap.sh && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${ARTIFACT_NAME}.${ENV}.tar.gz"
   printf "Deploying ${CUSTOMER} ${TYPE}... \n"
   gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-${CUSTOMER} -- ${COMMAND}
-	printf "done\n"
+  printf "done\n"
 }
 
 print_usage() {

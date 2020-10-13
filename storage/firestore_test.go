@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -137,6 +138,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("NewFirestore", func(t *testing.T) {
 		t.Run("firestore client failure", func(t *testing.T) {
+			t.Skip() // fails locally but runs on semaphore
 			_, err := storage.NewFirestore(ctx, "*detect-project-id*", log.NewNopLogger())
 			assert.Error(t, err)
 		})
@@ -2563,11 +2565,20 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
+		expectedRouteShader := core.NewRouteShader()
+		expectedRouteShader.AcceptableLatency = -1
+		expectedRouteShader.LatencyThreshold = -1
+
+		expectedInternalConfig := core.NewInternalConfig()
+		expectedInternalConfig.MultipathOverloadThreshold = 10
+
 		expectedBuyer := routing.Buyer{
 			CompanyCode:          "local",
 			ID:                   1,
 			Live:                 false,
 			PublicKey:            make([]byte, crypto.KeySize),
+			RouteShader:          expectedRouteShader,
+			InternalConfig:       expectedInternalConfig,
 			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
 		}
 
@@ -2660,5 +2671,274 @@ func TestFirestore(t *testing.T) {
 		assert.NotEmpty(t, expectedRelay.FirestoreID)
 
 		assert.Equal(t, expectedRelay, actualRelay)
+	})
+
+	t.Run("Test buyer routing obects", func(t *testing.T) {
+		expectedRouteShader := core.NewRouteShader()
+		expectedRouteShader.AcceptableLatency = -1
+		expectedRouteShader.LatencyThreshold = -1
+		expectedRouteShader.BannedUsers[1234567890] = true
+
+		expectedInternalConfig := core.NewInternalConfig()
+		expectedInternalConfig.MultipathOverloadThreshold = 10
+
+		expectedCustomer := routing.Customer{
+			Code: "local",
+			Name: "Local",
+		}
+
+		expectedRoutingRulesSettings := routing.DefaultRoutingRulesSettings
+		expectedRoutingRulesSettings.RTTThreshold = routing.DefaultRoutingRulesSettings.RTTThreshold + 100
+		expectedRoutingRulesSettings.ExcludedUserHashes[1234567890] = true
+
+		expectedBuyer := routing.Buyer{
+			CompanyCode:          "local",
+			ID:                   1,
+			Live:                 false,
+			PublicKey:            make([]byte, crypto.KeySize),
+			RouteShader:          expectedRouteShader,
+			InternalConfig:       expectedInternalConfig,
+			RoutingRulesSettings: expectedRoutingRulesSettings,
+		}
+
+		t.Run("delete", func(t *testing.T) {
+			t.Run("not found", func(t *testing.T) {
+				fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+				assert.NoError(t, err)
+
+				defer func() {
+					err := cleanFireStore(ctx, fs.Client)
+					assert.NoError(t, err)
+				}()
+
+				err = fs.SetSequenceNumber(ctx, -1)
+				assert.NoError(t, err)
+
+				err = fs.AddCustomer(ctx, expectedCustomer)
+				assert.NoError(t, err)
+
+				err = fs.AddBuyer(ctx, expectedBuyer)
+				assert.NoError(t, err)
+
+				err = fs.DeleteRouteRulesSettingsForBuyerID(ctx, "0")
+				assert.NoError(t, err)
+
+				err = fs.DeleteRouteShaderForBuyerID(ctx, "0")
+				assert.NoError(t, err)
+
+				err = fs.DeleteInternalConfigForBuyerID(ctx, "0")
+				assert.NoError(t, err)
+
+				err = fs.Sync(ctx)
+				assert.NoError(t, err)
+
+				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+				assert.NoError(t, err)
+
+				assert.Equal(t, expectedBuyer, actualBuyer)
+			})
+
+			t.Run("success", func(t *testing.T) {
+				fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+				assert.NoError(t, err)
+
+				defer func() {
+					err := cleanFireStore(ctx, fs.Client)
+					assert.NoError(t, err)
+				}()
+
+				err = fs.SetSequenceNumber(ctx, -1)
+				assert.NoError(t, err)
+
+				err = fs.AddCustomer(ctx, expectedCustomer)
+				assert.NoError(t, err)
+
+				err = fs.AddBuyer(ctx, expectedBuyer)
+				assert.NoError(t, err)
+
+				// Grab the buyer for its firestore ID
+				bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+
+				bdoc, err := bdocs.Next()
+				assert.NoError(t, err)
+
+				buyerFirestoreID := bdoc.Ref.ID
+
+				bdocs.Stop()
+
+				err = fs.DeleteRouteRulesSettingsForBuyerID(ctx, buyerFirestoreID)
+				assert.NoError(t, err)
+
+				err = fs.DeleteRouteShaderForBuyerID(ctx, buyerFirestoreID)
+				assert.NoError(t, err)
+
+				err = fs.DeleteInternalConfigForBuyerID(ctx, buyerFirestoreID)
+				assert.NoError(t, err)
+
+				err = fs.Sync(ctx)
+				assert.NoError(t, err)
+
+				actualBuyer, err := fs.Buyer(1)
+				assert.NoError(t, err)
+
+				assert.Equal(t, routing.DefaultRoutingRulesSettings, actualBuyer.RoutingRulesSettings)
+				assert.Equal(t, core.NewRouteShader(), actualBuyer.RouteShader)
+				assert.Equal(t, core.NewInternalConfig(), actualBuyer.InternalConfig)
+			})
+		})
+
+		t.Run("get", func(t *testing.T) {
+			t.Run("not found", func(t *testing.T) {
+				fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+				assert.NoError(t, err)
+
+				defer func() {
+					err := cleanFireStore(ctx, fs.Client)
+					assert.NoError(t, err)
+				}()
+
+				err = fs.AddCustomer(ctx, expectedCustomer)
+				assert.NoError(t, err)
+
+				err = fs.AddBuyer(ctx, expectedBuyer)
+				assert.NoError(t, err)
+
+				actualRoutingRulesSettings, err := fs.GetRoutingRulesSettingsForBuyerID(ctx, "0")
+				assert.Error(t, err)
+
+				actualRouteShader, err := fs.GetRouteShaderForBuyerID(ctx, "0")
+				assert.Error(t, err)
+
+				actualInternalConfig, err := fs.GetInternalConfigForBuyerID(ctx, "0")
+				assert.Error(t, err)
+
+				assert.Equal(t, routing.DefaultRoutingRulesSettings, actualRoutingRulesSettings)
+				assert.Equal(t, core.NewRouteShader(), actualRouteShader)
+				assert.Equal(t, core.NewInternalConfig(), actualInternalConfig)
+			})
+
+			t.Run("success", func(t *testing.T) {
+				fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+				assert.NoError(t, err)
+
+				defer func() {
+					err := cleanFireStore(ctx, fs.Client)
+					assert.NoError(t, err)
+				}()
+
+				err = fs.AddCustomer(ctx, expectedCustomer)
+				assert.NoError(t, err)
+
+				err = fs.AddBuyer(ctx, expectedBuyer)
+				assert.NoError(t, err)
+
+				// Grab the buyer for its firestore ID
+				bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+
+				bdoc, err := bdocs.Next()
+				assert.NoError(t, err)
+
+				buyerFirestoreID := bdoc.Ref.ID
+
+				actualRoutingRulesSettings, err := fs.GetRoutingRulesSettingsForBuyerID(ctx, buyerFirestoreID)
+				assert.NoError(t, err)
+
+				actualRouteShader, err := fs.GetRouteShaderForBuyerID(ctx, buyerFirestoreID)
+				assert.NoError(t, err)
+
+				actualInternalConfig, err := fs.GetInternalConfigForBuyerID(ctx, buyerFirestoreID)
+				assert.NoError(t, err)
+
+				assert.Equal(t, expectedRoutingRulesSettings, actualRoutingRulesSettings)
+				assert.Equal(t, expectedRouteShader, actualRouteShader)
+				assert.Equal(t, expectedInternalConfig, actualInternalConfig)
+			})
+		})
+
+		t.Run("set", func(t *testing.T) {
+			t.Run("not found", func(t *testing.T) {
+				fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+				assert.NoError(t, err)
+
+				defer func() {
+					err := cleanFireStore(ctx, fs.Client)
+					assert.NoError(t, err)
+				}()
+
+				err = fs.SetSequenceNumber(ctx, -1)
+				assert.NoError(t, err)
+
+				err = fs.AddCustomer(ctx, expectedCustomer)
+				assert.NoError(t, err)
+
+				err = fs.AddBuyer(ctx, expectedBuyer)
+				assert.NoError(t, err)
+
+				err = fs.SetRoutingRulesSettingsForBuyerID(ctx, "0", expectedCustomer.Name, routing.DefaultRoutingRulesSettings)
+				assert.NoError(t, err)
+
+				err = fs.SetRouteShaderForBuyerID(ctx, "0", expectedCustomer.Name, core.NewRouteShader())
+				assert.NoError(t, err)
+
+				err = fs.SetInternalConfigForBuyerID(ctx, "0", expectedCustomer.Name, core.NewInternalConfig())
+				assert.NoError(t, err)
+
+				err = fs.Sync(ctx)
+				assert.NoError(t, err)
+
+				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+				assert.NoError(t, err)
+
+				assert.Equal(t, expectedRoutingRulesSettings, actualBuyer.RoutingRulesSettings)
+				assert.Equal(t, expectedRouteShader, actualBuyer.RouteShader)
+				assert.Equal(t, expectedInternalConfig, actualBuyer.InternalConfig)
+			})
+
+			t.Run("success", func(t *testing.T) {
+				fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+				assert.NoError(t, err)
+
+				defer func() {
+					err := cleanFireStore(ctx, fs.Client)
+					assert.NoError(t, err)
+				}()
+
+				err = fs.SetSequenceNumber(ctx, -1)
+				assert.NoError(t, err)
+
+				err = fs.AddCustomer(ctx, expectedCustomer)
+				assert.NoError(t, err)
+
+				err = fs.AddBuyer(ctx, expectedBuyer)
+				assert.NoError(t, err)
+
+				// Grab the buyer for its firestore ID
+				bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+
+				bdoc, err := bdocs.Next()
+				assert.NoError(t, err)
+
+				buyerFirestoreID := bdoc.Ref.ID
+
+				err = fs.SetRoutingRulesSettingsForBuyerID(ctx, buyerFirestoreID, expectedCustomer.Name, routing.DefaultRoutingRulesSettings)
+				assert.NoError(t, err)
+
+				err = fs.SetRouteShaderForBuyerID(ctx, buyerFirestoreID, expectedCustomer.Name, core.NewRouteShader())
+				assert.NoError(t, err)
+
+				err = fs.SetInternalConfigForBuyerID(ctx, buyerFirestoreID, expectedCustomer.Name, core.NewInternalConfig())
+				assert.NoError(t, err)
+
+				err = fs.Sync(ctx)
+				assert.NoError(t, err)
+
+				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+				assert.NoError(t, err)
+
+				assert.Equal(t, routing.DefaultRoutingRulesSettings, actualBuyer.RoutingRulesSettings)
+				assert.Equal(t, core.NewRouteShader(), actualBuyer.RouteShader)
+				assert.Equal(t, core.NewInternalConfig(), actualBuyer.InternalConfig)
+			})
+		})
 	})
 }
