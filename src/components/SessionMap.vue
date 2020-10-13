@@ -125,18 +125,20 @@ export default class SessionMap extends Vue {
           })
           onNNLayers.push(nnLayer)
         }
-        nnLayer = new ScreenGridLayer({
-          id: 'nn-layer-' + (nnLayerNum - 1),
-          data: onNN,
-          opacity: 0.8,
-          getPosition: (d: Array<number>) => [d[0], d[1]],
-          getWeight: () => 1,
-          cellSizePixels: cellSize,
-          colorRange: [[40, 167, 69]],
-          gpuAggregation,
-          aggregation
-        })
-        onNNLayers.push(nnLayer)
+        if (onNN.length > 0) {
+          nnLayer = new ScreenGridLayer({
+            id: 'nn-layer-' + (nnLayerNum - 1),
+            data: onNN,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            gpuAggregation,
+            aggregation
+          })
+          onNNLayers.push(nnLayer)
+        }
 
         const directLayerNum = Math.floor(direct.length / 400000) + 1
         const directLayers = []
@@ -156,24 +158,31 @@ export default class SessionMap extends Vue {
           })
           directLayers.push(directLayer)
         }
-        directLayer = new ScreenGridLayer({
-          id: 'direct-layer-' + (directLayerNum - 1),
-          data: direct,
-          opacity: 0.8,
-          getPosition: (d: Array<number>) => [d[0], d[1]],
-          getWeight: () => 1,
-          cellSizePixels: cellSize,
-          colorRange: [[40, 167, 69]],
-          gpuAggregation,
-          aggregation
-        })
-        directLayers.push(directLayer)
+        if (direct.length > 0) {
+          directLayer = new ScreenGridLayer({
+            id: 'direct-layer-' + (directLayerNum - 1),
+            data: direct,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            gpuAggregation,
+            aggregation
+          })
+          directLayers.push(directLayer)
+        }
 
         let layers: any = []
-        if (onNN.length > 0 || direct.length > 0) {
-          layers = layers.concat(directLayers, onNNLayers)
-          // layers = [...directLayers, ...onNNLayers]
+        if (directLayers.length > 0) {
+          layers = layers.concat(directLayers)
         }
+        if (onNN.length > 0) {
+          layers = layers.concat(onNNLayers)
+        }
+
+        console.log(layers.length)
+        console.log(layers)
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
