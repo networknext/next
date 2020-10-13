@@ -151,8 +151,7 @@ export default class SessionMap extends Vue {
                 maxZoom: 16
               })
             },
-            layers: layers,
-            useDevicePixels: false
+            layers: layers
           })
         } else {
           this.deckGlInstance.setProps({ layers: [] })
