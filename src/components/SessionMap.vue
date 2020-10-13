@@ -100,10 +100,33 @@ export default class SessionMap extends Vue {
 
         const cellSize = 10
         const aggregation = 'MEAN'
-        const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
+        let nnLayer = null
+        let directLayer = null
+        let gpuAggregation = navigator.appVersion.indexOf('Win') === -1
+        gpuAggregation = gpuAggregation ? navigator.appVersion.indexOf('Macintosh') === -1 : false
 
-        const nnLayer = new ScreenGridLayer({
-          id: 'nn-layer',
+        const nnLayerNum = Math.floor(onNN.length / 400000) + 1
+        const onNNLayers = []
+
+        for (let i = 0; i < nnLayerNum - 1; i++) {
+          console.log('In For Loop NN')
+          const currentSlice = onNN.splice(0, 400000)
+          onNN = onNN.splice(-400000)
+          nnLayer = new ScreenGridLayer({
+            id: 'nn-layer-' + i,
+            data: currentSlice,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            gpuAggregation,
+            aggregation
+          })
+          onNNLayers.push(nnLayer)
+        }
+        nnLayer = new ScreenGridLayer({
+          id: 'nn-layer-' + (nnLayerNum - 1),
           data: onNN,
           opacity: 0.8,
           getPosition: (d: Array<number>) => [d[0], d[1]],
@@ -113,21 +136,44 @@ export default class SessionMap extends Vue {
           gpuAggregation,
           aggregation
         })
+        onNNLayers.push(nnLayer)
 
-        const directLayer = new ScreenGridLayer({
-          id: 'direct-layer',
+        const directLayerNum = Math.floor(direct.length / 400000) + 1
+        const directLayers = []
+        for (let i = 0; i < directLayerNum - 1; i++) {
+          const currentSlice = direct.splice(0, 400000)
+          direct = direct.splice(-400000)
+          directLayer = new ScreenGridLayer({
+            id: 'direct-layer-' + i,
+            data: currentSlice,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            gpuAggregation,
+            aggregation
+          })
+          directLayers.push(directLayer)
+        }
+        directLayer = new ScreenGridLayer({
+          id: 'direct-layer-' + (directLayerNum - 1),
           data: direct,
           opacity: 0.8,
           getPosition: (d: Array<number>) => [d[0], d[1]],
           getWeight: () => 1,
           cellSizePixels: cellSize,
-          colorRange: [[49, 130, 189]],
+          colorRange: [[40, 167, 69]],
           gpuAggregation,
           aggregation
         })
+        directLayers.push(directLayer)
 
-        const layers =
-          onNN.length > 0 || direct.length > 0 ? [directLayer, nnLayer] : []
+        let layers: any = []
+        if (onNN.length > 0 || direct.length > 0) {
+          layers = layers.concat(directLayers, onNNLayers)
+          // layers = [...directLayers, ...onNNLayers]
+        }
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
