@@ -767,14 +767,72 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	if oldCompanyCode != newCompanyCode {
 		// Assigned and code is different
 		if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-			err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
-			return err
+			// new company
+			if args.CompanyName == "" {
+				err := fmt.Errorf("UpdateCompanyInformation() new company name is required")
+				s.Logger.Log("err", err)
+				return err
+			}
+			if err := s.Storage.AddCustomer(ctx, routing.Customer{
+				Code: newCompanyCode,
+				Name: args.CompanyName,
+			}); err != nil {
+				err = fmt.Errorf("UpdateCompanyInformation() failed to create new company: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+			roles := []*management.Role{
+				{
+					Name:        &roleNames[0],
+					ID:          &roleIDs[0],
+					Description: &roleDescriptions[0],
+				},
+				{
+					Name:        &roleNames[1],
+					ID:          &roleIDs[1],
+					Description: &roleDescriptions[1],
+				},
+			}
+			if err := s.UserManager.Update(requestID, &management.User{
+				AppMetadata: map[string]interface{}{
+					"company_code": args.CompanyCode,
+				},
+			}); err != nil {
+				err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			if !VerifyAllRoles(r, AdminRole) {
+				if err := s.UserManager.RemoveRoles(requestID, []*management.Role{
+					{
+						Name:        &roleNames[0],
+						ID:          &roleIDs[0],
+						Description: &roleDescriptions[0],
+					},
+					{
+						Name:        &roleNames[1],
+						ID:          &roleIDs[1],
+						Description: &roleDescriptions[1],
+					},
+				}...); err != nil {
+					err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
+					s.Logger.Log("err", err)
+					return err
+				}
+				if err := s.UserManager.AssignRoles(requestID, roles...); err != nil {
+					err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
+					s.Logger.Log("err", err)
+					return err
+				}
+				reply.NewRoles = roles
+			}
+			return nil
 		}
 
 		_, err := s.Storage.Customer(newCompanyCode)
-		if err != nil {
-			err = fmt.Errorf("UpdateCompanyInformation() company already exists: %v", err)
+		if err == nil {
+			err = fmt.Errorf("UpdateCompanyInformation() company already exists")
 			s.Logger.Log("err", err)
 			return err
 		}
