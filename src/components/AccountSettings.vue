@@ -262,6 +262,8 @@ export default class AccountSettings extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong updating the account settings')
         console.log(error)
+        this.companyName = this.$store.getters.userProfile.companyName
+        this.companyCode = this.$store.getters.userProfile.companyCode
         this.message = 'Failed to update company name'
         this.alertType = AlertTypes.ERROR
         setTimeout(() => {
