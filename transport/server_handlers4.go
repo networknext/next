@@ -622,6 +622,12 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		inGamePacketLoss = packetLossServerToClient
 	}
 
+	multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
+	var multipathVetoed bool
+	if _, ok := multipathVetoMap[packet.UserHash]; ok {
+		multipathVetoed = true
+	}
+
 	billingEntry := &billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
@@ -661,6 +667,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		SDKVersion:                packet.Version.String(),
 		PacketLoss:                inGamePacketLoss,
 		PredictedNextRTT:          float32(sessionData.RouteCost),
+		MultipathVetoed:           multipathVetoed,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)

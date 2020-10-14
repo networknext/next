@@ -139,5 +139,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["predictedNextRTT"] = entry.PredictedNextRTT
 	}
 
+	e["multipathVetoed"] = entry.MultipathVetoed
+
 	return e, "", nil
 }
