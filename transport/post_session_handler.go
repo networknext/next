@@ -117,7 +117,7 @@ func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, max
 
 	var retryCount int
 
-	for retryCount < maxRetries { // only retry so many times, then error out after that
+	for retryCount < maxRetries+1 { // only retry so many times, then error out after that
 		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
 		if err != nil {
 			errno := zmq4.AsErrno(err)
