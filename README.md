@@ -173,11 +173,21 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 
 1. `redis-cli flushall && make BACKEND_LOG_LEVEL=info dev-relay-backend`: this will clear your local redis completely to start fresh and then run the relay backend
 2. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
+	1. Issues with `pkg-config` not finding `libgtop-2.0` (Linux)
+		1. Install gtk, gtop2, and rsvg2 `sudo apt-get install libgtk-3-dev libgtop2-dev librsvg2-dev`
+		2. Find the path where libgtop-2.0 was placed `locate libgtop-2.0`
+		3. Add that path to your `PKG_CONFIG_PATH` environment variable `export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/bin/pkg-config`
+	2. Issues with boost `boost/beast.hpp: No such file or directory` (Linux)
+		1. Clone boost directly from its repo outside of this directory `git clone --recursive https://github.com/boostorg/boost.git`
+		2. Enter the directory `cd boost`
+		3. Use the bootstrap setup with the prefix for where the parent of the `include` directory for header files is located (_i.e._ `/usr/`) `./bootstrap.sh --prefix=/usr/`
+		4. Build boost `./b2`
+		5. Install boost `sudo ./b2 install`
 3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every second
 4. `make dev-portal-cruncher`: this will run the portal cruncher service that takes portal data from the server backend and inserts it into redis for the portal to use
 5. `make dev-server`: this will run a fake game server and register itself with the server backend
 6. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
-7. `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit https://localhost:20000 to view currently connected sessions.
+7. `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://127.0.01:20000 to view currently connected sessions.
 8. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
