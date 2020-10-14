@@ -154,12 +154,8 @@ export default class AccountSettings extends Vue {
   }
 
   private checkUserProfile (userProfile: UserProfile) {
-    if (this.companyName === '') {
-      this.companyName = userProfile.companyName || ''
-    }
-    if (this.companyCode === '') {
-      this.companyCode = userProfile.companyCode || ''
-    }
+    this.companyName = userProfile.companyName || ''
+    this.companyCode = userProfile.companyCode || ''
     this.newsletterConsent = userProfile.newsletterConsent || false
     this.checkCompanyName()
     this.checkCompanyCode()
