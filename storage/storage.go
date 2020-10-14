@@ -148,8 +148,6 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 
 	var db, storage Storer
 
-	// for now simply follow current Firestore/InMemory layout
-
 	// gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
@@ -172,13 +170,13 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 			return nil, err
 		}
 		if pgsql {
-			db, err = NewPostgreSQL(logger)
+			db, err = NewPostgreSQL(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading sqlite3: %w", err)
 				return nil, err
 			}
 		} else {
-			db, err = NewSQLite3(logger)
+			db, err = NewSQLite3(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)
 				return nil, err

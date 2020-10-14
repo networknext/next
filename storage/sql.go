@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 )
 
@@ -323,5 +325,48 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
+	return nil
+}
+
+// Helper functions
+
+// SyncLoop is a helper method that calls Sync
+func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
+	if err := db.Sync(ctx); err != nil {
+		level.Error(db.Logger).Log("during", "SyncLoop", "err", err)
+	}
+
+	for {
+		select {
+		case <-c:
+			if err := db.Sync(ctx); err != nil {
+				level.Error(db.Logger).Log("during", "SyncLoop", "err", err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (db *SQL) Sync(ctx context.Context) error {
+	return nil
+}
+
+func (db *SQL) syncDatacenters(ctx context.Context) error {
+	return nil
+}
+func (db *SQL) syncRelays(ctx context.Context) error {
+	return nil
+}
+func (db *SQL) syncBuyers(ctx context.Context) error {
+	return nil
+}
+func (db *SQL) syncSellers(ctx context.Context) error {
+	return nil
+}
+func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
+	return nil
+}
+func (db *SQL) syncCustomers(ctx context.Context) error {
 	return nil
 }
