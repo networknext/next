@@ -142,16 +142,15 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
+    if (this.$store.getters.userProfile) {
       this.checkUserProfile(this.$store.getters.userProfile)
     }
+    this.unwatch = this.$store.watch(
+      (_, getters: any) => getters.userProfile,
+      (userProfile: any) => {
+        this.checkUserProfile(userProfile)
+      }
+    )
   }
 
   private checkUserProfile (userProfile: UserProfile) {
@@ -174,9 +173,6 @@ export default class AccountSettings extends Vue {
   private checkCompanyName () {
     this.companyNameErrors = []
     this.validCompanyName = false
-    if (this.companyName.length === 0) {
-      return
-    }
     if (this.companyName.length > 256) {
       this.companyNameErrors.push('Please choose a company name that is at most 256 characters')
     }
