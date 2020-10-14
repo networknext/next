@@ -98,13 +98,6 @@ export default class SessionMap extends Vue {
           })
         }
 
-        console.log(onNN[0])
-        console.log(onNN[1])
-        console.log(onNN[2])
-        console.log(onNN[3])
-        console.log(onNN[4])
-        console.log(onNN[5])
-
         const cellSize = 10
         const aggregation = 'MEAN'
         let nnLayer = null
@@ -114,18 +107,10 @@ export default class SessionMap extends Vue {
 
         const MAX_SESSIONS = 300000
 
-        console.log('nn received')
-        console.log(onNN.length)
-        console.log('expected number of nn layers - 1')
-        console.log(Math.floor(onNN.length / MAX_SESSIONS))
         const nnLayerNum = Math.floor(onNN.length / MAX_SESSIONS) + 1
         const onNNLayers = []
 
-        console.log('numNNLayers')
-        console.log(nnLayerNum)
-
         for (let i = 0; i < nnLayerNum - 1; i++) {
-          console.log('In For Loop NN')
           const currentSlice = onNN.splice(0, MAX_SESSIONS)
           onNN = onNN.splice(-MAX_SESSIONS)
           nnLayer = new ScreenGridLayer({
@@ -156,16 +141,8 @@ export default class SessionMap extends Vue {
           onNNLayers.push(nnLayer)
         }
 
-        console.log('direct received')
-        console.log(direct.length)
-        console.log('expected number of direct layers - 1')
-        console.log(Math.floor(direct.length / MAX_SESSIONS))
-
         const directLayerNum = Math.floor(direct.length / MAX_SESSIONS) + 1
         const directLayers = []
-
-        console.log('numDirectLayers')
-        console.log(directLayerNum)
 
         for (let i = 0; i < directLayerNum - 1; i++) {
           const currentSlice = direct.splice(0, MAX_SESSIONS)
@@ -205,13 +182,6 @@ export default class SessionMap extends Vue {
         if (onNN.length > 0) {
           layers = layers.concat(onNNLayers)
         }
-
-        console.log('onNNLayers')
-        console.log(onNNLayers.length)
-
-        console.log('all layers')
-        console.log(layers.length)
-        console.log(layers)
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
