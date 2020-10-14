@@ -577,7 +577,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 }
 
 type RouteProvider interface {
-	GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64
+	GetDatacenterRelayIDs(datacenterID uint64) []uint64
 	GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error)
 }
@@ -979,7 +979,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Routes are planned between the near relays for this session,
 		// and the set of dest relays in the datacenter.
 
-		datacenterRelays := routeMatrix.GetDatacenterRelayIDs(serverDataReadOnly.Datacenter)
+		datacenterRelays := routeMatrix.GetDatacenterRelayIDs(serverDataReadOnly.Datacenter.ID)
 		if len(datacenterRelays) == 0 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
@@ -1171,9 +1171,9 @@ func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration u
 	return bytesUp, bytesDown
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [routing.MaxRelays]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
-	if chosenRoute.NumRelays == 0 {
+	if routeNumRelays == 0 {
 		return 0
 	}
 
@@ -1181,7 +1181,7 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	sellerPriceNibblinsPerGB := routing.Nibblin(0)
-	for _, seller := range chosenRoute.RelaySellers {
+	for _, seller := range relaySellers {
 		sellerPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
 	}
 
@@ -1191,18 +1191,18 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []routing.Nibblin {
-	if chosenRoute.NumRelays == 0 {
-		return nil
-	}
+func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [routing.MaxRelays]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [routing.MaxRelays]routing.Nibblin {
+	relayPrices := [routing.MaxRelays]routing.Nibblin{}
 
-	relayPrices := make([]routing.Nibblin, chosenRoute.NumRelays)
+	if routeNumRelays == 0 {
+		return relayPrices
+	}
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i := 0; i < len(relayPrices); i++ {
-		relayPriceNibblins := float64(chosenRoute.RelaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
@@ -1222,7 +1222,7 @@ type PostSessionUpdateParams struct {
 	nearRelays          []routing.NearRelayData
 	timeNow             time.Time
 	totalPriceNibblins  routing.Nibblin
-	nextRelaysPrice     []routing.Nibblin
+	nextRelaysPrice     [routing.MaxRelays]routing.Nibblin
 	nextBytesUp         uint64
 	nextBytesDown       uint64
 	envelopeBytesUp     uint64
@@ -1280,21 +1280,11 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 		}
 	}
 
-	if !postSessionHandler.IsBillingBufferFull() {
-		postSessionHandler.SendBillingEntry(buildBillingEntry(params))
-		params.sessionUpdateParams.Metrics.PostSessionBillingEntriesSent.Add(1)
-	} else {
-		params.sessionUpdateParams.Metrics.PostSessionBillingBufferFull.Add(1)
-	}
+	postSessionHandler.SendBillingEntry(buildBillingEntry(params))
 
-	if !postSessionHandler.IsPortalBufferFull() {
-		portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			postSessionHandler.SendPortalData(portalData)
-			params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
-		}
-	} else {
-		params.sessionUpdateParams.Metrics.PostSessionPortalBufferFull.Add(1)
+	portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
+	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+		postSessionHandler.SendPortalData(portalData)
 	}
 }
 
@@ -1369,9 +1359,9 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		nextRelays[i] = params.chosenRoute.RelayIDs[i]
 	}
 
-	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(nextRelaysPriceArray) && i < len(params.nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = uint64(params.nextRelaysPrice[i])
+	nextRelaysPriceUint64 := [routing.MaxRelays]uint64{}
+	for i := 0; i < routing.MaxRelays; i++ {
+		nextRelaysPriceUint64[i] = uint64(params.nextRelaysPrice[i])
 	}
 
 	return &billing.BillingEntry{
@@ -1402,7 +1392,7 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
 		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
-		NextRelaysPrice:           nextRelaysPriceArray,
+		NextRelaysPrice:           nextRelaysPriceUint64,
 		Latitude:                  float32(params.location.Latitude),
 		Longitude:                 float32(params.location.Longitude),
 		ISP:                       params.location.ISP,
@@ -1647,9 +1637,9 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), lastSliceDuration)
 
 	// Calculate the total price for the billing entry
-	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute.NumRelays, chosenRoute.RelaySellers, envelopeBytesUp, envelopeBytesDown)
 
-	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute.NumRelays, chosenRoute.RelaySellers, envelopeBytesUp, envelopeBytesDown)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
 	postSessionUpdateFunc(&PostSessionUpdateParams{
