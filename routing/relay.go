@@ -2,6 +2,7 @@ package routing
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -154,6 +155,188 @@ type RelayTrafficStats struct {
 	SessionCount  uint64
 	BytesSent     uint64
 	BytesReceived uint64
+
+	OutboundPingTx uint64
+
+	RouteRequestRx uint64
+	RouteRequestTx uint64
+
+	RouteResponseRx uint64
+	RouteResponseTx uint64
+
+	ClientToServerRx uint64
+	ClientToServerTx uint64
+
+	ServerToClientRx uint64
+	ServerToClientTx uint64
+
+	InboundPingRx uint64
+	InboundPingTx uint64
+
+	PongRx uint64
+
+	SessionPingRx uint64
+	SessionPingTx uint64
+
+	SessionPongRx uint64
+	SessionPongTx uint64
+
+	ContinueRequestRx uint64
+	ContinueRequestTx uint64
+
+	ContinueResponseRx uint64
+	ContinueResponseTx uint64
+
+	NearPingRx uint64
+	NearPingTx uint64
+
+	UnknownRx uint64
+}
+
+// OtherStatsRx returns the relay to relay rx stats
+func (rts *RelayTrafficStats) OtherStatsRx() uint64 {
+	return rts.PongRx + rts.InboundPingRx
+}
+
+// OtherStatsTx returns the relay to relay tx stats
+func (rts *RelayTrafficStats) OtherStatsTx() uint64 {
+	return rts.OutboundPingTx + rts.InboundPingTx
+}
+
+// GameStatsRx returns the game <-> relay rx stats
+func (rts *RelayTrafficStats) GameStatsRx() uint64 {
+	return rts.RouteRequestRx + rts.RouteResponseRx + rts.ClientToServerRx + rts.ServerToClientRx + rts.SessionPingRx + rts.SessionPongRx + rts.ContinueRequestRx + rts.ContinueResponseRx + rts.NearPingRx
+}
+
+// GameStatsTx returns the game <-> relay tx stats
+func (rts *RelayTrafficStats) GameStatsTx() uint64 {
+	return rts.RouteRequestTx + rts.RouteResponseTx + rts.ClientToServerTx + rts.ServerToClientTx + rts.SessionPingTx + rts.SessionPongTx + rts.ContinueRequestTx + rts.ContinueResponseTx + rts.NearPingTx
+}
+
+func (rts *RelayTrafficStats) WriteTo(data []byte, index *int) {
+	encoding.WriteUint64(data, index, rts.SessionCount)
+	encoding.WriteUint64(data, index, rts.BytesSent)
+	encoding.WriteUint64(data, index, rts.BytesReceived)
+	encoding.WriteUint64(data, index, rts.OutboundPingTx)
+	encoding.WriteUint64(data, index, rts.RouteRequestRx)
+	encoding.WriteUint64(data, index, rts.RouteRequestTx)
+	encoding.WriteUint64(data, index, rts.RouteResponseRx)
+	encoding.WriteUint64(data, index, rts.RouteResponseTx)
+	encoding.WriteUint64(data, index, rts.ClientToServerRx)
+	encoding.WriteUint64(data, index, rts.ClientToServerTx)
+	encoding.WriteUint64(data, index, rts.ServerToClientRx)
+	encoding.WriteUint64(data, index, rts.ServerToClientTx)
+	encoding.WriteUint64(data, index, rts.InboundPingRx)
+	encoding.WriteUint64(data, index, rts.InboundPingTx)
+	encoding.WriteUint64(data, index, rts.PongRx)
+	encoding.WriteUint64(data, index, rts.SessionPingRx)
+	encoding.WriteUint64(data, index, rts.SessionPingTx)
+	encoding.WriteUint64(data, index, rts.SessionPongRx)
+	encoding.WriteUint64(data, index, rts.SessionPongTx)
+	encoding.WriteUint64(data, index, rts.ContinueRequestRx)
+	encoding.WriteUint64(data, index, rts.ContinueRequestTx)
+	encoding.WriteUint64(data, index, rts.ContinueResponseRx)
+	encoding.WriteUint64(data, index, rts.ContinueResponseTx)
+	encoding.WriteUint64(data, index, rts.NearPingRx)
+	encoding.WriteUint64(data, index, rts.NearPingTx)
+	encoding.WriteUint64(data, index, rts.UnknownRx)
+}
+
+func (rts *RelayTrafficStats) ReadFrom(data []byte, index *int) error {
+	if !encoding.ReadUint64(data, index, &rts.SessionCount) {
+		return errors.New("unable to read relay stats session count")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.BytesSent) {
+		return errors.New("invalid data, unable to read bytes sent")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.BytesReceived) {
+		return errors.New("invalid data, unable to read bytes received")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.OutboundPingTx) {
+		return errors.New("invalid data, could not read outbound ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.RouteRequestRx) {
+		return errors.New("invalid data, could not read route request rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.RouteRequestTx) {
+		return errors.New("invalid data, could not read route request tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.RouteResponseRx) {
+		return errors.New("invalid data, could not read route response rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.RouteResponseTx) {
+		return errors.New("invalid data, could not read route response tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ClientToServerRx) {
+		return errors.New("invalid data, could not read client to server rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ClientToServerTx) {
+		return errors.New("invalid data, could not read client to server tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ServerToClientRx) {
+		return errors.New("invalid data, could not read server to client rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ServerToClientTx) {
+		return errors.New("invalid data, could not read server to client tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.InboundPingRx) {
+		return errors.New("invalid data, could not read inbound ping rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.InboundPingTx) {
+		return errors.New("invalid data, could not read inbound ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.PongRx) {
+		return errors.New("invalid data, could not read pong rx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.SessionPingRx) {
+		return errors.New("invalid data, could not read session ping rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.SessionPingTx) {
+		return errors.New("invalid data, could not read session ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.SessionPongRx) {
+		return errors.New("invalid data, could not read session pong rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.SessionPongTx) {
+		return errors.New("invalid data, could not read session pong tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ContinueRequestRx) {
+		return errors.New("invalid data, could not read continue request rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ContinueRequestTx) {
+		return errors.New("invalid data, could not read continue request tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.ContinueResponseRx) {
+		return errors.New("invalid data, could not read continue response rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.ContinueResponseTx) {
+		return errors.New("invalid data, could not read continue response tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.NearPingRx) {
+		return errors.New("invalid data, could not read near ping rx")
+	}
+	if !encoding.ReadUint64(data, index, &rts.NearPingTx) {
+		return errors.New("invalid data, could not read near ping tx")
+	}
+
+	if !encoding.ReadUint64(data, index, &rts.UnknownRx) {
+		return errors.New("invalid data, could not read unknown rx")
+	}
+	return nil
 }
 
 type PeakRelayTrafficStats struct {

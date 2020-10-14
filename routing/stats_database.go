@@ -312,3 +312,26 @@ func (database *StatsDatabase) GetCostMatrix(
 
 	return nil
 }
+
+func (database *StatsDatabase) GenerateCostMatrix4(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
+	numRelays := len(relayIDs)
+	costs := make([]int32, TriMatrixLength(numRelays))
+
+	for i := 0; i < numRelays; i++ {
+		for j := 0; j < i; j++ {
+			ijIndex := TriMatrixIndex(i, j)
+
+			idI := uint64(relayIDs[i])
+			idJ := uint64(relayIDs[j])
+			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
+
+			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
+				costs[ijIndex] = int32(math.Floor(float64(rtt)))
+			} else {
+				costs[ijIndex] = -1
+			}
+		}
+	}
+
+	return costs
+}

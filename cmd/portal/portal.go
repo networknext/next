@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,7 +26,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -115,25 +115,25 @@ func main() {
 		}
 	}
 
-	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"))
+	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"))
+	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
@@ -153,10 +153,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	auth0Client := storage.Auth0{
-		Manager: manager,
-		Logger:  logger,
-	}
+	var userManager storage.UserManager = manager.User
+	var jobManager storage.JobManager = manager.Job
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
@@ -333,96 +331,28 @@ func main() {
 				continue
 			}
 
-			if res.ContentLength == -1 {
-				res.Body.Close()
-				fmt.Printf("content length invalid: %d\n", res.ContentLength)
+			if res.StatusCode != http.StatusOK {
+				level.Error(logger).Log("msg", "bad relay_stats request")
 				continue
 			}
 
-			data := make([]byte, res.ContentLength)
-			res.Body.Read(data)
+			if res.ContentLength == -1 {
+				level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
+				res.Body.Close()
+				continue
+			}
+
+			data, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to read response body", "err", err)
+				res.Body.Close()
+				continue
+			}
 			res.Body.Close()
 
-			index := 0
-
-			var version uint8
-			if !encoding.ReadUint8(data, &index, &version) {
-				level.Error(logger).Log("unable to read relay stats version")
-				continue
+			if err := relayMap.ReadAndSwap(data); err != nil {
+				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
 			}
-
-			var count uint64
-			if !encoding.ReadUint64(data, &index, &count) {
-				level.Error(logger).Log("unable to read relay stats count")
-				continue
-			}
-
-			m := make(map[uint64]jsonrpc.RelayData)
-			for i := uint64(0); i < count; i++ {
-				var id uint64
-				if !encoding.ReadUint64(data, &index, &id) {
-					level.Error(logger).Log("unable to read relay stats id")
-					break
-				}
-
-				var relay jsonrpc.RelayData
-
-				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
-					level.Error(logger).Log("unable to read relay stats session count")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.Tx) {
-					level.Error(logger).Log("unable to read relay stats tx")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.Rx) {
-					level.Error(logger).Log("unable to read relay stats rx")
-					break
-				}
-
-				var major uint8
-				if !encoding.ReadUint8(data, &index, &major) {
-					level.Error(logger).Log("msg", "unable to relay stats major version")
-					break
-				}
-
-				var minor uint8
-				if !encoding.ReadUint8(data, &index, &minor) {
-					level.Error(logger).Log("msg", "unable to relay stats minor version")
-					break
-				}
-
-				var patch uint8
-				if !encoding.ReadUint8(data, &index, &patch) {
-					level.Error(logger).Log("msg", "unable to relay stats patch version")
-					break
-				}
-
-				relay.Version = fmt.Sprintf("%d.%d.%d", major, minor, patch)
-
-				var unixTime uint64
-				if !encoding.ReadUint64(data, &index, &unixTime) {
-					level.Error(logger).Log("unable to read relay stats last update time")
-					break
-				}
-				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
-
-				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
-					level.Error(logger).Log("unable to read relay stats cpu usage")
-					break
-				}
-
-				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
-					level.Error(logger).Log("unable to read relay stats memory usage")
-					break
-				}
-
-				m[id] = relay
-			}
-
-			relayMap.Swap(&m)
 		}
 	}()
 
@@ -437,7 +367,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value("user")
+			user := i.Request.Context().Value(jsonrpc.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
@@ -474,9 +404,10 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&jsonrpc.AuthService{
-			Logger:  logger,
-			Auth0:   auth0Client,
-			Storage: db,
+			Logger:      logger,
+			UserManager: userManager,
+			JobManager:  jobManager,
+			Storage:     db,
 		}, "")
 
 		allowCORSStr := os.Getenv("CORS")
