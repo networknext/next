@@ -580,14 +580,14 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		if VerifyAllRoles(r, AdminRole) {
 			err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
 			if err != nil {
-				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				err := fmt.Errorf("UpdateUserRoles() failed to remove current user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
 		} else {
 			err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
 			if err != nil {
-				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				err := fmt.Errorf("UpdateUserRoles() failed to remove current user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
@@ -738,6 +738,22 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		}
 
 		if !VerifyAllRoles(r, AdminRole) {
+			if err = s.UserManager.RemoveRoles(requestID, []*management.Role{
+				{
+					Name:        &roleNames[0],
+					ID:          &roleIDs[0],
+					Description: &roleDescriptions[0],
+				},
+				{
+					Name:        &roleNames[1],
+					ID:          &roleIDs[1],
+					Description: &roleDescriptions[1],
+				},
+			}...); err != nil {
+				err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
+				s.Logger.Log("err", err)
+				return err
+			}
 			if err = s.UserManager.AssignRoles(requestID, roles...); err != nil {
 				err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
 				s.Logger.Log("err", err)
@@ -757,7 +773,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		}
 
 		_, err := s.Storage.Customer(newCompanyCode)
-		if err == nil {
+		if err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() company already exists: %v", err)
 			s.Logger.Log("err", err)
 			return err
