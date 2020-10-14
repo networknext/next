@@ -21,11 +21,27 @@ const (
 )
 
 func main() {
+	// this var is just used to catch the situation where ghost army publishes
+	// way too many slices in a given interval. Shouldn't happen anymore but just in case
+
+	var estimatedPeakSessionCount int
+	if v, ok := os.LookupEnv("GHOST_ARMY_PEAK_SESSION_COUNT"); ok {
+		if num, err := strconv.ParseInt(v, 10, 64); err == nil {
+			estimatedPeakSessionCount = int(num)
+		} else {
+			fmt.Printf("could not parse GHOST_ARMY_PEAK_SESSION_COUNT: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Println("GHOST_ARMY_PEAK_SESSION_COUNT not set")
+		os.Exit(1)
+	}
+
 	var infile string
 	if v, ok := os.LookupEnv("GHOST_ARMY_BIN"); ok {
 		infile = v
 	} else {
-		fmt.Println("you must set GHOST_ARMY_BIN to a file")
+		fmt.Println("GHOST_ARMY_BIN not set")
 		os.Exit(1)
 	}
 
@@ -33,7 +49,7 @@ func main() {
 	if v, ok := os.LookupEnv("DATACENTERS_CSV"); ok {
 		datacenterCSV = v
 	} else {
-		fmt.Println("you must set DATACENTERS_CSV to a file")
+		fmt.Println("DATACENTERS_CSV not set")
 		os.Exit(1)
 	}
 
@@ -224,8 +240,8 @@ func main() {
 
 			diff := i - before
 
-			if diff > 12000 {
-				fmt.Printf("sent more than 12k slices this interval, num sent = %d, current interval in secs = %d - %d\n", diff, sliceBegin, sliceBegin+interval)
+			if diff > estimatedPeakSessionCount {
+				fmt.Printf("sent more than %d slices this interval, num sent = %d, current interval in secs = %d - %d\n", estimatedPeakSessionCount, diff, sliceBegin, sliceBegin+interval)
 			}
 
 			// increment by the interval
