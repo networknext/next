@@ -122,6 +122,9 @@ type Storer interface {
 
 	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
 	CheckSequenceNumber(ctx context.Context) (bool, error)
+
+	// IncrementSequenceNumber is used by all methods that make changes to the db
+	IncrementSequenceNumber(ctx context.Context) error
 }
 
 // NewStorage returns a pointer to the storage solution specified for the provide environment. The
@@ -156,8 +159,6 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 	if !ok {
 		err := fmt.Errorf("ENV var not set")
 		return nil, err
-	} else {
-		fmt.Printf("env is set to %s\n", env)
 	}
 
 	if env == "local" {

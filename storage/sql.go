@@ -328,7 +328,94 @@ func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error 
 	return nil
 }
 
-// Helper functions
+// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
+// Returns:
+// 	true: if the remote sequence number > local sequence number
+//	false: if the remote sequence number = local sequence number
+//  false + error: if the remote sequence number < local sequence number
+//
+// "true" forces the caller to sync from the database and updates
+// the local sequence number. "false" does not force a sync and does
+// not modify the local number.
+func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, error) {
+	var sequenceNumber int64
+
+	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
+
+	if err == sql.ErrNoRows {
+		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
+		fmt.Println("No sequence number returned")
+		return false, err
+	} else if err != nil {
+		level.Error(db.Logger).Log("during", "query error", "err", err)
+		fmt.Printf("query error: %v\n", err)
+		return false, err
+	}
+
+	db.sequenceNumberMutex.RLock()
+	localSeqNum := db.SyncSequenceNumber
+	db.sequenceNumberMutex.RUnlock()
+
+	if localSeqNum < sequenceNumber {
+		db.sequenceNumberMutex.Lock()
+		db.SyncSequenceNumber = sequenceNumber
+		db.sequenceNumberMutex.Unlock()
+		return true, nil
+	} else if localSeqNum == sequenceNumber {
+		return false, nil
+	} else {
+		err = fmt.Errorf("local sequence number larger than remote: %d > %d", localSeqNum, sequenceNumber)
+		level.Error(db.Logger).Log("during", "query error", "err", err)
+		return false, err
+	}
+}
+
+// IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
+// increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
+// local and remote numbers are not the same, the data will be sync'd from the database and the local
+// sequence numbers updated.
+func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
+
+	var sequenceNumber int64
+
+	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
+
+	if err == sql.ErrNoRows {
+		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
+		fmt.Println("No sequence number returned")
+		return err
+	} else if err != nil {
+		level.Error(db.Logger).Log("during", "query error", "err", err)
+		fmt.Printf("query error: %v\n", err)
+		return err
+	}
+
+	sequenceNumber++
+
+	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing SQL", "err", err)
+		fmt.Printf("error preparing SQL stmt: %v\n", err)
+		return err
+	}
+
+	result, err := stmt.Exec(sequenceNumber)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+		fmt.Printf("error setting sequence number: %v\n", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		fmt.Printf("RowsAffected returned an error: %v\n", err)
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		fmt.Printf("expected to affect 1 row, affected %d", rows)
+	}
+
+	return nil
+}
 
 // SyncLoop is a helper method that calls Sync
 func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
@@ -348,28 +435,7 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	}
 }
 
-// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
-// Returns true if the remote number != the local number which forces the caller to sync from
-// databse and updates the local sequence number. Returns false (no need to sync) and does
-// not modify the local number, otherwise.
-func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, error) {
-	var sequenceNumber int64
-
-	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(sequenceNumber)
-
-	switch {
-	case err == sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-		fmt.Println("No sequence number returned")
-	case err != nil:
-		level.Error(db.Logger).Log("during", "query error", "err", err)
-		fmt.Printf("query error: %v\n", err)
-	default:
-		fmt.Printf("sequence number: %d\n", sequenceNumber)
-	}
-	return true, nil
-}
-
+// Sync is a utility function that calls the individual sync* methods
 func (db *SQL) Sync(ctx context.Context) error {
 
 	seqNumberNotInSync, err := db.CheckSequenceNumber(ctx)

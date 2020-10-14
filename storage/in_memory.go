@@ -498,6 +498,10 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 
 func (m *InMemory) CheckSequenceNumber(ctx context.Context) (bool, error) {
 
-	// does not force a sync
-	return false, nil
+	err := fmt.Errorf("SetSequenceNumber not implemented in InMemory")
+	return false, err
+}
+
+func (m *InMemory) IncrementSequenceNumber(ctx context.Context) error {
+	return fmt.Errorf("IncrementSequenceNumber not implemented in InMemory")
 }
