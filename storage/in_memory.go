@@ -495,3 +495,9 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 
 	return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenter.ID}
 }
+
+func (m *InMemory) CheckSequenceNumber(ctx context.Context) (bool, error) {
+
+	// does not force a sync
+	return false, nil
+}

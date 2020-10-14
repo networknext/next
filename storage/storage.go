@@ -119,6 +119,9 @@ type Storer interface {
 
 	// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
+
+	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
+	CheckSequenceNumber(ctx context.Context) (bool, error)
 }
 
 // NewStorage returns a pointer to the storage solution specified for the provide environment. The
@@ -172,7 +175,7 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 		if pgsql {
 			db, err = NewPostgreSQL(ctx, logger)
 			if err != nil {
-				err := fmt.Errorf("NewPostgreSQL() error loading sqlite3: %w", err)
+				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
 			}
 		} else {

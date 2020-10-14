@@ -25,7 +25,7 @@ type SQL struct {
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
-	syncSequenceNumber int64
+	SyncSequenceNumber int64
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -348,8 +348,88 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	}
 }
 
+// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
+// Returns true if the remote number != the local number which forces the caller to sync from
+// databse and updates the local sequence number. Returns false (no need to sync) and does
+// not modify the local number, otherwise.
+func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, error) {
+	var sequenceNumber int64
+
+	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(sequenceNumber)
+
+	switch {
+	case err == sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
+		fmt.Println("No sequence number returned")
+	case err != nil:
+		level.Error(db.Logger).Log("during", "query error", "err", err)
+		fmt.Printf("query error: %v\n", err)
+	default:
+		fmt.Printf("sequence number: %d\n", sequenceNumber)
+	}
+	return true, nil
+}
+
 func (db *SQL) Sync(ctx context.Context) error {
-	return nil
+
+	seqNumberNotInSync, err := db.CheckSequenceNumber(ctx)
+	if err != nil {
+		return err
+	}
+	if !seqNumberNotInSync {
+		return nil
+	}
+
+	var outerErr error
+	var wg sync.WaitGroup
+	wg.Add(6)
+
+	go func() {
+
+		if err := db.syncRelays(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync relays: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := db.syncCustomers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync customers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := db.syncBuyers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := db.syncSellers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := db.syncDatacenters(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := db.syncDatacenterMaps(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	return outerErr
 }
 
 func (db *SQL) syncDatacenters(ctx context.Context) error {

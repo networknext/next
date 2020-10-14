@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	_ "github.com/lib/pq"
 	"github.com/networknext/backend/routing"
 )
 
@@ -29,7 +30,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		customers:          make(map[string]routing.Customer),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
-		syncSequenceNumber: -1,
+		SyncSequenceNumber: -1,
 	}
 
 	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
@@ -53,11 +54,11 @@ func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 	// move sensitive stuff to env w/ GCP vars
 	const (
-		host     = ""
+		host     = "localhost"
 		port     = 5432
-		user     = ""
-		password = ""
-		dbname   = ""
+		user     = "engineering"
+		password = "0xdeadbeef"
+		dbname   = "nn"
 	)
 
 	pgsqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
@@ -86,7 +87,7 @@ func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 		customers:          make(map[string]routing.Customer),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
-		syncSequenceNumber: -1,
+		SyncSequenceNumber: -1,
 	}
 
 	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
