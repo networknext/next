@@ -270,7 +270,12 @@ func readJSONData(entity string, args []string) []byte {
 
 		data, err = ioutil.ReadFile(args[0])
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error reading %s JSON file: %v\n", entity, err), 1)
+			// Can't read the file, assume it is raw json data
+			data = []byte(args[0])
+			if !json.Valid(data) {
+				// It's not valid json, so error out
+				handleRunTimeError("invalid input, not a valid filepath or valid JSON", 1)
+			}
 		}
 	}
 
@@ -325,7 +330,6 @@ type seller struct {
 type relay struct {
 	Name                string
 	Addr                string
-	PublicKey           string
 	SellerID            string
 	DatacenterName      string
 	NicSpeedMbps        uint64
@@ -336,9 +340,10 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name     string
-	Enabled  bool
-	Location routing.Location
+	Name      string
+	Enabled   bool
+	Latitude  float64
+	Longitude float64
 }
 
 // used to decode dcMap hex strings from json
@@ -929,19 +934,13 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not resolve udp address %s: %v\n", relay.Addr, err), 1)
 					}
 
-					publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not decode bas64 public key %s: %v\n", relay.PublicKey, err), 1)
-					}
-
 					// Build the actual Relay struct from the input relay struct
 					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        rid,
-						SignedID:  int64(rid),
-						Name:      relay.Name,
-						Addr:      *addr,
-						PublicKey: publicKey,
+						ID:       rid,
+						SignedID: int64(rid),
+						Name:     relay.Name,
+						Addr:     *addr,
 						Seller: routing.Seller{
 							ID: relay.SellerID,
 						},
@@ -970,7 +969,6 @@ func main() {
 							example := relay{
 								Name:                "amazon.ohio.2",
 								Addr:                "127.0.0.1:40000",
-								PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 								SellerID:            "5tCm7KjOw3EBYojLe6PC",
 								DatacenterName:      "amazon.ohio.2",
 								NicSpeedMbps:        1000,
@@ -1179,6 +1177,19 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:       "traffic",
+				ShortUsage: "next relay traffic [regex]",
+				ShortHelp:  "Display detailed traffic stats for the specified relays",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) > 0 {
+						relayTraffic(rpcClient, env, args[0])
+					} else {
+						relayTraffic(rpcClient, env, "")
+					}
+					return nil
+				},
+			},
 		},
 	}
 
@@ -1274,7 +1285,10 @@ func main() {
 						SignedID: int64(did),
 						Name:     datacenter.Name,
 						Enabled:  datacenter.Enabled,
-						Location: datacenter.Location,
+						Location: routing.Location{
+							Latitude:  datacenter.Latitude,
+							Longitude: datacenter.Longitude,
+						},
 					}
 
 					// Add the Datacenter to storage
@@ -1288,9 +1302,10 @@ func main() {
 						ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							example := datacenter{
-								Name:     "amazon.ohio.2",
-								Enabled:  false,
-								Location: routing.LocationNullIsland,
+								Name:      "amazon.ohio.2",
+								Enabled:   false,
+								Latitude:  90,
+								Longitude: 180,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")

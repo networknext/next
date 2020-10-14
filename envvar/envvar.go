@@ -3,6 +3,7 @@ package envvar
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -73,6 +74,20 @@ func GetBase64(name string, defaultValue []byte) ([]byte, error) {
 	value, err := base64.StdEncoding.DecodeString(valueString)
 	if err != nil {
 		return defaultValue, fmt.Errorf("could not parse value of env var %s as a base64 encoded value. Value: %s", name, valueString)
+	}
+
+	return value, nil
+}
+
+func GetAddress(name string, defaultValue *net.UDPAddr) (*net.UDPAddr, error) {
+	valueString, ok := os.LookupEnv(name)
+	if !ok {
+		return defaultValue, nil
+	}
+
+	value, err := net.ResolveUDPAddr("udp", valueString)
+	if err != nil {
+		return defaultValue, fmt.Errorf("could not parse value of env var %s as an address. Value: %s", name, valueString)
 	}
 
 	return value, nil

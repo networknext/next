@@ -33,6 +33,7 @@ trap "kill 0" EXIT
 for ((r=0 ; r<${num_servers} ; r++)); do
 port=$((50000 + r))
 export NEXT_HOSTNAME="${next_hostname}"
+export NEXT_DATACENTER="staging.$(($RANDOM % 80 + 1))"
 export NEXT_LOG_LEVEL=0
 export SERVER_IP="$(hostname -I | awk '{print $1}')"
 export SERVER_PORT="${port}"

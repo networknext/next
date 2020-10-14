@@ -39,7 +39,7 @@ gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
 gsutil cp "$bucket/ghost_army.bin" .
 
 # Copy the list of datacenters from GCP Storage
-gsutil cp "$bucket/datacenters.csv" .
+gsutil cp 'gs://ghost_army/datacenters.csv' .
 
 # Refresh the known libs on the system
 ldconfig
