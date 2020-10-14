@@ -12,19 +12,19 @@ const (
 )
 
 type Email struct {
-	address string `json:"email"`
+	address   string `json:"email"`
 	emailType string `json:"type"`
 }
 
 type EmailMessage struct {
-	from string `json:"from_email"`
-	subject string `json:"subject"`
-	text string `json:"text"`
-	to []Email `json:"to"`
+	from    string  `json:"from_email"`
+	subject string  `json:"subject"`
+	text    string  `json:"text"`
+	to      []Email `json:"to"`
 }
 
 type EmailPayload struct {
-	key string `json:"key"`
+	key     string       `json:"key"`
 	message EmailMessage `json:"message"`
 }
 
@@ -50,22 +50,23 @@ func SendSignupEmail(toAddress string) error {
 	payload := EmailPayload{
 		key: APIKEY,
 		message: EmailMessage{
-			from: "",
+			from:    "",
 			subject: "Welcome to Network Next!",
-			text: "",
+			text:    "",
 			to: []Email{
 				{
 					emailType: "to",
-					address: toAddress,
-				}
+					address:   toAddress,
+				},
 			},
 		},
 	}
 
 	bytes, err := json.Marshal(payload)
 	if err != nil {
-			panic(err)
+		err = fmt.Errorf("SendSignupEmail() failed marshal the email payload: %v", err)
+		return err
 	}
 
-	SendEmail(bytes)
+	return SendEmail(bytes)
 }
