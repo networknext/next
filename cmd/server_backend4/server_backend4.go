@@ -195,7 +195,7 @@ func mainReturnWithCode() int {
 			if enableSDProfiler {
 				// Set up StackDriver profiler
 				if err := profiler.Start(profiler.Config{
-					Service:        "server_backend",
+					Service:        "server_backend4",
 					ServiceVersion: env,
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
