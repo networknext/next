@@ -13,7 +13,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
-
+import data from '../../map_sessions.json'
 /**
  * This component displays the map that is visible in the map workspace
  *  and has all of the associated logic and api calls
@@ -32,6 +32,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatch: any
+  private sessions: any
 
   constructor () {
     super()
@@ -44,6 +45,7 @@ export default class SessionMap extends Vue {
       minZoom: 2,
       maxZoom: 16
     }
+    this.sessions = (data as any).map_points
   }
 
   private mounted () {
@@ -83,17 +85,16 @@ export default class SessionMap extends Vue {
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
-        const sessions = response.map_points || []
         let onNN = []
         let direct = []
 
         if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
-          onNN = sessions
+          onNN = this.sessions
         } else {
-          onNN = sessions.filter((point: any) => {
+          onNN = this.sessions.filter((point: any) => {
             return (point[2] === true)
           })
-          direct = sessions.filter((point: any) => {
+          direct = this.sessions.filter((point: any) => {
             return (point[2] === false)
           })
         }
@@ -185,9 +186,6 @@ export default class SessionMap extends Vue {
       clearInterval(this.mapLoop)
     }
     this.fetchMapSessions()
-    this.mapLoop = setInterval(() => {
-      this.fetchMapSessions()
-    }, 10000)
   }
 }
 </script>

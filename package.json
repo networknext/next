@@ -85,7 +85,8 @@
     "rules": {
       "@typescript-eslint/camelcase": "off",
       "new-cap": "off",
-      "no-debugger": "off"
+      "no-debugger": "off",
+      "@typescript-eslint/no-var-requires": "off"
     },
     "overrides": [
       {
