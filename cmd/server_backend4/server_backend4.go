@@ -211,12 +211,14 @@ func mainReturnWithCode() int {
 	backendMetrics, err := metrics.NewServerBackend4Metrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server_backend4 metrics", "err", err)
+		return 1
 	}
 
 	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		return 1
 	}
 
 	// Create a goroutine to update metrics

@@ -7,11 +7,13 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"runtime"
 	"strings"
+	"sync"
 
 	"net/http"
 	"os"
@@ -193,6 +195,79 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create portal cruncher metrics", "err", err)
 	}
 
+	// Create an in-memory storer
+	var storer storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
+
+	var relayPublicKey []byte
+	var customerPublicKey []byte
+	var customerID uint64
+
+	if env == "local" {
+		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+			relayPublicKey, err = base64.StdEncoding.DecodeString(key)
+			if err != nil {
+				level.Error(logger).Log("envvar", "RELAY_PUBLIC_KEY", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+		} else {
+			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
+			os.Exit(1)
+		}
+
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
+			if err != nil {
+				level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+			customerPublicKey = customerPublicKey[8:]
+		}
+	}
+
+	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if firestoreEmulatorOK {
+		fmt.Printf("using firestore emulator\n")
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
+
+	if gcpOK || firestoreEmulatorOK {
+		// Firestore
+		{
+			fmt.Printf("setting up firestore\n")
+
+			// Create a Firestore Storer
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create firestore", "err", err)
+				os.Exit(1)
+			}
+
+			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(fssyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			// Start a goroutine to sync from Firestore
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
+
+			// Set the Firestore Storer to give to handlers
+			storer = fs
+		}
+	}
+
+	// Create dummy buyer and datacenter for local testing
+	if env == "local" {
+		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
+	}
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -308,6 +383,9 @@ func main() {
 		}()
 	}
 
+	// Create the large customer cache map so we can avoid adding direct sessions to the top 1000 list
+	var largeCustomerCacheMap sync.Map
+
 	// Start redis insertion loop
 	{
 		for i := int64(0); i < redisGoroutineCount; i++ {
@@ -408,11 +486,67 @@ func main() {
 					// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
 					clientTopSessions.Command("DEL", "s-%d", minutes-2)
 
+					if _, ok := largeCustomerCacheMap.Load(minutes - 2); ok {
+						largeCustomerCacheMap.Delete(minutes - 2)
+					}
+
+					// Check each portal entry and update the large customer cache map for any sessions we can add to redis
+					for j := range portalDataBuffer {
+						meta := &portalDataBuffer[j].Meta
+						buyer, err := storer.Buyer(meta.BuyerID)
+						if err != nil {
+							level.Error(logger).Log("msg", "failed to get buyer when inserting sessions into the large customer cache map", "buyerID", meta.BuyerID, "err", err)
+							continue
+						}
+
+						// temp
+						buyer.InternalConfig.LargeCustomer = true
+
+						// For large customers, only add sessions that have at least 1 slice on next
+						if buyer.InternalConfig.LargeCustomer && meta.OnNetworkNext {
+							customerMap := &sync.Map{}
+							newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
+							customerMap = newCustomerMapInterface.(*sync.Map)
+
+							sessionMap := &sync.Map{}
+							newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
+							sessionMap = newSessionMapInterface.(*sync.Map)
+
+							sessionMap.Store(meta.ID, true)
+						}
+					}
+
 					// Update the current global top sessions minute bucket
 					clientTopSessions.StartCommand("ZADD")
 					clientTopSessions.CommandArgs("s-%d", minutes)
 					for j := range portalDataBuffer {
 						meta := portalDataBuffer[j].Meta
+
+						// Check if this is a session we should add to the global top sessions
+						buyer, err := storer.Buyer(meta.BuyerID)
+						if err != nil {
+							level.Error(logger).Log("msg", "failed to get buyer when filtering global top sessions", "buyerID", meta.BuyerID, "err", err)
+							continue
+						}
+
+						// temp
+						buyer.InternalConfig.LargeCustomer = true
+
+						// For large customers, check the large customer cache map to see if we should insert the session
+						if buyer.InternalConfig.LargeCustomer {
+							customerMap := &sync.Map{}
+							newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
+							customerMap = newCustomerMapInterface.(*sync.Map)
+
+							sessionMap := &sync.Map{}
+							newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
+							sessionMap = newSessionMapInterface.(*sync.Map)
+
+							if _, ok := sessionMap.Load(meta.ID); !ok {
+								continue // Early out if we shouldn't add this session
+							}
+						}
+
 						sessionID := fmt.Sprintf("%016x", meta.ID)
 						score := meta.DeltaRTT
 						if score < 0 {
@@ -428,6 +562,32 @@ func main() {
 
 					for j := range portalDataBuffer {
 						meta := &portalDataBuffer[j].Meta
+
+						// Check if this is a session we should add to redis
+						buyer, err := storer.Buyer(meta.BuyerID)
+						if err != nil {
+							level.Error(logger).Log("msg", "failed to get buyer when filtering redis", "buyerID", meta.BuyerID, "err", err)
+							continue
+						}
+
+						// temp
+						buyer.InternalConfig.LargeCustomer = true
+
+						// For large customers, check the large customer cache map to see if we should insert the session
+						if buyer.InternalConfig.LargeCustomer {
+							customerMap := &sync.Map{}
+							newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
+							customerMap = newCustomerMapInterface.(*sync.Map)
+
+							sessionMap := &sync.Map{}
+							newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
+							sessionMap = newSessionMapInterface.(*sync.Map)
+
+							if _, ok := sessionMap.Load(meta.ID); !ok {
+								continue // Early out if we shouldn't add this session
+							}
+						}
+
 						slice := &portalDataBuffer[j].Slice
 						point := &portalDataBuffer[j].Point
 						sessionID := fmt.Sprintf("%016x", meta.ID)
