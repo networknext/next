@@ -499,9 +499,6 @@ func main() {
 							continue
 						}
 
-						// temp
-						buyer.InternalConfig.LargeCustomer = true
-
 						// For large customers, only add sessions that have at least 1 slice on next
 						if buyer.InternalConfig.LargeCustomer && meta.OnNetworkNext {
 							customerMap := &sync.Map{}
@@ -528,9 +525,6 @@ func main() {
 							level.Error(logger).Log("msg", "failed to get buyer when filtering global top sessions", "buyerID", meta.BuyerID, "err", err)
 							continue
 						}
-
-						// temp
-						buyer.InternalConfig.LargeCustomer = true
 
 						// For large customers, check the large customer cache map to see if we should insert the session
 						if buyer.InternalConfig.LargeCustomer {
@@ -569,9 +563,6 @@ func main() {
 							level.Error(logger).Log("msg", "failed to get buyer when filtering redis", "buyerID", meta.BuyerID, "err", err)
 							continue
 						}
-
-						// temp
-						buyer.InternalConfig.LargeCustomer = true
 
 						// For large customers, check the large customer cache map to see if we should insert the session
 						if buyer.InternalConfig.LargeCustomer {
