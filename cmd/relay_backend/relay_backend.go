@@ -409,7 +409,7 @@ func main() {
 				gcpProjectID = "local"
 
 				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 				defer cancelFunc()
 
 				level.Info(logger).Log("msg", "Detected pubsub emulator")
@@ -468,7 +468,7 @@ func main() {
 				gcpProjectID = "local"
 
 				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 				defer cancelFunc()
 
 				level.Info(logger).Log("msg", "Detected pubsub emulator")
@@ -515,12 +515,17 @@ func main() {
 					// convert peak to mbps
 
 					var traffic routing.TrafficStats
-					for more_stats := true; more_stats; {
+					for {
+						shouldBreak := false
 						select {
 						case stat := <-relay.TrafficChan:
 							traffic = traffic.Add(&stat)
 						default:
-							more_stats = false
+							shouldBreak = true
+						}
+
+						if shouldBreak {
+							break
 						}
 					}
 
@@ -551,14 +556,25 @@ func main() {
 						}
 					}
 
+					var bwSentPercent float32
+					var bwRecvPercent float32
+					var envSentPercent float32
+					var envRecvPercent float32
+					if fsrelay.NICSpeedMbps != 0 {
+						bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps)
+						bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps)
+						envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps)
+						envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps)
+					}
+
 					entries[count] = analytics.RelayStatsEntry{
 						ID:                       relay.ID,
 						CPUUsage:                 relay.CPUUsage,
 						MemUsage:                 relay.MemUsage,
-						BandwidthSentPercent:     bwSentMbps / float32(fsrelay.NICSpeedMbps), // TODO confirm
-						BandwidthReceivedPercent: bwRecvMbps / float32(fsrelay.NICSpeedMbps), // TODO confirm
-						EnvelopeSentPercent:      bwSentMbps / envSentMbps,                   // TODO confirm
-						EnvelopeReceivedPercent:  bwRecvMbps / envRecvMbps,                   // TODO confirm
+						BandwidthSentPercent:     bwSentPercent,
+						BandwidthReceivedPercent: bwRecvPercent,
+						EnvelopeSentPercent:      envSentPercent,
+						EnvelopeReceivedPercent:  envRecvPercent,
 						BandwidthSentMbps:        bwSentMbps,
 						BandwidthReceivedMbps:    bwRecvMbps,
 						EnvelopeSentMbps:         envSentMbps,
