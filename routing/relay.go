@@ -565,6 +565,28 @@ func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 	return nil
 }
 
+type PeakTrafficStats struct {
+	SessionCount uint64
+	EnvelopeUp   uint64
+	EnvelopeDown uint64
+}
+
+func (pts *PeakTrafficStats) MaxValues(other PeakTrafficStats) PeakTrafficStats {
+	if pts.SessionCount > other.SessionCount {
+		other.SessionCount = pts.SessionCount
+	}
+
+	if pts.EnvelopeUp > other.EnvelopeDown {
+		other.EnvelopeUp = pts.EnvelopeUp
+	}
+
+	if pts.EnvelopeDown > other.EnvelopeDown {
+		other.EnvelopeDown = pts.EnvelopeDown
+	}
+
+	return other
+}
+
 type Stats struct {
 	RTT        float64 `json:"rtt"`
 	Jitter     float64 `json:"jitter"`

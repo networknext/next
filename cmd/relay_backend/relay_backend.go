@@ -515,13 +515,19 @@ func main() {
 
 					var traffic routing.TrafficStats
 
-					relay.TrafficBuffMu.Lock()
+					relay.TrafficMu.Lock()
 					for i := range relay.TrafficStatsBuff {
 						stats := &relay.TrafficStatsBuff[i]
 						traffic = traffic.Add(stats)
 					}
 					relay.TrafficStatsBuff = relay.TrafficStatsBuff[:0]
-					relay.TrafficBuffMu.Unlock()
+					numSessions := relay.PeakTrafficStats.SessionCount
+					envUp := relay.PeakTrafficStats.EnvelopeUp
+					envDown := relay.PeakTrafficStats.EnvelopeDown
+					relay.PeakTrafficStats.SessionCount = 0
+					relay.PeakTrafficStats.EnvelopeUp = 0
+					relay.PeakTrafficStats.EnvelopeDown = 0
+					relay.TrafficMu.Unlock()
 
 					elapsed := time.Since(relay.LastStatsPublishTime)
 					relay.LastStatsPublishTime = time.Now()
@@ -531,13 +537,14 @@ func main() {
 						continue
 					}
 
-					bwSentMbps := float32(float64(traffic.AllTx()) / 1000000.0 / elapsed.Seconds())
-					bwRecvMbps := float32(float64(traffic.AllRx()) / 1000000.0 / elapsed.Seconds())
+					// use the sum of all the stats since the last publish here and convert to mbps
+					bwSentMbps := float32(float64(traffic.AllTx()) * 8.0 / 1000000.0 / elapsed.Seconds())
+					bwRecvMbps := float32(float64(traffic.AllRx()) * 8.0 / 1000000.0 / elapsed.Seconds())
 
-					envSentMbps := float32(float64(relay.TrafficStats.EnvelopeUp) / 1000000.0 / elapsed.Seconds())
-					envRecvMbps := float32(float64(relay.TrafficStats.EnvelopeDown) / 1000000.0 / elapsed.Seconds())
+					// use the peak envelope values here and convert, but it's already per second so no need for time adjustment
+					envSentMbps := float32(float64(envUp) * 8.0 / 1000000.0)
+					envRecvMbps := float32(float64(envDown) * 8.0 / 1000000.0)
 
-					// n^2 need better way to do this
 					var numRouteable uint32 = 0
 					for _, otherRelay := range allRelayData {
 						if relay.ID == otherRelay.ID {
@@ -573,7 +580,7 @@ func main() {
 						BandwidthReceivedMbps:    bwRecvMbps,
 						EnvelopeSentMbps:         envSentMbps,
 						EnvelopeReceivedMbps:     envRecvMbps,
-						NumSessions:              uint32(relay.TrafficStats.SessionCount),
+						NumSessions:              uint32(numSessions),
 						MaxSessions:              relay.MaxSessions,
 						NumRoutable:              numRouteable,
 						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,

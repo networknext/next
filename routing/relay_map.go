@@ -58,17 +58,22 @@ type RelayData struct {
 	Seller         Seller
 	Datacenter     Datacenter
 	LastUpdateTime time.Time
-	TrafficStats   TrafficStats
 	MaxSessions    uint32
 	CPUUsage       float32
 	MemUsage       float32
 	Version        string
 
+	// Traffic stats from last update
+	TrafficStats TrafficStats
+
+	// Highest values from the traffic stats seen since the last publis interval
+	PeakTrafficStats PeakTrafficStats
+
 	// contains all the traffic stats updates since the last publish
 	TrafficStatsBuff []TrafficStats
 
-	// for blocking access to the traffic stats specifically
-	TrafficBuffMu sync.Mutex
+	// for locking access to the traffic stats buffer & peak stats specifically
+	TrafficMu sync.Mutex
 
 	// only modified within the stats publish loop, so no need to lock access
 	LastStatsPublishTime time.Time
@@ -133,9 +138,14 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 	entry.CPUUsage = cpuUsage
 	entry.MemUsage = memUsage
 
-	entry.TrafficBuffMu.Lock()
+	entry.TrafficMu.Lock()
+	entry.PeakTrafficStats = entry.PeakTrafficStats.MaxValues(PeakTrafficStats{
+		SessionCount: newTraffic.SessionCount,
+		EnvelopeUp:   newTraffic.EnvelopeUp,
+		EnvelopeDown: newTraffic.EnvelopeDown,
+	})
 	entry.TrafficStatsBuff = append(entry.TrafficStatsBuff, newTraffic)
-	entry.TrafficBuffMu.Unlock()
+	entry.TrafficMu.Unlock()
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
