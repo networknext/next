@@ -172,9 +172,20 @@ func main() {
 		}
 	}
 
-	// Create an in-memory db
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+
+	// hardcoded dependency on InMemory will have to stay until we
+	// move to NewSQL()
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
+	}
+	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+	if fs != nil {
+		db = fs
 	}
 
 	// Create a no-op biller
@@ -183,46 +194,12 @@ func main() {
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if firestoreEmulatorOK {
-		fmt.Printf("using firestore emulator\n")
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	if gcpOK || firestoreEmulatorOK {
-		// Firestore
-		{
-			fmt.Printf("setting up firestore\n")
-
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create firestore", "err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		}
-	}
-
 	// Create dummy buyer and datacenter for local testing
 	if env == "local" {
-		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+		if err = storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
 	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
