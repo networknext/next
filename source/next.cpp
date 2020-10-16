@@ -35,7 +35,7 @@
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                                 "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PORT                                                 "40000"
+#define NEXT_BACKEND_PORT                                          "40000"
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
@@ -46,7 +46,7 @@
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
 #define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                         10.0
-#define NEXT_SESSION_TIMEOUT                                         15.0
+#define NEXT_SESSION_TIMEOUT                                         10.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
@@ -11473,8 +11473,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_server_internal_t * server = (next_server_internal_t*) context;
 
     const char * hostname = next_global_config.hostname;
-    const char * port = NEXT_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_PORT" );
+    const char * port = NEXT_BACKEND_PORT;
+    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
     if ( override_port )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
