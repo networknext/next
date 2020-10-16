@@ -531,11 +531,11 @@ func main() {
 						continue
 					}
 
-					bwSentMbps := float32(float64(traffic.AllTx()) / 1000000 / elapsed.Seconds())
-					bwRecvMbps := float32(float64(traffic.AllRx()) / 1000000 / elapsed.Seconds())
+					bwSentMbps := float32(float64(traffic.AllTx()) / 1000000.0 / elapsed.Seconds())
+					bwRecvMbps := float32(float64(traffic.AllRx()) / 1000000.0 / elapsed.Seconds())
 
-					envSentMbps := float32(float64(relay.TrafficStats.EnvelopeUp) / 1000000)
-					envRecvMbps := float32(float64(relay.TrafficStats.EnvelopeDown / 1000000))
+					envSentMbps := float32(float64(relay.TrafficStats.EnvelopeUp) / 1000000.0 / elapsed.Seconds())
+					envRecvMbps := float32(float64(relay.TrafficStats.EnvelopeDown) / 1000000.0 / elapsed.Seconds())
 
 					// n^2 need better way to do this
 					var numRouteable uint32 = 0
