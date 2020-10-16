@@ -116,7 +116,9 @@
 #define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                      (1<<6)
 #define NEXT_FLAGS_CLIENT_TIMED_OUT                                (1<<7)
 #define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                      (1<<8)
-#define NEXT_FLAGS_COUNT                                                9
+#define NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT                          (1<<9)
+#define NEXT_FLAGS_DIRECT_PONG_TIMED_OUT                          (1<<10)
+#define NEXT_FLAGS_COUNT                                               11
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
@@ -155,7 +157,7 @@
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
-static const uint8_t next_backend_public_key[] = 
+static uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
     160, 181, 151, 195, 202, 224, 207, 113, 
@@ -163,7 +165,7 @@ static const uint8_t next_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64 
 };
 
-static const uint8_t next_router_public_key[] = 
+static uint8_t next_router_public_key[] = 
 { 
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34, 
     0xa7, 0x55, 0x50, 0xeb, 0xab, 0x03, 0xde, 0xa9, 
@@ -3813,6 +3815,42 @@ int next_init( void * context, next_config_t * config_in )
         strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) - 1 );
     }
 
+    const char * backend_public_key_env = next_platform_getenv( "NEXT_BACKEND_PUBLIC_KEY" );
+    if ( backend_public_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "backend public key override" );
+        
+        if ( next_base64_decode_data( backend_public_key_env, next_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid backend public key" );
+        }
+        else
+        {
+            if ( backend_public_key_env[0] != '\0' )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "backend public key is invalid: \"%s\"", backend_public_key_env );
+            }
+        }
+    }
+
+    const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
+    if ( router_public_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override" );
+        
+        if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid router public key" );
+        }
+        else
+        {
+            if ( router_public_key_env[0] != '\0' )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "router public key is invalid: \"%s\"", router_public_key_env );
+            }
+        }
+    }
+
     next_global_config = config;
 
     next_signed_packets[NEXT_UPGRADE_REQUEST_PACKET] = 1;
@@ -5341,7 +5379,10 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     (void) from;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server to client packet is too small" );
         return false;
+    }
 
     uint8_t packet_type = 0;
     uint64_t packet_sequence = 0;
@@ -5354,7 +5395,10 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     {
         from_current_route = false;
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
+        }
     }
 
     if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
@@ -6609,7 +6653,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     }
 }
 
-void next_client_internal_process_game_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_client_internal_process_raw_direct_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_client_internal_verify_sentinels( client );
 
@@ -6630,7 +6674,7 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
             next_queue_push( client->notify_queue, notify );
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED]++;
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW]++;
     }
 
     if ( client->wake_up_callback )
@@ -6657,7 +6701,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     next_assert( packet_bytes >= 0 );
 
-    if ( packet_bytes == 0 )
+    if ( packet_bytes <= 1 )
         return;
 
 #if NEXT_DEVELOPMENT
@@ -6671,7 +6715,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     }
     else
     {
-        next_client_internal_process_game_packet( client, &from, packet_data + 1, packet_bytes - 1 );
+        next_client_internal_process_raw_direct_packet( client, &from, packet_data + 1, packet_bytes - 1 );
     }
 }
 
@@ -6826,6 +6870,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 }
 
 #if NEXT_DEVELOPMENT
+bool next_fake_fallback_to_direct = false;
 float next_fake_direct_packet_loss = 0.0f;
 float next_fake_direct_rtt = 0.0f;
 float next_fake_next_packet_loss = 0.0f;
@@ -6888,6 +6933,12 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
 
 #if NEXT_DEVELOPMENT
+        if ( !fallback_to_direct && next_fake_fallback_to_direct )
+        {
+            next_platform_mutex_acquire( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
+            next_platform_mutex_release( &client->route_manager_mutex );
+        }
         client->client_stats.direct_rtt += next_fake_direct_rtt;
         client->client_stats.direct_packet_loss += next_fake_direct_packet_loss;
         client->client_stats.next_rtt += next_fake_next_rtt;
@@ -6903,7 +6954,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.packets_out_of_order_server_to_client = client->out_of_order_tracker.num_out_of_order_packets;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_SERVER_TO_CLIENT] = client->out_of_order_tracker.num_out_of_order_packets;
 
-            client->client_stats.jitter_server_to_client = float( client->jitter_tracker.jitter * 1000 );
+            client->client_stats.jitter_server_to_client = float( client->jitter_tracker.jitter * 1000.0 );
         }
 
         next_platform_mutex_acquire( &client->packets_sent_mutex );                
@@ -7007,6 +7058,14 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
     double current_time = next_time();
 
+    if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client direct pong timed out. falling back to direct" );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
+        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_DIRECT_PONG_TIMED_OUT );
+        next_platform_mutex_release( &client->route_manager_mutex );
+    }
+
     if ( client->last_direct_ping_time + ( 1.0 / NEXT_DIRECT_PINGS_PER_SECOND ) <= current_time )
     {
         NextDirectPingPacket packet;
@@ -7019,14 +7078,6 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
         }
 
         client->last_direct_ping_time = current_time;
-    }
-
-    if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
-    {
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_CLIENT_TIMED_OUT );
-        next_platform_mutex_release( &client->route_manager_mutex );
-        client->fallback_to_direct = true;
     }
 }
 
@@ -7132,12 +7183,16 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 
     if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 )
     {
-        // printf( "current time = %f, route update timeout time = %f\n", next_time(), client->route_update_timeout_time );
-
         if ( next_time() > client->route_update_timeout_time )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client route update timeout. falling back to direct" );
+        
+            next_platform_mutex_acquire( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
+            next_platform_mutex_release( &client->route_manager_mutex );
+        
             client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+        
             client->fallback_to_direct = true;
         }
     }
@@ -7541,12 +7596,6 @@ void next_client_update( next_client_t * client )
                 next_client_notify_stats_updated_t * stats_updated = (next_client_notify_stats_updated_t*) notify;
                 client->client_stats = stats_updated->stats;
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
-                if ( client->fallback_to_direct && client->upgraded )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "clearing upgraded flag" );
-                    client->upgraded = false;
-                    client->session_id = 0;
-                }
             }
             break;
 
@@ -7638,10 +7687,10 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( over_budget )
             {
+                next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps)", envelope_kbps_up );
                 send_over_network_next = false;
                 if ( !multipath )
                 {
-                    next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps). sending packet direct instead", envelope_kbps_up );
                     send_direct = true;
                 }
             }
@@ -7717,10 +7766,12 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
         return;
     }
 
-    next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
-
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+    buffer[0] = 0;
+    memcpy( buffer + 1, packet_data, packet_bytes );
+    next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-    client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
+    client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
 
     client->internal->packets_sent++;
 }
@@ -10281,7 +10332,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
             }
             packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
             packet.packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
-            packet.jitter_client_to_server = float( entry->stats_jitter_client_to_server * 1000 );
+            packet.jitter_client_to_server = float( entry->stats_jitter_client_to_server );
 
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
@@ -11148,17 +11199,25 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
-
         if ( packet_sequence > session->stats_sequence )
         {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
+
+            if ( !session->stats_fallback_to_direct && packet.fallback_to_direct )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "server session fell back to direct %" PRIx64, session->session_id );
+            }
+
             session->stats_sequence = packet_sequence;
 
             session->stats_flags |= packet.flags;
             session->stats_reported = packet.reported;
             session->stats_multipath = packet.multipath;
             session->stats_fallback_to_direct = packet.fallback_to_direct;
-            session->stats_client_bandwidth_over_limit |= packet.bandwidth_over_limit;
+            if ( packet.bandwidth_over_limit )
+            {
+                session->stats_client_bandwidth_over_limit = true;
+            }
 
             session->stats_platform_id = packet.platform_id;
             session->stats_connection_type = packet.connection_type;
@@ -11182,6 +11241,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
+            session->stats_jitter_server_to_client = packet.jitter_server_to_client;
             session->stats_user_flags |= packet.user_flags;
             session->last_client_stats_update = next_time();
         }
@@ -11595,7 +11655,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
             session->stats_packets_lost_client_to_server += packets_lost;
             session->stats_packets_out_of_order_client_to_server = session->out_of_order_tracker.num_out_of_order_packets;
-            session->stats_jitter_client_to_server = session->jitter_tracker.jitter;
+            session->stats_jitter_client_to_server = session->jitter_tracker.jitter * 1000.0;
             session->next_tracker_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
         }
     }
@@ -11760,6 +11820,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
             session->waiting_for_update_response = false;
             session->next_session_update_time = -1.0;
+
+            // IMPORTANT: Send packets direct from now on for this session
+            session->committed = false;
+            next_platform_mutex_acquire( &server->session_mutex );
+            session->mutex_committed = false;
+            next_platform_mutex_release( &server->session_mutex );
         }
     }
 }
@@ -12253,13 +12319,13 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 if ( over_budget )
                 {
+                    next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps)", session_id, envelope_kbps_down );
                     next_platform_mutex_acquire( &server->internal->session_mutex );
                     internal_entry->stats_server_bandwidth_over_limit = true;
                     next_platform_mutex_release( &server->internal->session_mutex );
                     send_over_network_next = false;
                     if ( !multipath )
                     {
-                        next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps). sending direct instead", session_id, envelope_kbps_down );
                         send_upgraded_direct = true;
                     }
                 }
@@ -12269,7 +12335,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // send over network next
 
-                static uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
+                uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
                 
                 if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
                 {
@@ -12288,7 +12354,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                static uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+                uint8_t buffer[NEXT_MAX_PACKET_BYTES];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
                 next_write_uint8( &p, open_session_sequence );
@@ -12303,9 +12369,10 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     {
         // [0](payload) raw direct packet
 
-        static uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+        uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
-        memcpy( buffer + 1, packet_data, size_t(packet_bytes) + 1 );
+        memcpy( buffer + 1, packet_data, packet_bytes );
+
         next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
     }
 }
@@ -12331,7 +12398,10 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
         return;
     }
 
-    next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+    buffer[0] = 0;
+    memcpy( buffer + 1, packet_data, packet_bytes );
+    next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
 
 // ---------------------------------------------------------------

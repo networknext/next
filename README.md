@@ -18,4 +18,3 @@ Supported platforms:
 * Switch
 * Linux
 * MacOS
-* iOS
