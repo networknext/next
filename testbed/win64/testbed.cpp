@@ -73,14 +73,14 @@ int main()
 
     next_init( NULL, &config ); 
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );
         return 1;
     }
 
-    next_client_open_session( client, "173.255.241.176:32202" );
+    next_client_open_session( client, "173.255.241.176:50000" );
 
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
@@ -91,7 +91,7 @@ int main()
 
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
         
-        next_sleep( 1.0f / 60.0f );
+        next_sleep( 1.0 / 60.0 );
     }
 
     next_client_destroy( client );
