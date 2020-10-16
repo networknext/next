@@ -58,7 +58,6 @@ func TestSQL(t *testing.T) {
 
 	// TODO: test "not null" constraints
 	t.Run("AddCustomer", func(t *testing.T) {
-
 		customer := routing.Customer{
 			Active:                 true,
 			Code:                   "Compcode",
@@ -67,6 +66,17 @@ func TestSQL(t *testing.T) {
 		}
 
 		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+	})
+
+	t.Run("AddSeller", func(t *testing.T) {
+		seller := routing.Seller{
+			CompanyCode:               "Compcode",
+			IngressPriceNibblinsPerGB: 10,
+			EgressPriceNibblinsPerGB:  20,
+		}
+
+		err = db.AddSeller(ctx, seller)
 		assert.NoError(t, err)
 	})
 

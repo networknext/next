@@ -237,8 +237,77 @@ func (db *SQL) Sellers() []routing.Seller {
 	return sellers
 }
 
-// AddSeller adds the provided seller to storage and returns an error if the seller could not be added.
-func (db *SQL) AddSeller(ctx context.Context, seller routing.Seller) error {
+type sqlSeller struct {
+	IngressPriceNibblinsPerGB int64 `firestore:"pricePublicIngressNibblins"`
+	EgressPriceNibblinsPerGB  int64 `firestore:"pricePublicEgressNibblins"`
+}
+
+func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
+	var sql bytes.Buffer
+	// Check if the seller exists
+	db.sellerMutex.RLock()
+	_, found := db.sellers[s.ID]
+	db.sellerMutex.RUnlock()
+
+	if found {
+		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
+	}
+
+	var company routing.Customer
+	for _, customer := range db.customers {
+		if customer.Code == s.CompanyCode {
+			company = customer
+		}
+	}
+
+	// A relevant customer entry must exist to add a seller
+	if company.Code == "" {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: s.CompanyCode}
+	}
+
+	newSellerData := sqlSeller{
+		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
+		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
+	}
+
+	// Add the seller in remote storage
+	sql.Write([]byte("insert into sellers ("))
+	sql.Write([]byte("public_egress_price, public_ingress_price, customer_id"))
+	sql.Write([]byte(") values ($1, $2, "))
+	sql.Write([]byte("(select id from customers where customer_name ilike $3))"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing AddSeller SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(newSellerData.EgressPriceNibblinsPerGB,
+		newSellerData.IngressPriceNibblinsPerGB,
+		s.Name,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding datacenter", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	// Add the seller in cached storage
+	db.sellerMutex.Lock()
+	db.sellers[s.ID] = s
+	db.sellerMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
