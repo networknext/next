@@ -352,50 +352,44 @@ func mainReturnWithCode() int {
 	// Create the large customer cache map so we can avoid adding direct sessions to the top 1000 list
 	var largeCustomerCacheMap sync.Map
 
+	redisHostTopSessions := envvar.Get("REDIS_HOST_TOP_SESSIONS", "127.0.0.1:6379")
+	redisHostSessionMap := envvar.Get("REDIS_HOST_SESSION_MAP", "127.0.0.1:6379")
+	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
+	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
+
 	// Start redis insertion loop
 	{
 		for i := 0; i < redisGoroutineCount; i++ {
 			go func() {
+				// Each goroutine should use its own TCP sockets
 
-				// Each goroutine should use its own TCP socket
-				clientTopSessions, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+				clientTopSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
 				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
-					os.Exit(1)
-				}
-				if err := clientTopSessions.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
-					os.Exit(1)
+					level.Error(logger).Log("redis", redisHostTopSessions, "err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 				}
 
-				clientSessionMap, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_MAP"))
+				clientSessionMap, err := storage.NewRawRedisClient(redisHostSessionMap)
 				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
-					os.Exit(1)
-				}
-				if err := clientSessionMap.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
-					os.Exit(1)
+					level.Error(logger).Log("redis", redisHostSessionMap, "err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 				}
 
-				clientSessionMeta, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_META"))
+				clientSessionMeta, err := storage.NewRawRedisClient(redisHostSessionMeta)
 				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
-					os.Exit(1)
-				}
-				if err := clientSessionMeta.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
-					os.Exit(1)
+					level.Error(logger).Log("redis", redisHostSessionMeta, "err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 				}
 
-				clientSessionSlices, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+				clientSessionSlices, err := storage.NewRawRedisClient(redisHostSessionSlices)
 				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
-					os.Exit(1)
+					level.Error(logger).Log("redis", redisHostSessionSlices, "err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 				}
-				if err := clientSessionSlices.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
-					os.Exit(1)
+
+				if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 				}
 
 				portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -403,14 +397,14 @@ func mainReturnWithCode() int {
 				now := time.Now()
 				pingTime := time.Now()
 
-				for incoming := range messageChan {
-					var sessionPortalData transport.SessionPortalData
-					if err := sessionPortalData.UnmarshalBinary(incoming); err != nil {
-						level.Error(logger).Log("msg", "error unmarshaling session data message", "err", err)
-						continue
+				for {
+					sessionData, err := PullMessage(messageChan)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 					}
 
-					portalDataBuffer = append(portalDataBuffer, sessionPortalData)
+					portalDataBuffer = append(portalDataBuffer, sessionData)
 
 					if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
 						continue
@@ -418,183 +412,18 @@ func mainReturnWithCode() int {
 
 					// Periodically ping the redis instances and restart if we don't get a pong
 					if time.Since(pingTime) >= time.Second*10 {
-						if err := clientTopSessions.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_TOP_SESSIONS", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						if err := clientSessionMap.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_MAP", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						if err := clientSessionMeta.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_META", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						if err := clientSessionSlices.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_SLICES", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
+						if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
+							level.Error(logger).Log("err", err)
+							os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 						}
 
 						pingTime = time.Now()
 					}
 
 					now = time.Now()
-					secs := now.Unix()
-					minutes := secs / 60
+					minutes := now.Unix() / 60
 
-					// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
-					clientTopSessions.Command("DEL", "s-%d", minutes-2)
-
-					if _, ok := largeCustomerCacheMap.Load(minutes - 2); ok {
-						largeCustomerCacheMap.Delete(minutes - 2)
-					}
-
-					// Check each portal entry and update the large customer cache map for any sessions we can add to redis
-					for j := range portalDataBuffer {
-						meta := &portalDataBuffer[j].Meta
-						buyer, err := storer.Buyer(meta.BuyerID)
-						if err != nil {
-							level.Error(logger).Log("msg", "failed to get buyer when inserting sessions into the large customer cache map", "buyerID", meta.BuyerID, "err", err)
-							continue
-						}
-
-						// For large customers, only add sessions that have at least 1 slice on next
-						if buyer.InternalConfig.LargeCustomer && meta.OnNetworkNext {
-							customerMap := &sync.Map{}
-							newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
-							customerMap = newCustomerMapInterface.(*sync.Map)
-
-							sessionMap := &sync.Map{}
-							newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
-							sessionMap = newSessionMapInterface.(*sync.Map)
-
-							sessionMap.Store(meta.ID, true)
-						}
-					}
-
-					// Update the current global top sessions minute bucket
-					clientTopSessions.StartCommand("ZADD")
-					clientTopSessions.CommandArgs("s-%d", minutes)
-					for j := range portalDataBuffer {
-						meta := portalDataBuffer[j].Meta
-
-						// Check if this is a session we should add to the global top sessions
-						buyer, err := storer.Buyer(meta.BuyerID)
-						if err != nil {
-							level.Error(logger).Log("msg", "failed to get buyer when filtering global top sessions", "buyerID", meta.BuyerID, "err", err)
-							continue
-						}
-
-						// For large customers, check the large customer cache map to see if we should insert the session
-						if buyer.InternalConfig.LargeCustomer {
-							customerMap := &sync.Map{}
-							newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
-							customerMap = newCustomerMapInterface.(*sync.Map)
-
-							sessionMap := &sync.Map{}
-							newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
-							sessionMap = newSessionMapInterface.(*sync.Map)
-
-							if _, ok := sessionMap.Load(meta.ID); !ok {
-								continue // Early out if we shouldn't add this session
-							}
-						}
-
-						sessionID := fmt.Sprintf("%016x", meta.ID)
-						score := meta.DeltaRTT
-						if score < 0 {
-							score = 0
-						}
-						if !meta.OnNetworkNext {
-							score = -meta.DirectRTT
-						}
-						clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
-					}
-					clientTopSessions.EndCommand()
-					clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
-
-					for j := range portalDataBuffer {
-						meta := &portalDataBuffer[j].Meta
-
-						// Check if this is a session we should add to redis
-						buyer, err := storer.Buyer(meta.BuyerID)
-						if err != nil {
-							level.Error(logger).Log("msg", "failed to get buyer when filtering redis", "buyerID", meta.BuyerID, "err", err)
-							continue
-						}
-
-						// For large customers, check the large customer cache map to see if we should insert the session
-						if buyer.InternalConfig.LargeCustomer {
-							customerMap := &sync.Map{}
-							newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
-							customerMap = newCustomerMapInterface.(*sync.Map)
-
-							sessionMap := &sync.Map{}
-							newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
-							sessionMap = newSessionMapInterface.(*sync.Map)
-
-							if _, ok := sessionMap.Load(meta.ID); !ok {
-								continue // Early out if we shouldn't add this session
-							}
-						}
-
-						slice := &portalDataBuffer[j].Slice
-						point := &portalDataBuffer[j].Point
-						sessionID := fmt.Sprintf("%016x", meta.ID)
-						customerID := fmt.Sprintf("%016x", meta.BuyerID)
-						next := meta.OnNetworkNext
-						score := meta.DeltaRTT
-						if score < 0 {
-							score = 0
-						}
-						if !next {
-							score = -100000 + meta.DirectRTT
-						}
-
-						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
-						// and update the current per-buyer top sessions list
-						clientTopSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
-						clientTopSessions.Command("ZADD", "sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
-						clientTopSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, 30)
-
-						// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
-						clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-2, sessionID)
-						clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-2, sessionID)
-
-						// Update the map points for this minute bucket
-						// Make sure to remove the session ID from the opposite bucket in case the session
-						// has switched from direct -> next or next -> direct
-						pointString := point.RedisString()
-						if next {
-							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
-							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
-							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
-						} else {
-							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
-							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
-							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
-						}
-
-						// Expire map points
-						clientSessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, 30)
-						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
-
-						// Update session meta
-						clientSessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
-
-						// Update session slices
-						clientSessionSlices.Command("RPUSH", "ss-%s \"%s\"", sessionID, slice.RedisString())
-						clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
-					}
-
-					portalDataBuffer = portalDataBuffer[:0]
+					InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, &largeCustomerCacheMap, minutes)
 				}
 			}()
 		}
@@ -610,13 +439,13 @@ func mainReturnWithCode() int {
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
-				os.Exit(1)
+				os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 			}
 
 			err := http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				os.Exit(1)
+				os.Exit(1) // todo: don't os.Exit() here, but somehow quit
 			}
 		}()
 	}
@@ -643,6 +472,14 @@ func (e *ErrChannelFull) Error() string {
 	return "message channel full, dropping message"
 }
 
+type ErrUnmarshalMessage struct {
+	err error
+}
+
+func (e *ErrUnmarshalMessage) Error() string {
+	return fmt.Sprintf("could not unmarshal message: %v", e.err)
+}
+
 func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.PortalCruncherMetrics, messageChan chan []byte) error {
 	_, message, err := portalSubscriber.ReceiveMessage()
 	if err != nil {
@@ -658,6 +495,192 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 	}
 
 	return nil
+}
+
+func pingRedis(clientTopSessions *storage.RawRedisClient, clientSessionMap *storage.RawRedisClient, clientSessionMeta *storage.RawRedisClient, clientSessionSlices *storage.RawRedisClient) error {
+	if err := clientTopSessions.Ping(); err != nil {
+		return err
+	}
+
+	if err := clientSessionMap.Ping(); err != nil {
+		return err
+	}
+
+	if err := clientSessionMeta.Ping(); err != nil {
+		return err
+	}
+
+	if err := clientSessionSlices.Ping(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func PullMessage(messageChan chan []byte) (transport.SessionPortalData, error) {
+	message := <-messageChan
+
+	var sessionPortalData transport.SessionPortalData
+	if err := sessionPortalData.UnmarshalBinary(message); err != nil {
+		return transport.SessionPortalData{}, &ErrUnmarshalMessage{err: err}
+	}
+
+	return sessionPortalData, nil
+}
+
+func InsertToRedis(
+	clientTopSessions *storage.RawRedisClient,
+	clientSessionMap *storage.RawRedisClient,
+	clientSessionMeta *storage.RawRedisClient,
+	clientSessionSlices *storage.RawRedisClient,
+	portalDataBuffer []transport.SessionPortalData,
+	storer storage.Storer,
+	largeCustomerCacheMap *sync.Map,
+	minutes int64) {
+
+	// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
+	clientTopSessions.Command("DEL", "s-%d", minutes-2)
+
+	if _, ok := largeCustomerCacheMap.Load(minutes - 2); ok {
+		largeCustomerCacheMap.Delete(minutes - 2)
+	}
+
+	// Check each portal entry and update the large customer cache map for any sessions we can add to redis
+	for j := range portalDataBuffer {
+		meta := &portalDataBuffer[j].Meta
+		buyer, err := storer.Buyer(meta.BuyerID)
+		if err != nil {
+			continue
+		}
+
+		// For large customers, only add sessions that have at least 1 slice on next
+		if buyer.InternalConfig.LargeCustomer && meta.OnNetworkNext {
+			customerMap := &sync.Map{}
+			newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
+			customerMap = newCustomerMapInterface.(*sync.Map)
+
+			sessionMap := &sync.Map{}
+			newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
+			sessionMap = newSessionMapInterface.(*sync.Map)
+
+			sessionMap.Store(meta.ID, true)
+		}
+	}
+
+	// Update the current global top sessions minute bucket
+	clientTopSessions.StartCommand("ZADD")
+	clientTopSessions.CommandArgs("s-%d", minutes)
+	for j := range portalDataBuffer {
+		meta := portalDataBuffer[j].Meta
+
+		// Check if this is a session we should add to the global top sessions
+		buyer, err := storer.Buyer(meta.BuyerID)
+		if err != nil {
+			continue
+		}
+
+		// For large customers, check the large customer cache map to see if we should insert the session
+		if buyer.InternalConfig.LargeCustomer {
+			customerMap := &sync.Map{}
+			newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
+			customerMap = newCustomerMapInterface.(*sync.Map)
+
+			sessionMap := &sync.Map{}
+			newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
+			sessionMap = newSessionMapInterface.(*sync.Map)
+
+			if _, ok := sessionMap.Load(meta.ID); !ok {
+				continue // Early out if we shouldn't add this session
+			}
+		}
+
+		sessionID := fmt.Sprintf("%016x", meta.ID)
+		score := meta.DeltaRTT
+		if score < 0 {
+			score = 0
+		}
+		if !meta.OnNetworkNext {
+			score = -meta.DirectRTT
+		}
+		clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
+	}
+	clientTopSessions.EndCommand()
+	clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
+
+	for j := range portalDataBuffer {
+		meta := &portalDataBuffer[j].Meta
+
+		// Check if this is a session we should add to redis
+		buyer, err := storer.Buyer(meta.BuyerID)
+		if err != nil {
+			continue
+		}
+
+		// For large customers, check the large customer cache map to see if we should insert the session
+		if buyer.InternalConfig.LargeCustomer {
+			customerMap := &sync.Map{}
+			newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
+			customerMap = newCustomerMapInterface.(*sync.Map)
+
+			sessionMap := &sync.Map{}
+			newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
+			sessionMap = newSessionMapInterface.(*sync.Map)
+
+			if _, ok := sessionMap.Load(meta.ID); !ok {
+				continue // Early out if we shouldn't add this session
+			}
+		}
+
+		slice := &portalDataBuffer[j].Slice
+		point := &portalDataBuffer[j].Point
+		sessionID := fmt.Sprintf("%016x", meta.ID)
+		customerID := fmt.Sprintf("%016x", meta.BuyerID)
+		next := meta.OnNetworkNext
+		score := meta.DeltaRTT
+		if score < 0 {
+			score = 0
+		}
+		if !next {
+			score = -100000 + meta.DirectRTT
+		}
+
+		// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
+		// and update the current per-buyer top sessions list
+		clientTopSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
+		clientTopSessions.Command("ZADD", "sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
+		clientTopSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, 30)
+
+		// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
+		clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-2, sessionID)
+		clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-2, sessionID)
+
+		// Update the map points for this minute bucket
+		// Make sure to remove the session ID from the opposite bucket in case the session
+		// has switched from direct -> next or next -> direct
+		pointString := point.RedisString()
+		if next {
+			clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
+			clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
+			clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
+		} else {
+			clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
+			clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
+			clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
+		}
+
+		// Expire map points
+		clientSessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, 30)
+		clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
+
+		// Update session meta
+		clientSessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
+
+		// Update session slices
+		clientSessionSlices.Command("RPUSH", "ss-%s \"%s\"", sessionID, slice.RedisString())
+		clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
+	}
+
+	portalDataBuffer = portalDataBuffer[:0]
 }
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
