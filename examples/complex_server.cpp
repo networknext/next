@@ -182,19 +182,6 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void verify_packet( const uint8_t * packet_data, int packet_bytes )
-{
-    const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-    {
-        if ( packet_data[i] != (uint8_t) ( ( start + i ) % 256 ) )
-        {
-            printf( "%d: %d != %d (%d)\n", i, packet_data[i], ( start + i ) % 256, packet_bytes );
-        }
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
-    }
-}
-
 void server_packet_received( next_server_t * server, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     ServerContext * context = (ServerContext*) _context;
@@ -204,8 +191,6 @@ void server_packet_received( next_server_t * server, void * _context, const next
     next_assert( context );
     next_assert( context->allocator != NULL );
     next_assert( context->server_data == 0x12345678 );
-
-    verify_packet( packet_data, packet_bytes );
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
     

@@ -35,7 +35,7 @@
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                                 "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PORT                                                 "40000"
+#define NEXT_BACKEND_PORT                                          "40000"
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
@@ -46,7 +46,8 @@
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
 #define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                         10.0
-#define NEXT_SESSION_TIMEOUT                                         10.0
+#define NEXT_CLIENT_SESSION_TIMEOUT                                  10.0
+#define NEXT_SERVER_SESSION_TIMEOUT                                 500.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
@@ -7058,7 +7059,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
     double current_time = next_time();
 
-    if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
+    if ( client->last_direct_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client direct pong timed out. falling back to direct" );
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -7615,7 +7616,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
-    if ( next_global_config.disable_network_next )
+    if ( next_global_config.disable_network_next || client->fallback_to_direct )
     {
         next_client_send_packet_direct( client, packet_data, packet_bytes );
         return;
@@ -7727,22 +7728,17 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
         }
+
+        next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
+        client->internal->packets_sent++;
+        next_platform_mutex_release( &client->internal->packets_sent_mutex );
     }
     else
     {
         // [0](payload) style direct packet
 
-        uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-        buffer[0] = 0;
-        memcpy( buffer + 1, packet_data, packet_bytes );
-        next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
+        next_client_send_packet_direct( client, packet_data, packet_bytes );
     }
-
-    next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
-    client->internal->packets_sent++;
-    next_platform_mutex_release( &client->internal->packets_sent_mutex );
 }
 
 void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
@@ -10445,7 +10441,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
      
         next_session_entry_t * entry = &server->session_manager->entries[index];
 
-        if ( entry->last_client_stats_update + NEXT_SESSION_TIMEOUT <= current_time )
+        if ( entry->last_client_stats_update + NEXT_SERVER_SESSION_TIMEOUT <= current_time )
         {
             next_server_notify_session_timed_out_t * notify = (next_server_notify_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_session_timed_out_t ) );
             notify->type = NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT;
@@ -11187,8 +11183,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_CLIENT_STATS_PACKET )
     {
         next_assert( session );
-		if ( session == NULL )
-			return;
+        
+        if ( session == NULL )
+            return;
 
         NextClientStatsPacket packet;
 
@@ -11473,8 +11470,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_server_internal_t * server = (next_server_internal_t*) context;
 
     const char * hostname = next_global_config.hostname;
-    const char * port = NEXT_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_PORT" );
+    const char * port = NEXT_BACKEND_PORT;
+    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
     if ( override_port )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
