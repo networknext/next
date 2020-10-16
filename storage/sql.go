@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -75,7 +77,71 @@ func (db *SQL) Customers() []routing.Customer {
 	return customers
 }
 
-func (db *SQL) AddCustomer(ctx context.Context, customer routing.Customer) error {
+type sqlCustomer struct {
+	Code                   string
+	Name                   string
+	AutomaticSignInDomains string
+	Active                 bool
+	CustomerName           string
+	CustomerCode           string
+}
+
+func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
+	var sql bytes.Buffer
+
+	db.customerMutex.RLock()
+	_, ok := db.customers[c.Code]
+	db.customerMutex.RUnlock()
+
+	if ok {
+		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
+	}
+
+	customer := sqlCustomer{
+		CustomerCode:           c.Code,
+		CustomerName:           c.Name,
+		AutomaticSignInDomains: c.AutomaticSignInDomains,
+		Active:                 false,
+	}
+
+	// Add the buyer in remote storage
+	sql.Write([]byte("insert into customers ("))
+	sql.Write([]byte("active, automatic_signin_domain, customer_name, customer_code"))
+	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing AddCustomer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(customer.Active,
+		customer.AutomaticSignInDomains,
+		customer.CustomerName,
+		customer.CustomerCode,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding datacenter", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	// Add the buyer in cached storage
+	db.customerMutex.Lock()
+	db.customers[c.Code] = c
+	db.customerMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -286,11 +352,6 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 	return datacenters
 }
 
-// AddDatacenter adds the provided datacenter to storage and returns an error if the datacenter could not be added.
-func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
-	return nil
-}
-
 // RemoveDatacenter removes a datacenter with the provided datacenter ID from storage and returns an error if the datacenter could not be removed.
 func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 	return nil
@@ -344,11 +405,9 @@ func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, error) {
 
 	if err == sql.ErrNoRows {
 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-		fmt.Println("No sequence number returned")
 		return false, err
 	} else if err != nil {
 		level.Error(db.Logger).Log("during", "query error", "err", err)
-		fmt.Printf("query error: %v\n", err)
 		return false, err
 	}
 
@@ -382,11 +441,9 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 
 	if err == sql.ErrNoRows {
 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-		fmt.Println("No sequence number returned")
 		return err
 	} else if err != nil {
 		level.Error(db.Logger).Log("during", "query error", "err", err)
-		fmt.Printf("query error: %v\n", err)
 		return err
 	}
 
@@ -395,23 +452,19 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error perparing SQL", "err", err)
-		fmt.Printf("error preparing SQL stmt: %v\n", err)
 		return err
 	}
 
 	result, err := stmt.Exec(sequenceNumber)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
-		fmt.Printf("error setting sequence number: %v\n", err)
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-		fmt.Printf("RowsAffected returned an error: %v\n", err)
 	}
 	if rows != 1 {
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-		fmt.Printf("expected to affect 1 row, affected %d", rows)
 	}
 
 	return nil
@@ -498,9 +551,124 @@ func (db *SQL) Sync(ctx context.Context) error {
 	return outerErr
 }
 
+type sqlDatacenter struct {
+	ID            int64
+	Name          string
+	Enabled       bool
+	Latitude      float64
+	Longitude     float64
+	SupplierName  string
+	StreetAddress string
+	SellerID      int64
+}
+
 func (db *SQL) syncDatacenters(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	var dc sqlDatacenter
+	datacenters := make(map[uint64]routing.Datacenter)
+
+	sql.Write([]byte("select id, display_name, enabled, latitude, longitude,"))
+	sql.Write([]byte("supplier_name, street_address, seller_id from datacenters"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		fmt.Printf("QueryContext returned an error: %v\n", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&dc.ID, // TODO: Add PK to routing.Datacenter
+			&dc.Name,
+			&dc.Enabled,
+			&dc.Latitude,
+			&dc.Longitude,
+			&dc.SupplierName,
+			&dc.StreetAddress,
+			&dc.SellerID,
+		)
+
+		did := crypto.HashID(dc.Name)
+		datacenters[did] = routing.Datacenter{
+			ID:      did,
+			Name:    dc.Name,
+			Enabled: dc.Enabled,
+			Location: routing.Location{
+				Latitude:  dc.Latitude,
+				Longitude: dc.Longitude,
+			},
+			SupplierName: dc.SupplierName,
+			SellerID:     dc.SellerID,
+		}
+	}
+
+	db.datacenterMutex.Lock()
+	db.datacenters = datacenters
+	db.datacenterMutex.Unlock()
+
+	level.Info(db.Logger).Log("during", "syncDatacenters", "num", len(db.datacenters))
+
 	return nil
 }
+
+// AddDatacenter adds the provided datacenter to storage and returns an error if the datacenter could not be added.
+func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
+
+	var sql bytes.Buffer
+	dc := sqlDatacenter{
+		Name:         datacenter.Name,
+		Enabled:      datacenter.Enabled,
+		Latitude:     datacenter.Location.Latitude,
+		Longitude:    datacenter.Location.Longitude,
+		SupplierName: datacenter.SupplierName,
+		SellerID:     datacenter.SellerID,
+	}
+
+	// Add the datacenter in remote storage
+	sql.Write([]byte("insert into datacenters ("))
+	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
+	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5, $6, $7)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing AddDatacenter SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(dc.Name,
+		dc.Enabled,
+		dc.Latitude,
+		dc.Longitude,
+		dc.SupplierName,
+		dc.StreetAddress,
+		dc.SellerID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding datacenter", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	// Add the datacenter in cached storage
+	db.datacenterMutex.Lock()
+	db.datacenters[datacenter.ID] = datacenter
+	db.datacenterMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+}
+
 func (db *SQL) syncRelays(ctx context.Context) error {
 	return nil
 }
