@@ -11187,10 +11187,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_CLIENT_STATS_PACKET )
     {
         next_assert( session );
-		if ( session == NULL )
-			return;
+        
+        if ( session == NULL )
+            return;
 
         NextClientStatsPacket packet;
+
+        // todo
+        printf( "*** client stats packet ***\n" );
 
         uint64_t packet_sequence = 0;
 
