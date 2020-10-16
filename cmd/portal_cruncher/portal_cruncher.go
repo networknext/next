@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"runtime"
 	"sync"
 
@@ -361,69 +360,9 @@ func mainReturnWithCode() int {
 	{
 		for i := 0; i < redisGoroutineCount; i++ {
 			go func() {
-				// Each goroutine should use its own TCP sockets
-
-				clientTopSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
-				if err != nil {
-					level.Error(logger).Log("redis", redisHostTopSessions, "err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-				}
-
-				clientSessionMap, err := storage.NewRawRedisClient(redisHostSessionMap)
-				if err != nil {
-					level.Error(logger).Log("redis", redisHostSessionMap, "err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-				}
-
-				clientSessionMeta, err := storage.NewRawRedisClient(redisHostSessionMeta)
-				if err != nil {
-					level.Error(logger).Log("redis", redisHostSessionMeta, "err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-				}
-
-				clientSessionSlices, err := storage.NewRawRedisClient(redisHostSessionSlices)
-				if err != nil {
-					level.Error(logger).Log("redis", redisHostSessionSlices, "err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-				}
-
-				if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
+				if err := RedisHandler(redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices, messageChan, storer, &largeCustomerCacheMap, redisFlushCount); err != nil {
 					level.Error(logger).Log("err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-				}
-
-				portalDataBuffer := make([]transport.SessionPortalData, 0)
-
-				now := time.Now()
-				pingTime := time.Now()
-
-				for {
-					sessionData, err := PullMessage(messageChan)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-					}
-
-					portalDataBuffer = append(portalDataBuffer, sessionData)
-
-					if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
-						continue
-					}
-
-					// Periodically ping the redis instances and restart if we don't get a pong
-					if time.Since(pingTime) >= time.Second*10 {
-						if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
-							level.Error(logger).Log("err", err)
-							os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-						}
-
-						pingTime = time.Now()
-					}
-
-					now = time.Now()
-					minutes := now.Unix() / 60
-
-					InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, &largeCustomerCacheMap, minutes)
+					os.Exit(1) // todo: don't exit here but find some way to return
 				}
 			}()
 		}
@@ -433,7 +372,7 @@ func mainReturnWithCode() int {
 	{
 		go func() {
 			router := mux.NewRouter()
-			router.HandleFunc("/health", HealthHandlerFunc())
+			router.HandleFunc("/health", transport.HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
 			port, ok := os.LookupEnv("HTTP_PORT")
@@ -497,24 +436,55 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 	return nil
 }
 
-func pingRedis(clientTopSessions *storage.RawRedisClient, clientSessionMap *storage.RawRedisClient, clientSessionMeta *storage.RawRedisClient, clientSessionSlices *storage.RawRedisClient) error {
-	if err := clientTopSessions.Ping(); err != nil {
+func RedisHandler(
+	redisHostTopSessions string,
+	redisHostSessionMap string,
+	redisHostSessionMeta string,
+	redisHostSessionSlices string,
+	messageChan chan []byte,
+	storer storage.Storer,
+	largeCustomerCacheMap *sync.Map,
+	redisFlushCount int) error {
+	clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, err := createRedis(redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices)
+	if err != nil {
 		return err
 	}
 
-	if err := clientSessionMap.Ping(); err != nil {
+	if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
 		return err
 	}
 
-	if err := clientSessionMeta.Ping(); err != nil {
-		return err
-	}
+	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
-	if err := clientSessionSlices.Ping(); err != nil {
-		return err
-	}
+	now := time.Now()
+	pingTime := time.Now()
 
-	return nil
+	for {
+		sessionData, err := PullMessage(messageChan)
+		if err != nil {
+			return err
+		}
+
+		portalDataBuffer = append(portalDataBuffer, sessionData)
+
+		if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
+			continue
+		}
+
+		// Periodically ping the redis instances and restart if we don't get a pong
+		if time.Since(pingTime) >= time.Second*10 {
+			if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
+				return err
+			}
+
+			pingTime = time.Now()
+		}
+
+		now = time.Now()
+		minutes := now.Unix() / 60
+
+		InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, largeCustomerCacheMap, minutes)
+	}
 }
 
 func PullMessage(messageChan chan []byte) (transport.SessionPortalData, error) {
@@ -683,18 +653,46 @@ func InsertToRedis(
 	portalDataBuffer = portalDataBuffer[:0]
 }
 
-func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-
-		statusCode := http.StatusOK
-
-		w.WriteHeader(statusCode)
-		w.Write([]byte(http.StatusText(statusCode)))
+func createRedis(redisHostTopSessions string, redisHostSessionMap string, redisHostSessionMeta string, redisHostSessionSlices string) (clientTopSessions *storage.RawRedisClient, clientSessionMap *storage.RawRedisClient, clientSessionMeta *storage.RawRedisClient, clientSessionSlices *storage.RawRedisClient, err error) {
+	clientTopSessions, err = storage.NewRawRedisClient(redisHostTopSessions)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostTopSessions, err)
 	}
+
+	clientSessionMap, err = storage.NewRawRedisClient(redisHostSessionMap)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionMap, err)
+	}
+
+	clientSessionMeta, err = storage.NewRawRedisClient(redisHostSessionMeta)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionMeta, err)
+	}
+
+	clientSessionSlices, err = storage.NewRawRedisClient(redisHostSessionSlices)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionSlices, err)
+	}
+
+	return clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, nil
+}
+
+func pingRedis(clientTopSessions *storage.RawRedisClient, clientSessionMap *storage.RawRedisClient, clientSessionMeta *storage.RawRedisClient, clientSessionSlices *storage.RawRedisClient) error {
+	if err := clientTopSessions.Ping(); err != nil {
+		return err
+	}
+
+	if err := clientSessionMap.Ping(); err != nil {
+		return err
+	}
+
+	if err := clientSessionMeta.Ping(); err != nil {
+		return err
+	}
+
+	if err := clientSessionSlices.Ping(); err != nil {
+		return err
+	}
+
+	return nil
 }
