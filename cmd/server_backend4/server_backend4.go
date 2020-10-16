@@ -91,6 +91,7 @@ func mainReturnWithCode() int {
 	// Configure local logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 
+	// Get GCP project ID
 	gcpOK := envvar.Exists("GOOGLE_PROJECT_ID")
 	gcpProjectID := envvar.Get("GOOGLE_PROJECT_ID", "")
 
@@ -242,6 +243,10 @@ func mainReturnWithCode() int {
 		LocalMode: true,
 	}
 
+	var customerPublicKey []byte
+	var customerID uint64
+	var relayPublicKey []byte
+
 	// Create dummy entries in storer for local testing
 	if env == "local" {
 		if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
@@ -249,26 +254,23 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
+		customerPublicKey, err = envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
-		customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
+		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
 
 		if !envvar.Exists("RELAY_PUBLIC_KEY") {
 			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
 			return 1
 		}
 
-		relayPublicKey, err := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
+		relayPublicKey, err = envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
-
-		// Create dummy buyer and datacenter for local testing
-		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	// Check for the firestore emulator
@@ -303,6 +305,11 @@ func mainReturnWithCode() int {
 			// Set the Firestore Storer to give to handlers
 			storer = fs
 		}
+	}
+
+	if env == "local" {
+		// Create dummy buyer and datacenter for local testing
+		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	// Create datacenter tracker

@@ -7,24 +7,22 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"runtime"
-	"strings"
 	"sync"
 
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/storage"
@@ -42,7 +40,13 @@ var (
 	tag           string
 )
 
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func main() {
+	os.Exit(mainReturnWithCode())
+}
+
+func mainReturnWithCode() int {
 
 	fmt.Printf("portal-cruncher: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
@@ -54,34 +58,34 @@ func main() {
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
+	// Get GCP project ID
+	gcpOK := envvar.Exists("GOOGLE_PROJECT_ID")
+	gcpProjectID := envvar.Get("GOOGLE_PROJECT_ID", "")
+
 	// StackDriver Logging
 	{
 		var enableSDLogging bool
-		enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-		if ok {
-			var err error
-			enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-			if err != nil {
-				level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
+
+		enableSDLogging, err := envvar.GetBool("ENABLE_STACKDRIVER_LOGGING", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
 		}
 
-		if enableSDLogging {
-			if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-				loggingClient, err := gcplogging.NewClient(ctx, projectID)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-					os.Exit(1)
-				}
-
-				logger = logging.NewStackdriverLogger(loggingClient, "portal-cruncher")
+		if enableSDLogging && gcpOK {
+			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
+				return 1
 			}
+
+			logger = logging.NewStackdriverLogger(loggingClient, "portal-cruncher")
 		}
 	}
 
 	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
+		backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", "none")
+		switch backendLogLevel {
 		case "none":
 			logger = level.NewFilter(logger, level.AllowNone())
 		case level.ErrorValue().String():
@@ -100,39 +104,25 @@ func main() {
 	}
 
 	// Get env
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
+	if !envvar.Exists("ENV") {
 		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
+		return 1
+	}
+	env := envvar.Get("ENV", "")
+
+	redisFlushCount, err := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	var err error
-	redisFlushCount := 1000
-	redisFlushCountString, ok := os.LookupEnv("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT")
-	if ok {
-		if redisFlushCount, err = strconv.Atoi(redisFlushCountString); err != nil {
-			level.Error(logger).Log("envvar", "PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	if gcpOK {
-
 		// StackDriver Metrics
 		{
-			var enableSDMetrics bool
-			var err error
-			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-			if ok {
-				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
+			enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
 			}
 
 			if enableSDMetrics {
@@ -145,34 +135,28 @@ func main() {
 
 				if err := sd.Open(ctx); err != nil {
 					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
+					return 1
 				}
 
 				metricsHandler = &sd
 
-				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-				writeInterval, err := time.ParseDuration(sdwriteinterval)
+				sdWriteInterval, err := envvar.GetDuration("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", time.Minute)
 				if err != nil {
-					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-					os.Exit(1)
+					level.Error(logger).Log("err", err)
+					return 1
 				}
 				go func() {
-					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
+					metricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
 				}()
 			}
 		}
 
 		// StackDriver Profiler
 		{
-			var enableSDProfiler bool
-			var err error
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
+			enableSDProfiler, err := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
 			}
 
 			if enableSDProfiler {
@@ -184,7 +168,7 @@ func main() {
 					MutexProfiling: true,
 				}); err != nil {
 					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-					os.Exit(1)
+					return 1
 				}
 			}
 		}
@@ -193,6 +177,7 @@ func main() {
 	portalCruncherMetrics, err := metrics.NewPortalCruncherMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create portal cruncher metrics", "err", err)
+		return 1
 	}
 
 	// Create an in-memory storer
@@ -200,36 +185,39 @@ func main() {
 		LocalMode: true,
 	}
 
-	var relayPublicKey []byte
 	var customerPublicKey []byte
 	var customerID uint64
+	var relayPublicKey []byte
 
+	// Create dummy entries in storer for local testing
 	if env == "local" {
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "RELAY_PUBLIC_KEY", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		} else {
-			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
-			os.Exit(1)
+		if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
+			level.Error(logger).Log("err", "NEXT_CUSTOMER_PUBLIC_KEY not set")
+			return 1
 		}
 
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-			customerPublicKey = customerPublicKey[8:]
+		customerPublicKey, err = envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+
+		if !envvar.Exists("RELAY_PUBLIC_KEY") {
+			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
+			return 1
+		}
+
+		relayPublicKey, err = envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
 		}
 	}
 
-	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	// Check for the firestore emulator
+	firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
 	if firestoreEmulatorOK {
-		fmt.Printf("using firestore emulator\n")
 		gcpProjectID = "local"
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
@@ -237,24 +225,22 @@ func main() {
 	if gcpOK || firestoreEmulatorOK {
 		// Firestore
 		{
-			fmt.Printf("setting up firestore\n")
-
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create firestore", "err", err)
-				os.Exit(1)
+				return 1
 			}
 
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
+			fsSyncInterval, err := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
 			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
+				level.Error(logger).Log("err", err)
+				return 1
 			}
+
 			// Start a goroutine to sync from Firestore
 			go func() {
-				ticker := time.NewTicker(syncInterval)
+				ticker := time.NewTicker(fsSyncInterval)
 				fs.SyncLoop(ctx, ticker.C)
 			}()
 
@@ -263,8 +249,8 @@ func main() {
 		}
 	}
 
-	// Create dummy buyer and datacenter for local testing
 	if env == "local" {
+		// Create dummy buyer and datacenter for local testing
 		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
 	}
 
@@ -295,89 +281,69 @@ func main() {
 	// Start portal cruncher subscriber
 	var portalSubscriber pubsub.Subscriber
 	{
-		cruncherPort, ok := os.LookupEnv("CRUNCHER_PORT")
-		if !ok {
-			level.Error(logger).Log("err", "env var CRUNCHER_PORT must be set")
-			os.Exit(1)
-		}
-
-		receiveBufferSizeString, ok := os.LookupEnv("CRUNCHER_RECEIVE_BUFFER_SIZE")
-		if !ok {
-			level.Error(logger).Log("err", "env var CRUNCHER_RECEIVE_BUFFER_SIZE must be set")
-			os.Exit(1)
-		}
-
-		receiveBufferSize, err := strconv.ParseInt(receiveBufferSizeString, 10, 64)
+		cruncherPort := envvar.Get("CRUNCHER_PORT", "5555")
 		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_RECEIVE_BUFFER_SIZE", "msg", "could not parse", "err", err)
-			os.Exit(1)
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
 		}
 
 		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
 			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
 			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		portalSubscriber = portalCruncherSubscriber
 	}
 
-	receiveGoroutineCount := int64(1)
-	receiveGoroutineCountString, ok := os.LookupEnv("CRUNCHER_RECEIVE_GOROUTINE_COUNT")
-	if ok {
-		receiveGoroutineCount, err = strconv.ParseInt(receiveGoroutineCountString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_RECEIVE_GOROUTINE_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
+	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	redisGoroutineCount := int64(1)
-	redisGoroutineCountString, ok := os.LookupEnv("CRUNCHER_REDIS_GOROUTINE_COUNT")
-	if ok {
-		redisGoroutineCount, err = strconv.ParseInt(redisGoroutineCountString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_REDIS_GOROUTINE_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
+	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	messageChanSize := int64(10000000)
-	messageChanSizeString, ok := os.LookupEnv("CRUNCHER_MESSAGE_CHANNEL_SIZE")
-	if ok {
-		messageChanSize, err = strconv.ParseInt(messageChanSizeString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_MESSAGE_CHANNEL_SIZE", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
+	messageChanSize, err := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	messageChan := make(chan []byte, messageChanSize)
 
 	// Start receive loops
-	for i := int64(0); i < receiveGoroutineCount; i++ {
+	for i := 0; i < receiveGoroutineCount; i++ {
 		go func() {
 			for {
-				_, message, err := portalSubscriber.ReceiveMessage()
-				if err != nil {
-					level.Error(logger).Log("msg", "error receiving message", "err", err)
-					continue
-				}
-
-				portalCruncherMetrics.ReceivedMessageCount.Add(1)
-
-				if int64(len(messageChan)) < messageChanSize { // Drop messages if redis insertion is backed up
-					messageChan <- message
+				if err := ReceivePortalMessage(portalSubscriber, portalCruncherMetrics, messageChan); err != nil {
+					switch err.(type) {
+					case *ErrReceiveMessage:
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't os.Exit() here, but somehow quit
+					case *ErrChannelFull:
+						level.Error(logger).Log("err", err)
+					}
 				}
 			}
 		}()
@@ -388,7 +354,7 @@ func main() {
 
 	// Start redis insertion loop
 	{
-		for i := int64(0); i < redisGoroutineCount; i++ {
+		for i := 0; i < redisGoroutineCount; i++ {
 			go func() {
 
 				// Each goroutine should use its own TCP socket
@@ -592,22 +558,6 @@ func main() {
 							score = -100000 + meta.DirectRTT
 						}
 
-						// Check if we should randomize the location (for staging load test)
-						if point.Latitude == 0 && point.Longitude == 0 && strings.Contains(meta.ClientAddr, "10.128.") {
-							// Randomize the location by using 4 bits of the session ID for the lat, and the other 4 for the long
-							sessionIDBytes := make([]byte, 8)
-							binary.LittleEndian.PutUint64(sessionIDBytes, meta.ID)
-
-							latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
-							longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
-
-							lat := (float64(latBits)) / 0xFFFFFFFF
-							long := (float64(longBits)) / 0xFFFFFFFF
-
-							point.Latitude = (-90.0 + lat*180.0) * 0.25
-							point.Longitude = (-180.0 + long*360.0)
-						}
-
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
 						// and update the current per-buyer top sessions list
 						clientTopSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
@@ -675,6 +625,39 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	return 0
+}
+
+type ErrReceiveMessage struct {
+	err error
+}
+
+func (e *ErrReceiveMessage) Error() string {
+	return fmt.Sprintf("error receiving message: %v", e.err)
+}
+
+type ErrChannelFull struct{}
+
+func (e *ErrChannelFull) Error() string {
+	return "message channel full, dropping message"
+}
+
+func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.PortalCruncherMetrics, messageChan chan []byte) error {
+	_, message, err := portalSubscriber.ReceiveMessage()
+	if err != nil {
+		return &ErrReceiveMessage{err: err}
+	}
+
+	metrics.ReceivedMessageCount.Add(1)
+
+	select {
+	case messageChan <- message:
+	default:
+		return &ErrChannelFull{}
+	}
+
+	return nil
 }
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
