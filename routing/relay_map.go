@@ -65,7 +65,10 @@ type RelayData struct {
 	Version        string
 
 	// contains all the traffic stats updates since the last publish
-	TrafficChan chan TrafficStats
+	TrafficStatsBuff []TrafficStats
+
+	// for blocking access to the traffic stats specifically
+	TrafficBuffMu sync.Mutex
 
 	// only modified within the stats publish loop, so no need to lock access
 	LastStatsPublishTime time.Time
@@ -73,7 +76,7 @@ type RelayData struct {
 
 func NewRelayData() *RelayData {
 	return &RelayData{
-		TrafficChan: make(chan TrafficStats, 10), // 10 because a relay will update at most 10 times within the stats publish interval
+		TrafficStatsBuff: make([]TrafficStats, 0),
 	}
 }
 
@@ -130,7 +133,9 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 	entry.CPUUsage = cpuUsage
 	entry.MemUsage = memUsage
 
-	entry.TrafficChan <- newTraffic
+	entry.TrafficBuffMu.Lock()
+	entry.TrafficStatsBuff = append(entry.TrafficStatsBuff, newTraffic)
+	entry.TrafficBuffMu.Unlock()
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {

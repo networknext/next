@@ -506,7 +506,6 @@ func main() {
 
 			for {
 				time.Sleep(sleepTime)
-
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
@@ -515,19 +514,14 @@ func main() {
 					// convert peak to mbps
 
 					var traffic routing.TrafficStats
-					for {
-						shouldBreak := false
-						select {
-						case stat := <-relay.TrafficChan:
-							traffic = traffic.Add(&stat)
-						default:
-							shouldBreak = true
-						}
 
-						if shouldBreak {
-							break
-						}
+					relay.TrafficBuffMu.Lock()
+					for i := range relay.TrafficStatsBuff {
+						stats := &relay.TrafficStatsBuff[i]
+						traffic = traffic.Add(stats)
 					}
+					relay.TrafficStatsBuff = relay.TrafficStatsBuff[:0]
+					relay.TrafficBuffMu.Unlock()
 
 					elapsed := time.Since(relay.LastStatsPublishTime)
 					relay.LastStatsPublishTime = time.Now()
