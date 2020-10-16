@@ -46,7 +46,8 @@
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
 #define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                         10.0
-#define NEXT_SESSION_TIMEOUT                                         10.0
+#define NEXT_CLIENT_SESSION_TIMEOUT                                  10.0
+#define NEXT_SERVER_SESSION_TIMEOUT                                 500.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
@@ -7058,7 +7059,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
     double current_time = next_time();
 
-    if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
+    if ( client->last_direct_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client direct pong timed out. falling back to direct" );
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -10445,7 +10446,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
      
         next_session_entry_t * entry = &server->session_manager->entries[index];
 
-        if ( entry->last_client_stats_update + NEXT_SESSION_TIMEOUT <= current_time )
+        if ( entry->last_client_stats_update + NEXT_SERVER_SESSION_TIMEOUT <= current_time )
         {
             next_server_notify_session_timed_out_t * notify = (next_server_notify_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_session_timed_out_t ) );
             notify->type = NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT;
