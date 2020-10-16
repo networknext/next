@@ -302,8 +302,8 @@ func relays(
 			includeRelay = false
 		}
 		unitFormat(0)
-		bitsTransmitted := unitFormat(relay.TrafficStats.BytesSent * 8)
-		bitsReceived := unitFormat(relay.TrafficStats.BytesReceived * 8)
+		bitsTransmitted := unitFormat(relay.TrafficStats.AllTx() * 8)
+		bitsReceived := unitFormat(relay.TrafficStats.AllRx() * 8)
 
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"

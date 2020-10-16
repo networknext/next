@@ -316,6 +316,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 					EndDate:        time.Now(),
 					Type:           routing.BareMetal,
 					State:          routing.RelayStateOffline,
+					NICSpeedMbps:   1000,
 				}); err != nil {
 					level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 					os.Exit(1)
