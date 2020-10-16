@@ -152,9 +152,9 @@ func (r *Relay) EncodedPublicKey() string {
 
 // TrafficStats describes the measured relay traffic statistics reported from the relay
 type TrafficStats struct {
-	SessionCount uint64
-	EnvelopeUp   uint64
-	EnvelopeDown uint64
+	SessionCount     uint64
+	EnvelopeUpKbps   uint64
+	EnvelopeDownKbps uint64
 
 	OutboundPingTx uint64
 
@@ -200,8 +200,8 @@ func (rts *TrafficStats) Add(other *TrafficStats) TrafficStats {
 	return TrafficStats{
 		SessionCount: rts.SessionCount + other.SessionCount,
 
-		EnvelopeUp:   rts.EnvelopeUp + other.EnvelopeUp,
-		EnvelopeDown: rts.EnvelopeDown + other.EnvelopeDown,
+		EnvelopeUpKbps:   rts.EnvelopeUpKbps + other.EnvelopeUpKbps,
+		EnvelopeDownKbps: rts.EnvelopeDownKbps + other.EnvelopeDownKbps,
 
 		OutboundPingTx: rts.OutboundPingTx + other.OutboundPingTx,
 
@@ -322,8 +322,8 @@ func (rts *TrafficStats) writeToV1(data []byte, index *int) {
 
 func (rts *TrafficStats) writeToV2(data []byte, index *int) {
 	encoding.WriteUint64(data, index, rts.SessionCount)
-	encoding.WriteUint64(data, index, rts.EnvelopeUp)
-	encoding.WriteUint64(data, index, rts.EnvelopeDown)
+	encoding.WriteUint64(data, index, rts.EnvelopeUpKbps)
+	encoding.WriteUint64(data, index, rts.EnvelopeDownKbps)
 	encoding.WriteUint64(data, index, rts.OutboundPingTx)
 	encoding.WriteUint64(data, index, rts.RouteRequestRx)
 	encoding.WriteUint64(data, index, rts.RouteRequestTx)
@@ -472,11 +472,11 @@ func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 		return errors.New("invalid data, could not read session count")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.EnvelopeUp) {
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeUpKbps) {
 		return errors.New("invalid data, could not read envelope up")
 	}
 
-	if !encoding.ReadUint64(data, index, &rts.EnvelopeDown) {
+	if !encoding.ReadUint64(data, index, &rts.EnvelopeDownKbps) {
 		return errors.New("invalid data, could not read envelope down")
 	}
 
@@ -566,9 +566,9 @@ func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 }
 
 type PeakTrafficStats struct {
-	SessionCount uint64
-	EnvelopeUp   uint64
-	EnvelopeDown uint64
+	SessionCount     uint64
+	EnvelopeUpKbps   uint64
+	EnvelopeDownKbps uint64
 }
 
 func (pts *PeakTrafficStats) MaxValues(other PeakTrafficStats) PeakTrafficStats {
@@ -576,12 +576,12 @@ func (pts *PeakTrafficStats) MaxValues(other PeakTrafficStats) PeakTrafficStats 
 		other.SessionCount = pts.SessionCount
 	}
 
-	if pts.EnvelopeUp > other.EnvelopeDown {
-		other.EnvelopeUp = pts.EnvelopeUp
+	if pts.EnvelopeUpKbps > other.EnvelopeDownKbps {
+		other.EnvelopeUpKbps = pts.EnvelopeUpKbps
 	}
 
-	if pts.EnvelopeDown > other.EnvelopeDown {
-		other.EnvelopeDown = pts.EnvelopeDown
+	if pts.EnvelopeDownKbps > other.EnvelopeDownKbps {
+		other.EnvelopeDownKbps = pts.EnvelopeDownKbps
 	}
 
 	return other

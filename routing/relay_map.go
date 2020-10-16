@@ -140,9 +140,9 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 
 	entry.TrafficMu.Lock()
 	entry.PeakTrafficStats = entry.PeakTrafficStats.MaxValues(PeakTrafficStats{
-		SessionCount: newTraffic.SessionCount,
-		EnvelopeUp:   newTraffic.EnvelopeUp,
-		EnvelopeDown: newTraffic.EnvelopeDown,
+		SessionCount:     newTraffic.SessionCount,
+		EnvelopeUpKbps:   newTraffic.EnvelopeUpKbps,
+		EnvelopeDownKbps: newTraffic.EnvelopeDownKbps,
 	})
 	entry.TrafficStatsBuff = append(entry.TrafficStatsBuff, newTraffic)
 	entry.TrafficMu.Unlock()

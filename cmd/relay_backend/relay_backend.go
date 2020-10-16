@@ -522,11 +522,11 @@ func main() {
 					}
 					relay.TrafficStatsBuff = relay.TrafficStatsBuff[:0]
 					numSessions := relay.PeakTrafficStats.SessionCount
-					envUp := relay.PeakTrafficStats.EnvelopeUp
-					envDown := relay.PeakTrafficStats.EnvelopeDown
+					envUp := relay.PeakTrafficStats.EnvelopeUpKbps
+					envDown := relay.PeakTrafficStats.EnvelopeDownKbps
 					relay.PeakTrafficStats.SessionCount = 0
-					relay.PeakTrafficStats.EnvelopeUp = 0
-					relay.PeakTrafficStats.EnvelopeDown = 0
+					relay.PeakTrafficStats.EnvelopeUpKbps = 0
+					relay.PeakTrafficStats.EnvelopeDownKbps = 0
 					relay.TrafficMu.Unlock()
 
 					elapsed := time.Since(relay.LastStatsPublishTime)
@@ -541,9 +541,9 @@ func main() {
 					bwSentMbps := float32(float64(traffic.AllTx()) * 8.0 / 1000000.0 / elapsed.Seconds())
 					bwRecvMbps := float32(float64(traffic.AllRx()) * 8.0 / 1000000.0 / elapsed.Seconds())
 
-					// use the peak envelope values here and convert, but it's already per second so no need for time adjustment
-					envSentMbps := float32(float64(envUp) * 8.0 / 1000000.0)
-					envRecvMbps := float32(float64(envDown) * 8.0 / 1000000.0)
+					// use the peak envelope values here and convert, it's already per second so no need for time adjustment
+					envSentMbps := float32(float64(envUp) / 1000.0)
+					envRecvMbps := float32(float64(envDown) / 1000.0)
 
 					var numRouteable uint32 = 0
 					for _, otherRelay := range allRelayData {
@@ -562,10 +562,10 @@ func main() {
 					var envSentPercent float32
 					var envRecvPercent float32
 					if fsrelay.NICSpeedMbps != 0 {
-						bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps)
-						bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps)
-						envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps)
-						envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps)
+						bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+						bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+						envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+						envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
 					}
 
 					entries[count] = analytics.RelayStatsEntry{
