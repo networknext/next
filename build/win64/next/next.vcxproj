@@ -15,7 +15,7 @@
     <ProjectGuid>{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}</ProjectGuid>
     <RootNamespace>next</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
-    <ProjectName>next-win64-3.4.6</ProjectName>
+    <ProjectName>next-win64-4.0.0</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -46,13 +46,13 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)../../lib/Win64/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Win64/$(Configuration)/</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../../include</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../../include;../../../sodium</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)../../lib/Win64/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Win64/$(Configuration)/</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../../include</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;../../../include;../../../sodium</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -62,7 +62,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -83,7 +83,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;_DEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -105,6 +105,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\next.h" />
+    <ClInclude Include="..\..\..\source\next_crypto.h" />
     <ClInclude Include="..\..\..\source\next_ios.h" />
     <ClInclude Include="..\..\..\source\next_linux.h" />
     <ClInclude Include="..\..\..\source\next_mac.h" />
@@ -112,6 +113,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\source\next.cpp" />
+    <ClCompile Include="..\..\..\source\next_crypto.cpp" />
     <ClCompile Include="..\..\..\source\next_ios.cpp" />
     <ClCompile Include="..\..\..\source\next_linux.cpp" />
     <ClCompile Include="..\..\..\source\next_mac.cpp" />
