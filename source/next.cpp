@@ -7616,7 +7616,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
-    if ( next_global_config.disable_network_next )
+    if ( next_global_config.disable_network_next || client->fallback_to_direct )
     {
         next_client_send_packet_direct( client, packet_data, packet_bytes );
         return;
@@ -7728,22 +7728,17 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
         }
+
+        next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
+        client->internal->packets_sent++;
+        next_platform_mutex_release( &client->internal->packets_sent_mutex );
     }
     else
     {
         // [0](payload) style direct packet
 
-        uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-        buffer[0] = 0;
-        memcpy( buffer + 1, packet_data, packet_bytes );
-        next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
+        next_client_send_packet_direct( client, packet_data, packet_bytes );
     }
-
-    next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
-    client->internal->packets_sent++;
-    next_platform_mutex_release( &client->internal->packets_sent_mutex );
 }
 
 void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
@@ -11193,9 +11188,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
 
         NextClientStatsPacket packet;
-
-        // todo
-        printf( "*** client stats packet ***\n" );
 
         uint64_t packet_sequence = 0;
 
