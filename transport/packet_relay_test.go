@@ -90,6 +90,93 @@ func TestRelayInitRequestUnmarshalBinary(t *testing.T) {
 			assert.Nil(t, packet.UnmarshalBinary(buff))
 		})
 	})
+
+	t.Run("version 1", func(t *testing.T) {
+		t.Run("returns 'invalid packet' when missing magic number", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet, unable to read magic number"))
+		})
+
+		t.Run("missing request version", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			buff := make([]byte, 4)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32()) // can be anything for testing purposes
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read packet version"))
+		})
+
+		t.Run("missing nonce bytes", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			buff := make([]byte, 8)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32()) // can be anything for testing purposes
+			encoding.WriteUint32(buff, &index, 1)
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read nonce"))
+		})
+
+		t.Run("missing relay address", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			buff := make([]byte, 8+crypto.NonceSize)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32()) // can be anything for testing purposes
+			encoding.WriteUint32(buff, &index, 1)
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read relay address"))
+		})
+
+		t.Run("missing encryption token", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)) // 4 is the uint32 for address length
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 1)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read encrypted token"))
+		})
+
+		t.Run("missing version", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 1)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, unable to read relay version"))
+		})
+
+		t.Run("address not formatted correctly", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "invalid"
+			version := "1.0.0"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize+4+len(version))
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 1)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			index += routing.EncryptedRelayTokenSize // skip encrypted token
+			encoding.WriteString(buff, &index, version, uint32(len(version)))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			var packet transport.RelayInitRequest
+			addr := "127.0.0.1:40000"
+			version := "1.0.0"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize+4+len(version))
+			index := 0
+			encoding.WriteUint32(buff, &index, rand.Uint32())
+			encoding.WriteUint32(buff, &index, 1)
+			index += crypto.NonceSize // skip nonce
+			encoding.WriteString(buff, &index, addr, uint32(len(addr)))
+			index += routing.EncryptedRelayTokenSize // skip encrypted token
+			encoding.WriteString(buff, &index, version, uint32(len(version)))
+			assert.Nil(t, packet.UnmarshalBinary(buff))
+		})
+	})
 }
 
 func TestRelayInitRequestMarshalBinary(t *testing.T) {
