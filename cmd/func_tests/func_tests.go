@@ -2306,10 +2306,6 @@ func test_next_stats() {
 
 }
 
-/*
-	Make sure all the near relay stats (RTT, jitter, PL) are uploaded to the backend.
-*/
-
 type test_function func()
 
 func main() {
