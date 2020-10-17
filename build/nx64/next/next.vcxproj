@@ -15,7 +15,7 @@
     <ProjectGuid>{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}</ProjectGuid>
     <RootNamespace>next</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
-    <ProjectName>next-nx64-3.4.6</ProjectName>
+    <ProjectName>next-nx64-4.0.0</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'" Label="Configuration">
@@ -50,7 +50,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../../include</IncludePath>
+    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../../include;../../../sodium</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
     <OutDir>$(SolutionDir)../../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
@@ -58,7 +58,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../../include</IncludePath>
+    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../../include;../../../sodium</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
     <OutDir>$(SolutionDir)../../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
@@ -94,7 +94,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <DisableSpecificWarnings>
@@ -116,6 +116,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\next.h" />
+    <ClInclude Include="..\..\..\source\next_crypto.h" />
     <ClInclude Include="..\..\..\source\next_ios.h" />
     <ClInclude Include="..\..\..\source\next_linux.h" />
     <ClInclude Include="..\..\..\source\next_mac.h" />
@@ -124,6 +125,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\source\next.cpp" />
+    <ClCompile Include="..\..\..\source\next_crypto.cpp" />
     <ClCompile Include="..\..\..\source\next_ios.cpp" />
     <ClCompile Include="..\..\..\source\next_linux.cpp" />
     <ClCompile Include="..\..\..\source\next_mac.cpp" />
