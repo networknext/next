@@ -29,6 +29,10 @@
 
 static volatile int quit = 0;
 
+static uint8_t client_id[32];
+
+extern void next_random_bytes( uint8_t * buffer, int bytes );
+
 void interrupt_handler( int signal )
 {
     (void) signal; quit = 1;
@@ -42,25 +46,45 @@ void generate_packet( uint8_t * packet_data, int & packet_bytes, bool high_bandw
     }
     else
     {
-        packet_bytes = 1 + ( rand() % NEXT_MTU ) / 10;
+        packet_bytes = 32 + 1 + ( rand() % NEXT_MTU ) / 10;
     }
+    memcpy( packet_data, client_id, 32 );
     const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
+    for ( int i = 0; i < packet_bytes - 32; ++i )
     {
-        packet_data[i] = (uint8_t) ( start + i ) % 256;
+        packet_data[32+i] = (uint8_t) ( start + i ) % 256;
     }
 }
 
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
+    next_assert( packet_bytes >= 32 );
+    next_assert( packet_bytes <= NEXT_MTU );
     const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+    for ( int i = 0; i < packet_bytes - 32; ++i )
+    {
+        next_assert( packet_data[32+i] == (uint8_t) ( ( start + i ) % 256 ) );
+    }
 }
 
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context;
+
+    if ( packet_bytes <= 32 )
+    {
+        // todo
+        printf( "packet too small\n" );
+        return;
+    }
+   
+    if ( memcmp( packet_data, client_id, 32 ) != 0 )
+    {
+        // todo
+        printf( "ignored bad packet\n" );
+        return;
+    }
+
     verify_packet( packet_data, packet_bytes );
 }
 
@@ -157,6 +181,8 @@ int main()
 
     next_client_open_session( client, "127.0.0.1:32202" );
 
+    next_random_bytes( client_id, 32 );
+
     const char * client_user_flags_env = getenv( "CLIENT_USER_FLAGS" );
     if ( client_user_flags_env )
     {
@@ -204,6 +230,23 @@ int main()
         {
             next_client_open_session( client, connect_address );
             second_connect_completed = true;
+            next_random_bytes( client_id, 32 );
+
+            // todo: temporary
+            uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+            next_client_counters( client, counters );
+            for ( int i = 0; i < NEXT_CLIENT_COUNTER_MAX; ++i )
+            {
+                if ( i != NEXT_CLIENT_COUNTER_MAX - 1 )
+                {
+                    printf( "%" PRIu64 ",", counters[i] );
+                }
+                else
+                {
+                    printf( "%" PRIu64, counters[i] );
+                }
+            }
+            printf( "\n" );
         }
 
         if ( client_user_flags_env )

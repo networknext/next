@@ -953,7 +953,7 @@ func test_on_on_off() {
 }
 
 /*
-	Test that a client is able to connect to a server direct, and then reconnect to the same server without problems.
+	Test that a client is able to connect to a server direct, and then reconnect without problems.
 	This verifies that our code in the SDK to distinguish the old session from the new one is working properly for
 	upgraded direct packets (255 prefix).
 */
@@ -963,6 +963,7 @@ func test_reconnect_direct() {
 	fmt.Printf("test_reconnect_direct\n")
 
 	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 55.0
 	clientConfig.duration = 60.0
 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
@@ -998,7 +999,6 @@ func test_reconnect_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-
 }
 
 /*

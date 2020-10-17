@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <string>
+#include <map>
+
+std::map<std::string,uint8_t*> client_map;
 
 static volatile int quit = 0;
 
@@ -39,24 +43,73 @@ extern bool next_packet_loss;
 
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
+    next_assert( packet_bytes >= 32 );
+    next_assert( packet_bytes <= NEXT_MTU );
     const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+    for ( int i = 0; i < packet_bytes - 32; ++i )
+    {
+        next_assert( packet_data[32+i] == (uint8_t) ( ( start + i ) % 256 ) );
+    }
 }
 
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) context;
 
+    if ( packet_bytes <= 32 )
+    {
+        printf( "packet too small\n" );
+        return;
+    }
+
     verify_packet( packet_data, packet_bytes );
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
-    if ( !no_upgrade && !next_server_session_upgraded( server, from ) )
+    if ( !no_upgrade )
     {
-        next_server_upgrade_session( server, from, 0 );
+        char address[256];
+        next_address_to_string( from, address );
+        std::string address_string( address );
 
-        next_server_tag_session( server, from, "test" );
+        std::map<std::string,uint8_t*>::iterator itor = client_map.find( address_string );
+
+        if ( itor == client_map.end() || memcmp( packet_data, itor->second, 32 ) != 0 )
+        {
+            printf( "*** upgrade ***\n" );
+            printf( "address_string = %s\n", address_string.c_str() );
+            if ( itor == client_map.end() )
+            {
+                printf( "entry does not exist!!!\n" );
+            }
+            else
+            {
+                if ( memcmp( packet_data, itor->second, 32 ) == 0 )
+                {
+                    printf( "entry exists and is the same\n" );
+                }
+                else
+                {
+                    printf( "entry exists, but is different\n" );
+                    for ( int i = 0; i < 32; ++i )
+                    {
+                        printf( "%d: %d vs. %d\n", i, packet_data[i], itor->second[i] );
+                    }
+                }
+            }
+
+            next_server_upgrade_session( server, from, 0 );
+
+            next_server_tag_session( server, from, "test" );
+
+            uint8_t * client_id = (uint8_t*) malloc( 32 );
+            memcpy( client_id, packet_data, 32 );
+            if ( itor != client_map.end() )
+            {
+                client_map.erase( itor );
+            }
+            client_map.insert( std::make_pair( address_string, client_id ) );
+        }
     }
 }
 
