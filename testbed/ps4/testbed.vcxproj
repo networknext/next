@@ -66,7 +66,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>..\..\lib\Playstation4\Debug\next-ps4-3.4.6_stub.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\lib\Playstation4\Debug\next-ps4-4.0.0_stub.a;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
@@ -80,13 +80,13 @@
       </Command>
     </PostBuildEvent>
     <CustomBuildStep>
-      <Command>copy ..\..\lib\Playstation4\Debug\next-ps4-3.4.6.prx Debug</Command>
+      <Command>copy ..\..\lib\Playstation4\Debug\next-ps4-4.0.0.prx Debug</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Copying network next prx</Message>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>Debug\next-ps4-3.4.6.prx</Outputs>
+      <Outputs>Debug\next-ps4-4.0.0.prx</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
@@ -100,13 +100,13 @@
       </Command>
     </PostBuildEvent>
     <CustomBuildStep>
-      <Command>copy ..\..\lib\Playstation4\Release\next-ps4-3.4.6.prx Release</Command>
+      <Command>copy ..\..\lib\Playstation4\Release\next-ps4-4.0.0.prx Release</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Copying network next prx</Message>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>Release\next-ps4-3.4.6.prx</Outputs>
+      <Outputs>Release\next-ps4-4.0.0.prx</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
