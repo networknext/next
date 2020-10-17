@@ -123,7 +123,7 @@ public:
 
 		OutputDebugStringA("Starting client...\n\n");
 
-		client = next_client_create( NULL, "0.0.0.0:0", packet_received );
+		client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
 		if ( !client)
 			return;
 
