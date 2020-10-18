@@ -6830,7 +6830,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_replay_protection_reset( &client->internal_replay_protection );
 
                 next_platform_mutex_acquire( &client->bandwidth_mutex );
-                client->bandwidth_over_limit = 0;
+                client->bandwidth_over_limit = false;
                 client->bandwidth_usage_kbps_up = 0;
                 client->bandwidth_usage_kbps_down = 0;
                 client->bandwidth_envelope_kbps_up = 0;
@@ -6996,7 +6996,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.flags = flags;
         packet.reported = client->reported;
-        packet.bandwidth_over_limit = client->bandwidth_over_limit;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
         packet.committed = client->client_stats.committed;
@@ -7004,8 +7003,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.connection_type = client->client_stats.connection_type;
 
         next_platform_mutex_acquire( &client->bandwidth_mutex );
+        packet.bandwidth_over_limit = client->bandwidth_over_limit;
         packet.next_kbps_up = (int) ceil( client->bandwidth_usage_kbps_up );
         packet.next_kbps_down = (int) ceil( client->bandwidth_usage_kbps_down );
+        client->bandwidth_over_limit = false;
         next_platform_mutex_release( &client->bandwidth_mutex );
 
         if ( !client->client_stats.next )
@@ -7692,8 +7693,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             double usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_time() );
 
             next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
-            client->internal->bandwidth_over_limit = over_budget;
             client->internal->bandwidth_usage_kbps_up = usage_kbps_up;
+            if ( over_budget )
+                client->internal->bandwidth_over_limit = true;
             next_platform_mutex_release( &client->internal->bandwidth_mutex );
 
             if ( over_budget )
