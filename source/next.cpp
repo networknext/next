@@ -10863,6 +10863,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->client_open_session_sequence = packet.client_open_session_sequence;
             entry->stats_platform_id = packet.platform_id;
             entry->stats_connection_type = packet.connection_type;
+            entry->last_upgraded_packet_receive_time = next_time();
 
             // notify session upgraded
 
