@@ -47,7 +47,7 @@
 #define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                         10.0
 #define NEXT_CLIENT_SESSION_TIMEOUT                                  10.0
-#define NEXT_SERVER_SESSION_TIMEOUT                                 500.0
+#define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
@@ -8964,6 +8964,7 @@ struct next_session_entry_t
     double next_session_update_time;
     double next_session_resend_time;
     double last_client_stats_update;
+    double last_upgraded_packet_receive_time;
 
     uint64_t update_sequence;
     bool update_dirty;
@@ -11148,6 +11149,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         session = next_session_manager_find_by_address( server->session_manager, from );
         if ( !session )
             return;
+
+        session->last_upgraded_packet_receive_time = next_time();
     }
 
     // direct ping packet
@@ -11273,7 +11276,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     }
 }
 
-void next_server_internal_process_game_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_server_internal_process_raw_direct_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( from );
@@ -11329,7 +11332,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     }
     else
     {
-        next_server_internal_process_game_packet( server, &from, packet_data + 1, packet_bytes - 1 );
+        next_server_internal_process_raw_direct_packet( server, &from, packet_data + 1, packet_bytes - 1 );
     }
 }
 
@@ -12278,6 +12281,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         uint64_t session_id = 0;
         uint8_t session_version = 0;
         next_address_t session_address;
+        double last_upgraded_packet_receive_time = 0.0;
         uint8_t session_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
         next_platform_mutex_acquire( &server->internal->session_mutex );
@@ -12296,6 +12300,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             session_id = internal_entry->mutex_session_id;
             session_version = internal_entry->mutex_session_version;
             session_address = internal_entry->mutex_send_address;
+            last_upgraded_packet_receive_time = internal_entry->last_upgraded_packet_receive_time;
             memcpy( session_private_key, internal_entry->mutex_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
             internal_entry->stats_packets_sent_server_to_client++;
         }
@@ -12304,6 +12309,15 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         if ( multipath )
         {
             send_upgraded_direct = true;
+        }
+
+        // IMPORTANT: If we haven't received any upgraded packets in the last second, send raw direct.
+        // Upgraded packets include client to server next packets, next pings and upgraded direct. 
+        // This makes reconnect more robust when the customer reconnects using the same port number, 
+        // instead of reconnecting with a new next_client_t instance with ephemeral port (recommended).
+        if ( last_upgraded_packet_receive_time + 1.0 < next_time() )
+        {
+            send_raw_direct = true;
         }
 
         if ( !send_raw_direct )
@@ -12366,11 +12380,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     {
         // [0](payload) raw direct packet
 
-        uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-        buffer[0] = 0;
-        memcpy( buffer + 1, packet_data, packet_bytes );
-
-        next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
+        next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
     }
 }
 
