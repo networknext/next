@@ -360,9 +360,27 @@ func mainReturnWithCode() int {
 	{
 		for i := 0; i < redisGoroutineCount; i++ {
 			go func() {
-				if err := RedisHandler(redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices, messageChan, storer, &largeCustomerCacheMap, redisFlushCount); err != nil {
+				clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, err := createRedis(redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices)
+				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't exit here but find some way to return
+				}
+
+				if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1) // todo: don't exit here but find some way to return
+				}
+
+				portalDataBuffer := make([]transport.SessionPortalData, 0)
+
+				flushTime := time.Now()
+				pingTime := time.Now()
+
+				for {
+					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, redisFlushCount); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
 				}
 			}()
 		}
@@ -437,54 +455,43 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 }
 
 func RedisHandler(
-	redisHostTopSessions string,
-	redisHostSessionMap string,
-	redisHostSessionMeta string,
-	redisHostSessionSlices string,
+	clientTopSessions *storage.RawRedisClient,
+	clientSessionMap *storage.RawRedisClient,
+	clientSessionMeta *storage.RawRedisClient,
+	clientSessionSlices *storage.RawRedisClient,
 	messageChan chan []byte,
+	portalDataBuffer []transport.SessionPortalData,
+	flushTime time.Time,
+	pingTime time.Time,
 	storer storage.Storer,
 	largeCustomerCacheMap *sync.Map,
 	redisFlushCount int) error {
-	clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, err := createRedis(redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices)
+
+	sessionData, err := PullMessage(messageChan)
 	if err != nil {
 		return err
 	}
 
-	if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
-		return err
+	portalDataBuffer = append(portalDataBuffer, sessionData)
+
+	if time.Since(flushTime) < time.Second && len(portalDataBuffer) < redisFlushCount {
+		return nil
 	}
 
-	portalDataBuffer := make([]transport.SessionPortalData, 0)
-
-	now := time.Now()
-	pingTime := time.Now()
-
-	for {
-		sessionData, err := PullMessage(messageChan)
-		if err != nil {
+	// Periodically ping the redis instances and restart if we don't get a pong
+	if time.Since(pingTime) >= time.Second*10 {
+		if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
 			return err
 		}
 
-		portalDataBuffer = append(portalDataBuffer, sessionData)
-
-		if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
-			continue
-		}
-
-		// Periodically ping the redis instances and restart if we don't get a pong
-		if time.Since(pingTime) >= time.Second*10 {
-			if err := pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices); err != nil {
-				return err
-			}
-
-			pingTime = time.Now()
-		}
-
-		now = time.Now()
-		minutes := now.Unix() / 60
-
-		InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, largeCustomerCacheMap, minutes)
+		pingTime = time.Now()
 	}
+
+	flushTime = time.Now()
+	minutes := flushTime.Unix() / 60
+
+	InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, largeCustomerCacheMap, minutes)
+	return nil
 }
 
 func PullMessage(messageChan chan []byte) (transport.SessionPortalData, error) {
