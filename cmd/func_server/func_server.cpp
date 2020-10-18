@@ -38,6 +38,8 @@ void interrupt_handler( int signal )
 }
 
 bool no_upgrade = false;
+int upgrade_count = 0;
+int num_upgrades = 0;
 
 extern bool next_packet_loss;
 
@@ -66,7 +68,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
-    if ( !no_upgrade )
+    if ( !no_upgrade && ( upgrade_count == 0 || ( upgrade_count > 0 && num_upgrades < upgrade_count ) ) )
     {
         char address[256];
         next_address_to_string( from, address );
@@ -76,31 +78,11 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
         if ( itor == client_map.end() || memcmp( packet_data, itor->second, 32 ) != 0 )
         {
-            printf( "*** upgrade ***\n" );
-            printf( "address_string = %s\n", address_string.c_str() );
-            if ( itor == client_map.end() )
-            {
-                printf( "entry does not exist!!!\n" );
-            }
-            else
-            {
-                if ( memcmp( packet_data, itor->second, 32 ) == 0 )
-                {
-                    printf( "entry exists and is the same\n" );
-                }
-                else
-                {
-                    printf( "entry exists, but is different\n" );
-                    for ( int i = 0; i < 32; ++i )
-                    {
-                        printf( "%d: %d vs. %d\n", i, packet_data[i], itor->second[i] );
-                    }
-                }
-            }
-
             next_server_upgrade_session( server, from, 0 );
 
             next_server_tag_session( server, from, "test" );
+
+            num_upgrades++;
 
             uint8_t * client_id = (uint8_t*) malloc( 32 );
             memcpy( client_id, packet_data, 32 );
@@ -159,6 +141,12 @@ int main()
         }
     }
     
+    const char * upgrade_count_env = getenv( "SERVER_UPGRADE_COUNT" );
+    if ( upgrade_count_env )
+    {
+        upgrade_count = atoi( upgrade_count_env );
+    }
+
     while ( !quit )
     {
         next_server_update( server );

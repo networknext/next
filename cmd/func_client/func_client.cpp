@@ -72,18 +72,10 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context;
 
     if ( packet_bytes <= 32 )
-    {
-        // todo
-        printf( "packet too small\n" );
         return;
-    }
    
     if ( memcmp( packet_data, client_id, 32 ) != 0 )
-    {
-        // todo
-        printf( "ignored bad packet\n" );
         return;
-    }
 
     verify_packet( packet_data, packet_bytes );
 }
