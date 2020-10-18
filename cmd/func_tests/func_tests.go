@@ -182,6 +182,7 @@ type ServerConfig struct {
 	disable_network_next bool
 	server_address       string
 	server_port          int
+	restart_time         float64
 }
 
 func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -226,6 +227,10 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	if config.packet_loss {
 		cmd.Env = append(cmd.Env, "SERVER_PACKET_LOSS=1")
+	}
+
+	if config.restart_time > 0.0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_RESTART_TIME=%.2f", config.restart_time))
 	}
 
 	var output bytes.Buffer
@@ -628,6 +633,55 @@ func test_fallback_to_direct_client_side() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 
+}
+
+/*
+	Verify that the client falls back to direct and exchanges raw direct packets with the server
+	after the server is restarted. Without this client side fallback to direct, it is possible
+	for the client to get stuck in a state where it keep sending upgraded direct packets which
+	won't get through to the server post restart.
+*/
+
+func test_fallback_to_direct_server_restart() {
+
+	fmt.Printf("test_fallback_to_direct_server_restart\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 55.0
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.restart_time = 15.0
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW] > 1000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW] > 1000)
 }
 
 /*
@@ -2364,12 +2418,12 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		/*
 		test_direct_raw,
 		test_direct_upgraded,
 		test_network_next_route,
 		test_fallback_to_direct_backend,
 		test_fallback_to_direct_client_side,
+		test_fallback_to_direct_server_restart,
 		test_disable_on_server,
 		test_disable_on_client,
 		test_route_switching,
@@ -2390,16 +2444,13 @@ func main() {
 		test_packet_loss_next,
 		test_server_under_load,
 		test_session_update_retry,
-		*/
 		test_bandwidth_over_limit,
-		/*
 		test_packet_loss,
 		test_bandwidth,
 		test_jitter,
 		test_tags,
 		test_direct_stats,
 		test_next_stats,
-		*/
 	}
   
 	// If there are command line arguments, use reflection to see what tests to run
@@ -2419,10 +2470,8 @@ func main() {
 		tests = allTests // No command line args, run all tests
 	}
 
-	for {
-		for i := range tests {
-			tests[i]()
-		}
+	for i := range tests {
+		tests[i]()
 	}
 
 }

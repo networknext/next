@@ -147,9 +147,29 @@ int main()
         upgrade_count = atoi( upgrade_count_env );
     }
 
+    double restart_time = 0.0;
+    const char * restart_time_env = getenv( "SERVER_RESTART_TIME" );
+    if ( restart_time_env )
+    {
+        restart_time = atof( restart_time_env );
+    }
+
+    bool restarted = false;
+
     while ( !quit )
     {
         next_server_update( server );
+
+        if ( restart_time > 0.0 && next_time() > restart_time && !restarted )
+        {
+            printf( "restarting server\n" );
+            next_server_destroy( server );
+            server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received, NULL );
+            if ( server == NULL )
+                return 1;
+
+            restarted = true;
+        }
 
         next_sleep( 1.0 / 60.0 );
     }
