@@ -7627,15 +7627,15 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
-    if ( next_global_config.disable_network_next || client->fallback_to_direct )
-    {
-        next_client_send_packet_direct( client, packet_data, packet_bytes );
-        return;
-    }
-
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't send packet because no session is open" );
+        return;
+    }
+
+    if ( next_global_config.disable_network_next || client->fallback_to_direct )
+    {
+        next_client_send_packet_direct( client, packet_data, packet_bytes );
         return;
     }
 
@@ -7761,6 +7761,12 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     next_assert( client->internal->socket );
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
+
+    if ( client->state != NEXT_CLIENT_STATE_OPEN )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't send packet because no session is open" );
+        return;
+    }
 
     if ( packet_bytes <= 0 )
     {
