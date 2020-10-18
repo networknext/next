@@ -56,7 +56,7 @@ int32_t main( int argc, const char * const argv[] )
 
 	printf( "Starting client...\n\n" );
 	
-	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received );
+	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
     if ( !client )
     {
         printf( "error: failed to create network next client" );

@@ -52,7 +52,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../include</IncludePath>
+    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../include;</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
     <OutDir>$(Configuration)/</OutDir>
@@ -75,7 +75,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <DisableSpecificWarnings>

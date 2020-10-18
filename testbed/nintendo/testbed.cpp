@@ -87,7 +87,7 @@ extern "C" void nnMain()
 
 	printf( "Starting client...\n\n" );
 
-	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received );
+	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
     if ( !client )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create network next client" );
