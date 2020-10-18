@@ -12278,7 +12278,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, to_address );
 
-    bool send_raw_direct = true;
     bool send_over_network_next = false;
     bool send_upgraded_direct = false;
 
@@ -12299,22 +12298,34 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
         if ( internal_entry )
         {
-            send_raw_direct = false;
-            multipath = internal_entry->mutex_multipath;
-            committed = internal_entry->mutex_committed;
-            envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
-            send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
-            send_upgraded_direct = !send_over_network_next;
-            send_sequence = internal_entry->mutex_payload_send_sequence++;
-            send_sequence |= uint64_t(1) << 63;
-            open_session_sequence = internal_entry->client_open_session_sequence;
-            session_id = internal_entry->mutex_session_id;
-            session_version = internal_entry->mutex_session_version;
-            session_address = internal_entry->mutex_send_address;
             last_upgraded_packet_receive_time = internal_entry->last_upgraded_packet_receive_time;
-            memcpy( session_private_key, internal_entry->mutex_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-            internal_entry->stats_packets_sent_server_to_client++;
         }
+        next_platform_mutex_release( &server->internal->session_mutex );
+
+        // IMPORTANT: If we haven't received any upgraded packets in the last second, send raw direct.
+        // Upgraded packets include client to server next packets, next pings and upgraded direct. 
+        // This makes reconnect robust when the customer reconnects using the same client port number
+        // instead of reconnecting with a new next_client_t instance with ephemeral port (recommended).
+        if ( !internal_entry || last_upgraded_packet_receive_time + 1.0 < next_time() )
+        {
+            next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
+            return;
+        }
+
+        next_platform_mutex_acquire( &server->internal->session_mutex );
+        multipath = internal_entry->mutex_multipath;
+        committed = internal_entry->mutex_committed;
+        envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
+        send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
+        send_upgraded_direct = !send_over_network_next;
+        send_sequence = internal_entry->mutex_payload_send_sequence++;
+        send_sequence |= uint64_t(1) << 63;
+        open_session_sequence = internal_entry->client_open_session_sequence;
+        session_id = internal_entry->mutex_session_id;
+        session_version = internal_entry->mutex_session_version;
+        session_address = internal_entry->mutex_send_address;
+        memcpy( session_private_key, internal_entry->mutex_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+        internal_entry->stats_packets_sent_server_to_client++;
         next_platform_mutex_release( &server->internal->session_mutex );
 
         if ( multipath )
@@ -12322,72 +12333,59 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             send_upgraded_direct = true;
         }
 
-        // IMPORTANT: If we haven't received any upgraded packets in the last second, send raw direct.
-        // Upgraded packets include client to server next packets, next pings and upgraded direct. 
-        // This makes reconnect more robust when the customer reconnects using the same port number, 
-        // instead of reconnecting with a new next_client_t instance with ephemeral port (recommended).
-        if ( last_upgraded_packet_receive_time + 1.0 < next_time() )
+        if ( send_over_network_next )
         {
-            send_raw_direct = true;
+            const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
+
+            bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
+
+            if ( over_budget )
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps)", session_id, envelope_kbps_down );
+                next_platform_mutex_acquire( &server->internal->session_mutex );
+                internal_entry->stats_server_bandwidth_over_limit = true;
+                next_platform_mutex_release( &server->internal->session_mutex );
+                send_over_network_next = false;
+                if ( !multipath )
+                {
+                    send_upgraded_direct = true;
+                }
+            }
         }
 
-        if ( !send_raw_direct )
+        if ( send_over_network_next )
         {
-            if ( send_over_network_next )
+            // send over network next
+
+            uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
+            
+            if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
             {
-                const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
-
-                bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
-
-                if ( over_budget )
-                {
-                    next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps)", session_id, envelope_kbps_down );
-                    next_platform_mutex_acquire( &server->internal->session_mutex );
-                    internal_entry->stats_server_bandwidth_over_limit = true;
-                    next_platform_mutex_release( &server->internal->session_mutex );
-                    send_over_network_next = false;
-                    if ( !multipath )
-                    {
-                        send_upgraded_direct = true;
-                    }
-                }
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server to client packet header" );
+                return;
             }
 
-            if ( send_over_network_next )
-            {
-                // send over network next
+            memcpy( next_packet_data + NEXT_HEADER_BYTES, packet_data, packet_bytes );
 
-                uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
-                
-                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
-                {
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server to client packet header" );
-                    return;
-                }
+            int next_packet_bytes = NEXT_HEADER_BYTES + packet_bytes;
 
-                memcpy( next_packet_data + NEXT_HEADER_BYTES, packet_data, packet_bytes );
+            next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
+        }
 
-                int next_packet_bytes = NEXT_HEADER_BYTES + packet_bytes;
+        if ( send_upgraded_direct )
+        {
+            // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
-            }
-
-            if ( send_upgraded_direct )
-            {
-                // [255][session sequence][packet sequence](payload) style packet direct to client
-
-                uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-                uint8_t * p = buffer;
-                next_write_uint8( &p, NEXT_DIRECT_PACKET );
-                next_write_uint8( &p, open_session_sequence );
-                next_write_uint64( &p, send_sequence );
-                memcpy( buffer+10, packet_data, packet_bytes );
-                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, size_t(packet_bytes) + 10 );
-            }
+            uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+            uint8_t * p = buffer;
+            next_write_uint8( &p, NEXT_DIRECT_PACKET );
+            next_write_uint8( &p, open_session_sequence );
+            next_write_uint64( &p, send_sequence );
+            memcpy( buffer+10, packet_data, packet_bytes );
+            next_platform_socket_send_packet( server->internal->socket, to_address, buffer, size_t(packet_bytes) + 10 );
         }
     }
-
-    if ( send_raw_direct )
+    else
     {
         // [0](payload) raw direct packet
 
