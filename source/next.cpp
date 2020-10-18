@@ -47,6 +47,7 @@
 #define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                         10.0
 #define NEXT_CLIENT_SESSION_TIMEOUT                                  10.0
+#define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
@@ -115,7 +116,7 @@
 #define NEXT_FLAGS_ROUTE_EXPIRED                                   (1<<4)
 #define NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT                         (1<<5)
 #define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                      (1<<6)
-#define NEXT_FLAGS_CLIENT_TIMED_OUT                                (1<<7)
+#define NEXT_FLAGS_ROUTE_TIMED_OUT                                 (1<<7)
 #define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                      (1<<8)
 #define NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT                          (1<<9)
 #define NEXT_FLAGS_DIRECT_PONG_TIMED_OUT                          (1<<10)
@@ -5131,6 +5132,7 @@ struct next_route_manager_t
     uint64_t send_sequence;
     bool fallback_to_direct;
     next_route_data_t route_data;
+    double last_route_update_time;
     uint32_t flags;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -5171,6 +5173,7 @@ void next_route_manager_reset( next_route_manager_t * route_manager )
     
     route_manager->send_sequence = 0;
     route_manager->fallback_to_direct = false;
+    route_manager->last_route_update_time = 0.0;
     
     memset( &route_manager->route_data, 0, sizeof(next_route_data_t) );
     
@@ -5458,6 +5461,13 @@ void next_route_manager_check_for_timeouts( next_route_manager_t * route_manager
         return;
 
     const double current_time = next_time();
+
+    if ( route_manager->last_route_update_time > 0.0 && route_manager->last_route_update_time + NEXT_CLIENT_ROUTE_TIMEOUT < current_time )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client route timed out" );
+        next_route_manager_fallback_to_direct( route_manager, NEXT_FLAGS_ROUTE_TIMED_OUT );
+        return;
+    }
 
     if ( route_manager->route_data.current_route && route_manager->route_data.current_route_expire_time <= current_time )
     {
