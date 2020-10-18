@@ -11227,6 +11227,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_fallback_to_direct = packet.fallback_to_direct;
             if ( packet.bandwidth_over_limit )
             {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session sees client over bandwidth limit %" PRIx64, session->session_id );
                 session->stats_client_bandwidth_over_limit = true;
             }
 
@@ -11583,8 +11584,6 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     return true;
 }
-
-extern bool fucking_log_it;
 
 void next_server_internal_backend_update( next_server_internal_t * server )
 {
