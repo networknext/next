@@ -1002,8 +1002,6 @@ func test_reconnect_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 }
 
 /*
@@ -2366,6 +2364,7 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
+		/*
 		test_direct_raw,
 		test_direct_upgraded,
 		test_network_next_route,
@@ -2391,13 +2390,16 @@ func main() {
 		test_packet_loss_next,
 		test_server_under_load,
 		test_session_update_retry,
+		*/
 		test_bandwidth_over_limit,
+		/*
 		test_packet_loss,
 		test_bandwidth,
 		test_jitter,
 		test_tags,
 		test_direct_stats,
 		test_next_stats,
+		*/
 	}
   
 	// If there are command line arguments, use reflection to see what tests to run
@@ -2417,8 +2419,10 @@ func main() {
 		tests = allTests // No command line args, run all tests
 	}
 
-	for i := range tests {
-		tests[i]()
+	for {
+		for i := range tests {
+			tests[i]()
+		}
 	}
 
 }

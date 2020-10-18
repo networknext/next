@@ -223,22 +223,6 @@ int main()
             next_client_open_session( client, connect_address );
             second_connect_completed = true;
             next_random_bytes( client_id, 32 );
-
-            // todo: temporary
-            uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
-            next_client_counters( client, counters );
-            for ( int i = 0; i < NEXT_CLIENT_COUNTER_MAX; ++i )
-            {
-                if ( i != NEXT_CLIENT_COUNTER_MAX - 1 )
-                {
-                    printf( "%" PRIu64 ",", counters[i] );
-                }
-                else
-                {
-                    printf( "%" PRIu64, counters[i] );
-                }
-            }
-            printf( "\n" );
         }
 
         if ( client_user_flags_env )
