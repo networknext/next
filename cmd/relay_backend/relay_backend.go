@@ -410,7 +410,7 @@ func main() {
 				gcpProjectID = "local"
 
 				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 				defer cancelFunc()
 
 				level.Info(logger).Log("msg", "Detected pubsub emulator")
@@ -449,38 +449,10 @@ func main() {
 			for {
 				time.Sleep(sleepTime)
 				cpy := statsdb.MakeCopy()
-				length := routing.TriMatrixLength(len(cpy.Entries))
-				if length > 0 { // prevent crash with only 1 relay
-					entries := make([]analytics.PingStatsEntry, length)
-					ids := make([]uint64, len(cpy.Entries))
-
-					idx := 0
-					for k := range cpy.Entries {
-						ids[idx] = k
-						idx++
-					}
-
-					for i := 1; i < len(cpy.Entries); i++ {
-						for j := 0; j < i; j++ {
-							idA := ids[i]
-							idB := ids[j]
-
-							rtt, jitter, pl := cpy.GetSample(idA, idB)
-
-							entries[routing.TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
-								RelayA:     idA,
-								RelayB:     idB,
-								RTT:        rtt,
-								Jitter:     jitter,
-								PacketLoss: pl,
-							}
-						}
-					}
-
-					if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
+				entries := analytics.ExtractPingStats(cpy)
+				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
 				}
 			}
 		}()
@@ -497,7 +469,7 @@ func main() {
 				gcpProjectID = "local"
 
 				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 				defer cancelFunc()
 
 				level.Info(logger).Log("msg", "Detected pubsub emulator")
@@ -535,36 +507,90 @@ func main() {
 
 			for {
 				time.Sleep(sleepTime)
-
 				allRelayData := relayMap.GetAllRelayData()
-
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
-				for i, relay := range allRelayData {
+				count := 0
+				for _, relay := range allRelayData {
 					// convert peak to mbps
-					peakSessions := relay.PeakTrafficStats.SessionCount
-					peakSent := float64(relay.PeakTrafficStats.BytesSentPerSecond) * 8.0 / 1024.0 / 1024.0
-					peakReceived := float64(relay.PeakTrafficStats.BytesReceivedPerSecond) * 8.0 / 1024.0 / 1024.0
 
-					// reset the peak so the next update takes affect
-					relay.PeakTrafficStats.SessionCount = 0
-					relay.PeakTrafficStats.BytesSentPerSecond = 0
-					relay.PeakTrafficStats.BytesReceivedPerSecond = 0
+					var traffic routing.TrafficStats
 
-					entries[i] = analytics.RelayStatsEntry{
-						ID:                        relay.ID,
-						NumSessions:               relay.TrafficStats.SessionCount,
-						CPUUsage:                  relay.CPUUsage,
-						MemUsage:                  relay.MemUsage,
-						Tx:                        relay.TrafficStats.BytesSent,
-						Rx:                        relay.TrafficStats.BytesReceived,
-						PeakSessions:              peakSessions,
-						PeakSentBandwidthMbps:     float32(peakSent),
-						PeakReceivedBandwidthMbps: float32(peakReceived),
+					relay.TrafficMu.Lock()
+					for i := range relay.TrafficStatsBuff {
+						stats := &relay.TrafficStatsBuff[i]
+						traffic = traffic.Add(stats)
 					}
+					relay.TrafficStatsBuff = relay.TrafficStatsBuff[:0]
+					numSessions := relay.PeakTrafficStats.SessionCount
+					envUp := relay.PeakTrafficStats.EnvelopeUpKbps
+					envDown := relay.PeakTrafficStats.EnvelopeDownKbps
+					relay.PeakTrafficStats.SessionCount = 0
+					relay.PeakTrafficStats.EnvelopeUpKbps = 0
+					relay.PeakTrafficStats.EnvelopeDownKbps = 0
+					relay.TrafficMu.Unlock()
+
+					elapsed := time.Since(relay.LastStatsPublishTime)
+					relay.LastStatsPublishTime = time.Now()
+
+					fsrelay, err := db.Relay(relay.ID)
+					if err != nil {
+						continue
+					}
+
+					// use the sum of all the stats since the last publish here and convert to mbps
+					bwSentMbps := float32(float64(traffic.AllTx()) * 8.0 / 1000000.0 / elapsed.Seconds())
+					bwRecvMbps := float32(float64(traffic.AllRx()) * 8.0 / 1000000.0 / elapsed.Seconds())
+
+					// use the peak envelope values here and convert, it's already per second so no need for time adjustment
+					envSentMbps := float32(float64(envUp) / 1000.0)
+					envRecvMbps := float32(float64(envDown) / 1000.0)
+
+					var numRouteable uint32 = 0
+					for _, otherRelay := range allRelayData {
+						if relay.ID == otherRelay.ID {
+							continue
+						}
+
+						rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
+						if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
+							numRouteable++
+						}
+					}
+
+					var bwSentPercent float32
+					var bwRecvPercent float32
+					var envSentPercent float32
+					var envRecvPercent float32
+					if fsrelay.NICSpeedMbps != 0 {
+						bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+						bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+						envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+						envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+					}
+
+					entries[count] = analytics.RelayStatsEntry{
+						ID:                       relay.ID,
+						CPUUsage:                 relay.CPUUsage,
+						MemUsage:                 relay.MemUsage,
+						BandwidthSentPercent:     bwSentPercent,
+						BandwidthReceivedPercent: bwRecvPercent,
+						EnvelopeSentPercent:      envSentPercent,
+						EnvelopeReceivedPercent:  envRecvPercent,
+						BandwidthSentMbps:        bwSentMbps,
+						BandwidthReceivedMbps:    bwRecvMbps,
+						EnvelopeSentMbps:         envSentMbps,
+						EnvelopeReceivedMbps:     envRecvMbps,
+						NumSessions:              uint32(numSessions),
+						MaxSessions:              relay.MaxSessions,
+						NumRoutable:              numRouteable,
+						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
+					}
+
+					count++
 				}
 
-				if err := relayStatsPublisher.Publish(ctx, entries); err != nil {
+				if err := relayStatsPublisher.Publish(ctx, entries[:count]); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}

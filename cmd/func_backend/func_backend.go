@@ -223,7 +223,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if backend.mode == BACKEND_MODE_FORCE_RETRY && sessionUpdate.RetryNumber < 4 {
 		return
-	}	
+	}
 
 	if sessionUpdate.PlatformType == transport.PlatformTypeUnknown {
 		panic("platform type is unknown")
@@ -834,7 +834,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	backend.mutex.Lock()
-	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.relayMap.AddRelayDataEntry(relay.Addr.String(), relay)
 	backend.dirty = true
 	backend.mutex.Unlock()
 
@@ -939,7 +939,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
 	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
