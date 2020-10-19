@@ -26,10 +26,11 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
+
+	"github.com/networknext/backend/modules/core"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000
