@@ -362,7 +362,7 @@ dev-client: build-client  ## runs a local client
 
 .PHONY: dev-multi-clients
 dev-multi-clients: build-client  ## runs 10 local clients
-	@./scripts/client-spawner.sh -n 10 -v 4
+	@./scripts/client-spawner.sh -n 10
 
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
