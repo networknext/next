@@ -303,7 +303,7 @@ func TestDirectSession(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 
 	minutes := flushTime.Unix() / 60
 
@@ -385,7 +385,7 @@ func TestNextSession(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 
 	minutes := flushTime.Unix() / 60
 
@@ -470,7 +470,7 @@ func TestDirectSessionLargeCustomer(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 
 	minutes := flushTime.Unix() / 60
 
@@ -537,7 +537,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 
 	minutes := flushTime.Unix() / 60
 
@@ -643,7 +643,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 
 	{
 		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
@@ -751,7 +751,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 
 	{
 		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
