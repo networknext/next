@@ -124,7 +124,7 @@ export default class SessionMap extends Vue {
 
         if (onNN.length > 0) {
           const nnLayer = new ScreenGridLayer({
-            id: 'new-layer',
+            id: 'nn-layer',
             data: onNN,
             opacity: 0.8,
             getPosition: (d: Array<number>) => [d[0], d[1]],
@@ -136,23 +136,6 @@ export default class SessionMap extends Vue {
           })
           layers.push(nnLayer)
         }
-
-        if (onNN.length > 0) {
-          const nnLayer = new ScreenGridLayer({
-            id: 'old-layer',
-            data: onNN,
-            opacity: 0.8,
-            getPosition: (d: Array<number>) => [d[0], d[1]],
-            getWeight: () => 1,
-            cellSizePixels: cellSize,
-            colorRange: [[40, 167, 69]],
-            gpuAggregation,
-            aggregation
-          })
-          layers.push(nnLayer)
-        }
-
-        console.log(layers)
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
