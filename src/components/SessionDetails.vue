@@ -252,11 +252,8 @@
 
 <script lang="ts">
 
-import mapboxgl from 'mapbox-gl'
 import uPlot from 'uplot'
 
-import { Deck } from '@deck.gl/core'
-import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import { Route, NavigationGuardNext } from 'vue-router'
 import { Component, Vue } from 'vue-property-decorator'
 
@@ -378,7 +375,7 @@ export default class SessionDetails extends Vue {
           this.viewState.longitude = this.meta.location.longitude
 
           if (!this.mapInstance) {
-            this.mapInstance = new mapboxgl.Map({
+            this.mapInstance = new (window as any).mapboxgl.Map({
               accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
@@ -391,7 +388,7 @@ export default class SessionDetails extends Vue {
               container: 'session-tool-map'
             })
           }
-          const sessionLocationLayer = new ScreenGridLayer({
+          const sessionLocationLayer = new (window as any).deck.ScreenGridLayer({
             id: 'session-location-layer',
             data: [this.meta],
             opacity: 0.8,
@@ -405,7 +402,7 @@ export default class SessionDetails extends Vue {
 
           if (!this.deckGlInstance) {
             // creating the deck.gl instance
-            this.deckGlInstance = new Deck({
+            this.deckGlInstance = new (window as any).deck.Deck({
               canvas: document.getElementById('session-tool-deck-canvas'),
               width: '100%',
               height: '100%',
