@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -102,10 +103,10 @@ func runTestPubSub(t *testing.T, portalPublisher pubsub.Publisher, portalSubscri
 }
 
 type redisServers struct {
-	topSessions   *storage.MockRedisServer
-	sessionMap    *storage.MockRedisServer
-	sessionMeta   *storage.MockRedisServer
-	sessionSlices *storage.MockRedisServer
+	topSessions   *miniredis.Miniredis
+	sessionMap    *miniredis.Miniredis
+	sessionMeta   *miniredis.Miniredis
+	sessionSlices *miniredis.Miniredis
 }
 
 type redisClients struct {
@@ -115,44 +116,20 @@ type redisClients struct {
 	sessionSlices *storage.RawRedisClient
 }
 
-func setupMockRedis(ctx context.Context, t *testing.T) (*redisServers, *redisClients) {
-	redisTopSessions, err := storage.NewMockRedisServer(ctx, "127.0.0.1:6380")
+func setupMockRedis(t *testing.T) (*redisServers, *redisClients) {
+	redisTopSessions, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	redisSessionMap, err := storage.NewMockRedisServer(ctx, "127.0.0.1:6381")
+	redisSessionMap, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	redisSessionMeta, err := storage.NewMockRedisServer(ctx, "127.0.0.1:6382")
+	redisSessionMeta, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	redisSessionSlices, err := storage.NewMockRedisServer(ctx, "127.0.0.1:6383")
+	redisSessionSlices, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	errCallback := func(err error) {
-		fmt.Println("err", err)
-	}
-
-	go func() {
-		redisTopSessions.Start(errCallback)
-		fmt.Println("1 finished")
-	}()
-
-	go func() {
-		redisSessionMap.Start(errCallback)
-		fmt.Println("2 finished")
-	}()
-
-	go func() {
-		redisSessionMeta.Start(errCallback)
-		fmt.Println("3 finished")
-	}()
-
-	go func() {
-		redisSessionSlices.Start(errCallback)
-		fmt.Println("4 finished")
-	}()
-
-	clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, err := createRedis(redisTopSessions.Addr().String(), redisSessionMap.Addr().String(), redisSessionMeta.Addr().String(), redisSessionSlices.Addr().String())
+	clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, err := createRedis(redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr())
 	assert.NoError(t, err)
 
 	err = pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices)
@@ -181,8 +158,8 @@ func TestReceive(t *testing.T) {
 	portalPublisher, err := pubsub.NewPortalCruncherPublisher("tcp://127.0.0.1:5555", 1000)
 	assert.NoError(t, err)
 
-	// Poll for 10ms to set up ZeroMQ's internal state correctly and not miss the first message
-	err = portalSubscriber.Poll(time.Millisecond * 10)
+	// Poll for 100ms to set up ZeroMQ's internal state correctly and not miss the first message
+	err = portalSubscriber.Poll(time.Millisecond * 100)
 	assert.NoError(t, err)
 
 	t.Run("channel full", func(t *testing.T) {
@@ -296,9 +273,9 @@ func TestRedisClientCreateSuccess(t *testing.T) {
 }
 
 func TestDirectSession(t *testing.T) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx := context.Background()
 
-	servers, clients := setupMockRedis(ctx, t)
+	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -327,21 +304,45 @@ func TestDirectSession(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 5)
 
-	cancelFunc()
+	minutes := flushTime.Unix() / 60
 
-	val, err := servers.sessionMeta.Storage.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
-	assert.NoError(t, err)
+	{
+		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
 
-	val = val[1 : len(val)-1] // Remove the extra quotes
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
 
-	assert.Equal(t, sessionData.Meta.RedisString(), val)
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
 
-	fmt.Println("top sessions", servers.topSessions.Dump())
-	fmt.Println("session map", servers.sessionMap.Dump())
-	fmt.Println("session meta", servers.sessionMeta.Dump())
-	fmt.Println("session slices", servers.sessionSlices.Dump())
+	{
+		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+	}
+
+	{
+		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 1)
+
+		sliceVal := sliceVals[0]
+
+		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
+	}
 }
 
 func TestNextSession(t *testing.T) {

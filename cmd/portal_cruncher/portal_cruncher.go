@@ -545,8 +545,12 @@ func InsertToRedis(
 	}
 
 	// Update the current global top sessions minute bucket
-	clientTopSessions.StartCommand("ZADD")
-	clientTopSessions.CommandArgs("s-%d", minutes)
+	var format string
+	args := make([]interface{}, 0)
+
+	format += "s-%d"
+	args = append(args, minutes)
+
 	for j := range portalDataBuffer {
 		meta := portalDataBuffer[j].Meta
 
@@ -579,9 +583,12 @@ func InsertToRedis(
 		if !meta.OnNetworkNext {
 			score = -meta.DirectRTT
 		}
-		clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
+
+		format += " %.2f %s"
+		args = append(args, score, sessionID)
 	}
-	clientTopSessions.EndCommand()
+
+	clientTopSessions.Command("ZADD", format, args...)
 	clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
 
 	for j := range portalDataBuffer {

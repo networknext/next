@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -68,31 +69,26 @@ func (r *RawRedisClient) Ping() error {
 }
 
 func (r *RawRedisClient) Command(command string, format string, args ...interface{}) error {
-	if len(args) != 0 {
-		commandString := fmt.Sprintf(command+" "+format+"\r\n", args...)
-		if _, err := fmt.Fprint(r.conn, commandString); err != nil {
-			return fmt.Errorf("failed to write redis command '%s': %v", commandString, err)
-		}
-	} else {
-		commandString := fmt.Sprintf(command+"\r\n", args...)
-		if _, err := fmt.Fprint(r.conn, commandString); err != nil {
-			return fmt.Errorf("failed to write redis command '%s': %v", commandString, err)
-		}
+	cmdArgsString := fmt.Sprintf(format, args...)
+	var cmdArgs []string
+	if len(cmdArgsString) > 0 {
+		cmdArgs = strings.Split(cmdArgsString, " ")
+	}
+	argCount := fmt.Sprintf("%d", 1+len(cmdArgs))
+
+	// Convert the command and arguments to follow the redis RESP specification:
+	// https://redis.io/topics/protocol
+	commandLength := fmt.Sprintf("%d", len(command))
+	commandString := "*" + argCount + "\r\n$" + commandLength + "\r\n" + command + "\r\n"
+	for i := range cmdArgs {
+		commandString += fmt.Sprintf("$%d\r\n%s\r\n", len(cmdArgs[i]), cmdArgs[i])
+	}
+
+	if _, err := fmt.Fprint(r.conn, commandString); err != nil {
+		return fmt.Errorf("failed to write redis command '%s': %v", commandString, err)
 	}
 
 	return nil
-}
-
-func (r *RawRedisClient) StartCommand(command string) {
-	fmt.Fprintf(r.conn, command+" ")
-}
-
-func (r *RawRedisClient) CommandArgs(format string, args ...interface{}) {
-	fmt.Fprintf(r.conn, format, args...)
-}
-
-func (r *RawRedisClient) EndCommand() {
-	fmt.Fprintf(r.conn, "\r\n")
 }
 
 func (r *RawRedisClient) Close() error {
