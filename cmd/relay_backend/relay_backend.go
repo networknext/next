@@ -23,7 +23,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -37,6 +36,8 @@ import (
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+
+	"github.com/networknext/backend/modules/core"
 )
 
 var (
