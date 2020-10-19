@@ -11,11 +11,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/modules/core"
 )
 
 func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint32) error {

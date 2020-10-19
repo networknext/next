@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"

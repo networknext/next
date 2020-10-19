@@ -12,8 +12,7 @@ else
 	CXX = g++-8
 endif
 
-SDK3NAME = libnext3
-SDK4NAME = libnext4
+SDKNAME = libnext
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
@@ -249,57 +248,29 @@ build-analytics: dist
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
-build-load-test-server: dist build-sdk3
+build-load-test-server: dist build-sdk
 	@printf "Building load test server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-server
-build-load-test-server: dist build-sdk3
+build-load-test-server: dist build-sdk
 	@printf "Building load test server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext3 $(LDFLAGS)
-	@printf "done\n"
-endif
-
-ifeq ($(OS),darwin)
-.PHONY: build-load-test-server4
-build-load-test-server4: dist build-sdk4
-	@printf "Building load test server 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server4 ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
-	@printf "done\n"
-else
-.PHONY: build-load-test-server4
-build-load-test-server4: dist build-sdk4
-	@printf "Building load test server 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server4 ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext4 $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
-build-load-test-client: dist build-sdk3
+build-load-test-client: dist build-sdk
 	@printf "Building load test client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-client
-build-load-test-client: dist build-sdk3
+build-load-test-client: dist build-sdk
 	@printf "Building load test client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext3 $(LDFLAGS)
-	@printf "done\n"
-endif
-
-ifeq ($(OS),darwin)
-.PHONY: build-load-test-client4
-build-load-test-client4: dist build-sdk4
-	@printf "Building load test client 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client4 ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
-	@printf "done\n"
-else
-.PHONY: build-load-test-client4
-build-load-test-client4: dist build-sdk4
-	@printf "Building load test client 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client4 ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext4 $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -316,7 +287,7 @@ build-functional-tests: dist
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean dist build-sdk3 build-sdk4 build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests
+build-test-func: clean dist build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -357,10 +328,6 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
-.PHONY: dev-server-backend4
-dev-server-backend4: build-server-backend4 ## runs a local server backend4
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
-
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend
 	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
@@ -381,57 +348,33 @@ dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 dev-ghost-army: build-ghost-army ## runs a local ghost army
 	@./dist/ghost_army
 
-.PHONY: dev-reference-backend3
-dev-reference-backend3: ## runs a local reference backend (sdk3)
-	$(GO) run reference/backend3/backend3.go
-
-.PHONY: dev-reference-backend4
-dev-reference-backend4: ## runs a local reference backend (sdk4)
-	$(GO) run reference/backend4/backend4.go
+.PHONY: dev-reference-backend
+dev-reference-backend: ## runs a local reference backend
+	$(GO) run reference/backend/backend.go
 
 .PHONY: dev-reference-relay
 dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
-.PHONY: dev-client3
-dev-client3: build-client3  ## runs a local client (sdk3)
-	@./dist/client3
+.PHONY: dev-client
+dev-client: build-client  ## runs a local client
+	@./dist/client
 
-.PHONY: dev-client4
-dev-client4: build-client4  ## runs a local client (sdk4)
-	@./dist/client4
-
-.PHONY: dev-multi-clients3
-dev-multi-clients3: build-client3  ## runs 10 local clients (sdk3)
-	@./scripts/client-spawner.sh -n 10 -v 3
-
-.PHONY: dev-multi-clients4
-dev-multi-clients4: build-client4  ## runs 10 local clients (sdk4)
+.PHONY: dev-multi-clients
+dev-multi-clients: build-client  ## runs 10 local clients
 	@./scripts/client-spawner.sh -n 10 -v 4
 
-.PHONY: dev-server3
-dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
-	@./dist/server3
+.PHONY: dev-server
+dev-server: build-sdk build-server  ## runs a local server
+	@./dist/server
 
-.PHONY: dev-server4
-dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
-	@./dist/server4
-
-$(DIST_DIR)/$(SDK3NAME).so: dist
-	@printf "Building sdk3... "
-	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/*.cpp $(LDFLAGS)
+$(DIST_DIR)/$(SDKNAME).so: dist
+	@printf "Building sdk... "
+	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-$(DIST_DIR)/$(SDK4NAME).so: dist
-	@printf "Building sdk4... "
-	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/*.cpp $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-sdk3
-build-sdk3: $(DIST_DIR)/$(SDK3NAME).so
-
-.PHONY: build-sdk4
-build-sdk4: $(DIST_DIR)/$(SDK4NAME).so
+.PHONY: build-sdk
+build-sdk: $(DIST_DIR)/$(SDKNAME).so
 
 PHONY: build-load-test
 build-load-test:
@@ -476,14 +419,8 @@ build-relay-backend:
 
 .PHONY: build-server-backend
 build-server-backend:
-	@printf "Building server backend... "
+	@printf "Building server_backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
-	@printf "done\n"
-
-.PHONY: build-server-backend4
-build-server-backend4:
-	@printf "Building server_backend4... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
 	@printf "done\n"
 
 .PHONY: build-billing
@@ -568,14 +505,6 @@ build-load-test-server-artifacts: build-load-test-server
 build-load-test-client-artifacts: build-load-test-client
 	./deploy/build-load-test-artifacts.sh -s load_test_client
 
-.PHONY: build-load-test-server4-artifacts
-build-load-test-server4-artifacts: build-load-test-server4
-	./deploy/build-load-test-artifacts.sh -s load_test_server4
-
-.PHONY: build-load-test-client4-artifacts
-build-load-test-client4-artifacts: build-load-test-client4
-	./deploy/build-load-test-artifacts.sh -s load_test_client4
-
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing
 	./deploy/build-artifacts.sh -e dev -s billing
@@ -607,10 +536,6 @@ build-relay-backend-artifacts-dev: build-relay-backend
 .PHONY: build-server-backend-artifacts-dev
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
-
-.PHONY: build-server-backend4-artifacts-dev
-build-server-backend4-artifacts-dev: build-server-backend4
-	./deploy/build-artifacts.sh -e dev -s server_backend4
 
 .PHONY: build-ghost-army-artifacts-dev
 build-ghost-army-artifacts-dev: build-ghost-army
@@ -648,10 +573,6 @@ build-load-test-artifacts-staging: build-load-test
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
-.PHONY: build-server-backend4-artifacts-staging
-build-server-backend4-artifacts-staging: build-server-backend4
-	./deploy/build-artifacts.sh -e staging -s server_backend4
-
 .PHONY: build-ghost-army-artifacts-staging
 build-ghost-army-artifacts-staging: build-ghost-army
 	./deploy/build-artifacts.sh -e staging -s ghost_army
@@ -683,10 +604,6 @@ build-relay-backend-artifacts-prod: build-relay-backend
 .PHONY: build-server-backend-artifacts-prod
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
-
-.PHONY: build-server-backend4-artifacts-prod
-build-server-backend4-artifacts-prod: build-server-backend4
-	./deploy/build-artifacts.sh -e prod -s server_backend4
 
 .PHONY: build-ghost-army-artifacts-prod
 build-ghost-army-artifacts-prod: build-ghost-army
@@ -724,10 +641,6 @@ publish-relay-backend-artifacts-dev:
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
-.PHONY: publish-server-backend4-artifacts-dev
-publish-server-backend4-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
-
 .PHONY: publish-ghost-army-artifacts-dev
 publish-ghost-army-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
@@ -764,10 +677,6 @@ publish-relay-backend-artifacts-staging:
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
 
-.PHONY: publish-server-backend4-artifacts-staging
-publish-server-backend4-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
-
 .PHONY: publish-ghost-army-artifacts-staging
 publish-ghost-army-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
@@ -779,14 +688,6 @@ publish-load-test-server-artifacts:
 .PHONY: publish-load-test-client-artifacts
 publish-load-test-client-artifacts:
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
-
-.PHONY: publish-load-test-server4-artifacts
-publish-load-test-server4-artifacts:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server4
-
-.PHONY: publish-load-test-client4-artifacts
-publish-load-test-client4-artifacts:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client4
 
 .PHONY: publish-load-test-server-list
 publish-load-test-server-list:
@@ -819,10 +720,6 @@ publish-relay-backend-artifacts-prod:
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
-
-.PHONY: publish-server-backend4-artifacts-prod
-publish-server-backend4-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
 
 .PHONY: publish-ghost-army-artifacts-prod
 publish-ghost-army-artifacts-prod:
@@ -870,43 +767,31 @@ publish-ghost-army-bootstrap-script-prod:
 	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
 	@printf "done\n"
 
-.PHONY: build-server3
-build-server3: build-sdk3
-	@printf "Building server3... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/server3 ./cmd/server/server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-server4
-build-server4: build-sdk4
-	@printf "Building server4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server/server.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
+.PHONY: build-server
+build-server: build-sdk
+	@printf "Building server... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
-build-functional-server: build-sdk4
+build-functional-server: build-sdk
 	@printf "Building functional server... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
-build-functional-client: build-sdk4
+build-functional-client: build-sdk
 	@printf "Building functional client... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
 build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
-.PHONY: build-client3
-build-client3: build-sdk3
-	@printf "Building client3... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/client3 ./cmd/client/client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-client4
-build-client4: build-sdk4
-	@printf "Building client4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client/client.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
+.PHONY: build-client
+build-client: build-sdk
+	@printf "Building client... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
@@ -971,14 +856,14 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client3 build-client4 build-server3 build-server4 build-functional build-next ## builds everything
+build-all: build-sdk build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
 
-.PHONY: update-sdk4
-update-sdk4:
-	git submodule update --remote --merge sdk4
+.PHONY: update-sdk
+update-sdk:
+	git submodule update --remote --merge sdk
 
 .PHONY: clean
 clean: ## cleans everything

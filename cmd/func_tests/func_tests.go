@@ -176,11 +176,13 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 type ServerConfig struct {
 	duration             int
 	no_upgrade           bool
+	upgrade_count        int
 	packet_loss          bool
 	customer_private_key string
 	disable_network_next bool
 	server_address       string
 	server_port          int
+	restart_time         float64
 }
 
 func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -206,6 +208,10 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, "SERVER_NO_UPGRADE=1")
 	}
 
+	if config.upgrade_count > 0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_UPGRADE_COUNT=%d", config.upgrade_count))
+	}
+
 	if config.customer_private_key != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_CUSTOMER_PRIVATE_KEY=%s", config.customer_private_key))
 	}
@@ -221,6 +227,10 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	if config.packet_loss {
 		cmd.Env = append(cmd.Env, "SERVER_PACKET_LOSS=1")
+	}
+
+	if config.restart_time > 0.0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_RESTART_TIME=%.2f", config.restart_time))
 	}
 
 	var output bytes.Buffer
@@ -626,6 +636,55 @@ func test_fallback_to_direct_client_side() {
 }
 
 /*
+	Verify that the client falls back to direct and exchanges raw direct packets with the server
+	after the server is restarted. Without this client side fallback to direct, it is possible
+	for the client to get stuck in a state where it keep sending upgraded direct packets which
+	won't get through to the server post restart.
+*/
+
+func test_fallback_to_direct_server_restart() {
+
+	fmt.Printf("test_fallback_to_direct_server_restart\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 55.0
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.restart_time = 15.0
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 2500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW] > 1000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW] > 1000)
+}
+
+/*
 	Have network next enabled on a client, but disable it on a server.
 	Verify that the client is still able to connect to the server, but all packets are sent direct.
 */
@@ -953,7 +1012,7 @@ func test_on_on_off() {
 }
 
 /*
-	Test that a client is able to connect to a server direct, and then reconnect to the same server without problems.
+	Test that a client is able to connect to a server direct, and then reconnect without problems.
 	This verifies that our code in the SDK to distinguish the old session from the new one is working properly for
 	upgraded direct packets (255 prefix).
 */
@@ -963,6 +1022,7 @@ func test_reconnect_direct() {
 	fmt.Printf("test_reconnect_direct\n")
 
 	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 55.0
 	clientConfig.duration = 60.0
 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
@@ -996,9 +1056,57 @@ func test_reconnect_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+}
+
+/*
+	Test that a client is able to connect to a server direct, and then reconnect (without upgrading) without problems.
+	This veries that the previous session doesn't interfer with raw direct packets sent in the reconnect session.
+*/
+
+func test_reconnect_direct_no_upgrade() {
+
+	fmt.Printf("test_reconnect_direct_no_upgrade\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 55.0
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.connect_time = 30.0
+	clientConfig.connect_address = "127.0.0.1:32202"
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.upgrade_count = 1
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 2)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 2)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 2900)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 2900)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW] > 1000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW] > 1000)
 }
 
 /*
@@ -2306,10 +2414,6 @@ func test_next_stats() {
 
 }
 
-/*
-	Make sure all the near relay stats (RTT, jitter, PL) are uploaded to the backend.
-*/
-
 type test_function func()
 
 func main() {
@@ -2319,12 +2423,14 @@ func main() {
 		test_network_next_route,
 		test_fallback_to_direct_backend,
 		test_fallback_to_direct_client_side,
+		test_fallback_to_direct_server_restart,
 		test_disable_on_server,
 		test_disable_on_client,
 		test_route_switching,
 		test_on_off,
 		test_on_on_off,
 		test_reconnect_direct,
+		test_reconnect_direct_no_upgrade,
 		test_reconnect_next,
 		test_connect_to_another_server_direct,
 		test_connect_to_another_server_next,
