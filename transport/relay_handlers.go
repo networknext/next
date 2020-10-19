@@ -338,11 +338,10 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		var responseData []byte
 		response := RelayUpdateResponse{}
 		for _, pingData := range relaysToPing {
-			var legacy routing.RelayPingData
-			legacy.ID = pingData.ID
-			legacy.Address = pingData.Address
-
-			response.RelaysToPing = append(response.RelaysToPing, legacy)
+			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
+				ID:      pingData.ID,
+				Address: pingData.Address,
+			})
 		}
 		response.Timestamp = time.Now().Unix()
 
