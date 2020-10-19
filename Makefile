@@ -521,9 +521,9 @@ build-relay-artifacts-dev: build-relay
 build-portal-artifacts-dev: build-portal
 	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
 
-.PHONY: build-portal-artifacts-dev-test
-build-portal-artifacts-dev-test: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal-test -b $(ARTIFACT_BUCKET)
+.PHONY: build-portal-artifacts-dev-old
+build-portal-artifacts-dev-old: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-old -b $(ARTIFACT_BUCKET)
 
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
