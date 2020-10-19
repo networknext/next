@@ -12,6 +12,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -19,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getTestSessionData(t *testing.T, onNetworkNext bool) transport.SessionPortalData {
+func getTestSessionData(t *testing.T, sessionID uint64, userHash uint64, onNetworkNext bool, timestamp time.Time) transport.SessionPortalData {
 	relayID1 := crypto.HashID("127.0.0.1:10000")
 	relayID2 := crypto.HashID("127.0.0.1:10001")
 	relayID3 := crypto.HashID("127.0.0.1:10002")
@@ -27,8 +28,8 @@ func getTestSessionData(t *testing.T, onNetworkNext bool) transport.SessionPorta
 
 	return transport.SessionPortalData{
 		Meta: transport.SessionMeta{
-			ID:              rand.Uint64(),
-			UserHash:        rand.Uint64(),
+			ID:              sessionID,
+			UserHash:        userHash,
 			DatacenterName:  "local",
 			DatacenterAlias: "alias",
 			OnNetworkNext:   onNetworkNext,
@@ -68,7 +69,7 @@ func getTestSessionData(t *testing.T, onNetworkNext bool) transport.SessionPorta
 			Longitude: 90,
 		},
 		Slice: transport.SessionSlice{
-			Timestamp: time.Now().Truncate(time.Second),
+			Timestamp: timestamp.Truncate(time.Second),
 			Envelope: routing.Envelope{
 				Up:   100,
 				Down: 150,
@@ -221,7 +222,7 @@ func TestPullMessageUnmarshalFailure(t *testing.T) {
 }
 
 func TestPullMessageSuccess(t *testing.T) {
-	expected := getTestSessionData(t, true)
+	expected := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, time.Now())
 	expectedBytes, err := expected.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -293,7 +294,7 @@ func TestDirectSession(t *testing.T) {
 
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, false)
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -304,7 +305,7 @@ func TestDirectSession(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 5)
+	time.Sleep(time.Millisecond * 10)
 
 	minutes := flushTime.Unix() / 60
 
@@ -314,6 +315,17 @@ func TestDirectSession(t *testing.T) {
 		assert.Len(t, topSessionIDs, 1)
 
 		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.ID, sessionID)
@@ -343,24 +355,520 @@ func TestDirectSession(t *testing.T) {
 		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
+
+	assert.Empty(t, largeCustomerCacheMap)
 }
 
 func TestNextSession(t *testing.T) {
+	ctx := context.Background()
 
+	servers, clients := setupMockRedis(t)
+
+	portalDataBuffer := make([]transport.SessionPortalData, 0)
+
+	flushTime := time.Now().Add(-time.Second * 10)
+	pingTime := time.Now().Add(-time.Second * 10)
+
+	storer := &storage.InMemory{}
+	err := storer.AddBuyer(ctx, routing.Buyer{
+		ID:          12345,
+		CompanyCode: "local",
+	})
+	assert.NoError(t, err)
+
+	var largeCustomerCacheMap sync.Map
+
+	flushCount := 1000
+
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, time.Now())
+	sessionDataBytes, err := sessionData.MarshalBinary()
+	assert.NoError(t, err)
+
+	messageChan := make(chan []byte, 1)
+	messageChan <- sessionDataBytes
+
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	assert.NoError(t, err)
+
+	// Add a small delay so that the data has time to go over the tcp sockets
+	time.Sleep(time.Millisecond * 10)
+
+	minutes := flushTime.Unix() / 60
+
+	{
+		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+	}
+
+	{
+		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 1)
+
+		sliceVal := sliceVals[0]
+
+		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
+	}
+
+	assert.Empty(t, largeCustomerCacheMap)
 }
 
 func TestDirectSessionLargeCustomer(t *testing.T) {
+	ctx := context.Background()
 
+	servers, clients := setupMockRedis(t)
+
+	portalDataBuffer := make([]transport.SessionPortalData, 0)
+
+	flushTime := time.Now().Add(-time.Second * 10)
+	pingTime := time.Now().Add(-time.Second * 10)
+
+	storer := &storage.InMemory{}
+	err := storer.AddBuyer(ctx, routing.Buyer{
+		ID:          12345,
+		CompanyCode: "local",
+		InternalConfig: core.InternalConfig{
+			LargeCustomer: true,
+		},
+	})
+	assert.NoError(t, err)
+
+	var largeCustomerCacheMap sync.Map
+
+	flushCount := 1000
+
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, time.Now())
+	sessionDataBytes, err := sessionData.MarshalBinary()
+	assert.NoError(t, err)
+
+	messageChan := make(chan []byte, 1)
+	messageChan <- sessionDataBytes
+
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	assert.NoError(t, err)
+
+	// Add a small delay so that the data has time to go over the tcp sockets
+	time.Sleep(time.Millisecond * 10)
+
+	minutes := flushTime.Unix() / 60
+
+	{
+		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.Error(t, err)
+		assert.Len(t, topSessionIDs, 0)
+	}
+
+	{
+		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		assert.Error(t, err)
+		assert.Len(t, customerTopSessionIDs, 0)
+	}
+
+	{
+		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		assert.Empty(t, pointVal)
+	}
+
+	{
+		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		assert.Error(t, err)
+		assert.Empty(t, metaVal)
+	}
+
+	{
+		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		assert.Error(t, err)
+		assert.Len(t, sliceVals, 0)
+	}
+
+	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
+	assert.True(t, ok)
+	customerMap := customerMapInterface.(*sync.Map)
+
+	sessionMapInterface, ok := customerMap.Load(sessionData.Meta.BuyerID)
+	assert.True(t, ok)
+	sessionMap := sessionMapInterface.(*sync.Map)
+
+	_, ok = sessionMap.Load(sessionData.Meta.ID)
+	assert.False(t, ok)
 }
 
 func TestNextSessionLargeCustomer(t *testing.T) {
+	ctx := context.Background()
 
+	servers, clients := setupMockRedis(t)
+
+	portalDataBuffer := make([]transport.SessionPortalData, 0)
+
+	flushTime := time.Now().Add(-time.Second * 10)
+	pingTime := time.Now().Add(-time.Second * 10)
+
+	storer := &storage.InMemory{}
+	err := storer.AddBuyer(ctx, routing.Buyer{
+		ID:          12345,
+		CompanyCode: "local",
+		InternalConfig: core.InternalConfig{
+			LargeCustomer: true,
+		},
+	})
+	assert.NoError(t, err)
+
+	var largeCustomerCacheMap sync.Map
+
+	flushCount := 1000
+
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, time.Now())
+	sessionDataBytes, err := sessionData.MarshalBinary()
+	assert.NoError(t, err)
+
+	messageChan := make(chan []byte, 1)
+	messageChan <- sessionDataBytes
+
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	assert.NoError(t, err)
+
+	// Add a small delay so that the data has time to go over the tcp sockets
+	time.Sleep(time.Millisecond * 10)
+
+	minutes := flushTime.Unix() / 60
+
+	{
+		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+	}
+
+	{
+		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 1)
+
+		sliceVal := sliceVals[0]
+
+		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
+	}
+
+	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
+	assert.True(t, ok)
+	customerMap := customerMapInterface.(*sync.Map)
+
+	sessionMapInterface, ok := customerMap.Load(sessionData.Meta.BuyerID)
+	assert.True(t, ok)
+	sessionMap := sessionMapInterface.(*sync.Map)
+
+	_, ok = sessionMap.Load(sessionData.Meta.ID)
+	assert.True(t, ok)
 }
 
 func TestDirectToNextLargeCustomer(t *testing.T) {
+	ctx := context.Background()
 
+	servers, clients := setupMockRedis(t)
+
+	portalDataBuffer := make([]transport.SessionPortalData, 0)
+
+	flushTime := time.Now().Add(-time.Second * 10)
+	pingTime := time.Now().Add(-time.Second * 10)
+
+	storer := &storage.InMemory{}
+	err := storer.AddBuyer(ctx, routing.Buyer{
+		ID:          12345,
+		CompanyCode: "local",
+		InternalConfig: core.InternalConfig{
+			LargeCustomer: true,
+		},
+	})
+	assert.NoError(t, err)
+
+	var largeCustomerCacheMap sync.Map
+
+	flushCount := 1000
+
+	sessionID := rand.Uint64()
+	userHash := rand.Uint64()
+	directSessionData := getTestSessionData(t, sessionID, userHash, false, flushTime)
+
+	minutes := flushTime.Unix() / 60
+
+	_, err = servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	_, err = servers.topSessions.ZAdd(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	servers.sessionMap.HSet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
+
+	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), "\""+directSessionData.Meta.RedisString()+"\"")
+	assert.NoError(t, err)
+
+	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), "\""+directSessionData.Slice.RedisString()+"\"")
+	assert.NoError(t, err)
+
+	nextSessionData := getTestSessionData(t, sessionID, userHash, true, flushTime)
+
+	sessionDataBytes, err := nextSessionData.MarshalBinary()
+	assert.NoError(t, err)
+
+	messageChan := make(chan []byte, 1)
+	messageChan <- sessionDataBytes
+
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	assert.NoError(t, err)
+
+	// Add a small delay so that the data has time to go over the tcp sockets
+	time.Sleep(time.Millisecond * 10)
+
+	{
+		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, nextSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, nextSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
+		assert.Equal(t, nextSessionData.Point.RedisString(), pointVal)
+	}
+
+	{
+		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
+		assert.Equal(t, nextSessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 2)
+
+		directSliceVal := sliceVals[0]
+		nextSliceVal := sliceVals[1]
+
+		directSliceVal = directSliceVal[1 : len(directSliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
+
+		nextSliceVal = nextSliceVal[1 : len(nextSliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
+	}
+
+	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
+	assert.True(t, ok)
+	customerMap := customerMapInterface.(*sync.Map)
+
+	sessionMapInterface, ok := customerMap.Load(nextSessionData.Meta.BuyerID)
+	assert.True(t, ok)
+	sessionMap := sessionMapInterface.(*sync.Map)
+
+	_, ok = sessionMap.Load(nextSessionData.Meta.ID)
+	assert.True(t, ok)
 }
 
 func TestNextToDirectLargeCustomer(t *testing.T) {
+	ctx := context.Background()
 
+	servers, clients := setupMockRedis(t)
+
+	portalDataBuffer := make([]transport.SessionPortalData, 0)
+
+	flushTime := time.Now().Add(-time.Second * 10)
+	pingTime := time.Now().Add(-time.Second * 10)
+
+	storer := &storage.InMemory{}
+	err := storer.AddBuyer(ctx, routing.Buyer{
+		ID:          12345,
+		CompanyCode: "local",
+		InternalConfig: core.InternalConfig{
+			LargeCustomer: true,
+		},
+	})
+	assert.NoError(t, err)
+
+	var largeCustomerCacheMap sync.Map
+
+	flushCount := 1000
+
+	sessionID := rand.Uint64()
+	userHash := rand.Uint64()
+	nextSessionData := getTestSessionData(t, sessionID, userHash, true, flushTime)
+
+	minutes := flushTime.Unix() / 60
+
+	sessionMap := &sync.Map{}
+	sessionMap.Store(nextSessionData.Meta.ID, true)
+
+	customerMap := &sync.Map{}
+	customerMap.Store(nextSessionData.Meta.BuyerID, sessionMap)
+
+	largeCustomerCacheMap.Store(minutes, customerMap)
+
+	_, err = servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	_, err = servers.topSessions.ZAdd(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	servers.sessionMap.HSet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+
+	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), "\""+nextSessionData.Meta.RedisString()+"\"")
+	assert.NoError(t, err)
+
+	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), "\""+nextSessionData.Slice.RedisString()+"\"")
+	assert.NoError(t, err)
+
+	directSessionData := getTestSessionData(t, sessionID, userHash, false, flushTime)
+
+	sessionDataBytes, err := directSessionData.MarshalBinary()
+	assert.NoError(t, err)
+
+	messageChan := make(chan []byte, 1)
+	messageChan <- sessionDataBytes
+
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	assert.NoError(t, err)
+
+	// Add a small delay so that the data has time to go over the tcp sockets
+	time.Sleep(time.Millisecond * 10)
+
+	{
+		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, directSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, directSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
+		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
+		assert.Equal(t, directSessionData.Point.RedisString(), pointVal)
+	}
+
+	{
+		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
+		assert.Equal(t, directSessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 2)
+
+		nextSliceVal := sliceVals[0]
+		directSliceVal := sliceVals[1]
+
+		nextSliceVal = nextSliceVal[1 : len(nextSliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
+
+		directSliceVal = directSliceVal[1 : len(directSliceVal)-1] // Remove the extra quotes
+		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
+	}
+
+	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
+	assert.True(t, ok)
+	customerMap = customerMapInterface.(*sync.Map)
+
+	sessionMapInterface, ok := customerMap.Load(directSessionData.Meta.BuyerID)
+	assert.True(t, ok)
+	sessionMap = sessionMapInterface.(*sync.Map)
+
+	_, ok = sessionMap.Load(directSessionData.Meta.ID)
+	assert.True(t, ok)
 }
