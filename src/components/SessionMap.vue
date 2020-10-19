@@ -104,20 +104,6 @@ export default class SessionMap extends Vue {
         let gpuAggregation = navigator.appVersion.indexOf('Win') === -1
         gpuAggregation = gpuAggregation ? navigator.appVersion.indexOf('Macintosh') === -1 : false
 
-        if (onNN.length > 0) {
-          const nnLayer = new ScreenGridLayer({
-            id: 'nn-layer',
-            data: onNN,
-            opacity: 0.8,
-            getPosition: (d: Array<number>) => [d[0], d[1]],
-            getWeight: () => 1,
-            cellSizePixels: cellSize,
-            colorRange: [[40, 167, 69]],
-            gpuAggregation,
-            aggregation
-          })
-        }
-
         let layers: any = []
 
         if (direct.length > 0) {
@@ -130,14 +116,15 @@ export default class SessionMap extends Vue {
             cellSizePixels: cellSize,
             colorRange: [[49, 130, 189]],
             gpuAggregation,
-            aggregation
+            aggregation,
+            coordinateSystem: 1
           })
           layers = layers.push(directLayer)
         }
 
         if (onNN.length > 0) {
           const nnLayer = new ScreenGridLayer({
-            id: 'nn-layer',
+            id: 'new-layer',
             data: onNN,
             opacity: 0.8,
             getPosition: (d: Array<number>) => [d[0], d[1]],
@@ -149,6 +136,23 @@ export default class SessionMap extends Vue {
           })
           layers.push(nnLayer)
         }
+
+        if (onNN.length > 0) {
+          const nnLayer = new ScreenGridLayer({
+            id: 'old-layer',
+            data: onNN,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            gpuAggregation,
+            aggregation
+          })
+          layers.push(nnLayer)
+        }
+
+        console.log(layers)
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
