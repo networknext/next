@@ -252,12 +252,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 			return
 		}
 
-		if packet.FallbackToDirect {
-			level.Error(logger).Log("err", "received fallback to direct")
-			metrics.FallbackToDirect.Add(1)
-			return
-		}
-
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
 			level.Error(logger).Log("msg", "buyer not found", "err", err)
@@ -343,6 +337,14 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 		// Don't accelerate any sessions if the buyer is not yet live
 		if !buyer.Live {
 			metrics.BuyerNotLive.Add(1)
+			return
+		}
+
+		if packet.FallbackToDirect {
+			if !sessionData.FellBackToDirect {
+				metrics.FallbackToDirect.Add(1)
+				sessionData.FellBackToDirect = true
+			}
 			return
 		}
 

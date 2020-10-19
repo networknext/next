@@ -306,18 +306,19 @@ func (packet *SessionResponsePacket4) Serialize(stream encoding.Stream) error {
 }
 
 type SessionData4 struct {
-	Version         uint32
-	SessionID       uint64
-	SessionVersion  uint32
-	SliceNumber     uint32
-	ExpireTimestamp uint64
-	Initial         bool
-	Location        routing.Location
-	RouteNumRelays  int32
-	RouteCost       int32
-	RouteRelayIDs   [routing.MaxRelays]uint64
-	RouteState      core.RouteState
-	EverOnNext      bool
+	Version          uint32
+	SessionID        uint64
+	SessionVersion   uint32
+	SliceNumber      uint32
+	ExpireTimestamp  uint64
+	Initial          bool
+	Location         routing.Location
+	RouteNumRelays   int32
+	RouteCost        int32
+	RouteRelayIDs    [routing.MaxRelays]uint64
+	RouteState       core.RouteState
+	EverOnNext       bool
+	FellBackToDirect bool
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -397,6 +398,7 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
 	stream.SerializeBool(&sessionData.EverOnNext)
+	stream.SerializeBool(&sessionData.FellBackToDirect)
 
 	return stream.Error()
 }
