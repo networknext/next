@@ -31,7 +31,6 @@ func (self *RelayVersion) String() string {
 }
 
 type RelayData struct {
-	SessionCount   uint64
 	Version        RelayVersion
 	LastUpdateTime time.Time
 	CPU            float32
@@ -86,7 +85,7 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 		var relay RelayData
 
 		if version == 0 {
-			if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
+			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionCount) {
 				return errors.New("unable to read relay stats session count")
 			}
 
@@ -528,7 +527,6 @@ type relay struct {
 	SSHUser             string                    `json:"ssh_user"`
 	SSHPort             int64                     `json:"ssh_port"`
 	MaxSessionCount     uint32                    `json:"maxSessionCount"`
-	SessionCount        uint64                    `json:"sessionCount"`
 	PublicKey           string                    `json:"public_key"`
 	UpdateKey           string                    `json:"update_key"`
 	FirestoreID         string                    `json:"firestore_id"`
@@ -577,7 +575,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		}
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
-			relay.SessionCount = relayData.SessionCount
 			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
