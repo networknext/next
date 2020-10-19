@@ -212,7 +212,7 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
 # endif
 #endif
 
-#if defined(__clang__) || defined(__GNUC__) && defined(__x86_64__)
+#if ( defined(__clang__) || defined(__GNUC__) ) && defined(__x86_64__) && !defined(__ORBIS__)
 
 # define HAVE_MMINTRIN_H  1
 # define HAVE_EMMINTRIN_H 1
@@ -228,8 +228,7 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
 
 #endif
 
-#if defined(_MSC_VER) && \
-    (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))
 
 # include <intrin.h>
 
