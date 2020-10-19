@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"runtime"
 
@@ -178,80 +177,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create an in-memory storer
-	var storer storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-
-	var customerPublicKey []byte
-	var customerID uint64
-	var relayPublicKey []byte
-
-	// Create dummy entries in storer for local testing
-	if env == "local" {
-		if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
-			level.Error(logger).Log("err", "NEXT_CUSTOMER_PUBLIC_KEY not set")
-			return 1
-		}
-
-		customerPublicKey, err = envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-
-		if !envvar.Exists("RELAY_PUBLIC_KEY") {
-			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
-			return 1
-		}
-
-		relayPublicKey, err = envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-	}
-
-	// Check for the firestore emulator
-	firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
-	if firestoreEmulatorOK {
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	if gcpOK || firestoreEmulatorOK {
-		// Firestore
-		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create firestore", "err", err)
-				return 1
-			}
-
-			fsSyncInterval, err := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(fsSyncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			storer = fs
-		}
-	}
-
-	if env == "local" {
-		// Create dummy buyer and datacenter for local testing
-		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
-	}
-
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -373,7 +298,7 @@ func mainReturnWithCode() int {
 				pingTime := time.Now()
 
 				for {
-					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, redisFlushCount); err != nil {
+					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, redisFlushCount); err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
@@ -459,7 +384,6 @@ func RedisHandler(
 	portalDataBuffer []transport.SessionPortalData,
 	flushTime time.Time,
 	pingTime time.Time,
-	storer storage.Storer,
 	redisFlushCount int) error {
 
 	sessionData, err := PullMessage(messageChan)
@@ -485,7 +409,7 @@ func RedisHandler(
 	flushTime = time.Now()
 	minutes := flushTime.Unix() / 60
 
-	InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, minutes)
+	InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, minutes)
 	return nil
 }
 
@@ -506,7 +430,6 @@ func InsertToRedis(
 	clientSessionMeta *storage.RawRedisClient,
 	clientSessionSlices *storage.RawRedisClient,
 	portalDataBuffer []transport.SessionPortalData,
-	storer storage.Storer,
 	minutes int64) {
 
 	// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
@@ -521,16 +444,11 @@ func InsertToRedis(
 
 	for j := range portalDataBuffer {
 		meta := portalDataBuffer[j].Meta
+		largeCustomer := portalDataBuffer[j].LargeCustomer
 		everOnNext := portalDataBuffer[j].EverOnNext
 
-		// Check if this is a session we should add to the global top sessions
-		buyer, err := storer.Buyer(meta.BuyerID)
-		if err != nil {
-			continue
-		}
-
 		// For large customers, only insert the session if they have ever taken network next
-		if buyer.InternalConfig.LargeCustomer && !meta.OnNetworkNext && !everOnNext {
+		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
 			continue // Early out if we shouldn't add this session
 		}
 
@@ -552,16 +470,11 @@ func InsertToRedis(
 
 	for j := range portalDataBuffer {
 		meta := &portalDataBuffer[j].Meta
+		largeCustomer := portalDataBuffer[j].LargeCustomer
 		everOnNext := portalDataBuffer[j].EverOnNext
 
-		// Check if this is a session we should add to redis
-		buyer, err := storer.Buyer(meta.BuyerID)
-		if err != nil {
-			continue
-		}
-
 		// For large customers, only insert the session if they have ever taken network next
-		if buyer.InternalConfig.LargeCustomer && !meta.OnNetworkNext && !everOnNext {
+		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
 			continue // Early out if we shouldn't add this session
 		}
 

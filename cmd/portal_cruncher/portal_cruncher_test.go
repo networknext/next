@@ -11,7 +11,6 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -19,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getTestSessionData(t *testing.T, sessionID uint64, userHash uint64, onNetworkNext bool, everOnNetworkNext bool, timestamp time.Time) transport.SessionPortalData {
+func getTestSessionData(t *testing.T, largeCustomer bool, sessionID uint64, userHash uint64, onNetworkNext bool, everOnNetworkNext bool, timestamp time.Time) transport.SessionPortalData {
 	relayID1 := crypto.HashID("127.0.0.1:10000")
 	relayID2 := crypto.HashID("127.0.0.1:10001")
 	relayID3 := crypto.HashID("127.0.0.1:10002")
@@ -75,7 +74,8 @@ func getTestSessionData(t *testing.T, sessionID uint64, userHash uint64, onNetwo
 			},
 			OnNetworkNext: onNetworkNext,
 		},
-		EverOnNext: everOnNetworkNext,
+		LargeCustomer: largeCustomer,
+		EverOnNext:    everOnNetworkNext,
 	}
 }
 
@@ -222,7 +222,7 @@ func TestPullMessageUnmarshalFailure(t *testing.T) {
 }
 
 func TestPullMessageSuccess(t *testing.T) {
-	expected := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, false, time.Now())
+	expected := getTestSessionData(t, false, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	expectedBytes, err := expected.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -274,8 +274,6 @@ func TestRedisClientCreateSuccess(t *testing.T) {
 }
 
 func TestDirectSession(t *testing.T) {
-	ctx := context.Background()
-
 	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -283,23 +281,16 @@ func TestDirectSession(t *testing.T) {
 	flushTime := time.Now().Add(-time.Second * 10)
 	pingTime := time.Now().Add(-time.Second * 10)
 
-	storer := &storage.InMemory{}
-	err := storer.AddBuyer(ctx, routing.Buyer{
-		ID:          12345,
-		CompanyCode: "local",
-	})
-	assert.NoError(t, err)
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, false, time.Now())
+	sessionData := getTestSessionData(t, false, rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -356,8 +347,6 @@ func TestDirectSession(t *testing.T) {
 }
 
 func TestNextSession(t *testing.T) {
-	ctx := context.Background()
-
 	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -365,23 +354,16 @@ func TestNextSession(t *testing.T) {
 	flushTime := time.Now().Add(-time.Second * 10)
 	pingTime := time.Now().Add(-time.Second * 10)
 
-	storer := &storage.InMemory{}
-	err := storer.AddBuyer(ctx, routing.Buyer{
-		ID:          12345,
-		CompanyCode: "local",
-	})
-	assert.NoError(t, err)
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, false, time.Now())
+	sessionData := getTestSessionData(t, false, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -438,8 +420,6 @@ func TestNextSession(t *testing.T) {
 }
 
 func TestDirectSessionLargeCustomer(t *testing.T) {
-	ctx := context.Background()
-
 	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -447,26 +427,16 @@ func TestDirectSessionLargeCustomer(t *testing.T) {
 	flushTime := time.Now().Add(-time.Second * 10)
 	pingTime := time.Now().Add(-time.Second * 10)
 
-	storer := &storage.InMemory{}
-	err := storer.AddBuyer(ctx, routing.Buyer{
-		ID:          12345,
-		CompanyCode: "local",
-		InternalConfig: core.InternalConfig{
-			LargeCustomer: true,
-		},
-	})
-	assert.NoError(t, err)
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, false, time.Now())
+	sessionData := getTestSessionData(t, true, rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -505,8 +475,6 @@ func TestDirectSessionLargeCustomer(t *testing.T) {
 }
 
 func TestNextSessionLargeCustomer(t *testing.T) {
-	ctx := context.Background()
-
 	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -514,26 +482,16 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	flushTime := time.Now().Add(-time.Second * 10)
 	pingTime := time.Now().Add(-time.Second * 10)
 
-	storer := &storage.InMemory{}
-	err := storer.AddBuyer(ctx, routing.Buyer{
-		ID:          12345,
-		CompanyCode: "local",
-		InternalConfig: core.InternalConfig{
-			LargeCustomer: true,
-		},
-	})
-	assert.NoError(t, err)
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, false, time.Now())
+	sessionData := getTestSessionData(t, true, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -590,8 +548,6 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 }
 
 func TestDirectToNextLargeCustomer(t *testing.T) {
-	ctx := context.Background()
-
 	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -599,25 +555,15 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	flushTime := time.Now().Add(-time.Second * 10)
 	pingTime := time.Now().Add(-time.Second * 10)
 
-	storer := &storage.InMemory{}
-	err := storer.AddBuyer(ctx, routing.Buyer{
-		ID:          12345,
-		CompanyCode: "local",
-		InternalConfig: core.InternalConfig{
-			LargeCustomer: true,
-		},
-	})
-	assert.NoError(t, err)
-
 	flushCount := 1000
 
 	sessionID := rand.Uint64()
 	userHash := rand.Uint64()
-	directSessionData := getTestSessionData(t, sessionID, userHash, false, false, flushTime)
+	directSessionData := getTestSessionData(t, true, sessionID, userHash, false, false, flushTime)
 
 	minutes := flushTime.Unix() / 60
 
-	_, err = servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	_, err := servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
 	assert.NoError(t, err)
 
 	_, err = servers.topSessions.ZAdd(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
@@ -631,7 +577,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), "\""+directSessionData.Slice.RedisString()+"\"")
 	assert.NoError(t, err)
 
-	nextSessionData := getTestSessionData(t, sessionID, userHash, true, false, flushTime)
+	nextSessionData := getTestSessionData(t, true, sessionID, userHash, true, false, flushTime)
 
 	sessionDataBytes, err := nextSessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -639,7 +585,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -698,8 +644,6 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 }
 
 func TestNextToDirectLargeCustomer(t *testing.T) {
-	ctx := context.Background()
-
 	servers, clients := setupMockRedis(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
@@ -707,25 +651,15 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	flushTime := time.Now().Add(-time.Second * 10)
 	pingTime := time.Now().Add(-time.Second * 10)
 
-	storer := &storage.InMemory{}
-	err := storer.AddBuyer(ctx, routing.Buyer{
-		ID:          12345,
-		CompanyCode: "local",
-		InternalConfig: core.InternalConfig{
-			LargeCustomer: true,
-		},
-	})
-	assert.NoError(t, err)
-
 	flushCount := 1000
 
 	sessionID := rand.Uint64()
 	userHash := rand.Uint64()
-	nextSessionData := getTestSessionData(t, sessionID, userHash, true, false, flushTime)
+	nextSessionData := getTestSessionData(t, true, sessionID, userHash, true, false, flushTime)
 
 	minutes := flushTime.Unix() / 60
 
-	_, err = servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	_, err := servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 	assert.NoError(t, err)
 
 	_, err = servers.topSessions.ZAdd(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
@@ -739,7 +673,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), "\""+nextSessionData.Slice.RedisString()+"\"")
 	assert.NoError(t, err)
 
-	directSessionData := getTestSessionData(t, sessionID, userHash, false, true, flushTime)
+	directSessionData := getTestSessionData(t, true, sessionID, userHash, false, true, flushTime)
 
 	sessionDataBytes, err := directSessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -747,7 +681,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets

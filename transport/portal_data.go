@@ -23,10 +23,12 @@ const (
 )
 
 type SessionPortalData struct {
-	Meta       SessionMeta     `json:"meta"`
-	Slice      SessionSlice    `json:"slice"`
-	Point      SessionMapPoint `json:"point"`
-	EverOnNext bool            `json:"everOnNext"`
+	Meta  SessionMeta     `json:"meta"`
+	Slice SessionSlice    `json:"slice"`
+	Point SessionMapPoint `json:"point"`
+
+	LargeCustomer bool `json:"largeCustomer"`
+	EverOnNext    bool `json:"everOnNext"`
 }
 
 func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
@@ -84,6 +86,10 @@ func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 	}
 
 	if version >= 1 {
+		if !encoding.ReadBool(data, &index, &s.LargeCustomer) {
+			return errors.New("[SessionPortalData] invalid read at large customer bool")
+		}
+
 		if !encoding.ReadBool(data, &index, &s.EverOnNext) {
 			return errors.New("[SessionPortalData] invalid read at ever on next bool")
 		}
@@ -122,13 +128,14 @@ func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, uint32(len(pointBytes)))
 	encoding.WriteBytes(data, &index, pointBytes, len(pointBytes))
 
+	encoding.WriteBool(data, &index, s.LargeCustomer)
 	encoding.WriteBool(data, &index, s.EverOnNext)
 
 	return data, nil
 }
 
 func (s *SessionPortalData) Size() uint64 {
-	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1
+	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1 + 1
 }
 
 type RelayHop struct {

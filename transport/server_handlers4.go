@@ -741,6 +741,8 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 			Latitude:  sessionData.Location.Latitude,
 			Longitude: sessionData.Location.Longitude,
 		},
+		LargeCustomer: buyer.InternalConfig.LargeCustomer,
+		EverOnNext:    sessionData.EverOnNext,
 	}
 
 	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
