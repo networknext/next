@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/networknext/backend/modules/core"	
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 )
 
@@ -317,6 +317,7 @@ type SessionData4 struct {
 	RouteCost       int32
 	RouteRelayIDs   [routing.MaxRelays]uint64
 	RouteState      core.RouteState
+	EverOnNext      bool
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -395,6 +396,7 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
+	stream.SerializeBool(&sessionData.EverOnNext)
 
 	return stream.Error()
 }

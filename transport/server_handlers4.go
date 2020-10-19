@@ -13,9 +13,9 @@ import (
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/modules/core"
 )
 
 func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint32) error {
@@ -296,6 +296,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 
 			if sessionData.RouteState.Next {
 				metrics.NextSlices.Add(1)
+				sessionData.EverOnNext = true
 			} else {
 				metrics.DirectSlices.Add(1)
 			}

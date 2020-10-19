@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -20,7 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getTestSessionData(t *testing.T, sessionID uint64, userHash uint64, onNetworkNext bool, timestamp time.Time) transport.SessionPortalData {
+func getTestSessionData(t *testing.T, sessionID uint64, userHash uint64, onNetworkNext bool, everOnNetworkNext bool, timestamp time.Time) transport.SessionPortalData {
 	relayID1 := crypto.HashID("127.0.0.1:10000")
 	relayID2 := crypto.HashID("127.0.0.1:10001")
 	relayID3 := crypto.HashID("127.0.0.1:10002")
@@ -76,6 +75,7 @@ func getTestSessionData(t *testing.T, sessionID uint64, userHash uint64, onNetwo
 			},
 			OnNetworkNext: onNetworkNext,
 		},
+		EverOnNext: everOnNetworkNext,
 	}
 }
 
@@ -222,7 +222,7 @@ func TestPullMessageUnmarshalFailure(t *testing.T) {
 }
 
 func TestPullMessageSuccess(t *testing.T) {
-	expected := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, time.Now())
+	expected := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	expectedBytes, err := expected.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -290,18 +290,16 @@ func TestDirectSession(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var largeCustomerCacheMap sync.Map
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, time.Now())
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -355,8 +353,6 @@ func TestDirectSession(t *testing.T) {
 		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
-
-	assert.Empty(t, largeCustomerCacheMap)
 }
 
 func TestNextSession(t *testing.T) {
@@ -376,18 +372,16 @@ func TestNextSession(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var largeCustomerCacheMap sync.Map
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, time.Now())
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -441,8 +435,6 @@ func TestNextSession(t *testing.T) {
 		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
-
-	assert.Empty(t, largeCustomerCacheMap)
 }
 
 func TestDirectSessionLargeCustomer(t *testing.T) {
@@ -465,18 +457,16 @@ func TestDirectSessionLargeCustomer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var largeCustomerCacheMap sync.Map
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, time.Now())
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -512,17 +502,6 @@ func TestDirectSessionLargeCustomer(t *testing.T) {
 		assert.Error(t, err)
 		assert.Len(t, sliceVals, 0)
 	}
-
-	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
-	assert.True(t, ok)
-	customerMap := customerMapInterface.(*sync.Map)
-
-	sessionMapInterface, ok := customerMap.Load(sessionData.Meta.BuyerID)
-	assert.True(t, ok)
-	sessionMap := sessionMapInterface.(*sync.Map)
-
-	_, ok = sessionMap.Load(sessionData.Meta.ID)
-	assert.False(t, ok)
 }
 
 func TestNextSessionLargeCustomer(t *testing.T) {
@@ -545,18 +524,16 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var largeCustomerCacheMap sync.Map
-
 	flushCount := 1000
 
-	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, time.Now())
+	sessionData := getTestSessionData(t, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -610,17 +587,6 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
-
-	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
-	assert.True(t, ok)
-	customerMap := customerMapInterface.(*sync.Map)
-
-	sessionMapInterface, ok := customerMap.Load(sessionData.Meta.BuyerID)
-	assert.True(t, ok)
-	sessionMap := sessionMapInterface.(*sync.Map)
-
-	_, ok = sessionMap.Load(sessionData.Meta.ID)
-	assert.True(t, ok)
 }
 
 func TestDirectToNextLargeCustomer(t *testing.T) {
@@ -643,13 +609,11 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var largeCustomerCacheMap sync.Map
-
 	flushCount := 1000
 
 	sessionID := rand.Uint64()
 	userHash := rand.Uint64()
-	directSessionData := getTestSessionData(t, sessionID, userHash, false, flushTime)
+	directSessionData := getTestSessionData(t, sessionID, userHash, false, false, flushTime)
 
 	minutes := flushTime.Unix() / 60
 
@@ -667,7 +631,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), "\""+directSessionData.Slice.RedisString()+"\"")
 	assert.NoError(t, err)
 
-	nextSessionData := getTestSessionData(t, sessionID, userHash, true, flushTime)
+	nextSessionData := getTestSessionData(t, sessionID, userHash, true, false, flushTime)
 
 	sessionDataBytes, err := nextSessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -675,7 +639,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -731,17 +695,6 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		nextSliceVal = nextSliceVal[1 : len(nextSliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
 	}
-
-	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
-	assert.True(t, ok)
-	customerMap := customerMapInterface.(*sync.Map)
-
-	sessionMapInterface, ok := customerMap.Load(nextSessionData.Meta.BuyerID)
-	assert.True(t, ok)
-	sessionMap := sessionMapInterface.(*sync.Map)
-
-	_, ok = sessionMap.Load(nextSessionData.Meta.ID)
-	assert.True(t, ok)
 }
 
 func TestNextToDirectLargeCustomer(t *testing.T) {
@@ -764,23 +717,13 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var largeCustomerCacheMap sync.Map
-
 	flushCount := 1000
 
 	sessionID := rand.Uint64()
 	userHash := rand.Uint64()
-	nextSessionData := getTestSessionData(t, sessionID, userHash, true, flushTime)
+	nextSessionData := getTestSessionData(t, sessionID, userHash, true, false, flushTime)
 
 	minutes := flushTime.Unix() / 60
-
-	sessionMap := &sync.Map{}
-	sessionMap.Store(nextSessionData.Meta.ID, true)
-
-	customerMap := &sync.Map{}
-	customerMap.Store(nextSessionData.Meta.BuyerID, sessionMap)
-
-	largeCustomerCacheMap.Store(minutes, customerMap)
 
 	_, err = servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 	assert.NoError(t, err)
@@ -796,7 +739,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), "\""+nextSessionData.Slice.RedisString()+"\"")
 	assert.NoError(t, err)
 
-	directSessionData := getTestSessionData(t, sessionID, userHash, false, flushTime)
+	directSessionData := getTestSessionData(t, sessionID, userHash, false, true, flushTime)
 
 	sessionDataBytes, err := directSessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -804,7 +747,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, flushCount)
+	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, flushCount)
 	assert.NoError(t, err)
 
 	// Add a small delay so that the data has time to go over the tcp sockets
@@ -860,15 +803,4 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		directSliceVal = directSliceVal[1 : len(directSliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
 	}
-
-	customerMapInterface, ok := largeCustomerCacheMap.Load(minutes)
-	assert.True(t, ok)
-	customerMap = customerMapInterface.(*sync.Map)
-
-	sessionMapInterface, ok := customerMap.Load(directSessionData.Meta.BuyerID)
-	assert.True(t, ok)
-	sessionMap = sessionMapInterface.(*sync.Map)
-
-	_, ok = sessionMap.Load(directSessionData.Meta.ID)
-	assert.True(t, ok)
 }

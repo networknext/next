@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"runtime"
-	"sync"
 
 	"net/http"
 	"os"
@@ -348,9 +347,6 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Create the large customer cache map so we can avoid adding direct sessions to the top 1000 list
-	var largeCustomerCacheMap sync.Map
-
 	redisHostTopSessions := envvar.Get("REDIS_HOST_TOP_SESSIONS", "127.0.0.1:6379")
 	redisHostSessionMap := envvar.Get("REDIS_HOST_SESSION_MAP", "127.0.0.1:6379")
 	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
@@ -377,7 +373,7 @@ func mainReturnWithCode() int {
 				pingTime := time.Now()
 
 				for {
-					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, &largeCustomerCacheMap, redisFlushCount); err != nil {
+					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, storer, redisFlushCount); err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
@@ -464,7 +460,6 @@ func RedisHandler(
 	flushTime time.Time,
 	pingTime time.Time,
 	storer storage.Storer,
-	largeCustomerCacheMap *sync.Map,
 	redisFlushCount int) error {
 
 	sessionData, err := PullMessage(messageChan)
@@ -490,7 +485,7 @@ func RedisHandler(
 	flushTime = time.Now()
 	minutes := flushTime.Unix() / 60
 
-	InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, largeCustomerCacheMap, minutes)
+	InsertToRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, portalDataBuffer, storer, minutes)
 	return nil
 }
 
@@ -512,37 +507,10 @@ func InsertToRedis(
 	clientSessionSlices *storage.RawRedisClient,
 	portalDataBuffer []transport.SessionPortalData,
 	storer storage.Storer,
-	largeCustomerCacheMap *sync.Map,
 	minutes int64) {
 
 	// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
 	clientTopSessions.Command("DEL", "s-%d", minutes-2)
-
-	if _, ok := largeCustomerCacheMap.Load(minutes - 2); ok {
-		largeCustomerCacheMap.Delete(minutes - 2)
-	}
-
-	// Check each portal entry and update the large customer cache map for any sessions we can add to redis
-	for j := range portalDataBuffer {
-		meta := &portalDataBuffer[j].Meta
-		buyer, err := storer.Buyer(meta.BuyerID)
-		if err != nil {
-			continue
-		}
-
-		// For large customers, only add sessions that have at least 1 slice on next
-		if buyer.InternalConfig.LargeCustomer && meta.OnNetworkNext {
-			customerMap := &sync.Map{}
-			newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
-			customerMap = newCustomerMapInterface.(*sync.Map)
-
-			sessionMap := &sync.Map{}
-			newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
-			sessionMap = newSessionMapInterface.(*sync.Map)
-
-			sessionMap.Store(meta.ID, true)
-		}
-	}
 
 	// Update the current global top sessions minute bucket
 	var format string
@@ -553,6 +521,7 @@ func InsertToRedis(
 
 	for j := range portalDataBuffer {
 		meta := portalDataBuffer[j].Meta
+		everOnNext := portalDataBuffer[j].EverOnNext
 
 		// Check if this is a session we should add to the global top sessions
 		buyer, err := storer.Buyer(meta.BuyerID)
@@ -560,19 +529,9 @@ func InsertToRedis(
 			continue
 		}
 
-		// For large customers, check the large customer cache map to see if we should insert the session
-		if buyer.InternalConfig.LargeCustomer {
-			customerMap := &sync.Map{}
-			newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
-			customerMap = newCustomerMapInterface.(*sync.Map)
-
-			sessionMap := &sync.Map{}
-			newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
-			sessionMap = newSessionMapInterface.(*sync.Map)
-
-			if _, ok := sessionMap.Load(meta.ID); !ok {
-				continue // Early out if we shouldn't add this session
-			}
+		// For large customers, only insert the session if they have ever taken network next
+		if buyer.InternalConfig.LargeCustomer && !meta.OnNetworkNext && !everOnNext {
+			continue // Early out if we shouldn't add this session
 		}
 
 		sessionID := fmt.Sprintf("%016x", meta.ID)
@@ -593,6 +552,7 @@ func InsertToRedis(
 
 	for j := range portalDataBuffer {
 		meta := &portalDataBuffer[j].Meta
+		everOnNext := portalDataBuffer[j].EverOnNext
 
 		// Check if this is a session we should add to redis
 		buyer, err := storer.Buyer(meta.BuyerID)
@@ -600,19 +560,9 @@ func InsertToRedis(
 			continue
 		}
 
-		// For large customers, check the large customer cache map to see if we should insert the session
-		if buyer.InternalConfig.LargeCustomer {
-			customerMap := &sync.Map{}
-			newCustomerMapInterface, _ := largeCustomerCacheMap.LoadOrStore(minutes, customerMap)
-			customerMap = newCustomerMapInterface.(*sync.Map)
-
-			sessionMap := &sync.Map{}
-			newSessionMapInterface, _ := customerMap.LoadOrStore(meta.BuyerID, sessionMap)
-			sessionMap = newSessionMapInterface.(*sync.Map)
-
-			if _, ok := sessionMap.Load(meta.ID); !ok {
-				continue // Early out if we shouldn't add this session
-			}
+		// For large customers, only insert the session if they have ever taken network next
+		if buyer.InternalConfig.LargeCustomer && !meta.OnNetworkNext && !everOnNext {
+			continue // Early out if we shouldn't add this session
 		}
 
 		slice := &portalDataBuffer[j].Slice
