@@ -152,6 +152,7 @@ type internalConfig struct {
 	MultipathOverloadThreshold int32 `firestore:"multipathOverloadThreshold"`
 	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
 	ForceNext                  bool  `firestore:"forceNext"`
+	LargeCustomer              bool  `firestore:"largeCustomer"`
 }
 
 type FirestoreError struct {
@@ -2366,6 +2367,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.MultipathOverloadThreshold = tempIC.MultipathOverloadThreshold
 	ic.TryBeforeYouBuy = tempIC.TryBeforeYouBuy
 	ic.ForceNext = tempIC.ForceNext
+	ic.LargeCustomer = tempIC.LargeCustomer
 
 	return ic, nil
 }
@@ -2383,6 +2385,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"multipathOverloadThreshold": internalConfig.MultipathOverloadThreshold,
 		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
 		"forceNext":                  internalConfig.ForceNext,
+		"largeCustomer":              internalConfig.LargeCustomer,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
