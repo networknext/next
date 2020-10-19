@@ -30,14 +30,14 @@ func bash(format string, args ...interface{}) bool {
 
 func main() {
 
-	version := "3.4.7"
+	version := "4.0.0"
 
 	basedir := fmt.Sprintf("next-%s", version)
 
 	fmt.Printf("\nMaking release %s in \"%s\"\n", version, basedir)
 
 	// remove zip files
-	bash("rm *.zip")
+	bash("rm -f *.zip")
 
 	// create the release directory clean
 	bash("rm -rf %s", basedir)
@@ -46,7 +46,7 @@ func main() {
 	// copy across the premake file
 	bash("cp premake5.lua %s", basedir)
 
-	// copy across the README and LICENCE text files
+	// copy across text files
 	bash("cp README %s", basedir)
 	bash("cp LICENCE %s", basedir)
 
@@ -219,12 +219,6 @@ func main() {
 	// copy across entire sodium directory
 	bash("cp -a sodium %s", basedir)
 
-	// copy across testbeds
-	bash("mkdir -p %s/testbed", basedir)
-	bash("cp -a testbed/ps4 %s/testbed", basedir)
-	bash("cp -a testbed/win64 %s/testbed", basedir)
-	bash("cp -a testbed/xboxone %s/testbed", basedir)
-
 	// build manifest
 
 	manifest := make([]string, 0)
@@ -246,6 +240,8 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/include/next.h", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/source/next.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_crypto.h", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_crypto.cpp", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_mac.h", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_mac.cpp", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_linux.h", basedir))
@@ -350,10 +346,6 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_freebsd", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_openbsd", basedir))
 
-	// todo: manifest for sodium directory
-
-	// todo: manifest for testbed directory
-
 	bash("find . -name '.DS_Store' -type f -delete") 
 
 	fmt.Printf("\nManifest:\n\n" )
@@ -375,9 +367,6 @@ func main() {
 	bash("rm %s/source/*ps4*", basedir)
 	bash("rm %s/source/*switch*", basedir)
 	bash("rm %s/source/*xboxone*", basedir)
-	bash("rm -rf %s/testbed/ps4", basedir)
-	bash("rm -rf %s/testbed/switch", basedir)
-	bash("rm -rf %s/testbed/xboxone", basedir)
 	bash("rm -rf %s/lib/NintendoSwitch-NX32", basedir)
 	bash("rm -rf %s/lib/NintendoSwitch-NX64", basedir)
 	bash("rm -rf %s/lib/Playstation4", basedir)
