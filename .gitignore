@@ -3,3 +3,4 @@ dist
 videos
 .env.local
 portal-*
+map_sessions*.json
