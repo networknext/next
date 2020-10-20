@@ -17,8 +17,8 @@ global_job_config:
       - make clean
       - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk4
       - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
-      - git submodule init sdk4
-      - git submodule update sdk4
+      - git submodule init sdk
+      - git submodule update sdk
 blocks:
   - name: Build & Publish Artifacts
     dependencies: []

@@ -35,7 +35,7 @@ type RelayData struct {
 	LastUpdateTime time.Time
 	CPU            float32
 	Mem            float32
-	TrafficStats   routing.RelayTrafficStats
+	TrafficStats   routing.TrafficStats
 }
 
 type RelayStatsMap struct {
@@ -84,23 +84,21 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 
 		var relay RelayData
 
-		if version == 0 {
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionCount) {
-				return errors.New("unable to read relay stats session count")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesReceived) {
-				return errors.New("unable to read relay stats tx")
-			}
-
-			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesSent) {
-				return errors.New("unable to read relay stats rx")
-			}
-		} else if version == 1 {
-			if err := relay.TrafficStats.ReadFrom(data, &index); err != nil {
+		// currently map version & traffic stats match up, but not binding them together in case one changes and the other doesn't
+		switch version {
+		case 0:
+			if err := relay.TrafficStats.ReadFrom(data, &index, 0); err != nil {
 				return err
 			}
-		} else {
+		case 1:
+			if err := relay.TrafficStats.ReadFrom(data, &index, 1); err != nil {
+				return err
+			}
+		case 2:
+			if err := relay.TrafficStats.ReadFrom(data, &index, 2); err != nil {
+				return err
+			}
+		default:
 			return fmt.Errorf("invalid relay map version: %d", version)
 		}
 
@@ -513,35 +511,35 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64                    `json:"id"`
-	SignedID            int64                     `json:"signed_id"`
-	Name                string                    `json:"name"`
-	Addr                string                    `json:"addr"`
-	Latitude            float64                   `json:"latitude"`
-	Longitude           float64                   `json:"longitude"`
-	NICSpeedMbps        int32                     `json:"nicSpeedMbps"`
-	IncludedBandwidthGB int32                     `json:"includedBandwidthGB"`
-	State               string                    `json:"state"`
-	LastUpdateTime      time.Time                 `json:"lastUpdateTime"`
-	ManagementAddr      string                    `json:"management_addr"`
-	SSHUser             string                    `json:"ssh_user"`
-	SSHPort             int64                     `json:"ssh_port"`
-	MaxSessionCount     uint32                    `json:"maxSessionCount"`
-	PublicKey           string                    `json:"public_key"`
-	UpdateKey           string                    `json:"update_key"`
-	FirestoreID         string                    `json:"firestore_id"`
-	Version             string                    `json:"relay_version"`
-	SellerName          string                    `json:"seller_name"`
-	MRC                 routing.Nibblin           `json:"monthlyRecurringChargeNibblins"`
-	Overage             routing.Nibblin           `json:"overage"`
-	BWRule              routing.BandWidthRule     `json:"bandwidthRule"`
-	ContractTerm        int32                     `json:"contractTerm"`
-	StartDate           time.Time                 `json:"startDate"`
-	EndDate             time.Time                 `json:"endDate"`
-	Type                routing.MachineType       `json:"machineType"`
-	CPUUsage            float32                   `json:"cpu_usage"`
-	MemUsage            float32                   `json:"mem_usage"`
-	TrafficStats        routing.RelayTrafficStats `json:"traffic_stats"`
+	ID                  uint64                `json:"id"`
+	SignedID            int64                 `json:"signed_id"`
+	Name                string                `json:"name"`
+	Addr                string                `json:"addr"`
+	Latitude            float64               `json:"latitude"`
+	Longitude           float64               `json:"longitude"`
+	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
+	State               string                `json:"state"`
+	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
+	ManagementAddr      string                `json:"management_addr"`
+	SSHUser             string                `json:"ssh_user"`
+	SSHPort             int64                 `json:"ssh_port"`
+	MaxSessionCount     uint32                `json:"maxSessionCount"`
+	PublicKey           string                `json:"public_key"`
+	UpdateKey           string                `json:"update_key"`
+	FirestoreID         string                `json:"firestore_id"`
+	Version             string                `json:"relay_version"`
+	SellerName          string                `json:"seller_name"`
+	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
+	Overage             routing.Nibblin       `json:"overage"`
+	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
+	ContractTerm        int32                 `json:"contractTerm"`
+	StartDate           time.Time             `json:"startDate"`
+	EndDate             time.Time             `json:"endDate"`
+	Type                routing.MachineType   `json:"machineType"`
+	CPUUsage            float32               `json:"cpu_usage"`
+	MemUsage            float32               `json:"mem_usage"`
+	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {

@@ -362,7 +362,7 @@ dev-client: build-client  ## runs a local client
 
 .PHONY: dev-multi-clients
 dev-multi-clients: build-client  ## runs 10 local clients
-	@./scripts/client-spawner.sh -n 10 -v 4
+	@./scripts/client-spawner.sh -n 10
 
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
@@ -521,9 +521,9 @@ build-relay-artifacts-dev: build-relay
 build-portal-artifacts-dev: build-portal
 	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
 
-.PHONY: build-portal-artifacts-dev-test
-build-portal-artifacts-dev-test: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal-test -b $(ARTIFACT_BUCKET)
+.PHONY: build-portal-artifacts-dev-old
+build-portal-artifacts-dev-old: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-old -b $(ARTIFACT_BUCKET)
 
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
