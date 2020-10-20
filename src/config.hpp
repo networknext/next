@@ -1,7 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#define RELAY_VERSION "1.3.0"
+#define RELAY_VERSION "1.3.1"
 
 #define RELAY_ADDRESS_BUFFER_SAFETY 32
 
