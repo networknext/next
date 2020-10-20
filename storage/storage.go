@@ -11,8 +11,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/routing"
 )
 
 type Storer interface {
@@ -178,7 +178,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 	switch db := db.(type) {
 	case *Firestore:
 		level.Info(logger).Log("msg", "adding sequence number to firestore emulator")
-		_, err := db.CheckSequenceNumber(ctx)
+		_, _, err := db.CheckSequenceNumber(ctx)
 		if err != nil {
 			level.Error(logger).Log("msg", "unable to check sequence number, attempting to reset value", "err", err)
 			if err := db.SetSequenceNumber(ctx, 0); err != nil {
