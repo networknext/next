@@ -183,7 +183,7 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 	data := make([]byte, length)
 
 	index := 0
-	encoding.WriteUint8(data, &index, PingStatsEntryVersion)
+	encoding.WriteUint8(data, &index, RelayStatsEntryVersion)
 	encoding.WriteUint64(data, &index, uint64(len(entries)))
 
 	for i := range entries {
