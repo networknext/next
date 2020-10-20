@@ -116,7 +116,7 @@ func ReadPingStatsEntries(data []byte) ([]PingStatsEntry, bool) {
 			return nil, false
 		}
 
-		if version == 2 {
+		if version >= 2 {
 			if !encoding.ReadBool(data, &index, &entry.Routable) {
 				return nil, false
 			}
@@ -226,7 +226,7 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 	for i := range entries {
 		entry := &entries[i]
 
-		if version == 2 {
+		if version >= 2 {
 			if !encoding.ReadUint64(data, &index, &entry.ID) {
 				return nil, false
 			}
