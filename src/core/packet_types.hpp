@@ -16,20 +16,6 @@ namespace core
     None = 0,
     RelayPing = 7,
     RelayPong = 8,
-
-    // SDK 3.x.x
-    RouteRequest = 1,
-    RouteResponse = 2,
-    ClientToServer = 3,
-    ServerToClient = 4,
-    SessionPing = 11,
-    SessionPong = 12,
-    ContinueRequest = 13,
-    ContinueResponse = 14,
-    NearPing = 73,
-    NearPong = 74,
-
-    // SDK 4.x.x
     RouteRequest4 = 100,
     RouteResponse4 = 101,
     ClientToServer4 = 102,
@@ -58,18 +44,8 @@ namespace core
   {
     std::string str;
     switch (type) {
-      PACKET_TYPE_SWITCH_MACRO(RouteRequest);
-      PACKET_TYPE_SWITCH_MACRO(RouteResponse);
-      PACKET_TYPE_SWITCH_MACRO(ClientToServer);
-      PACKET_TYPE_SWITCH_MACRO(ServerToClient);
       PACKET_TYPE_SWITCH_MACRO(RelayPing);
       PACKET_TYPE_SWITCH_MACRO(RelayPong);
-      PACKET_TYPE_SWITCH_MACRO(SessionPing);
-      PACKET_TYPE_SWITCH_MACRO(SessionPong);
-      PACKET_TYPE_SWITCH_MACRO(ContinueRequest);
-      PACKET_TYPE_SWITCH_MACRO(ContinueResponse);
-      PACKET_TYPE_SWITCH_MACRO(NearPing);
-      PACKET_TYPE_SWITCH_MACRO(NearPong);
       PACKET_TYPE_SWITCH_MACRO(RouteRequest4);
       PACKET_TYPE_SWITCH_MACRO(RouteResponse4);
       PACKET_TYPE_SWITCH_MACRO(ClientToServer4);

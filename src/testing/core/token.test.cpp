@@ -5,7 +5,7 @@
 #include "core/token.hpp"
 
 using core::Packet;
-using core::Token;
+using core::TokenV4;
 
 TEST(core_Token_write)
 {

@@ -152,46 +152,6 @@ namespace core
           recorder.pong_rx.add(whole_packet_size);
           handlers::relay_pong_handler(packet, relay_manager, should_handle);
         } break;
-
-        // SDK 3.x.x
-        case PacketType::RouteRequest: {
-          recorder.route_request_rx.add(whole_packet_size);
-          handlers::route_request_handler(packet, keychain, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::RouteResponse: {
-          recorder.route_response_rx.add(whole_packet_size);
-          handlers::route_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::ClientToServer: {
-          recorder.client_to_server_rx.add(whole_packet_size);
-          handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::ServerToClient: {
-          recorder.server_to_client_rx.add(whole_packet_size);
-          handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::SessionPing: {
-          recorder.session_ping_rx.add(whole_packet_size);
-          handlers::session_ping_handler(packet, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::SessionPong: {
-          recorder.session_pong_rx.add(whole_packet_size);
-          handlers::session_pong_handler(packet, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::ContinueRequest: {
-          recorder.continue_request_rx.add(whole_packet_size);
-          handlers::continue_request_handler(packet, session_map, keychain, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::ContinueResponse: {
-          recorder.continue_response_rx.add(whole_packet_size);
-          handlers::continue_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
-        } break;
-        case PacketType::NearPing: {
-          recorder.near_ping_rx.add(whole_packet_size);
-          handlers::near_ping_handler(packet, recorder, socket, is_signed);
-        } break;
-
-          // SDK 4.x.x
         case PacketType::RouteRequest4: {
           recorder.route_request_rx.add(whole_packet_size);
           handlers::route_request_handler_sdk4(packet, keychain, session_map, recorder, router_info, socket);
