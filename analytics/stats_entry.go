@@ -300,8 +300,8 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["envelope_bandwidth_receive_mbps"] = e.EnvelopeReceivedMbps
 	bqEntry["num_sessions"] = int(e.NumSessions)
 	bqEntry["max_sessions"] = int(e.MaxSessions)
-	bqEntry["num_routable"] = e.NumRoutable
-	bqEntry["num_unroutable"] = e.NumUnroutable
+	bqEntry["num_routable"] = int(e.NumRoutable)
+	bqEntry["num_unroutable"] = int(e.NumUnroutable)
 
 	return bqEntry, "", nil
 }
