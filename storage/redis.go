@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"net"
 	"strings"
@@ -71,9 +72,19 @@ func (r *RawRedisClient) Ping() error {
 func (r *RawRedisClient) Command(command string, format string, args ...interface{}) error {
 	cmdArgsString := fmt.Sprintf(format, args...)
 	var cmdArgs []string
-	if len(cmdArgsString) > 0 {
-		cmdArgs = strings.Split(cmdArgsString, " ")
+
+	if cmdArgsString != "" {
+		var err error
+
+		// Split the args string so that we can allow for args with spaces
+		reader := csv.NewReader(strings.NewReader(cmdArgsString))
+		reader.Comma = ' '
+		cmdArgs, err = reader.Read()
+		if err != nil {
+			return fmt.Errorf("failed to split command args: %v", err)
+		}
 	}
+
 	argCount := fmt.Sprintf("%d", 1+len(cmdArgs))
 
 	// Convert the command and arguments to follow the redis RESP specification:

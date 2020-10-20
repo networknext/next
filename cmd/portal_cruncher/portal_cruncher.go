@@ -506,11 +506,11 @@ func InsertToRedis(
 		// has switched from direct -> next or next -> direct
 		pointString := point.RedisString()
 		if next {
-			clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
+			clientSessionMap.Command("HSET", "n-%s-%d %s %s", customerID, minutes, sessionID, pointString)
 			clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
 			clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
 		} else {
-			clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
+			clientSessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, pointString)
 			clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
 			clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
 		}
@@ -523,7 +523,7 @@ func InsertToRedis(
 		clientSessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
 
 		// Update session slices
-		clientSessionSlices.Command("RPUSH", "ss-%s \"%s\"", sessionID, slice.RedisString())
+		clientSessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
 		clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
 	}
 

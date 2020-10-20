@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net"
 	"strconv"
 	"testing"
 	"time"
@@ -149,14 +150,32 @@ func setupMockRedis(t *testing.T) (*redisServers, *redisClients) {
 		}
 }
 
+// Use this function to get a free port so we can run tests while also running the happy path
+func getFreePort() (string, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return "0", err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return "0", err
+	}
+	defer l.Close()
+	return fmt.Sprintf("%d", l.Addr().(*net.TCPAddr).Port), nil
+}
+
 func TestReceive(t *testing.T) {
-	portalSubscriber, err := pubsub.NewPortalCruncherSubscriber("5555", 1000)
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	portalSubscriber, err := pubsub.NewPortalCruncherSubscriber(port, 1000)
 	assert.NoError(t, err)
 
 	err = portalSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 	assert.NoError(t, err)
 
-	portalPublisher, err := pubsub.NewPortalCruncherPublisher("tcp://127.0.0.1:5555", 1000)
+	portalPublisher, err := pubsub.NewPortalCruncherPublisher("tcp://127.0.0.1:"+port, 1000)
 	assert.NoError(t, err)
 
 	// Poll for 100ms to set up ZeroMQ's internal state correctly and not miss the first message
@@ -322,7 +341,6 @@ func TestDirectSession(t *testing.T) {
 
 	{
 		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
-		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 	}
 
@@ -330,7 +348,6 @@ func TestDirectSession(t *testing.T) {
 		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
-		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
 	}
 
@@ -341,7 +358,6 @@ func TestDirectSession(t *testing.T) {
 
 		sliceVal := sliceVals[0]
 
-		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
 }
@@ -395,7 +411,6 @@ func TestNextSession(t *testing.T) {
 
 	{
 		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
-		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 	}
 
@@ -403,7 +418,6 @@ func TestNextSession(t *testing.T) {
 		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
-		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
 	}
 
@@ -414,7 +428,6 @@ func TestNextSession(t *testing.T) {
 
 		sliceVal := sliceVals[0]
 
-		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
 }
@@ -523,7 +536,6 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 
 	{
 		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
-		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 	}
 
@@ -531,7 +543,6 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
-		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
 	}
 
@@ -542,7 +553,6 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 
 		sliceVal := sliceVals[0]
 
-		sliceVal = sliceVal[1 : len(sliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
 	}
 }
@@ -571,10 +581,10 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 
 	servers.sessionMap.HSet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
 
-	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), "\""+directSessionData.Meta.RedisString()+"\"")
+	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), directSessionData.Meta.RedisString())
 	assert.NoError(t, err)
 
-	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), "\""+directSessionData.Slice.RedisString()+"\"")
+	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), directSessionData.Slice.RedisString())
 	assert.NoError(t, err)
 
 	nextSessionData := getTestSessionData(t, true, sessionID, userHash, true, false, flushTime)
@@ -615,7 +625,6 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 
 	{
 		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
-		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
 		assert.Equal(t, nextSessionData.Point.RedisString(), pointVal)
 	}
 
@@ -623,7 +632,6 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID))
 		assert.NoError(t, err)
 
-		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
 		assert.Equal(t, nextSessionData.Meta.RedisString(), metaVal)
 	}
 
@@ -635,10 +643,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		directSliceVal := sliceVals[0]
 		nextSliceVal := sliceVals[1]
 
-		directSliceVal = directSliceVal[1 : len(directSliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
-
-		nextSliceVal = nextSliceVal[1 : len(nextSliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
 	}
 }
@@ -667,10 +672,10 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 
 	servers.sessionMap.HSet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 
-	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), "\""+nextSessionData.Meta.RedisString()+"\"")
+	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), nextSessionData.Meta.RedisString())
 	assert.NoError(t, err)
 
-	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), "\""+nextSessionData.Slice.RedisString()+"\"")
+	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), nextSessionData.Slice.RedisString())
 	assert.NoError(t, err)
 
 	directSessionData := getTestSessionData(t, true, sessionID, userHash, false, true, flushTime)
@@ -711,7 +716,6 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 
 	{
 		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
-		pointVal = pointVal[1 : len(pointVal)-1] // Remove the extra quotes
 		assert.Equal(t, directSessionData.Point.RedisString(), pointVal)
 	}
 
@@ -719,7 +723,6 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID))
 		assert.NoError(t, err)
 
-		metaVal = metaVal[1 : len(metaVal)-1] // Remove the extra quotes
 		assert.Equal(t, directSessionData.Meta.RedisString(), metaVal)
 	}
 
@@ -731,10 +734,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		nextSliceVal := sliceVals[0]
 		directSliceVal := sliceVals[1]
 
-		nextSliceVal = nextSliceVal[1 : len(nextSliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
-
-		directSliceVal = directSliceVal[1 : len(directSliceVal)-1] // Remove the extra quotes
 		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
 	}
 }
