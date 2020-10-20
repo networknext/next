@@ -2,6 +2,7 @@
 #include "testing/test.hpp"
 #include "core/backend.hpp"
 #include "testing/mocks.hpp"
+#include "util/misc.hpp"
 
 #define CRYPTO_HELPERS
 #include "testing/helpers.hpp"
@@ -19,12 +20,14 @@ using core::RelayPingInfo;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
+using core::UPDATE_REQUEST_VERSION;
 using core::UpdateRequest;
 using core::UpdateResponse;
 using net::Address;
 using util::Clock;
 using util::Second;
 using util::ThroughputRecorder;
+using util::ThroughputStats;
 
 namespace
 {
@@ -84,6 +87,7 @@ Test(core_backend_init_valid)
   check(request.magic == INIT_REQUEST_MAGIC);
   check(request.version == INIT_REQUEST_VERSION);
   check(request.address == RelayAddr);
+  check(request.relay_version == RELAY_VERSION);
 
   // can't check nonce or encrypted token since they're random
 }
@@ -119,7 +123,9 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   check(backend.update_loop(handle, shouldCleanShutdown, logger, sessions));
   auto elapsed = testClock.elapsed<Second>();
-  check(elapsed >= 62.0);
+  check(elapsed >= 62.0).onFail([&] {
+    std::cout << "elapsed time = " << elapsed << '\n';
+  });
 }
 
 // Update the backend for 2 seconds, then proceed to switch the handle to false.
@@ -271,7 +277,10 @@ Test(core_Backend_update_valid)
   Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
   crypto::RandomBytes(backend.update_token, backend.update_token.size());
 
-  sessions.set(1234, std::make_shared<Session>());  // just add one thing to the map to make it non-zero
+  auto session = std::make_shared<Session>();
+  session->kbps_up = 123;
+  session->kbps_down = 456;
+  sessions.set(1234, session);  // just add one thing to the map to make it non-zero
 
   // seed relay manager
   {
@@ -287,7 +296,36 @@ Test(core_Backend_update_valid)
     manager.process_pong(pingData[0].address, pingData[0].sequence);
   }
 
-  recorder.unknown_rx.add(10);
+  ThroughputStats* stats[] = {
+   &recorder.outbound_ping_tx,
+   &recorder.route_request_rx,
+   &recorder.route_request_tx,
+   &recorder.route_response_rx,
+   &recorder.route_response_tx,
+   &recorder.client_to_server_rx,
+   &recorder.client_to_server_tx,
+   &recorder.server_to_client_rx,
+   &recorder.server_to_client_tx,
+   &recorder.inbound_ping_rx,
+   &recorder.inbound_ping_tx,
+   &recorder.pong_rx,
+   &recorder.session_ping_rx,
+   &recorder.session_ping_tx,
+   &recorder.session_pong_rx,
+   &recorder.session_pong_tx,
+   &recorder.continue_request_rx,
+   &recorder.continue_request_tx,
+   &recorder.continue_response_rx,
+   &recorder.continue_response_tx,
+   &recorder.near_ping_rx,
+   &recorder.near_ping_tx,
+   &recorder.unknown_rx};
+
+  for (auto& stat : stats) {
+    static size_t counter = 0;
+    stat->add(counter++);
+  }
+
   UpdateResponse response;
   response.version = 0;
   response.timestamp = 123456789;
@@ -310,49 +348,59 @@ Test(core_Backend_update_valid)
   client.Response.resize(response.size());
   response.into(client.Response);
 
-  const auto outboundPing = 123456789;
-  const auto pong = 987654321;
-
-  recorder.outbound_ping_tx.add(outboundPing);
-  recorder.pong_rx.add(pong);
-
-  check(backend.update(recorder, false));
+  bool should_retry = false;
+  check(backend.update(recorder, false, should_retry) == Backend::UpdateResult::Success);
 
   // check the request
   {
     UpdateRequest request;
     check(request.from(client.Request));
 
-    check(request.version == 1);
+    check(request.version == UPDATE_REQUEST_VERSION);
     check(request.address == RelayAddr);
     check(request.public_key == backend.update_token);
     check(request.session_count == sessions.size());
-    check(request.outbound_ping_tx == outboundPing);
-    check(request.route_request_rx == 0);
-    check(request.route_request_tx == 0);
-    check(request.route_response_rx == 0);
-    check(request.route_response_tx == 0);
-    check(request.client_to_server_rx == 0);
-    check(request.client_to_server_tx == 0);
-    check(request.server_to_client_rx == 0);
-    check(request.server_to_client_tx == 0);
-    check(request.inbound_ping_rx == 0);
-    check(request.inbound_ping_tx == 0);
-    check(request.pong_rx == pong);
-    check(request.session_ping_rx == 0);
-    check(request.session_ping_tx == 0);
-    check(request.session_pong_rx == 0);
-    check(request.session_pong_tx == 0);
-    check(request.continue_request_rx == 0);
-    check(request.continue_request_tx == 0);
-    check(request.continue_response_rx == 0);
-    check(request.continue_response_tx == 0);
-    check(request.near_ping_rx == 0);
-    check(request.near_ping_tx == 0);
-    check(request.unknown_rx == 10);
+    check(request.envelope_up == 123).onFail([&] {
+      std::cout << "up = " << request.envelope_up << '\n';
+    });
+    check(request.envelope_down == 456).onFail([&] {
+      std::cout << "down = " << request.envelope_down << '\n';
+    });
+
+    uint64_t request_stats[] = {
+     request.outbound_ping_tx,
+     request.route_request_rx,
+     request.route_request_tx,
+     request.route_response_rx,
+     request.route_response_tx,
+     request.client_to_server_rx,
+     request.client_to_server_tx,
+     request.server_to_client_rx,
+     request.server_to_client_tx,
+     request.inbound_ping_rx,
+     request.inbound_ping_tx,
+     request.pong_rx,
+     request.session_ping_rx,
+     request.session_ping_tx,
+     request.session_pong_rx,
+     request.session_pong_tx,
+     request.continue_request_rx,
+     request.continue_request_tx,
+     request.continue_response_rx,
+     request.continue_response_tx,
+     request.near_ping_rx,
+     request.near_ping_tx,
+     request.unknown_rx};
+
+    static_assert(util::array_length(stats) == util::array_length(request_stats));
+
+    for (uint64_t i = 0; i < util::array_length(stats); i++) {
+      check(stats[i]->num_bytes.load() == 0);
+      check(request_stats[i] == i);
+    }
+
     check(request.shutting_down == false);
     check(request.ping_stats.num_relays == 1);
-    check(request.relay_version == RELAY_VERSION);
   }
 
   // check that the response was processed
@@ -388,12 +436,13 @@ Test(core_Backend_update_shutting_down_true)
 
   client.Response = ::BasicValidUpdateResponse;
 
-  check(backend.update(recorder, true));
+  bool should_retry = false;
+  check(backend.update(recorder, true, should_retry) == Backend::UpdateResult::Success);
 
   UpdateRequest request;
   check(request.from(client.Request));
 
-  check(request.version == 1);
+  check(request.version == UPDATE_REQUEST_VERSION);
   check(request.address == RelayAddr);
   check(request.public_key == backend.update_token);
   check(request.session_count == 0);
@@ -422,5 +471,4 @@ Test(core_Backend_update_shutting_down_true)
   check(request.unknown_rx == 0);
   check(request.shutting_down == true);
   check(request.ping_stats.num_relays == 0);
-  check(request.relay_version == RELAY_VERSION);
 }

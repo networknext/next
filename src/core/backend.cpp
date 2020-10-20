@@ -11,13 +11,15 @@
 
 using core::RelayStats;
 using crypto::KEY_SIZE;
+using util::Second;
 
 namespace
 {
-  const uint32_t INIT_RESPONSE_VERSION = 0;
+  const char* const INIT_ENDPOINT = "/relay_init";
+  const char* const UPDATE_ENDPOINT = "/relay_update";
 
-  const uint32_t UPDATE_REQUEST_VERSION = 1;
-  const uint32_t UPDATE_RESPONSE_VERSION = 0;
+  const double UPDATE_TIMEOUT_SECS = 30.0;
+  const double CLEAN_SHUTDOWN_TIMEOUT_SECS = 60.0;
 }  // namespace
 
 namespace core
@@ -160,7 +162,14 @@ namespace core
         return false;
       }
     }
+
     if (!encoding::read_uint64(v, index, this->session_count)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->envelope_up)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->envelope_down)) {
       return false;
     }
     if (!encoding::read_uint64(v, index, this->outbound_ping_tx)) {
@@ -241,10 +250,8 @@ namespace core
     if (!encoding::read_double(v, index, this->cpu_usage)) {
       return false;
     }
+
     if (!encoding::read_double(v, index, this->mem_usage)) {
-      return false;
-    }
-    if (!encoding::read_string(v, index, this->relay_version)) {
       return false;
     }
 
@@ -395,12 +402,13 @@ namespace core
     }
 
     // send request
-
-    if (!this->http_client.send_request(this->hostname, "/relay_init", request_data, response_data)) {
+    LOG(DEBUG, "sending init request");
+    if (!this->http_client.send_request(this->hostname, INIT_ENDPOINT, request_data, response_data)) {
       LOG(ERROR, "init request failed");
       return false;
     }
 
+    LOG(DEBUG, "processing init response");
     // deserialize response
     {
       InitResponse response;
@@ -424,8 +432,8 @@ namespace core
   }
 
   bool Backend::update_loop(
-   const volatile bool& should_loop,
-   const volatile bool& should_shutdown_clean,
+   volatile bool& should_loop,
+   const volatile bool& should_clean_shutdown,
    util::ThroughputRecorder& recorder,
    core::SessionMap& sessions)
   {
@@ -434,45 +442,41 @@ namespace core
     // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
 
     bool success = true;
-    uint8_t update_attempts = 0;
-    util::Clock backend_timeout;
 
     while (should_loop) {
-      if (update(recorder, false)) {
-        update_attempts = 0;
-        backend_timeout.reset();
-      } else {
-        auto time_since_last_update = backend_timeout.elapsed<util::Second>();
-        if (++update_attempts == MAX_UPDATE_ATTEMPTS) {
+      LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
+      switch (update(recorder, false, should_loop)) {
+        case UpdateResult::FailureMaxAttemptsReached: {
           LOG(ERROR, "could not update relay, max attempts reached, aborting program");
-          success = false;
-          break;
-        } else if (time_since_last_update > 30) {
+          success = should_loop = false;
+        } break;
+        case UpdateResult::FailureTimeoutReached: {
           LOG(ERROR, "could not update relay for over 30 seconds, aborting program");
-          success = false;
-          break;
+          success = should_loop = false;
+        } break;
+        default: {
+          sessions.purge(this->router_info.current_time());
+
+          std::this_thread::sleep_for(1s);
         }
-
-        LOG(
-         INFO,
-         "could not update relay, attempts: ",
-         static_cast<unsigned int>(update_attempts),
-         ", time since last update: ",
-         time_since_last_update);
       }
-
-      sessions.purge(this->router_info.current_time());
-
-      std::this_thread::sleep_for(1s);
     }
 
-    if (should_shutdown_clean) {
-      unsigned int seconds = 0;
-      while (seconds++ < 60 && !update(recorder, true)) {
+    LOG(DEBUG, "exiting update loop");
+
+    Clock backend_timeout;
+    if (should_clean_shutdown) {
+      LOG(DEBUG, "starting clean shutdown");
+      double time_since_last_update = backend_timeout.elapsed<Second>();
+      // should_loop will be false here
+      while (update(recorder, true, should_loop) != UpdateResult::Success &&
+             time_since_last_update < CLEAN_SHUTDOWN_TIMEOUT_SECS) {
+        time_since_last_update = backend_timeout.elapsed<Second>();
+        LOG(DEBUG, "time since last update = ", time_since_last_update);
         std::this_thread::sleep_for(1s);
       }
 
-      if (seconds < 60) {
+      if (time_since_last_update < 60.0) {
         std::this_thread::sleep_for(30s);
       }
     }
@@ -480,7 +484,7 @@ namespace core
     return success;
   }
 
-  auto Backend::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
+  auto Backend::update(util::ThroughputRecorder& recorder, bool shutdown, const volatile bool& should_retry) -> UpdateResult
   {
     std::vector<uint8_t> req, res;
 
@@ -496,6 +500,8 @@ namespace core
                                   4 +                             // number of relay ping stats
                                   stats.num_relays * 20 +         // relay ping stats
                                   8 +                             // session count
+                                  8 +                             // envelope up
+                                  8 +                             // envelope down
                                   8 +                             // outbound ping tx
                                   8 +                             // route request rx
                                   8 +                             // route request tx
@@ -522,8 +528,7 @@ namespace core
                                   1 +                             // shut down flag
                                   8 +                             // cpu usage
                                   8 +                             // memory usage
-                                  4 +                             // relay version length
-                                  strlen(RELAY_VERSION);          // relay version string
+                                  4;                              // relay version length
       req.resize(request_size);
 
       size_t index = 0;
@@ -541,6 +546,8 @@ namespace core
       }
 
       encoding::write_uint64(req, index, this->session_map.size());
+      encoding::write_uint64(req, index, this->session_map.envelope_up_total());
+      encoding::write_uint64(req, index, this->session_map.envelope_down_total());
 
       util::ThroughputRecorder traffic_stats(std::move(recorder));
 
@@ -585,37 +592,58 @@ namespace core
       auto sys_stats = os::GetUsage();
       encoding::write_double(req, index, sys_stats.CPU);
       encoding::write_double(req, index, sys_stats.Mem);
-      encoding::write_string(req, index, RELAY_VERSION);
     }
 
-    if (!this->http_client.send_request(this->hostname, "/relay_update", req, res)) {
-      LOG(ERROR, "update request failed");
-      return false;
+    LOG(DEBUG, "sending request");
+    util::Clock timeout;
+    double elapsed_seconds = timeout.elapsed<Second>();
+    size_t num_retries = 0;
+    bool request_success = false;
+    while (!(request_success = this->http_client.send_request(this->hostname, UPDATE_ENDPOINT, req, res)) && should_retry &&
+           num_retries < MAX_UPDATE_ATTEMPTS && elapsed_seconds < UPDATE_TIMEOUT_SECS) {
+      num_retries++;
+      elapsed_seconds = timeout.elapsed<Second>();
+      LOG(DEBUG, "elapsed seconds = ", elapsed_seconds, ", num retries = ", num_retries);
+      std::this_thread::sleep_for(1s);
+    }
+
+    if (num_retries == MAX_UPDATE_ATTEMPTS) {
+      return UpdateResult::FailureMaxAttemptsReached;
+    }
+
+    if (elapsed_seconds >= UPDATE_TIMEOUT_SECS) {
+      return UpdateResult::FailureTimeoutReached;
+    }
+
+    if (!request_success) {
+      return UpdateResult::FailureOther;
     }
 
     // early return if shutting down since the response won't be valid
     if (shutdown) {
-      return true;
+      return UpdateResult::Success;
     }
+
+    LOG(DEBUG, "parsing response");
 
     // parse response
     {
       UpdateResponse response;
       if (!response.from(res)) {
         LOG(ERROR, "could not deserialize update response, response size = ", res.size());
-        return false;
+        return UpdateResult::FailureOther;
       }
 
       if (response.version != UPDATE_RESPONSE_VERSION) {
         LOG(ERROR, "bad relay version response version. expected ", UPDATE_RESPONSE_VERSION, ", got ", response.version);
-        return false;
+        return UpdateResult::FailureOther;
       }
 
       this->router_info.set_timestamp(response.timestamp);
 
       if (response.num_relays > MAX_RELAYS) {
         LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.num_relays, '\n');
-        return false;
+        return UpdateResult::FailureOther;
       }
 
       this->relay_manager.update(response.num_relays, response.Relays);
@@ -623,6 +651,6 @@ namespace core
 
     LOG(DEBUG, "updated relay");
 
-    return true;
+    return UpdateResult::Success;
   }
 }  // namespace core
