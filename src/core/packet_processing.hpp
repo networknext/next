@@ -141,39 +141,39 @@ namespace core
           recorder.pong_rx.add(whole_packet_size);
           handlers::relay_pong_handler(packet, relay_manager, should_handle);
         } break;
-        case PacketType::RouteRequest4: {
+        case PacketType::RouteRequest: {
           recorder.route_request_rx.add(whole_packet_size);
           handlers::route_request_handler(packet, keychain, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::RouteResponse4: {
+        case PacketType::RouteResponse: {
           recorder.route_response_rx.add(whole_packet_size);
           handlers::route_response_handler(packet, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::ClientToServer4: {
+        case PacketType::ClientToServer: {
           recorder.client_to_server_rx.add(whole_packet_size);
           handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::ServerToClient4: {
+        case PacketType::ServerToClient: {
           recorder.server_to_client_rx.add(whole_packet_size);
           handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::SessionPing4: {
+        case PacketType::SessionPing: {
           recorder.session_ping_rx.add(whole_packet_size);
           handlers::session_ping_handler(packet, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::SessionPong4: {
+        case PacketType::SessionPong: {
           recorder.session_pong_rx.add(whole_packet_size);
           handlers::session_pong_handler(packet, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::ContinueRequest4: {
+        case PacketType::ContinueRequest: {
           recorder.continue_request_rx.add(whole_packet_size);
           handlers::continue_request_handler(packet, session_map, keychain, recorder, router_info, socket);
         } break;
-        case PacketType::ContinueResponse4: {
+        case PacketType::ContinueResponse: {
           recorder.continue_response_rx.add(whole_packet_size);
           handlers::continue_response_handler(packet, session_map, recorder, router_info, socket);
         } break;
-        case PacketType::NearPing4: {
+        case PacketType::NearPing: {
           recorder.near_ping_rx.add(whole_packet_size);
           handlers::near_ping_handler(packet, recorder, socket);
         } break;

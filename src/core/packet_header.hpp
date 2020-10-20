@@ -76,8 +76,8 @@ namespace core
     }
 
     if (
-     this->type == PacketType::SessionPing4 || this->type == PacketType::SessionPong4 ||
-     this->type == PacketType::RouteResponse4 || this->type == PacketType::ContinueResponse4) {
+     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong ||
+     this->type == PacketType::RouteResponse || this->type == PacketType::ContinueResponse) {
       // second highest bit must be set
       if ((this->sequence & (1ULL << 62)) == 0) {
         LOG(ERROR, "header read, second high bit unset");
@@ -125,8 +125,8 @@ namespace core
     }
 
     if (
-     this->type == PacketType::SessionPing4 || this->type == PacketType::SessionPong4 ||
-     this->type == PacketType::RouteResponse4 || this->type == PacketType::ContinueResponse4) {
+     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong ||
+     this->type == PacketType::RouteResponse || this->type == PacketType::ContinueResponse) {
       if ((sequence & (1ULL << 62)) == 0) {
         LOG(ERROR, "could not write header, second highest bit unset");
         return false;
@@ -238,8 +238,8 @@ namespace core
 
     // TODO change this to if checks and put in a test
     if (
-     packet_type == PacketType::SessionPing4 || packet_type == PacketType::SessionPong4 ||
-     packet_type == PacketType::RouteResponse4 || packet_type == PacketType::ContinueResponse4) {
+     packet_type == PacketType::SessionPing || packet_type == PacketType::SessionPong ||
+     packet_type == PacketType::RouteResponse || packet_type == PacketType::ContinueResponse) {
       // second highest bit must be set
       assert(packet_sequence & (1ULL << 62));
     } else {

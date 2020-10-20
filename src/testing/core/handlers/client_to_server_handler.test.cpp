@@ -42,7 +42,7 @@ TEST(core_handlers_client_to_server_handler)
 
   PacketHeader header;
   {
-    header.type = PacketType::ClientToServer4;
+    header.type = PacketType::ClientToServer;
     header.sequence = 123123130131LL;
     header.session_id = 0x12313131;
     header.session_version = 0x12;

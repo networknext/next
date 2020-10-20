@@ -42,7 +42,7 @@ TEST(core_handlers_route_response_handler)
 
   PacketHeader header;
   {
-    header.type = PacketType::RouteResponse4;
+    header.type = PacketType::RouteResponse;
     header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;

@@ -87,7 +87,7 @@ namespace core
 
       length = packet.length - RouteToken::SIZE_OF_SIGNED;
 
-      packet.buffer[RouteToken::SIZE_OF_SIGNED] = static_cast<uint8_t>(PacketType::RouteRequest4);
+      packet.buffer[RouteToken::SIZE_OF_SIGNED] = static_cast<uint8_t>(PacketType::RouteRequest);
 
       recorder.route_request_tx.add(length);
 

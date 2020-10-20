@@ -77,7 +77,7 @@ namespace core
 
       length = packet.length - ContinueToken::SIZE_OF_ENCRYPTED;
 
-      packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest4);
+      packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest);
 
       recorder.continue_request_tx.add(length);
 

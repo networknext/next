@@ -20,7 +20,7 @@ TEST(core_PacketHeaderV4_client_to_server)
 
   PacketHeader header;
   {
-    header.type = PacketType::ClientToServer4;
+    header.type = PacketType::ClientToServer;
     header.sequence = 123123130131LL;
     header.session_id = 0x12313131;
     header.session_version = 0x12;
@@ -36,7 +36,7 @@ TEST(core_PacketHeaderV4_client_to_server)
   index = 0;
   CHECK(other.read(packet, index, PacketDirection::ClientToServer));
 
-  CHECK(other.type == PacketType::ClientToServer4);
+  CHECK(other.type == PacketType::ClientToServer);
   CHECK(other.sequence == header.sequence);
   CHECK(other.session_id == header.session_id);
   CHECK(other.session_version == header.session_version);
@@ -57,7 +57,7 @@ TEST(core_PacketHeaderV4_server_to_client)
 
   PacketHeader header;
   {
-    header.type = PacketType::ServerToClient4;
+    header.type = PacketType::ServerToClient;
     header.sequence = 123123130131LL | (1ULL << 63);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
@@ -73,7 +73,7 @@ TEST(core_PacketHeaderV4_server_to_client)
   index = 0;
   CHECK(other.read(packet, index, PacketDirection::ServerToClient));
 
-  CHECK(other.type == PacketType::ServerToClient4);
+  CHECK(other.type == PacketType::ServerToClient);
   CHECK(other.sequence == header.sequence);
   CHECK(other.session_id == header.session_id);
   CHECK(other.session_version == header.session_version);
