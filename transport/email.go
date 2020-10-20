@@ -11,6 +11,7 @@ import (
 const (
 	APIKEY        = "b4aefe551af3c1167fc6bfa257786874-us20"
 	SERVER_PREFIX = "us20"
+	LIST_ID       = "553903bc6f"
 )
 
 type Contact struct {
@@ -28,41 +29,25 @@ type TagUpdate struct {
 }
 
 func TagNewSignup(email string) error {
-	/* 	payload := EmailPayload{
-		key: APIKEY,
-		message: EmailMessage{
-			from:    "",
-			subject: "Welcome to Network Next!",
-			text:    "",
-			to: []Email{
-				{
-					emailType: "to",
-					address:   toAddress,
-				},
-			},
-		},
-	} */
-
 	emailHash := md5.Sum([]byte(strings.ToLower(email)))
 
 	tags := TagUpdate{
 		tags: []Tag{
 			{
-				name: "Portal Signups",
+				name:   "Portal Signups",
 				status: "active",
 			},
 		},
 	}
 
-	bytes, err := json.Marshal(jsonObject)
+	bytes, err := json.Marshal(tags)
 	if err != nil {
 		err = fmt.Errorf("TagNewSignup() failed marshal the payload: %v", err)
 		return err
 	}
 	payload := strings.NewReader(string(bytes))
 
-	URL := "https://" + SERVER_PREFIX + ".api.mailchimp.com/3.0/lists/$list_id/members/" + emailHash + "/tags"
-	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s/tags", SERVER_PREFIX, , emailemailHash)
+	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s/tags", SERVER_PREFIX, LIST_ID, emailHash)
 
 	req, err := http.NewRequest("POST", URL, payload)
 	if err != nil {
@@ -81,21 +66,6 @@ func TagNewSignup(email string) error {
 }
 
 func AddSignupToMailChimp(email string) error {
-	/* 	payload := EmailPayload{
-		key: APIKEY,
-		message: EmailMessage{
-			from:    "",
-			subject: "Welcome to Network Next!",
-			text:    "",
-			to: []Email{
-				{
-					emailType: "to",
-					address:   toAddress,
-				},
-			},
-		},
-	} */
-
 	jsonObject := Contact{
 		address: email,
 		status:  "pending",
@@ -108,7 +78,7 @@ func AddSignupToMailChimp(email string) error {
 	}
 	payload := strings.NewReader(string(bytes))
 
-	URL := "https://" + SERVER_PREFIX + ".api.mailchimp.com/3.0/lists/$list_id/members"
+	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", SERVER_PREFIX, LIST_ID)
 
 	req, err := http.NewRequest("POST", URL, payload)
 	if err != nil {
