@@ -1,19 +1,23 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/csv"
 	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/alicebob/miniredis/v2/server"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 	"github.com/stretchr/testify/assert"
@@ -104,50 +108,80 @@ func runTestPubSub(t *testing.T, portalPublisher pubsub.Publisher, portalSubscri
 	return nil
 }
 
-type redisServers struct {
-	topSessions   *miniredis.Miniredis
-	sessionMap    *miniredis.Miniredis
-	sessionMeta   *miniredis.Miniredis
-	sessionSlices *miniredis.Miniredis
+type MockRedis struct {
+	db *miniredis.Miniredis
 }
 
-type redisClients struct {
-	topSessions   *storage.RawRedisClient
-	sessionMap    *storage.RawRedisClient
-	sessionMeta   *storage.RawRedisClient
-	sessionSlices *storage.RawRedisClient
+func NewMockRedis() (*MockRedis, error) {
+	db, err := miniredis.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	return &MockRedis{
+		db: db,
+	}, nil
 }
 
-func setupMockRedis(t *testing.T) (*redisServers, *redisClients) {
-	redisTopSessions, err := miniredis.Run()
-	assert.NoError(t, err)
+func (m *MockRedis) Ping() error {
+	var replyBuffer bytes.Buffer
+	w := bufio.NewWriter(&replyBuffer)
 
-	redisSessionMap, err := miniredis.Run()
-	assert.NoError(t, err)
+	peer := server.NewPeer(w)
+	m.db.Server().Dispatch(peer, []string{"PING"})
+	peer.Flush()
 
-	redisSessionMeta, err := miniredis.Run()
-	assert.NoError(t, err)
+	reader := bufio.NewReader(&replyBuffer)
+	reader.ReadString('\n')
 
-	redisSessionSlices, err := miniredis.Run()
-	assert.NoError(t, err)
+	return nil
+}
 
-	clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, err := createRedis(redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr())
-	assert.NoError(t, err)
+func (m *MockRedis) Command(command string, format string, args ...interface{}) error {
+	cmdArgsString := fmt.Sprintf(format, args...)
+	var cmdArgs []string
 
-	err = pingRedis(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices)
-	assert.NoError(t, err)
+	if cmdArgsString != "" {
+		var err error
 
-	return &redisServers{
-			topSessions:   redisTopSessions,
-			sessionMap:    redisSessionMap,
-			sessionMeta:   redisSessionMeta,
-			sessionSlices: redisSessionSlices,
-		}, &redisClients{
-			topSessions:   clientTopSessions,
-			sessionMap:    clientSessionMap,
-			sessionMeta:   clientSessionMeta,
-			sessionSlices: clientSessionSlices,
+		// Split the args string so that we can allow for args with spaces
+		reader := csv.NewReader(strings.NewReader(cmdArgsString))
+		reader.Comma = ' '
+		cmdArgs, err = reader.Read()
+		if err != nil {
+			return fmt.Errorf("failed to split command args: %v", err)
 		}
+	}
+
+	cmdArgs = append([]string{command}, cmdArgs...)
+
+	var replyBuffer bytes.Buffer
+	w := bufio.NewWriter(&replyBuffer)
+
+	peer := server.NewPeer(w)
+	m.db.Server().Dispatch(peer, cmdArgs)
+	peer.Flush()
+
+	return nil
+}
+
+func (m *MockRedis) Close() error {
+	return nil
+}
+
+func setupMockRedises(t *testing.T) []*MockRedis {
+	mockRedises := make([]*MockRedis, 4)
+
+	var err error
+	for i := range mockRedises {
+		mockRedises[i], err = NewMockRedis()
+		assert.NoError(t, err)
+	}
+
+	err = pingRedis(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3])
+	assert.NoError(t, err)
+
+	return mockRedises
 }
 
 // Use this function to get a free port so we can run tests while also running the happy path
@@ -293,7 +327,7 @@ func TestRedisClientCreateSuccess(t *testing.T) {
 }
 
 func TestDirectSession(t *testing.T) {
-	servers, clients := setupMockRedis(t)
+	mockRedises := setupMockRedises(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -309,16 +343,13 @@ func TestDirectSession(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
+	err = RedisHandler(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3], messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
-	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 50)
-
-	minutes := flushTime.Unix() / 60
+	minutes := time.Now().Unix() / 60
 
 	{
-		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
 
@@ -329,7 +360,7 @@ func TestDirectSession(t *testing.T) {
 	}
 
 	{
-		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
@@ -340,19 +371,19 @@ func TestDirectSession(t *testing.T) {
 	}
 
 	{
-		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 	}
 
 	{
-		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
 	}
 
 	{
-		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 1)
 
@@ -363,7 +394,7 @@ func TestDirectSession(t *testing.T) {
 }
 
 func TestNextSession(t *testing.T) {
-	servers, clients := setupMockRedis(t)
+	mockRedises := setupMockRedises(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -379,16 +410,13 @@ func TestNextSession(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
+	err = RedisHandler(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3], messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
-	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 50)
-
-	minutes := flushTime.Unix() / 60
+	minutes := time.Now().Unix() / 60
 
 	{
-		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
 
@@ -399,7 +427,7 @@ func TestNextSession(t *testing.T) {
 	}
 
 	{
-		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
@@ -410,19 +438,19 @@ func TestNextSession(t *testing.T) {
 	}
 
 	{
-		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 	}
 
 	{
-		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
 	}
 
 	{
-		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 1)
 
@@ -433,7 +461,7 @@ func TestNextSession(t *testing.T) {
 }
 
 func TestDirectSessionLargeCustomer(t *testing.T) {
-	servers, clients := setupMockRedis(t)
+	mockRedises := setupMockRedises(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -449,46 +477,43 @@ func TestDirectSessionLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
+	err = RedisHandler(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3], messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
-	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 50)
-
-	minutes := flushTime.Unix() / 60
+	minutes := time.Now().Unix() / 60
 
 	{
-		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.Error(t, err)
 		assert.Len(t, topSessionIDs, 0)
 	}
 
 	{
-		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
 		assert.Error(t, err)
 		assert.Len(t, customerTopSessionIDs, 0)
 	}
 
 	{
-		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Empty(t, pointVal)
 	}
 
 	{
-		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.Error(t, err)
 		assert.Empty(t, metaVal)
 	}
 
 	{
-		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
 		assert.Error(t, err)
 		assert.Len(t, sliceVals, 0)
 	}
 }
 
 func TestNextSessionLargeCustomer(t *testing.T) {
-	servers, clients := setupMockRedis(t)
+	mockRedises := setupMockRedises(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -504,16 +529,13 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
+	err = RedisHandler(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3], messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
-	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 50)
-
-	minutes := flushTime.Unix() / 60
+	minutes := time.Now().Unix() / 60
 
 	{
-		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
 
@@ -524,7 +546,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	}
 
 	{
-		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
@@ -535,19 +557,19 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	}
 
 	{
-		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 	}
 
 	{
-		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
 	}
 
 	{
-		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 1)
 
@@ -558,7 +580,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 }
 
 func TestDirectToNextLargeCustomer(t *testing.T) {
-	servers, clients := setupMockRedis(t)
+	mockRedises := setupMockRedises(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -571,20 +593,20 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	userHash := rand.Uint64()
 	directSessionData := getTestSessionData(t, true, sessionID, userHash, false, false, flushTime)
 
-	minutes := flushTime.Unix() / 60
+	minutes := time.Now().Unix() / 60
 
-	_, err := servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	_, err := mockRedises[0].db.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
 	assert.NoError(t, err)
 
-	_, err = servers.topSessions.ZAdd(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	_, err = mockRedises[0].db.ZAdd(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
 	assert.NoError(t, err)
 
-	servers.sessionMap.HSet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	mockRedises[1].db.HSet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
 
-	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), directSessionData.Meta.RedisString())
+	err = mockRedises[2].db.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), directSessionData.Meta.RedisString())
 	assert.NoError(t, err)
 
-	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), directSessionData.Slice.RedisString())
+	_, err = mockRedises[3].db.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), directSessionData.Slice.RedisString())
 	assert.NoError(t, err)
 
 	nextSessionData := getTestSessionData(t, true, sessionID, userHash, true, false, flushTime)
@@ -595,14 +617,11 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
+	err = RedisHandler(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3], messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
-	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 50)
-
 	{
-		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
 
@@ -613,7 +632,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	}
 
 	{
-		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes))
+		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
@@ -624,19 +643,19 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	}
 
 	{
-		pointVal := servers.sessionMap.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 		assert.Equal(t, nextSessionData.Point.RedisString(), pointVal)
 	}
 
 	{
-		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID))
+		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID))
 		assert.NoError(t, err)
 
 		assert.Equal(t, nextSessionData.Meta.RedisString(), metaVal)
 	}
 
 	{
-		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID))
+		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 2)
 
@@ -649,7 +668,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 }
 
 func TestNextToDirectLargeCustomer(t *testing.T) {
-	servers, clients := setupMockRedis(t)
+	mockRedises := setupMockRedises(t)
 
 	portalDataBuffer := make([]transport.SessionPortalData, 0)
 
@@ -662,20 +681,20 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	userHash := rand.Uint64()
 	nextSessionData := getTestSessionData(t, true, sessionID, userHash, true, false, flushTime)
 
-	minutes := flushTime.Unix() / 60
+	minutes := time.Now().Unix() / 60
 
-	_, err := servers.topSessions.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	_, err := mockRedises[0].db.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 	assert.NoError(t, err)
 
-	_, err = servers.topSessions.ZAdd(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	_, err = mockRedises[0].db.ZAdd(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 	assert.NoError(t, err)
 
-	servers.sessionMap.HSet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	mockRedises[1].db.HSet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 
-	err = servers.sessionMeta.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), nextSessionData.Meta.RedisString())
+	err = mockRedises[2].db.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), nextSessionData.Meta.RedisString())
 	assert.NoError(t, err)
 
-	_, err = servers.sessionSlices.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), nextSessionData.Slice.RedisString())
+	_, err = mockRedises[3].db.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), nextSessionData.Slice.RedisString())
 	assert.NoError(t, err)
 
 	directSessionData := getTestSessionData(t, true, sessionID, userHash, false, true, flushTime)
@@ -686,14 +705,11 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	messageChan := make(chan []byte, 1)
 	messageChan <- sessionDataBytes
 
-	err = RedisHandler(clients.topSessions, clients.sessionMap, clients.sessionMeta, clients.sessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
+	err = RedisHandler(mockRedises[0], mockRedises[1], mockRedises[2], mockRedises[3], messageChan, portalDataBuffer, flushTime, pingTime, flushCount)
 	assert.NoError(t, err)
 
-	// Add a small delay so that the data has time to go over the tcp sockets
-	time.Sleep(time.Millisecond * 50)
-
 	{
-		topSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("s-%d", minutes))
+		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
 
@@ -704,7 +720,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	}
 
 	{
-		customerTopSessionIDs, err := servers.topSessions.ZMembers(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes))
+		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
@@ -715,19 +731,19 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	}
 
 	{
-		pointVal := servers.sessionMap.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
+		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
 		assert.Equal(t, directSessionData.Point.RedisString(), pointVal)
 	}
 
 	{
-		metaVal, err := servers.sessionMeta.Get(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID))
+		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID))
 		assert.NoError(t, err)
 
 		assert.Equal(t, directSessionData.Meta.RedisString(), metaVal)
 	}
 
 	{
-		sliceVals, err := servers.sessionSlices.List(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID))
+		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 2)
 

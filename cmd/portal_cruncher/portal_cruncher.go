@@ -376,10 +376,10 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 }
 
 func RedisHandler(
-	clientTopSessions *storage.RawRedisClient,
-	clientSessionMap *storage.RawRedisClient,
-	clientSessionMeta *storage.RawRedisClient,
-	clientSessionSlices *storage.RawRedisClient,
+	clientTopSessions storage.RedisClient,
+	clientSessionMap storage.RedisClient,
+	clientSessionMeta storage.RedisClient,
+	clientSessionSlices storage.RedisClient,
 	messageChan chan []byte,
 	portalDataBuffer []transport.SessionPortalData,
 	flushTime time.Time,
@@ -425,10 +425,10 @@ func PullMessage(messageChan chan []byte) (transport.SessionPortalData, error) {
 }
 
 func InsertToRedis(
-	clientTopSessions *storage.RawRedisClient,
-	clientSessionMap *storage.RawRedisClient,
-	clientSessionMeta *storage.RawRedisClient,
-	clientSessionSlices *storage.RawRedisClient,
+	clientTopSessions storage.RedisClient,
+	clientSessionMap storage.RedisClient,
+	clientSessionMeta storage.RedisClient,
+	clientSessionSlices storage.RedisClient,
 	portalDataBuffer []transport.SessionPortalData,
 	minutes int64) {
 
@@ -554,7 +554,7 @@ func createRedis(redisHostTopSessions string, redisHostSessionMap string, redisH
 	return clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, nil
 }
 
-func pingRedis(clientTopSessions *storage.RawRedisClient, clientSessionMap *storage.RawRedisClient, clientSessionMeta *storage.RawRedisClient, clientSessionSlices *storage.RawRedisClient) error {
+func pingRedis(clientTopSessions storage.RedisClient, clientSessionMap storage.RedisClient, clientSessionMeta storage.RedisClient, clientSessionSlices storage.RedisClient) error {
 	if err := clientTopSessions.Ping(); err != nil {
 		return err
 	}
