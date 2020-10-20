@@ -12,10 +12,10 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
+	"github.com/networknext/backend/modules/core"
 )
 
 type Firestore struct {
