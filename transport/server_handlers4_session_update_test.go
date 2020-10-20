@@ -13,9 +13,9 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -177,32 +177,6 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 
 	assert.Nil(t, responseBuffer.Bytes())
 	assert.Equal(t, metrics.SessionUpdateMetrics.ReadPacketFailure.Value(), 1.0)
-}
-
-func TestSessionUpdateHandler4FallbackToDirect(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-
-	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-		FallbackToDirect:     true,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, storer, 32, [crypto.KeySize]byte{}, nil, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	assert.Nil(t, responseBuffer.Bytes())
-	assert.Equal(t, metrics.SessionUpdateMetrics.FallbackToDirect.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
@@ -631,6 +605,83 @@ func TestSessionUpdateHandler4BuyerNotLive(t *testing.T) {
 	assert.Equal(t, expectedResponse, responsePacket)
 
 	assert.Equal(t, metrics.SessionUpdateMetrics.BuyerNotLive.Value(), 1.0)
+}
+
+func TestSessionUpdateHandler4FallbackToDirect(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend4Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+
+	requestPacket := transport.SessionUpdatePacket4{
+		SessionID:            1111,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+		FallbackToDirect:     true,
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var ipLocator goodIPLocator
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &ipLocator
+	}
+
+	var routeMatrix routing.RouteMatrix4
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
+	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:        requestPacket.SessionID,
+		SliceNumber:      requestPacket.SliceNumber + 1,
+		Location:         routing.LocationNullIsland,
+		ExpireTimestamp:  uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		FellBackToDirect: true,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket4
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData4
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+
+	assert.Equal(t, metrics.SessionUpdateMetrics.FallbackToDirect.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
