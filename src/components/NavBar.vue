@@ -65,7 +65,7 @@
               $store.getters.currentPage == 'users' ||
               $store.getters.currentPage == 'route-shader'
           }"
-          v-if="!$store.getters.isAnonymous"
+          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
         >Settings</router-link>
       </li>
     </ul>

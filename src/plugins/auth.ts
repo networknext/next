@@ -34,7 +34,7 @@ export class AuthService {
   public signUp () {
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.origin + '/?signup=true',
       screen_hint: 'signup'
     })
   }
@@ -92,6 +92,10 @@ export class AuthService {
           userProfile.companyCode = companyCode
           userProfile.newsletterConsent = newsletterConsent
 
+          if (query.includes('signup=true')) {
+            store.commit('UPDATE_IS_SIGNUP', true)
+          }
+
           store.commit('UPDATE_USER_PROFILE', userProfile)
         })
         .catch((error: Error) => {
@@ -109,18 +113,6 @@ export class AuthService {
         })
       this.processAuthentication()
       router.push('/')
-    }
-
-    let email = ''
-    if (query.includes('message=') && query.includes('Your email was verified. You can continue using the application.')) {
-      const search = query.substring(1)
-      const vars = search.split('&')
-      for (let i = 0; i < vars.length; i++) {
-        const pair = vars[i].split('=')
-        if (pair[0] === 'email') {
-
-        }
-      }
     }
   }
 }
