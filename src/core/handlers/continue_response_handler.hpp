@@ -18,7 +18,7 @@ namespace core
 {
   namespace handlers
   {
-    INLINE void continue_response_handler_sdk4(
+    INLINE void continue_response_handler(
      Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const RouterInfo& router_info, const Socket& socket)
     {
       size_t index = 0;

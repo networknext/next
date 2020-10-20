@@ -11,7 +11,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_near_ping_handler_sdk4)
+TEST(core_handlers_near_ping_handler)
 {
   Packet packet;
   ThroughputRecorder recorder;
@@ -26,7 +26,7 @@ TEST(core_handlers_near_ping_handler_sdk4)
   packet.length = 1 + 8 + 8 + 8 + 8;
   packet.addr = addr;
 
-  core::handlers::near_ping_handler_sdk4(packet, recorder, socket);
+  core::handlers::near_ping_handler(packet, recorder, socket);
   size_t prev_len = packet.length;
   CHECK(socket.recv(packet));
   CHECK(packet.length == prev_len - 16);
@@ -34,7 +34,7 @@ TEST(core_handlers_near_ping_handler_sdk4)
   // no check for already received
   packet.length = 1 + 8 + 8 + 8 + 8;
 
-  core::handlers::near_ping_handler_sdk4(packet, recorder, socket);
+  core::handlers::near_ping_handler(packet, recorder, socket);
   prev_len = packet.length;
   CHECK(socket.recv(packet));
   CHECK(packet.length == prev_len - 16);

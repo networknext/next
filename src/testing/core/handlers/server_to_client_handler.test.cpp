@@ -19,7 +19,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_server_to_client_handler_sdk4)
+TEST(core_handlers_server_to_client_handler)
 {
   Packet packet;
   SessionMap map;
@@ -62,7 +62,7 @@ TEST(core_handlers_server_to_client_handler_sdk4)
   size_t index = 0;
   CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
-  core::handlers::server_to_client_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::server_to_client_handler(packet, map, recorder, router_info, socket);
 
   size_t prev_len = packet.length;
   CHECK(socket.recv(packet));
@@ -71,6 +71,6 @@ TEST(core_handlers_server_to_client_handler_sdk4)
   CHECK(recorder.server_to_client_tx.num_packets == 1);
   CHECK(recorder.server_to_client_tx.num_bytes == packet.length);
 
-  core::handlers::server_to_client_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::server_to_client_handler(packet, map, recorder, router_info, socket);
   CHECK(!socket.recv(packet));
 }

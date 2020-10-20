@@ -17,7 +17,7 @@ namespace core
 {
   namespace handlers
   {
-    INLINE void server_to_client_handler_sdk4(
+    INLINE void server_to_client_handler(
      Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const RouterInfo& router_info, const Socket& socket)
     {
       size_t index = 0;

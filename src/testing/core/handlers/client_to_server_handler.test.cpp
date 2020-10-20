@@ -19,7 +19,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_client_to_server_handler_sdk4)
+TEST(core_handlers_client_to_server_handler)
 {
   Packet packet;
   SessionMap map;
@@ -63,7 +63,7 @@ TEST(core_handlers_client_to_server_handler_sdk4)
   CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
   CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
-  core::handlers::client_to_server_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket);
   size_t prev_len = packet.length;
   CHECK(socket.recv(packet));
   CHECK(prev_len == packet.length);
@@ -74,7 +74,7 @@ TEST(core_handlers_client_to_server_handler_sdk4)
     std::cout << "byte count = " << recorder.client_to_server_tx.num_bytes << std::endl;
   });
 
-  core::handlers::client_to_server_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket);
   // check already received
   CHECK(!socket.recv(packet));
 }

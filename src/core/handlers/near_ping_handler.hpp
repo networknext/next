@@ -15,7 +15,7 @@ namespace core
 {
   namespace handlers
   {
-    INLINE void near_ping_handler_sdk4(Packet& packet, ThroughputRecorder& recorder, const Socket& socket)
+    INLINE void near_ping_handler(Packet& packet, ThroughputRecorder& recorder, const Socket& socket)
     {
       size_t length = packet.length;
 

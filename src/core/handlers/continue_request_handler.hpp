@@ -22,7 +22,7 @@ namespace core
 {
   namespace handlers
   {
-    INLINE void continue_request_handler_sdk4(
+    INLINE void continue_request_handler(
      Packet& packet,
      SessionMap& session_map,
      const Keychain& keychain,

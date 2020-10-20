@@ -16,7 +16,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_route_request_handler_sdk4)
+TEST(core_handlers_route_request_handler)
 {
   Packet packet;
   Keychain keychain = make_keychain();
@@ -56,7 +56,7 @@ TEST(core_handlers_route_request_handler_sdk4)
 
   CHECK(map.get(token.hash()) == nullptr);
 
-  core::handlers::route_request_handler_sdk4(packet, keychain, map, recorder, router_info, socket);
+  core::handlers::route_request_handler(packet, keychain, map, recorder, router_info, socket);
 
   CHECK(map.get(token.hash()) != nullptr);
 

@@ -17,7 +17,7 @@ namespace core
 {
   namespace handlers
   {
-    INLINE void client_to_server_handler_sdk4(
+    INLINE void client_to_server_handler(
      Packet& packet,
      core::SessionMap& session_map,
      util::ThroughputRecorder& recorder,

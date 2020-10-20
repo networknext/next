@@ -19,7 +19,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_session_ping_handler_sdk4)
+TEST(core_handlers_session_ping_handler)
 {
   Packet packet;
   SessionMap map;
@@ -61,12 +61,12 @@ TEST(core_handlers_session_ping_handler_sdk4)
   CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
   CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
-  core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::session_ping_handler(packet, map, recorder, router_info, socket);
 
   size_t prev_len = packet.length;
   CHECK(socket.recv(packet));
   CHECK(prev_len == packet.length);
 
-  core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::session_ping_handler(packet, map, recorder, router_info, socket);
   CHECK(!socket.recv(packet));
 }

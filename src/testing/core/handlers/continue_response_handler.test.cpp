@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_continue_response_handler_sdk4)
+TEST(core_handlers_continue_response_handler)
 {
   Packet packet;
   SessionMap map;
@@ -61,7 +61,7 @@ TEST(core_handlers_continue_response_handler_sdk4)
   size_t index = 0;
   CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
-  core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::continue_response_handler(packet, map, recorder, router_info, socket);
   size_t prev_len = packet.length;
   CHECK(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
@@ -74,6 +74,6 @@ TEST(core_handlers_continue_response_handler_sdk4)
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
 
-  core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket);
+  core::handlers::continue_response_handler(packet, map, recorder, router_info, socket);
   CHECK(!socket.recv(packet));
 }

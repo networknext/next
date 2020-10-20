@@ -19,7 +19,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-TEST(core_handlers_continue_request_handler_sdk4)
+TEST(core_handlers_continue_request_handler)
 {
   Packet packet;
   SessionMap map;
@@ -60,7 +60,7 @@ TEST(core_handlers_continue_request_handler_sdk4)
 
   size_t prev_len = packet.length;
 
-  core::handlers::continue_request_handler_sdk4(packet, map, keychain, recorder, info, socket);
+  core::handlers::continue_request_handler(packet, map, keychain, recorder, info, socket);
 
   CHECK(socket.recv(packet));
   CHECK(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
