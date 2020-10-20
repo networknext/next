@@ -100,6 +100,7 @@ export class AuthService {
         })
       return
     }
+    // supportSignUp=true&supportForgotPassword=true&email=baumbachandrew%40gmail.com&message=Your email was verified. You can continue using the application.&success=true&code=success
     if (query.includes('code=') && query.includes('state=')) {
       await this.authClient.handleRedirectCallback()
         .catch((error: Error) => {
@@ -108,6 +109,18 @@ export class AuthService {
         })
       this.processAuthentication()
       router.push('/')
+    }
+
+    let email = ''
+    if (query.includes('message=') && query.includes('Your email was verified. You can continue using the application.')) {
+      const search = query.substring(1)
+      const vars = search.split('&')
+      for (let i = 0; i < vars.length; i++) {
+        const pair = vars[i].split('=')
+        if (pair[0] === 'email') {
+
+        }
+      }
     }
   }
 }
