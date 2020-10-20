@@ -28,6 +28,28 @@ type TagUpdate struct {
 	tags []Tag `json:"tags"`
 }
 
+func CheckMailChimpAccounts(email string) error {
+	emailHash := md5.Sum([]byte(strings.ToLower(email)))
+
+	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s", SERVER_PREFIX, LIST_ID, fmt.Sprintf("%x", emailHash))
+
+	req, err := http.NewRequest("POST", URL, nil)
+	if err != nil {
+		err = fmt.Errorf("CheckMailChimpAccounts() failed to setup request: %v", err)
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("key", APIKEY)
+
+	resp, err := http.DefaultClient.Do(req)
+	if resp.StatusCode == 200 {
+		err = fmt.Errorf("CheckMailChimpAccounts() contact already exists: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 func TagNewSignup(email string) error {
 	emailHash := md5.Sum([]byte(strings.ToLower(email)))
 
@@ -47,7 +69,7 @@ func TagNewSignup(email string) error {
 	}
 	payload := strings.NewReader(string(bytes))
 
-	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s/tags", SERVER_PREFIX, LIST_ID, emailHash)
+	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s/tags", SERVER_PREFIX, LIST_ID, fmt.Sprintf("%x", emailHash))
 
 	req, err := http.NewRequest("POST", URL, payload)
 	if err != nil {

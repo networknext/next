@@ -948,26 +948,32 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 }
 
 type AddContactArgs struct {
-	email string `json:"email"`
+	Email string `json:"email"`
 }
 
 type AddContactReply struct {
 }
 
 func (s *AuthService) AddMailChimpContact(r *http.Request, args *AddContactArgs, reply *AddContactReply) error {
-	if args.email == "" {
+	if args.Email == "" {
 		err := fmt.Errorf("AddMailChimpContact() email is required")
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if err := transport.AddSignupToMailChimp(args.email); err != nil {
+	if err := transport.CheckMailChimpAccounts(args.Email); err != nil {
+		err := fmt.Errorf("AddMailChimpContact() account already exists: %s", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if err := transport.AddSignupToMailChimp(args.Email); err != nil {
 		err := fmt.Errorf("AddMailChimpContact() failed to add signup: %s", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if err := transport.TagNewSignup(args.email); err != nil {
+	if err := transport.TagNewSignup(args.Email); err != nil {
 		err := fmt.Errorf("AddMailChimpContact() failed to tag signup: %s", err)
 		s.Logger.Log("err", err)
 		return err
