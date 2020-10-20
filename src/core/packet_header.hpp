@@ -21,7 +21,7 @@ namespace core
 
   // type | sequence | session id | session version
 
-  class PacketHeaderV4: public SessionHasher
+  class PacketHeader: public SessionHasher
   {
    public:
     // type (1) +
@@ -42,9 +42,9 @@ namespace core
     auto clean_sequence() -> uint64_t;
   };
 
-  INLINE auto PacketHeaderV4::read(Packet& packet, size_t& index, PacketDirection direction) -> bool
+  INLINE auto PacketHeader::read(Packet& packet, size_t& index, PacketDirection direction) -> bool
   {
-    if (index + PacketHeaderV4::SIZE_OF_SIGNED > packet.buffer.size()) {
+    if (index + PacketHeader::SIZE_OF_SIGNED > packet.buffer.size()) {
       LOG(ERROR, "header read, buffer is too small");
       return false;
     }
@@ -104,10 +104,10 @@ namespace core
     return true;
   }
 
-  INLINE auto PacketHeaderV4::write(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key)
+  INLINE auto PacketHeader::write(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key)
    -> bool
   {
-    if (index + PacketHeaderV4::SIZE_OF_SIGNED > packet.buffer.size()) {
+    if (index + PacketHeader::SIZE_OF_SIGNED > packet.buffer.size()) {
       LOG(ERROR, "could not write header, buffer is too small");
       return false;
     }
@@ -200,10 +200,10 @@ namespace core
 
   // TODO consider removing the direction & encoding reads. verify() is called after read() in all cases so index will be set to
   // the right spot and read() performs those same checks
-  INLINE auto PacketHeaderV4::verify(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key)
+  INLINE auto PacketHeader::verify(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key)
    -> bool
   {
-    if (index + PacketHeaderV4::SIZE_OF_SIGNED > packet.buffer.size()) {
+    if (index + PacketHeader::SIZE_OF_SIGNED > packet.buffer.size()) {
       LOG(ERROR, "could not verify header, buffer is too small");
       return false;
     }
@@ -280,13 +280,13 @@ namespace core
     return true;
   }
 
-  INLINE auto PacketHeaderV4::clean_sequence() -> uint64_t
+  INLINE auto PacketHeader::clean_sequence() -> uint64_t
   {
     static const uint64_t mask = ~((1ULL << 63) | (1ULL << 62));
     return this->sequence & mask;
   }
 
-  INLINE std::ostream& operator<<(std::ostream& stream, const PacketHeaderV4& header)
+  INLINE std::ostream& operator<<(std::ostream& stream, const PacketHeader& header)
   {
     stream << std::hex << header.session_id << '.' << std::dec << static_cast<uint32_t>(header.session_version);
     return stream;

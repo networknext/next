@@ -22,18 +22,18 @@ namespace testing
 
 namespace core
 {
-  class ContinueTokenV4: public TokenV4
+  class ContinueToken: public Token
   {
     friend testing::_test_core_ContinueTokenV4_write_;
     friend testing::_test_core_ContinueTokenV4_read_;
 
    public:
-    ContinueTokenV4() = default;
-    virtual ~ContinueTokenV4() override = default;
+    ContinueToken() = default;
+    virtual ~ContinueToken() override = default;
 
-    static const size_t SIZE_OF = TokenV4::SIZE_OF;
-    static const size_t SIZE_OF_ENCRYPTED = crypto_box_NONCEBYTES + ContinueTokenV4::SIZE_OF + crypto_box_MACBYTES;
-    static const size_t ENCRYPTION_LENGTH = ContinueTokenV4::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t SIZE_OF = Token::SIZE_OF;
+    static const size_t SIZE_OF_ENCRYPTED = crypto_box_NONCEBYTES + ContinueToken::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t ENCRYPTION_LENGTH = ContinueToken::SIZE_OF + crypto_box_MACBYTES;
 
     auto write_encrypted(
      Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool;
@@ -41,7 +41,7 @@ namespace core
     auto read_encrypted(
      Packet& packet, size_t& index, const GenericKey& sender_public_key, const GenericKey& receiver_private_key) -> bool;
 
-    auto operator==(const ContinueTokenV4& other) const -> bool;
+    auto operator==(const ContinueToken& other) const -> bool;
 
    private:
     auto write(Packet& packet, size_t& index) -> bool;
@@ -63,7 +63,7 @@ namespace core
      const size_t nonce_index) -> bool;
   };
 
-  INLINE auto ContinueTokenV4::write_encrypted(
+  INLINE auto ContinueToken::write_encrypted(
    Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
     Nonce nonce;
@@ -95,7 +95,7 @@ namespace core
     return true;
   }
 
-  INLINE auto ContinueTokenV4::read_encrypted(
+  INLINE auto ContinueToken::read_encrypted(
    Packet& packet, size_t& index, const GenericKey& sender_public_key, const GenericKey& receiver_private_key) -> bool
   {
     const auto nonce_index = index;  // nonce is first in the packet's data
@@ -115,30 +115,30 @@ namespace core
     return true;
   }
 
-  INLINE auto ContinueTokenV4::operator==(const ContinueTokenV4& other) const -> bool
+  INLINE auto ContinueToken::operator==(const ContinueToken& other) const -> bool
   {
     return this->expire_timestamp == other.expire_timestamp && this->session_id == other.session_id &&
            this->session_version == other.session_version;
   }
 
-  INLINE auto ContinueTokenV4::write(Packet& packet, size_t& index) -> bool
+  INLINE auto ContinueToken::write(Packet& packet, size_t& index) -> bool
   {
-    return TokenV4::write(packet, index);
+    return Token::write(packet, index);
   }
 
-  INLINE auto ContinueTokenV4::read(const Packet& packet, size_t& index) -> bool
+  INLINE auto ContinueToken::read(const Packet& packet, size_t& index) -> bool
   {
-    return TokenV4::read(packet, index);
+    return Token::read(packet, index);
   }
 
-  INLINE bool ContinueTokenV4::encrypt(
+  INLINE bool ContinueToken::encrypt(
    Packet& packet,
    const size_t& index,
    const GenericKey& sender_private_key,
    const GenericKey& receiver_public_key,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
-    if (index + ContinueTokenV4::ENCRYPTION_LENGTH > packet.buffer.size()) {
+    if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
     }
 
@@ -146,7 +146,7 @@ namespace core
      crypto_box_easy(
       &packet.buffer[index],
       &packet.buffer[index],
-      ContinueTokenV4::SIZE_OF,
+      ContinueToken::SIZE_OF,
       nonce.data(),
       receiver_public_key.data(),
       sender_private_key.data()) != 0) {
@@ -156,14 +156,14 @@ namespace core
     return true;
   }
 
-  INLINE bool ContinueTokenV4::decrypt(
+  INLINE bool ContinueToken::decrypt(
    Packet& packet,
    const size_t& index,
    const GenericKey& sender_public_key,
    const GenericKey& receiver_private_key,
    const size_t nonce_index)
   {
-    if (index + ContinueTokenV4::ENCRYPTION_LENGTH > packet.buffer.size()) {
+    if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
     }
 
@@ -171,7 +171,7 @@ namespace core
      crypto_box_open_easy(
       &packet.buffer[index],
       &packet.buffer[index],
-      ContinueTokenV4::ENCRYPTION_LENGTH,
+      ContinueToken::ENCRYPTION_LENGTH,
       &packet.buffer[nonce_index],
       sender_public_key.data(),
       receiver_private_key.data()) != 0) {

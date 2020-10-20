@@ -9,7 +9,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::PacketType;
 using core::RouterInfo;
 using core::Session;
@@ -38,9 +38,9 @@ TEST(core_handlers_continue_response_handler_sdk4)
   CHECK(addr.parse("127.0.0.1"));
   CHECK(socket.create(addr, config));
 
-  packet.length = PacketHeaderV4::SIZE_OF_SIGNED;
+  packet.length = PacketHeader::SIZE_OF_SIGNED;
 
-  PacketHeaderV4 header;
+  PacketHeader header;
   {
     header.type = PacketType::ContinueResponse4;
     header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);

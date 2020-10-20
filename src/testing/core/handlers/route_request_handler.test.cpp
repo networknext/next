@@ -9,7 +9,7 @@
 
 using core::Packet;
 using core::RouterInfo;
-using core::RouteTokenV4;
+using core::RouteToken;
 using core::SessionMap;
 using crypto::Keychain;
 using os::Socket;
@@ -39,10 +39,10 @@ TEST(core_handlers_route_request_handler_sdk4)
   CHECK(next.parse("127.0.0.1"));
   CHECK(next_socket.create(next, config));
 
-  packet.length = 1 + RouteTokenV4::SIZE_OF_SIGNED * 2;
+  packet.length = 1 + RouteToken::SIZE_OF_SIGNED * 2;
   packet.addr = from;
 
-  RouteTokenV4 token;
+  RouteToken token;
   token.kbps_up = random_whole<uint32_t>();
   token.kbps_down = random_whole<uint32_t>();
   token.next_addr = next;
@@ -72,7 +72,7 @@ TEST(core_handlers_route_request_handler_sdk4)
   CHECK(session->private_key == token.private_key);
 
   CHECK(recorder.route_request_tx.num_packets == 1);
-  CHECK(recorder.route_request_tx.num_bytes == packet.length - RouteTokenV4::SIZE_OF_SIGNED).on_fail([&] {
+  CHECK(recorder.route_request_tx.num_bytes == packet.length - RouteToken::SIZE_OF_SIGNED).on_fail([&] {
     std::cout << "len = " << packet.length << '\n';
     std::cout << "bytes = " << recorder.route_request_tx.num_bytes << '\n';
   });
@@ -84,5 +84,5 @@ TEST(core_handlers_route_request_handler_sdk4)
     std::cout << "next = " << next << '\n';
     std::cout << "packet = " << packet.addr << '\n';
   });
-  CHECK(packet.length == prev_len - RouteTokenV4::SIZE_OF_SIGNED);
+  CHECK(packet.length == prev_len - RouteToken::SIZE_OF_SIGNED);
 }

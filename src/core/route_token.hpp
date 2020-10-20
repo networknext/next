@@ -19,21 +19,21 @@ namespace testing
 
 namespace core
 {
-  class RouteTokenV4: public TokenV4
+  class RouteToken: public Token
   {
     friend testing::_test_core_RouteTokenV4_write_;
 
    public:
-    RouteTokenV4() = default;
-    virtual ~RouteTokenV4() override = default;
+    RouteToken() = default;
+    virtual ~RouteToken() override = default;
     // Token(17)
     // kbps_up (4) +
     // kbps_down (4) +
     // next_addr (Address::size) +
     // private_key (crypto_box_SECRETKEYBYTES) =
-    static const size_t SIZE_OF = TokenV4::SIZE_OF + 4 + 4 + Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
-    static const size_t SIZE_OF_SIGNED = crypto_box_NONCEBYTES + RouteTokenV4::SIZE_OF + crypto_box_MACBYTES;
-    static const size_t ENCRYPTION_LENGTH = RouteTokenV4::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t SIZE_OF = Token::SIZE_OF + 4 + 4 + Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
+    static const size_t SIZE_OF_SIGNED = crypto_box_NONCEBYTES + RouteToken::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t ENCRYPTION_LENGTH = RouteToken::SIZE_OF + crypto_box_MACBYTES;
 
     uint32_t kbps_up;
     uint32_t kbps_down;
@@ -66,7 +66,7 @@ namespace core
      const size_t nonce_index) -> bool;
   };
 
-  INLINE auto RouteTokenV4::write_encrypted(
+  INLINE auto RouteToken::write_encrypted(
    Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
     Nonce nonce;
@@ -91,7 +91,7 @@ namespace core
     return true;
   }
 
-  INLINE auto RouteTokenV4::read_encrypted(
+  INLINE auto RouteToken::read_encrypted(
    Packet& packet, size_t& index, const GenericKey& sender_public_key, const GenericKey& receiver_private_key) -> bool
   {
     const auto nonce_index = index;  // nonce is first in the packet's data
@@ -111,13 +111,13 @@ namespace core
     return true;
   }
 
-  INLINE auto RouteTokenV4::write(Packet& packet, size_t& index) -> bool
+  INLINE auto RouteToken::write(Packet& packet, size_t& index) -> bool
   {
-    if (index + RouteTokenV4::SIZE_OF > packet.buffer.size()) {
+    if (index + RouteToken::SIZE_OF > packet.buffer.size()) {
       return false;
     }
 
-    if (!TokenV4::write(packet, index)) {
+    if (!Token::write(packet, index)) {
       return false;
     }
 
@@ -140,13 +140,13 @@ namespace core
     return true;
   }
 
-  INLINE auto RouteTokenV4::read(const Packet& packet, size_t& index) -> bool
+  INLINE auto RouteToken::read(const Packet& packet, size_t& index) -> bool
   {
     const size_t start = index;
 
     (void)start;
 
-    if (!TokenV4::read(packet, index)) {
+    if (!Token::read(packet, index)) {
       return false;
     }
 
@@ -166,18 +166,18 @@ namespace core
       return false;
     }
 
-    assert(index - start == RouteTokenV4::SIZE_OF);
+    assert(index - start == RouteToken::SIZE_OF);
     return true;
   }
 
-  INLINE auto RouteTokenV4::encrypt(
+  INLINE auto RouteToken::encrypt(
    Packet& packet,
    const size_t& encryption_start,
    const crypto::GenericKey& sender_private_key,
    const crypto::GenericKey& receiver_public_key,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool
   {
-    if (encryption_start + RouteTokenV4::ENCRYPTION_LENGTH > packet.buffer.size()) {
+    if (encryption_start + RouteToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
     }
 
@@ -185,7 +185,7 @@ namespace core
      crypto_box_easy(
       &packet.buffer[encryption_start],
       &packet.buffer[encryption_start],
-      RouteTokenV4::SIZE_OF,
+      RouteToken::SIZE_OF,
       nonce.data(),
       receiver_public_key.data(),
       sender_private_key.data()) != 0) {
@@ -195,14 +195,14 @@ namespace core
     return true;
   }
 
-  INLINE auto RouteTokenV4::decrypt(
+  INLINE auto RouteToken::decrypt(
    Packet& packet,
    const size_t& index,
    const crypto::GenericKey& sender_public_key,
    const crypto::GenericKey& receiver_private_key,
    const size_t nonce_index) -> bool
   {
-    if (index + RouteTokenV4::ENCRYPTION_LENGTH > packet.buffer.size()) {
+    if (index + RouteToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
     }
 
@@ -210,7 +210,7 @@ namespace core
      crypto_box_open_easy(
       &packet.buffer[index],
       &packet.buffer[index],
-      RouteTokenV4::ENCRYPTION_LENGTH,
+      RouteToken::ENCRYPTION_LENGTH,
       &packet.buffer[nonce_index],
       sender_public_key.data(),
       receiver_private_key.data()) != 0) {

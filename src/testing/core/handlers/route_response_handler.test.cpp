@@ -9,7 +9,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::PacketType;
 using core::RouterInfo;
 using core::Session;
@@ -37,10 +37,10 @@ TEST(core_handlers_route_response_handler_sdk4)
   CHECK(addr.parse("127.0.0.1"));
   CHECK(socket.create(addr, config));
 
-  packet.length = PacketHeaderV4::SIZE_OF_SIGNED;
+  packet.length = PacketHeader::SIZE_OF_SIGNED;
   packet.addr = addr;
 
-  PacketHeaderV4 header;
+  PacketHeader header;
   {
     header.type = PacketType::RouteResponse4;
     header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
@@ -68,7 +68,7 @@ TEST(core_handlers_route_response_handler_sdk4)
   CHECK(prev_len == packet.length);
 
   CHECK(recorder.route_response_tx.num_packets == 1);
-  CHECK(recorder.route_response_tx.num_bytes == PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(recorder.route_response_tx.num_bytes == PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::route_response_handler_sdk4(packet, map, recorder, router_info, socket);
   CHECK(!socket.recv(packet));

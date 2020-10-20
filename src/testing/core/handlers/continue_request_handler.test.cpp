@@ -7,7 +7,7 @@
 #define OS_HELPERS
 #include "testing/helpers.hpp"
 
-using core::ContinueTokenV4;
+using core::ContinueToken;
 using core::Packet;
 using core::RouterInfo;
 using core::Session;
@@ -36,9 +36,9 @@ TEST(core_handlers_continue_request_handler_sdk4)
   CHECK(socket.create(addr, config));
 
   packet.buffer[0] = static_cast<uint8_t>(PacketType::ContinueRequest4);
-  packet.length = 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED * 2;
+  packet.length = 1 + ContinueToken::SIZE_OF_ENCRYPTED * 2;
 
-  ContinueTokenV4 token;
+  ContinueToken token;
   token.expire_timestamp = 20;
   token.session_id = 0x13;
   token.session_version = 3;
@@ -46,7 +46,7 @@ TEST(core_handlers_continue_request_handler_sdk4)
   size_t index = 1;
   CHECK(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
   CHECK(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest4));
-  CHECK(index == 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
+  CHECK(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -63,7 +63,7 @@ TEST(core_handlers_continue_request_handler_sdk4)
   core::handlers::continue_request_handler_sdk4(packet, map, keychain, recorder, info, socket);
 
   CHECK(socket.recv(packet));
-  CHECK(packet.length == prev_len - ContinueTokenV4::SIZE_OF_ENCRYPTED);
+  CHECK(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
   CHECK(session->expire_timestamp == token.expire_timestamp);
 
   index = 0;

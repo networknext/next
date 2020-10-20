@@ -12,7 +12,7 @@
 
 using core::PacketType;
 using core::RouterInfo;
-using core::RouteTokenV4;
+using core::RouteToken;
 using core::SessionMap;
 using crypto::Keychain;
 using os::Socket;
@@ -33,12 +33,12 @@ namespace core
       size_t index = 0;
       size_t length = packet.length;
 
-      if (length < static_cast<size_t>(1 + RouteTokenV4::SIZE_OF_SIGNED * 2)) {
+      if (length < static_cast<size_t>(1 + RouteToken::SIZE_OF_SIGNED * 2)) {
         LOG(ERROR, "ignoring route request. bad packet size (", length, ")");
         return;
       }
 
-      RouteTokenV4 token;
+      RouteToken token;
       {
         size_t i = index + 1;
         if (!token.read_encrypted(packet, i, keychain.backend_public_key, keychain.relay_private_key)) {
@@ -85,13 +85,13 @@ namespace core
 
       // remove this part of the token by offseting it the request packet bytes
 
-      length = packet.length - RouteTokenV4::SIZE_OF_SIGNED;
+      length = packet.length - RouteToken::SIZE_OF_SIGNED;
 
-      packet.buffer[RouteTokenV4::SIZE_OF_SIGNED] = static_cast<uint8_t>(PacketType::RouteRequest4);
+      packet.buffer[RouteToken::SIZE_OF_SIGNED] = static_cast<uint8_t>(PacketType::RouteRequest4);
 
       recorder.route_request_tx.add(length);
 
-      if (!socket.send(token.next_addr, &packet.buffer[RouteTokenV4::SIZE_OF_SIGNED], length)) {
+      if (!socket.send(token.next_addr, &packet.buffer[RouteToken::SIZE_OF_SIGNED], length)) {
         LOG(ERROR, "failed to forward route request to ", token.next_addr);
       }
     }

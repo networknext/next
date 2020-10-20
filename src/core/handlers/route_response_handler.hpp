@@ -8,7 +8,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::RouterInfo;
 using core::SessionMap;
 using os::Socket;
@@ -24,12 +24,12 @@ namespace core
       size_t index = 0;
       size_t length = packet.length;
 
-      if (length != PacketHeaderV4::SIZE_OF_SIGNED) {
+      if (length != PacketHeader::SIZE_OF_SIGNED) {
         LOG(ERROR, "ignoring route response, header byte count invalid: ", length);
         return;
       }
 
-      PacketHeaderV4 header;
+      PacketHeader header;
 
       {
         size_t i = index;

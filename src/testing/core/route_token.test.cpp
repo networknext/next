@@ -8,7 +8,7 @@
 
 using core::Packet;
 using core::RouterInfo;
-using core::RouteTokenV4;
+using core::RouteToken;
 using net::Address;
 using net::AddressType;
 
@@ -38,7 +38,7 @@ TEST(core_RouteTokenV4_general)
   next_addr.port = random_whole<uint32_t>();
   GenericKey private_key = random_private_key();
 
-  RouteTokenV4 input_token;
+  RouteToken input_token;
   {
     input_token.expire_timestamp = expire_timestamp;
     input_token.session_id = session_id;
@@ -52,10 +52,10 @@ TEST(core_RouteTokenV4_general)
   {
     size_t index = 0;
     CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
-    CHECK(index == RouteTokenV4::SIZE_OF_SIGNED);
+    CHECK(index == RouteToken::SIZE_OF_SIGNED);
   }
 
-  RouteTokenV4 output_token;
+  RouteToken output_token;
   {
     size_t index = 0;
     CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
@@ -97,7 +97,7 @@ TEST(core_RouteTokenV4_write)
   GenericKey private_key = random_private_key();
 
   Packet packet;
-  RouteTokenV4 token;
+  RouteToken token;
   {
     token.expire_timestamp = expire_timestamp;
     token.session_id = session_id;
@@ -110,5 +110,5 @@ TEST(core_RouteTokenV4_write)
 
   size_t index = 0;
   CHECK(token.write(packet, index));
-  CHECK(index == RouteTokenV4::SIZE_OF);
+  CHECK(index == RouteToken::SIZE_OF);
 }

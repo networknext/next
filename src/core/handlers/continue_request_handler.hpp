@@ -10,7 +10,7 @@
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
-using core::ContinueTokenV4;
+using core::ContinueToken;
 using core::Packet;
 using core::PacketType;
 using core::RouterInfo;
@@ -35,12 +35,12 @@ namespace core
       size_t index = 0;
       size_t length = packet.length;
 
-      if (length < int(1 + ContinueTokenV4::SIZE_OF_ENCRYPTED * 2)) {
+      if (length < int(1 + ContinueToken::SIZE_OF_ENCRYPTED * 2)) {
         LOG(ERROR, "ignoring continue request. bad packet size (", length, ")");
         return;
       }
 
-      ContinueTokenV4 token;
+      ContinueToken token;
       {
         size_t i = index + 1;
         if (!token.read_encrypted(packet, i, keychain.backend_public_key, keychain.relay_private_key)) {
@@ -75,14 +75,14 @@ namespace core
 
       session->expire_timestamp = token.expire_timestamp;
 
-      length = packet.length - ContinueTokenV4::SIZE_OF_ENCRYPTED;
+      length = packet.length - ContinueToken::SIZE_OF_ENCRYPTED;
 
-      packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest4);
+      packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest4);
 
       recorder.continue_request_tx.add(length);
 
       LOG(DEBUG, "forwarding continue request to ", session->next_addr);
-      if (!socket.send(session->next_addr, &packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED], length)) {
+      if (!socket.send(session->next_addr, &packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED], length)) {
         LOG(ERROR, "failed to forward continue request");
       }
     }

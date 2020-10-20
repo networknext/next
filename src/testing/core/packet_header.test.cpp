@@ -8,7 +8,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::PacketType;
 using crypto::GenericKey;
 
@@ -18,7 +18,7 @@ TEST(core_PacketHeaderV4_client_to_server)
 
   Packet packet;
 
-  PacketHeaderV4 header;
+  PacketHeader header;
   {
     header.type = PacketType::ClientToServer4;
     header.sequence = 123123130131LL;
@@ -29,9 +29,9 @@ TEST(core_PacketHeaderV4_client_to_server)
   size_t index = 0;
 
   CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  CHECK(index == PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
-  PacketHeaderV4 other;
+  PacketHeader other;
 
   index = 0;
   CHECK(other.read(packet, index, PacketDirection::ClientToServer));
@@ -55,7 +55,7 @@ TEST(core_PacketHeaderV4_server_to_client)
 
   Packet packet;
 
-  PacketHeaderV4 header;
+  PacketHeader header;
   {
     header.type = PacketType::ServerToClient4;
     header.sequence = 123123130131LL | (1ULL << 63);
@@ -66,9 +66,9 @@ TEST(core_PacketHeaderV4_server_to_client)
   size_t index = 0;
 
   CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
-  CHECK(index == PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
-  PacketHeaderV4 other;
+  PacketHeader other;
 
   index = 0;
   CHECK(other.read(packet, index, PacketDirection::ServerToClient));

@@ -5,11 +5,11 @@
 #include "core/token.hpp"
 
 using core::Packet;
-using core::TokenV4;
+using core::Token;
 
 TEST(core_Token_write)
 {
-  TokenV4 token;
+  Token token;
 
   token.expire_timestamp = random_whole<uint64_t>();
   token.session_id = random_whole<uint64_t>();
@@ -37,7 +37,7 @@ TEST(core_Token_write)
 }
 
 TEST(core_Token_read) {
-  TokenV4 token, other;
+  Token token, other;
   Packet packet;
 
   token.expire_timestamp = random_whole<uint64_t>();

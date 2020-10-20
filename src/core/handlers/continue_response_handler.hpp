@@ -8,7 +8,7 @@
 #include "util/macros.hpp"
 
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::RouterInfo;
 using crypto::Keychain;
 using os::Socket;
@@ -24,12 +24,12 @@ namespace core
       size_t index = 0;
       size_t length = packet.length;
 
-      if (length != PacketHeaderV4::SIZE_OF_SIGNED) {
+      if (length != PacketHeader::SIZE_OF_SIGNED) {
         LOG(ERROR, "dropping continue response packet, invalid size: ", length);
         return;
       }
 
-      PacketHeaderV4 header;
+      PacketHeader header;
       {
         size_t i = index;
         if (!header.read(packet, i, PacketDirection::ServerToClient)) {

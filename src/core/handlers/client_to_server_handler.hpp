@@ -9,7 +9,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::RouterInfo;
 using util::ThroughputRecorder;
 
@@ -29,12 +29,12 @@ namespace core
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= PacketHeaderV4::SIZE_OF_SIGNED || packet.length > PacketHeaderV4::SIZE_OF_SIGNED + RELAY_MTU) {
+      if (length <= PacketHeader::SIZE_OF_SIGNED || packet.length > PacketHeader::SIZE_OF_SIGNED + RELAY_MTU) {
         LOG(ERROR, "ignoring client to server packet, invalid size: ", length);
         return;
       }
 
-      PacketHeaderV4 header;
+      PacketHeader header;
       {
         size_t i = index;
         if (!header.read(packet, i, PacketDirection::ClientToServer)) {

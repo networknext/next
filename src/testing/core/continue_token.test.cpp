@@ -4,7 +4,7 @@
 
 #include "core/continue_token.hpp"
 
-using core::ContinueTokenV4;
+using core::ContinueToken;
 using core::Packet;
 using core::RouterInfo;
 
@@ -28,7 +28,7 @@ TEST(core_ContinueTokenV4_general)
   const auto session_id = random_whole<uint64_t>();
   const auto session_version = random_whole<uint8_t>();
 
-  ContinueTokenV4 input_token;
+  ContinueToken input_token;
   {
     input_token.expire_timestamp = expire_timestamp;
     input_token.session_id = session_id;
@@ -38,10 +38,10 @@ TEST(core_ContinueTokenV4_general)
   {
     size_t index = 0;
     CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
-    CHECK(index == ContinueTokenV4::SIZE_OF_ENCRYPTED);
+    CHECK(index == ContinueToken::SIZE_OF_ENCRYPTED);
   }
 
-  ContinueTokenV4 output_token;
+  ContinueToken output_token;
   {
     size_t index = 0;
     CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
@@ -61,7 +61,7 @@ TEST(core_ContinueTokenV4_general)
 TEST(core_ContinueTokenV4_write)
 {
   Packet packet;
-  ContinueTokenV4 token;
+  ContinueToken token;
 
   token.expire_timestamp = 6;
   token.session_id = 1;
@@ -69,7 +69,7 @@ TEST(core_ContinueTokenV4_write)
 
   size_t index = 0;
   CHECK(token.write(packet, index));
-  CHECK(index == ContinueTokenV4::SIZE_OF);
+  CHECK(index == ContinueToken::SIZE_OF);
 
   uint64_t expire;
   uint64_t id;
@@ -88,7 +88,7 @@ TEST(core_ContinueTokenV4_write)
 TEST(core_ContinueTokenV4_read)
 {
   Packet packet;
-  ContinueTokenV4 token;
+  ContinueToken token;
 
   token.expire_timestamp = 6;
   token.session_id = 1;
@@ -97,11 +97,11 @@ TEST(core_ContinueTokenV4_read)
   size_t index = 0;
   CHECK(token.write(packet, index));
 
-  ContinueTokenV4 other;
+  ContinueToken other;
 
   index = 0;
   CHECK(other.read(packet, index));
-  CHECK(index == ContinueTokenV4::SIZE_OF);
+  CHECK(index == ContinueToken::SIZE_OF);
 
   CHECK(token == other);
 }

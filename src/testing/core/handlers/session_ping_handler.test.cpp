@@ -9,7 +9,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::PacketType;
 using core::RouterInfo;
 using core::Session;
@@ -37,10 +37,10 @@ TEST(core_handlers_session_ping_handler_sdk4)
   CHECK(addr.parse("127.0.0.1"));
   CHECK(socket.create(addr, config));
 
-  packet.length = PacketHeaderV4::SIZE_OF_SIGNED + 32;
+  packet.length = PacketHeader::SIZE_OF_SIGNED + 32;
   packet.addr = addr;
 
-  PacketHeaderV4 header;
+  PacketHeader header;
   {
     header.type = PacketType::SessionPing4;
     header.sequence = 123123130131LL | (1ULL << 62);
@@ -59,7 +59,7 @@ TEST(core_handlers_session_ping_handler_sdk4)
   size_t index = 0;
 
   CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  CHECK(index == PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
 

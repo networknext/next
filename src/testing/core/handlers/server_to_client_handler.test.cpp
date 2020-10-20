@@ -9,7 +9,7 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeaderV4;
+using core::PacketHeader;
 using core::PacketType;
 using core::RouterInfo;
 using core::Session;
@@ -37,10 +37,10 @@ TEST(core_handlers_server_to_client_handler_sdk4)
 
   router_info.set_timestamp(0);
 
-  packet.length = PacketHeaderV4::SIZE_OF_SIGNED + 100;
+  packet.length = PacketHeader::SIZE_OF_SIGNED + 100;
   packet.addr = addr;
 
-  PacketHeaderV4 header;
+  PacketHeader header;
   {
     header.type = PacketType::ServerToClient4;
     header.sequence = 123123130131LL | (1ULL << 63);

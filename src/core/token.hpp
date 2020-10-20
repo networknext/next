@@ -18,27 +18,27 @@ namespace testing
 
 namespace core
 {
-  class TokenV4: public Expireable, public SessionHasher
+  class Token: public Expireable, public SessionHasher
   {
     friend testing::_test_core_Token_write_;
     friend testing::_test_core_Token_read_;
 
    public:
-    TokenV4() = default;
-    virtual ~TokenV4() override = default;
+    Token() = default;
+    virtual ~Token() override = default;
 
     static const size_t SIZE_OF = Expireable::SIZE_OF + SessionHasher::SIZE_OF;
 
-    auto operator==(const TokenV4& other) -> bool;
+    auto operator==(const Token& other) -> bool;
 
    protected:
     auto write(Packet& packet, size_t& index) -> bool;
     auto read(const Packet& packet, size_t& index) -> bool;
   };
 
-  INLINE auto TokenV4::write(Packet& packet, size_t& index) -> bool
+  INLINE auto Token::write(Packet& packet, size_t& index) -> bool
   {
-    if (index + TokenV4::SIZE_OF > packet.buffer.size()) {
+    if (index + Token::SIZE_OF > packet.buffer.size()) {
       return false;
     }
 
@@ -57,9 +57,9 @@ namespace core
     return true;
   }
 
-  INLINE auto TokenV4::read(const Packet& packet, size_t& index) -> bool
+  INLINE auto Token::read(const Packet& packet, size_t& index) -> bool
   {
-    if (index + TokenV4::SIZE_OF > packet.buffer.size()) {
+    if (index + Token::SIZE_OF > packet.buffer.size()) {
       return false;
     }
 
@@ -78,13 +78,13 @@ namespace core
     return true;
   }
 
-  INLINE auto TokenV4::operator==(const TokenV4& other) -> bool
+  INLINE auto Token::operator==(const Token& other) -> bool
   {
     return this->session_id == other.session_id && this->session_version == other.session_version &&
            this->expire_timestamp == other.expire_timestamp;
   }
 
-  INLINE auto operator<<(std::ostream& os, const TokenV4& token) -> std::ostream&
+  INLINE auto operator<<(std::ostream& os, const Token& token) -> std::ostream&
   {
     return os << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
   }

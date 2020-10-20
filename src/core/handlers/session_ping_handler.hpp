@@ -25,12 +25,12 @@ namespace core
       size_t index = 0;
       size_t length = packet.length;
 
-      if (length > PacketHeaderV4::SIZE_OF_SIGNED + 32) {
+      if (length > PacketHeader::SIZE_OF_SIGNED + 32) {
         LOG(ERROR, "ignoring session ping, packet size too large: ", length);
         return;
       }
 
-      PacketHeaderV4 header;
+      PacketHeader header;
 
       {
         size_t i = index;
