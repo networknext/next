@@ -331,7 +331,6 @@ type CostMatrixMetrics struct {
 	DurationGauge   Gauge
 	LongUpdateCount Counter
 	Bytes           Gauge
-	ErrorMetrics    CostMatrixErrorMetrics
 }
 
 var EmptyCostMatrixMetrics CostMatrixMetrics = CostMatrixMetrics{
@@ -339,15 +338,6 @@ var EmptyCostMatrixMetrics CostMatrixMetrics = CostMatrixMetrics{
 	DurationGauge:   &EmptyGauge{},
 	LongUpdateCount: &EmptyCounter{},
 	Bytes:           &EmptyGauge{},
-	ErrorMetrics:    EmptyCostMatrixErrorMetrics,
-}
-
-type CostMatrixErrorMetrics struct {
-	GenFailure Counter
-}
-
-var EmptyCostMatrixErrorMetrics CostMatrixErrorMetrics = CostMatrixErrorMetrics{
-	GenFailure: &EmptyCounter{},
 }
 
 type MaxmindSyncMetrics struct {
@@ -1832,24 +1822,11 @@ func NewCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*CostMat
 		return nil, err
 	}
 
-	costMatrixGenFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Cost Matrix Gen Failure",
-		ServiceName: "relay_backend",
-		ID:          "cost_matrix.failure",
-		Unit:        "errors",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	costMatrixMetrics := CostMatrixMetrics{
 		Invocations:     costMatrixInvocationsCounter,
 		DurationGauge:   costMatrixDurationGauge,
 		LongUpdateCount: costMatrixLongUpdateCounter,
 		Bytes:           costMatrixBytes,
-		ErrorMetrics: CostMatrixErrorMetrics{
-			GenFailure: costMatrixGenFailure,
-		},
 	}
 
 	return &costMatrixMetrics, nil
@@ -1942,24 +1919,11 @@ func NewValveCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*Co
 		return nil, err
 	}
 
-	costMatrixGenFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Valve Cost Matrix Gen Failure",
-		ServiceName: "relay_backend",
-		ID:          "cost_matrix.valve.failure",
-		Unit:        "errors",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	costMatrixMetrics := CostMatrixMetrics{
 		Invocations:     costMatrixInvocationsCounter,
 		DurationGauge:   costMatrixDurationGauge,
 		LongUpdateCount: costMatrixLongUpdateCounter,
 		Bytes:           costMatrixBytes,
-		ErrorMetrics: CostMatrixErrorMetrics{
-			GenFailure: costMatrixGenFailure,
-		},
 	}
 
 	return &costMatrixMetrics, nil

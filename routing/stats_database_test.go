@@ -113,7 +113,7 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("if the entry for the destination relay does not exist in the source relay's collection, then it is created properly", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
 			statsdb.ProcessStats(&update)
-			entry, _ := statsdb.Entries[update.ID]
+			entry := statsdb.Entries[update.ID]
 			for _, r := range entry.Relays {
 				assert.NotNil(t, r.RTTHistory)
 				assert.NotNil(t, r.JitterHistory)
@@ -124,10 +124,10 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("source and destination both don't exist but entries are set to invalid value", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
 			statsdb.ProcessStats(&update)
-			entry, _ := statsdb.Entries[update.ID]
+			entry := statsdb.Entries[update.ID]
 			assert.Equal(t, len(entry.Relays), len(update.PingStats))
 			for _, stats := range update.PingStats {
-				destRelay, _ := entry.Relays[stats.RelayID]
+				destRelay := entry.Relays[stats.RelayID]
 				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.RTT)
 				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.Jitter)
 				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.PacketLoss)
@@ -276,12 +276,6 @@ func TestStatsDatabase(t *testing.T) {
 			fillRelayDatabase(relayMap)
 			fillStatsDatabase(statsdb)
 
-			// make the datacenter of the first relay 0
-			// otherwise push the rest into the validDcIDs array
-			// same with Dc names
-			validDcIDs := make([]uint64, 0)
-			validDcNames := make([]string, 0)
-
 			allRelayData := relayMap.GetAllRelayData()
 
 			i := 0
@@ -292,8 +286,6 @@ func TestStatsDatabase(t *testing.T) {
 				} else {
 					r.Datacenter.ID = uint64(i)
 					relayMap.AddRelayDataEntry(r.Addr.String(), r)
-					validDcIDs = append(validDcIDs, r.Datacenter.ID)
-					validDcNames = append(validDcNames, r.Datacenter.Name)
 				}
 				i++
 			}
@@ -320,46 +312,15 @@ func TestStatsDatabase(t *testing.T) {
 			// invalid - packet loss > MaxPacketLoss
 			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, maxPacketLoss+1)
 
-			var costMatrix routing.CostMatrix
+			relayIDs := make([]uint64, 0)
+			for _, relayData := range allRelayData {
+				relayIDs = append(relayIDs, relayData.ID)
+			}
 
-			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, allRelayData, maxJitter, maxPacketLoss))
+			costMatrix := statsdb.GenerateCostMatrix(relayIDs, maxJitter, maxPacketLoss)
+			assert.NotEmpty(t, costMatrix)
 
 			// Testing
-			// assert each entry in the relay db is present in the cost matrix
-			for _, relayData := range allRelayData {
-				assert.Contains(t, costMatrix.RelayIDs, relayData.ID)
-				assert.Contains(t, costMatrix.RelayNames, relayData.Name)
-				assert.Contains(t, costMatrix.RelayPublicKeys, relayData.PublicKey)
-			}
-
-			// assert the length of the valid ids equals the length of all the datacenter ids in the matrix
-			assert.Equal(t, len(validDcIDs), len(costMatrix.DatacenterIDs))
-			assert.Equal(t, len(validDcNames), len(costMatrix.DatacenterNames))
-			for i, id := range validDcIDs {
-				// assert all valid ids are present in the matrix
-				assert.Contains(t, costMatrix.DatacenterIDs, id)
-
-				// find the relays whose datacenter id matches this one
-				validRelayIDs := make([]uint64, 0)
-				for _, relayData := range allRelayData {
-					if relayData.Datacenter.ID == id {
-						validRelayIDs = append(validRelayIDs, relayData.ID)
-						break
-					}
-				}
-
-				// assert the datacenter id -> relay ids mapping contains the actual ids
-				// i + 1 because in the first for loop each datacenter id is reset as i which is > 0
-				for _, relayID := range validRelayIDs {
-					assert.Contains(t, costMatrix.DatacenterRelays[uint64(i+1)], relayID)
-				}
-			}
-
-			// assert all names valid Dc names are within the cost matrix
-			for _, name := range validDcNames {
-				assert.Contains(t, costMatrix.DatacenterNames, name)
-			}
-
 			// assert that all non-invalid rtt's are within the cost matrix
 			getAddressIndex := func(addr1, addr2 string) int {
 				addr1ID := crypto.HashID(addr1)
@@ -367,7 +328,7 @@ func TestStatsDatabase(t *testing.T) {
 				indxOfI := -1
 				indxOfJ := -1
 
-				for i, id := range costMatrix.RelayIDs {
+				for i, id := range relayIDs {
 					if uint64(id) == addr1ID {
 						indxOfI = i
 					} else if uint64(id) == addr2ID {
@@ -382,10 +343,10 @@ func TestStatsDatabase(t *testing.T) {
 				return routing.TriMatrixIndex(indxOfI, indxOfJ)
 			}
 
-			assert.Equal(t, int32(123), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
-			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
-			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "654.0.0.4:40000")])
-			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "000.0.0.5:40000")])
+			assert.Equal(t, int32(123), costMatrix[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
+			assert.Equal(t, int32(-1), costMatrix[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
+			assert.Equal(t, int32(-1), costMatrix[getAddressIndex("127.0.0.1:40000", "654.0.0.4:40000")])
+			assert.Equal(t, int32(-1), costMatrix[getAddressIndex("127.0.0.1:40000", "000.0.0.5:40000")])
 		})
 	})
 }

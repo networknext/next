@@ -2,7 +2,6 @@ package routing
 
 import (
 	"math"
-	"sort"
 	"sync"
 )
 
@@ -231,89 +230,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
 
-// GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(
-	costMatrix *CostMatrix,
-	allRelayData []*RelayData,
-	maxJitter float32,
-	maxPacketLoss float32) error {
-
-	numRelays := len(allRelayData)
-
-	var stableRelays []*RelayData
-	for _, relay := range allRelayData {
-		stableRelays = append(stableRelays, relay)
-	}
-
-	sort.SliceStable(stableRelays, func(i, j int) bool {
-		return stableRelays[i].ID < stableRelays[j].ID
-	})
-
-	costMatrix.RelayIndices = make(map[uint64]int)
-	costMatrix.RelayIDs = make([]uint64, numRelays)
-	costMatrix.RelayNames = make([]string, numRelays)
-	costMatrix.RelayAddresses = make([][]byte, numRelays)
-	costMatrix.RelayLatitude = make([]float64, numRelays)
-	costMatrix.RelayLongitude = make([]float64, numRelays)
-	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
-	// DatacenterIDs is handled below
-	// DatacenterNames is handled below
-	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
-	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
-	costMatrix.RelaySellers = make([]Seller, numRelays)
-	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
-	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)
-
-	datacenterNameMap := make(map[uint64]string)
-
-	for i, relayData := range stableRelays {
-		costMatrix.RelayIndices[relayData.ID] = i
-		costMatrix.RelayIDs[i] = relayData.ID
-		costMatrix.RelayNames[i] = relayData.Name
-		costMatrix.RelaySellers[i] = relayData.Seller
-		costMatrix.RelaySessionCounts[i] = uint32(relayData.TrafficStats.SessionCount)
-		costMatrix.RelayMaxSessionCounts[i] = relayData.MaxSessions
-
-		costMatrix.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
-		copy(costMatrix.RelayAddresses[i], []byte(relayData.Addr.String()))
-
-		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
-		if relayData.Datacenter.ID != 0 {
-			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter.ID]
-			datacenter = append(datacenter, relayData.ID)
-			costMatrix.DatacenterRelays[relayData.Datacenter.ID] = datacenter
-			datacenterNameMap[relayData.Datacenter.ID] = relayData.Datacenter.Name
-		}
-	}
-
-	costMatrix.DatacenterIDs = make([]uint64, len(datacenterNameMap))
-	costMatrix.DatacenterNames = make([]string, len(datacenterNameMap))
-	idx := 0
-	for id, name := range datacenterNameMap {
-		costMatrix.DatacenterIDs[idx] = id
-		costMatrix.DatacenterNames[idx] = name
-		idx++
-	}
-
-	for i := 0; i < numRelays; i++ {
-		for j := 0; j < i; j++ {
-			ijIndex := TriMatrixIndex(i, j)
-
-			idI := uint64(costMatrix.RelayIDs[i])
-			idJ := uint64(costMatrix.RelayIDs[j])
-			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
-			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
-				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt)))
-			} else {
-				costMatrix.RTT[ijIndex] = -1
-			}
-		}
-	}
-
-	return nil
-}
-
-func (database *StatsDatabase) GenerateCostMatrix4(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
+func (database *StatsDatabase) GenerateCostMatrix(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
 	numRelays := len(relayIDs)
 	costs := make([]int32, TriMatrixLength(numRelays))
 
