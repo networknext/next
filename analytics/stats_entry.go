@@ -116,8 +116,10 @@ func ReadPingStatsEntries(data []byte) ([]PingStatsEntry, bool) {
 			return nil, false
 		}
 
-		if !encoding.ReadBool(data, &index, &entry.Routable) {
-			return nil, false
+		if version == 2 {
+			if !encoding.ReadBool(data, &index, &entry.Routable) {
+				return nil, false
+			}
 		}
 	}
 
@@ -167,6 +169,13 @@ type RelayStatsEntry struct {
 
 	NumRoutable   uint32
 	NumUnroutable uint32
+
+	// all of below is deprecated
+	Tx                        uint64
+	Rx                        uint64
+	PeakSessions              uint64
+	PeakSentBandwidthMbps     float32
+	PeakReceivedBandwidthMbps float32
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
@@ -174,7 +183,7 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 	data := make([]byte, length)
 
 	index := 0
-	encoding.WriteUint8(data, &index, PingStatsEntryVersion)
+	encoding.WriteUint8(data, &index, RelayStatsEntryVersion)
 	encoding.WriteUint64(data, &index, uint64(len(entries)))
 
 	for i := range entries {
@@ -217,64 +226,104 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 	for i := range entries {
 		entry := &entries[i]
 
-		if !encoding.ReadUint64(data, &index, &entry.ID) {
-			return nil, false
-		}
+		if version == 2 {
+			if !encoding.ReadUint64(data, &index, &entry.ID) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentPercent) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentPercent) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedPercent) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedPercent) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentPercent) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentPercent) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedPercent) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedPercent) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentMbps) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentMbps) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedMbps) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedMbps) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentMbps) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentMbps) {
+				return nil, false
+			}
 
-		if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedMbps) {
-			return nil, false
-		}
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedMbps) {
+				return nil, false
+			}
 
-		if !encoding.ReadUint32(data, &index, &entry.NumSessions) {
-			return nil, false
-		}
+			if !encoding.ReadUint32(data, &index, &entry.NumSessions) {
+				return nil, false
+			}
 
-		if !encoding.ReadUint32(data, &index, &entry.MaxSessions) {
-			return nil, false
-		}
+			if !encoding.ReadUint32(data, &index, &entry.MaxSessions) {
+				return nil, false
+			}
 
-		if !encoding.ReadUint32(data, &index, &entry.NumRoutable) {
-			return nil, false
-		}
+			if !encoding.ReadUint32(data, &index, &entry.NumRoutable) {
+				return nil, false
+			}
 
-		if !encoding.ReadUint32(data, &index, &entry.NumUnroutable) {
-			return nil, false
+			if !encoding.ReadUint32(data, &index, &entry.NumUnroutable) {
+				return nil, false
+			}
+		} else {
+			if !encoding.ReadUint64(data, &index, &entry.ID) {
+				return nil, false
+			}
+
+			var numSessions uint64
+			if !encoding.ReadUint64(data, &index, &numSessions) {
+				return nil, false
+			}
+			entry.NumSessions = uint32(numSessions)
+
+			if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint64(data, &index, &entry.Tx) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint64(data, &index, &entry.Rx) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint64(data, &index, &entry.PeakSessions) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.PeakSentBandwidthMbps) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.PeakReceivedBandwidthMbps) {
+				return nil, false
+			}
 		}
 	}
 
@@ -300,8 +349,8 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["envelope_bandwidth_receive_mbps"] = e.EnvelopeReceivedMbps
 	bqEntry["num_sessions"] = int(e.NumSessions)
 	bqEntry["max_sessions"] = int(e.MaxSessions)
-	bqEntry["num_routable"] = e.NumRoutable
-	bqEntry["num_unroutable"] = e.NumUnroutable
+	bqEntry["num_routable"] = int(e.NumRoutable)
+	bqEntry["num_unroutable"] = int(e.NumUnroutable)
 
 	return bqEntry, "", nil
 }
