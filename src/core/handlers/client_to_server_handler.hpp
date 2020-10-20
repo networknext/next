@@ -4,16 +4,13 @@
 #include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
-#include "crypto/hash.hpp"
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeader;
 using core::PacketHeaderV4;
 using core::RouterInfo;
-using crypto::PACKET_HASH_LENGTH;
 using util::ThroughputRecorder;
 
 namespace core
@@ -32,7 +29,7 @@ namespace core
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= PacketHeaderV4::SIZE_OF_SIGNED || packet.length > PacketHeader::SIZE_OF_SIGNED + RELAY_MTU) {
+      if (length <= PacketHeaderV4::SIZE_OF_SIGNED || packet.length > PacketHeaderV4::SIZE_OF_SIGNED + RELAY_MTU) {
         LOG(ERROR, "ignoring client to server packet, invalid size: ", length);
         return;
       }

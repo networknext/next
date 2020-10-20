@@ -9,12 +9,11 @@ using core::TokenV4;
 
 TEST(core_Token_write)
 {
-  Token token;
+  TokenV4 token;
 
   token.expire_timestamp = random_whole<uint64_t>();
   token.session_id = random_whole<uint64_t>();
   token.session_version = random_whole<uint8_t>();
-  token.session_flags = random_whole<uint8_t>();
 
   Packet packet;
 
@@ -35,17 +34,15 @@ TEST(core_Token_write)
   CHECK(token.expire_timestamp == expire_timestamp);
   CHECK(token.session_id == id);
   CHECK(token.session_version == version);
-  CHECK(token.session_flags == flags);
 }
 
 TEST(core_Token_read) {
-  Token token, other;
+  TokenV4 token, other;
   Packet packet;
 
   token.expire_timestamp = random_whole<uint64_t>();
   token.session_id = random_whole<uint64_t>();
   token.session_version = random_whole<uint8_t>();
-  token.session_flags = random_whole<uint8_t>();
 
   size_t index = 0;
   CHECK(token.write(packet, index));

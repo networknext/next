@@ -9,13 +9,11 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeader;
 using core::PacketHeaderV4;
 using core::PacketType;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using crypto::PACKET_HASH_LENGTH;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;

@@ -9,7 +9,6 @@
 
 using core::Packet;
 using core::RouterInfo;
-using core::RouteToken;
 using core::RouteTokenV4;
 using core::SessionMap;
 using crypto::Keychain;

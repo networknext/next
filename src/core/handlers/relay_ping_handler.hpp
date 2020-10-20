@@ -2,7 +2,6 @@
 
 #include "core/packet_types.hpp"
 #include "core/throughput_recorder.hpp"
-#include "crypto/hash.hpp"
 #include "encoding/read.hpp"
 #include "net/address.hpp"
 #include "os/socket.hpp"

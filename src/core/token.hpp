@@ -20,11 +20,16 @@ namespace core
 {
   class TokenV4: public Expireable, public SessionHasher
   {
+    friend testing::_test_core_Token_write_;
+    friend testing::_test_core_Token_read_;
+
    public:
     TokenV4() = default;
     virtual ~TokenV4() override = default;
 
     static const size_t SIZE_OF = Expireable::SIZE_OF + SessionHasher::SIZE_OF;
+
+    auto operator==(const TokenV4& other) -> bool;
 
    protected:
     auto write(Packet& packet, size_t& index) -> bool;
@@ -73,7 +78,13 @@ namespace core
     return true;
   }
 
-  INLINE std::ostream& operator<<(std::ostream& os, const TokenV4& token)
+  INLINE auto TokenV4::operator==(const TokenV4& other) -> bool
+  {
+    return this->session_id == other.session_id && this->session_version == other.session_version &&
+           this->expire_timestamp == other.expire_timestamp;
+  }
+
+  INLINE auto operator<<(std::ostream& os, const TokenV4& token) -> std::ostream&
   {
     return os << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
   }

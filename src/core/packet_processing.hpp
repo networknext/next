@@ -4,7 +4,6 @@
 #include "core/relay_manager.hpp"
 #include "core/route_token.hpp"
 #include "core/throughput_recorder.hpp"
-#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
@@ -120,18 +119,8 @@ namespace core
         continue;
       }
 
-      bool is_signed = false;
-
       PacketType type;
-      if (crypto::is_network_next_packet(packet.buffer, 0, packet.length)) {
-        type = static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
-        is_signed = true;
-        LOG(DEBUG, "sdk3 packet: ", type);
-      } else {
-        type = static_cast<PacketType>(packet.buffer[0]);
-        LOG(DEBUG, "non-hash packet: ", type);
-      }
-
+      type = static_cast<PacketType>(packet.buffer[0]);
       size_t header_bytes = 0;
 
       if (packet.addr.type == net::AddressType::IPv4) {

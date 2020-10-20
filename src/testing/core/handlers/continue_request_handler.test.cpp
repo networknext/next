@@ -7,7 +7,6 @@
 #define OS_HELPERS
 #include "testing/helpers.hpp"
 
-using core::ContinueToken;
 using core::ContinueTokenV4;
 using core::Packet;
 using core::RouterInfo;

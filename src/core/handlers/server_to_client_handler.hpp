@@ -4,15 +4,12 @@
 #include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
-#include "crypto/hash.hpp"
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
 using core::PacketDirection;
-using core::PacketHeader;
 using core::PacketHeaderV4;
 using core::RouterInfo;
-using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
 

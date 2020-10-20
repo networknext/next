@@ -5,7 +5,6 @@
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
-#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/socket.hpp"
@@ -13,13 +12,12 @@
 
 using core::PacketType;
 using core::RouterInfo;
-using core::RouteToken;
 using core::RouteTokenV4;
 using core::SessionMap;
 using crypto::Keychain;
-using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
+
 namespace core
 {
   namespace handlers

@@ -9,7 +9,6 @@
 
 using core::Packet;
 using core::PacketDirection;
-using core::PacketHeader;
 using core::PacketHeaderV4;
 using core::PacketType;
 using core::RouterInfo;
