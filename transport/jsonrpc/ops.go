@@ -31,6 +31,7 @@ func (self *RelayVersion) String() string {
 }
 
 type RelayData struct {
+	SessionCount   uint64
 	Version        RelayVersion
 	LastUpdateTime time.Time
 	CPU            float32
@@ -100,6 +101,14 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 			}
 		default:
 			return fmt.Errorf("invalid relay map version: %d", version)
+		}
+
+		// result of a merge with master, relay.SessionCount was supposed to be removed but the merge put it back in
+		// once this code is in prod for compatability, relay.SessionCount can be removed
+		if version <= 1 {
+			relay.TrafficStats.SessionCount = relay.SessionCount
+		} else {
+			relay.SessionCount = relay.TrafficStats.SessionCount
 		}
 
 		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
