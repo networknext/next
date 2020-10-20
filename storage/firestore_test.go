@@ -104,7 +104,7 @@ func TestSequenceNumbers(t *testing.T) {
 		// (true -> sync from Firestore)
 		same, val, err := fs.CheckSequenceNumber(ctx)
 		assert.Equal(t, true, same)
-		assert.Equal(t, 0, val)
+		assert.Equal(t, int64(0), val)
 		assert.NoError(t, err)
 
 	})
@@ -125,7 +125,7 @@ func TestSequenceNumbers(t *testing.T) {
 		// has not been incremented and the local value is the initial defautl (-1)
 		same, val, err := fs.CheckSequenceNumber(ctx)
 		assert.Equal(t, false, same)
-		assert.Equal(t, -1, val)
+		assert.Equal(t, int64(-1), val)
 		assert.NoError(t, err)
 
 	})
