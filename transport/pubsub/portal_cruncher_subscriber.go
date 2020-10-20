@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pebbe/zmq4"
 )
@@ -53,6 +54,17 @@ func (sub *PortalCruncherSubscriber) Unsubscribe(topic Topic) error {
 
 	sub.topics = append(sub.topics[:topicIndex], sub.topics[topicIndex+1:]...)
 	return sub.socket.SetUnsubscribe(string(topic))
+}
+
+func (sub *PortalCruncherSubscriber) Poll(timeout time.Duration) error {
+	poller := zmq4.NewPoller()
+	poller.Add(sub.socket, zmq4.POLLIN)
+	_, err := poller.Poll(timeout)
+	if err != nil {
+		return fmt.Errorf("failed to poll socket: %v", err)
+	}
+
+	return nil
 }
 
 func (sub *PortalCruncherSubscriber) ReceiveMessage() (Topic, []byte, error) {

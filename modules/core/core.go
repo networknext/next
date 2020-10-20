@@ -992,6 +992,7 @@ type InternalConfig struct {
 	MultipathOverloadThreshold int32
 	TryBeforeYouBuy            bool
 	ForceNext                  bool
+	LargeCustomer              bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1004,6 +1005,7 @@ func NewInternalConfig() InternalConfig {
 		MultipathOverloadThreshold: 500,
 		TryBeforeYouBuy:            false,
 		ForceNext:                  false,
+		LargeCustomer:              false,
 	}
 }
 

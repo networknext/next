@@ -13,9 +13,9 @@ import (
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/modules/core"
 )
 
 func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint32) error {
@@ -252,12 +252,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 			return
 		}
 
-		if packet.FallbackToDirect {
-			level.Error(logger).Log("err", "received fallback to direct")
-			metrics.FallbackToDirect.Add(1)
-			return
-		}
-
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
 			level.Error(logger).Log("msg", "buyer not found", "err", err)
@@ -296,6 +290,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 
 			if sessionData.RouteState.Next {
 				metrics.NextSlices.Add(1)
+				sessionData.EverOnNext = true
 			} else {
 				metrics.DirectSlices.Add(1)
 			}
@@ -342,6 +337,14 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 		// Don't accelerate any sessions if the buyer is not yet live
 		if !buyer.Live {
 			metrics.BuyerNotLive.Add(1)
+			return
+		}
+
+		if packet.FallbackToDirect {
+			if !sessionData.FellBackToDirect {
+				metrics.FallbackToDirect.Add(1)
+				sessionData.FellBackToDirect = true
+			}
 			return
 		}
 
@@ -738,6 +741,8 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 			Latitude:  sessionData.Location.Latitude,
 			Longitude: sessionData.Location.Longitude,
 		},
+		LargeCustomer: buyer.InternalConfig.LargeCustomer,
+		EverOnNext:    sessionData.EverOnNext,
 	}
 
 	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
