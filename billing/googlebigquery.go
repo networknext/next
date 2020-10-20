@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"errors"
+	"sync"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -20,7 +22,9 @@ type GoogleBigQueryClient struct {
 	TableInserter *bigquery.Inserter
 	BatchSize     int
 
-	buffer  []*BillingEntry
+	buffer      []*BillingEntry
+	bufferMutex sync.RWMutex
+
 	entries chan *BillingEntry
 }
 
@@ -30,8 +34,21 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	if bq.entries == nil {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
-	bq.entries <- entry
-	return nil
+
+	bq.bufferMutex.RLock()
+	bufferLength := len(bq.buffer)
+	bq.bufferMutex.RUnlock()
+
+	if bufferLength >= bq.BatchSize {
+		return errors.New("entries buffer full")
+	}
+
+	select {
+	case bq.entries <- entry:
+		return nil
+	default:
+		return errors.New("entries channel full")
+	}
 }
 
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
@@ -44,16 +61,24 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	for entry := range bq.entries {
 		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
 
-		if len(bq.buffer) >= bq.BatchSize {
-			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
-				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(len(bq.buffer)))
-			}
-			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
-			bq.Metrics.EntriesFlushed.Add(float64(len(bq.buffer)))
-			bq.buffer = bq.buffer[:0]
-		}
+		bq.bufferMutex.Lock()
 		bq.buffer = append(bq.buffer, entry)
+		bufferLength := len(bq.buffer)
+		if bufferLength >= bq.BatchSize {
+			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
+				bq.bufferMutex.Unlock()
+
+				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
+				continue
+			}
+
+			bq.buffer = bq.buffer[:0]
+			bq.bufferMutex.Unlock()
+
+			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
+			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
+		}
 	}
 	return nil
 }
