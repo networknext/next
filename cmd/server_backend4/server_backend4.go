@@ -238,9 +238,18 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	// Create an in-memory storer
+	// hardcoded dependency on InMemory will have to stay until we
+	// move to NewSQL()
 	var storer storage.Storer = &storage.InMemory{
 		LocalMode: true,
+	}
+	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+	if fs != nil {
+		storer = fs
 	}
 
 	var customerPublicKey []byte
@@ -271,39 +280,11 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
-	}
 
-	// Check for the firestore emulator
-	firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
-	if firestoreEmulatorOK {
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	if gcpOK || firestoreEmulatorOK {
-		// Firestore
-		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create firestore", "err", err)
-				return 1
-			}
-
-			fsSyncInterval, err := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(fsSyncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			storer = fs
+		// Create dummy buyer and datacenter for local testing
+		if err = storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey); err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
 		}
 	}
 
