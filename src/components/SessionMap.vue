@@ -78,6 +78,9 @@ export default class SessionMap extends Vue {
         if (isSignUp) {
           this.$apiService.addMailChimpContact({ email: this.$store.getters.userProfile.email }).then(() => {
             this.$store.commit('UPDATE_IS_SIGNUP', false)
+          }).catch((error: Error) => {
+            console.log('Failed to add new sign up to mail list')
+            console.log(error)
           })
         }
       }
