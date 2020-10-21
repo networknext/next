@@ -135,7 +135,7 @@ create table datacenter_maps (
 create table metadata (
   sync_sequence_number bigint not null
 );
--- File generation: 2020/10/21 10:40:22
+-- File generation: 2020/10/21 13:54:32
 
 -- machine_types
 insert into machine_types values (0, 'none');
@@ -591,3 +591,137 @@ insert into datacenter_maps (alias, buyer_id, datacenter_id) values ('some.other
 insert into datacenter_maps (alias, buyer_id, datacenter_id) values ('tyo', ( select id from buyers where display_name = 'Valve'), ( select id from datacenters where display_name = 'valve.tokyo.1'));
 insert into datacenter_maps (alias, buyer_id, datacenter_id) values ('vie', ( select id from buyers where display_name = 'Valve'), ( select id from datacenters where display_name = 'valve.vienna'));
 insert into datacenter_maps (alias, buyer_id, datacenter_id) values ('sea', ( select id from buyers where display_name = 'Valve'), ( select id from datacenters where display_name = 'valve.seattle'));
+
+-- SQLite only has limited ALTER TABLE support, so we must make new tables to drop the display_name column
+-- buyers
+BEGIN TRANSACTION;
+create temporary table buyers_backup (
+	id integer primary key autoincrement,
+	is_live_customer boolean default false,
+	sdk3_public_key_data bytea not null,
+	sdk3_public_key_id bigint not null,
+	customer_id integer,
+	constraint fk_customer_id foreign key (customer_id) references customers(id)
+);
+INSERT INTO buyers_backup SELECT id, is_live_customer, sdk3_public_key_data, sdk3_public_key_id, customer_id FROM buyers;
+DROP TABLE buyers;
+create table buyers (
+	id integer primary key autoincrement,
+	is_live_customer boolean default false,
+	sdk3_public_key_data bytea not null,
+	sdk3_public_key_id bigint not null,
+	customer_id integer,
+	constraint fk_customer_id foreign key (customer_id) references customers(id)
+);
+INSERT INTO buyers SELECT id, is_live_customer, sdk3_public_key_data, sdk3_public_key_id, customer_id FROM buyers_backup;
+DROP TABLE buyers_backup;
+COMMIT;
+
+-- sellers
+BEGIN TRANSACTION;
+create temporary table sellers_backup (
+	id integer primary key autoincrement,
+	public_egress_price bigint not null,
+	public_ingress_price bigint,
+	customer_id integer,
+	constraint fk_customer_id foreign key (customer_id) references customers(id)
+);
+INSERT INTO sellers_backup SELECT id, public_egress_price, public_ingress_price, customer_id FROM sellers;
+DROP TABLE sellers;
+create table sellers (
+	id integer primary key autoincrement,
+	public_egress_price bigint not null,
+	public_ingress_price bigint,
+	customer_id integer,
+	constraint fk_customer_id foreign key (customer_id) references customers(id)
+);
+INSERT INTO sellers SELECT id, public_egress_price, public_ingress_price, customer_id FROM sellers_backup;
+DROP TABLE sellers_backup;
+COMMIT;
+
+-- datacenters
+BEGIN TRANSACTION;
+create temporary table datacenters_backup (
+	id integer primary key autoincrement,
+	enabled boolean not null,
+	latitude numeric not null,
+	longitude numeric not null,
+	supplier_name varchar,
+	street_address varchar not null,
+	seller_id integer not null,
+	constraint fk_seller_id foreign key (seller_id) references sellers(id)
+);
+INSERT INTO datacenters_backup SELECT id, enabled, latitude, longitude, supplier_name, street_address, seller_id FROM datacenters;
+DROP TABLE datacenters;
+create table datacenters (
+	id integer primary key autoincrement,
+	enabled boolean not null,
+	latitude numeric not null,
+	longitude numeric not null,
+	supplier_name varchar,
+	street_address varchar not null,
+	seller_id integer not null,
+	constraint fk_seller_id foreign key (seller_id) references sellers(id)
+);
+INSERT INTO datacenters SELECT id, enabled, latitude, longitude, supplier_name, street_address, seller_id FROM datacenters_backup;
+DROP TABLE datacenters_backup;
+COMMIT;
+
+-- relays
+BEGIN TRANSACTION;
+create temporary table relays_backup (
+	id integer primary key autoincrement,
+	contract_term integer not null,
+	end_date date not null,
+	included_bandwidth_gb integer not null,
+	management_ip inet not null,
+	max_sessions integer not null,
+	mrc bigint not null,
+	overage bigint not null,
+	port_speed integer not null,
+	public_ip inet not null,
+	public_ip_port integer not null,
+	public_key bytea not null,
+	ssh_port integer not null,
+	ssh_user varchar not null,
+	start_date date not null,
+	update_key bytea not null,
+	bw_billing_rule integer not null,
+	datacenter integer not null,
+	machine_type integer not null,
+	relay_state integer not null,
+	constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
+	constraint fk_datacenter foreign key (datacenter) references datacenters(id),
+	constraint fk_machine_type foreign key (machine_type) references machine_types(id),
+	constraint fk_relay_state foreign key (relay_state) references relay_states(id)
+);
+INSERT INTO relays_backup SELECT id, contract_term, end_date, included_bandwidth_gb, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, bw_billing_rule, datacenter, machine_type, relay_state FROM relays;
+DROP TABLE relays;
+create table relays (
+	id integer primary key autoincrement,
+	contract_term integer not null,
+	end_date date not null,
+	included_bandwidth_gb integer not null,
+	management_ip inet not null,
+	max_sessions integer not null,
+	mrc bigint not null,
+	overage bigint not null,
+	port_speed integer not null,
+	public_ip inet not null,
+	public_ip_port integer not null,
+	public_key bytea not null,
+	ssh_port integer not null,
+	ssh_user varchar not null,
+	start_date date not null,
+	update_key bytea not null,
+	bw_billing_rule integer not null,
+	datacenter integer not null,
+	machine_type integer not null,
+	relay_state integer not null,
+	constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
+	constraint fk_datacenter foreign key (datacenter) references datacenters(id),
+	constraint fk_machine_type foreign key (machine_type) references machine_types(id),
+	constraint fk_relay_state foreign key (relay_state) references relay_states(id)
+);INSERT INTO relays SELECT id, contract_term, end_date, included_bandwidth_gb, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, bw_billing_rule, datacenter, machine_type, relay_state FROM relays_backup;
+DROP TABLE relays_backup;
+COMMIT;
