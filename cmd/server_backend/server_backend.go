@@ -181,6 +181,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
+		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+		return 1
+	}
+
 	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -499,6 +504,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	if maxNearRelays > 32 {
+		level.Error(logger).Log("err", "cannot support more than 32 near relays")
+		return 1
+	}
+
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
@@ -507,12 +517,7 @@ func mainReturnWithCode() int {
 		router.Handle("/debug/vars", expvar.Handler())
 
 		go func() {
-			if !envvar.Exists("HTTP_PORT") {
-				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
-				return
-			}
-
-			httpPort := envvar.Get("HTTP_PORT", "40000")
+			httpPort := envvar.Get("HTTP_PORT", "40001")
 
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
