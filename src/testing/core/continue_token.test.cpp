@@ -8,7 +8,7 @@ using core::ContinueToken;
 using core::Packet;
 using core::RouterInfo;
 
-TEST(core_ContinueTokenV4_general)
+TEST(core_ContinueToken_general)
 {
   Packet packet;
   packet.length = packet.buffer.size();
@@ -58,7 +58,7 @@ TEST(core_ContinueTokenV4_general)
   CHECK(input_token.session_version == output_token.session_version);
 }
 
-TEST(core_ContinueTokenV4_write)
+TEST(core_ContinueToken_write)
 {
   Packet packet;
   ContinueToken token;
@@ -85,7 +85,7 @@ TEST(core_ContinueTokenV4_write)
   CHECK(ver == 2);
 }
 
-TEST(core_ContinueTokenV4_read)
+TEST(core_ContinueToken_read)
 {
   Packet packet;
   ContinueToken token;

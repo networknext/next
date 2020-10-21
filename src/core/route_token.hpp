@@ -13,7 +13,6 @@ using net::Address;
 
 namespace testing
 {
-  class _test_core_RouteTokenV4_write_;
   class _test_core_RouteToken_write_;
 }  // namespace testing
 
@@ -21,7 +20,7 @@ namespace core
 {
   class RouteToken: public Token
   {
-    friend testing::_test_core_RouteTokenV4_write_;
+    friend testing::_test_core_RouteToken_write_;
 
    public:
     RouteToken() = default;

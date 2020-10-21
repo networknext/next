@@ -11,6 +11,8 @@ using core::Packet;
 using core::PacketDirection;
 using core::PacketHeader;
 using core::RouterInfo;
+using core::SessionMap;
+using os::Socket;
 using util::ThroughputRecorder;
 
 namespace core
@@ -18,11 +20,7 @@ namespace core
   namespace handlers
   {
     INLINE void client_to_server_handler(
-     Packet& packet,
-     core::SessionMap& session_map,
-     util::ThroughputRecorder& recorder,
-     const RouterInfo& router_info,
-     const os::Socket& socket)
+     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const RouterInfo& router_info, const Socket& socket)
     {
       size_t index = 0;
       size_t length = packet.length;

@@ -14,8 +14,8 @@ using crypto::Nonce;
 
 namespace testing
 {
-  class _test_core_ContinueTokenV4_write_;
-  class _test_core_ContinueTokenV4_read_;
+  class _test_core_ContinueToken_write_;
+  class _test_core_ContinueToken_read_;
   class _test_core_ContinueToken_write_;
   class _test_core_ContinueToken_read_;
 }  // namespace testing
@@ -24,8 +24,8 @@ namespace core
 {
   class ContinueToken: public Token
   {
-    friend testing::_test_core_ContinueTokenV4_write_;
-    friend testing::_test_core_ContinueTokenV4_read_;
+    friend testing::_test_core_ContinueToken_write_;
+    friend testing::_test_core_ContinueToken_read_;
 
    public:
     ContinueToken() = default;

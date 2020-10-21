@@ -12,7 +12,7 @@ using core::RouteToken;
 using net::Address;
 using net::AddressType;
 
-TEST(core_RouteTokenV4_general)
+TEST(core_RouteToken_general)
 {
   RouterInfo info;
   Packet packet;
@@ -80,7 +80,7 @@ TEST(core_RouteTokenV4_general)
   CHECK(input_token.next_addr == output_token.next_addr);
 }
 
-TEST(core_RouteTokenV4_write)
+TEST(core_RouteToken_write)
 {
   const auto expire_timestamp = random_whole<uint64_t>();
   const auto session_id = random_whole<uint64_t>();

@@ -12,7 +12,7 @@ using core::PacketHeader;
 using core::PacketType;
 using crypto::GenericKey;
 
-TEST(core_PacketHeaderV4_client_to_server)
+TEST(core_PacketHeader_client_to_server)
 {
   const GenericKey private_key = random_private_key();
 
@@ -45,7 +45,7 @@ TEST(core_PacketHeaderV4_client_to_server)
   CHECK(header.verify(packet, index, PacketDirection::ClientToServer, private_key));
 }
 
-TEST(core_PacketHeaderV4_server_to_client)
+TEST(core_PacketHeader_server_to_client)
 {
   const GenericKey private_key = [] {
     GenericKey private_key;
