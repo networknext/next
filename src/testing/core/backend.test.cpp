@@ -96,7 +96,7 @@ TEST(core_Backend_init_valid)
 // The relay should then attempt to ack the backend.
 // It won't receive a success response from the backend so instead it will
 // live for 60 seconds and skip the ack
-TEST(core_Backend_updateCycle_shutdown_60s)
+TEST(core_Backend_update_loop_shutdown_60s)
 {
   Clock test_clock;
 
@@ -130,7 +130,7 @@ TEST(core_Backend_updateCycle_shutdown_60s)
 // The relay should then attempt to ack the backend and shutdown for 30 seconds.
 // It will receive a success response and then live for another 30 seconds.
 // The 60 second timeout will not apply here
-TEST(core_Backend_updateCycle_ack_and_30s)
+TEST(core_Backend_update_loop_ack_and_30s)
 {
   Clock test_clock;
 
@@ -164,7 +164,7 @@ TEST(core_Backend_updateCycle_ack_and_30s)
 // After which it will get a success and then proceed with the normal routine of waiting 30 seconds
 // The amount of time waited will be greater than 60 seconds
 // This is to assert the update_cycle will ignore the 60 second timeout if the backend gets an update
-TEST(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
+TEST(core_Backend_update_loop_no_ack_for_40s_then_ack_then_wait)
 {
   Clock test_clock;
 
@@ -201,7 +201,7 @@ TEST(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 // After the max attempts is reached it will shutdown.
 // But because the success value is never reset to true, the cleanshutdown ack will never succeed
 // so the final duration should be 2 seconds of success and (MaxUpdateAttempts - 1) seconds of failure.
-TEST(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
+TEST(core_Backend_update_loop_update_fails_for_max_number_of_attempts)
 {
   Clock test_clock;
 
@@ -235,7 +235,7 @@ TEST(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 }
 
 // When clean shutdown is not set to true, the function should return immediately
-TEST(core_Backend_updateCycle_no_clean_shutdown)
+TEST(core_Backend_update_loop_no_clean_shutdown)
 {
   Clock test_clock;
 

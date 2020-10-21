@@ -11,7 +11,6 @@
 #include "core/packet_processing.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
-#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "net/http.hpp"

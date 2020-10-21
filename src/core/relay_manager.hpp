@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/route_stats.hpp"
-#include "crypto/hash.hpp"
 #include "net/address.hpp"
 #include "ping_history.hpp"
 #include "relay_stats.hpp"

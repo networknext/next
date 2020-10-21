@@ -4,7 +4,6 @@
 #include "core/relay_manager.hpp"
 #include "core/route_token.hpp"
 #include "core/throughput_recorder.hpp"
-#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
@@ -120,18 +119,8 @@ namespace core
         continue;
       }
 
-      bool is_signed = false;
-
       PacketType type;
-      if (crypto::is_network_next_packet(packet.buffer, 0, packet.length)) {
-        type = static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
-        is_signed = true;
-        LOG(DEBUG, "sdk3 packet: ", type);
-      } else {
-        type = static_cast<PacketType>(packet.buffer[0]);
-        LOG(DEBUG, "non-hash packet: ", type);
-      }
-
+      type = static_cast<PacketType>(packet.buffer[0]);
       size_t header_bytes = 0;
 
       if (packet.addr.type == net::AddressType::IPv4) {
@@ -152,81 +141,41 @@ namespace core
           recorder.pong_rx.add(whole_packet_size);
           handlers::relay_pong_handler(packet, relay_manager, should_handle);
         } break;
-
-        // SDK 3.x.x
         case PacketType::RouteRequest: {
           recorder.route_request_rx.add(whole_packet_size);
-          handlers::route_request_handler(packet, keychain, session_map, recorder, router_info, socket, is_signed);
+          handlers::route_request_handler(packet, keychain, session_map, recorder, router_info, socket);
         } break;
         case PacketType::RouteResponse: {
           recorder.route_response_rx.add(whole_packet_size);
-          handlers::route_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::route_response_handler(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::ClientToServer: {
           recorder.client_to_server_rx.add(whole_packet_size);
-          handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::ServerToClient: {
           recorder.server_to_client_rx.add(whole_packet_size);
-          handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::SessionPing: {
           recorder.session_ping_rx.add(whole_packet_size);
-          handlers::session_ping_handler(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::session_ping_handler(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::SessionPong: {
           recorder.session_pong_rx.add(whole_packet_size);
-          handlers::session_pong_handler(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::session_pong_handler(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::ContinueRequest: {
           recorder.continue_request_rx.add(whole_packet_size);
-          handlers::continue_request_handler(packet, session_map, keychain, recorder, router_info, socket, is_signed);
+          handlers::continue_request_handler(packet, session_map, keychain, recorder, router_info, socket);
         } break;
         case PacketType::ContinueResponse: {
           recorder.continue_response_rx.add(whole_packet_size);
-          handlers::continue_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::continue_response_handler(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::NearPing: {
           recorder.near_ping_rx.add(whole_packet_size);
-          handlers::near_ping_handler(packet, recorder, socket, is_signed);
-        } break;
-
-          // SDK 4.x.x
-        case PacketType::RouteRequest4: {
-          recorder.route_request_rx.add(whole_packet_size);
-          handlers::route_request_handler_sdk4(packet, keychain, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::RouteResponse4: {
-          recorder.route_response_rx.add(whole_packet_size);
-          handlers::route_response_handler_sdk4(packet, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::ClientToServer4: {
-          recorder.client_to_server_rx.add(whole_packet_size);
-          handlers::client_to_server_handler_sdk4(packet, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::ServerToClient4: {
-          recorder.server_to_client_rx.add(whole_packet_size);
-          handlers::server_to_client_handler_sdk4(packet, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::SessionPing4: {
-          recorder.session_ping_rx.add(whole_packet_size);
-          handlers::session_ping_handler_sdk4(packet, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::SessionPong4: {
-          recorder.session_pong_rx.add(whole_packet_size);
-          handlers::session_pong_handler_sdk4(packet, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::ContinueRequest4: {
-          recorder.continue_request_rx.add(whole_packet_size);
-          handlers::continue_request_handler_sdk4(packet, session_map, keychain, recorder, router_info, socket);
-        } break;
-        case PacketType::ContinueResponse4: {
-          recorder.continue_response_rx.add(whole_packet_size);
-          handlers::continue_response_handler_sdk4(packet, session_map, recorder, router_info, socket);
-        } break;
-        case PacketType::NearPing4: {
-          recorder.near_ping_rx.add(whole_packet_size);
-          handlers::near_ping_handler_sdk4(packet, recorder, socket);
+          handlers::near_ping_handler(packet, recorder, socket);
         } break;
         default: {
           recorder.unknown_rx.add(whole_packet_size);
