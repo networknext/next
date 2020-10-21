@@ -10,12 +10,15 @@ import (
 )
 
 const (
-	APIKEY        = "b4aefe551af3c1167fc6bfa257786874-us20"
-	SERVER_PREFIX = "us20"
-	LIST_ID       = "553903bc6f"
+	APIKEY = "b4aefe551af3c1167fc6bfa257786874-us20"
 )
 
-func TagNewSignup(email string) error {
+type MailChimpHandler struct {
+	HTTPHandler http.Client
+	MembersURI  string
+}
+
+func (h *MailChimpHandler) TagNewSignup(email string) error {
 	if email == "" {
 		err := fmt.Errorf("TagNewSignup() email can not be empty")
 		return err
@@ -38,7 +41,7 @@ func TagNewSignup(email string) error {
 	}
 	payload := bytes.NewBuffer(jsonValue)
 
-	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s/tags", SERVER_PREFIX, LIST_ID, fmt.Sprintf("%x", emailHash))
+	URL := fmt.Sprintf("%s/%s/tags", h.MembersURI, fmt.Sprintf("%x", emailHash))
 
 	req, err := http.NewRequest("POST", URL, payload)
 	if err != nil {
@@ -48,16 +51,16 @@ func TagNewSignup(email string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth("key", APIKEY)
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("TagNewSignup() failed to tag contact")
+	resp, err := h.HTTPHandler.Do(req)
+	if err != nil || !(resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK) {
+		err = fmt.Errorf("TagNewSignup() failed to tag contact: error: %v, status: %v", err, resp.StatusCode)
 		return err
 	}
 	defer resp.Body.Close()
 	return nil
 }
 
-func AddEmailToMailChimp(email string) error {
+func (h *MailChimpHandler) AddEmailToMailChimp(email string) error {
 	if email == "" {
 		err := fmt.Errorf("TagNewSignup() email can not be empty")
 		return err
@@ -73,9 +76,7 @@ func AddEmailToMailChimp(email string) error {
 		return err
 	}
 
-	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", SERVER_PREFIX, LIST_ID)
-
-	req, err := http.NewRequest("POST", URL, bytes.NewBuffer(jsonValue))
+	req, err := http.NewRequest("POST", h.MembersURI, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		err = fmt.Errorf("AddSignupToMailChimp() failed to setup request: %v", err)
 		return err
@@ -83,9 +84,9 @@ func AddEmailToMailChimp(email string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth("key", APIKEY)
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("AddSignupToMailChimp() failed to send email")
+	resp, err := h.HTTPHandler.Do(req)
+	if err != nil || !(resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK) {
+		err = fmt.Errorf("TagNewSignup() failed to tag contact: error: %v, status: %v", err, resp.StatusCode)
 		return err
 	}
 	defer resp.Body.Close()
