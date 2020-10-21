@@ -33,21 +33,21 @@ func TestSQL(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Sync", func(t *testing.T) {
-		sync, err := db.CheckSequenceNumber(ctx)
+		sync, _, err := db.CheckSequenceNumber(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, true, sync)
 	})
 
 	t.Run("Do Not Sync", func(t *testing.T) {
 		// CheckSequenceNumber() (above) syncs local to remote
-		sync, err := db.CheckSequenceNumber(ctx)
+		sync, _, err := db.CheckSequenceNumber(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, false, sync)
 	})
 
 	t.Run("IncrementSequenceNumber", func(t *testing.T) {
 		err = db.IncrementSequenceNumber(ctx)
-		sync, err := db.CheckSequenceNumber(ctx)
+		sync, _, err := db.CheckSequenceNumber(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, true, sync)
 	})

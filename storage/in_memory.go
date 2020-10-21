@@ -496,10 +496,10 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 	return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenter.ID}
 }
 
-func (m *InMemory) CheckSequenceNumber(ctx context.Context) (bool, error) {
+func (m *InMemory) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 
 	err := fmt.Errorf("SetSequenceNumber not implemented in InMemory")
-	return false, err
+	return false, -1, err
 }
 
 func (m *InMemory) IncrementSequenceNumber(ctx context.Context) error {

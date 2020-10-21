@@ -469,17 +469,17 @@ func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error 
 // "true" forces the caller to sync from the database and updates
 // the local sequence number. "false" does not force a sync and does
 // not modify the local number.
-func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, error) {
+func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 	var sequenceNumber int64
 
 	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
 
 	if err == sql.ErrNoRows {
 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-		return false, err
+		return false, -1, err
 	} else if err != nil {
 		level.Error(db.Logger).Log("during", "query error", "err", err)
-		return false, err
+		return false, -1, err
 	}
 
 	db.sequenceNumberMutex.RLock()
@@ -490,13 +490,13 @@ func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, error) {
 		db.sequenceNumberMutex.Lock()
 		db.SyncSequenceNumber = sequenceNumber
 		db.sequenceNumberMutex.Unlock()
-		return true, nil
+		return true, sequenceNumber, nil
 	} else if localSeqNum == sequenceNumber {
-		return false, nil
+		return false, -1, nil
 	} else {
 		err = fmt.Errorf("local sequence number larger than remote: %d > %d", localSeqNum, sequenceNumber)
 		level.Error(db.Logger).Log("during", "query error", "err", err)
-		return false, err
+		return false, -1, err
 	}
 }
 
@@ -562,13 +562,18 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 // Sync is a utility function that calls the individual sync* methods
 func (db *SQL) Sync(ctx context.Context) error {
 
-	seqNumberNotInSync, err := db.CheckSequenceNumber(ctx)
+	seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
 	if err != nil {
 		return err
 	}
+
 	if !seqNumberNotInSync {
 		return nil
 	}
+
+	db.sequenceNumberMutex.Lock()
+	db.SyncSequenceNumber = value
+	db.sequenceNumberMutex.Unlock()
 
 	var outerErr error
 	var wg sync.WaitGroup

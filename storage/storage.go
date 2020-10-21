@@ -121,7 +121,7 @@ type Storer interface {
 	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 
 	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
-	CheckSequenceNumber(ctx context.Context) (bool, error)
+	CheckSequenceNumber(ctx context.Context) (bool, int64, error)
 
 	// IncrementSequenceNumber is used by all methods that make changes to the db
 	IncrementSequenceNumber(ctx context.Context) error
@@ -168,15 +168,7 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 			return nil, err
 		}
 
-<<<<<<< HEAD
 		pgsql, err := strconv.ParseBool(pgsqlStr)
-=======
-	shouldFill := false
-	switch db := db.(type) {
-	case *Firestore:
-		level.Info(logger).Log("msg", "adding sequence number to firestore emulator")
-		_, _, err := db.CheckSequenceNumber(ctx)
->>>>>>> master
 		if err != nil {
 			err := fmt.Errorf("NewStorage() error decoding PGSQL (%s): %w", pgsqlStr, err)
 			return nil, err
@@ -184,45 +176,8 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 		if pgsql {
 			db, err = NewPostgreSQL(ctx, logger)
 			if err != nil {
-<<<<<<< HEAD
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
-=======
-				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v\n", err))
-			}
-			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore\n", numRelays))
-			for i := uint64(0); i < numRelays; i++ {
-				addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
-				id := crypto.HashID(addr.String())
-				if err := db.AddRelay(ctx, routing.Relay{
-					Name:           fmt.Sprintf("local.test_relay.%d", i),
-					ID:             id,
-					SignedID:       int64(id),
-					Addr:           addr,
-					PublicKey:      relayPublicKey,
-					Seller:         seller,
-					Datacenter:     datacenter,
-					ManagementAddr: addr.String(),
-					SSHUser:        "root",
-					SSHPort:        22,
-					MaxSessions:    3000,
-					MRC:            19700000000000,
-					Overage:        26000000000000,
-					BWRule:         routing.BWRuleBurst,
-					ContractTerm:   12,
-					StartDate:      time.Now(),
-					EndDate:        time.Now(),
-					Type:           routing.BareMetal,
-					State:          routing.RelayStateOffline,
-					NICSpeedMbps:   1000,
-				}); err != nil {
-					level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-					os.Exit(1)
-				}
-				if i%25 == 0 {
-					time.Sleep(time.Millisecond * 500)
-				}
->>>>>>> master
 			}
 		} else {
 			db, err = NewSQLite3(ctx, logger)
