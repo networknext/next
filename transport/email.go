@@ -16,6 +16,10 @@ const (
 )
 
 func TagNewSignup(email string) error {
+	if email == "" {
+		err := fmt.Errorf("TagNewSignup() email can not be empty")
+		return err
+	}
 	emailHash := md5.Sum([]byte(strings.ToLower(email)))
 
 	tags := map[string]interface{}{
@@ -53,7 +57,11 @@ func TagNewSignup(email string) error {
 	return nil
 }
 
-func AddSignupToMailChimp(email string) error {
+func AddEmailToMailChimp(email string) error {
+	if email == "" {
+		err := fmt.Errorf("TagNewSignup() email can not be empty")
+		return err
+	}
 	payload := map[string]string{
 		"email_address": email,
 		"status":        "pending",
