@@ -11,7 +11,6 @@ DIST_DIR="${DIR}/../dist"
 
 ENV=
 SERVICE=
-CUSTOMER=
 ARTIFACT_BUCKET=
 
 build-artifacts() {
@@ -35,11 +34,6 @@ build-artifacts() {
     cp ./cmd/portal/${ENV}-old.env ${DIST_DIR}/artifact/${SERVICE}/app.env
     cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../portal.${ENV}.tar.gz public app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-  elif { [ "$SERVICE" = "server_backend" ] || [ "$SERVICE" = "server_backend4" ]; } && [ -n "$CUSTOMER" ]; then
-		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
-		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
-		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}-${CUSTOMER}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
 	else
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
@@ -47,11 +41,7 @@ build-artifacts() {
 		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
 	fi
 
-  if { [ "$SERVICE" = "server_backend" ] || [ "$SERVICE" = "server_backend4" ]; } && [ -n "$CUSTOMER" ]; then
-	  printf "${DIST_DIR}/${SERVICE}-${CUSTOMER}.${ENV}.tar.gz\n"
-  else
-    printf "${DIST_DIR}/${SERVICE}.${ENV}.tar.gz\n"
-  fi
+  printf "${DIST_DIR}/${SERVICE}.${ENV}.tar.gz\n"
 	printf "done\n"
 }
 
@@ -59,11 +49,10 @@ print_usage() {
   printf "Usage: build-artifacts.sh -e environment -s service -b artifact bucket\n\n"
   printf "e [string]\tBuilding environment [dev, staging, prod]\n"
   printf "s [string]\tService being built [portal, portal_cruncher, server_backend, etc]\n"
-  printf "c [string][optional]\tCustomer server backend name [esl-22dr]\n"
   printf "b [string][optional]\tBucket for portal dist folder\n"
 
   printf "Example:\n\n"
-  printf "> build-artifacts.sh -e dev -s portal\n"
+  printf "> build-artifacts.sh -e dev -s portal -b gs://development_artifacts\n"
 }
 
 if [ ! $# -ge 4 ]
@@ -72,11 +61,10 @@ then
   exit 1
 fi
 
-while getopts 'e:b:s:c:h' flag; do
+while getopts 'e:b:s:h' flag; do
   case "${flag}" in
     e) ENV="${OPTARG}" ;;
     s) SERVICE="${OPTARG}" ;;
-    c) CUSTOMER="${OPTARG}" ;;
     b) ARTIFACT_BUCKET="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
