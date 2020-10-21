@@ -22,23 +22,25 @@ This is a monorepo that contains the Network Next backend.
 4. Once your pull request has been reviewed merge it into `master`
 5. To deploy to dev, merge either your branch or `master` into the `dev` branch
 6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
-7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `billing`, `portal`, and `portal_cruncher`.
-8. The server and relay dev backends must be deployed with the make tool via `make deploy-server-backend` and `make deploy-relay-backend`.
+7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `analytics`, `billing`, `portal`, and `server_backend`.
+8. The relay backend must be deployed with the make tool via `make deploy-relay-backend-dev`.
 
 ### Production Release
 
 1. Ensure tests pass locally as a sanity check
 2. Create a PR to push your changes to the "prod" branch
 5. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
-5. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code, in this order: 
-	1. relay backend
-	2. portal backend
-	3. billing backend
-	4. server backend
+4. Manually trigger a deploy to the relay backend with the make tool via `make deploy-relay-backend-prod`.
+5. Manually trigger a deploy to the portal cruncher with the make tool via `make deploy-portal-cruncher-prod`.
+6. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code, in this order: 
+	1. portal
+	2. billing
+	3. analytics
+	3. server_backend
 
 ## Development
 
-IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in the [SDK](https://github.com/networknext/console). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
+IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in the [SDK](https://github.com/networknext/console) and the [Relay](https://github.com/networknext/relay). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
 
 ```bash
 git clone git@github.com:networknext/backend.git
@@ -171,7 +173,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
 
-1. `redis-cli flushall && make BACKEND_LOG_LEVEL=info dev-relay-backend`: this will clear your local redis completely to start fresh and then run the relay backend
+1. `make BACKEND_LOG_LEVEL=info dev-relay-backend`: run the relay backend
 2. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
 	1. Issues with `pkg-config` not finding `libgtop-2.0` (Linux)
 		1. Install gtk, gtop2, and rsvg2 `sudo apt-get install libgtk-3-dev libgtop2-dev librsvg2-dev`
@@ -183,7 +185,7 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 		3. Use the bootstrap setup with the prefix for where the parent of the `include` directory for header files is located (_i.e._ `/usr/`) `./bootstrap.sh --prefix=/usr/`
 		4. Build boost `./b2`
 		5. Install boost `sudo ./b2 install`
-3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every second
+3. `redis-cli flushall &&make BACKEND_LOG_LEVEL=info dev-server-backend`: this will clear your local redis completely to start fresh and then run the server backend and start pulling route information from the relay backend every second
 4. `make dev-portal-cruncher`: this will run the portal cruncher service that takes portal data from the server backend and inserts it into redis for the portal to use
 5. `make dev-server`: this will run a fake game server and register itself with the server backend
 6. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
@@ -194,13 +196,15 @@ You should see the fake game server upgrade the clients session and get `(next r
 
 Simultaneously you will see the terminal with the relays logging `session created` indicating traffic is passing through relays.
 
+NOTE: It will take 5 minutes before sessions are served network next routes. Until then, you will only see `(direct route)`.
+
 ## Local Billing
 
 It is also possible to locally debug what data is being sent to the `billing` service. To verify that the data being sent to `billing` is correct:
 
 1. Make sure you have the pubsub emulator installed (instructions are in [Recommended Setup](#Recommended-Setup))
-2. Define `PUBSUB_EMULATOR_HOST` in the makefile (ex. define it as `localhost:9000`)
-3. Along with the rest of the [Happy Path](#Running-the-"Happy-Path"), run the Google Pub/Sub Emulator with `gcloud beta emulators pubsub start --project=local --host-port=localhost:9000`
+2. Define `PUBSUB_EMULATOR_HOST` in the makefile or in the command (ex. define it as `127.0.0.1:9000`)
+3. Along with the rest of the [Happy Path](#Running-the-"Happy-Path"), run the Google Pub/Sub Emulator with `gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000`
 3. run `make BACKEND_LOG_LEVEL=debug dev-billing`
 
 This will use a local billing implementation to print out the billing entry to the console window.
@@ -215,6 +219,7 @@ All of these services are controlled and deployed by us.
 - [`cmd/server_backend`](cmd/server_backend)
 - [`cmd/portal_cruncher`](cmd/portal_cruncher)
 - [`cmd/billing`](cmd/billing)
+- [`cmd/analytics`](cmd/analytics)
 
 ## SDK
 
@@ -273,7 +278,7 @@ Install the gcloud firestore emulator: (Note that the emulator needs a Java Runt
 or
 `sudo apt install google-cloud-sdk-firestore-emulator`
 
-    Add the environment variable `FIRESTORE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8000`).
+    Add the environment variable `FIRESTORE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:8000`).
 
 Stackdriver Metrics:
 Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
@@ -286,7 +291,7 @@ Install the gcloud pubsub emulator: (Note that the emulator needs a Java Runtime
 or
 `sudo apt install google-cloud-sdk-pubsub-emulator`
 
-    Add the environment variable `FIRESTORE_PUBSUB_HOST` to your makefile with the local address of the emulator (ex. `localhost:9000`).
+    Add the environment variable `FIRESTORE_PUBSUB_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
 
 ## Functional Tests
 
