@@ -10,8 +10,8 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
@@ -102,8 +102,9 @@ func TestSequenceNumbers(t *testing.T) {
 		// CheckSequenceNumber() should return true as the remote seq value
 		// has been incremented, but the local value is still zero from above
 		// (true -> sync from Firestore)
-		same, err := fs.CheckSequenceNumber(ctx)
+		same, val, err := fs.CheckSequenceNumber(ctx)
 		assert.Equal(t, true, same)
+		assert.Equal(t, int64(0), val)
 		assert.NoError(t, err)
 
 	})
@@ -122,8 +123,9 @@ func TestSequenceNumbers(t *testing.T) {
 
 		// CheckSequenceNumber() should return false as the remote seq value
 		// has not been incremented and the local value is the initial defautl (-1)
-		same, err := fs.CheckSequenceNumber(ctx)
+		same, val, err := fs.CheckSequenceNumber(ctx)
 		assert.Equal(t, false, same)
+		assert.Equal(t, int64(-1), val)
 		assert.NoError(t, err)
 
 	})
