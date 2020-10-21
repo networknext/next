@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	SessionCountDataVersion = 0
-	SessionDataVersion      = 1
-	SessionMetaVersion      = 0
-	SessionSliceVersion     = 0
-	SessionMapPointVersion  = 0
+	SessionCountDataVersion  = 0
+	SessionPortalDataVersion = 1
+	SessionMetaVersion       = 0
+	SessionSliceVersion      = 0
+	SessionMapPointVersion   = 0
 )
 
 type SessionPortalData struct {
@@ -39,7 +39,7 @@ func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionPortalData] invalid read at version number")
 	}
 
-	if version > SessionDataVersion {
+	if version > SessionPortalDataVersion {
 		return fmt.Errorf("unknown session data version: %d", version)
 	}
 
@@ -102,7 +102,7 @@ func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	data := make([]byte, s.Size())
 	index := 0
 
-	encoding.WriteUint32(data, &index, SessionDataVersion)
+	encoding.WriteUint32(data, &index, SessionPortalDataVersion)
 
 	metaBytes, err := s.Meta.MarshalBinary()
 	if err != nil {

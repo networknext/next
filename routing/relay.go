@@ -21,6 +21,8 @@ const (
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
+
+	MaxRelayNameLength = 63
 )
 
 type RelayState uint32
