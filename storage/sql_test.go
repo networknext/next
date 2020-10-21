@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 // TODO: sort environment in/from Makefile
 func SetupEnv() {
 	os.Setenv("ENV", "local")
-	os.Setenv("PGSQL", "true")
+	os.Setenv("PGSQL", "false")
 	os.Setenv("DB_SYNC_INTERVAL", "10s")
 }
 
@@ -56,7 +57,7 @@ func TestSQL(t *testing.T) {
 	// we can't add a seller if there isn't a relevant extant
 	// customer
 
-	// TODO: test "not null" constraints
+	// TODO: test "not null" constraints and failure modes
 	t.Run("AddCustomer", func(t *testing.T) {
 		customer := routing.Customer{
 			Active:                 true,
@@ -78,6 +79,17 @@ func TestSQL(t *testing.T) {
 
 		err = db.AddSeller(ctx, seller)
 		assert.NoError(t, err)
+	})
+
+	t.Run("AddDatacenter", func(t *testing.T) {
+
+		sellers := db.Sellers()
+		if len(sellers) < 1 {
+			assert.Error(t, fmt.Errorf("no sellers returned"))
+		}
+
+		// id := sellers[0]
+
 	})
 
 }

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -242,6 +243,8 @@ type sqlSeller struct {
 	EgressPriceNibblinsPerGB  int64 `firestore:"pricePublicEgressNibblins"`
 }
 
+// The seller_id is reqired by the schema. The client interface must already have a
+// seller defined.
 func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	var sql bytes.Buffer
 	// Check if the seller exists
@@ -273,8 +276,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	// Add the seller in remote storage
 	sql.Write([]byte("insert into sellers ("))
 	sql.Write([]byte("public_egress_price, public_ingress_price, customer_id"))
-	sql.Write([]byte(") values ($1, $2, "))
-	sql.Write([]byte("(select id from customers where customer_name ilike $3))"))
+	sql.Write([]byte(") values ($1, $2, $3)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -681,12 +683,19 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	return nil
 }
 
-// AddDatacenter adds the provided datacenter to storage and returns an error if the datacenter could not be added.
+// AddDatacenter adds the provided datacenter to storage. It enforces business rule
+// that datacenter names are of the form: "seller"."location"."optional number/enum"
+//
+// The seller_id is reqired by the schema. The client interface must already have a
+// seller defined.
 func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
 
 	var sql bytes.Buffer
+
+	// TODO make sure it doesn't already exist
+
 	dc := sqlDatacenter{
-		Name:         datacenter.Name,
+		Name:         strings.Split(datacenter.Name, ".")[0],
 		Enabled:      datacenter.Enabled,
 		Latitude:     datacenter.Location.Latitude,
 		Longitude:    datacenter.Location.Longitude,
@@ -698,6 +707,8 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	sql.Write([]byte("insert into datacenters ("))
 	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
 	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5, $6, $7)"))
+
+	// sql.Write([]byte(" )")))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {

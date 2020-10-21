@@ -4,18 +4,33 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/networknext/backend/routing"
 )
 
-// NewSQLite3 returns an SQLite3 backed database pointer
+// NewSQLite3 returns an SQLite3 backed database pointer. This package is
+// only used for unit testing.
 func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
-	sqlite3, err := sql.Open("sqlite3", "./network_next.sql")
+
+	// remove the old db file if it exists (SQLite3 save one by default when
+	// exiting)
+	if _, err := os.Stat("network_next.db"); err == nil || os.IsExist(err) {
+		err = os.Remove("network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
+			return nil, err
+		}
+	}
+
+	sqlite3, err := sql.Open("sqlite3", "network_next.db")
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 		return nil, err
@@ -31,6 +46,23 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
 		SyncSequenceNumber: -1,
+	}
+
+	// populate the db with some data from dev
+	file, err := ioutil.ReadFile("sqlite3.sql")
+	if err != nil {
+		err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
+		return nil, err
+	}
+
+	requests := strings.Split(string(file), ";")
+
+	for _, request := range requests {
+		_, err := db.Client.Exec(request)
+		if err != nil {
+			fmt.Printf("NewSQLite3() error executing seed file sql line: %v\n", err)
+			// return nil, err
+		}
 	}
 
 	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
