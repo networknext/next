@@ -20,7 +20,7 @@ TEST(core_Expireable_expired)
   router_info.set_timestamp(clock.unix_time<Second>());
   expireable.expire_timestamp = router_info.current_time<uint64_t>() + 10;
   std::this_thread::sleep_for(10s);
-  CHECK(!expireable.expired(router_info));
+  CHECK(!expireable.expired(router_info.current_time<uint64_t>()));
   std::this_thread::sleep_for(1s);
-  CHECK(expireable.expired(router_info));
+  CHECK(expireable.expired(router_info.current_time<uint64_t>()));
 }

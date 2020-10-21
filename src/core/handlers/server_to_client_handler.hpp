@@ -49,7 +49,7 @@ namespace core
         return;
       }
 
-      if (session->expired(router_info)) {
+      if (session->expired(router_info.current_time<uint64_t>())) {
         LOG(ERROR, "session expired: session = ", *session);
         session_map.erase(hash);
         return;

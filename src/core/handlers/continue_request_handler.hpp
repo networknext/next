@@ -49,8 +49,8 @@ namespace core
         }
       }
 
-      if (token.expired(router_info)) {
-        LOG(ERROR, "ignoring continue request. token is expired");
+      if (token.expired(router_info.current_time<uint64_t>())) {
+        LOG(INFO, "ignoring continue request. token is expired");
         return;
       }
 
@@ -63,8 +63,8 @@ namespace core
         return;
       }
 
-      if (session->expired(router_info)) {
-        LOG(ERROR, "ignoring continue request. session is expired");
+      if (session->expired(router_info.current_time<uint64_t>())) {
+        LOG(INFO, "ignoring continue request. session is expired");
         session_map.erase(hash);
         return;
       }

@@ -10,6 +10,7 @@
 #include "session_map.hpp"
 #include "testing/test.hpp"
 #include "util/logger.hpp"
+#include "util/clock.hpp"
 
 using core::SessionMap;
 using crypto::GenericKey;
@@ -17,6 +18,7 @@ using crypto::KEY_SIZE;
 using crypto::Keychain;
 using crypto::Nonce;
 using net::IHttpClient;
+using util::Clock;
 using util::ThroughputRecorder;
 
 // forward declare test names to allow private functions to be visible them
@@ -30,9 +32,10 @@ namespace core
 {
   extern const char* RELAY_VERSION;
   const uint32_t INIT_REQUEST_MAGIC = 0x9083708f;
-  const uint32_t INIT_REQUEST_VERSION = 0;
+
+  const uint32_t INIT_REQUEST_VERSION = 1;
   const uint32_t INIT_RESPONSE_VERSION = 0;
-  const uint32_t UPDATE_REQUEST_VERSION = 1;
+  const uint32_t UPDATE_REQUEST_VERSION = 2;
   const uint32_t UPDATE_RESPONSE_VERSION = 0;
 
   const uint8_t MAX_UPDATE_ATTEMPTS = 11;  // 1 initial + 10 more for failures
@@ -65,11 +68,13 @@ namespace core
 
   struct UpdateRequest
   {
-    uint32_t version;
+    uint32_t version = UPDATE_REQUEST_VERSION;
     std::string address;
     GenericKey public_key;
     RelayStats ping_stats;
     uint64_t session_count;
+    uint64_t envelope_up;
+    uint64_t envelope_down;
     uint64_t outbound_ping_tx;
     uint64_t route_request_rx;
     uint64_t route_request_tx;
@@ -96,7 +101,6 @@ namespace core
     bool shutting_down;
     double cpu_usage;
     double mem_usage;
-    std::string relay_version;
 
     auto from(const std::vector<uint8_t>& v) -> bool;
   };
@@ -106,7 +110,7 @@ namespace core
     uint32_t version;
     uint64_t timestamp;
     uint32_t num_relays;
-    std::array<RelayPingInfo, MAX_RELAYS> Relays;
+    std::array<RelayPingInfo, MAX_RELAYS> relays;
 
     auto size() -> size_t;
     auto into(std::vector<uint8_t>& v) -> bool;
@@ -122,6 +126,14 @@ namespace core
   {
     friend testing::_test_core_Backend_update_valid_;
     friend testing::_test_core_Backend_update_shutting_down_true_;
+
+    enum class UpdateResult
+    {
+      Success,
+      FailureMaxAttemptsReached,
+      FailureTimeoutReached,
+      FailureOther,
+    };
 
    public:
     Backend(
@@ -141,10 +153,8 @@ namespace core
      * Returns true as long as the relay doesn't reach the max number of failed update attempts
      */
     auto update_loop(
-     const volatile bool& should_loop,
-     const volatile bool& should_shutdown_clean,
-     ThroughputRecorder& logger,
-     SessionMap& sessions) -> bool;
+     volatile bool& should_loop, const volatile bool& should_clean_shutdown, ThroughputRecorder& logger, SessionMap& sessions)
+     -> bool;
 
    private:
     const std::string hostname;
@@ -160,6 +170,6 @@ namespace core
     // be saved from the init response
     GenericKey update_token;
 
-    auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
+    auto update(util::ThroughputRecorder& recorder, bool shutdown, const volatile bool& should_retry) -> UpdateResult;
   };
 }  // namespace core
