@@ -30,7 +30,7 @@ namespace core
     auto size() const -> size_t;
 
     /* Remove all entries past the given timestamp */
-    void purge(const RouterInfo& router_info);
+    void purge(const uint64_t backend_timestamp);
 
     auto envelope_up_total() const -> size_t;
 
@@ -66,11 +66,13 @@ namespace core
   INLINE auto SessionMap::erase(uint64_t key) -> bool
   {
     std::lock_guard<std::mutex> lk(this->mutex);
-    auto v = this->internal_map[key];
-    bool existed = this->internal_map.erase(key) > 0;
-    if (existed) {
+    bool existed = false;
+    if (this->internal_map.find(key) != this->internal_map.end()) {
+      existed = true;
+      auto v = this->internal_map[key];
       this->envelope_bandwidth_kbps_up -= v->kbps_up;
       this->envelope_bandwidth_kbps_down -= v->kbps_down;
+      this->internal_map.erase(key);
     }
     return existed;
   }
@@ -81,12 +83,12 @@ namespace core
     return this->internal_map.size();
   }
 
-  INLINE void SessionMap::purge(const RouterInfo& router_info)
+  INLINE void SessionMap::purge(const uint64_t backend_timestamp)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     auto iter = this->internal_map.begin();
     while (iter != this->internal_map.end()) {
-      if (iter->second && iter->second->expired(router_info)) {
+      if (iter->second && iter->second->expired(backend_timestamp)) {
         this->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
         this->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
         iter = this->internal_map.erase(iter);

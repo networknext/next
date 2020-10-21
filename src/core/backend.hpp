@@ -10,6 +10,7 @@
 #include "session_map.hpp"
 #include "testing/test.hpp"
 #include "util/logger.hpp"
+#include "util/clock.hpp"
 
 using core::SessionMap;
 using crypto::GenericKey;
@@ -17,6 +18,7 @@ using crypto::KEY_SIZE;
 using crypto::Keychain;
 using crypto::Nonce;
 using net::IHttpClient;
+using util::Clock;
 using util::ThroughputRecorder;
 
 // forward declare test names to allow private functions to be visible them
@@ -108,7 +110,7 @@ namespace core
     uint32_t version;
     uint64_t timestamp;
     uint32_t num_relays;
-    std::array<RelayPingInfo, MAX_RELAYS> Relays;
+    std::array<RelayPingInfo, MAX_RELAYS> relays;
 
     auto size() -> size_t;
     auto into(std::vector<uint8_t>& v) -> bool;

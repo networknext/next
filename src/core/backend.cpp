@@ -25,8 +25,7 @@ namespace core
   const double UPDATE_TIMEOUT_SECS = 30.0;
   const double CLEAN_SHUTDOWN_TIMEOUT_SECS = 60.0;
 
-  auto InitRequest::size() -> size_t
-  {
+  auto InitRequest::size() -> size_t {
     return 4 + 4 + nonce.size() + 4 + address.length() + encrypted_token.size() + 4 + relay_version.length();
   }
 
@@ -263,7 +262,7 @@ namespace core
 
     for (size_t i = 0; i < this->num_relays; i++) {
       // only used in tests, so being lazy here;
-      const auto& relay = Relays[i];
+      const auto& relay = relays[i];
       size += relay.address.to_string().length();
     }
 
@@ -291,7 +290,7 @@ namespace core
     }
 
     for (size_t i = 0; i < this->num_relays; i++) {
-      const auto& relay = Relays[i];
+      const auto& relay = relays[i];
 
       if (!encoding::write_uint64(v, index, relay.id)) {
         LOG(TRACE, "could not write relay id");
@@ -327,7 +326,7 @@ namespace core
     }
 
     for (size_t i = 0; i < this->num_relays; i++) {
-      auto& relay = Relays[i];
+      auto& relay = relays[i];
       if (!encoding::read_uint64(v, index, relay.id)) {
         LOG(ERROR, "unable to read update response relay id #", i);
         return false;
@@ -452,7 +451,7 @@ namespace core
           success = should_loop = false;
         } break;
         default: {
-          sessions.purge(this->router_info.current_time());
+          sessions.purge(this->router_info.current_time<uint64_t>());
 
           std::this_thread::sleep_for(1s);
         }
@@ -643,9 +642,9 @@ namespace core
         return UpdateResult::FailureOther;
       }
 
-      if (!this->relay_manager.update(response.num_relays, response.Relays)) {
+      if (!this->relay_manager.update(response.num_relays, response.relays)) {
         LOG(ERROR, "could not update relay manager");
-        return false;
+        return UpdateResult::FailureOther;
       }
     }
 

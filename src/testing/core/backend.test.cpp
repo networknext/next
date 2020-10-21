@@ -337,14 +337,14 @@ TEST(core_Backend_update_valid)
 
     relay2.id = 246813579;
     CHECK(relay2.address.parse("127.0.0.1:13524"));
-    response.Relays = {
+    response.relays = {
      relay1,
      relay2,
     };
   }
 
   client.response.resize(response.size());
-  response.into(client.response);
+  CHECK(response.into(client.response));
 
   bool should_retry = false;
   CHECK(backend.update(recorder, false, should_retry) == Backend::UpdateResult::Success);

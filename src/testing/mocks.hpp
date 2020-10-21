@@ -19,13 +19,13 @@ namespace testing
   };
 
   INLINE auto MockHttpClient::send_request(
-   const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
+   const std::string hname, const std::string endpt, const std::vector<uint8_t>& req, std::vector<uint8_t>& resp)
    -> bool
   {
-    this->request.assign(request.begin(), request.end());
-    this->response.assign(response.begin(), response.end());
-    this->hostname = hostname;
-    this->endpoint = endpoint;
+    this->request.assign(req.begin(), req.end());
+    resp.assign(this->response.begin(), this->response.end());
+    this->hostname = hname;
+    this->endpoint = endpt;
     return this->success;
   }
 }  // namespace testing

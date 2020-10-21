@@ -49,7 +49,7 @@ namespace core
         }
       }
 
-      if (token.expired(router_info)) {
+      if (token.expired(router_info.current_time<uint64_t>())) {
         LOG(INFO, "ignoring route request, token expired, session = ", token);
         return;
       }
@@ -129,7 +129,7 @@ namespace core
         }
       }
 
-      if (token.expired(router_info)) {
+      if (token.expired(router_info.current_time<uint64_t>())) {
         LOG(INFO, "ignoring route request, token expired, session = ", token);
         return;
       }
