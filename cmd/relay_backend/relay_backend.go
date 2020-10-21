@@ -8,8 +8,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"expvar"
 	"fmt"
 	"net"
@@ -17,25 +15,21 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/logging"
+	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/transport"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	"cloud.google.com/go/pubsub"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
 
 	"github.com/networknext/backend/modules/core"
 )
@@ -47,239 +41,61 @@ var (
 	tag           string
 )
 
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func main() {
+	os.Exit(mainReturnWithCode())
+}
 
-	fmt.Printf("relay_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+func mainReturnWithCode() int {
+	serviceName := "relay_backend"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 
-	// Configure logging
-	logger := log.NewLogfmtLogger(os.Stdout)
-	relayslogger := log.NewLogfmtLogger(os.Stdout)
+	gcpProjectID := backend.GetGCPProjectID()
 
-	var enableSDLogging bool
-	enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-	if ok {
-		var err error
-		enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-			os.Exit(1)
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	relayslogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	env, err := backend.GetEnv()
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
 		}
 	}
 
-	if enableSDLogging {
-		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-			loggingClient, err := gcplogging.NewClient(ctx, projectID)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
-			relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
-		}
+	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-
-		switch os.Getenv("RELAYS_LOG_LEVEL") {
-		case "none":
-			relayslogger = level.NewFilter(relayslogger, level.AllowNone())
-		case level.ErrorValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowError())
-		case level.WarnValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
-		case level.InfoValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowInfo())
-		case level.DebugValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowDebug())
-		default:
-			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
-		}
-		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
-	}
-
-	// Get env
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
-	}
-
-	fmt.Printf("env is %s\n", env)
-
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			customerPublicKey = customerPublicKey[8:]
-		}
-	}
-
-	var customerID uint64
-	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-		customerPublicKey = customerPublicKey[8:]
-	}
-
-	var relayPublicKey []byte
-	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
-	}
-
-	var routerPrivateKey []byte
-	{
-		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
-			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-			os.Exit(1)
-		}
-	}
-
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		fmt.Printf("using firestore emulator\n")
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	if gcpOK || emulatorOK {
-
-		// Firestore
-		{
-			fmt.Printf("initializing firestore\n")
-
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		}
-	}
-
-	if env == "local" {
-		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
-	}
-
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	if gcpOK {
-		// Stackdriver Metrics
-		{
-			fmt.Printf("initializing stackdriver metrics\n")
-
-			var enableSDMetrics bool
-			var err error
-			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-			if ok {
-				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
-				}
-
-				metricsHandler = &sd
-
-				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-				writeInterval, err := time.ParseDuration(sdwriteinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-					os.Exit(1)
-				}
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-				}()
-			}
-		}
-
-		// Stackdriver Profiler
-		{
-			fmt.Printf("initializing stackdriver profiler\n")
-
-			var enableSDProfiler bool
-			var err error
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "relay_backend",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialize StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
-		}
+	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+	if err != nil {
+		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+		return 1
 	}
 
 	// Create relay init metrics
@@ -345,32 +161,26 @@ func main() {
 	}
 
 	// Get the max jitter and max packet loss env vars
-	var maxJitter float64
-	var maxPacketLoss float64
-	{
-		maxJitterString, ok := os.LookupEnv("RELAY_ROUTER_MAX_JITTER")
-		if !ok {
-			level.Error(logger).Log("msg", "env var not set", "envvar", "RELAY_ROUTER_MAX_JITTER")
-			os.Exit(1)
-		}
+	if !envvar.Exists("RELAY_ROUTER_MAX_JITTER") {
+		level.Error(logger).Log("err", "RELAY_ROUTER_MAX_JITTER not set")
+		return 1
+	}
 
-		maxJitter, err = strconv.ParseFloat(maxJitterString, 32)
-		if err != nil {
-			level.Error(logger).Log("err", "could not parse max jitter", "value", maxJitterString)
-			os.Exit(1)
-		}
+	maxJitter, err := envvar.GetFloat("RELAY_ROUTER_MAX_JITTER", 0)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-		maxPacketLossString, ok := os.LookupEnv("RELAY_ROUTER_MAX_PACKET_LOSS")
-		if !ok {
-			level.Error(logger).Log("msg", "env var not set", "envvar", "RELAY_ROUTER_MAX_PACKET_LOSS")
-			os.Exit(1)
-		}
+	if !envvar.Exists("RELAY_ROUTER_MAX_PACKET_LOSS") {
+		level.Error(logger).Log("err", "RELAY_ROUTER_MAX_PACKET_LOSS not set")
+		return 1
+	}
 
-		maxPacketLoss, err = strconv.ParseFloat(maxPacketLossString, 32)
-		if err != nil {
-			level.Error(logger).Log("err", "could not parse max packet loss", "value", maxPacketLossString)
-			os.Exit(1)
-		}
+	maxPacketLoss, err := envvar.GetFloat("RELAY_ROUTER_MAX_PACKET_LOSS", 0)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Create the relay map
@@ -392,9 +202,8 @@ func main() {
 	// ping stats
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
-		// Create a no-op publisher
-		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if gcpOK || emulatorOK {
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
 
 			pubsubCtx := ctx
 			if emulatorOK {
@@ -420,7 +229,7 @@ func main() {
 				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					os.Exit(1)
+					return 1
 				}
 
 				pingStatsPublisher = pubsub
@@ -428,22 +237,19 @@ func main() {
 		}
 
 		go func() {
-			sleepTime := time.Minute
-			if publishInterval, ok := os.LookupEnv("PING_STATS_PUBLISH_INTERVAL"); ok {
-				if duration, err := time.ParseDuration(publishInterval); err == nil {
-					sleepTime = duration
-				} else {
-					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
-				}
+			publishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", time.Minute)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
 			for {
-				time.Sleep(sleepTime)
+				time.Sleep(publishInterval)
 				cpy := statsdb.MakeCopy()
 				entries := analytics.ExtractPingStats(cpy)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
-					os.Exit(1)
+					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 				}
 			}
 		}()
@@ -452,8 +258,8 @@ func main() {
 	// relay stats
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	{
-		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if gcpOK || emulatorOK {
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
 
 			pubsubCtx := ctx
 			if emulatorOK {
@@ -479,7 +285,7 @@ func main() {
 				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					os.Exit(1)
+					return 1
 				}
 
 				relayStatsPublisher = pubsub
@@ -487,17 +293,14 @@ func main() {
 		}
 
 		go func() {
-			sleepTime := time.Second * 10
-			if publishInterval, ok := os.LookupEnv("RELAY_STATS_PUBLISH_INTERVAL"); ok {
-				if duration, err := time.ParseDuration(publishInterval); err == nil {
-					sleepTime = duration
-				} else {
-					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
-				}
+			publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
 			for {
-				time.Sleep(sleepTime)
+				time.Sleep(publishInterval)
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
@@ -524,7 +327,7 @@ func main() {
 					elapsed := time.Since(relay.LastStatsPublishTime)
 					relay.LastStatsPublishTime = time.Now()
 
-					fsrelay, err := db.Relay(relay.ID)
+					fsrelay, err := storer.Relay(relay.ID)
 					if err != nil {
 						continue
 					}
@@ -583,18 +386,17 @@ func main() {
 
 				if err := relayStatsPublisher.Publish(ctx, entries[:count]); err != nil {
 					level.Error(logger).Log("err", err)
-					os.Exit(1)
+					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 				}
 			}
 		}()
 
 	}
 
-	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
-	syncInterval, err := time.ParseDuration(cmsyncinterval)
+	syncInterval, err := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	if err != nil {
-		level.Error(logger).Log("envvar", "COST_MATRIX_INTERVAL", "value", cmsyncinterval, "err", err)
-		os.Exit(1)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Separate route matrix specifically for Valve
@@ -608,13 +410,10 @@ func main() {
 		return rm
 	}
 
-	matrixBufferSize := 100000
-	if matrixBufferSizeString, ok := os.LookupEnv("MATRIX_BUFFER_SIZE"); ok {
-		matrixBufferSize, err = strconv.Atoi(matrixBufferSizeString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "MATRIX_BUFFER_SIZE", "value", matrixBufferSize, "err", err)
-			os.Exit(1)
-		}
+	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Generate the route matrix
@@ -637,7 +436,7 @@ func main() {
 			relayDatacenterIDs := make([]uint64, numRelays)
 
 			for i, relayID := range relayIDs {
-				relay, err := db.Relay(relayID)
+				relay, err := storer.Relay(relayID)
 				if err != nil {
 					continue
 				}
@@ -791,7 +590,7 @@ func main() {
 			relayDatacenterIDs := make([]uint64, numRelays)
 
 			for i, relayID := range relayIDs {
-				relay, err := db.Relay(relayID)
+				relay, err := storer.Relay(relayID)
 				if err != nil {
 					continue
 				}
@@ -881,7 +680,7 @@ func main() {
 
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
-		Storer:           db,
+		Storer:           storer,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	}
@@ -890,7 +689,7 @@ func main() {
 		RelayMap: relayMap,
 		StatsDB:  statsdb,
 		Metrics:  relayUpdateMetrics,
-		Storer:   db,
+		Storer:   storer,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -949,22 +748,20 @@ func main() {
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	go func() {
-		port, ok := os.LookupEnv("PORT")
-		if !ok {
-			level.Error(logger).Log("err", "env var PORT must be set")
-			os.Exit(1)
-		}
+		port := envvar.Get("PORT", "30000")
 
 		level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	return 0
 }

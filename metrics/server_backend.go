@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// ServerInitMetrics defines the set of metrics for the server init handler in server_backend4.
+// ServerInitMetrics defines the set of metrics for the server init handler in the server backend.
 type ServerInitMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
@@ -25,7 +25,7 @@ var EmptyServerInitMetrics = ServerInitMetrics{
 	WriteResponseFailure: &EmptyCounter{},
 }
 
-// ServerUpdateMetrics defines the set of metrics for the server update handler in server_backend4.
+// ServerUpdateMetrics defines the set of metrics for the server update handler in the server backend.
 type ServerUpdateMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
@@ -44,7 +44,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	DatacenterNotFound: &EmptyCounter{},
 }
 
-// SessionUpdateMetrics defines the set of metrics for the session update handler in server_backend4.
+// SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
 type SessionUpdateMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
@@ -90,7 +90,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	WriteResponseFailure:    &EmptyCounter{},
 }
 
-// ServerBackendMetrics defines the set of metrics for the server_backend4 service.
+// ServerBackendMetrics defines the set of metrics for the server backend.
 type ServerBackendMetrics struct {
 	ServiceMetrics *ServiceMetrics
 
@@ -108,8 +108,8 @@ type ServerBackendMetrics struct {
 	RouteMatrixBytes              Gauge
 }
 
-// EmptyServerBackend4Metrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptyServerBackend4Metrics = ServerBackendMetrics{
+// EmptyServerBackendMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyServerBackendMetrics = ServerBackendMetrics{
 	ServiceMetrics:                &EmptyServiceMetrics,
 	ServerInitMetrics:             &EmptyServerInitMetrics,
 	ServerUpdateMetrics:           &EmptyServerUpdateMetrics,
@@ -122,7 +122,7 @@ var EmptyServerBackend4Metrics = ServerBackendMetrics{
 	RouteMatrixBytes:              &EmptyGauge{},
 }
 
-// NewServerBackendMetrics creates the metrics that the server_backend4 will use.
+// NewServerBackendMetrics creates the metrics that the server backend will use.
 func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBackendMetrics, error) {
 	serviceName := "server_backend"
 

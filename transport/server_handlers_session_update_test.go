@@ -837,7 +837,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -1049,7 +1049,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -1171,7 +1171,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -1378,7 +1378,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -1589,7 +1589,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -1803,7 +1803,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -2582,7 +2582,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
@@ -2799,7 +2799,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 
-	expectedMetrics := metrics.EmptyServerBackend4Metrics
+	expectedMetrics := metrics.EmptyServerBackendMetrics
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics

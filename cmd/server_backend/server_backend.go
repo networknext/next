@@ -26,11 +26,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/envvar"
-	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -38,8 +38,6 @@ import (
 	"github.com/networknext/backend/transport/pubsub"
 	"golang.org/x/sys/unix"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	googlepubsub "cloud.google.com/go/pubsub"
 )
 
@@ -84,131 +82,45 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	serviceName := "server_backend"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 
-	// Configure local logging
-	logger := log.NewLogfmtLogger(os.Stdout)
+	gcpProjectID := backend.GetGCPProjectID()
 
-	// Get GCP project ID
-	gcpOK := envvar.Exists("GOOGLE_PROJECT_ID")
-	gcpProjectID := envvar.Get("GOOGLE_PROJECT_ID", "")
-
-	// StackDriver Logging
-	{
-		enableSDLogging, err := envvar.GetBool("ENABLE_STACKDRIVER_LOGGING", false)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		if enableSDLogging && gcpOK {
-			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-				return 1
-			}
-
-			logger = logging.NewStackdriverLogger(loggingClient, "server-backend4")
-		}
-	}
-	{
-		backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", "none")
-		switch backendLogLevel {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
-
-	// Get env
-	if !envvar.Exists("ENV") {
-		level.Error(logger).Log("err", "ENV not set")
-		return 1
-	}
-	env := envvar.Get("ENV", "")
-
-	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	// Create a local metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	env, err := backend.GetEnv()
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-	if gcpOK {
-		// StackDriver Metrics
-		{
-			enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					return 1
-				}
-
-				metricsHandler = &sd
-
-				sdWriteInterval, err := envvar.GetDuration("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", time.Minute)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					return 1
-				}
-
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
-				}()
-			}
-		}
-
-		// StackDriver Profiler
-		{
-			enableSDProfiler, err := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "server_backend",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-					return 1
-				}
-			}
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
 		}
 	}
 
-	// Create metrics
+	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
@@ -218,7 +130,7 @@ func mainReturnWithCode() int {
 	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
 		return 1
 	}
 
@@ -237,80 +149,6 @@ func mainReturnWithCode() int {
 			time.Sleep(time.Second * 10)
 		}
 	}()
-
-	// Create an in-memory storer
-	var storer storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-
-	var customerPublicKey []byte
-	var customerID uint64
-	var relayPublicKey []byte
-
-	// Create dummy entries in storer for local testing
-	if env == "local" {
-		if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
-			level.Error(logger).Log("err", "NEXT_CUSTOMER_PUBLIC_KEY not set")
-			return 1
-		}
-
-		customerPublicKey, err = envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-
-		if !envvar.Exists("RELAY_PUBLIC_KEY") {
-			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
-			return 1
-		}
-
-		relayPublicKey, err = envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-	}
-
-	// Check for the firestore emulator
-	firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
-	if firestoreEmulatorOK {
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	if gcpOK || firestoreEmulatorOK {
-		// Firestore
-		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create firestore", "err", err)
-				return 1
-			}
-
-			fsSyncInterval, err := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(fsSyncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			storer = fs
-		}
-	}
-
-	if env == "local" {
-		// Create dummy buyer and datacenter for local testing
-		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
-	}
 
 	// Create datacenter tracker
 	datacenterTracker := transport.NewDatacenterTracker()
@@ -525,7 +363,7 @@ func mainReturnWithCode() int {
 	}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-	if gcpOK || pubsubEmulatorOK {
+	if gcpProjectID != "" || pubsubEmulatorOK {
 
 		pubsubCtx := ctx
 		if pubsubEmulatorOK {
@@ -648,12 +486,17 @@ func mainReturnWithCode() int {
 					if err := multipathVetoHandler.Sync(); err != nil {
 						level.Error(logger).Log("err", err)
 					}
-					break
 				case <-ctx.Done():
-					break
+					return
 				}
 			}
 		}(ctx)
+	}
+
+	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Start HTTP server

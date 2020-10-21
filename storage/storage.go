@@ -11,8 +11,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/routing"
 )
 
 type Storer interface {
@@ -290,9 +290,9 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			numRelays := uint64(10)
 			numRelays, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v\n", err))
+				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v", err))
 			}
-			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore\n", numRelays))
+			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore", numRelays))
 			for i := uint64(0); i < numRelays; i++ {
 				addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 				id := crypto.HashID(addr.String())
