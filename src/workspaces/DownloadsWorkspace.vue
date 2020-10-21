@@ -24,14 +24,14 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <a
             href="#"
-            onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-3.4.6.zip')"
+            onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.0.zip')"
             class="btn btn-primary m-1 btn-width"
-            title="SDK v3.4.6"
+            title="SDK v4.0.0"
           >
             <font-awesome-icon icon="download"
                                 class="fa-w-16 fa-fw"
             />
-            SDK v3.4.6
+            SDK v4.0.0
           </a>
           <a
             href="#"
