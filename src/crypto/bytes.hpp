@@ -4,15 +4,10 @@
 
 namespace crypto
 {
-  template <typename T>
-  INLINE std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random()
-  {
-    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
-    return rand();
-  }
+  using Nonce = std::array<uint8_t, crypto_box_NONCEBYTES>;
 
   template <typename T>
-  INLINE auto RandomBytes(T& buffer, size_t length) -> bool
+  INLINE auto random_bytes(T& buffer, size_t length) -> bool
   {
     if (buffer.size() < length) {
       return false;
@@ -21,9 +16,8 @@ namespace crypto
     return true;
   }
 
-  template <typename T>
-  INLINE auto CreateNonceBytes(T& buffer) -> bool
+  INLINE auto make_nonce(Nonce& buffer) -> bool
   {
-    return RandomBytes(buffer, crypto_box_NONCEBYTES);
+    return random_bytes(buffer, buffer.size());
   }
 }  // namespace crypto

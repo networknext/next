@@ -5,9 +5,9 @@
 
 namespace net
 {
-  // TODO these don't consider the ethernet header or the other parts of the packet
-  static const uint8_t IPv4UDPHeaderSize = 28;
-  static const uint8_t IPv6UDPHeaderSize = 48;
+  // Ethernet Frame | IP | Proto
+  static const uint8_t IPV4_UDP_PACKET_HEADER_SIZE = 18 + 20 + 8;
+  static const uint8_t IPV6_UDP_PACKET_HEADER_SIZE = 18 + 40 + 8;
 
   enum class AddressType : uint8_t
   {
@@ -18,13 +18,13 @@ namespace net
 
   struct Address
   {
-    // Type (1) +
-    // Port (2) +
+    // type (1) +
+    // port (2) +
     // IP (16) =
-    static const size_t ByteSize = 19;
+    static const size_t SIZE_OF = 19;
 
     // max length when represented as a string
-    static const size_t MaxStrLen = 256;
+    static const size_t MAX_LEN = 256;
 
     Address();
     Address(const Address& other);
@@ -63,19 +63,19 @@ namespace net
     auto operator=(const sockaddr_in& addr) -> Address&;
     auto operator=(const sockaddr_in6& addr) -> Address&;
 
-    AddressType Type;
-    uint16_t Port;
+    AddressType type;
+    uint16_t port;
 
     union
     {
-      std::array<uint8_t, 4> IPv4;
-      std::array<uint16_t, 8> IPv6;
+      std::array<uint8_t, 4> ipv4;
+      std::array<uint16_t, 8> ipv6;
     };
   };
 
-  INLINE Address::Address(): Type(AddressType::None), Port(0)
+  INLINE Address::Address(): type(AddressType::None), port(0)
   {
-    IPv6.fill(0);
+    this->ipv6.fill(0);
   }
 
   INLINE Address::Address(const Address& other)
@@ -85,15 +85,15 @@ namespace net
 
   INLINE Address::Address(Address&& other)
   {
-    this->Type = other.Type;
-    this->Port = other.Port;
+    this->type = other.type;
+    this->port = other.port;
 
-    switch (other.Type) {
+    switch (other.type) {
       case AddressType::IPv4: {
-        this->IPv4 = std::move(other.IPv4);
+        this->ipv4 = std::move(other.ipv4);
       } break;
       case AddressType::IPv6: {
-        this->IPv6 = std::move(other.IPv6);
+        this->ipv6 = std::move(other.ipv6);
       } break;
       case AddressType::None:
         break;
@@ -102,12 +102,12 @@ namespace net
 
   INLINE auto Address::parse(const std::string& address_in) -> bool
   {
-    if (address_in.length() > MaxStrLen) {
+    if (address_in.length() > MAX_LEN) {
       LOG(ERROR, "can not parse address: too long");
       return false;
     }
 
-    std::array<char, MaxStrLen> address = {};
+    std::array<char, Address::MAX_LEN> address = {};
     std::copy(address_in.begin(), address_in.end(), address.begin());
 
     // first try to parse the string as an IPv6 address:
@@ -124,7 +124,7 @@ namespace net
 
           if (address[i] == ':') {
             char* end = nullptr;
-            this->Port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
+            this->port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
             if (end == nullptr) {
               return false;
             }
@@ -148,10 +148,10 @@ namespace net
       // &address[index] now points to the start of the address and the null term replaced the ']' and/or ':'
       sockaddr_in6 sockaddr;
       if (inet_pton(AF_INET6, &address[index], &sockaddr.sin6_addr) == 1) {
-        this->Type = AddressType::IPv6;
+        this->type = AddressType::IPv6;
         auto addr = sockaddr.sin6_addr.__in6_u.__u6_addr16;
         for (size_t i = 0; i < 8; i++) {
-          this->IPv6[i] = ntohs(addr[i]);
+          this->ipv6[i] = ntohs(addr[i]);
         }
         return true;
       }
@@ -167,7 +167,7 @@ namespace net
 
         if (address[i] == ':') {
           char* end = nullptr;
-          this->Port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
+          this->port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
           if (end == nullptr) {
             return false;
           }
@@ -181,10 +181,10 @@ namespace net
       // &address[index] now points to the start of the address and the null term replaced the ':'
       sockaddr_in sockaddr4;
       if (inet_pton(AF_INET, address.data(), &sockaddr4.sin_addr) == 1) {
-        this->Type = AddressType::IPv4;
+        this->type = AddressType::IPv4;
         const auto& addr4 = sockaddr4.sin_addr.s_addr;
         for (int i = 0; i < 4; i++) {
-          this->IPv4[i] = (uint8_t)((addr4 >> 8 * i) & 0xFF);
+          this->ipv4[i] = (uint8_t)((addr4 >> 8 * i) & 0xFF);
         }
         return true;
       }
@@ -221,41 +221,40 @@ namespace net
 
   INLINE void Address::swap(Address& other)
   {
-    std::swap(this->Type, other.Type);
-    std::swap(this->Port, other.Port);
+    std::swap(this->type, other.type);
+    std::swap(this->port, other.port);
 
-    if (this->Type == AddressType::IPv4) {
-      this->IPv4.swap(other.IPv4);
-    } else if (this->Type == AddressType::IPv6) {
-      this->IPv6.swap(other.IPv6);
+    if (this->type == AddressType::IPv4) {
+      this->ipv4.swap(other.ipv4);
+    } else if (this->type == AddressType::IPv6) {
+      this->ipv6.swap(other.ipv6);
     }
   }
 
   INLINE void Address::reset()
   {
-    GCC_NO_OPT_OUT;
-    if (Type == AddressType::IPv4) {
-      IPv4.fill(0);
-    } else if (Type == AddressType::IPv6) {
-      IPv6.fill(0);
+    if (this->type == AddressType::IPv4) {
+      this->ipv4.fill(0);
+    } else if (this->type == AddressType::IPv6) {
+      this->ipv6.fill(0);
     }
 
-    Type = AddressType::None;
-    Port = 0;
+    this->type = AddressType::None;
+    this->port = 0;
   }
 
   INLINE auto Address::to_string(std::string& output) const -> bool
   {
-    std::array<char, MaxStrLen> buff = {};
+    std::array<char, Address::MAX_LEN> buff = {};
     unsigned int total = 0;
 
-    if (Type == AddressType::IPv6) {
+    if (this->type == AddressType::IPv6) {
       std::array<uint16_t, 8> ipv6_network_order;
       for (size_t i = 0; i < 8; i++) {
-        ipv6_network_order[i] = htons(this->IPv6[i]);
+        ipv6_network_order[i] = htons(this->ipv6[i]);
       }
 
-      std::array<char, MaxStrLen> addr_buff = {};
+      std::array<char, Address::MAX_LEN> addr_buff = {};
       if (
        inet_ntop(
         AF_INET6,
@@ -266,17 +265,18 @@ namespace net
         return false;
       }
 
-      if (Port == 0) {
+      if (this->port == 0) {
         total += strlen(addr_buff.data());
         std::copy(addr_buff.begin(), addr_buff.begin() + total, buff.begin());
       } else {
-        total += snprintf(buff.data(), MaxStrLen, "[%s]:%hu", addr_buff.data(), Port);
+        total += snprintf(buff.data(), MAX_LEN, "[%s]:%hu", addr_buff.data(), this->port);
       }
-    } else if (Type == AddressType::IPv4) {
-      if (Port == 0) {
-        total += snprintf(buff.data(), MaxStrLen, "%d.%d.%d.%d", IPv4[0], IPv4[1], IPv4[2], IPv4[3]);
+    } else if (this->type == AddressType::IPv4) {
+      if (this->port == 0) {
+        total += snprintf(buff.data(), MAX_LEN, "%d.%d.%d.%d", this->ipv4[0], this->ipv4[1], this->ipv4[2], this->ipv4[3]);
       } else {
-        total += snprintf(buff.data(), MaxStrLen, "%d.%d.%d.%d:%hu", IPv4[0], IPv4[1], IPv4[2], IPv4[3], Port);
+        total += snprintf(
+         buff.data(), MAX_LEN, "%d.%d.%d.%d:%hu", this->ipv4[0], this->ipv4[1], this->ipv4[2], this->ipv4[3], this->port);
       }
     } else {
       total += snprintf(buff.data(), sizeof("NONE"), "NONE");
@@ -302,10 +302,10 @@ namespace net
   {
     sin = {};
     sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = static_cast<uint32_t>(IPv4[0]) << 0 | static_cast<uint32_t>(IPv4[1]) << 8 |
-                          static_cast<uint32_t>(IPv4[2]) << 16 | static_cast<uint32_t>(IPv4[3]) << 24;
+    sin.sin_addr.s_addr = static_cast<uint32_t>(this->ipv4[0]) << 0 | static_cast<uint32_t>(this->ipv4[1]) << 8 |
+                          static_cast<uint32_t>(this->ipv4[2]) << 16 | static_cast<uint32_t>(this->ipv4[3]) << 24;
 
-    sin.sin_port = htons(Port);
+    sin.sin_port = htons(this->port);
   }
 
   template <>
@@ -315,10 +315,10 @@ namespace net
     sin.sin6_family = AF_INET6;
 
     for (int i = 0; i < 8; i++) {
-      reinterpret_cast<uint16_t*>(&sin.sin6_addr)[i] = htons(IPv6[i]);
+      reinterpret_cast<uint16_t*>(&sin.sin6_addr)[i] = htons(this->ipv6[i]);
     }
 
-    sin.sin6_port = htons(Port);
+    sin.sin6_port = htons(this->port);
   }
 
   template <>
@@ -326,7 +326,7 @@ namespace net
   {
     assert(hdr.msg_hdr.msg_name != nullptr);
 
-    switch (Type) {
+    switch (this->type) {
       case AddressType::IPv4: {
         this->into(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
         hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in);
@@ -343,21 +343,21 @@ namespace net
 
   INLINE auto Address::operator==(const Address& other) const -> bool
   {
-    if (this->Type != other.Type || this->Port != other.Port) {
+    if (this->type != other.type || this->port != other.port) {
       return false;
     }
 
-    switch (this->Type) {
+    switch (this->type) {
       case AddressType::IPv4:
-        for (unsigned int i = 0; i < IPv4.size(); i++) {
-          if (IPv4[i] != other.IPv4[i]) {
+        for (unsigned int i = 0; i < this->ipv4.size(); i++) {
+          if (this->ipv4[i] != other.ipv4[i]) {
             return false;
           }
         }
         return true;
       case AddressType::IPv6:
-        for (unsigned int i = 0; i < IPv6.size(); i++) {
-          if (IPv6[i] != other.IPv6[i]) {
+        for (unsigned int i = 0; i < this->ipv6.size(); i++) {
+          if (this->ipv6[i] != other.ipv6[i]) {
             return false;
           }
         }
@@ -376,13 +376,13 @@ namespace net
 
   INLINE auto Address::operator=(const Address& other) -> Address&
   {
-    this->Type = other.Type;
-    this->Port = other.Port;
+    this->type = other.type;
+    this->port = other.port;
 
-    if (this->Type == AddressType::IPv4) {
-      std::copy(other.IPv4.begin(), other.IPv4.end(), this->IPv4.begin());
-    } else if (this->Type == AddressType::IPv6) {
-      std::copy(other.IPv6.begin(), other.IPv6.end(), this->IPv6.begin());
+    if (this->type == AddressType::IPv4) {
+      std::copy(other.ipv4.begin(), other.ipv4.end(), this->ipv4.begin());
+    } else if (this->type == AddressType::IPv6) {
+      std::copy(other.ipv6.begin(), other.ipv6.end(), this->ipv6.begin());
     }
 
     return *this;
@@ -390,15 +390,15 @@ namespace net
 
   INLINE auto Address::operator=(const Address&& other) -> Address&
   {
-    this->Type = other.Type;
-    this->Port = other.Port;
+    this->type = other.type;
+    this->port = other.port;
 
-    switch (other.Type) {
+    switch (other.type) {
       case AddressType::IPv4: {
-        this->IPv4 = std::move(other.IPv4);
+        this->ipv4 = other.ipv4;
       } break;
       case AddressType::IPv6: {
-        this->IPv6 = std::move(other.IPv6);
+        this->ipv6 = other.ipv6;
       } break;
       case AddressType::None:
         break;
@@ -431,22 +431,22 @@ namespace net
 
   INLINE auto Address::operator=(const sockaddr_in& addr) -> Address&
   {
-    this->Type = net::AddressType::IPv4;
-    this->IPv4[0] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x000000FF));
-    this->IPv4[1] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x0000FF00) >> 8);
-    this->IPv4[2] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x00FF0000) >> 16);
-    this->IPv4[3] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0xFF000000) >> 24);
-    this->Port = ntohs(addr.sin_port);
+    this->type = net::AddressType::IPv4;
+    this->ipv4[0] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x000000FF));
+    this->ipv4[1] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x0000FF00) >> 8);
+    this->ipv4[2] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x00FF0000) >> 16);
+    this->ipv4[3] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0xFF000000) >> 24);
+    this->port = ntohs(addr.sin_port);
     return *this;
   }
 
   INLINE auto Address::operator=(const sockaddr_in6& addr) -> Address&
   {
-    this->Type = net::AddressType::IPv6;
+    this->type = net::AddressType::IPv6;
     for (int i = 0; i < 8; i++) {
-      this->IPv6[i] = ntohs(reinterpret_cast<const uint16_t*>(&addr.sin6_addr)[i]);
+      this->ipv6[i] = ntohs(addr.sin6_addr.s6_addr16[i]);
     }
-    this->Port = ntohs(addr.sin6_port);
+    this->port = ntohs(addr.sin6_port);
     return *this;
   }
 

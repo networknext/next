@@ -53,21 +53,21 @@ namespace os
 
     // uses sendmmsg()
     template <size_t BuffSize>
-    auto multisend(PacketBuffer<BuffSize>& packetBuff) const -> bool;
+    auto multisend(PacketBuffer<BuffSize>& packet_buff) const -> bool;
 
     // uses sendmmsg()
     template <size_t BuffSize>
-    auto multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const -> bool;
+    auto multisend(std::array<mmsghdr, BuffSize>& packet_buff, int count) const -> bool;
 
     // uses recvfrom()
-    auto recv(Address& from, uint8_t* data, size_t maxSize) const -> int;
+    auto recv(Address& from, uint8_t* data, size_t max_size) const -> int;
 
     // uses recvfrom()
     auto recv(Packet& packet) const -> bool;
 
     // uses recvmmsg()
     template <size_t BuffSize>
-    auto multirecv(PacketBuffer<BuffSize>& packetBuff) const -> bool;
+    auto multirecv(PacketBuffer<BuffSize>& packet_buff) const -> bool;
 
     // close the socket
     void close();
@@ -80,7 +80,7 @@ namespace os
     SocketType type;
     std::atomic<bool> is_closed;
 
-    auto set_buffer_sizes(size_t sendBufferSize, size_t recvBufferSize) -> bool;
+    auto set_buffer_sizes(size_t send_buffer_size, size_t recv_buffer_size) -> bool;
     auto set_port_reuse(bool reuse) -> bool;
 
     auto bind_ipv4(const Address& addr) -> bool;
@@ -105,13 +105,13 @@ namespace os
 
   INLINE auto Socket::create(Address& bind_addr, SocketConfig config) -> bool
   {
-    if (bind_addr.Type == AddressType::None) {
+    if (bind_addr.type == AddressType::None) {
       return false;
     }
 
     // create socket
     {
-      this->socket_fd = socket((bind_addr.Type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+      this->socket_fd = socket((bind_addr.type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
       if (this->socket_fd < 0) {
         LOG(ERROR, "failed to create socket");
@@ -122,7 +122,7 @@ namespace os
 
     // force IPv6 only if necessary
     {
-      if (bind_addr.Type == AddressType::IPv6) {
+      if (bind_addr.type == AddressType::IPv6) {
         int enable = 1;
         if (setsockopt(this->socket_fd, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
           LOG(ERROR, "failed to set socket ipv6 only");
@@ -143,7 +143,7 @@ namespace os
 
     // bind to port
     {
-      if (bind_addr.Type == AddressType::IPv6) {
+      if (bind_addr.type == AddressType::IPv6) {
         if (!bind_ipv6(bind_addr)) {
           return false;
         }
@@ -157,8 +157,8 @@ namespace os
     // if bound to port 0, find the actual port we got
     // port 0 is a "wildcard" so using it will bind to any available port
     {
-      if (bind_addr.Port == 0) {
-        if (bind_addr.Type == AddressType::IPv6) {
+      if (bind_addr.port == 0) {
+        if (bind_addr.type == AddressType::IPv6) {
           if (!get_port_ipv6(bind_addr)) {
             return false;
           }
@@ -186,7 +186,7 @@ namespace os
 
   INLINE auto Socket::send(const Address& to, const uint8_t* data, size_t size) const -> bool
   {
-    if (to.Type != AddressType::IPv4 && to.Type != AddressType::IPv6) {
+    if (to.type != AddressType::IPv4 && to.type != AddressType::IPv6) {
       return false;
     }
 
@@ -202,7 +202,7 @@ namespace os
       return false;
     }
 
-    if (to.Type == AddressType::IPv6) {
+    if (to.type == AddressType::IPv6) {
       sockaddr_in6 socket_address;
       to.into(socket_address);
 
@@ -211,7 +211,7 @@ namespace os
         LOG(ERROR, "sendto (", to, ") failed");
         return false;
       }
-    } else if (to.Type == AddressType::IPv4) {
+    } else if (to.type == AddressType::IPv4) {
       sockaddr_in socket_address;
       to.into(socket_address);
 
@@ -229,28 +229,35 @@ namespace os
   }
 
   template <size_t BuffSize>
-  INLINE auto Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const -> bool
+  INLINE auto Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int num_packets_to_send) const -> bool
   {
     static_assert(BuffSize <= 1024);  // max sendmmsg will allow
 
-    assert(count > 0);
-    assert(count <= 1024);
-
-    auto toSend = count;
-    count = sendmmsg(this->socket_fd, headers.data(), toSend, 0);
-
-    if (count < 0) {
-      LOG(ERROR, "sendmmsg() failed");
+    if (num_packets_to_send < 0) {
+      LOG(ERROR, "number of packets to send is less than 0: ", num_packets_to_send);
       return false;
     }
 
-    return toSend == count;
+    if (num_packets_to_send > 1024) {
+      LOG(ERROR, "number of packets to send is greater than 1024: ", num_packets_to_send);
+      return false;
+    }
+
+    int actual_sent = sendmmsg(this->socket_fd, headers.data(), num_packets_to_send, 0);
+
+    if (actual_sent < 0) {
+      LOG(ERROR, "sendmmsg() failed: ");
+      perror("OS msg:");
+      return false;
+    }
+
+    return num_packets_to_send == num_packets_to_send;
   }
 
   template <size_t BuffSize>
-  INLINE auto Socket::multisend(PacketBuffer<BuffSize>& packetBuff) const -> bool
+  INLINE auto Socket::multisend(PacketBuffer<BuffSize>& packet_buff) const -> bool
   {
-    return multisend(packetBuff.Headers, packetBuff.Count);
+    return multisend(packet_buff.Headers, packet_buff.Count);
   }
 
   INLINE auto Socket::recv(Packet& packet) const -> bool
@@ -260,10 +267,10 @@ namespace os
     return len > 0;
   }
 
-  INLINE auto Socket::recv(Address& from, uint8_t* data, size_t maxSize) const -> int
+  INLINE auto Socket::recv(Address& from, uint8_t* data, size_t max_size) const -> int
   {
     assert(data != nullptr);
-    assert(maxSize > 0);
+    assert(max_size > 0);
 
     if (this->closed()) {
       return 0;
@@ -275,7 +282,7 @@ namespace os
     auto res = recvfrom(
      this->socket_fd,
      data,
-     maxSize,
+     max_size,
      (this->type == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
      reinterpret_cast<sockaddr*>(&sockaddr_from),
      &len);
@@ -300,16 +307,16 @@ namespace os
   }
 
   template <size_t BuffSize>
-  INLINE auto Socket::multirecv(PacketBuffer<BuffSize>& packetBuff) const -> bool
+  INLINE auto Socket::multirecv(PacketBuffer<BuffSize>& packet_buff) const -> bool
   {
-    packetBuff.Count = recvmmsg(
+    packet_buff.count = recvmmsg(
      this->socket_fd,
-     packetBuff.Headers.data(),
+     packet_buff.headers.data(),
      BuffSize,
      MSG_WAITFORONE,
      nullptr);  // DON'T EVER USE TIMEOUT, linux man pages state it is broken
 
-    if (packetBuff.Count < 0) {
+    if (packet_buff.count < 0) {
       LOG(ERROR, "recvmmsg failed");
       return false;
     }
@@ -329,15 +336,15 @@ namespace os
     return this->is_closed;
   }
 
-  INLINE auto Socket::set_buffer_sizes(size_t sendBuffSize, size_t recvBuffSize) -> bool
+  INLINE auto Socket::set_buffer_sizes(size_t send_buff_size, size_t recv_buff_size) -> bool
   {
-    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
+    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_SNDBUF, &send_buff_size, sizeof(send_buff_size)) != 0) {
       LOG(ERROR, "failed to set socket send buffer size");
       this->close();
       return false;
     }
 
-    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
+    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_RCVBUF, &recv_buff_size, sizeof(recv_buff_size)) != 0) {
       LOG(ERROR, "failed to set socket receive buffer size");
       this->close();
       return false;
@@ -366,9 +373,9 @@ namespace os
   {
     sockaddr_in socket_address = {};
     socket_address.sin_family = AF_INET;
-    socket_address.sin_addr.s_addr = (((uint32_t)addr.IPv4[0])) | (((uint32_t)addr.IPv4[1]) << 8) |
-                                     (((uint32_t)addr.IPv4[2]) << 16) | (((uint32_t)addr.IPv4[3]) << 24);
-    socket_address.sin_port = htons(addr.Port);
+    socket_address.sin_addr.s_addr = (((uint32_t)addr.ipv4[0])) | (((uint32_t)addr.ipv4[1]) << 8) |
+                                     (((uint32_t)addr.ipv4[2]) << 16) | (((uint32_t)addr.ipv4[3]) << 24);
+    socket_address.sin_port = htons(addr.port);
 
     if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
       LOG(ERROR, "failed to bind to address ", addr, " (ipv4)");
@@ -386,10 +393,10 @@ namespace os
 
     socket_address.sin6_family = AF_INET6;
     for (int i = 0; i < 8; i++) {
-      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = htons(addr.IPv6[i]);
+      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = htons(addr.ipv6[i]);
     }
 
-    socket_address.sin6_port = htons(addr.Port);
+    socket_address.sin6_port = htons(addr.port);
 
     if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
       LOG(ERROR, "failed to bind socket (ipv6)");
@@ -411,7 +418,7 @@ namespace os
       close();
       return false;
     }
-    addr.Port = ntohs(sin.sin_port);
+    addr.port = ntohs(sin.sin_port);
     return true;
   }
 
@@ -425,7 +432,7 @@ namespace os
       close();
       return false;
     }
-    addr.Port = ntohs(sin.sin6_port);
+    addr.port = ntohs(sin.sin6_port);
     return true;
   }
 

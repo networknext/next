@@ -1,5 +1,4 @@
-#ifndef CORE_TOKEN_HPP
-#define CORE_TOKEN_HPP
+#pragma once
 
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
@@ -10,6 +9,12 @@
 #include "core/session.hpp"
 
 using core::Packet;
+
+namespace testing
+{
+  class _test_core_Token_write_;
+  class _test_core_Token_read_;
+}  // namespace testing
 
 namespace core
 {
@@ -75,6 +80,9 @@ namespace core
 
   class Token: public Expireable, public SessionHasher
   {
+    friend testing::_test_core_Token_write_;
+    friend testing::_test_core_Token_read_;
+
    public:
     Token() = default;
     virtual ~Token() override = default;
@@ -83,12 +91,20 @@ namespace core
     // session flags (1) =
     static const size_t SIZE_OF = Expireable::SIZE_OF + SessionHasher::SIZE_OF + 1;
 
+    auto operator==(const Token& other) -> bool;
+
     uint8_t session_flags;
 
    protected:
     auto write(Packet& packet, size_t& index) -> bool;
     auto read(const Packet& packet, size_t& index) -> bool;
   };
+
+  INLINE auto Token::operator==(const Token& other) -> bool
+  {
+    return this->expire_timestamp == other.expire_timestamp && this->session_id == other.session_id &&
+           this->session_version == other.session_version && this->session_flags == other.session_flags;
+  }
 
   INLINE auto Token::write(Packet& packet, size_t& index) -> bool
   {
@@ -145,4 +161,3 @@ namespace core
     return os << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
   }
 }  // namespace core
-#endif

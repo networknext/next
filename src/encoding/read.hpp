@@ -1,6 +1,5 @@
 #pragma once
 
-#include "binary.hpp"
 #include "net/address.hpp"
 #include "util/logger.hpp"
 
@@ -33,8 +32,7 @@ namespace encoding
   auto read_double(const T& buff, size_t& index, double& value) -> bool;
 
   auto read_bytes(
-   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t len)
-   -> bool;
+   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t len) -> bool;
 
   template <typename T, typename U>
   auto read_bytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
@@ -148,8 +146,14 @@ namespace encoding
   template <typename T>
   INLINE auto read_double(const T& buff, size_t& index, double& value) -> bool
   {
-    return encoding::read_bytes(
-     buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double), sizeof(double));
+    union
+    {
+      uint64_t fake;
+      double actual;
+    } values = {};
+    bool retval = encoding::read_uint64(buff, index, values.fake);
+    value = values.actual;
+    return retval;
   }
 
   INLINE auto read_bytes(
@@ -183,7 +187,7 @@ namespace encoding
 
   INLINE auto read_address(const uint8_t* const buff, size_t buff_length, size_t& index, net::Address& addr) -> bool
   {
-    if (buff_length < Address::ByteSize) {
+    if (buff_length < Address::SIZE_OF) {
       return false;
     }
 
@@ -191,15 +195,15 @@ namespace encoding
     if (!read_uint8(buff, buff_length, index, type)) {
       return false;
     }
-    addr.Type = static_cast<AddressType>(type);
+    addr.type = static_cast<AddressType>(type);
 
-    switch (addr.Type) {
+    switch (addr.type) {
       case AddressType::IPv4: {
         // read address parts
-        std::copy(buff + index, buff + index + 4, addr.IPv4.data());
+        std::copy(buff + index, buff + index + 4, addr.ipv4.data());
         index += 4;
         // read the port
-        if (!read_uint16(buff, buff_length, index, addr.Port)) {
+        if (!read_uint16(buff, buff_length, index, addr.port)) {
           return false;
         }
         index += 12;  // increment the index past the reserved area
@@ -207,18 +211,18 @@ namespace encoding
       case AddressType::IPv6: {
         // read address parts
         for (int i = 0; i < 8; i++) {
-          if (!read_uint16(buff, buff_length, index, addr.IPv6[i])) {
+          if (!read_uint16(buff, buff_length, index, addr.ipv6[i])) {
             return false;
           }
         }
         // read the port
-        if (!read_uint16(buff, buff_length, index, addr.Port)) {
+        if (!read_uint16(buff, buff_length, index, addr.port)) {
           return false;
         }
       } break;
       default: {
         // if no type, increment the index past the address area
-        index += Address::ByteSize - 1;
+        index += Address::SIZE_OF - 1;
         addr.reset();
       } break;
     }
@@ -233,29 +237,29 @@ namespace encoding
     if (!read_uint8(buff, index, type)) {
       return false;
     }
-    addr.Type = static_cast<AddressType>(type);
+    addr.type = static_cast<AddressType>(type);
 
-    if (addr.Type == net::AddressType::IPv4) {
+    if (addr.type == net::AddressType::IPv4) {
       // copy the address parts
-      std::copy(buff.begin() + index, buff.begin() + index + 4, addr.IPv4.begin());
+      std::copy(buff.begin() + index, buff.begin() + index + 4, addr.ipv4.begin());
       index += 4;
       // read the port
-      if (!read_uint16(buff, index, addr.Port)) {
+      if (!read_uint16(buff, index, addr.port)) {
         return false;
       }
       index += 12;  // increment the index past the reserved area
-    } else if (addr.Type == net::AddressType::IPv6) {
+    } else if (addr.type == net::AddressType::IPv6) {
       for (int i = 0; i < 8; i++) {
-        if (!read_uint16(buff, index, addr.IPv6[i])) {
+        if (!read_uint16(buff, index, addr.ipv6[i])) {
           return false;
         }
       }
-      if (!read_uint16(buff, index, addr.Port)) {
+      if (!read_uint16(buff, index, addr.port)) {
         return false;
       }
     } else {
       addr.reset();
-      index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
+      index += net::Address::SIZE_OF - 1;  // if no type, increment the index past the address area
     }
 
     return true;

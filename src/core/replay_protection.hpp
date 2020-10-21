@@ -2,17 +2,20 @@
 
 #include "util/macros.hpp"
 #include "util/logger.hpp"
+#include "ping_history.hpp"
 
 namespace testing
 {
-  class _test_core_ReplayProtection_additional_logic_tests_;
+  class _test_core_ReplayProtection_all_;
 }
 
 namespace core
 {
+  const size_t REPLAY_PROTECTION_BUFFER_SIZE = 256UL;
+
   class ReplayProtection
   {
-    friend testing::_test_core_ReplayProtection_additional_logic_tests_;
+    friend testing::_test_core_ReplayProtection_all_;
 
    public:
     ReplayProtection() = default;
@@ -24,7 +27,7 @@ namespace core
 
    private:
     uint64_t most_recent_sequence;
-    std::array<uint64_t, RELAY_REPLAY_PROTECTION_BUFFER_SIZE> received_packets;
+    std::array<uint64_t, REPLAY_PROTECTION_BUFFER_SIZE> received_packets;
   };
 
   INLINE void ReplayProtection::reset()
@@ -35,11 +38,11 @@ namespace core
 
   INLINE bool ReplayProtection::is_already_received(uint64_t incoming_sequence)
   {
-    if (incoming_sequence + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= this->most_recent_sequence) {
+    if (incoming_sequence + REPLAY_PROTECTION_BUFFER_SIZE <= this->most_recent_sequence) {
       return true;
     }
 
-    uint64_t index = incoming_sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE;
+    uint64_t index = incoming_sequence % REPLAY_PROTECTION_BUFFER_SIZE;
 
     if (this->received_packets[index] == INVALID_SEQUENCE_NUMBER) {
       return false;
@@ -58,7 +61,7 @@ namespace core
       this->most_recent_sequence = incoming_sequence;
     }
 
-    auto index = incoming_sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE;
+    auto index = incoming_sequence % REPLAY_PROTECTION_BUFFER_SIZE;
 
     this->received_packets[index] = incoming_sequence;
   }

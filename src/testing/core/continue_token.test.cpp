@@ -1,7 +1,6 @@
 #include "includes.h"
 #include "testing/test.hpp"
-
-#include "crypto/bytes.hpp"
+#include "testing/helpers.hpp"
 
 #include "core/continue_token.hpp"
 
@@ -10,7 +9,7 @@ using core::ContinueTokenV4;
 using core::Packet;
 using core::RouterInfo;
 
-Test(core_ContinueTokenV4_general)
+TEST(core_ContinueTokenV4_general)
 {
   Packet packet;
   packet.length = packet.buffer.size();
@@ -24,43 +23,43 @@ Test(core_ContinueTokenV4_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = crypto::Random<uint64_t>();
-  const auto SessionID = crypto::Random<uint64_t>();
-  const auto SessionVersion = crypto::Random<uint8_t>();
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
 
   ContinueTokenV4 input_token;
   {
-    input_token.expire_timestamp = ExpireTimestamp;
-    input_token.session_id = SessionID;
-    input_token.session_version = SessionVersion;
+    input_token.expire_timestamp = expire_timestamp;
+    input_token.session_id = session_id;
+    input_token.session_version = session_version;
   }
 
   {
     size_t index = 0;
-    check(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
-    check(index == ContinueTokenV4::SIZE_OF_ENCRYPTED);
+    CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(index == ContinueTokenV4::SIZE_OF_ENCRYPTED);
   }
 
   ContinueTokenV4 output_token;
   {
     size_t index = 0;
-    check(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
+    CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
-  check(input_token.expire_timestamp == ExpireTimestamp);
-  check(input_token.session_id == SessionID);
-  check(input_token.session_version == SessionVersion);
+  CHECK(input_token.expire_timestamp == expire_timestamp);
+  CHECK(input_token.session_id == session_id);
+  CHECK(input_token.session_version == session_version);
 
   // assert input == output
-  check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.session_id == output_token.session_id);
-  check(input_token.session_version == output_token.session_version);
+  CHECK(input_token.expire_timestamp == output_token.expire_timestamp);
+  CHECK(input_token.session_id == output_token.session_id);
+  CHECK(input_token.session_version == output_token.session_version);
 }
 
-Test(core_ContinueTokenV4_write)
+TEST(core_ContinueTokenV4_write)
 {
   Packet packet;
   ContinueTokenV4 token;
@@ -70,24 +69,24 @@ Test(core_ContinueTokenV4_write)
   token.session_version = 2;
 
   size_t index = 0;
-  check(token.write(packet, index));
-  check(index == ContinueTokenV4::SIZE_OF);
+  CHECK(token.write(packet, index));
+  CHECK(index == ContinueTokenV4::SIZE_OF);
 
   uint64_t expire;
   uint64_t id;
   uint8_t ver;
 
   index = 0;
-  check(encoding::read_uint64(packet.buffer, index, expire));
-  check(encoding::read_uint64(packet.buffer, index, id));
-  check(encoding::read_uint8(packet.buffer, index, ver));
+  CHECK(encoding::read_uint64(packet.buffer, index, expire));
+  CHECK(encoding::read_uint64(packet.buffer, index, id));
+  CHECK(encoding::read_uint8(packet.buffer, index, ver));
 
-  check(expire == 6);
-  check(id == 1);
-  check(ver == 2);
+  CHECK(expire == 6);
+  CHECK(id == 1);
+  CHECK(ver == 2);
 }
 
-Test(core_ContinueTokenV4_read)
+TEST(core_ContinueTokenV4_read)
 {
   Packet packet;
   ContinueTokenV4 token;
@@ -97,18 +96,18 @@ Test(core_ContinueTokenV4_read)
   token.session_version = 2;
 
   size_t index = 0;
-  check(token.write(packet, index));
+  CHECK(token.write(packet, index));
 
   ContinueTokenV4 other;
 
   index = 0;
-  check(other.read(packet, index));
-  check(index == ContinueTokenV4::SIZE_OF);
+  CHECK(other.read(packet, index));
+  CHECK(index == ContinueTokenV4::SIZE_OF);
 
-  check(token == other);
+  CHECK(token == other);
 }
 
-Test(core_ContinueToken_general)
+TEST(core_ContinueToken_general)
 {
   Packet packet;
   packet.length = packet.buffer.size();
@@ -122,47 +121,47 @@ Test(core_ContinueToken_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = crypto::Random<uint64_t>();
-  const auto SessionID = crypto::Random<uint64_t>();
-  const auto SessionVersion = crypto::Random<uint8_t>();
-  const auto SessionFlags = crypto::Random<uint8_t>();
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
+  const auto session_flags = random_whole<uint8_t>();
 
   ContinueToken input_token;
   {
-    input_token.expire_timestamp = ExpireTimestamp;
-    input_token.session_id = SessionID;
-    input_token.session_version = SessionVersion;
-    input_token.session_flags = SessionFlags;
+    input_token.expire_timestamp = expire_timestamp;
+    input_token.session_id = session_id;
+    input_token.session_version = session_version;
+    input_token.session_flags = session_flags;
   }
 
   {
     size_t index = 0;
-    check(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
-    check(index == ContinueToken::SIZE_OF_ENCRYPTED);
+    CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(index == ContinueToken::SIZE_OF_ENCRYPTED);
   }
 
   ContinueToken output_token;
   {
     size_t index = 0;
-    check(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
+    CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
-  check(input_token.expire_timestamp == ExpireTimestamp);
-  check(input_token.session_id == SessionID);
-  check(input_token.session_version == SessionVersion);
-  check(input_token.session_flags == SessionFlags);
+  CHECK(input_token.expire_timestamp == expire_timestamp);
+  CHECK(input_token.session_id == session_id);
+  CHECK(input_token.session_version == session_version);
+  CHECK(input_token.session_flags == session_flags);
 
   // assert input == output
-  check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.session_id == output_token.session_id);
-  check(input_token.session_version == output_token.session_version);
-  check(input_token.session_flags == output_token.session_flags);
+  CHECK(input_token.expire_timestamp == output_token.expire_timestamp);
+  CHECK(input_token.session_id == output_token.session_id);
+  CHECK(input_token.session_version == output_token.session_version);
+  CHECK(input_token.session_flags == output_token.session_flags);
 }
 
-Test(core_ContinueToken_write)
+TEST(core_ContinueToken_write)
 {
   Packet packet;
   ContinueToken token;
@@ -173,8 +172,8 @@ Test(core_ContinueToken_write)
   token.session_flags = 3;
 
   size_t index = 0;
-  check(token.write(packet, index));
-  check(index == ContinueToken::SIZE_OF);
+  CHECK(token.write(packet, index));
+  CHECK(index == ContinueToken::SIZE_OF);
 
   uint64_t expire;
   uint64_t id;
@@ -182,18 +181,18 @@ Test(core_ContinueToken_write)
   uint8_t flags;
 
   index = 0;
-  check(encoding::read_uint64(packet.buffer, index, expire));
-  check(encoding::read_uint64(packet.buffer, index, id));
-  check(encoding::read_uint8(packet.buffer, index, ver));
-  check(encoding::read_uint8(packet.buffer, index, flags));
+  CHECK(encoding::read_uint64(packet.buffer, index, expire));
+  CHECK(encoding::read_uint64(packet.buffer, index, id));
+  CHECK(encoding::read_uint8(packet.buffer, index, ver));
+  CHECK(encoding::read_uint8(packet.buffer, index, flags));
 
-  check(expire == 6);
-  check(id == 1);
-  check(ver == 2);
-  check(flags == 3);
+  CHECK(expire == 6);
+  CHECK(id == 1);
+  CHECK(ver == 2);
+  CHECK(flags == 3);
 }
 
-Test(core_ContinueToken_read)
+TEST(core_ContinueToken_read)
 {
   Packet packet;
   ContinueToken token;
@@ -204,13 +203,13 @@ Test(core_ContinueToken_read)
   token.session_flags = 3;
 
   size_t index = 0;
-  check(token.write(packet, index));
+  CHECK(token.write(packet, index));
 
   ContinueToken other;
 
   index = 0;
-  check(other.read(packet, index));
-  check(index == ContinueToken::SIZE_OF);
+  CHECK(other.read(packet, index));
+  CHECK(index == ContinueToken::SIZE_OF);
 
-  check(token == other);
+  CHECK(token == other);
 }

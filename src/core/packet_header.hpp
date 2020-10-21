@@ -19,13 +19,17 @@ namespace core
     ServerToClient,
   };
 
-  struct PacketHeaderV4: public SessionHasher
+  // type | sequence | session id | session version
+
+  class PacketHeaderV4: public SessionHasher
   {
+   public:
     // type (1) +
     // SessionHasher (9) +
     // sequence (8)
     static const size_t SIZE_OF = 18;
-    static const size_t SIZE_OF_SIGNED = SIZE_OF + crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNATURE = crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNED = SIZE_OF + SIZE_OF_SIGNATURE;
 
     PacketType type;
 
@@ -109,13 +113,13 @@ namespace core
     }
 
     if (direction == PacketDirection::ServerToClient) {
-      // high bit must be set
       if ((this->sequence & (1ULL << 63)) == 0) {
+        LOG(ERROR, "could not write header, high bit unset");
         return false;
       }
     } else {
-      // high bit must be clear
       if ((this->sequence & (1ULL << 63)) != 0) {
+        LOG(ERROR, "could not write header, high bit set");
         return false;
       }
     }
@@ -123,22 +127,24 @@ namespace core
     if (
      this->type == PacketType::SessionPing4 || this->type == PacketType::SessionPong4 ||
      this->type == PacketType::RouteResponse4 || this->type == PacketType::ContinueResponse4) {
-      // second highest bit must be set
       if ((sequence & (1ULL << 62)) == 0) {
+        LOG(ERROR, "could not write header, second highest bit unset");
         return false;
       }
     } else {
-      // second highest bit must be clear
       if ((sequence & (1ULL << 62)) != 0) {
+        LOG(ERROR, "could not write header, second highest bit set");
         return false;
       }
     }
 
     if (!encoding::write_uint8(packet.buffer, index, static_cast<uint8_t>(this->type))) {
+      LOG(ERROR, "could not write packet type");
       return false;
     }
 
     if (!encoding::write_uint64(packet.buffer, index, this->sequence)) {
+      LOG(ERROR, "could not write packet sequence");
       return false;
     }
 
@@ -146,10 +152,12 @@ namespace core
     const int additional_length = 8 + 1;
 
     if (!encoding::write_uint64(packet.buffer, index, this->session_id)) {
+      LOG(ERROR, "could not write session id");
       return false;
     }
 
     if (!encoding::write_uint8(packet.buffer, index, this->session_version)) {
+      LOG(ERROR, "could not write session version");
       return false;
     }
 
@@ -157,10 +165,12 @@ namespace core
     {
       size_t index = 0;
       if (!encoding::write_uint32(nonce, index, 0)) {
+        LOG(ERROR, "failed to write 0 into header nonce, something is wrong with write_uint32");
         return false;
       }
 
       if (!encoding::write_uint64(nonce, index, this->sequence)) {
+        LOG(ERROR, "failed to write sequence into header nonce, something is wrong with write_uint64");
         return false;
       }
     }
@@ -179,6 +189,7 @@ namespace core
      private_key.data());
 
     if (result != 0) {
+      LOG(ERROR, "failed to encrypt packet header: ", result);
       return false;
     }
 
@@ -255,7 +266,7 @@ namespace core
      &decrypted_length,
      nullptr,
      &packet.buffer[begin + 18],
-     (unsigned long long)crypto_aead_chacha20poly1305_IETF_ABYTES,
+     (unsigned long long)SIZE_OF_SIGNATURE,
      &packet.buffer[additional_index],
      (unsigned long long)additional_length,
      nonce.data(),
@@ -288,7 +299,8 @@ namespace core
     // sequence (8) +
     // ??? (1)
     static const size_t SIZE_OF = 19;
-    static const size_t SIZE_OF_SIGNED = SIZE_OF + crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNATURE = crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNED = SIZE_OF + SIZE_OF_SIGNATURE;
 
     PacketType type;
 
@@ -377,13 +389,13 @@ namespace core
     }
 
     if (direction == PacketDirection::ServerToClient) {
-      // high bit must be set
       if ((this->sequence & (1ULL << 63)) == 0) {
+        LOG(ERROR, "could not write header, high bit unset");
         return false;
       }
     } else {
-      // high bit must be clear
       if ((this->sequence & (1ULL << 63)) != 0) {
+        LOG(ERROR, "could not write header, high bit set");
         return false;
       }
     }
@@ -393,20 +405,24 @@ namespace core
      this->type == PacketType::RouteResponse || this->type == PacketType::ContinueResponse) {
       // second highest bit must be set
       if ((sequence & (1ULL << 62)) == 0) {
+        LOG(ERROR, "could not write header, second highest bit unset");
         return false;
       }
     } else {
       // second highest bit must be clear
       if ((sequence & (1ULL << 62)) != 0) {
+        LOG(ERROR, "could not write header, second highest bit set");
         return false;
       }
     }
 
     if (!encoding::write_uint8(packet.buffer, index, static_cast<uint8_t>(this->type))) {
+      LOG(ERROR, "could not write packet type");
       return false;
     }
 
     if (!encoding::write_uint64(packet.buffer, index, this->sequence)) {
+      LOG(ERROR, "could not write packet sequence");
       return false;
     }
 
@@ -414,16 +430,17 @@ namespace core
     const int additional_length = 8 + 1 + 1;
 
     if (!encoding::write_uint64(packet.buffer, index, this->session_id)) {
+      LOG(ERROR, "could not write session id");
       return false;
     }
 
     if (!encoding::write_uint8(packet.buffer, index, this->session_version)) {
+      LOG(ERROR, "could not write session version");
       return false;
     }
 
-    // todo: remove this once we fully switch to new relay
-    // todo: ^ still applicable?
     if (!encoding::write_uint8(packet.buffer, index, 0)) {
+      LOG(ERROR, "could not write null byte");
       return false;
     }
 
@@ -431,10 +448,12 @@ namespace core
     {
       size_t index = 0;
       if (!encoding::write_uint32(nonce, index, 0)) {
+        LOG(ERROR, "failed to write 0 into header nonce, something is wrong with write_uint32");
         return false;
       }
 
       if (!encoding::write_uint64(nonce, index, this->sequence)) {
+        LOG(ERROR, "failed to write sequence into header nonce, something is wrong with write_uint64");
         return false;
       }
     }
@@ -453,6 +472,7 @@ namespace core
      private_key.data());
 
     if (result != 0) {
+      LOG(ERROR, "failed to encrypt packet header: ", result);
       return false;
     }
 

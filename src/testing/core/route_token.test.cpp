@@ -1,156 +1,221 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "crypto/bytes.hpp"
-
 #include "core/route_token.hpp"
 
-Test(core_RouteTokenV4_general)
+#define CRYPTO_HELPERS
+#include "testing/helpers.hpp"
+
+using core::Packet;
+using core::RouterInfo;
+using core::RouteToken;
+using core::RouteTokenV4;
+using net::Address;
+using net::AddressType;
+
+TEST(core_RouteTokenV4_general)
 {
-  core::RouterInfo info;
-  core::Packet packet;
+  RouterInfo info;
+  Packet packet;
   packet.length = packet.buffer.size();
 
-  std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
-  std::array<uint8_t, crypto_box_SECRETKEYBYTES> sender_private_key;
-  crypto_box_keypair(sender_public_key.data(), sender_private_key.data());
-
-  std::array<uint8_t, crypto_box_PUBLICKEYBYTES> receiver_public_key;
-  std::array<uint8_t, crypto_box_SECRETKEYBYTES> receiver_private_key;
-  crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
+  auto [sender_public_key, sender_private_key] = gen_keypair();
+  auto [receiver_public_key, receiver_private_key] = gen_keypair();
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = crypto::Random<uint64_t>();
-  const auto SessionID = crypto::Random<uint64_t>();
-  const auto SessionVersion = crypto::Random<uint8_t>();
-  const auto KbpsUp = crypto::Random<uint32_t>();
-  const auto KbpsDown = crypto::Random<uint32_t>();
-  net::Address NextAddr;
-  NextAddr.Type = net::AddressType::IPv4;
-  NextAddr.IPv4[0] = crypto::Random<uint8_t>();
-  NextAddr.IPv4[1] = crypto::Random<uint8_t>();
-  NextAddr.IPv4[2] = crypto::Random<uint8_t>();
-  NextAddr.IPv4[3] = crypto::Random<uint8_t>();
-  NextAddr.Port = crypto::Random<uint32_t>();
-  std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
-  crypto::RandomBytes(PrivateKey, PrivateKey.size());
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
+  const auto kbps_up = random_whole<uint32_t>();
+  const auto kbps_down = random_whole<uint32_t>();
+  Address next_addr;
+  next_addr.type = AddressType::IPv4;
+  next_addr.ipv4[0] = random_whole<uint8_t>();
+  next_addr.ipv4[1] = random_whole<uint8_t>();
+  next_addr.ipv4[2] = random_whole<uint8_t>();
+  next_addr.ipv4[3] = random_whole<uint8_t>();
+  next_addr.port = random_whole<uint32_t>();
+  GenericKey private_key = random_private_key();
 
-  core::RouteTokenV4 inputToken;
+  RouteTokenV4 input_token;
   {
-    inputToken.expire_timestamp = ExpireTimestamp;
-    inputToken.session_id = SessionID;
-    inputToken.session_version = SessionVersion;
-    inputToken.KbpsUp = KbpsUp;
-    inputToken.KbpsDown = KbpsDown;
-    inputToken.NextAddr = NextAddr;
-    inputToken.PrivateKey = PrivateKey;
+    input_token.expire_timestamp = expire_timestamp;
+    input_token.session_id = session_id;
+    input_token.session_version = session_version;
+    input_token.kbps_up = kbps_up;
+    input_token.kbps_down = kbps_down;
+    input_token.next_addr = next_addr;
+    input_token.private_key = private_key;
   }
 
   {
     size_t index = 0;
-    check(inputToken.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(index == RouteTokenV4::SIZE_OF_SIGNED);
   }
 
-  core::RouteTokenV4 outputToken;
+  RouteTokenV4 output_token;
   {
     size_t index = 0;
-    check(outputToken.read_encrypted(packet, index, sender_public_key, receiver_private_key));
+    CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
-  check(inputToken.expire_timestamp == ExpireTimestamp);
-  check(inputToken.session_id == SessionID);
-  check(inputToken.session_version == SessionVersion);
-  check(inputToken.KbpsUp == KbpsUp);
-  check(inputToken.KbpsDown == KbpsDown);
-  check(inputToken.PrivateKey == PrivateKey);
-  check(inputToken.NextAddr == NextAddr);
+  CHECK(input_token.expire_timestamp == expire_timestamp);
+  CHECK(input_token.session_id == session_id);
+  CHECK(input_token.session_version == session_version);
+  CHECK(input_token.kbps_up == kbps_up);
+  CHECK(input_token.kbps_down == kbps_down);
+  CHECK(input_token.private_key == private_key);
+  CHECK(input_token.next_addr == next_addr);
 
   // make sure input == output
-  check(inputToken.expire_timestamp == outputToken.expire_timestamp);
-  check(inputToken.session_id == outputToken.session_id);
-  check(inputToken.session_version == outputToken.session_version);
-  check(inputToken.KbpsUp == outputToken.KbpsUp);
-  check(inputToken.KbpsDown == outputToken.KbpsDown);
-  check(inputToken.PrivateKey == outputToken.PrivateKey);
-  check(inputToken.NextAddr == outputToken.NextAddr);
+  CHECK(input_token.expire_timestamp == output_token.expire_timestamp);
+  CHECK(input_token.session_id == output_token.session_id);
+  CHECK(input_token.session_version == output_token.session_version);
+  CHECK(input_token.kbps_up == output_token.kbps_up);
+  CHECK(input_token.kbps_down == output_token.kbps_down);
+  CHECK(input_token.private_key == output_token.private_key);
+  CHECK(input_token.next_addr == output_token.next_addr);
 }
 
-Test(core_RouteToken_general)
+TEST(core_RouteTokenV4_write)
 {
-  core::RouterInfo info;
-  core::Packet packet;
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
+  const auto kbps_up = random_whole<uint32_t>();
+  const auto kbps_down = random_whole<uint32_t>();
+  Address next_addr;
+  next_addr.type = AddressType::IPv4;
+  next_addr.ipv4[0] = random_whole<uint8_t>();
+  next_addr.ipv4[1] = random_whole<uint8_t>();
+  next_addr.ipv4[2] = random_whole<uint8_t>();
+  next_addr.ipv4[3] = random_whole<uint8_t>();
+  next_addr.port = random_whole<uint32_t>();
+  GenericKey private_key = random_private_key();
+
+  Packet packet;
+  RouteTokenV4 token;
+  {
+    token.expire_timestamp = expire_timestamp;
+    token.session_id = session_id;
+    token.session_version = session_version;
+    token.kbps_up = kbps_up;
+    token.kbps_down = kbps_down;
+    token.next_addr = next_addr;
+    token.private_key = private_key;
+  }
+
+  size_t index = 0;
+  CHECK(token.write(packet, index));
+  CHECK(index == RouteTokenV4::SIZE_OF);
+}
+
+TEST(core_RouteToken_general)
+{
+  RouterInfo info;
+  Packet packet;
   packet.length = packet.buffer.size();
 
-  std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
-  std::array<uint8_t, crypto_box_SECRETKEYBYTES> sender_private_key;
-  crypto_box_keypair(sender_public_key.data(), sender_private_key.data());
-
-  std::array<uint8_t, crypto_box_PUBLICKEYBYTES> receiver_public_key;
-  std::array<uint8_t, crypto_box_SECRETKEYBYTES> receiver_private_key;
-  crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
+  auto [sender_public_key, sender_private_key] = gen_keypair();
+  auto [receiver_public_key, receiver_private_key] = gen_keypair();
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = crypto::Random<uint64_t>();
-  const auto SessionID = crypto::Random<uint64_t>();
-  const auto SessionVersion = crypto::Random<uint8_t>();
-  const auto SessionFlags = crypto::Random<uint8_t>();
-  const auto KbpsUp = crypto::Random<uint32_t>();
-  const auto KbpsDown = crypto::Random<uint32_t>();
-  net::Address NextAddr;
-  NextAddr.Type = net::AddressType::IPv4;
-  NextAddr.IPv4[0] = crypto::Random<uint8_t>();
-  NextAddr.IPv4[1] = crypto::Random<uint8_t>();
-  NextAddr.IPv4[2] = crypto::Random<uint8_t>();
-  NextAddr.IPv4[3] = crypto::Random<uint8_t>();
-  NextAddr.Port = crypto::Random<uint32_t>();
-  std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
-  crypto::RandomBytes(PrivateKey, PrivateKey.size());
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
+  const auto session_flags = random_whole<uint8_t>();
+  const auto kbps_up = random_whole<uint32_t>();
+  const auto kbps_down = random_whole<uint32_t>();
+  Address next_addr;
+  next_addr.type = AddressType::IPv4;
+  next_addr.ipv4[0] = random_whole<uint8_t>();
+  next_addr.ipv4[1] = random_whole<uint8_t>();
+  next_addr.ipv4[2] = random_whole<uint8_t>();
+  next_addr.ipv4[3] = random_whole<uint8_t>();
+  next_addr.port = random_whole<uint32_t>();
+  GenericKey private_key = random_private_key();
 
-  core::RouteToken inputToken;
+  RouteToken input_token;
   {
-    inputToken.expire_timestamp = ExpireTimestamp;
-    inputToken.session_id = SessionID;
-    inputToken.session_version = SessionVersion;
-    inputToken.session_flags = SessionFlags;
-    inputToken.KbpsUp = KbpsUp;
-    inputToken.KbpsDown = KbpsDown;
-    inputToken.NextAddr = NextAddr;
-    inputToken.PrivateKey = PrivateKey;
+    input_token.expire_timestamp = expire_timestamp;
+    input_token.session_id = session_id;
+    input_token.session_version = session_version;
+    input_token.session_flags = session_flags;
+    input_token.kbps_up = kbps_up;
+    input_token.kbps_down = kbps_down;
+    input_token.next_addr = next_addr;
+    input_token.private_key = private_key;
   }
 
   {
     size_t index = 0;
-    check(inputToken.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
-  core::RouteToken outputToken;
+  RouteToken output_token;
   {
     size_t index = 0;
-    check(outputToken.read_encrypted(packet, index, sender_public_key, receiver_private_key));
+    CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
-  check(inputToken.expire_timestamp == ExpireTimestamp);
-  check(inputToken.session_id == SessionID);
-  check(inputToken.session_version == SessionVersion);
-  check(inputToken.session_flags == SessionFlags);
-  check(inputToken.KbpsUp == KbpsUp);
-  check(inputToken.KbpsDown == KbpsDown);
-  check(inputToken.PrivateKey == PrivateKey);
-  check(inputToken.NextAddr == NextAddr);
+  CHECK(input_token.expire_timestamp == expire_timestamp);
+  CHECK(input_token.session_id == session_id);
+  CHECK(input_token.session_version == session_version);
+  CHECK(input_token.session_flags == session_flags);
+  CHECK(input_token.kbps_up == kbps_up);
+  CHECK(input_token.kbps_down == kbps_down);
+  CHECK(input_token.private_key == private_key);
+  CHECK(input_token.next_addr == next_addr);
 
   // make sure input == output
-  check(inputToken.expire_timestamp == outputToken.expire_timestamp);
-  check(inputToken.session_id == outputToken.session_id);
-  check(inputToken.session_version == outputToken.session_version);
-  check(inputToken.session_flags == outputToken.session_flags);
-  check(inputToken.KbpsUp == outputToken.KbpsUp);
-  check(inputToken.KbpsDown == outputToken.KbpsDown);
-  check(inputToken.PrivateKey == outputToken.PrivateKey);
-  check(inputToken.NextAddr == outputToken.NextAddr);
+  CHECK(input_token.expire_timestamp == output_token.expire_timestamp);
+  CHECK(input_token.session_id == output_token.session_id);
+  CHECK(input_token.session_version == output_token.session_version);
+  CHECK(input_token.session_flags == output_token.session_flags);
+  CHECK(input_token.kbps_up == output_token.kbps_up);
+  CHECK(input_token.kbps_down == output_token.kbps_down);
+  CHECK(input_token.private_key == output_token.private_key);
+  CHECK(input_token.next_addr == output_token.next_addr);
+}
+
+TEST(core_RouteToken_write)
+{
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
+  const auto session_flags = random_whole<uint8_t>();
+  const auto kbps_up = random_whole<uint32_t>();
+  const auto kbps_down = random_whole<uint32_t>();
+  Address next_addr;
+  next_addr.type = AddressType::IPv4;
+  next_addr.ipv4[0] = random_whole<uint8_t>();
+  next_addr.ipv4[1] = random_whole<uint8_t>();
+  next_addr.ipv4[2] = random_whole<uint8_t>();
+  next_addr.ipv4[3] = random_whole<uint8_t>();
+  next_addr.port = random_whole<uint32_t>();
+  GenericKey private_key = random_private_key();
+
+  Packet packet;
+  RouteToken token;
+  {
+    token.expire_timestamp = expire_timestamp;
+    token.session_id = session_id;
+    token.session_version = session_version;
+    token.session_flags = session_flags;
+    token.kbps_up = kbps_up;
+    token.kbps_down = kbps_down;
+    token.next_addr = next_addr;
+    token.private_key = private_key;
+  }
+
+  size_t index = 0;
+  CHECK(token.write(packet, index));
+  CHECK(index == RouteToken::SIZE_OF);
 }

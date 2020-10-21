@@ -7,10 +7,14 @@
 namespace testing
 {
   class _test_core_PingHistory_general_;
-}
+  class _test_core_RelayManager_process_pong_;
+}  // namespace testing
 
 namespace core
 {
+  const size_t PING_HISTORY_ENTRY_COUNT = 256;
+  const size_t INVALID_SEQUENCE_NUMBER = 0xFFFFFFFFFFFFFFFFULL;
+
   struct HistoryEntry
   {
     uint64_t sequence_number = INVALID_SEQUENCE_NUMBER;
@@ -21,6 +25,7 @@ namespace core
   class PingHistory
   {
     friend testing::_test_core_PingHistory_general_;
+    friend testing::_test_core_RelayManager_process_pong_;
 
    public:
     PingHistory() = default;
@@ -40,7 +45,7 @@ namespace core
 
    private:
     uint64_t most_recent_sequence = 0;
-    std::array<HistoryEntry, RELAY_PING_HISTORY_ENTRY_COUNT> entries;
+    std::array<HistoryEntry, PING_HISTORY_ENTRY_COUNT> entries;
   };
 
   INLINE PingHistory::PingHistory(const PingHistory& other)
@@ -50,16 +55,13 @@ namespace core
 
   INLINE void PingHistory::clear()
   {
-    GCC_NO_OPT_OUT;
     this->most_recent_sequence = 0;
-
     this->entries.fill(HistoryEntry());
   }
 
   INLINE auto PingHistory::ping_sent(double time) -> uint64_t
   {
-    GCC_NO_OPT_OUT;
-    const auto index = this->most_recent_sequence % RELAY_PING_HISTORY_ENTRY_COUNT;
+    const auto index = this->most_recent_sequence % PING_HISTORY_ENTRY_COUNT;
     auto& entry = this->entries[index];
     entry.sequence_number = this->most_recent_sequence;
     entry.time_ping_sent = time;
@@ -70,8 +72,7 @@ namespace core
 
   INLINE void PingHistory::pong_received(uint64_t seq, double time)
   {
-    GCC_NO_OPT_OUT;
-    const size_t index = seq % RELAY_PING_HISTORY_ENTRY_COUNT;
+    const size_t index = seq % PING_HISTORY_ENTRY_COUNT;
     auto& entry = this->entries[index];
     if (entry.sequence_number == seq) {
       entry.time_pong_received = time;

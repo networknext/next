@@ -16,35 +16,59 @@ using util::Second;
 namespace testing
 {
   class _test_core_handlers_relay_pong_handler_;
-}
+  class _test_core_RelayManager_reset_;
+  class _test_core_RelayManager_process_pong_;
+  class _test_core_RelayManager_copy_existing_relays_;
+  class _test_core_RelayManager_copy_new_relays_;
+}  // namespace testing
 
 namespace core
 {
-  const auto INVALID_PING_TIME = -10000.0;
+  // how long between relay to relay pings, in seconds
+  const double PING_RATE = 0.1;
+  // how many seconds before a packet is considered as lost
+  const double PING_SAFETY = 1.0;
+  // default value for stats
+  const double INVALID_PING_TIME = -10000.0;
+  // how long to sample for relay stats, in seconds
+  const double STATS_WINDOW = 10.0;
 
   struct PingData
   {
-    uint64_t sequence;
+    uint64_t sequence = 0;
     Address address;
   };
 
   struct RelayPingInfo
   {
-    uint64_t id;
+    uint64_t id = 0;
     Address address;
   };
 
   struct Relay
   {
-    uint64_t id;
+    uint64_t id = 0;
     Address address;
     double last_ping_time = INVALID_PING_TIME;
     PingHistory* history = nullptr;
+
+    // Used only in tests, asserts using the history's pointed to address, not the value of it
+    auto operator==(const Relay& other) const -> bool;
   };
+
+  INLINE auto Relay::operator==(const Relay& other) const -> bool
+  {
+    return this->id == other.id && this->address == other.address && this->last_ping_time == other.last_ping_time &&
+           this->history == other.history;
+  }
 
   class RelayManager
   {
-    friend class testing::_test_core_handlers_relay_pong_handler_;
+    friend testing::_test_core_handlers_relay_pong_handler_;
+    friend testing::_test_core_RelayManager_reset_;
+    friend testing::_test_core_RelayManager_process_pong_;
+    friend testing::_test_core_RelayManager_copy_existing_relays_;
+    friend testing::_test_core_RelayManager_copy_new_relays_;
 
    public:
     RelayManager();
@@ -52,13 +76,13 @@ namespace core
 
     void reset();
 
-    void update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming_relays);
+    auto update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming_relays) -> bool;
+
+    auto get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t;
 
     auto process_pong(const Address& from, uint64_t seq) -> bool;
 
     void get_stats(RelayStats& stats);
-
-    auto get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t;
 
    private:
     std::mutex mutex;
@@ -66,6 +90,22 @@ namespace core
     std::array<Relay, MAX_RELAYS> relays;
     std::vector<PingHistory> ping_history;
     util::Clock clock;
+
+    auto copy_existing_relays(
+     size_t& index,
+     size_t num_incoming_relays,
+     const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+     std::array<Relay, MAX_RELAYS>& new_relays,
+     std::array<bool, MAX_RELAYS>& found,
+     std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool;
+
+    auto copy_new_relays(
+     size_t& index,
+     size_t num_incoming_relays,
+     const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+     std::array<Relay, MAX_RELAYS>& new_relays,
+     std::array<bool, MAX_RELAYS>& found,
+     std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool;
   };
 
   INLINE RelayManager::RelayManager()
@@ -82,136 +122,39 @@ namespace core
     std::fill(this->relays.begin(), this->relays.end(), Relay());
   }
 
-  INLINE auto RelayManager::process_pong(const Address& from, uint64_t seq) -> bool
+  INLINE auto RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming) -> bool
   {
-    bool pong_received = false;
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(this->mutex);
-      for (unsigned int i = 0; i < this->num_relays; i++) {
-        auto& relay = this->relays[i];
-        if (from == relay.address) {
-          relay.history->pong_received(seq, this->clock.elapsed<Second>());
-          pong_received = true;
-          break;
-        }
-      }
+    if (num_incoming_relays > MAX_RELAYS) {
+      LOG(ERROR, "updating with too many relays: ", num_incoming_relays);
+      return false;
     }
-
-    return pong_received;
-  }
-
-  INLINE void RelayManager::get_stats(RelayStats& stats)
-  {
-    auto current_time = this->clock.elapsed<Second>();
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(this->mutex);
-      stats.num_relays = this->num_relays;
-
-      for (unsigned int i = 0; i < this->num_relays; i++) {
-        auto& relay = this->relays[i];
-        RouteStats rs;
-        relay.history->into(rs, current_time - RELAY_STATS_WINDOW, current_time, RELAY_PING_SAFETY);
-        stats.ids[i] = relay.id;
-        stats.rtt[i] = rs.rtt;
-        stats.jitter[i] = rs.jitter;
-        stats.packet_loss[i] = rs.packet_loss;
-      }
-    }
-  }
-
-  INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
-  {
-    double current_time = this->clock.elapsed<Second>();
-    size_t num_pings = 0;
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(this->mutex);
-      for (unsigned int i = 0; i < this->num_relays; ++i) {
-        if (this->relays[i].last_ping_time + RELAY_PING_TIME <= current_time) {
-          auto& relay = this->relays[i];
-          auto& ping_data = data[num_pings++];
-
-          ping_data.sequence = relay.history->ping_sent(current_time);
-          ping_data.address = relay.address;
-          relay.last_ping_time = current_time;
-        }
-      }
-    }
-
-    return num_pings;
-  }
-
-  // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
-  INLINE void RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
-  {
-    assert(num_incoming_relays <= MAX_RELAYS);
-
-    // first copy all current relays that are also in the update lists
 
     std::array<bool, MAX_RELAYS> history_slot_taken{};
     std::array<bool, MAX_RELAYS> found{};
     std::array<Relay, MAX_RELAYS> new_relays{};
 
-    unsigned int index = 0;
+    size_t index = 0;
 
-    // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(this->mutex);
-      for (unsigned int i = 0; i < this->num_relays; i++) {
-        const auto& relay = this->relays[i];
-        for (unsigned int j = 0; j < num_incoming_relays; j++) {
-          if (relay.id == incoming[j].id) {
-            found[j] = true;
-            new_relays[index++] = relay;
 
-            const auto slot = relay.history - this->ping_history.data();
-            assert(slot >= 0);
-            assert(slot < MAX_RELAYS);
-            history_slot_taken[slot] = true;
-          }
-        }
-      }
+      // preserve existing relay entries if they exist in the new data set
+      copy_existing_relays(index, num_incoming_relays, incoming, new_relays, found, history_slot_taken);
 
-      // copy all near relays not found in the current relay list
+      // copy all new relays not found in the current relay list
+      copy_new_relays(index, num_incoming_relays, incoming, new_relays, found, history_slot_taken);
 
-      for (unsigned int i = 0; i < num_incoming_relays; i++) {
-        if (!found[i]) {
-          auto& new_relay = new_relays[index];
-          new_relay.id = incoming[i].id;
-          new_relay.address = incoming[i].address;
-
-          // find a history slot for this relay
-          // helps when updating and copying in the above loop
-          // instead of copying the while ping history array
-          // it just copies the pointer
-          for (int j = 0; j < MAX_RELAYS; j++) {
-            if (!history_slot_taken[j]) {
-              new_relay.history = &this->ping_history[j];
-              new_relay.history->clear();
-              history_slot_taken[j] = true;
-              break;
-            }
-          }
-          assert(new_relay.history != nullptr);
-          index++;
-        }
-      }
-
-      // commit the updated relay array
+      // commit the updated relay array, move semantics won't make a difference here
       this->num_relays = index;
       std::copy(new_relays.begin(), new_relays.begin() + index, this->relays.begin());
 
-      // make sure all the ping times are evenly distributed to avoid clusters of ping packets
+      // make sure all the ping times are evenly distributed to avoid clusters of ping packets (prevent relays from ddos-ing
+      // eachother)
 
       auto current_time = this->clock.elapsed<Second>();
 
       for (unsigned int i = 0; i < this->num_relays; i++) {
-        this->relays[i].last_ping_time = current_time - RELAY_PING_TIME + i * RELAY_PING_TIME / this->num_relays;
+        this->relays[i].last_ping_time = current_time - PING_RATE + i * PING_RATE / this->num_relays;
       }
 
 #ifndef NDEBUG
@@ -246,5 +189,140 @@ namespace core
       }
 #endif
     }
+
+    return true;
+  }
+
+  INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
+  {
+    double current_time = this->clock.elapsed<Second>();
+    size_t num_pings = 0;
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(this->mutex);
+      for (unsigned int i = 0; i < this->num_relays; ++i) {
+        if (this->relays[i].last_ping_time + PING_RATE <= current_time) {
+          auto& relay = this->relays[i];
+          auto& ping_data = data[num_pings++];
+
+          ping_data.sequence = relay.history->ping_sent(current_time);
+          ping_data.address = relay.address;
+          relay.last_ping_time = current_time;
+        }
+      }
+    }
+
+    return num_pings;
+  }
+
+  INLINE auto RelayManager::process_pong(const Address& from, uint64_t seq) -> bool
+  {
+    bool pong_received = false;
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(this->mutex);
+      for (unsigned int i = 0; i < this->num_relays; i++) {
+        auto& relay = this->relays[i];
+        if (from == relay.address) {
+          relay.history->pong_received(seq, this->clock.elapsed<Second>());
+          pong_received = true;
+          break;
+        }
+      }
+    }
+
+    return pong_received;
+  }
+
+  INLINE void RelayManager::get_stats(RelayStats& stats)
+  {
+    auto current_time = this->clock.elapsed<Second>();
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(this->mutex);
+      stats.num_relays = this->num_relays;
+
+      for (unsigned int i = 0; i < this->num_relays; i++) {
+        auto& relay = this->relays[i];
+        RouteStats rs;
+        relay.history->into(rs, current_time - STATS_WINDOW, current_time, PING_SAFETY);
+        stats.ids[i] = relay.id;
+        stats.rtt[i] = rs.rtt;
+        stats.jitter[i] = rs.jitter;
+        stats.packet_loss[i] = rs.packet_loss;
+      }
+    }
+  }
+
+  INLINE auto RelayManager::copy_existing_relays(
+   size_t& index,
+   size_t num_incoming_relays,
+   const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+   std::array<Relay, MAX_RELAYS>& new_relays,
+   std::array<bool, MAX_RELAYS>& found,
+   std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool
+  {
+    for (unsigned int i = 0; i < this->num_relays; i++) {
+      const auto& relay = this->relays[i];
+      for (unsigned int j = 0; j < num_incoming_relays; j++) {
+        if (relay.id == incoming[j].id) {
+          found[j] = true;
+          new_relays[index++] = relay;
+
+          const long slot = relay.history - this->ping_history.data();
+
+          if (slot < 0) {
+            LOG(ERROR, "history slot index invalid (< 0)");
+            return false;
+          }
+
+          if (slot >= static_cast<long>(MAX_RELAYS)) {
+            LOG(ERROR, "history slot index invalid (>= MAX_RELAYS)");
+            return false;
+          }
+
+          history_slot_taken[slot] = true;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  INLINE auto RelayManager::copy_new_relays(
+   size_t& index,
+   size_t num_incoming_relays,
+   const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+   std::array<Relay, MAX_RELAYS>& new_relays,
+   std::array<bool, MAX_RELAYS>& found,
+   std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool
+  {
+    for (unsigned int i = 0; i < num_incoming_relays; i++) {
+      if (!found[i]) {
+        auto& new_relay = new_relays[index];
+        new_relay.id = incoming[i].id;
+        new_relay.address = incoming[i].address;
+
+        for (size_t j = 0; j < MAX_RELAYS; j++) {
+          if (!history_slot_taken[j]) {
+            new_relay.history = &this->ping_history[j];
+            new_relay.history->clear();
+            history_slot_taken[j] = true;
+            break;
+          }
+        }
+
+        if (new_relay.history == nullptr) {
+          return false;
+        }
+
+        index++;
+      }
+    }
+
+    return true;
   }
 }  // namespace core

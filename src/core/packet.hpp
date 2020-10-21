@@ -101,7 +101,7 @@ namespace core
   template <size_t BuffSize>
   INLINE void PacketBuffer<BuffSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
   {
-    // TODO if ever going back to sendmmsg/recvmmsg
+    // if ever going back to sendmmsg/recvmmsg
     // replace count with an atomic
     // and set by auto count = count.exchange(count + 1)
     // or something of the like, it should be possible

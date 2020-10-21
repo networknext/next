@@ -4,16 +4,28 @@
 #include "util/macros.hpp"
 
 using util::Clock;
+using util::Second;
+
+namespace testing
+{
+  class _test_core_RouterInfo_set_timestamp_;
+  class _test_core_RouterInfo_current_time_;
+}
 
 namespace core
 {
   class RouterInfo
   {
+    friend testing::_test_core_RouterInfo_set_timestamp_;
+    friend testing::_test_core_RouterInfo_current_time_;
+
    public:
     RouterInfo() = default;
 
     void set_timestamp(int64_t ts);
-    auto current_time() const -> double;
+
+    template <typename R>
+    auto current_time() const -> R;
 
    private:
     mutable std::mutex mutex;
@@ -28,9 +40,10 @@ namespace core
     clock.reset();
   }
 
-  INLINE auto RouterInfo::current_time() const -> double
+  template <typename R>
+  INLINE auto RouterInfo::current_time() const -> R
   {
     std::lock_guard<std::mutex> lk(mutex);
-    return this->backend_timestamp + clock.elapsed<util::Second>();
+    return static_cast<R>(this->backend_timestamp + clock.elapsed<Second>());
   }
 }  // namespace core

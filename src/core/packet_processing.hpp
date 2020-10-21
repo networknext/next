@@ -48,7 +48,7 @@ namespace core
     Packet pkt;
 
     while (!socket.closed() && should_process) {
-      // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME
+      // Sleep for 10ms, but the actual ping rate is controlled by PING_RATE
       std::this_thread::sleep_for(10ms);
 
       std::array<core::PingData, MAX_RELAYS> pings;
@@ -88,10 +88,10 @@ namespace core
         }
 
         size_t header_size = 0;
-        if (pkt.addr.Type == AddressType::IPv4) {
-          header_size = net::IPv4UDPHeaderSize;
-        } else if (pkt.addr.Type == AddressType::IPv6) {
-          header_size = net::IPv6UDPHeaderSize;
+        if (pkt.addr.type == AddressType::IPv4) {
+          header_size = net::IPV4_UDP_PACKET_HEADER_SIZE;
+        } else if (pkt.addr.type == AddressType::IPv6) {
+          header_size = net::IPV6_UDP_PACKET_HEADER_SIZE;
         }
 
         size_t whole_packet_size = header_size + pkt.length;
@@ -134,10 +134,10 @@ namespace core
 
       size_t header_bytes = 0;
 
-      if (packet.addr.Type == net::AddressType::IPv4) {
-        header_bytes = net::IPv4UDPHeaderSize;
-      } else if (packet.addr.Type == net::AddressType::IPv6) {
-        header_bytes = net::IPv6UDPHeaderSize;
+      if (packet.addr.type == net::AddressType::IPv4) {
+        header_bytes = net::IPV4_UDP_PACKET_HEADER_SIZE;
+      } else if (packet.addr.type == net::AddressType::IPv6) {
+        header_bytes = net::IPV6_UDP_PACKET_HEADER_SIZE;
       }
 
       size_t whole_packet_size = packet.length + header_bytes;

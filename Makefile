@@ -6,10 +6,6 @@ include $(MAKEFILE_DIR)/Makefile.common
 ### Targets  ###
 ################
 
-.PHONY: help
-help:
-	@echo "help - TODO"
-
 .PHONY: release
 release: $(BIN) $(OBJ)
 	$(MAKE) -f $(RELEASE_MAKEFILE)

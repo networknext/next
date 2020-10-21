@@ -7,8 +7,8 @@
 
 #include "bench/bench.hpp"
 #include "core/backend.hpp"
-#include "core/packet_processing.hpp"
 #include "core/packet_header.hpp"
+#include "core/packet_processing.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
@@ -20,7 +20,11 @@
 #include "util/env.hpp"
 
 using namespace std::chrono_literals;
+
 using core::Backend;
+using core::RelayManager;
+using core::RouterInfo;
+using core::SessionMap;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
 using net::Address;
@@ -30,134 +34,134 @@ using os::SocketConfig;
 using os::SocketPtr;
 using os::SocketType;
 using util::Env;
-
-namespace base64 = encoding::base64;
-
-struct
-{
-  volatile bool alive;
-  volatile bool should_clean_shutdown;
-} Globals = {
- .alive = true,
- .should_clean_shutdown = false,
-};
+using util::ThroughputRecorder;
 
 namespace
 {
-  INLINE void set_thread_affinity(std::thread& thread, int core_id)
+  struct
   {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core_id, &cpuset);
-    auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
-    if (res != 0) {
-      LOG(ERROR, "error setting thread affinity: ", res);
-    }
-  }
-
-  INLINE void set_thread_sched_max(std::thread& thread)
-  {
-    struct sched_param param;
-    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    int ret = pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
-    if (ret) {
-      LOG(ERROR, "unable to increase server thread priority: ", strerror(ret));
-    }
-  }
-
-  INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
-  {
-    // relay private key
-    {
-      auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
-      if (len != KEY_SIZE) {
-        LOG(FATAL, "invalid relay private key");
-      }
-
-      LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
-    }
-
-    // relay public key
-    {
-      auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
-      if (len != KEY_SIZE) {
-        LOG(FATAL, "invalid relay public key");
-      }
-
-      LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
-    }
-
-    // router public key
-    {
-      auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
-      if (len != KEY_SIZE) {
-        LOG(FATAL, "invalid router public key");
-      }
-
-      LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
-    }
-  }
-
-  INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t
-  {
-    size_t num_cpus = 0;
-    if (envvar.has_value()) {
-      try {
-        num_cpus = std::stoull(*envvar);
-      } catch (std::exception& e) {
-        LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", *envvar);
-      }
-    } else {
-      num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
-      if (num_cpus > 0) {
-        LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
-      } else {
-        LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
-      }
-    }
-
-    return num_cpus;
-  }
-
-  INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
-  {
-    size_t socket_buffer_size = 1000000;
-
-    if (envvar.has_value()) {
-      try {
-        socket_buffer_size = std::stoull(*envvar);
-      } catch (std::exception& e) {
-        LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
-      }
-    }
-
-    return socket_buffer_size;
-  }
-
-  INLINE void setup_signal_handlers()
-  {
-    auto graceful_shutdown_handler = [](int) {
-      if (Globals.alive) {
-        Globals.alive = false;
-      } else {
-        std::exit(1);
-      }
-    };
-
-    auto clean_shutdown_handler = [](int) {
-      if (Globals.alive) {
-        Globals.should_clean_shutdown = true;
-        Globals.alive = false;
-      } else {
-        std::exit(1);
-      }
-    };
-
-    std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
-    std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
-    std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
-  }
+    volatile bool alive;
+    volatile bool should_clean_shutdown;
+  } Globals = {
+   .alive = true,
+   .should_clean_shutdown = false,
+  };
 }  // namespace
+
+INLINE void set_thread_affinity(std::thread& thread, int core_id)
+{
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(core_id, &cpuset);
+  auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
+  if (res != 0) {
+    LOG(ERROR, "error setting thread affinity: ", res);
+  }
+}
+
+INLINE void set_thread_sched_max(std::thread& thread)
+{
+  struct sched_param param;
+  param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+  int ret = pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
+  if (ret) {
+    LOG(ERROR, "unable to increase server thread priority: ", strerror(ret));
+  }
+}
+
+INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
+{
+  namespace base64 = encoding::base64;
+
+  // relay private key
+  {
+    auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
+    if (len != KEY_SIZE) {
+      LOG(FATAL, "invalid relay private key");
+    }
+
+    LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
+  }
+
+  // relay public key
+  {
+    auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
+    if (len != KEY_SIZE) {
+      LOG(FATAL, "invalid relay public key");
+    }
+
+    LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
+  }
+
+  // router public key
+  {
+    auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
+    if (len != KEY_SIZE) {
+      LOG(FATAL, "invalid router public key");
+    }
+
+    LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
+  }
+}
+
+INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t
+{
+  size_t num_cpus = 0;
+  if (envvar.has_value()) {
+    try {
+      num_cpus = std::stoull(*envvar);
+    } catch (std::exception& e) {
+      LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", *envvar);
+    }
+  } else {
+    num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
+    if (num_cpus > 0) {
+      LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
+    } else {
+      LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
+    }
+  }
+  return num_cpus;
+}
+
+INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
+{
+  size_t socket_buffer_size = 1000000;
+
+  if (envvar.has_value()) {
+    try {
+      socket_buffer_size = std::stoull(*envvar);
+    } catch (std::exception& e) {
+      LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
+    }
+  }
+
+  return socket_buffer_size;
+}
+
+INLINE void setup_signal_handlers()
+{
+  auto graceful_shutdown_handler = [](int) {
+    if (Globals.alive) {
+      Globals.alive = false;
+    } else {
+      std::exit(1);
+    }
+  };
+
+  auto clean_shutdown_handler = [](int) {
+    if (Globals.alive) {
+      Globals.should_clean_shutdown = true;
+      Globals.alive = false;
+    } else {
+      std::exit(1);
+    }
+  };
+
+  std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
+  std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
+  std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
+}
 
 int main(int argc, const char* argv[])
 {
@@ -201,9 +205,9 @@ int main(int argc, const char* argv[])
 
   bool success = false;
 
-  core::RouterInfo router_info;
-  core::RelayManager relay_manager;
-  util::ThroughputRecorder recorder;
+  RouterInfo router_info;
+  RelayManager relay_manager;
+  ThroughputRecorder recorder;
 
   std::vector<SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
@@ -212,20 +216,20 @@ int main(int argc, const char* argv[])
   std::atomic<bool> should_receive(true);
 
   // session map to be shared across packet processors
-  core::SessionMap sessions;
+  SessionMap sessions;
 
   // makes a shared ptr to a socket object
   auto make_socket = [&](Address& addr_in, SocketConfig config) -> SocketPtr {
     Address addr;
-    addr.Port = addr_in.Port;
-    addr.Type = addr_in.Type;
+    addr.port = addr_in.port;
+    addr.type = addr_in.type;
     auto socket = std::make_shared<Socket>();
     if (!socket->create(addr, config)) {
       return nullptr;
     }
 
     // if port was 0, this will set the reference parameter to what it changed to
-    addr_in.Port = addr.Port;
+    addr_in.port = addr.port;
 
     sockets.push_back(socket);
 
@@ -238,76 +242,52 @@ int main(int argc, const char* argv[])
   config.send_buffer_size = socket_send_buff_size;
   config.recv_buffer_size = socket_recv_buff_size;
 
-  size_t num_threads = num_cpus - 1;
+  size_t last_packet_processing_core_id = num_cpus - 1;
   LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
-  // case 0: create 1 thread and assign it to core 0
-  // case 1: create 1 thread and assign it to core 1
-  // default: create num_cpus - 1 threads and assign it to cores 1-n
-  switch (num_threads) {
-    case 0: {
+  if (last_packet_processing_core_id == 0) {
+    //  create 1 thread and assign it to core 0
+    auto socket = make_socket(relay_addr, config);
+    if (!socket) {
+      LOG(ERROR, "could not create socket");
+      Globals.alive = false;
+    }
+
+    auto thread = std::make_shared<std::thread>([&, socket] {
+      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+    });
+
+    set_thread_affinity(*thread, 0);
+
+    set_thread_sched_max(*thread);
+
+    sockets.push_back(socket);
+    threads.push_back(thread);
+
+    LOG(DEBUG, "created 1 packet processing thread assigned to core 0");
+  } else {
+    // create num_cpus - 1 threads and assign it to cores 1-n
+    for (size_t i = 0; i < last_packet_processing_core_id && Globals.alive; i++) {
       auto socket = make_socket(relay_addr, config);
       if (!socket) {
         LOG(ERROR, "could not create socket");
         Globals.alive = false;
       }
 
-      auto thread = std::make_shared<std::thread>([&, socket] {
+      auto thread = std::make_shared<std::thread>([&, socket, i] {
         core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+        LOG(DEBUG, "exiting recv loop #", i);
       });
 
-      set_thread_affinity(*thread, 0);
+      set_thread_affinity(*thread, i + 1);
 
       set_thread_sched_max(*thread);
 
       sockets.push_back(socket);
       threads.push_back(thread);
 
-      LOG(DEBUG, "created 1 packet processing thread assigned to core 0");
-    } break;
-    case 1: {
-      auto socket = make_socket(relay_addr, config);
-      if (!socket) {
-        LOG(ERROR, "could not create socket");
-        Globals.alive = false;
-      }
-
-      auto thread = std::make_shared<std::thread>([&, socket] {
-        core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
-      });
-
-      set_thread_affinity(*thread, 1);
-
-      set_thread_sched_max(*thread);
-
-      sockets.push_back(socket);
-      threads.push_back(thread);
-
-      LOG(DEBUG, "created 1 packet processing thread assigned to core 1");
-    } break;
-    default: {
-      for (size_t i = 0; i < num_threads && Globals.alive; i++) {
-        auto socket = make_socket(relay_addr, config);
-        if (!socket) {
-          LOG(ERROR, "could not create socket");
-          Globals.alive = false;
-        }
-
-        auto thread = std::make_shared<std::thread>([&, socket, i] {
-          core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
-          LOG(DEBUG, "exiting recv loop #", i);
-        });
-
-        set_thread_affinity(*thread, i + 1);
-
-        set_thread_sched_max(*thread);
-
-        sockets.push_back(socket);
-        threads.push_back(thread);
-
-        LOG(DEBUG, "created packet processing thread ", i, " assigned to core ", i + 1);
-      }
-    } break;
+      LOG(DEBUG, "created packet processing thread ", i, " assigned to core ", i + 1);
+    }
   }
 
   // ping processing setup
@@ -331,14 +311,7 @@ int main(int argc, const char* argv[])
     std::thread thread([&] {
       BeastWrapper wrapper;
       core::Backend backend(
-       env.backend_hostname,
-       relay_addr.to_string(),
-       keychain,
-       router_info,
-       relay_manager,
-       env.relay_public_key,
-       sessions,
-       wrapper);
+       env.backend_hostname, relay_addr.to_string(), keychain, router_info, relay_manager, sessions, wrapper);
 
       size_t attempts = 0;
       while (attempts < 60) {

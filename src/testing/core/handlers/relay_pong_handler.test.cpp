@@ -11,14 +11,15 @@ using core::RelayManager;
 using core::RelayPingInfo;
 using core::PacketType;
 using net::Address;
+using core::PING_RATE;
 
-Test(core_handlers_relay_pong_handler)
+TEST(core_handlers_relay_pong_handler)
 {
   Packet packet;
   RelayManager manager;
 
   Address addr;
-  check(addr.parse("127.0.0.1"));
+  CHECK(addr.parse("127.0.0.1"));
 
   packet.addr = addr;
   packet.length = RELAY_PING_PACKET_SIZE;
@@ -28,27 +29,27 @@ Test(core_handlers_relay_pong_handler)
   relays[0].address = addr;
   manager.update(1, relays);
 
-  check(manager.relays[0].address == addr);
+  CHECK(manager.relays[0].address == addr);
 
   auto& ping_sent = (*manager.relays[0].history)[0].time_ping_sent;
 
-  check(ping_sent == -1);
+  CHECK(ping_sent == -1);
 
-  check(manager.num_relays == 1);
+  CHECK(manager.num_relays == 1);
 
   std::array<PingData, 1024> ping_data;
   // just to increment the sequence
-  manager.relays[0].last_ping_time = RELAY_PING_TIME * -1.0;
-  check(manager.get_ping_targets(ping_data) == 1);
+  manager.relays[0].last_ping_time = PING_RATE * -1.0;
+  CHECK(manager.get_ping_targets(ping_data) == 1);
 
-  check(ping_data[0].sequence == 0);
-  check(ping_data[0].address == addr);
+  CHECK(ping_data[0].sequence == 0);
+  CHECK(ping_data[0].address == addr);
 
-  check(ping_sent > 0);
+  CHECK(ping_sent > 0);
 
   auto& pong_received = (*manager.relays[0].history)[0].time_pong_received;
 
-  check(pong_received == -1).onFail([&] {
+  CHECK(pong_received == -1).on_fail([&] {
     std::cout << "pong received == " << pong_received << '\n';
   });
 
@@ -58,7 +59,7 @@ Test(core_handlers_relay_pong_handler)
 
   core::handlers::relay_pong_handler(packet, manager, true);
 
-  check(pong_received > 0).onFail([&] {
+  CHECK(pong_received > 0).on_fail([&] {
     std::cout << "pong received == " << pong_received << '\n';
   });
 }

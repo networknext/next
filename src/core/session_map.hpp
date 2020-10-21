@@ -1,7 +1,7 @@
-#ifndef CORE_SESSION_MAP_HPP
-#define CORE_SESSION_MAP_HPP
+#pragma once
 
 #include "session.hpp"
+#include "router_info.hpp"
 
 namespace core
 {
@@ -17,7 +17,7 @@ namespace core
    public:
     SessionMap();
 
-    /* Emplace a new entry into the map */
+    /* Emplace a new entry into the map. Overwrites if it already exists */
     void set(uint64_t key, SessionPtr val);
 
     /* Get the specified entry */
@@ -30,7 +30,7 @@ namespace core
     auto size() const -> size_t;
 
     /* Remove all entries past the given timestamp */
-    void purge(double seconds);
+    void purge(const uint64_t backend_timestamp);
 
     auto envelope_up_total() const -> size_t;
 
@@ -48,7 +48,7 @@ namespace core
 
   INLINE SessionMap::SessionMap(): envelope_bandwidth_kbps_up(0), envelope_bandwidth_kbps_down(0) {}
 
-  inline void SessionMap::set(uint64_t key, SessionPtr val)
+  INLINE void SessionMap::set(uint64_t key, SessionPtr val)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     this->internal_map[key] = val;
@@ -56,37 +56,39 @@ namespace core
     this->envelope_bandwidth_kbps_down += val->kbps_down;
   }
 
-  inline auto SessionMap::get(uint64_t key) -> SessionPtr
+  INLINE auto SessionMap::get(uint64_t key) -> SessionPtr
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     // don't create an entry if it doesn't exist
     return this->internal_map.find(key) != this->internal_map.end() ? this->internal_map[key] : nullptr;
   }
 
-  inline auto SessionMap::erase(uint64_t key) -> bool
+  INLINE auto SessionMap::erase(uint64_t key) -> bool
   {
     std::lock_guard<std::mutex> lk(this->mutex);
-    auto v = this->internal_map[key];
-    bool existed = this->internal_map.erase(key) > 0;
-    if (existed) {
+    bool existed = false;
+    if (this->internal_map.find(key) != this->internal_map.end()) {
+      existed = true;
+      auto v = this->internal_map[key];
       this->envelope_bandwidth_kbps_up -= v->kbps_up;
       this->envelope_bandwidth_kbps_down -= v->kbps_down;
+      this->internal_map.erase(key);
     }
     return existed;
   }
 
-  inline auto SessionMap::size() const -> size_t
+  INLINE auto SessionMap::size() const -> size_t
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     return this->internal_map.size();
   }
 
-  inline void SessionMap::purge(double seconds)
+  INLINE void SessionMap::purge(const uint64_t backend_timestamp)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     auto iter = this->internal_map.begin();
     while (iter != this->internal_map.end()) {
-      if (iter->second && iter->second->expired(seconds)) {
+      if (iter->second && iter->second->expired(backend_timestamp)) {
         this->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
         this->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
         iter = this->internal_map.erase(iter);
@@ -106,4 +108,3 @@ namespace core
     return this->envelope_bandwidth_kbps_down;
   }
 }  // namespace core
-#endif

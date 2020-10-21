@@ -1,8 +1,9 @@
 #include "includes.h"
 #include "testing/test.hpp"
-#include "core/backend.hpp"
 #include "testing/mocks.hpp"
 #include "util/misc.hpp"
+
+#include "core/backend.hpp"
 
 #define CRYPTO_HELPERS
 #include "testing/helpers.hpp"
@@ -14,7 +15,9 @@ using core::INIT_REQUEST_MAGIC;
 using core::INIT_REQUEST_VERSION;
 using core::InitRequest;
 using core::InitResponse;
+using core::MAX_RELAYS;
 using core::PingData;
+using core::RELAY_VERSION;
 using core::RelayManager;
 using core::RelayPingInfo;
 using core::RouterInfo;
@@ -23,6 +26,8 @@ using core::SessionMap;
 using core::UPDATE_REQUEST_VERSION;
 using core::UpdateRequest;
 using core::UpdateResponse;
+using crypto::KEY_SIZE;
+using crypto::Keychain;
 using net::Address;
 using util::Clock;
 using util::Second;
@@ -31,14 +36,10 @@ using util::ThroughputStats;
 
 namespace
 {
-  const unsigned int Base64NonceLength = 32;
-  const unsigned int Base64EncryptedTokenLength = 64;
-
-  const std::string BackendHostname = "http://totally-real-backend.com";
-  const auto RelayAddr = "127.0.0.1:12345";
-  const crypto::Keychain Keychain = testing::make_keychain();
-
-  const std::vector<uint8_t> BasicValidUpdateResponse = [] {
+  const std::string BACKEND_HOSTNAME = "http://totally-real-backend.com";
+  const auto RELAY_ADDR = "127.0.0.1:12345";
+  const Keychain KEYCHAIN = testing::make_keychain();
+  const std::vector<uint8_t> BASIC_VALID_UPDATE_RESPONSE = [] {
     InitResponse response = {
      .version = 0,
      .timestamp = 0,
@@ -46,11 +47,11 @@ namespace
     };
 
     std::vector<uint8_t> buff(InitResponse::SIZE_OF);
-    check(response.into(buff));
+    CHECK(response.into(buff));
     return buff;
   }();
 
-  auto makeInitResponse(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KEY_SIZE>& pk) -> std::vector<uint8_t>
+  auto make_init_response(uint32_t version, uint64_t timestamp, std::array<uint8_t, KEY_SIZE>& pk) -> std::vector<uint8_t>
   {
     std::vector<uint8_t> buff(InitResponse::SIZE_OF);
     InitResponse resp{
@@ -65,137 +66,134 @@ namespace
   }
 }  // namespace
 
-Test(core_backend_init_valid)
+TEST(core_Backend_init_valid)
 {
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
   std::array<uint8_t, crypto::KEY_SIZE> pk{};
   testing::MockHttpClient client;
-  client.Response = makeInitResponse(0, 123456789, pk);
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  client.response = make_init_response(0, 123456789, pk);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
-  check(backend.init());
+  CHECK(backend.init());
 
-  check(client.Hostname == BackendHostname);
-  check(client.Endpoint == "/relay_init");
-  check(routerInfo.current_time() >= 123456789 / 1000);
+  CHECK(client.hostname == BACKEND_HOSTNAME);
+  CHECK(client.endpoint == "/relay_init");
+  CHECK(router_info.current_time<uint64_t>() >= 123456789 / 1000);
 
   InitRequest request;
-  check(request.from(client.Request));
+  CHECK(request.from(client.request));
 
-  check(request.magic == INIT_REQUEST_MAGIC);
-  check(request.version == INIT_REQUEST_VERSION);
-  check(request.address == RelayAddr);
-  check(request.relay_version == RELAY_VERSION);
-
+  CHECK(request.magic == INIT_REQUEST_MAGIC);
+  CHECK(request.version == INIT_REQUEST_VERSION);
+  CHECK(request.address == RELAY_ADDR);
+  CHECK(request.relay_version == RELAY_VERSION);
   // can't check nonce or encrypted token since they're random
 }
 
-// Update the backend for 2 seconds, then proceed to switch the handle to false.
+// Update the backend for 2 seconds, then proceed to switch the should_loop to false.
 // The relay should then attempt to ack the backend.
 // It won't receive a success response from the backend so instead it will
 // live for 60 seconds and skip the ack
-Test(core_Backend_updateCycle_shutdown_60s)
+TEST(core_Backend_updateCycle_shutdown_60s)
 {
-  Clock testClock;
+  Clock test_clock;
 
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
+  volatile bool should_loop = true;
+  volatile bool should_clean_shutdown = false;
   ThroughputRecorder logger;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
-  client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.success = true;
+  client.response = BASIC_VALID_UPDATE_RESPONSE;
 
-  testClock.reset();
+  test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(2s);
-    client.Success = false;
-    shouldCleanShutdown = true;  // just to mimic actual behavior
-    handle = false;
+    client.success = false;
+    should_clean_shutdown = true;  // just to mimic actual behavior
+    should_loop = false;
   });
 
-  check(backend.update_loop(handle, shouldCleanShutdown, logger, sessions));
-  auto elapsed = testClock.elapsed<Second>();
-  check(elapsed >= 62.0).onFail([&] {
-    std::cout << "elapsed time = " << elapsed << '\n';
-  });
+  CHECK(backend.update_loop(should_loop, should_clean_shutdown, logger, sessions));
+  auto elapsed = test_clock.elapsed<Second>();
+  CHECK(elapsed >= 62.0);
 }
 
-// Update the backend for 2 seconds, then proceed to switch the handle to false.
+// Update the backend for 2 seconds, then proceed to switch the should_loop to false.
 // The relay should then attempt to ack the backend and shutdown for 30 seconds.
 // It will receive a success response and then live for another 30 seconds.
 // The 60 second timeout will not apply here
-Test(core_Backend_updateCycle_ack_and_30s)
+TEST(core_Backend_updateCycle_ack_and_30s)
 {
-  Clock testClock;
+  Clock test_clock;
 
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
+  volatile bool should_loop = true;
+  volatile bool should_clean_shutdown = false;
   ThroughputRecorder logger;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
-  client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.success = true;
+  client.response = BASIC_VALID_UPDATE_RESPONSE;
 
-  testClock.reset();
+  test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(2s);
-    shouldCleanShutdown = true;
-    handle = false;
+    should_clean_shutdown = true;
+    should_loop = false;
   });
 
-  check(backend.update_loop(handle, shouldCleanShutdown, logger, sessions));
-  auto elapsed = testClock.elapsed<Second>();
-  check(elapsed >= 32.0);
+  CHECK(backend.update_loop(should_loop, should_clean_shutdown, logger, sessions));
+  auto elapsed = test_clock.elapsed<Second>();
+  CHECK(elapsed >= 32.0);
 }
 
-// Update the backend for 2 seconds, then proceed to switch the handle to false.
-// The relay will not get a success response for 31 seconds after the handle is set.
+// Update the backend for 2 seconds, then proceed to switch the should_loop to false.
+// The relay will not get a success response for 31 seconds after the should_loop is set.
 // After which it will get a success and then proceed with the normal routine of waiting 30 seconds
 // The amount of time waited will be greater than 60 seconds
-// This is to assert the updateCycle will ignore the 60 second timeout if the backend gets an update
-Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
+// This is to assert the update_cycle will ignore the 60 second timeout if the backend gets an update
+TEST(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 {
-  Clock testClock;
+  Clock test_clock;
 
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
+  volatile bool should_loop = true;
+  volatile bool should_clean_shutdown = false;
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
-  client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.success = true;
+  client.response = BASIC_VALID_UPDATE_RESPONSE;
 
-  testClock.reset();
+  test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(2s);
-    shouldCleanShutdown = true;
-    client.Success = false;
-    handle = false;
+    should_clean_shutdown = true;
+    client.success = false;
+    should_loop = false;
     std::this_thread::sleep_for(31s);
-    client.Success = true;
+    client.success = true;
   });
 
-  check(backend.update_loop(handle, shouldCleanShutdown, recorder, sessions));
-  auto elapsed = testClock.elapsed<Second>();
-  check(elapsed >= 63.0);
+  CHECK(backend.update_loop(should_loop, should_clean_shutdown, recorder, sessions));
+  auto elapsed = test_clock.elapsed<Second>();
+  CHECK(elapsed >= 63.0);
 }
 
 // Update the backend for 2 seconds, then switch the success of the request to false.
@@ -203,79 +201,79 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 // After the max attempts is reached it will shutdown.
 // But because the success value is never reset to true, the cleanshutdown ack will never succeed
 // so the final duration should be 2 seconds of success and (MaxUpdateAttempts - 1) seconds of failure.
-Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
+TEST(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 {
-  Clock testClock;
+  Clock test_clock;
 
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
+  volatile bool should_loop = true;
+  volatile bool should_clean_shutdown = false;
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
-  client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.success = true;
+  client.response = BASIC_VALID_UPDATE_RESPONSE;
 
-  testClock.reset();
+  test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(2s);
-    client.Success = false;  // set to false here to trigger failed updates
+    client.success = false;  // set to false here to trigger failed updates
   });
 
-  check(!backend.update_loop(handle, shouldCleanShutdown, recorder, sessions));
-  auto elapsed = testClock.elapsed<Second>();
+  CHECK(!backend.update_loop(should_loop, should_clean_shutdown, recorder, sessions));
+  auto elapsed = test_clock.elapsed<Second>();
   // time will be 2 seconds of good updates and
   // 10 seconds of bad updates, which will cause
   // the relay to abort with no clean shutdown
-  check(elapsed >= 12.0).onFail([&elapsed] {
+  CHECK(elapsed >= 12.0).on_fail([&elapsed] {
     std::cout << "elapsed: " << elapsed << '\n';
   });
 }
 
 // When clean shutdown is not set to true, the function should return immediately
-Test(core_Backend_updateCycle_no_clean_shutdown)
+TEST(core_Backend_updateCycle_no_clean_shutdown)
 {
-  Clock testClock;
+  Clock test_clock;
 
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
+  volatile bool should_loop = true;
+  volatile bool should_clean_shutdown = false;
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
-  client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.success = true;
+  client.response = BASIC_VALID_UPDATE_RESPONSE;
 
-  testClock.reset();
+  test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(2s);
-    client.Success = false;
-    handle = false;
+    client.success = false;
+    should_loop = false;
   });
 
-  check(backend.update_loop(handle, shouldCleanShutdown, recorder, sessions));
-  auto elapsed = testClock.elapsed<Second>();
-  check(elapsed >= 2.0);
+  CHECK(backend.update_loop(should_loop, should_clean_shutdown, recorder, sessions));
+  auto elapsed = test_clock.elapsed<Second>();
+  CHECK(elapsed >= 2.0);
 }
 
-Test(core_Backend_update_valid)
+TEST(core_Backend_update_valid)
 {
   Clock clock;
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
-  crypto::RandomBytes(backend.update_token, backend.update_token.size());
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
+  crypto::random_bytes(backend.update_token, backend.update_token.size());
 
   auto session = std::make_shared<Session>();
   session->kbps_up = 123;
@@ -284,16 +282,16 @@ Test(core_Backend_update_valid)
 
   // seed relay manager
   {
-    const size_t numRelays = 1;
+    const size_t num_relays = 1;
     std::array<RelayPingInfo, MAX_RELAYS> incoming;
-    std::array<PingData, MAX_RELAYS> pingData;
+    std::array<PingData, MAX_RELAYS> ping_data;
     incoming[0].id = 987654321;
     Address addr;
-    check(addr.parse("127.0.0.1:12345"));
+    CHECK(addr.parse("127.0.0.1:12345"));
     incoming[0].address = addr;
-    manager.update(numRelays, incoming);
-    check(manager.get_ping_targets(pingData) == 1);
-    manager.process_pong(pingData[0].address, pingData[0].sequence);
+    manager.update(num_relays, incoming);
+    CHECK(manager.get_ping_targets(ping_data) == 1);
+    manager.process_pong(ping_data[0].address, ping_data[0].sequence);
   }
 
   ThroughputStats* stats[] = {
@@ -335,35 +333,35 @@ Test(core_Backend_update_valid)
     RelayPingInfo relay1, relay2;
 
     relay1.id = 135792468;
-    check(relay1.address.parse("127.0.0.1:54321"));
+    CHECK(relay1.address.parse("127.0.0.1:54321"));
 
     relay2.id = 246813579;
-    check(relay2.address.parse("127.0.0.1:13524"));
-    response.Relays = {
+    CHECK(relay2.address.parse("127.0.0.1:13524"));
+    response.relays = {
      relay1,
      relay2,
     };
   }
 
-  client.Response.resize(response.size());
-  response.into(client.Response);
+  client.response.resize(response.size());
+  CHECK(response.into(client.response));
 
   bool should_retry = false;
-  check(backend.update(recorder, false, should_retry) == Backend::UpdateResult::Success);
+  CHECK(backend.update(recorder, false, should_retry) == Backend::UpdateResult::Success);
 
   // check the request
   {
     UpdateRequest request;
-    check(request.from(client.Request));
+    CHECK(request.from(client.request));
 
-    check(request.version == UPDATE_REQUEST_VERSION);
-    check(request.address == RelayAddr);
-    check(request.public_key == backend.update_token);
-    check(request.session_count == sessions.size());
-    check(request.envelope_up == 123).onFail([&] {
+    CHECK(request.version == UPDATE_REQUEST_VERSION);
+    CHECK(request.address == RELAY_ADDR);
+    CHECK(request.public_key == backend.update_token);
+    CHECK(request.session_count == sessions.size());
+    CHECK(request.envelope_up == 123).on_fail([&] {
       std::cout << "up = " << request.envelope_up << '\n';
     });
-    check(request.envelope_down == 456).onFail([&] {
+    CHECK(request.envelope_down == 456).on_fail([&] {
       std::cout << "down = " << request.envelope_down << '\n';
     });
 
@@ -395,80 +393,80 @@ Test(core_Backend_update_valid)
     static_assert(util::array_length(stats) == util::array_length(request_stats));
 
     for (uint64_t i = 0; i < util::array_length(stats); i++) {
-      check(stats[i]->num_bytes.load() == 0);
-      check(request_stats[i] == i);
+      CHECK(stats[i]->num_bytes.load() == 0);
+      CHECK(request_stats[i] == i);
     }
 
-    check(request.shutting_down == false);
-    check(request.ping_stats.num_relays == 1);
+    CHECK(request.shutting_down == false);
+    CHECK(request.ping_stats.num_relays == 1);
   }
 
   // check that the response was processed
   {
-    std::array<PingData, MAX_RELAYS> pingData;
+    std::array<PingData, MAX_RELAYS> ping_data;
 
-    std::this_thread::sleep_for(1s);  // needed so that getPingData() will always return the right number
-    auto count = manager.get_ping_targets(pingData);
+    std::this_thread::sleep_for(1s);  // needed so that get_ping_targets() will always return the right number
+    auto count = manager.get_ping_targets(ping_data);
 
-    check(count == 2).onFail([&] {
+    CHECK(count == 2).on_fail([&] {
       std::cout << "count is " << count << '\n';
     });
-    check(pingData[0].address.to_string() == "127.0.0.1:54321");
-    check(pingData[1].address.to_string() == "127.0.0.1:13524");
+    CHECK(ping_data[0].address.to_string() == "127.0.0.1:54321");
+    CHECK(ping_data[1].address.to_string() == "127.0.0.1:13524");
 
-    check(routerInfo.current_time() >= 123456789).onFail([&] {
-      std::cout << "info timestamp = " << routerInfo.current_time() << '\n';
+    CHECK(router_info.current_time<uint64_t>() >= 123456789).on_fail([&] {
+      std::cout << "info timestamp = " << router_info.current_time<uint64_t>() << '\n';
     });
   }
 }
 
-Test(core_Backend_update_shutting_down_true)
+TEST(core_Backend_update_shutting_down_true)
 {
   Clock clock;
-  RouterInfo routerInfo;
+  RouterInfo router_info;
   RelayManager manager;
   SessionMap sessions;
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
-  crypto::RandomBytes(backend.update_token, backend.update_token.size());
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
+  crypto::random_bytes(backend.update_token, backend.update_token.size());
 
-  client.Response = ::BasicValidUpdateResponse;
+  client.response = ::BASIC_VALID_UPDATE_RESPONSE;
 
   bool should_retry = false;
-  check(backend.update(recorder, true, should_retry) == Backend::UpdateResult::Success);
+  CHECK(backend.update(recorder, true, should_retry) == Backend::UpdateResult::Success);
 
   UpdateRequest request;
-  check(request.from(client.Request));
+  CHECK(request.from(client.request));
 
-  check(request.version == UPDATE_REQUEST_VERSION);
-  check(request.address == RelayAddr);
-  check(request.public_key == backend.update_token);
-  check(request.session_count == 0);
-  check(request.outbound_ping_tx == 0);
-  check(request.route_request_rx == 0);
-  check(request.route_request_tx == 0);
-  check(request.route_response_rx == 0);
-  check(request.route_response_tx == 0);
-  check(request.client_to_server_rx == 0);
-  check(request.client_to_server_rx == 0);
-  check(request.server_to_client_rx == 0);
-  check(request.server_to_client_tx == 0);
-  check(request.inbound_ping_rx == 0);
-  check(request.inbound_ping_tx == 0);
-  check(request.pong_rx == 0);
-  check(request.session_ping_rx == 0);
-  check(request.session_ping_tx == 0);
-  check(request.session_pong_rx == 0);
-  check(request.session_pong_tx == 0);
-  check(request.continue_request_rx == 0);
-  check(request.continue_request_tx == 0);
-  check(request.continue_response_rx == 0);
-  check(request.continue_response_tx == 0);
-  check(request.near_ping_rx == 0);
-  check(request.near_ping_tx == 0);
-  check(request.unknown_rx == 0);
-  check(request.shutting_down == true);
-  check(request.ping_stats.num_relays == 0);
+  CHECK(request.version == UPDATE_REQUEST_VERSION);
+  CHECK(request.address == RELAY_ADDR);
+  CHECK(request.public_key == backend.update_token);
+  CHECK(request.session_count == 0);
+  CHECK(request.outbound_ping_tx == 0);
+  CHECK(request.route_request_rx == 0);
+  CHECK(request.route_request_tx == 0);
+  CHECK(request.route_response_rx == 0);
+  CHECK(request.route_response_tx == 0);
+  CHECK(request.client_to_server_rx == 0);
+  CHECK(request.client_to_server_rx == 0);
+  CHECK(request.server_to_client_rx == 0);
+  CHECK(request.server_to_client_tx == 0);
+  CHECK(request.inbound_ping_rx == 0);
+  CHECK(request.inbound_ping_tx == 0);
+  CHECK(request.pong_rx == 0);
+  CHECK(request.session_ping_rx == 0);
+  CHECK(request.session_ping_tx == 0);
+  CHECK(request.session_pong_rx == 0);
+  CHECK(request.session_pong_tx == 0);
+  CHECK(request.continue_request_rx == 0);
+  CHECK(request.continue_request_tx == 0);
+  CHECK(request.continue_response_rx == 0);
+  CHECK(request.continue_response_tx == 0);
+  CHECK(request.near_ping_rx == 0);
+  CHECK(request.near_ping_tx == 0);
+  CHECK(request.unknown_rx == 0);
+  CHECK(request.shutting_down == true);
+  CHECK(request.ping_stats.num_relays == 0);
 }

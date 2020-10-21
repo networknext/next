@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_server_to_client_handler_sdk4)
+TEST(core_handlers_server_to_client_handler_sdk4)
 {
   Packet packet;
   SessionMap map;
@@ -33,8 +33,8 @@ Test(core_handlers_server_to_client_handler_sdk4)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   router_info.set_timestamp(0);
 
@@ -61,22 +61,22 @@ Test(core_handlers_server_to_client_handler_sdk4)
   map.set(header.hash(), session);
 
   size_t index = 0;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::server_to_client_handler_sdk4(packet, map, recorder, router_info, socket);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
-  check(recorder.server_to_client_tx.num_packets == 1);
-  check(recorder.server_to_client_tx.num_bytes == packet.length);
+  CHECK(recorder.server_to_client_tx.num_packets == 1);
+  CHECK(recorder.server_to_client_tx.num_bytes == packet.length);
 
   core::handlers::server_to_client_handler_sdk4(packet, map, recorder, router_info, socket);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_server_to_client_handler_unsigned)
+TEST(core_handlers_server_to_client_handler_unsigned)
 {
   Packet packet;
   SessionMap map;
@@ -89,8 +89,8 @@ Test(core_handlers_server_to_client_handler_unsigned)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   router_info.set_timestamp(0);
 
@@ -117,22 +117,22 @@ Test(core_handlers_server_to_client_handler_unsigned)
   map.set(header.hash(), session);
 
   size_t index = 0;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::server_to_client_handler(packet, map, recorder, router_info, socket, false);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
-  check(recorder.server_to_client_tx.num_packets == 1);
-  check(recorder.server_to_client_tx.num_bytes == packet.length);
+  CHECK(recorder.server_to_client_tx.num_packets == 1);
+  CHECK(recorder.server_to_client_tx.num_bytes == packet.length);
 
   core::handlers::server_to_client_handler(packet, map, recorder, router_info, socket, false);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_server_to_client_handler_signed)
+TEST(core_handlers_server_to_client_handler_signed)
 {
   Packet packet;
   SessionMap map;
@@ -145,8 +145,8 @@ Test(core_handlers_server_to_client_handler_signed)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   router_info.set_timestamp(0);
 
@@ -173,17 +173,17 @@ Test(core_handlers_server_to_client_handler_signed)
   map.set(header.hash(), session);
 
   size_t index = crypto::PACKET_HASH_LENGTH;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::server_to_client_handler(packet, map, recorder, router_info, socket, true);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
-  check(recorder.server_to_client_tx.num_packets == 1);
-  check(recorder.server_to_client_tx.num_bytes == packet.length);
+  CHECK(recorder.server_to_client_tx.num_packets == 1);
+  CHECK(recorder.server_to_client_tx.num_bytes == packet.length);
 
   core::handlers::server_to_client_handler(packet, map, recorder, router_info, socket, true);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }

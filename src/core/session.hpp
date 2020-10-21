@@ -9,9 +9,8 @@
 
 namespace core
 {
-  class Session: public Expireable
+  struct Session: public Expireable
   {
-   public:
     Session() = default;
     virtual ~Session() override = default;
 

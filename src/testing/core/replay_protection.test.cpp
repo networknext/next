@@ -3,45 +3,47 @@
 
 #include "core/replay_protection.hpp"
 
+using core::REPLAY_PROTECTION_BUFFER_SIZE;
+
 namespace
 {
-  const auto MAX_SEQUENCE = RELAY_REPLAY_PROTECTION_BUFFER_SIZE * 4;
+  const auto MAX_SEQUENCE = REPLAY_PROTECTION_BUFFER_SIZE * 4;
 }
 
-Test(core_ReplayProtection_additional_logic_tests)
+TEST(core_ReplayProtection_all)
 {
   core::ReplayProtection rp;
 
   for (int i = 0; i < 2; i++) {
     rp.reset();
 
-    check(rp.most_recent_sequence == 0);
+    CHECK(rp.most_recent_sequence == 0);
 
     // the first time we receive packets, they should not be already received
 
     for (uint64_t sequence = 0; sequence < MAX_SEQUENCE; sequence++) {
-      check(rp.is_already_received(sequence) == false);
+      CHECK(rp.is_already_received(sequence) == false);
       rp.advance_sequence_to(sequence);
     }
 
     // old packets outside buffer should be considered already received
 
-    check(rp.is_already_received(0) == true);
+    CHECK(rp.is_already_received(0) == true);
 
     // packets received a second time should be flagged already received
 
     for (uint64_t sequence = MAX_SEQUENCE - 10; sequence < MAX_SEQUENCE; sequence++) {
-      check(rp.is_already_received(sequence) == true);
+      CHECK(rp.is_already_received(sequence) == true);
     }
 
     // jumping ahead to a much higher sequence should be considered not already received
 
-    check(rp.is_already_received(MAX_SEQUENCE + RELAY_REPLAY_PROTECTION_BUFFER_SIZE) == false);
+    CHECK(rp.is_already_received(MAX_SEQUENCE + REPLAY_PROTECTION_BUFFER_SIZE) == false);
 
     // old packets should be considered already received
 
     for (uint64_t sequence = 0; sequence < MAX_SEQUENCE; sequence++) {
-      check(rp.is_already_received(sequence) == true);
+      CHECK(rp.is_already_received(sequence) == true);
     }
   }
 }

@@ -166,11 +166,13 @@ namespace encoding
   template <typename T>
   INLINE auto write_double(T& buff, size_t& index, double value) -> bool
   {
-    if (index + 8 > buff.size()) {
-      LOG(DEBUG, "index out of range: goal = ", index + 8, ", buff size = ", buff.size());
-      return false;
-    }
-    return encoding::write_bytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
+    union
+    {
+      uint64_t fake;
+      double actual;
+    } values = {};
+    values.actual = value;
+    return encoding::write_uint64(buff, index, values.fake);
   }
 
   INLINE auto write_bytes(uint8_t* buff, size_t buff_length, size_t& index, const uint8_t* const data, size_t data_length)
@@ -203,17 +205,13 @@ namespace encoding
 
   INLINE auto write_address(uint8_t* buff, size_t buff_length, size_t& index, const net::Address& addr) -> bool
   {
-#ifndef NDEBUG
-    auto start = index;
-#endif
-
-    if (index + net::Address::ByteSize > buff_length) {
+    if (index + net::Address::SIZE_OF > buff_length) {
       LOG(DEBUG, "buffer too small for address");
-      LOG(DEBUG, "index end = ", index + net::Address::ByteSize, ", buffer size = ", buff_length);
+      LOG(DEBUG, "index end = ", index + net::Address::SIZE_OF, ", buffer size = ", buff_length);
       return false;
     }
 
-    if (addr.Type == net::AddressType::IPv4) {
+    if (addr.type == net::AddressType::IPv4) {
       // write the type
       if (!write_uint8(buff, buff_length, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
         LOG(DEBUG, "buffer too small for address type");
@@ -221,18 +219,18 @@ namespace encoding
         return false;
       }
 
-      std::copy(addr.IPv4.begin(), addr.IPv4.end(), buff + index);  // copy the address
-      index += addr.IPv4.size() * sizeof(uint8_t);                  // increment the index
+      std::copy(addr.ipv4.begin(), addr.ipv4.end(), buff + index);  // copy the address
+      index += addr.ipv4.size() * sizeof(uint8_t);                  // increment the index
 
       // write the port
-      if (!write_uint16(buff, buff_length, index, addr.Port)) {
+      if (!write_uint16(buff, buff_length, index, addr.port)) {
         LOG(DEBUG, "buffer too small for address port");
         LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buff_length);
         return false;
       }
 
       index += 12;  // increment the index past the address section
-    } else if (addr.Type == net::AddressType::IPv6) {
+    } else if (addr.type == net::AddressType::IPv6) {
       // write the type
       if (!write_uint8(buff, buff_length, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
         LOG(DEBUG, "buffer too small for address type");
@@ -240,7 +238,7 @@ namespace encoding
         return false;
       }
 
-      for (const auto& ip : addr.IPv6) {
+      for (const auto& ip : addr.ipv6) {
         if (!write_uint16(buff, buff_length, index, ip)) {
           LOG(DEBUG, "buffer too small for address part");
           LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buff_length);
@@ -248,17 +246,15 @@ namespace encoding
         }
       }
 
-      if (!write_uint16(buff, buff_length, index, addr.Port)) {
+      if (!write_uint16(buff, buff_length, index, addr.port)) {
         LOG(DEBUG, "buffer too small for address port");
         LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buff_length);
         return false;
       }
     } else {
-      std::fill(buff + index, buff + index + net::Address::ByteSize, 0);
-      index += net::Address::ByteSize;
+      std::fill(buff + index, buff + index + net::Address::SIZE_OF, 0);
+      index += net::Address::SIZE_OF;
     }
-
-    assert(index - start == net::Address::ByteSize);
 
     return true;
   }
@@ -266,18 +262,13 @@ namespace encoding
   template <typename T>
   INLINE auto write_address(T& buff, size_t& index, const net::Address& addr) -> bool
   {
-    GCC_NO_OPT_OUT;
-#ifndef NDEBUG
-    auto start = index;
-#endif
-
-    if (index + net::Address::ByteSize > buff.size()) {
+    if (index + net::Address::SIZE_OF > buff.size()) {
       LOG(TRACE, "buffer too small for address");
-      LOG(TRACE, "index end = ", index + net::Address::ByteSize, ", buffer size = ", buff.size());
+      LOG(TRACE, "index end = ", index + net::Address::SIZE_OF, ", buffer size = ", buff.size());
       return false;
     }
 
-    if (addr.Type == net::AddressType::IPv4) {
+    if (addr.type == net::AddressType::IPv4) {
       // write the type
       if (!write_uint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
         LOG(TRACE, "buffer too small for address type");
@@ -285,18 +276,18 @@ namespace encoding
         return false;
       }
 
-      std::copy(addr.IPv4.begin(), addr.IPv4.end(), buff.begin() + index);  // copy the address
-      index += addr.IPv4.size() * sizeof(uint8_t);                          // increment the index
+      std::copy(addr.ipv4.begin(), addr.ipv4.end(), buff.begin() + index);  // copy the address
+      index += addr.ipv4.size() * sizeof(uint8_t);                          // increment the index
 
       // write the port
-      if (!write_uint16(buff, index, addr.Port)) {
+      if (!write_uint16(buff, index, addr.port)) {
         LOG(TRACE, "buffer too small for address port");
         LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
         return false;
       }
 
       index += 12;  // increment the index past the address section
-    } else if (addr.Type == net::AddressType::IPv6) {
+    } else if (addr.type == net::AddressType::IPv6) {
       // write the type
       if (!write_uint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
         LOG(TRACE, "buffer too small for address type");
@@ -304,7 +295,7 @@ namespace encoding
         return false;
       }
 
-      for (const auto& ip : addr.IPv6) {
+      for (const auto& ip : addr.ipv6) {
         if (!write_uint16(buff, index, ip)) {
           LOG(TRACE, "buffer too small for address part");
           LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
@@ -312,17 +303,15 @@ namespace encoding
         }
       }
 
-      if (!write_uint16(buff, index, addr.Port)) {
+      if (!write_uint16(buff, index, addr.port)) {
         LOG(TRACE, "buffer too small for address port");
         LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
         return false;
       }
     } else {
-      std::fill(buff.begin() + index, buff.begin() + index + net::Address::ByteSize, 0);
-      index += net::Address::ByteSize;
+      std::fill(buff.begin() + index, buff.begin() + index + net::Address::SIZE_OF, 0);
+      index += net::Address::SIZE_OF;
     }
-
-    assert(index - start == net::Address::ByteSize);
 
     return true;
   }

@@ -1,7 +1,6 @@
-#ifndef TESTING_TEST_HPP
-#define TESTING_TEST_HPP
+#pragma once
 
-#include "net/address.hpp"
+#include "util/macros.hpp"
 
 #define TEST_BREAK "\n=============================================\n\n"
 #define TEST_BREAK_WARNING "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
@@ -38,9 +37,9 @@
  * To do so first forward declare the complete name of the test (with the pre & postfix) within the testing namespace.
  * Then simply use the friend keyword within the class you'd like to test the private functions of.
  */
-#define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+#define TEST(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define check(cond) testing::CheckHandler((cond), #cond, __FILE__, __LINE__)
+#define CHECK(cond) testing::CheckHandler((cond), #cond, __FILE__, __LINE__)
 
 namespace testing
 {
@@ -64,85 +63,44 @@ namespace testing
     SpecCheck(bool result, const char* condition, const char* file, int line);
     ~SpecCheck();
 
-    void onFail(std::function<void(void)> failFunc);
+    void on_fail(std::function<void(void)> fail_func);
 
    private:
-    bool mResult;
-    const char* mCondition;
-    const char* mFile;
-    const int mLine;
-    std::function<void(void)> mOnFail;
+    bool result;
+    const char* condition;
+    const char* file;
+    const int line;
+    std::function<void(void)> on_fail_func;
   };
 
-  inline SpecCheck::SpecCheck(bool result, const char* condition, const char* file, int line)
-   : mResult(result), mCondition(condition), mFile(file), mLine(line)
+  INLINE SpecCheck::SpecCheck(bool result, const char* condition, const char* file, int line)
+   : result(result), condition(condition), file(file), line(line)
   {}
 
-  inline SpecCheck::~SpecCheck()
+  INLINE SpecCheck::~SpecCheck()
   {
-    if (!mResult) {
-      std::cout << "check failed: (" << mCondition << ")"
-                << ", file " << mFile << " (" << mLine << ")\n";
-      if (mOnFail) {
-        mOnFail();
+    if (!this->result) {
+      std::cout << "check failed: (" << this->condition << ")"
+                << ", file " << this->file << " (" << this->line << ")\n";
+      if (this->on_fail_func) {
+        this->on_fail_func();
       }
       std::cout << std::flush;
       std::exit(1);
     }
   }
 
-  inline void SpecCheck::onFail(std::function<void(void)> failFunc)
+  INLINE void SpecCheck::on_fail(std::function<void(void)> fail_func)
   {
-    mOnFail = failFunc;
+    this->on_fail_func = fail_func;
   }
 
   template <typename T>
-  SpecCheck CheckHandler(T result, const char* condition, const char* file, int line);
+  INLINE SpecCheck CheckHandler(T result, const char* condition, const char* file, int line);
 
   template <>
-  inline SpecCheck CheckHandler(bool result, const char* condition, const char* file, int line)
+  INLINE SpecCheck CheckHandler(bool result, const char* condition, const char* file, int line)
   {
     return SpecCheck(result, condition, file, line);
   }
-
-  template <typename T>
-  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal();
-
-  net::Address RandomAddress();
-
-  // slow but easy to write, use for tests only
-  // valid return types are std string/vector
-  template <class ReturnType>
-  ReturnType ReadFile(std::string filename);
-
-  template <typename T>
-  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal()
-  {
-    static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
-    return static_cast<T>(rand());
-  }
-
-  template <class ReturnType>
-  ReturnType ReadFile(std::string filename)
-  {
-    ReturnType retval;
-
-    if (!filename.empty()) {
-      std::ifstream stream;
-
-      stream.open(filename, std::ios::binary);
-
-      if (stream) {
-        std::stringstream data;
-        data << stream.rdbuf();
-        auto str = data.str();
-        retval.assign(str.begin(), str.end());
-      }
-
-      stream.close();
-    }
-
-    return retval;
-  }
 }  // namespace testing
-#endif

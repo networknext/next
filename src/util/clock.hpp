@@ -1,5 +1,7 @@
 #pragma once
 
+#include "macros.hpp"
+
 namespace util
 {
 #if defined _WIN32
@@ -32,66 +34,66 @@ namespace util
 
     /* Returns the number of seconds since the epoch */
     template <typename U>
-    double unixTime() const;
+    double unix_time() const;
 
    private:
-    Instant mNow;
-    size_t mDelta;
+    Instant now;
+    size_t delta;
 
     template <typename T>
     double diff() const;
   };
 
-  inline Clock::Clock()
+  INLINE Clock::Clock()
   {
     reset();
   }
 
-  inline void Clock::reset()
+  INLINE void Clock::reset()
   {
-    mNow = InternalClock::now();
+    this->now = InternalClock::now();
   }
 
   template <>
-  inline double Clock::elapsed<Nanosecond>() const
+  INLINE double Clock::elapsed<Nanosecond>() const
   {
     return diff<std::nano>();
   }
 
   template <>
-  inline double Clock::elapsed<Microsecond>() const
+  INLINE double Clock::elapsed<Microsecond>() const
   {
     return diff<std::micro>();
   }
 
   template <>
-  inline double Clock::elapsed<Millisecond>() const
+  INLINE double Clock::elapsed<Millisecond>() const
   {
     return diff<std::milli>();
   }
 
   template <>
-  inline double Clock::elapsed<Second>() const
+  INLINE double Clock::elapsed<Second>() const
   {
     return diff<std::ratio<1>>();
   }
 
   template <typename U>
-  inline bool Clock::elapsed(double value) const
+  INLINE bool Clock::elapsed(double value) const
   {
-    return std::chrono::duration_cast<U>(InternalClock::now() - mNow).count() >= value;
+    return std::chrono::duration_cast<U>(InternalClock::now() - this->now).count() >= value;
   }
 
   template <typename T>
-  inline double Clock::unixTime() const
+  INLINE double Clock::unix_time() const
   {
     const auto seconds = std::chrono::duration_cast<T>(InternalClock::now().time_since_epoch());
     return seconds.count();
   }
 
   template <typename T>
-  inline double Clock::diff() const
+  INLINE double Clock::diff() const
   {
-    return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
+    return std::chrono::duration<double, T>(InternalClock::now() - this->now).count();
   }
-}  // namespace epoch
+}  // namespace util

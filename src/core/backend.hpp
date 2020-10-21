@@ -10,9 +10,16 @@
 #include "session_map.hpp"
 #include "testing/test.hpp"
 #include "util/logger.hpp"
+#include "util/clock.hpp"
 
+using core::SessionMap;
 using crypto::GenericKey;
 using crypto::KEY_SIZE;
+using crypto::Keychain;
+using crypto::Nonce;
+using net::IHttpClient;
+using util::Clock;
+using util::ThroughputRecorder;
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -23,6 +30,7 @@ namespace testing
 
 namespace core
 {
+  extern const char* RELAY_VERSION;
   const uint32_t INIT_REQUEST_MAGIC = 0x9083708f;
 
   const uint32_t INIT_REQUEST_VERSION = 1;
@@ -37,9 +45,9 @@ namespace core
   {
     uint32_t magic = INIT_REQUEST_MAGIC;
     uint32_t version = INIT_REQUEST_VERSION;
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
+    Nonce nonce;
     std::string address;
-    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encrypted_token;
+    std::array<uint8_t, KEY_SIZE + crypto_box_MACBYTES> encrypted_token;
     std::string relay_version = RELAY_VERSION;
 
     auto size() -> size_t;
@@ -102,7 +110,7 @@ namespace core
     uint32_t version;
     uint64_t timestamp;
     uint32_t num_relays;
-    std::array<RelayPingInfo, MAX_RELAYS> Relays;
+    std::array<RelayPingInfo, MAX_RELAYS> relays;
 
     auto size() -> size_t;
     auto into(std::vector<uint8_t>& v) -> bool;
@@ -131,12 +139,11 @@ namespace core
     Backend(
      const std::string hostname,
      const std::string address,
-     const crypto::Keychain& keychain,
+     const Keychain& keychain,
      RouterInfo& router_info,
      RelayManager& relay_manager,
-     std::string base64_relay_public_key,
-     const core::SessionMap& sessions,
-     net::IHttpClient& client);
+     const SessionMap& sessions,
+     IHttpClient& client);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -146,20 +153,17 @@ namespace core
      * Returns true as long as the relay doesn't reach the max number of failed update attempts
      */
     auto update_loop(
-     volatile bool& should_loop,
-     const volatile bool& should_clean_shutdown,
-     util::ThroughputRecorder& logger,
-     core::SessionMap& sessions) -> bool;
+     volatile bool& should_loop, const volatile bool& should_clean_shutdown, ThroughputRecorder& logger, SessionMap& sessions)
+     -> bool;
 
    private:
     const std::string hostname;
     const std::string relay_address;
-    const crypto::Keychain& keychain;
+    const Keychain& keychain;
     RouterInfo& router_info;
     RelayManager& relay_manager;
-    const std::string base64_relay_public_key;
-    const core::SessionMap& session_map;
-    net::IHttpClient& http_client;
+    const SessionMap& session_map;
+    IHttpClient& http_client;
 
     // this is the public key in the actual backend
     // for reference backends it's random so has to

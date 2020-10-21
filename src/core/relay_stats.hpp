@@ -1,9 +1,8 @@
-#ifndef CORE_RELAY_STATS_HPP
-#define CORE_RELAY_STATS_HPP
+#pragma once
 
 namespace core
 {
-
+  const size_t MAX_RELAYS = 1024;
   // TODO make this an array of structs composed of id, rtt, jitter, and pl, would be cache friendly
   struct RelayStats
   {
@@ -14,4 +13,3 @@ namespace core
     std::array<float, MAX_RELAYS> packet_loss;
   };
 }  // namespace core
-#endif

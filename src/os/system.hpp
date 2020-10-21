@@ -9,34 +9,35 @@ namespace os
    public:
     LibTopWrapper();
 
-    auto getCPU() -> double;
-    auto getMem() -> double;
+    auto get_cpu() -> double;
+    auto get_mem() -> double;
   };
 
-  inline LibTopWrapper::LibTopWrapper()
+  INLINE LibTopWrapper::LibTopWrapper()
   {
     glibtop_init();
   }
 
-  inline auto LibTopWrapper::getCPU() -> double
+  INLINE auto LibTopWrapper::get_cpu() -> double
   {
-    static struct {
+    static struct
+    {
       uint64_t total = 0;
       uint64_t idle = 0;
-    } lastCPU, currCPU;
+    } last_cpu, curr_cpu;
     glibtop_cpu cpu;
     glibtop_get_cpu(&cpu);
 
-    currCPU.total = cpu.total - lastCPU.total;
-    currCPU.idle = cpu.idle - lastCPU.idle;
+    curr_cpu.total = cpu.total - last_cpu.total;
+    curr_cpu.idle = cpu.idle - last_cpu.idle;
 
-    lastCPU.total = cpu.total;
-    lastCPU.idle = cpu.idle;
+    last_cpu.total = cpu.total;
+    last_cpu.idle = cpu.idle;
 
-    return static_cast<double>(currCPU.total - currCPU.idle) / static_cast<double>(currCPU.total);
+    return static_cast<double>(curr_cpu.total - curr_cpu.idle) / static_cast<double>(curr_cpu.total);
   }
 
-  inline auto LibTopWrapper::getMem() -> double
+  INLINE auto LibTopWrapper::get_mem() -> double
   {
     glibtop_mem mem;
     glibtop_get_mem(&mem);
@@ -45,16 +46,16 @@ namespace os
 
   struct SysUsage
   {
-    double CPU;
-    double Mem;
+    double cpu;
+    double mem;
   };
 
-  inline auto GetUsage() -> SysUsage
+  INLINE auto GetUsage() -> SysUsage
   {
     static LibTopWrapper wrapper;
     return SysUsage{
-     .CPU = wrapper.getCPU(),
-     .Mem = wrapper.getMem(),
+     .cpu = wrapper.get_cpu(),
+     .mem = wrapper.get_mem(),
     };
   }
 
@@ -67,11 +68,11 @@ namespace os
   // This should basically do what libtop does
   // mainly a sanity check in case libtop behaves weird
   // after the binary is deployed
-  inline auto GetUsageAlt() -> std::tuple<double, bool>
+  INLINE auto GetUsageAlt() -> std::tuple<double, bool>
   {
     double usage = 0.0;
     // get the first line of /proc/stat
-    std::vector<char> lineBuff;
+    std::vector<char> line_buff;
     {
       FILE* f = nullptr;
 
@@ -82,21 +83,21 @@ namespace os
         return {0, false};
       }
 
-      size_t lineLength = 0;
+      size_t line_length = 0;
 
       while (true) {
         char c = fgetc(f);
         if (c == EOF || c == '\n') {
           break;
         }
-        lineLength++;
+        line_length++;
       }
 
-      lineBuff.resize(lineLength + 1);
+      line_buff.resize(line_length + 1);
 
       rewind(f);
 
-      if (fgets(lineBuff.data(), lineBuff.size(), f) == nullptr) {
+      if (fgets(line_buff.data(), line_buff.size(), f) == nullptr) {
         LOG(ERROR, "could not read first line of /proc/stat");
         perror("OS msg:");
         return {0, false};
@@ -109,11 +110,11 @@ namespace os
     {
       static CPUUsageCache prev;
       CPUUsageCache curr;
-      int user, nice, system, idle, iowait, irq, softirq, steal, guest, guestNice;
+      int user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
 
       sscanf(
-       lineBuff.data(),
-       // [cpu] user nice system idle iowait irq softirq steal guest guestNice
+       line_buff.data(),
+       // [cpu] user nice system idle iowait irq softirq steal guest guest_nice
        "%*s %d %d %d %d %d %d %d %d %d %d",
        &user,
        &nice,
@@ -124,13 +125,13 @@ namespace os
        &softirq,
        &steal,
        &guest,
-       &guestNice);
+       &guest_nice);
 
       // iowait is added to non-idle because the relay is basically the only thing running on the servers
       // thus waiting is consumed cpu time since threads are locked to cores
       curr.Idle = idle;
-      int nonIdle = user + nice + system + irq + softirq + steal + guest + guestNice + iowait;
-      curr.Total = curr.Idle + nonIdle;
+      int non_idle = user + nice + system + irq + softirq + steal + guest + guest_nice + iowait;
+      curr.Total = curr.Idle + non_idle;
 
       int total = curr.Total - prev.Total;
       idle = curr.Idle - prev.Idle;

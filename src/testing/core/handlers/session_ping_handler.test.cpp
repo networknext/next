@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_session_ping_handler_sdk4)
+TEST(core_handlers_session_ping_handler_sdk4)
 {
   Packet packet;
   SessionMap map;
@@ -35,16 +35,16 @@ Test(core_handlers_session_ping_handler_sdk4)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PacketHeaderV4::SIZE_OF_SIGNED + 32;
   packet.addr = addr;
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ClientToServer4;
-    header.sequence = 123123130131LL;
+    header.type = PacketType::SessionPing4;
+    header.sequence = 123123130131LL | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
   };
@@ -59,20 +59,20 @@ Test(core_handlers_session_ping_handler_sdk4)
 
   size_t index = 0;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == PacketHeaderV4::SIZE_OF_SIGNED);
 
   core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
   core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_session_ping_handler_unsigned)
+TEST(core_handlers_session_ping_handler_unsigned)
 {
   Packet packet;
   SessionMap map;
@@ -87,16 +87,16 @@ Test(core_handlers_session_ping_handler_unsigned)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PacketHeader::SIZE_OF_SIGNED + 32;
   packet.addr = addr;
 
   PacketHeader header;
   {
-    header.type = PacketType::ClientToServer;
-    header.sequence = 123123130131LL;
+    header.type = PacketType::SessionPing;
+    header.sequence = 123123130131LL | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
   };
@@ -111,20 +111,20 @@ Test(core_handlers_session_ping_handler_unsigned)
 
   size_t index = 0;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeader::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, false);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, false);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_session_ping_handler_signed)
+TEST(core_handlers_session_ping_handler_signed)
 {
   Packet packet;
   SessionMap map;
@@ -139,16 +139,16 @@ Test(core_handlers_session_ping_handler_signed)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED + 32;
   packet.addr = addr;
 
   PacketHeader header;
   {
-    header.type = PacketType::ClientToServer;
-    header.sequence = 123123130131LL;
+    header.type = PacketType::SessionPing;
+    header.sequence = 123123130131LL | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
   };
@@ -166,17 +166,17 @@ Test(core_handlers_session_ping_handler_signed)
 
   size_t index = crypto::PACKET_HASH_LENGTH;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, true);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  CHECK(socket.recv(packet)).on_fail([&] {
     std::cout << "session = " << *session << '\n';
   });
-  check(prev_len == packet.length);
+  CHECK(prev_len == packet.length);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, true);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }

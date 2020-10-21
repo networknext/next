@@ -1,4 +1,3 @@
-#include "config.hpp"
 #include <algorithm>
 #include <alloca.h>
 #include <arpa/inet.h>

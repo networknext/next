@@ -18,7 +18,7 @@ namespace util
     std::optional<std::string> max_cpus;
   };
 
-  inline Env::Env()
+  INLINE Env::Env()
   {
     std::unordered_map<const char*, std::string*> required_vars = {
      {"RELAY_ADDRESS", &relay_address},

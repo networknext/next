@@ -6,13 +6,13 @@ extern util::Console _console_;
 
 // Log levels are excluded at compile time for performance reasons. Save every cpu cycle we can
 
-#if not defined NDEBUG or RELAY_LOG_LEVEL >= 5 or defined LOG_ALL
+#if RELAY_LOG_LEVEL >= 5 or defined LOG_ALL
 #define LOG_TRACE(...) 	_console_.log("trace ", __FILE__, " (", __LINE__, "): ", __VA_ARGS__)
 #else
 #define LOG_TRACE(...)
 #endif
 
-#if not defined NDEBUG or RELAY_LOG_LEVEL >= 4 or defined LOG_ALL
+#if RELAY_LOG_LEVEL >= 4 or defined LOG_ALL
 #define LOG_DEBUG(...) 	_console_.log("debug: ", __VA_ARGS__)
 #else
 #define LOG_DEBUG(...)
