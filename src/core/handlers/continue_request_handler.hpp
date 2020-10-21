@@ -50,7 +50,7 @@ namespace core
       }
 
       if (token.expired(router_info.current_time<uint64_t>())) {
-        LOG(INFO, "ignoring continue request. token is expired");
+        LOG(ERROR, "ignoring continue request. token is expired");
         return;
       }
 
@@ -64,13 +64,13 @@ namespace core
       }
 
       if (session->expired(router_info.current_time<uint64_t>())) {
-        LOG(INFO, "ignoring continue request. session is expired");
+        LOG(ERROR, "ignoring continue request. session is expired");
         session_map.erase(hash);
         return;
       }
 
       if (session->expire_timestamp != token.expire_timestamp) {
-        LOG(INFO, "session continued: ", token);
+        LOG(DEBUG, "session continued: ", token);
       }
 
       session->expire_timestamp = token.expire_timestamp;
@@ -81,7 +81,6 @@ namespace core
 
       recorder.continue_request_tx.add(length);
 
-      LOG(DEBUG, "forwarding continue request to ", session->next_addr);
       if (!socket.send(session->next_addr, &packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED], length)) {
         LOG(ERROR, "failed to forward continue request");
       }

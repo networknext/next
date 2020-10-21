@@ -20,7 +20,7 @@ namespace core
     INLINE void relay_ping_handler(Packet& packet, ThroughputRecorder& recorder, const Socket& socket, bool should_handle)
     {
       if (!should_handle) {
-        LOG(INFO, "relay in process of shutting down, ignoring relay ping packet");
+        LOG(DEBUG, "relay in process of shutting down, ignoring relay ping packet");
         return;
       }
 

@@ -48,7 +48,7 @@ namespace core
       }
 
       if (token.expired(router_info.current_time<uint64_t>())) {
-        LOG(INFO, "ignoring route request, token expired, session = ", token);
+        LOG(ERROR, "ignoring route request, token expired, session = ", token);
         return;
       }
 
@@ -78,7 +78,7 @@ namespace core
 
         session_map.set(hash, session);
 
-        LOG(INFO, "session created: ", *session);
+        LOG(DEBUG, "session created: ", *session);
       } else {
         LOG(DEBUG, "received additional route request for session: ", token);
       }
