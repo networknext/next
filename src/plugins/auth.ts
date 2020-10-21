@@ -104,7 +104,6 @@ export class AuthService {
         })
       return
     }
-    // supportSignUp=true&supportForgotPassword=true&email=baumbachandrew%40gmail.com&message=Your email was verified. You can continue using the application.&success=true&code=success
     if (query.includes('code=') && query.includes('state=')) {
       await this.authClient.handleRedirectCallback()
         .catch((error: Error) => {
