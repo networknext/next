@@ -23,7 +23,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -326,11 +325,11 @@ func main() {
 	}
 
 	statsdb := routing.NewStatsDatabase()
-	costMatrix := []int32{}
-	routeMatrix := &routing.RouteMatrix4{}
+	costMatrix := &routing.CostMatrix{}
+	routeMatrix := &routing.RouteMatrix{}
 
 	var costMatrixMutex sync.RWMutex
-	getCostMatrixFunc := func() []int32 {
+	getCostMatrixFunc := func() *routing.CostMatrix {
 		costMatrixMutex.RLock()
 		cm := costMatrix
 		costMatrixMutex.RUnlock()
@@ -338,7 +337,7 @@ func main() {
 	}
 
 	var routeMatrixMutex sync.RWMutex
-	getRouteMatrixFunc := func() *routing.RouteMatrix4 {
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
 		routeMatrixMutex.RLock()
 		rm := routeMatrix
 		routeMatrixMutex.RUnlock()
@@ -599,21 +598,21 @@ func main() {
 	}
 
 	// Separate route matrix specifically for Valve
-	valveRouteMatrix := &routing.RouteMatrix4{}
+	valveRouteMatrix := &routing.RouteMatrix{}
 	var valveRouteMatrixMutex sync.RWMutex
 
-	getValveRouteMatrixFunc := func() *routing.RouteMatrix4 {
+	getValveRouteMatrixFunc := func() *routing.RouteMatrix {
 		valveRouteMatrixMutex.RLock()
 		rm := valveRouteMatrix
 		valveRouteMatrixMutex.RUnlock()
 		return rm
 	}
 
-	routeMatrixBufferSize := 100000
-	if routeMatrixBufferSizeString, ok := os.LookupEnv("ROUTE_MATRIX_BUFFER_SIZE"); ok {
-		routeMatrixBufferSize, err = strconv.Atoi(routeMatrixBufferSizeString)
+	matrixBufferSize := 100000
+	if matrixBufferSizeString, ok := os.LookupEnv("MATRIX_BUFFER_SIZE"); ok {
+		matrixBufferSize, err = strconv.Atoi(matrixBufferSizeString)
 		if err != nil {
-			level.Error(logger).Log("envvar", "ROUTE_MATRIX_BUFFER_SIZE", "value", routeMatrixBufferSize, "err", err)
+			level.Error(logger).Log("envvar", "MATRIX_BUFFER_SIZE", "value", matrixBufferSize, "err", err)
 			os.Exit(1)
 		}
 	}
@@ -653,7 +652,15 @@ func main() {
 			costMatrixMetrics.Invocations.Add(1)
 			costMatrixDurationStart := time.Now()
 
-			costMatrixNew := statsdb.GenerateCostMatrix(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			costMatrixNew := &routing.CostMatrix{
+				RelayIDs:           relayIDs,
+				RelayAddresses:     relayAddresses,
+				RelayNames:         relayNames,
+				RelayLatitudes:     relayLatitudes,
+				RelayLongitudes:    relayLongitudes,
+				RelayDatacenterIDs: relayDatacenterIDs,
+				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
+			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
@@ -661,7 +668,13 @@ func main() {
 				costMatrixMetrics.LongUpdateCount.Add(1)
 			}
 
-			costMatrixMetrics.Bytes.Set(float64(len(costMatrix) * 4))
+			if err := costMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
+				level.Error(logger).Log("matrix", "cost", "op", "write_response", "msg", "could not write response data", "err", err)
+				time.Sleep(syncInterval)
+				continue
+			}
+
+			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
 
 			costMatrixMutex.Lock()
 			costMatrix = costMatrixNew
@@ -679,7 +692,7 @@ func main() {
 			optimizeMetrics.Invocations.Add(1)
 			optimizeDurationStart := time.Now()
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew, 5, relayDatacenterIDs)
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				time.Sleep(syncInterval)
@@ -693,7 +706,7 @@ func main() {
 				optimizeMetrics.LongUpdateCount.Add(1)
 			}
 
-			routeMatrixNew := &routing.RouteMatrix4{
+			routeMatrixNew := &routing.RouteMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
 				RelayNames:         relayNames,
@@ -703,7 +716,7 @@ func main() {
 				RouteEntries:       routeEntries,
 			}
 
-			if err := routeMatrixNew.WriteResponseData(routeMatrixBufferSize); err != nil {
+			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 				time.Sleep(syncInterval)
 				continue
@@ -793,7 +806,7 @@ func main() {
 			valveCostMatrixMetrics.Invocations.Add(1)
 			costMatrixDurationStart := time.Now()
 
-			valveCostMatrix := statsdb.GenerateCostMatrix(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			valveCostMatrix := statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
@@ -829,7 +842,7 @@ func main() {
 				valveOptimizeMetrics.LongUpdateCount.Add(1)
 			}
 
-			valveRouteMatrixNew := &routing.RouteMatrix4{
+			valveRouteMatrixNew := &routing.RouteMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
 				RelayNames:         relayNames,
@@ -839,7 +852,7 @@ func main() {
 				RouteEntries:       routeEntries,
 			}
 
-			if err := valveRouteMatrixNew.WriteResponseData(routeMatrixBufferSize); err != nil {
+			if err := valveRouteMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 				time.Sleep(syncInterval)
 				continue
@@ -912,14 +925,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		m := getCostMatrixFunc()
-
-		data := make([]byte, len(m)*4)
-		var index int
-
-		encoding.WriteUint32(data, &index, uint32(len(m)))
-		for _, v := range m {
-			encoding.WriteUint32(data, &index, uint32(v))
-		}
+		data := m.GetResponseData()
 
 		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)

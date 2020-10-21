@@ -230,7 +230,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
 
-func (database *StatsDatabase) GenerateCostMatrix(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
+func (database *StatsDatabase) GetCosts(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
 	numRelays := len(relayIDs)
 	costs := make([]int32, TriMatrixLength(numRelays))
 

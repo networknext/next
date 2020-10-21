@@ -420,7 +420,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix4, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
 		ID         uint64
 		Name       string

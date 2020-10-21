@@ -317,8 +317,8 @@ func TestStatsDatabase(t *testing.T) {
 				relayIDs = append(relayIDs, relayData.ID)
 			}
 
-			costMatrix := statsdb.GenerateCostMatrix(relayIDs, maxJitter, maxPacketLoss)
-			assert.NotEmpty(t, costMatrix)
+			costs := statsdb.GetCosts(relayIDs, maxJitter, maxPacketLoss)
+			assert.NotEmpty(t, costs)
 
 			// Testing
 			// assert that all non-invalid rtt's are within the cost matrix
@@ -343,10 +343,10 @@ func TestStatsDatabase(t *testing.T) {
 				return routing.TriMatrixIndex(indxOfI, indxOfJ)
 			}
 
-			assert.Equal(t, int32(123), costMatrix[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
-			assert.Equal(t, int32(-1), costMatrix[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
-			assert.Equal(t, int32(-1), costMatrix[getAddressIndex("127.0.0.1:40000", "654.0.0.4:40000")])
-			assert.Equal(t, int32(-1), costMatrix[getAddressIndex("127.0.0.1:40000", "000.0.0.5:40000")])
+			assert.Equal(t, int32(123), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
+			assert.Equal(t, int32(-1), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
+			assert.Equal(t, int32(-1), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.4:40000")])
+			assert.Equal(t, int32(-1), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.5:40000")])
 		})
 	})
 }

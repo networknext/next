@@ -209,7 +209,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create metrics
-	backendMetrics, err := metrics.NewServerBackend4Metrics(ctx, metricsHandler)
+	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
 		return 1
@@ -426,13 +426,13 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	routeMatrix4 := &routing.RouteMatrix4{}
-	var routeMatrix4Mutex sync.RWMutex
+	routeMatrix := &routing.RouteMatrix{}
+	var routeMatrixMutex sync.RWMutex
 
-	getRouteMatrix4Func := func() *routing.RouteMatrix4 {
-		routeMatrix4Mutex.RLock()
-		rm4 := routeMatrix4
-		routeMatrix4Mutex.RUnlock()
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		routeMatrixMutex.RLock()
+		rm4 := routeMatrix
+		routeMatrixMutex.RUnlock()
 		return rm4
 	}
 
@@ -482,10 +482,10 @@ func mainReturnWithCode() int {
 						continue // Don't swap route matrix if we fail to read
 					}
 
-					var newRouteMatrix4 routing.RouteMatrix4
+					var newRouteMatrix routing.RouteMatrix
 					if len(buffer) > 0 {
 						rs := encoding.CreateReadStream(buffer)
-						if err := newRouteMatrix4.Serialize(rs); err != nil {
+						if err := newRouteMatrix.Serialize(rs); err != nil {
 							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 							time.Sleep(syncInterval)
 							continue // Don't swap route matrix if we fail to serialize
@@ -502,15 +502,15 @@ func mainReturnWithCode() int {
 					}
 
 					numRoutes := int32(0)
-					for i := range newRouteMatrix4.RouteEntries {
-						numRoutes += newRouteMatrix4.RouteEntries[i].NumRoutes
+					for i := range newRouteMatrix.RouteEntries {
+						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
 					}
 					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
 					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
-					routeMatrix4Mutex.Lock()
-					routeMatrix4 = &newRouteMatrix4
-					routeMatrix4Mutex.Unlock()
+					routeMatrixMutex.Lock()
+					routeMatrix = &newRouteMatrix
+					routeMatrixMutex.Unlock()
 
 					time.Sleep(syncInterval)
 				}
@@ -723,9 +723,9 @@ func mainReturnWithCode() int {
 
 	connections := make([]*net.UDPConn, numThreads)
 
-	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -775,11 +775,11 @@ func mainReturnWithCode() int {
 				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
 
 				switch packetType {
-				case transport.PacketTypeServerInitRequest4:
+				case transport.PacketTypeServerInitRequest:
 					serverInitHandler(&buffer, &packet)
-				case transport.PacketTypeServerUpdate4:
+				case transport.PacketTypeServerUpdate:
 					serverUpdateHandler(&buffer, &packet)
-				case transport.PacketTypeSessionUpdate4:
+				case transport.PacketTypeSessionUpdate:
 					sessionUpdateHandler(&buffer, &packet)
 				default:
 					level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
