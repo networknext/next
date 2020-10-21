@@ -107,14 +107,6 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	return true
 }
 
-// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3, basically ReadString()
-func ReadBytesOld(buffer []byte) ([]byte, int) {
-	length := binary.LittleEndian.Uint32(buffer)
-	data := make([]byte, length)
-	copy(data, buffer[4:4+length])
-	return data, int(4 + length)
-}
-
 func ReadAddress(buffer []byte) *net.UDPAddr {
 	addressType := buffer[0]
 	switch addressType {
