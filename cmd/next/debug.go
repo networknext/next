@@ -66,9 +66,9 @@ func debug(relayName string, inputFile string) {
 
 		index := routing.TriMatrixIndex(a, b)
 
-		directRTT := routeMatrix.RouteEntries[index].DirectCost
+		directCost := routeMatrix.RouteEntries[index].DirectCost
 
-		fmt.Printf("    %s (%d)\n", dest.name, directRTT)
+		fmt.Printf("    %s (%d)\n", dest.name, directCost)
 
 		numRoutes := int(routeMatrix.RouteEntries[index].NumRoutes)
 
