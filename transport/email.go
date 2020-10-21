@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -14,60 +15,24 @@ const (
 	LIST_ID       = "553903bc6f"
 )
 
-type Contact struct {
-	address string `json:"email_address"`
-	status  string `json:"status"`
-}
-
-type Tag struct {
-	name   string `json:"name"`
-	status string `json:"status"`
-}
-
-type TagUpdate struct {
-	tags []Tag `json:"tags"`
-}
-
-func CheckMailChimpAccounts(email string) error {
-	emailHash := md5.Sum([]byte(strings.ToLower(email)))
-
-	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s", SERVER_PREFIX, LIST_ID, fmt.Sprintf("%x", emailHash))
-
-	req, err := http.NewRequest("POST", URL, nil)
-	if err != nil {
-		err = fmt.Errorf("CheckMailChimpAccounts() failed to setup request: %v", err)
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth("key", APIKEY)
-
-	resp, err := http.DefaultClient.Do(req)
-	if resp.StatusCode == 200 {
-		err = fmt.Errorf("CheckMailChimpAccounts() contact already exists: %v", err)
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
 func TagNewSignup(email string) error {
 	emailHash := md5.Sum([]byte(strings.ToLower(email)))
 
-	tags := TagUpdate{
-		tags: []Tag{
+	tags := map[string]interface{}{
+		"tags": []map[string]string{
 			{
-				name:   "Portal Signups",
-				status: "active",
+				"name":   "Portal Signups",
+				"status": "active",
 			},
 		},
 	}
 
-	bytes, err := json.Marshal(tags)
+	jsonValue, err := json.Marshal(tags)
 	if err != nil {
 		err = fmt.Errorf("TagNewSignup() failed marshal the payload: %v", err)
 		return err
 	}
-	payload := strings.NewReader(string(bytes))
+	payload := bytes.NewBuffer(jsonValue)
 
 	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members/%s/tags", SERVER_PREFIX, LIST_ID, fmt.Sprintf("%x", emailHash))
 
@@ -77,10 +42,11 @@ func TagNewSignup(email string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("key", APIKEY)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		err = fmt.Errorf("TagNewSignup() failed to tag contact: %v", err)
+		err = fmt.Errorf("TagNewSignup() failed to tag contact")
 		return err
 	}
 	defer resp.Body.Close()
@@ -88,30 +54,30 @@ func TagNewSignup(email string) error {
 }
 
 func AddSignupToMailChimp(email string) error {
-	jsonObject := Contact{
-		address: email,
-		status:  "pending",
+	payload := map[string]string{
+		"email_address": email,
+		"status":        "pending",
 	}
 
-	bytes, err := json.Marshal(jsonObject)
+	jsonValue, err := json.Marshal(payload)
 	if err != nil {
 		err = fmt.Errorf("AddSignupToMailChimp() failed marshal the payload: %v", err)
 		return err
 	}
-	payload := strings.NewReader(string(bytes))
 
 	URL := fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", SERVER_PREFIX, LIST_ID)
 
-	req, err := http.NewRequest("POST", URL, payload)
+	req, err := http.NewRequest("POST", URL, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		err = fmt.Errorf("AddSignupToMailChimp() failed to setup request: %v", err)
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("key", APIKEY)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		err = fmt.Errorf("AddSignupToMailChimp() failed to send email: %v", err)
+		err = fmt.Errorf("AddSignupToMailChimp() failed to send email")
 		return err
 	}
 	defer resp.Body.Close()

@@ -961,12 +961,6 @@ func (s *AuthService) AddMailChimpContact(r *http.Request, args *AddContactArgs,
 		return err
 	}
 
-	if err := transport.CheckMailChimpAccounts(args.Email); err != nil {
-		err := fmt.Errorf("AddMailChimpContact() account already exists: %s", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
 	if err := transport.AddSignupToMailChimp(args.Email); err != nil {
 		err := fmt.Errorf("AddMailChimpContact() failed to add signup: %s", err)
 		s.Logger.Log("err", err)
