@@ -253,7 +253,7 @@ func relays(
 	}
 
 	sort.SliceStable(reply.Relays, func(i int, j int) bool {
-		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
+		return reply.Relays[i].TrafficStats.SessionCount > reply.Relays[j].TrafficStats.SessionCount
 	})
 
 	relays := []struct {
@@ -302,8 +302,8 @@ func relays(
 			includeRelay = false
 		}
 		unitFormat(0)
-		bitsTransmitted := unitFormat(relay.TrafficStats.BytesSent * 8)
-		bitsReceived := unitFormat(relay.TrafficStats.BytesReceived * 8)
+		bitsTransmitted := unitFormat(relay.TrafficStats.AllTx() * 8)
+		bitsReceived := unitFormat(relay.TrafficStats.AllRx() * 8)
 
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
@@ -340,7 +340,7 @@ func relays(
 					relayID,
 					address,
 					relay.State,
-					fmt.Sprintf("%d", relay.SessionCount),
+					fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
 					bitsTransmitted,
 					bitsReceived,
 					relay.Version,
@@ -369,7 +369,7 @@ func relays(
 				ID:          relayID,
 				Address:     address,
 				State:       relay.State,
-				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
+				Sessions:    fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
 				Tx:          bitsTransmitted,
 				Rx:          bitsReceived,
 				LastUpdated: lastUpdated,

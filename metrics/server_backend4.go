@@ -48,7 +48,11 @@ var EmptyServerUpdate4Metrics = ServerUpdate4Metrics{
 type SessionUpdate4Metrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
+	DirectSlices Counter
+	NextSlices   Counter
+
 	ReadPacketFailure       Counter
+	FallbackToDirect        Counter
 	BuyerNotFound           Counter
 	ClientLocateFailure     Counter
 	ReadSessionDataFailure  Counter
@@ -67,7 +71,10 @@ type SessionUpdate4Metrics struct {
 // EmptySessionUpdate4Metrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptySessionUpdate4Metrics = SessionUpdate4Metrics{
 	HandlerMetrics:          &EmptyPacketHandlerMetrics,
+	DirectSlices:            &EmptyCounter{},
+	NextSlices:              &EmptyCounter{},
 	ReadPacketFailure:       &EmptyCounter{},
+	FallbackToDirect:        &EmptyCounter{},
 	BuyerNotFound:           &EmptyCounter{},
 	ClientLocateFailure:     &EmptyCounter{},
 	ReadSessionDataFailure:  &EmptyCounter{},
@@ -377,12 +384,45 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
+	m.DirectSlices, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Direct Slices",
+		ServiceName: serviceName,
+		ID:          handlerID + ".direct_slices",
+		Unit:        "slices",
+		Description: "The number of slices taking a direct route.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.NextSlices, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Next Slices",
+		ServiceName: serviceName,
+		ID:          handlerID + ".next_slices",
+		Unit:        "slices",
+		Description: "The number of slices taking a network next route.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.ReadPacketFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Read Packet Failure",
 		ServiceName: serviceName,
 		ID:          handlerID + ".read_packet_failure",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " failed to read.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.FallbackToDirect, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Fallback To Direct",
+		ServiceName: serviceName,
+		ID:          handlerID + ".fallback_to_direct",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a fallback to direct signal.",
 	})
 	if err != nil {
 		return nil, err

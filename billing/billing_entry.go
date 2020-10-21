@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(11)
+	BillingEntryVersion = uint8(12)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -51,12 +51,13 @@ type BillingEntry struct {
 	Longitude                 float32
 	ISP                       string
 	ABTest                    bool
-	RouteDecision             uint64
+	RouteDecision             uint64 // Deprecated with server_backend4
 	ConnectionType            uint8
 	PlatformType              uint8
 	SDKVersion                string
 	PacketLoss                float32
 	PredictedNextRTT          float32
+	MultipathVetoed           bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -130,6 +131,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteFloat32(data, &index, entry.PacketLoss)
 
 	encoding.WriteFloat32(data, &index, entry.PredictedNextRTT)
+
+	encoding.WriteBool(data, &index, entry.MultipathVetoed)
 
 	return data[:index]
 }
@@ -314,6 +317,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 11 {
 		if !encoding.ReadFloat32(data, &index, &entry.PredictedNextRTT) {
+			return false
+		}
+	}
+
+	if entry.Version >= 12 {
+		if !encoding.ReadBool(data, &index, &entry.MultipathVetoed) {
 			return false
 		}
 	}

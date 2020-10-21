@@ -91,6 +91,7 @@ func mainReturnWithCode() int {
 	// Configure local logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 
+	// Get GCP project ID
 	gcpOK := envvar.Exists("GOOGLE_PROJECT_ID")
 	gcpProjectID := envvar.Get("GOOGLE_PROJECT_ID", "")
 
@@ -195,7 +196,7 @@ func mainReturnWithCode() int {
 			if enableSDProfiler {
 				// Set up StackDriver profiler
 				if err := profiler.Start(profiler.Config{
-					Service:        "server_backend",
+					Service:        "server_backend4",
 					ServiceVersion: env,
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
@@ -211,12 +212,14 @@ func mainReturnWithCode() int {
 	backendMetrics, err := metrics.NewServerBackend4Metrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server_backend4 metrics", "err", err)
+		return 1
 	}
 
 	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		return 1
 	}
 
 	// Create a goroutine to update metrics
@@ -249,6 +252,10 @@ func mainReturnWithCode() int {
 		storer = fs
 	}
 
+	var customerPublicKey []byte
+	var customerID uint64
+	var relayPublicKey []byte
+
 	// Create dummy entries in storer for local testing
 	if env == "local" {
 		if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
@@ -256,19 +263,19 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
+		customerPublicKey, err = envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
-		customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
+		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
 
 		if !envvar.Exists("RELAY_PUBLIC_KEY") {
 			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
 			return 1
 		}
 
-		relayPublicKey, err := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
+		relayPublicKey, err = envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
@@ -279,6 +286,11 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
+	}
+
+	if env == "local" {
+		// Create dummy buyer and datacenter for local testing
+		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	// Create datacenter tracker
@@ -452,11 +464,13 @@ func mainReturnWithCode() int {
 					}
 
 					var newRouteMatrix4 routing.RouteMatrix4
-					rs := encoding.CreateReadStream(buffer)
-					if err := newRouteMatrix4.Serialize(rs); err != nil {
-						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
-						time.Sleep(syncInterval)
-						continue // Don't swap route matrix if we fail to serialize
+					if len(buffer) > 0 {
+						rs := encoding.CreateReadStream(buffer)
+						if err := newRouteMatrix4.Serialize(rs); err != nil {
+							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+							time.Sleep(syncInterval)
+							continue // Don't swap route matrix if we fail to serialize
+						}
 					}
 
 					routeEntriesTime := time.Since(start)

@@ -41,7 +41,7 @@ func fillRelayDatabase(relayMap *routing.RelayMap) {
 			PublicKey:      randomPublicKey(),
 			LastUpdateTime: updateTime,
 		}
-		relayMap.UpdateRelayData(data.Addr.String(), data)
+		relayMap.AddRelayDataEntry(data.Addr.String(), data)
 	}
 
 	fillData("127.0.0.1:40000", time.Now().Add(time.Second*-1))

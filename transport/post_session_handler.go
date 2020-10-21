@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"syscall"
-	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -84,11 +83,23 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 }
 
 func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEntry) {
-	post.postSessionBillingChannel <- billingEntry
+	select {
+	case post.postSessionBillingChannel <- billingEntry:
+		post.metrics.BillingEntriesSent.Add(1)
+	default:
+		post.metrics.BillingBufferFull.Add(1)
+	}
+
 }
 
 func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalData) {
-	post.sessionPortalDataChannel <- sessionPortalData
+	select {
+	case post.sessionPortalDataChannel <- sessionPortalData:
+		post.metrics.PortalEntriesSent.Add(1)
+	default:
+		post.metrics.PortalBufferFull.Add(1)
+	}
+
 }
 
 func (post *PostSessionHandler) BillingBufferSize() uint64 {
@@ -97,14 +108,6 @@ func (post *PostSessionHandler) BillingBufferSize() uint64 {
 
 func (post *PostSessionHandler) PortalBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
-}
-
-func (post *PostSessionHandler) IsBillingBufferFull() bool {
-	return len(post.postSessionBillingChannel) >= post.maxBufferSize
-}
-
-func (post *PostSessionHandler) IsPortalBufferFull() bool {
-	return len(post.sessionPortalDataChannel) >= post.maxBufferSize
 }
 
 func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, maxRetries int) (int, error) {
@@ -124,7 +127,6 @@ func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, max
 			switch errno {
 			case zmq4.AsErrno(syscall.EAGAIN):
 				retryCount++
-				time.Sleep(time.Millisecond * 100) // If the send queue is backed up, wait a little bit and try again
 			default:
 				return 0, err
 			}

@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -288,6 +288,13 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 				return
 			}
 
+			if sessionData.RouteState.Next {
+				metrics.NextSlices.Add(1)
+				sessionData.EverOnNext = true
+			} else {
+				metrics.DirectSlices.Add(1)
+			}
+
 			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
 		}()
 
@@ -330,6 +337,14 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func(sessionID ui
 		// Don't accelerate any sessions if the buyer is not yet live
 		if !buyer.Live {
 			metrics.BuyerNotLive.Add(1)
+			return
+		}
+
+		if packet.FallbackToDirect {
+			if !sessionData.FellBackToDirect {
+				metrics.FallbackToDirect.Add(1)
+				sessionData.FellBackToDirect = true
+			}
 			return
 		}
 
@@ -610,6 +625,12 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		inGamePacketLoss = packetLossServerToClient
 	}
 
+	multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
+	var multipathVetoed bool
+	if _, ok := multipathVetoMap[packet.UserHash]; ok {
+		multipathVetoed = true
+	}
+
 	billingEntry := &billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
@@ -649,14 +670,10 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		SDKVersion:                packet.Version.String(),
 		PacketLoss:                inGamePacketLoss,
 		PredictedNextRTT:          float32(sessionData.RouteCost),
+		MultipathVetoed:           multipathVetoed,
 	}
 
-	if !postSessionHandler.IsBillingBufferFull() {
-		postSessionHandler.SendBillingEntry(billingEntry)
-		postSessionHandler.metrics.BillingEntriesSent.Add(1)
-	} else {
-		postSessionHandler.metrics.BillingBufferFull.Add(1)
-	}
+	postSessionHandler.SendBillingEntry(billingEntry)
 
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
 	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
@@ -724,14 +741,11 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 			Latitude:  sessionData.Location.Latitude,
 			Longitude: sessionData.Location.Longitude,
 		},
+		LargeCustomer: buyer.InternalConfig.LargeCustomer,
+		EverOnNext:    sessionData.EverOnNext,
 	}
 
-	if !postSessionHandler.IsPortalBufferFull() {
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			postSessionHandler.SendPortalData(portalData)
-			postSessionHandler.metrics.PortalEntriesSent.Add(1)
-		}
-	} else {
-		postSessionHandler.metrics.PortalBufferFull.Add(1)
+	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+		postSessionHandler.SendPortalData(portalData)
 	}
 }
