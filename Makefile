@@ -361,20 +361,9 @@ dev-portal: build-portal-local ## runs a local portal
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
 
-# .PHONY: dev-server-backend
-# dev-server-backend: build-server-backend ## runs a local server backend
-# 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
-
 .PHONY: dev-server-backend
-dev-server-backend: build-server-backend4 ## runs a local server backend
-	## @HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_sdk4 ./dist/server_backend4
-
-.PHONY: build-server-backend4
-build-server-backend4:
-	@printf "Building server_backend4... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
-	@printf "done\n"
+dev-server-backend: build-server-backend ## runs a local server backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend
