@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 	"github.com/rs/cors"
 	"gopkg.in/auth0.v4/management"
 )
@@ -41,10 +42,11 @@ var Keys contextKeys = contextKeys{
 }
 
 type AuthService struct {
-	UserManager storage.UserManager
-	JobManager  storage.JobManager
-	Storage     storage.Storer
-	Logger      log.Logger
+	MailChimpManager transport.MailChimpHandler
+	UserManager      storage.UserManager
+	JobManager       storage.JobManager
+	Storage          storage.Storer
+	Logger           log.Logger
 }
 
 type AccountsArgs struct {
@@ -1017,6 +1019,33 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 
 	reply.Sent = true
 
+	return nil
+}
+
+type AddContactArgs struct {
+	Email string `json:"email"`
+}
+
+type AddContactReply struct {
+}
+
+func (s *AuthService) AddMailChimpContact(r *http.Request, args *AddContactArgs, reply *AddContactReply) error {
+	if args.Email == "" {
+		err := fmt.Errorf("AddMailChimpContact() email is required")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if err := s.MailChimpManager.AddEmailToMailChimp(args.Email); err != nil {
+		err := fmt.Errorf("AddMailChimpContact() failed to add signup: %s", err)
+		s.Logger.Log("err", err)
+	}
+
+	if err := s.MailChimpManager.TagNewSignup(args.Email); err != nil {
+		err := fmt.Errorf("AddMailChimpContact() failed to tag signup: %s", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 	return nil
 }
 

@@ -70,13 +70,6 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	}
 }
 
-// used for CostMatrix & RouteMatrix marshaling. needed for when version < 3, basically WriteString()
-func WriteBytesOld(buffer []byte, value []byte) int {
-	binary.LittleEndian.PutUint32(buffer, uint32(len(value)))
-	copy(buffer[4:], value)
-	return 4 + len(value)
-}
-
 func WriteAddress(buffer []byte, address *net.UDPAddr) {
 	if address == nil {
 		buffer[0] = IPAddressNone
