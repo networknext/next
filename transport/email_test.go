@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// All tests listed below depend on test@networknext.com being a user in auth0
 func TestMailChimpIntegrationStatusOK(t *testing.T) {
 	HTTPServer := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
