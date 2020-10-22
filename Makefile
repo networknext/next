@@ -705,12 +705,6 @@ publish-bootstrap-script-staging:
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
 	@printf "done\n"
 
-.PHONY: publish-client-bootstrap-script-staging
-publish-client-bootstrap-script-staging:
-	@printf "Publishing client bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/client_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/client_bootstrap.sh
-	@printf "done\n"
-
 .PHONY: publish-bootstrap-script-prod
 publish-bootstrap-script-prod:
 	@printf "Publishing bootstrap script... \n\n"
