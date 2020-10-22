@@ -23,8 +23,6 @@ import (
 
 const (
 	LocationVersion = 0
-
-	regexLocalhostIPs = `0\.0\.0\.0|127\.0\.0\.1|localhost`
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP

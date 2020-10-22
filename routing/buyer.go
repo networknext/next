@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/modules/core"
 )
 
 type Buyer struct {
