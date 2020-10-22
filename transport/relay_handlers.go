@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"html/template"
@@ -70,8 +69,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		var relayInitRequest RelayInitRequest
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			err = relayInitRequest.UnmarshalJSON(body)
 		case "application/octet-stream":
 			err = relayInitRequest.UnmarshalBinary(body)
 		default:
@@ -92,7 +89,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		if relayInitRequest.Version != VersionNumberInitRequest {
+		if relayInitRequest.Version > VersionNumberInitRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
@@ -118,29 +115,17 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 
 		params.RelayMap.Lock()
-		defer params.RelayMap.Unlock()
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
 			http.Error(writer, "relay already initialized", http.StatusConflict)
 			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
+			params.RelayMap.Unlock()
 			return
 		}
+		params.RelayMap.Unlock()
 
-		// Ideally the ID and address should be the same as firestore,
-		// but when running locally they're not, so take them from the request packet
-		relayData = &routing.RelayData{
-			ID:             id,
-			Name:           relay.Name,
-			Addr:           relayInitRequest.Address,
-			PublicKey:      relay.PublicKey,
-			Seller:         relay.Seller,
-			Datacenter:     relay.Datacenter,
-			LastUpdateTime: time.Now(),
-			MaxSessions:    relay.MaxSessions,
-		}
-
-		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relayData.PublicKey, params.RouterPrivateKey); !ok {
+		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
 			params.Metrics.ErrorMetrics.DecryptionFailure.Add(1)
@@ -158,7 +143,24 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		params.RelayMap.UpdateRelayData(relayData.Addr.String(), relayData)
+		// Ideally the ID and address should be the same as firestore,
+		// but when running locally they're not, so take them from the request packet
+		relayData = routing.NewRelayData()
+		{
+			relayData.ID = id
+			relayData.Name = relay.Name
+			relayData.Addr = relayInitRequest.Address
+			relayData.PublicKey = relay.PublicKey
+			relayData.Seller = relay.Seller
+			relayData.Datacenter = relay.Datacenter
+			relayData.LastUpdateTime = time.Now()
+			relayData.MaxSessions = relay.MaxSessions
+			relayData.Version = relayInitRequest.RelayVersion
+		}
+
+		params.RelayMap.Lock()
+		params.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
+		params.RelayMap.Unlock()
 
 		level.Debug(locallogger).Log("msg", "relay initialized")
 
@@ -170,14 +172,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			response.Timestamp = response.Timestamp * 1000
-
-			responseData, err = response.MarshalJSON()
-			if err != nil {
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 		case "application/octet-stream":
 			responseData, err = response.MarshalBinary()
 			if err != nil {
@@ -215,8 +209,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		var relayUpdateRequest RelayUpdateRequest
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			err = relayUpdateRequest.UnmarshalJSON(body)
 		case "application/octet-stream":
 			err = relayUpdateRequest.UnmarshalBinary(body)
 		default:
@@ -326,41 +318,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			}
 		}
 
-		updateTime := time.Now()
-
-		// LastUpdateTime is set in init so it will always have a non-zero value here
-		diff := updateTime.Sub(relayDataReadOnly.LastUpdateTime)
-		peakTrafficStats := routing.PeakRelayTrafficStats{
-			SessionCount:           relayUpdateRequest.TrafficStats.SessionCount,
-			BytesSentPerSecond:     relayUpdateRequest.TrafficStats.BytesSent,
-			BytesReceivedPerSecond: relayUpdateRequest.TrafficStats.BytesReceived,
-		}
-
-		// estimate number per second
-		peakTrafficStats.BytesSentPerSecond = uint64(float64(peakTrafficStats.BytesSentPerSecond) / diff.Seconds())
-		peakTrafficStats.BytesReceivedPerSecond = uint64(float64(peakTrafficStats.BytesReceivedPerSecond) / diff.Seconds())
-
-		peakTrafficStats = relayDataReadOnly.PeakTrafficStats.MaxValues(&peakTrafficStats)
-
-		relayData := &routing.RelayData{
-			ID:               relay.ID,
-			Name:             relay.Name,
-			Addr:             relay.Addr,
-			PublicKey:        relay.PublicKey,
-			Seller:           relay.Seller,
-			Datacenter:       relay.Datacenter,
-			LastUpdateTime:   updateTime,
-			TrafficStats:     relayUpdateRequest.TrafficStats,
-			PeakTrafficStats: peakTrafficStats,
-			MaxSessions:      relay.MaxSessions,
-			CPUUsage:         float32(relayUpdateRequest.CPUUsage) * 100.0,
-			MemUsage:         float32(relayUpdateRequest.MemUsage) * 100.0,
-			Version:          relayUpdateRequest.RelayVersion,
-		}
-
 		// Update the relay data
 		params.RelayMap.Lock()
-		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
+		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 		params.RelayMap.Unlock()
 
 		level.Debug(relayslogger).Log(
@@ -369,8 +329,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			"addr", relayDataReadOnly.Addr.String(),
 			"datacenter", relayDataReadOnly.Datacenter.Name,
 			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
-			"bytes_received", relayUpdateRequest.TrafficStats.BytesReceived,
-			"bytes_send", relayUpdateRequest.TrafficStats.BytesSent,
+			"bytes_received", relayUpdateRequest.TrafficStats.AllRx(),
+			"bytes_send", relayUpdateRequest.TrafficStats.AllTx(),
 		)
 
 		level.Debug(locallogger).Log("msg", "relay updated")
@@ -378,27 +338,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		var responseData []byte
 		response := RelayUpdateResponse{}
 		for _, pingData := range relaysToPing {
-			var token routing.LegacyPingToken
-			token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
-			token.RelayID = crypto.HashID(relayUpdateRequest.Address.String())
-			bin, _ := token.MarshalBinary()
-
-			var legacy routing.LegacyPingData
-			legacy.ID = pingData.ID
-			legacy.Address = pingData.Address
-			legacy.PingToken = base64.StdEncoding.EncodeToString(bin)
-
-			response.RelaysToPing = append(response.RelaysToPing, legacy)
+			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
+				ID:      pingData.ID,
+				Address: pingData.Address,
+			})
 		}
 		response.Timestamp = time.Now().Unix()
 
 		switch request.Header.Get("Content-Type") {
-		case "application/json":
-			responseData, err = response.MarshalJSON()
-			if err != nil {
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 		case "application/octet-stream":
 			responseData, err = response.MarshalBinary()
 			if err != nil {
@@ -594,205 +541,6 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 		if err := tmpl.Execute(writer, res); err != nil {
 			fmt.Println(err)
 		}
-	}
-}
-
-func RelayDashboardHandlerFunc4(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix4, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
-	type displayRelay struct {
-		ID         uint64
-		Name       string
-		Addr       string
-		Datacenter routing.Datacenter
-	}
-
-	type response struct {
-		Analysis string
-		Relays   []displayRelay
-		Stats    map[string]map[string]routing.Stats
-	}
-
-	MaxJitter = maxJitter
-
-	funcmap := template.FuncMap{
-		"statsTable": statsTable,
-	}
-
-	tmpl := template.Must(template.New("dashboard").Funcs(funcmap).Parse(`
-		<html>
-			<head>
-				<title>Relay Dashboard</title>
-				<style>
-					body { font-family: monospace; }
-					table { width: 100%; border-collapse: collapse; }
-					table, th, td { padding: 3px; border: 1px solid black; }
-					td { text-align: center; }
-				</style>
-			</head>
-			<body>
-				<h1>Relay Dashboard</h1>
-
-				<h2>Route Matrix Analysis</h2>
-				<pre>{{ .Analysis }}</pre>
-
-				<h2>{{ len .Relays }} Relays</h2>
-				<table>
-					<tr>
-						<th>Name</th>
-						<th>Address</th>
-						<th>Datacenter</th>
-						<th>Lat / Long</th>
-					</tr>
-					{{ range .Relays }}
-					<tr>
-						<td>{{ .Name }}</td>
-						<td>{{ .Addr }}</td>
-						<td>{{ .Datacenter.Name }}</td>
-						<td>{{ printf "%.2f" .Datacenter.Location.Latitude }} / {{ printf "%.2f" .Datacenter.Location.Longitude }}</td>
-					</tr>
-					{{ end }}
-				</table>
-
-				<h2>Stats</h2>
-				{{ .Stats | statsTable }}
-			</body>
-		</html>
-	`))
-
-	return func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
-		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-
-		u, p, _ := request.BasicAuth()
-		if u != username && p != password {
-			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			writer.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		var res response
-
-		routeMatrix := GetRouteMatrix()
-		res.Analysis = string(routeMatrix.GetAnalysisData())
-
-		allRelayData := relayMap.GetAllRelayData()
-
-		for _, relayData := range allRelayData {
-			display := displayRelay{
-				ID:   relayData.ID,
-				Name: relayData.Name,
-				// needs to be stringified before html,
-				//otherwise braces are displayed surrounding the ip
-				Addr:       relayData.Addr.String(),
-				Datacenter: relayData.Datacenter,
-			}
-			if display.Name == "" {
-				display.Name = display.Addr
-			}
-			res.Relays = append(res.Relays, display)
-		}
-
-		sort.Slice(res.Relays, func(i int, j int) bool {
-			return res.Relays[i].Name < res.Relays[j].Name
-		})
-
-		res.Stats = make(map[string]map[string]routing.Stats)
-		for _, a := range res.Relays {
-			aKey := a.Name
-			if aKey == "" {
-				aKey = a.Addr
-			}
-
-			res.Stats[aKey] = make(map[string]routing.Stats)
-
-			for _, b := range res.Relays {
-				bKey := b.Name
-				if bKey == "" {
-					bKey = b.Addr
-				}
-
-				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
-				res.Stats[aKey][bKey] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
-			}
-		}
-
-		if err := tmpl.Execute(writer, res); err != nil {
-			fmt.Println(err)
-		}
-	}
-}
-
-func RoutesHandlerFunc(GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
-		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-
-		u, p, _ := request.BasicAuth()
-		if u != username && p != password {
-			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			writer.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		qs := request.URL.Query()
-		relayName := qs["relay"][0]
-		datacenterName := qs["datacenter"][0]
-
-		routeMatrix := GetRouteMatrix()
-
-		var relayIndex int
-		for i := range routeMatrix.RelayNames {
-			if routeMatrix.RelayNames[i] == relayName {
-				relayIndex = i
-			}
-		}
-
-		var datacenterIndex int
-		for i := range routeMatrix.DatacenterNames {
-			if routeMatrix.DatacenterNames[i] == datacenterName {
-				datacenterIndex = i
-			}
-		}
-
-		datacenterID := routeMatrix.DatacenterIDs[datacenterIndex]
-		datacenterRelays := routeMatrix.DatacenterRelays[datacenterID]
-
-		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("Relay: %s, Datacenter: %s\n\n", relayName, datacenterName))
-
-		numRelays := len(routeMatrix.RelayIDs)
-		a := relayIndex
-		for b := 0; b < numRelays; b++ {
-			if a == b {
-				continue
-			}
-			index := routing.TriMatrixIndex(a, b)
-			if routeMatrix.Entries[index].NumRoutes != 0 {
-				buf.WriteString(fmt.Sprintf("%*dms (%d) %s\n\n", 5, routeMatrix.Entries[index].RouteRTT[0], routeMatrix.Entries[index].NumRoutes, routeMatrix.RelayNames[b]))
-			} else {
-				buf.WriteString(fmt.Sprintf("---- (0) %s\n\n", routeMatrix.RelayNames[b]))
-			}
-		}
-
-		buf.WriteString(fmt.Sprintf("%d relays in datacenter\n", len(datacenterRelays)))
-
-		for i := range datacenterRelays {
-
-			destRelayID := datacenterRelays[i]
-
-			var destRelayIndex int
-			for i := range routeMatrix.RelayIDs {
-				if routeMatrix.RelayIDs[i] == destRelayID {
-					destRelayIndex = i
-				}
-			}
-
-			destRelayName := routeMatrix.RelayNames[destRelayIndex]
-
-			buf.WriteString(fmt.Sprintf("%s -> %s\n", relayName, destRelayName))
-		}
-
-		writer.Header().Add("Content-Type", "text/plain")
-		writer.Write(buf.Bytes())
 	}
 }
 

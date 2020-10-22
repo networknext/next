@@ -12,8 +12,8 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
 )
@@ -152,6 +152,7 @@ type internalConfig struct {
 	MultipathOverloadThreshold int32 `firestore:"multipathOverloadThreshold"`
 	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
 	ForceNext                  bool  `firestore:"forceNext"`
+	LargeCustomer              bool  `firestore:"largeCustomer"`
 }
 
 type FirestoreError struct {
@@ -233,7 +234,7 @@ func (fs *Firestore) IncrementSequenceNumber(ctx context.Context) error {
 // Returns true if the remote number != the local number which forces the caller to sync from
 // Firestore and updates the local sequence number. Returns false (no need to sync) and does
 // not modify the local number, otherwise.
-func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
+func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 
 	var num struct {
 		Value int64 `firestore:"value"`
@@ -242,12 +243,12 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	seqDocs := fs.Client.Collection("MetaData")
 	seq, err := seqDocs.Doc("SyncSequenceNumber").Get(ctx)
 	if err != nil {
-		return false, &DoesNotExistError{resourceType: "sequence number", resourceRef: ""}
+		return false, -1, &DoesNotExistError{resourceType: "sequence number", resourceRef: ""}
 	}
 
 	err = seq.DataTo(&num)
 	if err != nil {
-		return false, &UnmarshalError{err: err}
+		return false, -1, &UnmarshalError{err: err}
 	}
 
 	fs.sequenceNumberMutex.RLock()
@@ -255,13 +256,10 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	fs.sequenceNumberMutex.RUnlock()
 
 	if localSeqNum != num.Value {
-		fs.sequenceNumberMutex.Lock()
-		fs.syncSequenceNumber = num.Value
-		fs.sequenceNumberMutex.Unlock()
-		return true, nil
+		return true, num.Value, nil
 	}
 
-	return false, nil
+	return false, num.Value, nil
 }
 
 func (fs *Firestore) Customer(code string) (routing.Customer, error) {
@@ -1689,13 +1687,18 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 // Sync fetches relays and buyers from Firestore and places copies into local caches
 func (fs *Firestore) Sync(ctx context.Context) error {
 
-	seqNumberNotInSync, err := fs.CheckSequenceNumber(ctx)
+	seqNumberNotInSync, value, err := fs.CheckSequenceNumber(ctx)
 	if err != nil {
 		return err
 	}
+
 	if !seqNumberNotInSync {
 		return nil
 	}
+
+	fs.sequenceNumberMutex.Lock()
+	fs.syncSequenceNumber = value
+	fs.sequenceNumberMutex.Unlock()
 
 	var outerErr error
 	var wg sync.WaitGroup
@@ -2366,6 +2369,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.MultipathOverloadThreshold = tempIC.MultipathOverloadThreshold
 	ic.TryBeforeYouBuy = tempIC.TryBeforeYouBuy
 	ic.ForceNext = tempIC.ForceNext
+	ic.LargeCustomer = tempIC.LargeCustomer
 
 	return ic, nil
 }
@@ -2383,6 +2387,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"multipathOverloadThreshold": internalConfig.MultipathOverloadThreshold,
 		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
 		"forceNext":                  internalConfig.ForceNext,
+		"largeCustomer":              internalConfig.LargeCustomer,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)

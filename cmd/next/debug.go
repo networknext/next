@@ -66,23 +66,23 @@ func debug(relayName string, inputFile string) {
 
 		index := routing.TriMatrixIndex(a, b)
 
-		directRTT := routeMatrix.Entries[index].DirectRTT
+		directCost := routeMatrix.RouteEntries[index].DirectCost
 
-		fmt.Printf("    %s (%d)\n", dest.name, directRTT)
+		fmt.Printf("    %s (%d)\n", dest.name, directCost)
 
-		numRoutes := int(routeMatrix.Entries[index].NumRoutes)
+		numRoutes := int(routeMatrix.RouteEntries[index].NumRoutes)
 
 		for i := 0; i < numRoutes; i++ {
 			if i == 0 {
 				fmt.Printf("\n")
 			}
-			routeRTT := routeMatrix.Entries[index].RouteRTT[i]
-			routeNumRelays := int(routeMatrix.Entries[index].RouteNumRelays[i])
+			routeRTT := routeMatrix.RouteEntries[index].RouteCost[i]
+			routeNumRelays := int(routeMatrix.RouteEntries[index].RouteNumRelays[i])
 			fmt.Printf("    %*dms: ", 5, routeRTT)
 			reverse := a >= b
 			if reverse {
 				for j := routeNumRelays - 1; j >= 0; j-- {
-					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
+					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.RouteEntries[index].RouteRelays[i][j]])
 					if j != 0 {
 						fmt.Printf(" - ")
 					} else {
@@ -91,7 +91,7 @@ func debug(relayName string, inputFile string) {
 				}
 			} else {
 				for j := 0; j < routeNumRelays; j++ {
-					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
+					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.RouteEntries[index].RouteRelays[i][j]])
 					if j != routeNumRelays-1 {
 						fmt.Printf(" - ")
 					} else {

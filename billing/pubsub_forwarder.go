@@ -58,11 +58,13 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		billingEntries := make([]BillingEntry, len(entries))
 		for i := range billingEntries {
 			if ReadBillingEntry(&billingEntries[i], entries[i]) {
-				m.Ack()
 				billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
 				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+					return
 				}
+
+				m.Ack()
 			} else {
 				entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
 				entryVeto, err := strconv.ParseBool(entryVetoStr)
