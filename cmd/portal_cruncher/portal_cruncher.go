@@ -28,6 +28,7 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/bigtable"
 )
 
 var (
@@ -201,6 +202,91 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	// Setup Bigtable
+    
+    // DEBUG: Remove this later because gcpProjectID should already be set earlier
+    gcpProjectID = envvar.Get("GOOGLE_BIGTABLE_PROJECT_ID", "")
+
+    // Get Bigtable instance ID
+    btInstanceOK := envvar.Exists("GOOGLE_BIGTABLE_INSTANCE_ID")
+    btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+
+    // Get Bigtable client, table, and column family name
+    var btClient *bigtable.Client
+    var tbl *bigtable.Table
+    var btCfName string
+
+    // DEBUG: remove these comments and make sure gcpOK is true
+    if /*gcpOK &&*/ btInstanceOK {
+
+        btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+        btCfName = envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+
+        // Create an admin client for setup
+        btAdminClient, err := bigtable.NewAdminClient(ctx, gcpProjectID, btInstanceID)
+        if err != nil {
+        	level.Error(logger).Log("err", err)
+            return 1
+        }
+
+        // Get a list of all tables
+        tableList, err := btAdminClient.Tables(ctx)
+        if err != nil {
+        	level.Error(logger).Log("err", err)
+            return 1
+        }
+
+        // Verify if the table needed exists
+      	if !verifyTableExists(tableList, btTableName) {
+      		// Create a table with the given name
+      		if err = btAdminClient.CreateTable(ctx, btTableName); err != nil {
+      			level.Error(logger).Log("err", err)
+	            return 1
+      		}
+      		// Create column families for the table
+  			if err = btAdminClient.CreateColumnFamily(ctx, btTableName, btCfName); err != nil {
+	  			level.Error(logger).Log("err", err)
+	            return 1
+	        }
+      		
+      		// Get the max number of days the data should be kept in Bigtable
+      		maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+      		if err != nil {
+      			level.Error(logger).Log("err", err)
+	            return 1
+	        }
+
+      		// Set a garbage collection policy of 90 days
+      		maxAge := time.Hour * time.Duration(24 * maxDays)
+      		maxAgePolicy := bigtable.MaxAgePolicy(maxAge)
+  			
+  			if err = btAdminClient.SetGCPolicy(ctx, btTableName, btCfName, maxAgePolicy); err != nil {
+	  			level.Error(logger).Log("err", err)
+	            return 1
+	       	}
+	    }
+
+      	// Close the admin client
+      	if err = btAdminClient.Close(); err != nil {
+      		level.Error(logger).Log("err", err)
+            return 1
+      	}
+
+      	// Create a standard client for writing to the table
+      	btClient, err = bigtable.NewClient(ctx, gcpProjectID, btInstanceID)
+      	if err != nil {
+      	    level.Error(logger).Log("err", err)
+      	    return 1
+      	}
+      	// fmt.Printf("btClient created successfully")
+
+        tbl = btClient.Open(btTableName)
+
+    } else {
+        level.Error(logger).Log("Could not find Bigtable Instance ID for creating Bigtable client")
+        return 1
+    }
+
 	// Start portal cruncher subscriber
 	var portalSubscriber pubsub.Subscriber
 	{
@@ -277,7 +363,7 @@ func mainReturnWithCode() int {
 	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
-	// Start redis insertion loop
+	// Start redis and Bigtable insertion loop
 	{
 		for i := 0; i < redisGoroutineCount; i++ {
 			go func() {
@@ -292,13 +378,28 @@ func mainReturnWithCode() int {
 					os.Exit(1) // todo: don't exit here but find some way to return
 				}
 
-				portalDataBuffer := make([]transport.SessionPortalData, 0)
+				redisPortalDataBuffer := make([]transport.SessionPortalData, 0)
+				btPortalDataBuffer := make([]transport.SessionPortalData, 0)
 
 				flushTime := time.Now()
 				pingTime := time.Now()
 
 				for {
-					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, redisFlushCount); err != nil {
+					// Pull the message out of the channel 
+					sessionData, err := PullMessage(messageChan)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
+
+					// Handle Redis functionality
+					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, sessionData, redisPortalDataBuffer, flushTime, pingTime, redisFlushCount); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
+
+					// Handle Bigtable functionality
+					if err := BTHandler(ctx, tbl, btCfName, sessionData, btPortalDataBuffer); err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
@@ -332,6 +433,9 @@ func mainReturnWithCode() int {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	// Close the Bigtable client
+	btClient.Close()
 
 	return 0
 }
@@ -375,21 +479,110 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 	return nil
 }
 
+func BTHandler(
+	ctx context.Context,
+	tbl *bigtable.Table,
+	btCfName string,
+	sessionData transport.SessionPortalData,
+	portalDataBuffer []transport.SessionPortalData) error {
+
+	portalDataBuffer = append(portalDataBuffer, sessionData)
+
+	InsertToBT(ctx, tbl, btCfName, portalDataBuffer)
+	return nil
+}
+
+func InsertToBT(
+	ctx context.Context,
+	tbl *bigtable.Table,
+	btCfName string,
+	portalDataBuffer []transport.SessionPortalData) error {
+
+	for j := range portalDataBuffer {
+		meta := &portalDataBuffer[j].Meta
+		largeCustomer := portalDataBuffer[j].LargeCustomer
+		everOnNext := portalDataBuffer[j].EverOnNext
+
+		// For large customers, only insert the session if they have ever taken network next
+		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
+			continue // Early out if we shouldn't add this session
+		}
+
+		slice := &portalDataBuffer[j].Slice
+		point := &portalDataBuffer[j].Point
+
+		// TODO: is score necessary? 
+		// Calculate score metric
+		// score := meta.DeltaRTT
+		// if score < 0 {
+		// 	score = 0
+		// }
+		// if !next {
+		// 	score = -100000 + meta.DirectRTT
+		// }
+
+		// Use customer (buyer) ID as our row key prefix
+		// Then have session and user ID as the identifier in the row key to indicate what to group by
+		sessionRowKey := fmt.Sprintf("%d#%d", meta.BuyerID, meta.ID)
+		userRowKey := fmt.Sprintf("%d#%d", meta.BuyerID, meta.UserHash)
+
+		// Have 4 columns under 1 column family
+		// 1) Meta
+		// 2) Slice
+		// 3) Point
+		// 4) Score (TODO: check if need this)
+
+		// Add the session data to Bigtable
+		currentTimestamp := bigtable.Now()
+
+		metaBinary, err := meta.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		sliceBinary, err := slice.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		pointBinary, err := point.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		// Create the mutation for the row
+		mut := bigtable.NewMutation()
+		mut.Set(btCfName, "meta", currentTimestamp, metaBinary)
+		mut.Set(btCfName, "slice", currentTimestamp, sliceBinary)
+		mut.Set(btCfName, "point", currentTimestamp, pointBinary)
+		// mut.Set(btCfName, "score", currentTimestamp, score)
+		
+		// Apply the mutation to rows for session and user
+		if err := tbl.Apply(ctx, sessionRowKey, mut); err != nil {
+		    return err
+		}
+		if err := tbl.Apply(ctx, userRowKey, mut); err != nil {
+		    return err
+		}
+
+		// fmt.Println("Successfully wrote data to BT")
+
+
+	}
+
+	portalDataBuffer = portalDataBuffer[:0]
+
+	return nil
+}
+
 func RedisHandler(
 	clientTopSessions storage.RedisClient,
 	clientSessionMap storage.RedisClient,
 	clientSessionMeta storage.RedisClient,
 	clientSessionSlices storage.RedisClient,
-	messageChan chan []byte,
+	sessionData transport.SessionPortalData,
 	portalDataBuffer []transport.SessionPortalData,
 	flushTime time.Time,
 	pingTime time.Time,
 	redisFlushCount int) error {
-
-	sessionData, err := PullMessage(messageChan)
-	if err != nil {
-		return err
-	}
 
 	portalDataBuffer = append(portalDataBuffer, sessionData)
 
@@ -572,4 +765,17 @@ func pingRedis(clientTopSessions storage.RedisClient, clientSessionMap storage.R
 	}
 
 	return nil
+}
+
+func verifyTableExists(tableList []string, tableName string) bool {
+	if len(tableList) == 0 {
+		return false
+	}
+	for _, tblName := range tableList {
+		if tblName == tableName {
+			return true
+		}
+	}
+	return false
+
 }

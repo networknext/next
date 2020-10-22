@@ -224,6 +224,43 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
+### TEMPORARY ###
+
+ifndef GOOGLE_BIGTABLE_PROJECT_ID
+export GOOGLE_BIGTABLE_PROJECT_ID = network-next-v3-dev
+endif
+
+ifndef GOOGLE_BIGTABLE_INSTANCE_ID
+export GOOGLE_BIGTABLE_INSTANCE_ID = network-next-portal-big-table-0
+endif
+
+ifndef GOOGLE_BIGTABLE_TABLE_NAME
+export GOOGLE_BIGTABLE_TABLE_NAME = portal-crunch-test
+endif
+
+# Column family name for Bigtable
+ifndef GOOGLE_BIGTABLE_CF_NAME
+export GOOGLE_BIGTABLE_CF_NAME = portal-session-data
+endif
+
+ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
+export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
+endif
+
+# ifndef GOOGLE_BIGTABLE_CF2_NAME
+# export GOOGLE_BIGTABLE_CF2_NAME = portal-data-large-customer
+# endif
+
+# ifndef GOOGLE_BIGTABLE_CF3_NAME
+# export GOOGLE_BIGTABLE_CF3_NAME = portal-data-ever-on-next
+# endif
+
+ifndef GOOGLE_APPLICATION_CREDENTIALS
+export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
+endif
+
+### END TEMP  ###
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -324,9 +361,20 @@ dev-portal: build-portal-local ## runs a local portal
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
 
+# .PHONY: dev-server-backend
+# dev-server-backend: build-server-backend ## runs a local server backend
+# 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+
 .PHONY: dev-server-backend
-dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+dev-server-backend: build-server-backend4 ## runs a local server backend
+	## @HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_sdk4 ./dist/server_backend4
+
+.PHONY: build-server-backend4
+build-server-backend4:
+	@printf "Building server_backend4... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
+	@printf "done\n"
 
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend
