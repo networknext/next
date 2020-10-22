@@ -175,7 +175,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			relays[i].name = routeMatrix.RelayNames[i]
 		}
 
-		destRelayIndex, ok := routeMatrix.RelayIndices[destRelayId]
+		destRelayIndex, ok := routeMatrix.RelayIDsToIndices[destRelayId]
 		if !ok {
 			handleRunTimeError(fmt.Sprintf("dest relay %x not in matrix\n", destRelayId), 1)
 		}
@@ -188,20 +188,20 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 				continue
 			}
 
-			sourceRelayIndex, ok := routeMatrix.RelayIndices[sourceRelayId]
+			sourceRelayIndex, ok := routeMatrix.RelayIDsToIndices[sourceRelayId]
 			if !ok {
 				handleRunTimeError(fmt.Sprintf("source relay %x not in matrix\n", sourceRelayId), 1)
 			}
 
 			nearRelayRTT := relay.ClientStats.RTT
 
-			index := routing.TriMatrixIndex(sourceRelayIndex, destRelayIndex)
+			index := routing.TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
 
-			numRoutes := int(routeMatrix.Entries[index].NumRoutes)
+			numRoutes := int(routeMatrix.RouteEntries[index].NumRoutes)
 
 			for i := 0; i < numRoutes; i++ {
-				routeRTT := routeMatrix.Entries[index].RouteRTT[i]
-				routeNumRelays := int(routeMatrix.Entries[index].RouteNumRelays[i])
+				routeRTT := routeMatrix.RouteEntries[index].RouteCost[i]
+				routeNumRelays := int(routeMatrix.RouteEntries[index].RouteNumRelays[i])
 				routeCost := int(nearRelayRTT + float64(routeRTT))
 				if routeCost >= int(lastSlice.Direct.RTT) {
 					continue
@@ -211,14 +211,14 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 				reverse := sourceRelayIndex < destRelayIndex
 				if reverse {
 					for j := routeNumRelays - 1; j >= 0; j-- {
-						availableRoute.relays += routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]]
+						availableRoute.relays += routeMatrix.RelayNames[routeMatrix.RouteEntries[index].RouteRelays[i][j]]
 						if j != 0 {
 							availableRoute.relays += " - "
 						}
 					}
 				} else {
 					for j := 0; j < routeNumRelays; j++ {
-						availableRoute.relays += routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]]
+						availableRoute.relays += routeMatrix.RelayNames[routeMatrix.RouteEntries[index].RouteRelays[i][j]]
 						if j != routeNumRelays-1 {
 							availableRoute.relays += (" - ")
 						}
