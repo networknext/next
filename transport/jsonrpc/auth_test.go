@@ -1271,6 +1271,14 @@ func TestUpdateCompanyInformation(t *testing.T) {
 		Name: &names[0],
 	})
 
+	userManager.AssignRoles("123", []*management.Role{
+		{
+			ID:          &roleIDs[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
 	t.Run("success - unassigned - new company", func(t *testing.T) {
 		var reply jsonrpc.CompanyNameReply
 		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)

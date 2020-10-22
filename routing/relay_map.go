@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	VersionNumberRelayMap = 1
+	VersionNumberRelayMap = 2
 
 	RelayDataBytes = 8 + // id
 		8 + // sessions
@@ -51,19 +51,38 @@ const (
 )
 
 type RelayData struct {
-	ID               uint64
-	Name             string
-	Addr             net.UDPAddr
-	PublicKey        []byte
-	Seller           Seller
-	Datacenter       Datacenter
-	LastUpdateTime   time.Time
-	TrafficStats     RelayTrafficStats
-	PeakTrafficStats PeakRelayTrafficStats
-	MaxSessions      uint32
-	CPUUsage         float32
-	MemUsage         float32
-	Version          string
+	ID             uint64
+	Name           string
+	Addr           net.UDPAddr
+	PublicKey      []byte
+	Seller         Seller
+	Datacenter     Datacenter
+	LastUpdateTime time.Time
+	MaxSessions    uint32
+	CPUUsage       float32
+	MemUsage       float32
+	Version        string
+
+	// Traffic stats from last update
+	TrafficStats TrafficStats
+
+	// Highest values from the traffic stats seen since the last publis interval
+	PeakTrafficStats PeakTrafficStats
+
+	// contains all the traffic stats updates since the last publish
+	TrafficStatsBuff []TrafficStats
+
+	// for locking access to the traffic stats buffer & peak stats specifically
+	TrafficMu sync.Mutex
+
+	// only modified within the stats publish loop, so no need to lock access
+	LastStatsPublishTime time.Time
+}
+
+func NewRelayData() *RelayData {
+	return &RelayData{
+		TrafficStatsBuff: make([]TrafficStats, 0),
+	}
 }
 
 // RelayCleanupCallback is a callback function that will be called
@@ -101,12 +120,32 @@ func (rmap *RelayMap) RUnlock() {
 	rmap.mutex.RUnlock()
 }
 
-func (relayMap *RelayMap) GetRelayCount() uint64 {
-	return uint64(len(relayMap.relays))
+func (rmap *RelayMap) GetRelayCount() uint64 {
+	return uint64(len(rmap.relays))
 }
 
-func (relayMap *RelayMap) UpdateRelayData(relayAddress string, relayData *RelayData) {
-	relayMap.relays[relayAddress] = relayData
+// NewRelayData inserts a new entry into the map and returns the pointer
+func (rmap *RelayMap) AddRelayDataEntry(relayAddress string, data *RelayData) {
+	rmap.relays[relayAddress] = data
+}
+
+// UpdateRelayDataEntry updates specific fields that may change per update
+func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic TrafficStats, cpuUsage float32, memUsage float32) {
+	entry := relayMap.relays[relayAddress]
+	entry.LastUpdateTime = time.Now()
+
+	entry.TrafficStats = newTraffic
+	entry.CPUUsage = cpuUsage
+	entry.MemUsage = memUsage
+
+	entry.TrafficMu.Lock()
+	entry.PeakTrafficStats = entry.PeakTrafficStats.MaxValues(PeakTrafficStats{
+		SessionCount:     newTraffic.SessionCount,
+		EnvelopeUpKbps:   newTraffic.EnvelopeUpKbps,
+		EnvelopeDownKbps: newTraffic.EnvelopeDownKbps,
+	})
+	entry.TrafficStatsBuff = append(entry.TrafficStatsBuff, newTraffic)
+	entry.TrafficMu.Unlock()
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
@@ -208,7 +247,7 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 		}
 
 		encoding.WriteUint64(data, &index, relay.ID)
-		relay.TrafficStats.WriteTo(data, &index)
+		relay.TrafficStats.WriteTo(data, &index, 2)
 		encoding.WriteUint8(data, &index, major)
 		encoding.WriteUint8(data, &index, minor)
 		encoding.WriteUint8(data, &index, patch)

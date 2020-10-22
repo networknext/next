@@ -17,8 +17,8 @@ global_job_config:
       - make clean
       - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk4
       - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
-      - git submodule init sdk4
-      - git submodule update sdk4
+      - git submodule init sdk
+      - git submodule update sdk
       
       # libsodium in apt is too old, build from source
       - curl https://download.libsodium.org/libsodium/releases/libsodium-1.0.17.tar.gz --output libsodium-1.0.17.tar.gz
@@ -57,10 +57,6 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
-        - name: Server Backend4
-          commands:
-            - make build-server-backend4-artifacts-staging
-            - make publish-server-backend4-artifacts-staging
         - name: Load Test
           commands:
             - make build-load-test-artifacts-staging
