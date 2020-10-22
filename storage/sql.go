@@ -644,7 +644,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	var dc sqlDatacenter
 	datacenters := make(map[uint64]routing.Datacenter)
 
-	sql.Write([]byte("select id, display_name, enabled, latitude, longitude,"))
+	sql.Write([]byte("select id, enabled, latitude, longitude,"))
 	sql.Write([]byte("supplier_name, street_address, seller_id from datacenters"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
