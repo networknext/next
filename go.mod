@@ -29,7 +29,9 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/json-iterator/go v1.1.9
+	github.com/lib/pq v1.8.0
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
+	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/oschwald/geoip2-golang v1.4.0
