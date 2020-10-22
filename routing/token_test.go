@@ -97,12 +97,11 @@ func TestEncryptNextRouteToken(t *testing.T) {
 		assert.NoError(t, err)
 
 		token := routing.NextRouteToken{
-			Expires:        1,
-			SessionID:      2,
-			SessionVersion: 3,
-			SessionFlags:   4,
-			KbpsUp:         5,
-			KbpsDown:       6,
+			ExpireTimestamp: 1,
+			SessionID:       2,
+			SessionVersion:  3,
+			KbpsUp:          5,
+			KbpsDown:        6,
 
 			Client: routing.Client{
 				Addr:      net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 13},
@@ -133,7 +132,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 
 		enctoken, _, err := token.Encrypt(privatekey[:])
 		assert.NoError(t, err)
-		assert.Equal(t, 585, len(enctoken))
+		assert.Equal(t, 580, len(enctoken))
 	})
 }
 
@@ -143,11 +142,9 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		token := routing.ContinueRouteToken{
-			Expires:        1,
-			SessionID:      2,
-			SessionVersion: 3,
-			SessionFlags:   4,
-
+			ExpireTimestamp: 1,
+			SessionID:       2,
+			SessionVersion:  3,
 			Client: routing.Client{
 				Addr:      net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 13},
 				PublicKey: nodepublickey[:],
@@ -177,19 +174,18 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 
 		enctoken, _, err := token.Encrypt(crypto.RouterPrivateKey)
 		assert.NoError(t, err)
-		assert.Equal(t, 290, len(enctoken))
+		assert.Equal(t, 285, len(enctoken))
 	})
 }
 
 func BenchmarkEncryptNextRouteToken(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		token := routing.NextRouteToken{
-			Expires:        1,
-			SessionID:      2,
-			SessionVersion: 3,
-			SessionFlags:   4,
-			KbpsUp:         5,
-			KbpsDown:       6,
+			ExpireTimestamp: 1,
+			SessionID:       2,
+			SessionVersion:  3,
+			KbpsUp:          5,
+			KbpsDown:        6,
 
 			Client: routing.Client{
 				Addr:      net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 13},

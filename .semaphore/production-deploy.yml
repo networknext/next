@@ -48,10 +48,6 @@ blocks:
           commands:
             - make build-server-backend-artifacts-prod
             - make publish-server-backend-artifacts-prod
-        - name: Server Backend4
-          commands:
-            - make build-server-backend4-artifacts-prod
-            - make publish-server-backend4-artifacts-prod
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
