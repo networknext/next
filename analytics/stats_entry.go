@@ -342,7 +342,7 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["actual_bandwidth_send_percent"] = e.BandwidthSentPercent
 	bqEntry["actual_bandwidth_receive_percent"] = e.BandwidthReceivedPercent
 	bqEntry["envelope_bandwidth_send_percent"] = e.EnvelopeSentPercent
-	bqEntry["envelope_bandwidth_received_percent"] = e.EnvelopeReceivedPercent
+	bqEntry["envelope_bandwidth_receive_percent"] = e.EnvelopeReceivedPercent
 	bqEntry["actual_bandwidth_send_mbps"] = e.BandwidthSentMbps
 	bqEntry["actual_bandwidth_receive_mbps"] = e.BandwidthReceivedMbps
 	bqEntry["envelope_bandwidth_send_mbps"] = e.EnvelopeSentMbps

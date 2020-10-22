@@ -105,10 +105,10 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 
 		// result of a merge with master, relay.SessionCount was supposed to be removed but the merge put it back in
 		// once this code is in prod for compatability, relay.SessionCount can be removed
-		if version == 0 {
+		if version <= 1 {
 			relay.TrafficStats.SessionCount = relay.SessionCount
 		} else {
-			relay.TrafficStats.SessionCount = relay.SessionCount
+			relay.SessionCount = relay.TrafficStats.SessionCount
 		}
 
 		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
@@ -534,7 +534,6 @@ type relay struct {
 	SSHUser             string                `json:"ssh_user"`
 	SSHPort             int64                 `json:"ssh_port"`
 	MaxSessionCount     uint32                `json:"maxSessionCount"`
-	SessionCount        uint64                `json:"sessionCount"`
 	PublicKey           string                `json:"public_key"`
 	UpdateKey           string                `json:"update_key"`
 	FirestoreID         string                `json:"firestore_id"`
@@ -583,7 +582,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		}
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
-			relay.SessionCount = relayData.SessionCount
 			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
