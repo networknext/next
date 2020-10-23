@@ -498,14 +498,6 @@ func InsertToBT(
 
     for j := range portalDataBuffer {
         meta := &portalDataBuffer[j].Meta
-        largeCustomer := portalDataBuffer[j].LargeCustomer
-        everOnNext := portalDataBuffer[j].EverOnNext
-
-        // For large customers, only insert the session if they have ever taken network next
-        if largeCustomer && !meta.OnNetworkNext && !everOnNext {
-            continue // Early out if we shouldn't add this session
-        }
-
         slice := &portalDataBuffer[j].Slice
 
         // Use customer (buyer) ID and user hash as our row key prefixes
