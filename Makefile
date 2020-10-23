@@ -226,9 +226,13 @@ endif
 
 ### TEMPORARY ###
 
-ifndef GOOGLE_BIGTABLE_PROJECT_ID
-export GOOGLE_BIGTABLE_PROJECT_ID = network-next-v3-dev
+ifndef BIGTABLE_EMULATOR_HOST
+export BIGTABLE_EMULATOR_HOST=localhost:8086
 endif
+
+# ifndef GOOGLE_BIGTABLE_PROJECT_ID
+# export GOOGLE_BIGTABLE_PROJECT_ID = network-next-v3-dev
+# endif
 
 ifndef GOOGLE_BIGTABLE_INSTANCE_ID
 export GOOGLE_BIGTABLE_INSTANCE_ID = network-next-portal-big-table-0
@@ -247,9 +251,9 @@ ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
 export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
 endif
 
-ifndef GOOGLE_APPLICATION_CREDENTIALS
-export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
-endif
+# ifndef GOOGLE_APPLICATION_CREDENTIALS
+# export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
+# endif
 
 ### END TEMP  ###
 

@@ -26,9 +26,9 @@ import (
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 
+	"cloud.google.com/go/bigtable"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
-	"cloud.google.com/go/bigtable"
 )
 
 var (
@@ -203,21 +203,23 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup Bigtable
-	
-	// DEBUG: Remove this later because gcpProjectID should already be set earlier
-	gcpProjectID = envvar.Get("GOOGLE_BIGTABLE_PROJECT_ID", "")
 
-	// Get Bigtable instance ID
-	btInstanceOK := envvar.Exists("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	if btEmulatorOK {
+		// Emulator is used for local testing
+		// Requires that emulator has been started in another terminal to work as intended
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected bigtable emulator")
+	}
 
 	// Get Bigtable client, table, and column family name
 	var btClient *storage.BigTable
 	var btTbl *bigtable.Table
 	var btCfNames []string
 
-	// DEBUG: remove these comments and make sure gcpOK is true
-	if /*gcpOK &&*/ btInstanceOK {
+	if gcpProjectID != "" || btEmulatorOK {
+		// Get Bigtable instance ID
+		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
 
 		// Get the table name
 		btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
@@ -247,7 +249,7 @@ func mainReturnWithCode() int {
 				level.Error(logger).Log("err", err)
 				return 1
 			}
-			
+
 			// Get the max number of days the data should be kept in Bigtable
 			maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
 			if err != nil {
@@ -256,7 +258,7 @@ func mainReturnWithCode() int {
 			}
 
 			// Set a garbage collection policy of 90 days
-			maxAge := time.Hour * time.Duration(24 * maxDays)
+			maxAge := time.Hour * time.Duration(24*maxDays)
 			if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
 				level.Error(logger).Log("err", err)
 				return 1
@@ -279,7 +281,7 @@ func mainReturnWithCode() int {
 		btTbl = btClient.GetTable(btTableName)
 
 	} else {
-		level.Error(logger).Log("Could not find Bigtable Instance ID for creating Bigtable client")
+		level.Error(logger).Log("msg", "Could not find $BIGTABLE_EMULATOR_HOST")
 		return 1
 	}
 
@@ -381,7 +383,7 @@ func mainReturnWithCode() int {
 				pingTime := time.Now()
 
 				for {
-					// Pull the message out of the channel 
+					// Pull the message out of the channel
 					sessionData, err := PullMessage(messageChan)
 					if err != nil {
 						level.Error(logger).Log("err", err)
@@ -510,7 +512,7 @@ func InsertToBT(
 		// Have 2 columns under 1 column family
 		// 1) Meta
 		// 2) Slice
-		
+
 		// Create byte slices of the session data
 		metaBinary, err := meta.MarshalBinary()
 		if err != nil {
@@ -734,17 +736,4 @@ func pingRedis(clientTopSessions storage.RedisClient, clientSessionMap storage.R
 	}
 
 	return nil
-}
-
-func verifyTableExists(tableList []string, tableName string) bool {
-	if len(tableList) == 0 {
-		return false
-	}
-	for _, tblName := range tableList {
-		if tblName == tableName {
-			return true
-		}
-	}
-	return false
-
 }

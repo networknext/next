@@ -194,7 +194,7 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, btTable *bigtable.Tab
 	err := btTable.ReadRows(ctx, rowRange, func(r bigtable.Row) bool {
 		// Get the data and put it into a slice to return
 		values = append(values, r)
-	
+
 		return true
 	}, opts...)
 
@@ -208,7 +208,7 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, btTable *bigtable.Tab
 // Gets a row given a row key and a slice of column family names
 // Can provide a ReadOption, which can include various filters
 // See: https://godoc.org/cloud.google.com/go/bigtable#ReadOption
-// Returns a Row struct, which is a map of a column family name as the key 
+// Returns a Row struct, which is a map of a column family name as the key
 // to a slice of ReadItem structs
 // NOTE: Missing rows (or rows that do not exist) return a zero-length map
 // See: https://godoc.org/cloud.google.com/go/bigtable#Row
@@ -219,7 +219,7 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, btTable *bigtable.Tab
 //     Labels      []string
 // }
 func (bt *BigTable) GetRowWithRowKey(ctx context.Context, btTable *bigtable.Table, rowKey string, opts ...bigtable.ReadOption) (bigtable.Row, error) {
-	
+
 	r, err := btTable.ReadRow(ctx, rowKey, opts...)
 	if err != nil {
 		return nil, err
