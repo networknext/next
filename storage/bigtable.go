@@ -131,6 +131,15 @@ func (bt *BigTable) Close() error {
     return nil
 }
 
+// Delete a table from the instance
+func (bt *BigTableAdmin) DeleteTable(ctx context.Context, btTableName string) error {
+	if err := bt.Client.DeleteTable(ctx, btTableName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Gets a table in the instance
 func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
     return bt.Client.Open(btTableName)
