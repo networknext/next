@@ -34,7 +34,8 @@ export default class SessionMap extends Vue {
   private mapInstance: any
   private mapLoop: any
   private viewState: any
-  private unwatch: any
+  private unwatchFilter: any
+  private unwatchSignUp: any
 
   constructor () {
     super()
@@ -59,7 +60,7 @@ export default class SessionMap extends Vue {
 
   private mounted () {
     this.restartLoop()
-    this.unwatch = this.$store.watch(
+    this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
       },
@@ -68,11 +69,27 @@ export default class SessionMap extends Vue {
         this.restartLoop()
       }
     )
+    this.unwatchSignUp = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.isSignUp
+      },
+      (isSignUp: boolean) => {
+        if (isSignUp) {
+          this.$apiService.addMailChimpContact({ email: this.$store.getters.userProfile.email }).then(() => {
+            this.$store.commit('UPDATE_IS_SIGNUP', false)
+          }).catch((error: Error) => {
+            console.log('Failed to add new sign up to mail list')
+            console.log(error)
+          })
+        }
+      }
+    )
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
-    this.unwatch()
+    this.unwatchFilter()
+    this.unwatchSignUp()
   }
 
   private fetchMapSessions () {

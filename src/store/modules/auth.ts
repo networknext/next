@@ -16,7 +16,8 @@ export default {
       '2b9c891211588152',
       'b8e4f84ca63b2021',
       '02a337e6ec5b60b5'
-    ]
+    ],
+    isSignUp: false
   },
   getters: {
     idToken: (state: any) => state.userProfile ? state.userProfile.idToken : null,
@@ -29,7 +30,8 @@ export default {
     isBuyer: (state: any) => (state.userProfile ? state.userProfile.pubKey !== '' : false),
     userProfile: (state: any) => state.userProfile,
     allBuyers: (state: any) => state.allBuyers,
-    registeredToCompany: (state: any) => (state.userProfile ? state.userProfile.companyCode !== '' : false)
+    registeredToCompany: (state: any) => (state.userProfile ? state.userProfile.companyCode !== '' : false),
+    isSignUp: (state: any) => state.isSignUp
   },
   actions: {
     updateUserProfile ({ commit }: any, userProfile: any) {
@@ -37,6 +39,9 @@ export default {
     },
     updateAllBuyers ({ commit }: any, allBuyers: string) {
       commit('UPDATE_ALL_BUYERS', allBuyers)
+    },
+    updateIsSignUp ({ commit }: any, isSignUp: boolean) {
+      commit('UPDATE_IS_SIGNUP', isSignUp)
     }
   },
   mutations: {
@@ -45,6 +50,9 @@ export default {
     },
     UPDATE_ALL_BUYERS (state: any, allBuyers: any) {
       state.allBuyers = allBuyers
+    },
+    UPDATE_IS_SIGNUP (state: any, isSignUp: boolean) {
+      state.isSignUp = isSignUp
     }
   }
 }

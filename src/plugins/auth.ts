@@ -34,7 +34,7 @@ export class AuthService {
   public signUp () {
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.origin + '/?signup=true',
       screen_hint: 'signup'
     })
   }
@@ -91,6 +91,10 @@ export class AuthService {
           userProfile.verified = authResult.email_verified
           userProfile.companyCode = companyCode
           userProfile.newsletterConsent = newsletterConsent
+
+          if (query.includes('signup=true')) {
+            store.commit('UPDATE_IS_SIGNUP', true)
+          }
 
           store.commit('UPDATE_USER_PROFILE', userProfile)
         })

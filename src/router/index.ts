@@ -111,6 +111,12 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/settings/account')
     return
   }
+  // Email is verified
+  if (to.query.message === 'Your email was verified. You can continue using the application.') {
+    next('/')
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    return
+  }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
   next()
 })

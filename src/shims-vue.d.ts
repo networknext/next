@@ -4,6 +4,7 @@ declare module '*.vue' {
   export default _Vue
 
   export interface VueJSONRPCService {
+    addMailChimpContact (args: any): Promise<any>;
     impersonate (args: any): Promise<any>;
     updateAccountSettings (args: any): Promise<any>;
     updateAutoSignupDomains (args: any): Promise<any>;
