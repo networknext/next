@@ -21,7 +21,7 @@
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus">
+          <li class="nav-item" v-if="!$store.getters.isAnonymous">
             <router-link to="/settings/account" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'account-settings'}">Account Settings</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">

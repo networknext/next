@@ -87,6 +87,10 @@ export class JSONRPCService {
     })
   }
 
+  public addMailChimpContact (args: any): Promise<any> {
+    return this.call('AuthService.AddMailChimpContact', args)
+  }
+
   public impersonate (args: any): Promise<any> {
     return this.call('AuthService.Impersonate', args)
   }

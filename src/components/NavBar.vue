@@ -51,7 +51,7 @@
           to="/downloads"
           class="nav-link"
           v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
-          v-if="!$store.getters.isAnonymous"
+          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
         >Downloads</router-link>
       </li>
       <li class="nav-item text-nowrap">
