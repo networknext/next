@@ -113,6 +113,7 @@ func (bt *BigTableAdmin) SetMaxAgePolicy(ctx context.Context, btTableName string
     return nil
 }
 
+// Closes the bigtable admin
 func (bt *BigTableAdmin) Close() error {
     if err := bt.Client.Close(); err != nil {
         return err
@@ -121,6 +122,7 @@ func (bt *BigTableAdmin) Close() error {
     return nil
 }
 
+// Closes the bigtable object
 func (bt *BigTable) Close() error {
     if err := bt.Client.Close(); err != nil {
         return err
@@ -129,10 +131,14 @@ func (bt *BigTable) Close() error {
     return nil
 }
 
+// Gets a table in the instance
 func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
     return bt.Client.Open(btTableName)
 }
 
+// Inserts a row into a table given a slice of row keys,
+// a map of the column name to the data stored in thaat cell,
+// and a map of the column name to the column family
 func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Table, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
 
     // Get the timestamp for time of insertion
@@ -155,4 +161,60 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Tabl
     }
 
     return nil
+}
+
+// Gets all rows starting with a prefix (i.e. session ID)
+// Can provide a ReadOption, which can include various filters
+// See: https://godoc.org/cloud.google.com/go/bigtable#ReadOption
+// Returns a slice of Row structs, which is a map of a column family name as the key
+// to a slice of ReadItem structs
+// See: https://godoc.org/cloud.google.com/go/bigtable#Row
+// type ReadItem struct {
+//     Row, Column string
+//     Timestamp   Timestamp
+//     Value       []byte
+//     Labels      []string
+// }
+func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, btTable *bigtable.Table, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
+	// Get a range of all rows starting with a prefix
+	rowRange := bigtable.PrefixRange(prefix)
+
+	// Create a slice of all the rows to return
+	values := make([]bigtable.Row, 0)
+
+	err := btTable.ReadRows(ctx, rowRange, func(r bigtable.Row) bool {
+		// Get the data and put it into a slice to return
+		values = append(values, r)
+	
+		return true
+	}, opts...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return values, nil
+}
+
+// Gets a row given a row key and a slice of column family names
+// Can provide a ReadOption, which can include various filters
+// See: https://godoc.org/cloud.google.com/go/bigtable#ReadOption
+// Returns a Row struct, which is a map of a column family name as the key 
+// to a slice of ReadItem structs
+// NOTE: Missing rows (or rows that do not exist) return a zero-length map
+// See: https://godoc.org/cloud.google.com/go/bigtable#Row
+// type ReadItem struct {
+//     Row, Column string
+//     Timestamp   Timestamp
+//     Value       []byte
+//     Labels      []string
+// }
+func (bt *BigTable) GetRowWithRowKey(ctx context.Context, btTable *bigtable.Table, rowKey string, opts ...bigtable.ReadOption) (bigtable.Row, error) {
+	
+	r, err := btTable.ReadRow(ctx, rowKey, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
