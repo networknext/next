@@ -1,134 +1,134 @@
 package storage
 
 import (
-    "context"
-    "fmt"
-    "time"
+	"context"
+	"fmt"
+	"time"
 
-    "github.com/go-kit/kit/log"
-    // "github.com/go-kit/kit/log/level"
+	"github.com/go-kit/kit/log"
+	// "github.com/go-kit/kit/log/level"
 
-    "cloud.google.com/go/bigtable"
-    "google.golang.org/api/option"
+	"cloud.google.com/go/bigtable"
+	"google.golang.org/api/option"
 )
 
 type BigTable struct {
-    Client *bigtable.Client
-    Logger log.Logger
+	Client *bigtable.Client
+	Logger log.Logger
 }
 
 type BigTableAdmin struct {
-    Client *bigtable.AdminClient
-    Logger log.Logger
+	Client *bigtable.AdminClient
+	Logger log.Logger
 }
 
 type BigTableError struct {
-    err error
+	err error
 }
 
 func (e *BigTableError) Error() string {
-    return fmt.Sprintf("unknown BigTable error: %v", e.err)
+	return fmt.Sprintf("unknown BigTable error: %v", e.err)
 }
 
 // Creates a new Bigtable object
 // Mainly used for opening tables in the instance
 func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, logger log.Logger, opts ...option.ClientOption) (*BigTable, error) {
-    client, err := bigtable.NewClient(ctx, gcpProjectID, instanceID, opts...)
-    if err != nil {
-        return nil, err
-    }
+	client, err := bigtable.NewClient(ctx, gcpProjectID, instanceID, opts...)
+	if err != nil {
+		return nil, err
+	}
 
-    return &BigTable{
-        Client: client,
-        Logger: logger,
-    }, nil
+	return &BigTable{
+		Client: client,
+		Logger: logger,
+	}, nil
 }
 
 // Creates a new Bigtable Admin
 // Admins have special abilities like creating an deleting tables
 func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID string, logger log.Logger, opts ...option.ClientOption) (*BigTableAdmin, error) {
-    client, err := bigtable.NewAdminClient(ctx, gcpProjectID, instanceID, opts...)
-    if err != nil {
-        return nil, err
-    }
+	client, err := bigtable.NewAdminClient(ctx, gcpProjectID, instanceID, opts...)
+	if err != nil {
+		return nil, err
+	}
 
-    return &BigTableAdmin{
-        Client: client,
-        Logger: logger,
-    }, nil
+	return &BigTableAdmin{
+		Client: client,
+		Logger: logger,
+	}, nil
 }
 
 // Gets a list of tables for the instance
 func (bt *BigTableAdmin) GetTableList(ctx context.Context) ([]string, error) {
-    return bt.Client.Tables(ctx)
+	return bt.Client.Tables(ctx)
 }
 
 // Checks if a table exists in the instance
 func (bt *BigTableAdmin) VerifyTableExists(ctx context.Context, tableName string) (bool, error) {
-    tableList, err := bt.GetTableList(ctx)
-    if err != nil {
-        return false, err
-    }
+	tableList, err := bt.GetTableList(ctx)
+	if err != nil {
+		return false, err
+	}
 
-    if len(tableList) == 0 {
-        return false, nil
-    }
+	if len(tableList) == 0 {
+		return false, nil
+	}
 
-    for _, tblName := range tableList {
-        if tblName == tableName {
-            return true, nil
-        }
-    }
+	for _, tblName := range tableList {
+		if tblName == tableName {
+			return true, nil
+		}
+	}
 
-    return false, nil
+	return false, nil
 }
 
 // Creates a table with the given column families
 func (bt *BigTableAdmin) CreateTable(ctx context.Context, btTableName string, btCfNames []string) error {
-    // Create a table with the given name
-    if err := bt.Client.CreateTable(ctx, btTableName); err != nil {
-        return err
-    }
+	// Create a table with the given name
+	if err := bt.Client.CreateTable(ctx, btTableName); err != nil {
+		return err
+	}
 
-    // Create column families for the table
-    for _, btCfName := range btCfNames {
-        if err := bt.Client.CreateColumnFamily(ctx, btTableName, btCfName); err != nil {
-            return err
-        }
-    }
+	// Create column families for the table
+	for _, btCfName := range btCfNames {
+		if err := bt.Client.CreateColumnFamily(ctx, btTableName, btCfName); err != nil {
+			return err
+		}
+	}
 
-    return nil
+	return nil
 }
 
 // Sets a garbage collection policy on column families listed in a table
 func (bt *BigTableAdmin) SetMaxAgePolicy(ctx context.Context, btTableName string, btCfNames []string, maxAge time.Duration) error {
-    maxAgePolicy := bigtable.MaxAgePolicy(maxAge)
+	maxAgePolicy := bigtable.MaxAgePolicy(maxAge)
 
-    for _, btCfName := range btCfNames {
-        if err := bt.Client.SetGCPolicy(ctx, btTableName, btCfName, maxAgePolicy); err != nil {
-            return err
-        }
-    }
+	for _, btCfName := range btCfNames {
+		if err := bt.Client.SetGCPolicy(ctx, btTableName, btCfName, maxAgePolicy); err != nil {
+			return err
+		}
+	}
 
-    return nil
+	return nil
 }
 
 // Closes the bigtable admin
 func (bt *BigTableAdmin) Close() error {
-    if err := bt.Client.Close(); err != nil {
-        return err
-    }
+	if err := bt.Client.Close(); err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 // Closes the bigtable object
 func (bt *BigTable) Close() error {
-    if err := bt.Client.Close(); err != nil {
-        return err
-    }
+	if err := bt.Client.Close(); err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 // Delete a table from the instance
@@ -142,7 +142,7 @@ func (bt *BigTableAdmin) DeleteTable(ctx context.Context, btTableName string) er
 
 // Gets a table in the instance
 func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
-    return bt.Client.Open(btTableName)
+	return bt.Client.Open(btTableName)
 }
 
 // Inserts a row into a table given a slice of row keys,
@@ -150,26 +150,26 @@ func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
 // and a map of the column name to the column family
 func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Table, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
 
-    // Get the timestamp for time of insertion
-    currentTimestamp := bigtable.Now()
+	// Get the timestamp for time of insertion
+	currentTimestamp := bigtable.Now()
 
-    // Create the mutation for the rows
-    mut := bigtable.NewMutation()
+	// Create the mutation for the rows
+	mut := bigtable.NewMutation()
 
-    for colName, value := range dataMap {
-        cfName := cfMap[colName]
+	for colName, value := range dataMap {
+		cfName := cfMap[colName]
 
-        mut.Set(cfName, colName, currentTimestamp, value)
-    }
+		mut.Set(cfName, colName, currentTimestamp, value)
+	}
 
-    // Insert into table
-    for _, rowKey := range rowKeys {
-        if err := btTable.Apply(ctx, rowKey, mut); err != nil {
-            return err
-        }
-    }
+	// Insert into table
+	for _, rowKey := range rowKeys {
+		if err := btTable.Apply(ctx, rowKey, mut); err != nil {
+			return err
+		}
+	}
 
-    return nil
+	return nil
 }
 
 // Gets all rows starting with a prefix (i.e. session ID)
