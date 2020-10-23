@@ -247,14 +247,6 @@ ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
 export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
 endif
 
-# ifndef GOOGLE_BIGTABLE_CF2_NAME
-# export GOOGLE_BIGTABLE_CF2_NAME = portal-data-large-customer
-# endif
-
-# ifndef GOOGLE_BIGTABLE_CF3_NAME
-# export GOOGLE_BIGTABLE_CF3_NAME = portal-data-ever-on-next
-# endif
-
 ifndef GOOGLE_APPLICATION_CREDENTIALS
 export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
 endif
