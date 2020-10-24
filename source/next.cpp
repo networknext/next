@@ -45,8 +45,8 @@
 #define NEXT_PING_HISTORY_ENTRY_COUNT                                 256
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
 #define NEXT_PING_SAFETY                                              1.0
-#define NEXT_UPGRADE_TIMEOUT                                         10.0
-#define NEXT_CLIENT_SESSION_TIMEOUT                                  10.0
+#define NEXT_UPGRADE_TIMEOUT                                          5.0
+#define NEXT_CLIENT_SESSION_TIMEOUT                                   5.0
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
@@ -120,7 +120,8 @@
 #define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                      (1<<8)
 #define NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT                          (1<<9)
 #define NEXT_FLAGS_DIRECT_PONG_TIMED_OUT                          (1<<10)
-#define NEXT_FLAGS_COUNT                                               11
+#define NEXT_FLAGS_NEXT_PONG_TIMED_OUT                            (1<<11)
+#define NEXT_FLAGS_COUNT                                               12
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
@@ -5651,7 +5652,7 @@ struct next_client_internal_t
     uint64_t special_send_sequence;
     uint64_t internal_send_sequence;
     double last_next_ping_time;
-    double first_next_ping_time;
+    double last_next_pong_time;
     double last_direct_ping_time;
     double last_direct_pong_time;
     double last_stats_update_time;
@@ -6187,6 +6188,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgrade_sequence = packet.upgrade_sequence;
         client->session_id = packet.session_id;
         client->last_direct_pong_time = next_time();
+        client->last_next_pong_time = next_time();
         memcpy( client->client_send_key, client_send_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
         memcpy( client->client_receive_key, client_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
 
@@ -6511,6 +6513,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
 
+        client->last_next_pong_time = next_time();
+
         return;
     }
 
@@ -6792,7 +6796,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->session_id = 0;
                 client->internal_send_sequence = 0;
                 client->last_next_ping_time = 0.0;
-                client->first_next_ping_time = 0.0;
+                client->last_next_pong_time = 0.0;
                 client->last_direct_ping_time = 0.0;
                 client->last_direct_pong_time = 0.0;
                 client->last_stats_update_time = 0.0;
@@ -7068,14 +7072,18 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
     if ( !client->upgraded )
         return;
 
+    if ( client->fallback_to_direct )
+        return;
+
     double current_time = next_time();
 
-    if ( client->last_direct_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
+    if ( client->last_direct_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client direct pong timed out. falling back to direct" );
         next_platform_mutex_acquire( &client->route_manager_mutex );
         next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_DIRECT_PONG_TIMED_OUT );
         next_platform_mutex_release( &client->route_manager_mutex );
+        return;
     }
 
     if ( client->last_direct_ping_time + ( 1.0 / NEXT_DIRECT_PINGS_PER_SECOND ) <= current_time )
@@ -7107,6 +7115,24 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         return;
 
     double current_time = next_time();
+
+    next_platform_mutex_acquire( &client->route_manager_mutex );
+    const bool has_next_route = client->route_manager->route_data.current_route;
+    next_platform_mutex_release( &client->route_manager_mutex );
+
+    if ( !has_next_route )
+    {
+        client->last_next_pong_time = current_time;
+    }
+
+    if ( client->last_next_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client next pong timed out. falling back to direct" );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
+        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_NEXT_PONG_TIMED_OUT );
+        next_platform_mutex_release( &client->route_manager_mutex );
+        return;
+    }
 
     if ( client->last_next_ping_time + ( 1.0 / NEXT_PINGS_PER_SECOND ) <= current_time )
     {
@@ -7147,11 +7173,6 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
 
         client->last_next_ping_time = current_time;
-
-        if ( client->first_next_ping_time == 0.0 )
-        {
-            client->first_next_ping_time = current_time;
-        }
     }
 }
 
