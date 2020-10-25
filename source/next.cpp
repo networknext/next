@@ -7865,6 +7865,12 @@ void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
     }
 }
 
+const next_address_t * next_client_server_address( next_client_t * client )
+{
+    next_assert( client );
+    return &client->server_address;
+}
+
 void next_client_counters( next_client_t * client, uint64_t * counters )
 {
     next_client_verify_sentinels( client );

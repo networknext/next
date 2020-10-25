@@ -268,6 +268,8 @@ NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * 
 
 NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
+NEXT_EXPORT_FUNC const next_address_t * next_client_server_address( next_client_t * client );
+
 // -----------------------------------------
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
