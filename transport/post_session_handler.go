@@ -15,14 +15,15 @@ import (
 )
 
 type PostSessionHandler struct {
-	numGoroutines             int
-	postSessionBillingChannel chan *billing.BillingEntry
-	sessionPortalDataChannel  chan *SessionPortalData
-	portalPublisher           pubsub.Publisher
-	portalPublishMaxRetries   int
-	biller                    billing.Biller
-	logger                    log.Logger
-	metrics                   *metrics.PostSessionMetrics
+	numGoroutines              int
+	postSessionBillingChannel  chan *billing.BillingEntry
+	sessionPortalCountsChannel chan *SessionCountData
+	sessionPortalDataChannel   chan *SessionPortalData
+	portalPublisher            pubsub.Publisher
+	portalPublishMaxRetries    int
+	biller                     billing.Biller
+	logger                     log.Logger
+	metrics                    *metrics.PostSessionMetrics
 
 	maxBufferSize int
 }
@@ -30,15 +31,16 @@ type PostSessionHandler struct {
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, portalPublishMaxRetries int,
 	biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
-		numGoroutines:             numGoroutines,
-		postSessionBillingChannel: make(chan *billing.BillingEntry, chanBufferSize),
-		sessionPortalDataChannel:  make(chan *SessionPortalData, chanBufferSize),
-		portalPublisher:           portalPublisher,
-		portalPublishMaxRetries:   portalPublishMaxRetries,
-		biller:                    biller,
-		logger:                    logger,
-		metrics:                   metrics,
-		maxBufferSize:             chanBufferSize,
+		numGoroutines:              numGoroutines,
+		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
+		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
+		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
+		portalPublisher:            portalPublisher,
+		portalPublishMaxRetries:    portalPublishMaxRetries,
+		biller:                     biller,
+		logger:                     logger,
+		metrics:                    metrics,
+		maxBufferSize:              chanBufferSize,
 	}
 }
 
@@ -65,12 +67,47 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 		go func() {
 			for {
 				select {
-				case postSessionPortalData := <-post.sessionPortalDataChannel:
-					if portalDataBytes, err := postSessionPortalData.ProcessPortalData(post.portalPublisher, post.portalPublishMaxRetries); err != nil {
-						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
+				case postSessionCountData := <-post.sessionPortalCountsChannel:
+					countBytes, err := postSessionCountData.MarshalBinary()
+					if err != nil {
+						level.Error(post.logger).Log("msg", "could not marshal count data", "err", err)
+						post.metrics.PortalFailure.Add(1)
+						continue
+					}
+
+					if portalDataBytes, err := TransmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionCounts, countBytes, post.portalPublishMaxRetries); err != nil {
+						level.Error(post.logger).Log("msg", "could not update portal counts", "err", err)
 						post.metrics.PortalFailure.Add(1)
 					} else {
-						level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+						level.Debug(post.logger).Log("type", "session counts", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+					}
+
+					post.metrics.PortalEntriesFinished.Add(1)
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	for i := 0; i < post.numGoroutines; i++ {
+		go func() {
+			for {
+				select {
+				case postSessionPortalData := <-post.sessionPortalDataChannel:
+					sessionBytes, err := postSessionPortalData.MarshalBinary()
+					if err != nil {
+						level.Error(post.logger).Log("msg", "could not marshal portal data", "err", err)
+						post.metrics.PortalFailure.Add(1)
+						continue
+					}
+
+					if portalDataBytes, err := TransmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionData, sessionBytes, post.portalPublishMaxRetries); err != nil {
+						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
+						post.metrics.PortalFailure.Add(1)
+						continue
+					} else {
+						level.Debug(post.logger).Log("type", "session data", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					}
 
 					post.metrics.PortalEntriesFinished.Add(1)
@@ -92,6 +129,16 @@ func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEn
 
 }
 
+func (post *PostSessionHandler) SendPortalCounts(sessionPortalCounts *SessionCountData) {
+	select {
+	case post.sessionPortalCountsChannel <- sessionPortalCounts:
+		post.metrics.PortalEntriesSent.Add(1)
+	default:
+		post.metrics.PortalBufferFull.Add(1)
+	}
+
+}
+
 func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalData) {
 	select {
 	case post.sessionPortalDataChannel <- sessionPortalData:
@@ -106,22 +153,20 @@ func (post *PostSessionHandler) BillingBufferSize() uint64 {
 	return uint64(len(post.postSessionBillingChannel))
 }
 
-func (post *PostSessionHandler) PortalBufferSize() uint64 {
+func (post *PostSessionHandler) PortalCountBufferSize() uint64 {
+	return uint64(len(post.sessionPortalCountsChannel))
+}
+
+func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
 }
 
-func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, maxRetries int) (int, error) {
-	sessionBytes, err := data.MarshalBinary()
-	if err != nil {
-		return 0, fmt.Errorf("could not marshal portal data: %v", err)
-	}
-
+func TransmitPortalData(publisher pubsub.Publisher, topic pubsub.Topic, data []byte, maxRetries int) (int, error) {
 	var byteCount int
-
 	var retryCount int
 
 	for retryCount < maxRetries { // only retry so many times, then error out after that
-		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+		singleByteCount, err := publisher.Publish(topic, data)
 		if err != nil {
 			errno := zmq4.AsErrno(err)
 			switch errno {

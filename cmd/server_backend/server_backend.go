@@ -572,7 +572,7 @@ func mainReturnWithCode() int {
 	connections := make([]*net.UDPConn, numThreads)
 
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, postSessionHandler, backendMetrics.ServerUpdateMetrics)
 	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {

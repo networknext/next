@@ -22,6 +22,49 @@ const (
 	SessionMapPointVersion   = 0
 )
 
+type SessionCountData struct {
+	ServerID    uint64
+	NumSessions uint32
+}
+
+func (s *SessionCountData) UnmarshalBinary(data []byte) error {
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[SessionCountData] invalid read at version number")
+	}
+
+	if version > SessionCountDataVersion {
+		return fmt.Errorf("unknown session count version: %d", version)
+	}
+
+	if !encoding.ReadUint64(data, &index, &s.ServerID) {
+		return errors.New("[SessionCountData] invalid read at server ID")
+	}
+
+	if !encoding.ReadUint32(data, &index, &s.NumSessions) {
+		return errors.New("[SessionCountData] invalid read at num sessions")
+	}
+
+	return nil
+}
+
+func (s SessionCountData) MarshalBinary() ([]byte, error) {
+	data := make([]byte, s.Size())
+	index := 0
+
+	encoding.WriteUint32(data, &index, SessionCountDataVersion)
+	encoding.WriteUint64(data, &index, s.ServerID)
+	encoding.WriteUint32(data, &index, s.NumSessions)
+
+	return data, nil
+}
+
+func (s *SessionCountData) Size() uint64 {
+	return 4 + 8 + 4
+}
+
 type SessionPortalData struct {
 	Meta  SessionMeta     `json:"meta"`
 	Slice SessionSlice    `json:"slice"`
