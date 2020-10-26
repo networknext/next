@@ -286,38 +286,18 @@ func mainReturnWithCode() int {
 	}
 
 	// Start portal cruncher subscriber
-	var portalSubscriber pubsub.Subscriber
-	{
-		cruncherPort := envvar.Get("CRUNCHER_PORT", "5555")
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
-			return 1
-		}
-
-		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
-			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
-			return 1
-		}
-
-		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
-			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
-			return 1
-		}
-
-		portalSubscriber = portalCruncherSubscriber
+	redisCruncherPort := envvar.Get("CRUNCHER_PORT_REDIS", "5555")
+	redisPortalSubscriber, err := getPortalSubscriber(logger, redisCruncherPort)
+	if err != nil {
+		return 1
 	}
+
+	btCruncherPort := envvar.Get("CRUNCHER_PORT_BIGTABLE", "5556")
+	btPortalSubscriber, err := getPortalSubscriber(logger, btCruncherPort)
+	if err != nil {
+		return 1
+	}
+	
 
 	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
 	if err != nil {
@@ -331,19 +311,39 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	btGoroutineCount, err := envvar.GetInt("CRUNCHER_BIGTABLE_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	messageChanSize, err := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	messageChan := make(chan []byte, messageChanSize)
+	redisMessageChan := make(chan []byte, messageChanSize)
+	btMessageChan := make(chan []byte, messageChanSize)
 
 	// Start receive loops
-	for i := 0; i < receiveGoroutineCount; i++ {
+	for i := 0; i < receiveGoroutineCount; i += 2 {
 		go func() {
 			for {
-				if err := ReceivePortalMessage(portalSubscriber, portalCruncherMetrics, messageChan); err != nil {
+				if err := ReceivePortalMessage(redisPortalSubscriber, portalCruncherMetrics, redisMessageChan); err != nil {
+					switch err.(type) {
+					case *ErrReceiveMessage:
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't os.Exit() here, but somehow quit
+					case *ErrChannelFull:
+						level.Error(logger).Log("err", err)
+					}
+				}
+			}
+		}()
+		go func() {
+			for {
+				if err := ReceivePortalMessage(btPortalSubscriber, portalCruncherMetrics, btMessageChan); err != nil {
 					switch err.(type) {
 					case *ErrReceiveMessage:
 						level.Error(logger).Log("err", err)
@@ -361,7 +361,7 @@ func mainReturnWithCode() int {
 	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
-	// Start redis and Bigtable insertion loop
+	// Start redis insertion loop
 	{
 		for i := 0; i < redisGoroutineCount; i++ {
 			go func() {
@@ -377,14 +377,13 @@ func mainReturnWithCode() int {
 				}
 
 				redisPortalDataBuffer := make([]transport.SessionPortalData, 0)
-				btPortalDataBuffer := make([]transport.SessionPortalData, 0)
 
 				flushTime := time.Now()
 				pingTime := time.Now()
 
 				for {
 					// Pull the message out of the channel
-					sessionData, err := PullMessage(messageChan)
+					sessionData, err := PullMessage(redisMessageChan)
 					if err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
@@ -392,6 +391,25 @@ func mainReturnWithCode() int {
 
 					// Handle Redis functionality
 					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, sessionData, redisPortalDataBuffer, flushTime, pingTime, redisFlushCount); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
+				}
+			}()
+		}
+	}
+
+	// Start Bigtable insertion loop
+	{
+		for i := 0; i < btGoroutineCount; i++ {
+			go func() {
+				
+				btPortalDataBuffer := make([]transport.SessionPortalData, 0)
+
+				for {
+					// Pull the message out of the channel
+					sessionData, err := PullMessage(btMessageChan)
+					if err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
@@ -405,6 +423,7 @@ func mainReturnWithCode() int {
 			}()
 		}
 	}
+
 
 	// Start HTTP server
 	{
@@ -736,4 +755,31 @@ func pingRedis(clientTopSessions storage.RedisClient, clientSessionMap storage.R
 	}
 
 	return nil
+}
+
+func getPortalSubscriber(logger log.Logger, cruncherPort string) (pubsub.Subscriber, error) {
+
+	receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return nil, err
+	}
+
+	portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
+	if err != nil {
+		level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
+		return nil, err
+	}
+
+	if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
+		level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
+		return nil, err
+	}
+
+	if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
+		level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
+		return nil, err
+	}
+
+	return portalCruncherSubscriber, nil
 }

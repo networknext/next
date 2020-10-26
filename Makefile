@@ -251,6 +251,9 @@ ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
 export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
 endif
 
+ifndef CRUNCHER_BIGTABLE_GOROUTINE_COUNT
+export CRUNCHER_BIGTABLE_GOROUTINE_COUNT = 100
+endif
 # ifndef GOOGLE_APPLICATION_CREDENTIALS
 # export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
 # endif
@@ -375,7 +378,7 @@ dev-analytics: build-analytics ## runs a local analytics service
 
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT_REDIS=5555 CRUNCHER_PORT_BIGTABLE=5556 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army
