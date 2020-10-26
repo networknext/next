@@ -324,7 +324,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				if otherRelay.State == routing.RelayStateEnabled {
 					address := v.Addr.String()
 					if shouldUseInternalIPs && relay.Seller.ID == otherRelay.Seller.ID {
-						address = otherRelay.InternalAddr
+						address = otherRelay.InternalAddr.String()
 					}
 					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: address})
 				}

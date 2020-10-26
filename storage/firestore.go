@@ -1821,11 +1821,20 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 
 		host, port, err := net.SplitHostPort(r.Address)
 		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to split host and port: %v", err)}
+			return &UnmarshalError{err: fmt.Errorf("failed to split host and port (external): %v", err)}
 		}
 		iport, err := strconv.ParseInt(port, 10, 64)
 		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int: %v", err)}
+			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (external): %v", err)}
+		}
+
+		internalHost, internalPort, err := net.SplitHostPort(r.InternalAddress)
+		if err != nil {
+			return &UnmarshalError{err: fmt.Errorf("failed to split host and port (internal): %v", err)}
+		}
+		iinternalPort, err := strconv.ParseInt(internalPort, 10, 64)
+		if err != nil {
+			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (internal): %v", err)}
 		}
 
 		// Default to the relay public key, but if that isn't in firestore
@@ -1868,7 +1877,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
-			InternalAddr:        r.InternalAddress,
+			InternalAddr: net.UDPAddr{
+				IP:   net.ParseIP(internalHost),
+				Port: int(iinternalPort),
+			},
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int32(r.NICSpeedMbps),
 			IncludedBandwidthGB: int32(r.IncludedBandwithGB),

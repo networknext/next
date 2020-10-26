@@ -414,6 +414,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 			nearRelayIDs[i] = nearRelay.ID
 			nearRelayAddresses[i] = *nearRelay.Addr
+			if i < 1 && i < numNearRelays-1 {
+				prev, err := storer.Relay(nearRelayIDs[i-1])
+				if err != nil {
+					curr, err := storer.Relay(nearRelayIDs[i])
+					if err != nil {
+						next, err := storer.Relay(nearRelayIDs[i+1])
+						if err != nil {
+							if prev.Seller.ID == curr.Seller.ID && next.Seller.ID == curr.Seller.ID {
+								nearRelayAddresses[i] = curr.InternalAddr
+							}
+						}
+					}
+				}
+			}
 			nearRelayCosts[i] = int32(nearRelay.ClientStats.RTT)
 			nearRelayPacketLoss[i] = float32(nearRelay.ClientStats.PacketLoss)
 		}
