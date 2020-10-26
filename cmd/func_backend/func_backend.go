@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"sort"
 	"sync"
 	"syscall"
@@ -26,10 +27,11 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
+
+	"github.com/networknext/backend/modules/core"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000
@@ -59,7 +61,6 @@ type Backend struct {
 	serverDatabase  map[string]ServerEntry
 	sessionDatabase map[uint64]SessionCacheEntry
 	statsDatabase   *routing.StatsDatabase
-	costMatrix      *routing.CostMatrix
 	routeMatrix     *routing.RouteMatrix
 	nearData        []byte
 
@@ -103,12 +104,29 @@ func OptimizeThread() {
 	for {
 		backend.mutex.Lock()
 
-		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.relayMap.GetAllRelayData(), MaxJitter, MaxPacketLoss); err != nil {
-			fmt.Printf("error generating cost matrix: %v\n", err)
+		relayIDs := make([]uint64, 0)
+		relayDatacenterIDs := make([]uint64, 0)
+		for _, relayData := range backend.relayMap.GetAllRelayData() {
+			relayIDs = append(relayIDs, relayData.ID)
+			relayDatacenterIDs = append(relayDatacenterIDs, crypto.HashID("local"))
 		}
 
-		if err := backend.costMatrix.Optimize(backend.routeMatrix, ThresholdRTT); err != nil {
-			fmt.Printf("error generating route matrix: %v\n", err)
+		costMatrix := backend.statsDatabase.GetCosts(relayIDs, MaxJitter, MaxPacketLoss)
+
+		numRelays := len(relayIDs)
+
+		numCPUs := runtime.NumCPU()
+		numSegments := numRelays
+		if numCPUs < numRelays {
+			numSegments = numRelays / 5
+			if numSegments == 0 {
+				numSegments = 1
+			}
+		}
+
+		routeEntries := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenterIDs)
+		if len(routeEntries) == 0 {
+			fmt.Printf("error optimizing route matrix:\n")
 		}
 
 		backend.mutex.Unlock()
@@ -180,13 +198,13 @@ func (backend *Backend) GetNearRelays() []*routing.RelayData {
 }
 
 func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var initRequest transport.ServerInitRequestPacket4
+	var initRequest transport.ServerInitRequestPacket
 	if err := transport.UnmarshalPacket(&initRequest, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read server init request packet: %v\n", err)
 		return
 	}
 
-	initResponse := &transport.ServerInitResponsePacket4{
+	initResponse := &transport.ServerInitResponsePacket{
 		RequestID: initRequest.RequestID,
 		Response:  transport.InitResponseOK,
 	}
@@ -197,7 +215,7 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeServerInitResponse4}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{transport.PacketTypeServerInitResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, initResponseData...)
 	if _, err := w.Write(responseData); err != nil {
 		fmt.Printf("error: failed to write server init response: %v\n", err)
@@ -206,7 +224,7 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 }
 
 func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var serverUpdate transport.ServerUpdatePacket4
+	var serverUpdate transport.ServerUpdatePacket
 	if err := transport.UnmarshalPacket(&serverUpdate, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
 		return
@@ -214,7 +232,7 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 }
 
 func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var sessionUpdate transport.SessionUpdatePacket4
+	var sessionUpdate transport.SessionUpdatePacket
 	if err := transport.UnmarshalPacket(&sessionUpdate, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read session update packet: %v\n", err)
 		return
@@ -222,7 +240,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if backend.mode == BACKEND_MODE_FORCE_RETRY && sessionUpdate.RetryNumber < 4 {
 		return
-	}	
+	}
 
 	if sessionUpdate.PlatformType == transport.PlatformTypeUnknown {
 		panic("platform type is unknown")
@@ -303,9 +321,9 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	newSession := sessionUpdate.SliceNumber == 0
 
-	var sessionData transport.SessionData4
+	var sessionData transport.SessionData
 	if newSession {
-		sessionData.Version = transport.SessionDataVersion4
+		sessionData.Version = transport.SessionDataVersion
 		sessionData.SessionID = sessionUpdate.SessionID
 		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
@@ -323,7 +341,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	nearRelays := backend.GetNearRelays()
 
-	var sessionResponse *transport.SessionResponsePacket4
+	var sessionResponse *transport.SessionResponsePacket
 
 	takeNetworkNext := len(nearRelays) > 0
 
@@ -395,7 +413,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if !takeNetworkNext {
 
 		// direct route
-		sessionResponse = &transport.SessionResponsePacket4{
+		sessionResponse = &transport.SessionResponsePacket{
 			SessionID:          sessionUpdate.SessionID,
 			SliceNumber:        sessionUpdate.SliceNumber,
 			NumNearRelays:      int32(len(nearRelays)),
@@ -453,19 +471,19 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 		var tokenData []byte
 		if sameRoute {
-			tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
+			tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
 			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
 			routeType = routing.RouteTypeContinue
 		} else {
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 			sessionData.SessionVersion++
 
-			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
+			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
 			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
 			routeType = routing.RouteTypeNew
 		}
 
-		sessionResponse = &transport.SessionResponsePacket4{
+		sessionResponse = &transport.SessionResponsePacket{
 			SessionID:          sessionUpdate.SessionID,
 			SliceNumber:        sessionUpdate.SliceNumber,
 			NumNearRelays:      int32(len(nearRelays)),
@@ -503,7 +521,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeSessionResponse4}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{transport.PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, sessionResponseData...)
 	if _, err := w.Write(responseData); err != nil {
 		fmt.Printf("error: failed to write session response: %v\n", err)
@@ -518,7 +536,6 @@ func main() {
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
 	backend.statsDatabase = routing.NewStatsDatabase()
-	backend.costMatrix = &routing.CostMatrix{}
 	backend.routeMatrix = &routing.RouteMatrix{}
 
 	backend.relayMap = routing.NewRelayMap(func(relayData *routing.RelayData) error {
@@ -649,11 +666,11 @@ func main() {
 			packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
 
 			switch packetType {
-			case transport.PacketTypeServerInitRequest4:
+			case transport.PacketTypeServerInitRequest:
 				ServerInitHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeServerUpdate4:
+			case transport.PacketTypeServerUpdate:
 				ServerUpdateHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeSessionUpdate4:
+			case transport.PacketTypeSessionUpdate:
 				SessionUpdateHandlerFunc(&buffer, &packet)
 			default:
 				fmt.Printf("unknown packet type %d\n", packet.Data[0])
@@ -833,7 +850,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	backend.mutex.Lock()
-	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.relayMap.AddRelayDataEntry(relay.Addr.String(), relay)
 	backend.dirty = true
 	backend.mutex.Unlock()
 
@@ -938,7 +955,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
 	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
