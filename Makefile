@@ -453,38 +453,6 @@ deploy-relay-backend-prod:
 deploy-portal-cruncher-prod:
 	./deploy/deploy.sh -e prod -c mig-07q1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
-.PHONY: deploy-server-backend-dev-1
-deploy-server-backend-dev-1:
-	./deploy/deploy.sh -e dev -c dev-1 -t server-backend -n server_backend -b gs://development_artifacts
-
-.PHONY: deploy-server-backend-dev-2
-deploy-server-backend-dev-2:
-	./deploy/deploy.sh -e dev -c dev-2 -t server-backend -n server_backend -b gs://development_artifacts
-
-.PHONY: deploy-server-backend-staging
-deploy-server-backend-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t server-backend -n server_backend -b gs://staging_artifacts
-
-.PHONY: deploy-server-backend-psyonix
-deploy-server-backend-psyonix:
-	./deploy/deploy.sh -e prod -c psyonix -t server-backend -n server_backend -b gs://prod_artifacts
-
-.PHONY: deploy-server-backend-liquidbit
-deploy-server-backend-liquidbit:
-	./deploy/deploy.sh -e prod -c prod-42rz -t server-backend -n server_backend -b gs://prod_artifacts
-
-.PHONY: deploy-server-backend-valve
-deploy-server-backend-valve:
-	./deploy/deploy.sh -e prod -c valve-r57d -t server-backend -n server_backend -b gs://prod_artifacts
-
-.PHONY: deploy-server-backend-velan
-deploy-server-backend-velan:
-	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -n server_backend -b gs://prod_artifacts
-
-.PHONY: deploy-server-backend-esl
-deploy-server-backend-esl:
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
@@ -735,12 +703,6 @@ publish-bootstrap-script-dev:
 publish-bootstrap-script-staging:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-client-bootstrap-script-staging
-publish-client-bootstrap-script-staging:
-	@printf "Publishing client bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/client_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/client_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: publish-bootstrap-script-prod

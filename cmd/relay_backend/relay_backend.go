@@ -8,8 +8,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"expvar"
 	"fmt"
 	"net"
@@ -17,25 +15,21 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/logging"
+	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/transport"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	"cloud.google.com/go/pubsub"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
 
 	"github.com/networknext/backend/modules/core"
 )
@@ -47,209 +41,61 @@ var (
 	tag           string
 )
 
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func main() {
+	os.Exit(mainReturnWithCode())
+}
 
-	fmt.Printf("relay_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+func mainReturnWithCode() int {
+	serviceName := "relay_backend"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 
-	// Configure logging
-	logger := log.NewLogfmtLogger(os.Stdout)
-	relayslogger := log.NewLogfmtLogger(os.Stdout)
+	gcpProjectID := backend.GetGCPProjectID()
 
-	var enableSDLogging bool
-	enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-	if ok {
-		var err error
-		enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	if enableSDLogging {
-		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-			loggingClient, err := gcplogging.NewClient(ctx, projectID)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
-			relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
-		}
-	}
-
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-
-		switch os.Getenv("RELAYS_LOG_LEVEL") {
-		case "none":
-			relayslogger = level.NewFilter(relayslogger, level.AllowNone())
-		case level.ErrorValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowError())
-		case level.WarnValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
-		case level.InfoValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowInfo())
-		case level.DebugValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowDebug())
-		default:
-			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
-		}
-		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
-	}
-
-	// Get env
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
-	} else {
-		fmt.Printf("env is %s\n", env)
-	}
-
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			customerPublicKey = customerPublicKey[8:]
-		}
-	}
-
-	var customerID uint64
-	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-		customerPublicKey = customerPublicKey[8:]
-	}
-
-	var relayPublicKey []byte
-	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
-	}
-
-	var routerPrivateKey []byte
-	{
-		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
-			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-			os.Exit(1)
-		}
-	}
-
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-
-	// hardcoded dependency on InMemory will have to stay until we
-	// move to NewSQL()
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-	if fs != nil {
-		db = fs
+		return 1
 	}
 
-	if env == "local" {
-		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+	relayslogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	env, err := backend.GetEnv()
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-	if gcpOK {
-		// Stackdriver Metrics
-		{
-			fmt.Printf("initializing stackdriver metrics\n")
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-			var enableSDMetrics bool
-			var err error
-			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-			if ok {
-				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
-				}
-
-				metricsHandler = &sd
-
-				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-				writeInterval, err := time.ParseDuration(sdwriteinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-					os.Exit(1)
-				}
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-				}()
-			}
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
 		}
+	}
 
-		// Stackdriver Profiler
-		{
-			fmt.Printf("initializing stackdriver profiler\n")
+	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-			var enableSDProfiler bool
-			var err error
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "relay_backend",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialize StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
-		}
+	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+	if err != nil {
+		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+		return 1
 	}
 
 	// Create relay init metrics
@@ -297,15 +143,6 @@ func main() {
 	statsdb := routing.NewStatsDatabase()
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
-	routeMatrix4 := &routing.RouteMatrix4{}
-
-	var routeMatrixMutex sync.RWMutex
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
-		routeMatrixMutex.RLock()
-		rm := routeMatrix
-		routeMatrixMutex.RUnlock()
-		return rm
-	}
 
 	var costMatrixMutex sync.RWMutex
 	getCostMatrixFunc := func() *routing.CostMatrix {
@@ -315,41 +152,35 @@ func main() {
 		return cm
 	}
 
-	var routeMatrix4Mutex sync.RWMutex
-	getRouteMatrix4Func := func() *routing.RouteMatrix4 {
-		routeMatrix4Mutex.RLock()
-		rm4 := routeMatrix4
-		routeMatrix4Mutex.RUnlock()
-		return rm4
+	var routeMatrixMutex sync.RWMutex
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return rm
 	}
 
 	// Get the max jitter and max packet loss env vars
-	var maxJitter float64
-	var maxPacketLoss float64
-	{
-		maxJitterString, ok := os.LookupEnv("RELAY_ROUTER_MAX_JITTER")
-		if !ok {
-			level.Error(logger).Log("msg", "env var not set", "envvar", "RELAY_ROUTER_MAX_JITTER")
-			os.Exit(1)
-		}
+	if !envvar.Exists("RELAY_ROUTER_MAX_JITTER") {
+		level.Error(logger).Log("err", "RELAY_ROUTER_MAX_JITTER not set")
+		return 1
+	}
 
-		maxJitter, err = strconv.ParseFloat(maxJitterString, 32)
-		if err != nil {
-			level.Error(logger).Log("err", "could not parse max jitter", "value", maxJitterString)
-			os.Exit(1)
-		}
+	maxJitter, err := envvar.GetFloat("RELAY_ROUTER_MAX_JITTER", 0)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
-		maxPacketLossString, ok := os.LookupEnv("RELAY_ROUTER_MAX_PACKET_LOSS")
-		if !ok {
-			level.Error(logger).Log("msg", "env var not set", "envvar", "RELAY_ROUTER_MAX_PACKET_LOSS")
-			os.Exit(1)
-		}
+	if !envvar.Exists("RELAY_ROUTER_MAX_PACKET_LOSS") {
+		level.Error(logger).Log("err", "RELAY_ROUTER_MAX_PACKET_LOSS not set")
+		return 1
+	}
 
-		maxPacketLoss, err = strconv.ParseFloat(maxPacketLossString, 32)
-		if err != nil {
-			level.Error(logger).Log("err", "could not parse max packet loss", "value", maxPacketLossString)
-			os.Exit(1)
-		}
+	maxPacketLoss, err := envvar.GetFloat("RELAY_ROUTER_MAX_PACKET_LOSS", 0)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Create the relay map
@@ -371,9 +202,8 @@ func main() {
 	// ping stats
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
-		// Create a no-op publisher
-		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if gcpOK || emulatorOK {
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
 
 			pubsubCtx := ctx
 			if emulatorOK {
@@ -399,7 +229,7 @@ func main() {
 				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					os.Exit(1)
+					return 1
 				}
 
 				pingStatsPublisher = pubsub
@@ -407,22 +237,19 @@ func main() {
 		}
 
 		go func() {
-			sleepTime := time.Minute
-			if publishInterval, ok := os.LookupEnv("PING_STATS_PUBLISH_INTERVAL"); ok {
-				if duration, err := time.ParseDuration(publishInterval); err == nil {
-					sleepTime = duration
-				} else {
-					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
-				}
+			publishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", time.Minute)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
 			for {
-				time.Sleep(sleepTime)
+				time.Sleep(publishInterval)
 				cpy := statsdb.MakeCopy()
 				entries := analytics.ExtractPingStats(cpy)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
-					os.Exit(1)
+					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 				}
 			}
 		}()
@@ -431,8 +258,8 @@ func main() {
 	// relay stats
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	{
-		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if gcpOK || emulatorOK {
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
 
 			pubsubCtx := ctx
 			if emulatorOK {
@@ -458,7 +285,7 @@ func main() {
 				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					os.Exit(1)
+					return 1
 				}
 
 				relayStatsPublisher = pubsub
@@ -466,17 +293,14 @@ func main() {
 		}
 
 		go func() {
-			sleepTime := time.Second * 10
-			if publishInterval, ok := os.LookupEnv("RELAY_STATS_PUBLISH_INTERVAL"); ok {
-				if duration, err := time.ParseDuration(publishInterval); err == nil {
-					sleepTime = duration
-				} else {
-					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
-				}
+			publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
 			for {
-				time.Sleep(sleepTime)
+				time.Sleep(publishInterval)
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
@@ -503,7 +327,7 @@ func main() {
 					elapsed := time.Since(relay.LastStatsPublishTime)
 					relay.LastStatsPublishTime = time.Now()
 
-					fsrelay, err := db.Relay(relay.ID)
+					fsrelay, err := storer.Relay(relay.ID)
 					if err != nil {
 						continue
 					}
@@ -562,52 +386,79 @@ func main() {
 
 				if err := relayStatsPublisher.Publish(ctx, entries[:count]); err != nil {
 					level.Error(logger).Log("err", err)
-					os.Exit(1)
+					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 				}
 			}
 		}()
 
 	}
 
-	// Periodically generate cost matrix from stats db
-	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
-	syncInterval, err := time.ParseDuration(cmsyncinterval)
+	syncInterval, err := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	if err != nil {
-		level.Error(logger).Log("envvar", "COST_MATRIX_INTERVAL", "value", cmsyncinterval, "err", err)
-		os.Exit(1)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
+
+	// Separate route matrix specifically for Valve
+	valveRouteMatrix := &routing.RouteMatrix{}
+	var valveRouteMatrixMutex sync.RWMutex
+
+	getValveRouteMatrixFunc := func() *routing.RouteMatrix {
+		valveRouteMatrixMutex.RLock()
+		rm := valveRouteMatrix
+		valveRouteMatrixMutex.RUnlock()
+		return rm
+	}
+
+	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Generate the route matrix
 	go func() {
 		for {
-			costMatrixMetrics.Invocations.Add(1)
-
-			costMatrixNew := routing.CostMatrix{}
-
-			costMatrixDurationStart := time.Now()
-
-			// For now, remove all valve relays in the normal cost matrix generation
-			allNonValveRelayData := make([]*routing.RelayData, 0)
+			// For now, exclude all valve relays
+			relayIDs := make([]uint64, 0)
 			allRelayData := relayMap.GetAllRelayData()
 			for _, relayData := range allRelayData {
 				if relayData.Seller.ID != "valve" { // Filter out any relays whose seller has a Firestore key of "valve"
-					allNonValveRelayData = append(allNonValveRelayData, relayData)
+					relayIDs = append(relayIDs, relayData.ID)
 				}
 			}
 
-			if err := statsdb.GetCostMatrix(&costMatrixNew, allNonValveRelayData, float32(maxJitter), float32(maxPacketLoss)); err == nil {
-				// Write the cost matrix to a buffer and serve that instead
-				// of writing a new buffer every time we want to serve the cost matrix
-				err = costMatrixNew.WriteResponseData()
+			numRelays := len(relayIDs)
+			relayAddresses := make([]net.UDPAddr, numRelays)
+			relayNames := make([]string, numRelays)
+			relayLatitudes := make([]float32, numRelays)
+			relayLongitudes := make([]float32, numRelays)
+			relayDatacenterIDs := make([]uint64, numRelays)
+
+			for i, relayID := range relayIDs {
+				relay, err := storer.Relay(relayID)
 				if err != nil {
-					level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
-					continue // Don't store the new route matrix if we fail to write cost matrix data
+					continue
 				}
 
-				costMatrixMutex.Lock()
-				costMatrix = &costMatrixNew
-				costMatrixMutex.Unlock()
-			} else {
-				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
-				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
+				relayAddresses[i] = relay.Addr
+				relayNames[i] = relay.Name
+				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
+				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
+				relayDatacenterIDs[i] = relay.Datacenter.ID
+			}
+
+			costMatrixMetrics.Invocations.Add(1)
+			costMatrixDurationStart := time.Now()
+
+			costMatrixNew := &routing.CostMatrix{
+				RelayIDs:           relayIDs,
+				RelayAddresses:     relayAddresses,
+				RelayNames:         relayNames,
+				RelayLatitudes:     relayLatitudes,
+				RelayLongitudes:    relayLongitudes,
+				RelayDatacenterIDs: relayDatacenterIDs,
+				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
@@ -616,25 +467,37 @@ func main() {
 				costMatrixMetrics.LongUpdateCount.Add(1)
 			}
 
-			// IMPORTANT: Fill the cost matrix with near relay lat/longs
-			// these are then passed in to the route matrix via "Optimize"
-			// and the server_backend uses them to find near relays.
-			for i := range costMatrix.RelayIDs {
-				relay, err := db.Relay(costMatrix.RelayIDs[i])
-				if err == nil {
-					costMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
-					costMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
+			if err := costMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
+				level.Error(logger).Log("matrix", "cost", "op", "write_response", "msg", "could not write response data", "err", err)
+				time.Sleep(syncInterval)
+				continue
+			}
+
+			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
+
+			costMatrixMutex.Lock()
+			costMatrix = costMatrixNew
+			costMatrixMutex.Unlock()
+
+			numCPUs := runtime.NumCPU()
+			numSegments := numRelays
+			if numCPUs < numRelays {
+				numSegments = numRelays / 5
+				if numSegments == 0 {
+					numSegments = 1
 				}
 			}
 
-			newRouteMatrix := &routing.RouteMatrix{}
-
 			optimizeMetrics.Invocations.Add(1)
-
 			optimizeDurationStart := time.Now()
-			if err := costMatrix.Optimize(newRouteMatrix, 5); err != nil {
-				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
+
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, relayDatacenterIDs)
+			if len(routeEntries) == 0 {
+				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+				time.Sleep(syncInterval)
+				continue
 			}
+
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
 
@@ -642,34 +505,36 @@ func main() {
 				optimizeMetrics.LongUpdateCount.Add(1)
 			}
 
-			// Write the route matrix to a buffer and serve that instead
-			// of writing a new buffer every time we want to serve the route matrix
-			err = newRouteMatrix.WriteResponseData()
-			if err != nil {
-				level.Error(logger).Log("matrix", "route", "msg", "failed to write route matrix response data", "err", err)
-				continue // Don't store the new route matrix if we fail to write response data
+			routeMatrixNew := &routing.RouteMatrix{
+				RelayIDs:           relayIDs,
+				RelayAddresses:     relayAddresses,
+				RelayNames:         relayNames,
+				RelayLatitudes:     relayLatitudes,
+				RelayLongitudes:    relayLongitudes,
+				RelayDatacenterIDs: relayDatacenterIDs,
+				RouteEntries:       routeEntries,
 			}
 
-			// Write the route matrix analysis to a buffer and serve that instead
-			// of writing a new analysis every time we want to view the analysis in the relay dashboard
-			newRouteMatrix.WriteAnalysisData()
+			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
+				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
+				time.Sleep(syncInterval)
+				continue
+			}
 
-			// Swap the route matrix pointer to the new one
-			// This double buffered route matrix approach makes the route matrix lockless
+			routeMatrixNew.WriteAnalysisData()
+
 			routeMatrixMutex.Lock()
-			routeMatrix = newRouteMatrix
+			routeMatrix = routeMatrixNew
 			routeMatrixMutex.Unlock()
 
-			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
-
-			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(newRouteMatrix.GetResponseData())))
-			relayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
-			relayBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrixNew.GetResponseData())))
+			relayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(routeMatrixNew.RelayIDs)))
+			relayBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(routeMatrixNew.RelayDatacenterIDs)))
 
 			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
 			numRoutes := int32(0)
-			for i := range newRouteMatrix.Entries {
-				numRoutes += newRouteMatrix.Entries[i].NumRoutes
+			for i := range routeMatrixNew.RouteEntries {
+				numRoutes += routeMatrixNew.RouteEntries[i].NumRoutes
 			}
 			relayBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
 
@@ -707,127 +572,14 @@ func main() {
 		}
 	}()
 
-	// Separate statsdb, cost matrix, and route matrix specifically for Valve
-	valveCostMatrix := &routing.CostMatrix{}
-	valveRouteMatrix := &routing.RouteMatrix{}
-	var valveRouteMatrixMutex sync.RWMutex
-
-	getValveRouteMatrixFunc := func() *routing.RouteMatrix {
-		valveRouteMatrixMutex.RLock()
-		rm := valveRouteMatrix
-		valveRouteMatrixMutex.RUnlock()
-		return rm
-	}
-
-	// Generate a valve cost and route matrix in a separate goroutine
+	// Generate the route matrix specifically for valve
 	go func() {
 		for {
-			valveCostMatrixMetrics.Invocations.Add(1)
-
-			costMatrixNew := routing.CostMatrix{}
-
-			costMatrixDurationStart := time.Now()
-
-			// Use all of the relays in the valve cost matrix
-			if err := statsdb.GetCostMatrix(&costMatrixNew, relayMap.GetAllRelayData(), float32(maxJitter), float32(maxPacketLoss)); err == nil {
-				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
-				valveCostMatrix = &costMatrixNew
-			} else {
-				valveCostMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
-			}
-
-			costMatrixDurationSince := time.Since(costMatrixDurationStart)
-			valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-			if costMatrixDurationSince.Seconds() > 1.0 {
-				valveCostMatrixMetrics.LongUpdateCount.Add(1)
-			}
-
-			// IMPORTANT: Fill the cost matrix with near relay lat/longs
-			// these are then passed in to the route matrix via "Optimize"
-			// and the server_backend uses them to find near relays.
-			for i := range valveCostMatrix.RelayIDs {
-				relay, err := db.Relay(valveCostMatrix.RelayIDs[i])
-				if err == nil {
-					valveCostMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
-					valveCostMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
-				}
-			}
-
-			newRouteMatrix := &routing.RouteMatrix{}
-
-			valveOptimizeMetrics.Invocations.Add(1)
-
-			optimizeDurationStart := time.Now()
-			if err := valveCostMatrix.Optimize(newRouteMatrix, 5); err != nil {
-				level.Warn(logger).Log("matrix", "valve_cost", "op", "optimize", "err", err)
-			}
-			optimizeDurationSince := time.Since(optimizeDurationStart)
-			valveOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
-
-			if optimizeDurationSince.Seconds() > 1.0 {
-				valveOptimizeMetrics.LongUpdateCount.Add(1)
-			}
-
-			// Write the cost matrix to a buffer and serve that instead
-			// of writing a new buffer every time we want to serve the cost matrix
-			if err = valveCostMatrix.WriteResponseData(); err != nil {
-				level.Error(logger).Log("matrix", "cost", "msg", "failed to write valve cost matrix response data", "err", err)
-				continue // Don't store the new route matrix if we fail to write cost matrix data
-			}
-
-			// Write the route matrix to a buffer and serve that instead
-			// of writing a new buffer every time we want to serve the route matrix
-			if err = newRouteMatrix.WriteResponseData(); err != nil {
-				level.Error(logger).Log("matrix", "route", "msg", "failed to write valve route matrix response data", "err", err)
-				continue // Don't store the new route matrix if we fail to write response data
-			}
-
-			// Write the route matrix analysis to a buffer and serve that instead
-			// of writing a new analysis every time we want to view the analysis in the relay dashboard
-			newRouteMatrix.WriteAnalysisData()
-
-			// Swap the route matrix pointer to the new one
-			// This double buffered route matrix approach makes the route matrix lockless
-			valveRouteMatrixMutex.Lock()
-			valveRouteMatrix = newRouteMatrix
-			valveRouteMatrixMutex.Unlock()
-
-			valveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix.GetResponseData())))
-
-			valveRouteMatrixMetrics.Bytes.Set(float64(len(newRouteMatrix.GetResponseData())))
-			valveRouteMatrixMetrics.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
-			valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
-
-			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
-			numRoutes := int32(0)
-			for i := range newRouteMatrix.Entries {
-				numRoutes += newRouteMatrix.Entries[i].NumRoutes
-			}
-			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
-
-			time.Sleep(syncInterval)
-		}
-	}()
-
-	routeMatrixBufferSize := 100000
-	if routeMatrixBufferSizeString, ok := os.LookupEnv("ROUTE_MATRIX_BUFFER_SIZE"); ok {
-		routeMatrixBufferSize, err = strconv.Atoi(routeMatrixBufferSizeString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ROUTE_MATRIX_BUFFER_SIZE", "value", routeMatrixBufferSize, "err", err)
-			os.Exit(1)
-		}
-	}
-
-	// Generate a separate route matrix for SDK4
-	go func() {
-		for {
-			// For now, exclude all valve relays
+			// All relays included
 			relayIDs := make([]uint64, 0)
 			allRelayData := relayMap.GetAllRelayData()
 			for _, relayData := range allRelayData {
-				if relayData.Seller.ID != "valve" { // Filter out any relays whose seller has a Firestore key of "valve"
-					relayIDs = append(relayIDs, relayData.ID)
-				}
+				relayIDs = append(relayIDs, relayData.ID)
 			}
 
 			numRelays := len(relayIDs)
@@ -838,7 +590,7 @@ func main() {
 			relayDatacenterIDs := make([]uint64, numRelays)
 
 			for i, relayID := range relayIDs {
-				relay, err := db.Relay(relayID)
+				relay, err := storer.Relay(relayID)
 				if err != nil {
 					continue
 				}
@@ -850,7 +602,18 @@ func main() {
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 			}
 
-			costMatrix4 := statsdb.GenerateCostMatrix4(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			valveCostMatrixMetrics.Invocations.Add(1)
+			costMatrixDurationStart := time.Now()
+
+			valveCostMatrix := statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+
+			costMatrixDurationSince := time.Since(costMatrixDurationStart)
+			valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
+			if costMatrixDurationSince.Seconds() > 1.0 {
+				valveCostMatrixMetrics.LongUpdateCount.Add(1)
+			}
+
+			valveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix) * 4))
 
 			numCPUs := runtime.NumCPU()
 			numSegments := numRelays
@@ -861,14 +624,24 @@ func main() {
 				}
 			}
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrix4, 5, relayDatacenterIDs)
+			valveOptimizeMetrics.Invocations.Add(1)
+			optimizeDurationStart := time.Now()
+
+			routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				time.Sleep(syncInterval)
 				continue
 			}
 
-			routeMatrix4New := &routing.RouteMatrix4{
+			optimizeDurationSince := time.Since(optimizeDurationStart)
+			valveOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
+
+			if optimizeDurationSince.Seconds() > 1.0 {
+				valveOptimizeMetrics.LongUpdateCount.Add(1)
+			}
+
+			valveRouteMatrixNew := &routing.RouteMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
 				RelayNames:         relayNames,
@@ -878,17 +651,28 @@ func main() {
 				RouteEntries:       routeEntries,
 			}
 
-			if err := routeMatrix4New.WriteResponseData(routeMatrixBufferSize); err != nil {
+			if err := valveRouteMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 				time.Sleep(syncInterval)
 				continue
 			}
 
-			routeMatrix4New.WriteAnalysisData()
+			valveRouteMatrixNew.WriteAnalysisData()
 
-			routeMatrix4Mutex.Lock()
-			routeMatrix4 = routeMatrix4New
-			routeMatrix4Mutex.Unlock()
+			valveRouteMatrixMutex.Lock()
+			valveRouteMatrix = valveRouteMatrixNew
+			valveRouteMatrixMutex.Unlock()
+
+			valveRouteMatrixMetrics.Bytes.Set(float64(len(valveRouteMatrixNew.GetResponseData())))
+			valveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
+			valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
+
+			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+			numRoutes := int32(0)
+			for i := range valveRouteMatrixNew.RouteEntries {
+				numRoutes += valveRouteMatrixNew.RouteEntries[i].NumRoutes
+			}
+			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
 
 			time.Sleep(syncInterval)
 		}
@@ -896,7 +680,7 @@ func main() {
 
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
-		Storer:           db,
+		Storer:           storer,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	}
@@ -905,21 +689,15 @@ func main() {
 		RelayMap: relayMap,
 		StatsDB:  statsdb,
 		Metrics:  relayUpdateMetrics,
-		Storer:   db,
+		Storer:   storer,
 	}
-
-	// todo: ryan, relay backend health check should only become healthy once it is ready to serve up a quality route matrix in prod.
-	// in the current production environment, this probably means that it has generated route matrices for 6 minutes. the reason for this
-	// being that the timeout for bad routes are 5 minutes, so when the relay backend first starts up, the route matrix is in a bad state
-	// (intentionally) for the first 5 minutes, as it assumes all routes are initially bad. only routes that are good past 5 minutes
-	// are good enough to serve up to our customers.
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
-		m := getRouteMatrixFunc()
+		routeMatrix := getRouteMatrixFunc()
 
-		data := m.GetResponseData()
+		data := routeMatrix.GetResponseData()
 
 		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
@@ -942,25 +720,10 @@ func main() {
 		}
 	}
 
-	serveRouteMatrixSDK4Func := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-
-		routeMatrix4 := getRouteMatrix4Func()
-
-		data := routeMatrix4.GetResponseData()
-
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
 	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		m := getCostMatrixFunc()
-
 		data := m.GetResponseData()
 
 		buffer := bytes.NewBuffer(data)
@@ -980,30 +743,25 @@ func main() {
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
-	router.HandleFunc("/route_matrix_sdk4", serveRouteMatrixSDK4Func).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/relay_dashboard4", transport.RelayDashboardHandlerFunc4(relayMap, getRouteMatrix4Func, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	go func() {
-		port, ok := os.LookupEnv("PORT")
-		if !ok {
-			level.Error(logger).Log("err", "env var PORT must be set")
-			os.Exit(1)
-		}
+		port := envvar.Get("PORT", "30000")
 
 		level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	return 0
 }

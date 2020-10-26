@@ -6,38 +6,39 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/binary"
 	"expvar"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"runtime"
 	"sync"
+	"syscall"
+	"time"
 
-	"io"
-	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-
-	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/logging"
+	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
+	"golang.org/x/sys/unix"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	googlepubsub "cloud.google.com/go/pubsub"
-
-	metadataapi "cloud.google.com/go/compute/metadata"
 )
 
 // MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
@@ -51,352 +52,165 @@ var (
 	tag           string
 )
 
-func main() {
+// A mock locator used in staging to set each session to a random, unique lat/long
+type stagingLocator struct {
+	SessionID uint64
+}
 
-	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], locator.SessionID)
+
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+	lat := (float64(latBits)) / 0xFFFFFFFF
+	long := (float64(longBits)) / 0xFFFFFFFF
+
+	return routing.Location{
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
+		Longitude: -180.0 + long*360.0,
+	}, nil
+}
+
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
+func main() {
+	os.Exit(mainReturnWithCode())
+}
+
+func mainReturnWithCode() int {
+	serviceName := "server_backend"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 
-	// Configure local logging
-	logger := log.NewLogfmtLogger(os.Stdout)
+	gcpProjectID := backend.GetGCPProjectID()
 
-	// StackDriver Logging
-	{
-		var enableSDLogging bool
-		enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-		if ok {
-			var err error
-			enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-			if err != nil {
-				level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		}
-
-		if enableSDLogging {
-			if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-				loggingClient, err := gcplogging.NewClient(ctx, projectID)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-					os.Exit(1)
-				}
-
-				logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
-			}
-		}
-	}
-
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
-
-	// Get env
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
-	}
-
-	fmt.Printf("env is %s\n", env)
-
-	var customerPublicKey []byte
-	var customerID uint64
-	var serverPrivateKey []byte
-	var routerPrivateKey []byte
-	var relayPublicKey []byte
-	var err error
-	{
-		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
-			serverPrivateKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "SERVER_BACKEND_PRIVATE_KEY", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		} else {
-			level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
-			os.Exit(1)
-		}
-
-		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
-			routerPrivateKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "RELAY_ROUTER_PRIVATE_KEY", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		} else {
-			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-			os.Exit(1)
-		}
-
-		if env == "local" {
-			if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-				relayPublicKey, err = base64.StdEncoding.DecodeString(key)
-				if err != nil {
-					level.Error(logger).Log("envvar", "RELAY_PUBLIC_KEY", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			} else {
-				level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
-				os.Exit(1)
-			}
-
-			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-				customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-				if err != nil {
-					level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-				customerPublicKey = customerPublicKey[8:]
-			}
-
-			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-				customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-				customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-				customerPublicKey = customerPublicKey[8:]
-			}
-		}
-	}
-
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-
-	// hardcoded dependency on InMemory will have to stay until we
-	// move to NewSQL()
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-	if fs != nil {
-		db = fs
+		return 1
 	}
 
-	// Create a no-op biller
-	var biller billing.Biller = &billing.NoOpBiller{}
-
-	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	// Create dummy buyer and datacenter for local testing
-	if env == "local" {
-		if err = storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-	}
-
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	var instanceID uint64
-	if gcpOK {
-		// Get the instance number of this server_backend instance
-		{
-			instanceIDString, err := metadataapi.InstanceID()
-			if err != nil {
-				level.Error(logger).Log("msg", "could not read instance id from GCP", "err", err)
-				os.Exit(1)
-			}
-
-			instanceIDInt, err := strconv.Atoi(instanceIDString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not parse instance id", "id", instanceIDString, "err", err)
-				os.Exit(1)
-			}
-
-			instanceID = uint64(instanceIDInt)
-		}
-
-		// StackDriver Metrics
-		{
-			fmt.Printf("setting up stackdriver metrics\n")
-
-			var enableSDMetrics bool
-			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-			if ok {
-				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
-				}
-
-				metricsHandler = &sd
-
-				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-				writeInterval, err := time.ParseDuration(sdwriteinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-					os.Exit(1)
-				}
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-				}()
-			}
-		}
-
-		// StackDriver Profiler
-		{
-			fmt.Printf("setting up stackdriver profiler\n")
-
-			var enableSDProfiler bool
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "server_backend",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
-		}
-	}
-
-	// Create server init metrics
-	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	// Create server update metrics
-	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	// Create session update metrics
-	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
+		}
+	}
+
+	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Create server backend metrics
+	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
+		return 1
 	}
 
 	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
+		return 1
 	}
 
-	// Create server backend metrics
-	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+	// Create a goroutine to update metrics
+	go func() {
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		for {
+			backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+			time.Sleep(time.Second * 10)
+		}
+	}()
+
+	// Create datacenter tracker
+	datacenterTracker := transport.NewDatacenterTracker()
+
+	go func() {
+		for {
+			unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
+			emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
+
+			for _, datacenter := range unknownDatacenters {
+				level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+			}
+
+			for _, datacenter := range emptyDatacenters {
+				level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
+			}
+
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
+		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
+		return 1
+	}
+
+	privateKey, err := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	_, pubsubEmulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if gcpOK || pubsubEmulatorOK {
-
-		pubsubCtx := ctx
-		if pubsubEmulatorOK {
-			fmt.Printf("setting up pubsub emulator\n")
-
-			gcpProjectID = "local"
-
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
-		}
-
-		// Google Pubsub
-		{
-			fmt.Printf("setting up pubsub\n")
-
-			clientCount, err := strconv.Atoi(os.Getenv("BILLING_CLIENT_COUNT"))
-			if err != nil {
-				level.Error(logger).Log("envvar", "BILLING_CLIENT_COUNT", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-
-			countThreshold, err := strconv.Atoi(os.Getenv("BILLING_BATCHED_MESSAGE_COUNT"))
-			if err != nil {
-				level.Error(logger).Log("envvar", "BILLING_BATCHED_MESSAGE_COUNT", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-
-			byteThreshold, err := strconv.Atoi(os.Getenv("BILLING_BATCHED_MESSAGE_MIN_BYTES"))
-			if err != nil {
-				level.Error(logger).Log("envvar", "BILLING_BATCHED_MESSAGE_MIN_BYTES", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-
-			// We do our own batching so don't stack the library's batching on top of ours
-			// Specifically, don't stack the message count thresholds
-			settings := googlepubsub.DefaultPublishSettings
-			settings.CountThreshold = 1
-			settings.ByteThreshold = byteThreshold
-			settings.NumGoroutines = runtime.GOMAXPROCS(0)
-
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
-				os.Exit(1)
-			}
-
-			biller = pubsub
-		}
+	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
+		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+		return 1
 	}
 
-	getIPLocatorFunc := func() routing.IPLocator {
+	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], routerPrivateKeySlice)
+
+	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return routing.NullIsland
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
-	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
-	if mmcitydburi != "" && mmispdburi != "" {
+	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
+	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
+	if maxmindCityURI != "" && maxmindISPURI != "" {
 		mmdb := &routing.MaxmindDB{
 			HTTPClient: http.DefaultClient,
-			CityURI:    mmcitydburi,
-			IspURI:     mmispdburi,
+			CityURI:    maxmindCityURI,
+			IspURI:     maxmindISPURI,
 		}
 		var mmdbMutex sync.RWMutex
 
-		fmt.Printf("setting up maxmind ip2location\n")
-
-		getIPLocatorFunc = func() routing.IPLocator {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
 			mmdbMutex.RLock()
 			defer mmdbMutex.RUnlock()
 
@@ -406,16 +220,16 @@ func main() {
 
 		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		// todo: disable the sync for now until we can find out why it's causing session drops
 
-		// if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
-		// 	syncInterval, err := time.ParseDuration(mmsyncinterval)
+		// if envvar.Exists("MAXMIND_SYNC_DB_INTERVAL") {
+		// 	syncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
 		// 	if err != nil {
-		// 		level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
-		// 		os.Exit(1)
+		// 		level.Error(logger).Log("err", err)
+		// 		return 1
 		// 	}
 
 		// 	// Start a goroutine to sync from Maxmind.com
@@ -445,24 +259,34 @@ func main() {
 		// }
 	}
 
+	// Use a custom IP locator for staging so that clients
+	// have different, random lat/longs
+	if env == "staging" {
+		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
+			return &stagingLocator{
+				SessionID: sessionID,
+			}
+		}
+	}
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
-	getRouteMatrixFunc := func() transport.RouteProvider {
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
 		routeMatrixMutex.RLock()
-		rm := routeMatrix
+		rm4 := routeMatrix
 		routeMatrixMutex.RUnlock()
-		return rm
+		return rm4
 	}
 
 	// Sync route matrix
 	{
-		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
-			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(rmsyncinterval)
+		if envvar.Exists("ROUTE_MATRIX_URI") {
+			uri := envvar.Get("ROUTE_MATRIX_URI", "")
+			syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 			if err != nil {
-				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
+				level.Error(logger).Log("err", err)
+				return 1
 			}
 
 			go func() {
@@ -470,52 +294,63 @@ func main() {
 					Timeout: time.Second * 2,
 				}
 				for {
-					newRouteMatrix := routing.RouteMatrix{}
-					var matrixReader io.Reader
+					var routeEntriesReader io.ReadCloser
 
 					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
-						matrixReader = f
+						routeEntriesReader = f
 					}
 
 					// Prefer to get it remotely if possible
 					if r, err := httpClient.Get(uri); err == nil {
-						matrixReader = r.Body
-						// todo: need to close the response body!
+						routeEntriesReader = r.Body
 					}
 
 					start := time.Now()
 
-					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					if routeEntriesReader == nil {
+						time.Sleep(syncInterval)
+						continue
+					}
+
+					buffer, err := ioutil.ReadAll(routeEntriesReader)
+
+					if routeEntriesReader != nil {
+						routeEntriesReader.Close()
+					}
+
 					if err != nil {
-						if env != "local" {
-							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
-						}
+						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue // Don't swap route matrix if we fail to read
 					}
 
-					routeMatrixTime := time.Since(start)
-
-					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTime.Milliseconds()))
-
-					if routeMatrixTime.Seconds() > 1.0 {
-						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
+					var newRouteMatrix routing.RouteMatrix
+					if len(buffer) > 0 {
+						rs := encoding.CreateReadStream(buffer)
+						if err := newRouteMatrix.Serialize(rs); err != nil {
+							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+							time.Sleep(syncInterval)
+							continue // Don't swap route matrix if we fail to serialize
+						}
 					}
 
-					serverBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
-					serverBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+					routeEntriesTime := time.Since(start)
 
-					// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+					duration := float64(routeEntriesTime.Milliseconds())
+					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+
+					if duration > 100 {
+						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+					}
+
 					numRoutes := int32(0)
-					for i := range newRouteMatrix.Entries {
-						numRoutes += newRouteMatrix.Entries[i].NumRoutes
+					for i := range newRouteMatrix.RouteEntries {
+						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
 					}
-					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
-					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(bytes))
+					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
-					// Swap the route matrix pointer to the new one
-					// This double buffered route matrix approach makes the route matrix lockless
 					routeMatrixMutex.Lock()
 					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
@@ -526,318 +361,305 @@ func main() {
 		}
 	}
 
-	udpPortString, ok := os.LookupEnv("UDP_PORT")
-	if !ok {
-		level.Error(logger).Log("err", "env var UDP_PORT must be set")
-		os.Exit(1)
+	// Create a local biller
+	var biller billing.Biller = &billing.LocalBiller{
+		Logger:  logger,
+		Metrics: backendMetrics.BillingMetrics,
 	}
 
-	udpPort, err := strconv.ParseInt(udpPortString, 10, 64)
-	if err != nil {
-		level.Error(logger).Log("envvar", "UDP_PORT", "msg", "could not parse", "err", err)
-		os.Exit(1)
+	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+	if gcpProjectID != "" || pubsubEmulatorOK {
+
+		pubsubCtx := ctx
+		if pubsubEmulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			// We do our own batching so don't stack the library's batching on top of ours
+			// Specifically, don't stack the message count thresholds
+			settings := googlepubsub.DefaultPublishSettings
+			settings.CountThreshold = 1
+			settings.ByteThreshold = byteThreshold
+			settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				return 1
+			}
+
+			biller = pubsub
+		}
 	}
-
-	vetoMap := transport.NewVetoMap()
-	multipathVetoMap := transport.NewVetoMap()
-	serverMap := transport.NewServerMap()
-	sessionMap := transport.NewSessionMap()
-	{
-		// Start a goroutine to timeout vetoes
-		go func() {
-			timeout := int64(60 * 5)
-			frequency := time.Millisecond * 100
-			ticker := time.NewTicker(frequency)
-			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
-		}()
-
-		// Start a goroutine to timeout multipath vetoes
-		go func() {
-			timeout := int64(60 * 60 * 24 * 7)
-			frequency := time.Millisecond * 100
-			ticker := time.NewTicker(frequency)
-			multipathVetoMap.TimeoutLoop(ctx, timeout, ticker.C)
-		}()
-
-		// Start a goroutine to timeout servers
-		go func() {
-			timeout := int64(30)
-			frequency := time.Millisecond * 100
-			ticker := time.NewTicker(frequency)
-			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
-		}()
-
-		// Start a goroutine to timeout sessions
-		go func() {
-			timeout := int64(30)
-			frequency := time.Millisecond * 100
-			ticker := time.NewTicker(frequency)
-			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
-		}()
-	}
-
-	// Initialize the datacenter tracker
-	datacenterTracker := transport.NewDatacenterTracker()
-	go func() {
-		timeout := time.Minute
-		frequency := time.Millisecond * 10
-		ticker := time.NewTicker(frequency)
-		datacenterTracker.TimeoutLoop(ctx, timeout, ticker.C)
-	}()
 
 	// Start portal cruncher publisher
 	var portalPublisher pubsub.Publisher
 	{
-		fmt.Printf("setting up portal cruncher\n")
+		portalCruncherHost := envvar.Get("PORTAL_CRUNCHER_HOST", "tcp://127.0.0.1:5555")
 
-		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
-		if !ok {
-			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
-			os.Exit(1)
-		}
-
-		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
-		if !ok {
-			level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_SEND_BUFFER_SIZE must be set")
-			os.Exit(1)
-		}
-
-		postSessionPortalSendBufferSize, err := strconv.ParseInt(postSessionPortalSendBufferSizeString, 10, 64)
+		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_SEND_BUFFER_SIZE", "msg", "could not parse", "err", err)
-			os.Exit(1)
+			level.Error(logger).Log("err", err)
+			return 1
 		}
 
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, int(postSessionPortalSendBufferSize))
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, postSessionPortalSendBufferSize)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		portalPublisher = portalCruncherPublisher
 	}
 
-	numPostSessionGoroutinesString, ok := os.LookupEnv("POST_SESSION_THREAD_COUNT")
-	if !ok {
-		level.Error(logger).Log("err", "env var POST_SESSION_THREAD_COUNT must be set")
-		os.Exit(1)
-	}
-
-	numPostSessionGoroutines, err := strconv.ParseInt(numPostSessionGoroutinesString, 10, 64)
+	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 	if err != nil {
-		level.Error(logger).Log("envvar", "POST_SESSION_THREAD_COUNT", "msg", "could not parse", "err", err)
-		os.Exit(1)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	postSessionBufferSizeString, ok := os.LookupEnv("POST_SESSION_BUFFER_SIZE")
-	if !ok {
-		level.Error(logger).Log("err", "env var POST_SESSION_BUFFER_SIZE must be set")
-		os.Exit(1)
-	}
-
-	postSessionBufferSize, err := strconv.ParseInt(postSessionBufferSizeString, 10, 64)
+	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
 	if err != nil {
-		level.Error(logger).Log("envvar", "POST_SESSION_BUFFER_SIZE", "msg", "could not parse", "err", err)
-		os.Exit(1)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	postSessionPortalMaxRetriesString, ok := os.LookupEnv("POST_SESSION_PORTAL_MAX_RETRIES")
-	if !ok {
-		level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_MAX_RETRIES must be set")
-		os.Exit(1)
-	}
-
-	postSessionPortalMaxRetries, err := strconv.ParseInt(postSessionPortalMaxRetriesString, 10, 64)
+	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
 	if err != nil {
-		level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_MAX_RETRIES", "msg", "could not parse", "err", err)
-		os.Exit(1)
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, int(postSessionPortalMaxRetries), biller, logger, &serverBackendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
-	// Setup the stats print routine
-	{
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
-
-		go func() {
-			for {
-				serverBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				serverBackendMetrics.MemoryAllocated.Set(memoryUsed())
-
-				numVetoes := vetoMap.GetVetoCount()
-				serverBackendMetrics.VetoCount.Set(float64(numVetoes))
-
-				numMultipathVetoes := multipathVetoMap.GetVetoCount()
-				serverBackendMetrics.MultipathVetoCount.Set(float64(numMultipathVetoes))
-
-				numServers := serverMap.GetServerCount()
-				serverBackendMetrics.ServerCount.Set(float64(numServers))
-
-				numSessions := sessionMap.GetSessionCount()
-				serverBackendMetrics.SessionCount.Set(float64(numSessions))
-
-				numDirectSessions := sessionMap.GetDirectSessionCount()
-				serverBackendMetrics.SessionDirectCount.Set(float64(numDirectSessions))
-
-				numNextSessions := sessionMap.GetNextSessionCount()
-				serverBackendMetrics.SessionNextCount.Set(float64(numNextSessions))
-
-				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
-				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
-
-				serverBackendMetrics.PostSessionMetrics.BillingBufferLength.Set(float64(postSessionHandler.BillingBufferSize()))
-				serverBackendMetrics.PostSessionMetrics.PortalBufferLength.Set(float64(postSessionHandler.PortalBufferSize()))
-
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
-				fmt.Printf("%d vetoes\n", numVetoes)
-				fmt.Printf("%d multipath vetoes\n", numMultipathVetoes)
-				fmt.Printf("%d servers\n", numServers)
-				fmt.Printf("%d sessions\n", numSessions)
-				fmt.Printf("%d direct sessions\n", numDirectSessions)
-				fmt.Printf("%d next sessions\n", numNextSessions)
-				fmt.Printf("%d billing entries submitted\n", int(serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d billing entries queued\n", int(serverBackendMetrics.BillingMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d billing entries flushed\n", int(serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
-				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
-				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
-				fmt.Printf("%d post session billing entries sent\n", int(serverBackendMetrics.PostSessionMetrics.BillingEntriesSent.Value()))
-				fmt.Printf("%d post session billing entries queued\n", int(serverBackendMetrics.PostSessionMetrics.BillingBufferLength.Value()))
-				fmt.Printf("%d post session billing entries finished\n", int(serverBackendMetrics.PostSessionMetrics.BillingEntriesFinished.Value()))
-				fmt.Printf("%d post session portal entries sent\n", int(serverBackendMetrics.PostSessionMetrics.PortalEntriesSent.Value()))
-				fmt.Printf("%d post session portal entries queued\n", int(serverBackendMetrics.PostSessionMetrics.PortalBufferLength.Value()))
-				fmt.Printf("%d post session portal entries finished\n", int(serverBackendMetrics.PostSessionMetrics.PortalEntriesFinished.Value()))
-				fmt.Printf("%d datacenters\n", int(serverBackendMetrics.RouteMatrix.DatacenterCount.Value()))
-				fmt.Printf("%d relays\n", int(serverBackendMetrics.RouteMatrix.RelayCount.Value()))
-				fmt.Printf("%d routes\n", int(serverBackendMetrics.RouteMatrix.RouteCount.Value()))
-				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
-				fmt.Printf("route matrix update: %.2f milliseconds\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
-				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrix.Bytes.Value()))
-
-				if env != "local" {
-					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
-					serverBackendMetrics.UnknownDatacenterCount.Set(float64(unknownDatacentersLength))
-					if unknownDatacentersLength > 0 {
-						fmt.Printf("unknown datacenters: %v\n", datacenterTracker.GetUnknownDatacenters())
-					}
-
-					emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
-					serverBackendMetrics.EmptyDatacenterCount.Set(float64(emptyDatacentersLength))
-					if emptyDatacentersLength > 0 {
-						fmt.Printf("empty datacenters: %v\n", datacenterTracker.GetEmptyDatacenters())
-					}
-				}
-
-				fmt.Printf("-----------------------------\n")
-
-				time.Sleep(time.Second)
-			}
-		}()
+	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
+	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
+	multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	// Start UDP server
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if err := multipathVetoHandler.Sync(); err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Start a routine to sync multipath vetoed users from redis to this instance
 	{
-		fmt.Printf("starting udp server\n")
-
-		serverInitConfig := &transport.ServerInitParams{
-			ServerPrivateKey:  serverPrivateKey,
-			Storer:            db,
-			Metrics:           serverInitMetrics,
-			Logger:            logger,
-			DatacenterTracker: datacenterTracker,
-		}
-
-		serverUpdateConfig := &transport.ServerUpdateParams{
-			Storer:            db,
-			Metrics:           serverUpdateMetrics,
-			Logger:            logger,
-			ServerMap:         serverMap,
-			DatacenterTracker: datacenterTracker,
-		}
-
-		sessionUpdateConfig := &transport.SessionUpdateParams{
-			ServerPrivateKey:  serverPrivateKey,
-			RouterPrivateKey:  routerPrivateKey,
-			GetRouteProvider:  getRouteMatrixFunc,
-			GetIPLocator:      getIPLocatorFunc,
-			Storer:            db,
-			Biller:            biller,
-			Metrics:           sessionUpdateMetrics,
-			Logger:            logger,
-			VetoMap:           vetoMap,
-			MultipathVetoMap:  multipathVetoMap,
-			ServerMap:         serverMap,
-			SessionMap:        sessionMap,
-			DatacenterTracker: datacenterTracker,
-			PortalPublisher:   portalPublisher,
-			InstanceID:        instanceID,
-		}
-
-		mux := transport.UDPServerMux2{
-			Logger:                   logger,
-			PostSessionHandler:       postSessionHandler,
-			Port:                     udpPort,
-			MaxPacketSize:            transport.DefaultMaxPacketSize,
-			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateConfig),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
-		}
-
-		var selectionPercent uint64 = 100
-		if valueStr, ok := os.LookupEnv("PACKET_SELECTION_PERCENT"); ok {
-			if valueUint, err := strconv.ParseUint(valueStr, 10, 64); err == nil {
-				selectionPercent = valueUint
-			} else {
-				level.Error(logger).Log("msg", "cannot parse value of 'PACKET_SELECTION_PERCENT' env var", "err", err)
+		ticker := time.NewTicker(multipathVetoSyncFrequency)
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ticker.C:
+					if err := multipathVetoHandler.Sync(); err != nil {
+						level.Error(logger).Log("err", err)
+					}
+				case <-ctx.Done():
+					return
+				}
 			}
-		}
+		}(ctx)
+	}
 
-		go func() {
-			if err := mux.Start(ctx, selectionPercent); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}()
+	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if maxNearRelays > 32 {
+		level.Error(logger).Log("err", "cannot support more than 32 near relays")
+		return 1
 	}
 
 	// Start HTTP server
 	{
-		fmt.Printf("starting http server\n")
-
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 		router.Handle("/debug/vars", expvar.Handler())
 
 		go func() {
-			httpPort, ok := os.LookupEnv("HTTP_PORT")
-			if !ok {
-				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
-				os.Exit(1)
-			}
-
-			level.Info(logger).Log("addr", ":"+httpPort)
+			httpPort := envvar.Get("HTTP_PORT", "40001")
 
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				os.Exit(1)
+				return
 			}
 		}()
 	}
+
+	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	udpPort := envvar.Get("UDP_PORT", "40000")
+
+	var wg sync.WaitGroup
+
+	wg.Add(numThreads)
+
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			err := c.Control(func(fileDescriptor uintptr) {
+				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+				}
+
+				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+				}
+			})
+
+			return err
+		},
+	}
+
+	connections := make([]*net.UDPConn, numThreads)
+
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+
+	for i := 0; i < numThreads; i++ {
+		go func(thread int) {
+			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:"+udpPort)
+			if err != nil {
+				panic(fmt.Sprintf("could not bind socket: %v", err))
+			}
+
+			conn := lp.(*net.UDPConn)
+
+			if err := conn.SetReadBuffer(readBuffer); err != nil {
+				panic(fmt.Sprintf("could not set connection read buffer size: %v", err))
+			}
+
+			if err := conn.SetWriteBuffer(writeBuffer); err != nil {
+				panic(fmt.Sprintf("could not set connection write buffer size: %v", err))
+			}
+
+			connections[thread] = conn
+
+			dataArray := [transport.DefaultMaxPacketSize]byte{}
+			for {
+				data := dataArray[:]
+				size, fromAddr, err := conn.ReadFromUDP(data)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
+					break
+				}
+
+				if size <= 0 {
+					continue
+				}
+
+				data = data[:size]
+
+				// Check the packet hash is legit and remove the hash from the beginning of the packet
+				// to continue processing the packet as normal
+				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+					level.Error(logger).Log("err", "received non network next packet")
+					continue
+				}
+
+				packetType := data[0]
+				data = data[crypto.PacketHashSize+1 : size]
+
+				var buffer bytes.Buffer
+				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+
+				switch packetType {
+				case transport.PacketTypeServerInitRequest:
+					serverInitHandler(&buffer, &packet)
+				case transport.PacketTypeServerUpdate:
+					serverUpdateHandler(&buffer, &packet)
+				case transport.PacketTypeSessionUpdate:
+					sessionUpdateHandler(&buffer, &packet)
+				default:
+					level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
+				}
+
+				if buffer.Len() > 0 {
+					response := buffer.Bytes()
+
+					// Sign and hash the response
+					response = crypto.SignPacket(privateKey, response)
+					crypto.HashPacket(crypto.PacketHashKey, response)
+
+					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
+						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)
+					}
+				}
+			}
+
+			wg.Done()
+		}(i)
+	}
+
+	level.Info(logger).Log("msg", "waiting for incoming connections")
 
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	for _, connection := range connections {
+		connection.Close()
+	}
+
+	return 0
 }

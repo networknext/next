@@ -40,6 +40,11 @@ var (
 	tag           string
 )
 
+const (
+	MAILCHIMP_SERVER_PREFIX = "us20"
+	MAILCHIMP_LIST_ID       = "553903bc6f"
+)
+
 func main() {
 	fmt.Printf("portal: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
@@ -384,6 +389,10 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&jsonrpc.AuthService{
+			MailChimpManager: transport.MailChimpHandler{
+				HTTPHandler: *http.DefaultClient,
+				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
+			},
 			Logger:      logger,
 			UserManager: userManager,
 			JobManager:  jobManager,

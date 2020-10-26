@@ -58,7 +58,7 @@ func viewCostMatrix(inputFile string) {
 			secondRelayName := costMatrix.RelayNames[j]
 
 			ijIndex := routing.TriMatrixIndex(i, j)
-			rtt := costMatrix.RTT[ijIndex]
+			rtt := costMatrix.Costs[ijIndex]
 
 			entries = append(entries, struct {
 				FirstRelayName  string
@@ -102,8 +102,8 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 	}
 
 	var displayCount int
-	for _, entry := range routeMatrix.Entries {
-		directRTT := entry.DirectRTT
+	for _, entry := range routeMatrix.RouteEntries {
+		directRTT := entry.DirectCost
 		numRoutes := entry.NumRoutes
 
 		displayEntries := []struct {
@@ -135,7 +135,7 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 		}
 
 		for i := int32(0); i < numRoutes; i++ {
-			rtt := entry.RouteRTT[i]
+			rtt := entry.RouteCost[i]
 			numRelays := entry.RouteNumRelays[i]
 
 			var relays string
@@ -167,5 +167,5 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 		displayCount++
 	}
 
-	fmt.Printf("\n%d Entries, showing %d\n", len(routeMatrix.Entries), displayCount)
+	fmt.Printf("\n%d Entries, showing %d\n", len(routeMatrix.RouteEntries), displayCount)
 }

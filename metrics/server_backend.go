@@ -4,8 +4,8 @@ import (
 	"context"
 )
 
-// ServerInit4Metrics defines the set of metrics for the server init handler in server_backend4.
-type ServerInit4Metrics struct {
+// ServerInitMetrics defines the set of metrics for the server init handler in the server backend.
+type ServerInitMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
 	ReadPacketFailure    Counter
@@ -15,8 +15,8 @@ type ServerInit4Metrics struct {
 	WriteResponseFailure Counter
 }
 
-// EmptyServerInit4Metrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptyServerInit4Metrics = ServerInit4Metrics{
+// EmptyServerInitMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyServerInitMetrics = ServerInitMetrics{
 	HandlerMetrics:       &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:    &EmptyCounter{},
 	BuyerNotFound:        &EmptyCounter{},
@@ -25,8 +25,8 @@ var EmptyServerInit4Metrics = ServerInit4Metrics{
 	WriteResponseFailure: &EmptyCounter{},
 }
 
-// ServerUpdate4Metrics defines the set of metrics for the server update handler in server_backend4.
-type ServerUpdate4Metrics struct {
+// ServerUpdateMetrics defines the set of metrics for the server update handler in the server backend.
+type ServerUpdateMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
 	ReadPacketFailure  Counter
@@ -35,8 +35,8 @@ type ServerUpdate4Metrics struct {
 	DatacenterNotFound Counter
 }
 
-// EmptyServerUpdate4Metrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptyServerUpdate4Metrics = ServerUpdate4Metrics{
+// EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	HandlerMetrics:     &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:  &EmptyCounter{},
 	BuyerNotFound:      &EmptyCounter{},
@@ -44,8 +44,8 @@ var EmptyServerUpdate4Metrics = ServerUpdate4Metrics{
 	DatacenterNotFound: &EmptyCounter{},
 }
 
-// SessionUpdate4Metrics defines the set of metrics for the session update handler in server_backend4.
-type SessionUpdate4Metrics struct {
+// SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
+type SessionUpdateMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
 	DirectSlices Counter
@@ -68,8 +68,8 @@ type SessionUpdate4Metrics struct {
 	WriteResponseFailure    Counter
 }
 
-// EmptySessionUpdate4Metrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptySessionUpdate4Metrics = SessionUpdate4Metrics{
+// EmptySessionUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	HandlerMetrics:          &EmptyPacketHandlerMetrics,
 	DirectSlices:            &EmptyCounter{},
 	NextSlices:              &EmptyCounter{},
@@ -90,13 +90,13 @@ var EmptySessionUpdate4Metrics = SessionUpdate4Metrics{
 	WriteResponseFailure:    &EmptyCounter{},
 }
 
-// ServerBackend4Metrics defines the set of metrics for the server_backend4 service.
-type ServerBackend4Metrics struct {
+// ServerBackendMetrics defines the set of metrics for the server backend.
+type ServerBackendMetrics struct {
 	ServiceMetrics *ServiceMetrics
 
-	ServerInitMetrics    *ServerInit4Metrics
-	ServerUpdateMetrics  *ServerUpdate4Metrics
-	SessionUpdateMetrics *SessionUpdate4Metrics
+	ServerInitMetrics    *ServerInitMetrics
+	ServerUpdateMetrics  *ServerUpdateMetrics
+	SessionUpdateMetrics *SessionUpdateMetrics
 
 	PostSessionMetrics *PostSessionMetrics
 
@@ -108,12 +108,12 @@ type ServerBackend4Metrics struct {
 	RouteMatrixBytes              Gauge
 }
 
-// EmptyServerBackend4Metrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptyServerBackend4Metrics = ServerBackend4Metrics{
+// EmptyServerBackendMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyServerBackendMetrics = ServerBackendMetrics{
 	ServiceMetrics:                &EmptyServiceMetrics,
-	ServerInitMetrics:             &EmptyServerInit4Metrics,
-	ServerUpdateMetrics:           &EmptyServerUpdate4Metrics,
-	SessionUpdateMetrics:          &EmptySessionUpdate4Metrics,
+	ServerInitMetrics:             &EmptyServerInitMetrics,
+	ServerUpdateMetrics:           &EmptyServerUpdateMetrics,
+	SessionUpdateMetrics:          &EmptySessionUpdateMetrics,
 	PostSessionMetrics:            &EmptyPostSessionMetrics,
 	BillingMetrics:                &EmptyBillingMetrics,
 	RouteMatrixUpdateDuration:     &EmptyGauge{},
@@ -122,12 +122,12 @@ var EmptyServerBackend4Metrics = ServerBackend4Metrics{
 	RouteMatrixBytes:              &EmptyGauge{},
 }
 
-// NewServerBackend4Metrics creates the metrics that the server_backend4 will use.
-func NewServerBackend4Metrics(ctx context.Context, handler Handler) (*ServerBackend4Metrics, error) {
-	serviceName := "server_backend4"
+// NewServerBackendMetrics creates the metrics that the server backend will use.
+func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBackendMetrics, error) {
+	serviceName := "server_backend"
 
 	var err error
-	m := &ServerBackend4Metrics{}
+	m := &ServerBackendMetrics{}
 
 	m.ServiceMetrics, err = NewServiceMetrics(ctx, handler, serviceName)
 	if err != nil {
@@ -252,9 +252,9 @@ func NewServerBackend4Metrics(ctx context.Context, handler Handler) (*ServerBack
 	return m, nil
 }
 
-func newServerInitMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*ServerInit4Metrics, error) {
+func newServerInitMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*ServerInitMetrics, error) {
 	var err error
-	m := &ServerInit4Metrics{}
+	m := &ServerInitMetrics{}
 
 	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
 	if err != nil {
@@ -319,9 +319,9 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 	return m, nil
 }
 
-func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*ServerUpdate4Metrics, error) {
+func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*ServerUpdateMetrics, error) {
 	var err error
-	m := &ServerUpdate4Metrics{}
+	m := &ServerUpdateMetrics{}
 
 	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
 	if err != nil {
@@ -375,9 +375,9 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 	return m, nil
 }
 
-func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*SessionUpdate4Metrics, error) {
+func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*SessionUpdateMetrics, error) {
 	var err error
-	m := &SessionUpdate4Metrics{}
+	m := &SessionUpdateMetrics{}
 
 	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
 	if err != nil {
