@@ -91,6 +91,21 @@ const (
 	BWRulePool  BandWidthRule = iota // supplier gives X amount of bandwidth for all relays in the pool
 )
 
+func ParseBandwidthRule(bwRule string) (BandWidthRule, error) {
+	switch bwRule {
+	case "none":
+		return BWRuleNone, nil
+	case "flat":
+		return BWRuleFlat, nil
+	case "burst":
+		return BWRuleBurst, nil
+	case "pool":
+		return BWRulePool, nil
+	default:
+		return BWRuleNone, fmt.Errorf("invalid BandWidthRule '%s'", bwRule)
+	}
+}
+
 // MachineType is the type of server the relay is running on
 type MachineType uint32
 
@@ -99,6 +114,19 @@ const (
 	BareMetal      MachineType = iota
 	VirtualMachine MachineType = iota
 )
+
+func ParseMachineType(machineType string) (MachineType, error) {
+	switch machineType {
+	case "none":
+		return NoneSpecified, nil
+	case "bare-metal":
+		return BareMetal, nil
+	case "vm":
+		return VirtualMachine, nil
+	default:
+		return NoneSpecified, fmt.Errorf("invalid MachineType '%s'", machineType)
+	}
+}
 
 type Relay struct {
 	ID   uint64 `json:"id"`
@@ -145,7 +173,11 @@ type Relay struct {
 	Type    MachineType `json:"machineType"`
 
 	// Useful in data science analysis
+	// TODO: remove
 	SignedID int64 `json:"signed_id"`
+
+	// SQL id (PK)
+	RelayID int64
 }
 
 func (r *Relay) EncodedPublicKey() string {
