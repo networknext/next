@@ -224,6 +224,42 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
+### TEMPORARY ###
+
+ifndef BIGTABLE_EMULATOR_HOST
+export BIGTABLE_EMULATOR_HOST=localhost:8086
+endif
+
+# ifndef GOOGLE_BIGTABLE_PROJECT_ID
+# export GOOGLE_BIGTABLE_PROJECT_ID = network-next-v3-dev
+# endif
+
+ifndef GOOGLE_BIGTABLE_INSTANCE_ID
+export GOOGLE_BIGTABLE_INSTANCE_ID = network-next-portal-big-table-0
+endif
+
+ifndef GOOGLE_BIGTABLE_TABLE_NAME
+export GOOGLE_BIGTABLE_TABLE_NAME = portal-crunch-test
+endif
+
+# Column family name for Bigtable
+ifndef GOOGLE_BIGTABLE_CF_NAME
+export GOOGLE_BIGTABLE_CF_NAME = portal-session-data
+endif
+
+ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
+export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
+endif
+
+ifndef CRUNCHER_BIGTABLE_GOROUTINE_COUNT
+export CRUNCHER_BIGTABLE_GOROUTINE_COUNT = 100
+endif
+# ifndef GOOGLE_APPLICATION_CREDENTIALS
+# export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
+# endif
+
+### END TEMP  ###
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -342,7 +378,7 @@ dev-analytics: build-analytics ## runs a local analytics service
 
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT_REDIS=5555 CRUNCHER_PORT_BIGTABLE=5556 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army
