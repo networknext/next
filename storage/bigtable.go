@@ -172,6 +172,33 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Tabl
 	return nil
 }
 
+// Inserts session data into Bigtable
+func (bt *BigTable) InsertSessionData(  ctx context.Context,
+										btTbl *bigtable.Table,
+										btCfNames []string,
+										metaBinary []byte,
+										sliceBinary []byte,
+										rowKeys []string) error {
+
+	// Create a map of column name to session data
+	sessionDataMap := make(map[string][]byte)
+	sessionDataMap["meta"] = metaBinary
+	sessionDataMap["slice"] = sliceBinary
+
+	// Create a map of column name to column family
+	// Always map meta and slice to the first column family
+	cfMap := make(map[string]string)
+	cfMap["meta"] = btCfNames[0]
+	cfMap["slice"] = btCfNames[0]
+
+	if err := bt.InsertRowInTable(ctx, btTbl, rowKeys, sessionDataMap, cfMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
 // Gets all rows starting with a prefix (i.e. session ID)
 // Can provide a ReadOption, which can include various filters
 // See: https://godoc.org/cloud.google.com/go/bigtable#ReadOption

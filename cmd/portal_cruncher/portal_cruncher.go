@@ -328,6 +328,7 @@ func mainReturnWithCode() int {
 
 	// Start receive loops
 	for i := 0; i < receiveGoroutineCount; i += 2 {
+		// Redis portal subscriber
 		go func() {
 			for {
 				if err := ReceivePortalMessage(redisPortalSubscriber, portalCruncherMetrics, redisMessageChan); err != nil {
@@ -341,6 +342,7 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
+		// Bigtable portal subscriber
 		go func() {
 			for {
 				if err := ReceivePortalMessage(btPortalSubscriber, portalCruncherMetrics, btMessageChan); err != nil {
@@ -414,7 +416,7 @@ func mainReturnWithCode() int {
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
 
-					// Handle Bigtable functionality
+					// Insert data into bigtable
 					if err := BTHandler(ctx, btClient, btTbl, btCfNames, sessionData, btPortalDataBuffer); err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
@@ -496,26 +498,14 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 	return nil
 }
 
-func BTHandler(
-	ctx context.Context,
-	btClient *storage.BigTable,
-	btTbl *bigtable.Table,
-	btCfNames []string,
-	sessionData transport.SessionPortalData,
-	portalDataBuffer []transport.SessionPortalData) error {
+func BTHandler(	ctx context.Context,
+				bt *storage.BigTable,
+				btTbl *bigtable.Table,
+				btCfNames []string,
+				sessionData transport.SessionPortalData,
+				portalDataBuffer []transport.SessionPortalData) error {
 
 	portalDataBuffer = append(portalDataBuffer, sessionData)
-
-	InsertToBT(ctx, btClient, btTbl, btCfNames, portalDataBuffer)
-	return nil
-}
-
-func InsertToBT(
-	ctx context.Context,
-	btClient *storage.BigTable,
-	btTbl *bigtable.Table,
-	btCfNames []string,
-	portalDataBuffer []transport.SessionPortalData) error {
 
 	for j := range portalDataBuffer {
 		meta := &portalDataBuffer[j].Meta
@@ -542,18 +532,8 @@ func InsertToBT(
 			return err
 		}
 
-		// Create a map of column name to session data
-		sessionDataMap := make(map[string][]byte)
-		sessionDataMap["meta"] = metaBinary
-		sessionDataMap["slice"] = sliceBinary
-
-		// Create a map of column name to column family
-		// Always map meta and slice to the first column family
-		cfMap := make(map[string]string)
-		cfMap["meta"] = btCfNames[0]
-		cfMap["slice"] = btCfNames[0]
-
-		if err := btClient.InsertRowInTable(ctx, btTbl, rowKeys, sessionDataMap, cfMap); err != nil {
+		// Insert session data into Bigtable
+		if err := bt.InsertSessionData(ctx, btTbl, btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
 			return err
 		}
 	}
@@ -562,6 +542,7 @@ func InsertToBT(
 
 	return nil
 }
+
 
 func RedisHandler(
 	clientTopSessions storage.RedisClient,
