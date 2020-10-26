@@ -224,6 +224,12 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
+# Max age limit for data stored in Bigtable
+ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
+export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
+endif
+
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -342,7 +348,7 @@ dev-analytics: build-analytics ## runs a local analytics service
 
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT_REDIS=5555 CRUNCHER_PORT_BIGTABLE=5556 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army
