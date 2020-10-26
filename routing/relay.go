@@ -104,8 +104,9 @@ type Relay struct {
 	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 
-	Addr      net.UDPAddr `json:"addr"`
-	PublicKey []byte      `json:"public_key"`
+	Addr         net.UDPAddr `json:"addr"`
+	PublicKey    []byte      `json:"public_key"`
+	InternalAddr string      `json:"internal_addr"`
 
 	Seller     Seller     `json:"seller"`
 	Datacenter Datacenter `json:"datacenter"`

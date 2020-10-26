@@ -68,6 +68,7 @@ type seller struct {
 type relay struct {
 	Name               string                 `firestore:"displayName"`
 	Address            string                 `firestore:"publicAddress"`
+	InternalAddress    string                 `firestore:"internalAddress"`
 	PublicKey          []byte                 `firestore:"publicKey"`
 	UpdateKey          []byte                 `firestore:"updateKey"`
 	NICSpeedMbps       int64                  `firestore:"nicSpeedMbps"`
@@ -1867,6 +1868,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
+			InternalAddr:        r.InternalAddress,
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int32(r.NICSpeedMbps),
 			IncludedBandwidthGB: int32(r.IncludedBandwithGB),
