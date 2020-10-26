@@ -217,7 +217,7 @@ func mainReturnWithCode() int {
 	var btTbl *bigtable.Table
 	var btCfNames []string
 
-	if gcpProjectID != "" || btEmulatorOK {
+	if gcpOK || btEmulatorOK {
 		// Get Bigtable instance ID
 		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
 
