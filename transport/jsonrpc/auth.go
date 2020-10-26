@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 	"github.com/rs/cors"
 	"gopkg.in/auth0.v4/management"
 )
@@ -41,10 +42,11 @@ var Keys contextKeys = contextKeys{
 }
 
 type AuthService struct {
-	UserManager storage.UserManager
-	JobManager  storage.JobManager
-	Storage     storage.Storer
-	Logger      log.Logger
+	MailChimpManager transport.MailChimpHandler
+	UserManager      storage.UserManager
+	JobManager       storage.JobManager
+	Storage          storage.Storer
+	Logger           log.Logger
 }
 
 type AccountsArgs struct {
@@ -580,14 +582,14 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		if VerifyAllRoles(r, AdminRole) {
 			err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
 			if err != nil {
-				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				err := fmt.Errorf("UpdateUserRoles() failed to remove current user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
 		} else {
 			err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
 			if err != nil {
-				err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+				err := fmt.Errorf("UpdateUserRoles() failed to remove current user roles: %w", err)
 				s.Logger.Log("err", err)
 				return err
 			}
@@ -738,6 +740,22 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		}
 
 		if !VerifyAllRoles(r, AdminRole) {
+			if err = s.UserManager.RemoveRoles(requestID, []*management.Role{
+				{
+					Name:        &roleNames[0],
+					ID:          &roleIDs[0],
+					Description: &roleDescriptions[0],
+				},
+				{
+					Name:        &roleNames[1],
+					ID:          &roleIDs[1],
+					Description: &roleDescriptions[1],
+				},
+			}...); err != nil {
+				err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
+				s.Logger.Log("err", err)
+				return err
+			}
 			if err = s.UserManager.AssignRoles(requestID, roles...); err != nil {
 				err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
 				s.Logger.Log("err", err)
@@ -751,14 +769,72 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	if oldCompanyCode != newCompanyCode {
 		// Assigned and code is different
 		if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-			err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
-			return err
+			// new company
+			if args.CompanyName == "" {
+				err := fmt.Errorf("UpdateCompanyInformation() new company name is required")
+				s.Logger.Log("err", err)
+				return err
+			}
+			if err := s.Storage.AddCustomer(ctx, routing.Customer{
+				Code: newCompanyCode,
+				Name: args.CompanyName,
+			}); err != nil {
+				err = fmt.Errorf("UpdateCompanyInformation() failed to create new company: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+			roles := []*management.Role{
+				{
+					Name:        &roleNames[0],
+					ID:          &roleIDs[0],
+					Description: &roleDescriptions[0],
+				},
+				{
+					Name:        &roleNames[1],
+					ID:          &roleIDs[1],
+					Description: &roleDescriptions[1],
+				},
+			}
+			if err := s.UserManager.Update(requestID, &management.User{
+				AppMetadata: map[string]interface{}{
+					"company_code": args.CompanyCode,
+				},
+			}); err != nil {
+				err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			if !VerifyAllRoles(r, AdminRole) {
+				if err := s.UserManager.RemoveRoles(requestID, []*management.Role{
+					{
+						Name:        &roleNames[0],
+						ID:          &roleIDs[0],
+						Description: &roleDescriptions[0],
+					},
+					{
+						Name:        &roleNames[1],
+						ID:          &roleIDs[1],
+						Description: &roleDescriptions[1],
+					},
+				}...); err != nil {
+					err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
+					s.Logger.Log("err", err)
+					return err
+				}
+				if err := s.UserManager.AssignRoles(requestID, roles...); err != nil {
+					err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
+					s.Logger.Log("err", err)
+					return err
+				}
+				reply.NewRoles = roles
+			}
+			return nil
 		}
 
 		_, err := s.Storage.Customer(newCompanyCode)
 		if err == nil {
-			err = fmt.Errorf("UpdateCompanyInformation() company already exists: %v", err)
+			err = fmt.Errorf("UpdateCompanyInformation() company already exists")
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -943,6 +1019,33 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 
 	reply.Sent = true
 
+	return nil
+}
+
+type AddContactArgs struct {
+	Email string `json:"email"`
+}
+
+type AddContactReply struct {
+}
+
+func (s *AuthService) AddMailChimpContact(r *http.Request, args *AddContactArgs, reply *AddContactReply) error {
+	if args.Email == "" {
+		err := fmt.Errorf("AddMailChimpContact() email is required")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if err := s.MailChimpManager.AddEmailToMailChimp(args.Email); err != nil {
+		err := fmt.Errorf("AddMailChimpContact() failed to add signup: %s", err)
+		s.Logger.Log("err", err)
+	}
+
+	if err := s.MailChimpManager.TagNewSignup(args.Email); err != nil {
+		err := fmt.Errorf("AddMailChimpContact() failed to tag signup: %s", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 	return nil
 }
 

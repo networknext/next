@@ -37,6 +37,20 @@ func GetInt(name string, defaultValue int) (int, error) {
 	return int(value), nil
 }
 
+func GetFloat(name string, defaultValue float64) (float64, error) {
+	valueString, ok := os.LookupEnv(name)
+	if !ok {
+		return defaultValue, nil
+	}
+
+	value, err := strconv.ParseFloat(valueString, 64)
+	if err != nil {
+		return defaultValue, fmt.Errorf("could not parse value of env var %s as a float. Value: %s", name, valueString)
+	}
+
+	return value, nil
+}
+
 func GetBool(name string, defaultValue bool) (bool, error) {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
