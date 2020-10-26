@@ -28,9 +28,9 @@ describe('DownloadsWorkspace.vue', () => {
     expect(wrapper.find('.card-title').text()).toBe('Network Next SDK')
 
     expect(wrapper.findAll('.btn').length).toBe(2)
-    expect(wrapper.findAll('.btn').at(0).text()).toBe('SDK v4.0.0')
+    expect(wrapper.findAll('.btn').at(0).text()).toBe('SDK v4.0.1')
     expect(wrapper.findAll('.btn').at(0).attributes('onclick'))
-      .toBe("window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.0.zip')")
+      .toBe("window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.1.zip')")
     expect(wrapper.findAll('.btn').at(1).text()).toBe('v3.4.6 Documentation')
     expect(wrapper.findAll('.btn').at(1).attributes('onclick'))
       .toBe("window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')")
