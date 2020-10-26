@@ -75,18 +75,18 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;..\..\lib\Win64\Release\next-win64-4.0.0.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;..\..\lib\Win64\Release\next-win64-4.0.1.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <CustomBuildStep>
-      <Command>copy ..\..\lib\Win64\Release\next-win64-4.0.0.dll Release</Command>
+      <Command>copy ..\..\lib\Win64\Release\next-win64-4.0.1.dll Release</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Copying network next DLL</Message>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>Release\next-win64-4.0.0.dll</Outputs>
+      <Outputs>Release\next-win64-4.0.1.dll</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -106,14 +106,14 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;..\..\lib\Win64\Debug\next-win64-4.0.0.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;..\..\lib\Win64\Debug\next-win64-4.0.1.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <CustomBuildStep>
-      <Command>copy ..\..\lib\Win64\Debug\next-win64-4.0.0.dll Debug</Command>
+      <Command>copy ..\..\lib\Win64\Debug\next-win64-4.0.1.dll Debug</Command>
       <Message>Copying network next dll</Message>
-      <Outputs>Debug\next-win64-4.0.0.dll</Outputs>
+      <Outputs>Debug\next-win64-4.0.1.dll</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
