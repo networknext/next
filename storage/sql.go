@@ -12,11 +12,22 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 )
 
-// SQL can be backed up by PostgreSQL or SQLite3
+// SQL is an implementation of the Storer interface. It can
+// be backed up by PostgreSQL or SQLite3. There is a
+// dichotomy set in concrete, here. Using the routing.Relay
+// type as an example:
+//
+// 	Relay.ID     : Internal-use, calculated from public IP:Port
+//  Relay.RelayID: Database primary key for the relays table
+//
+// The PK is required to enforce business rules in the DB. The *IDs
+// maps below provide an easy look-up mechanism for the PK. This also
+// enforces the "unique" nature of the internally generated IDs (map
+// keys must be unique).
 type SQL struct {
 	Client *sql.DB
 	Logger log.Logger
@@ -28,8 +39,6 @@ type SQL struct {
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
-	SyncSequenceNumber int64
-
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
 	customerMutex       sync.RWMutex
@@ -37,6 +46,20 @@ type SQL struct {
 	sellerMutex         sync.RWMutex
 	datacenterMapMutex  sync.RWMutex
 	sequenceNumberMutex sync.RWMutex
+
+	datacenterIDs map[int64]uint64
+	relayIDs      map[int64]uint64
+	customerIDs   map[int64]string
+	buyerIDs      map[int64]uint64
+	sellerIDs     map[int64]uint64
+
+	datacenterIDsMutex sync.RWMutex
+	relayIDsMutex      sync.RWMutex
+	customerIDsMutex   sync.RWMutex
+	buyerIDsMutex      sync.RWMutex
+	sellerIDsMutex     sync.RWMutex
+
+	SyncSequenceNumber int64
 }
 
 // Customer retrieves a Customer record using the company code
@@ -79,7 +102,7 @@ func (db *SQL) Customers() []routing.Customer {
 }
 
 type sqlCustomer struct {
-	Code                   string
+	ID                     int64
 	Name                   string
 	AutomaticSignInDomains string
 	Active                 bool
@@ -195,6 +218,20 @@ func (db *SQL) Buyers() []routing.Buyer {
 	return buyers
 }
 
+type sqlBuyer struct {
+	IsLiveCustomer           bool
+	Name                     string
+	SdkVersion3PublicKeyData []byte
+	PublicKeyDataString      string
+	SdkVersion3PublicKeyID   int64
+	CompanyCode              string
+	// HexID                    string // needed for resolving datacenter map refs
+	// Customer                 string // needed for resolving customer refs
+	// banned_users integer not null,
+	// route_shader integer not null,
+	// rs_internal_config integer,
+}
+
 // AddBuyer adds the provided buyer to storage and returns an error if the buyer could not be added.
 func (db *SQL) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
 	return nil
@@ -239,8 +276,8 @@ func (db *SQL) Sellers() []routing.Seller {
 }
 
 type sqlSeller struct {
-	IngressPriceNibblinsPerGB int64 `firestore:"pricePublicIngressNibblins"`
-	EgressPriceNibblinsPerGB  int64 `firestore:"pricePublicEgressNibblins"`
+	IngressPriceNibblinsPerGB int64
+	EgressPriceNibblinsPerGB  int64
 }
 
 // The seller_id is reqired by the schema. The client interface must already have a
@@ -290,7 +327,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding datacenter", "err", err)
+		level.Error(db.Logger).Log("during", "error adding seller", "err", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
@@ -378,6 +415,30 @@ func (db *SQL) Relays() []routing.Relay {
 
 	sort.Slice(relays, func(i int, j int) bool { return relays[i].ID < relays[j].ID })
 	return relays
+}
+
+type sqlRelay struct {
+	Name               string
+	PublicIP           string // []byte?
+	PublicIPPort       int64
+	PublicKey          []byte
+	UpdateKey          []byte
+	NICSpeedMbps       int64
+	IncludedBandwithGB int64
+	DatacenterID       int64
+	ManagementIP       string // []byte?
+	SSHUser            string
+	SSHPort            int64
+	State              string
+	MaxSessions        int64
+	MRC                int64
+	Overage            int64
+	BWRule             string
+	ContractTerm       int64
+	StartDate          time.Time
+	EndDate            time.Time
+	MachineType        string
+	RelayID            int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -485,6 +546,7 @@ func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 	db.sequenceNumberMutex.RLock()
 	localSeqNum := db.SyncSequenceNumber
 	db.sequenceNumberMutex.RUnlock()
+	fmt.Printf("db.SyncSequenceNumber: %d\n", db.SyncSequenceNumber)
 
 	if localSeqNum < sequenceNumber {
 		db.sequenceNumberMutex.Lock()
@@ -541,92 +603,6 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 	return nil
 }
 
-// SyncLoop is a helper method that calls Sync
-func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
-	if err := db.Sync(ctx); err != nil {
-		level.Error(db.Logger).Log("during", "SyncLoop", "err", err)
-	}
-
-	for {
-		select {
-		case <-c:
-			if err := db.Sync(ctx); err != nil {
-				level.Error(db.Logger).Log("during", "SyncLoop", "err", err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-// Sync is a utility function that calls the individual sync* methods
-func (db *SQL) Sync(ctx context.Context) error {
-
-	seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
-	if err != nil {
-		return err
-	}
-
-	if !seqNumberNotInSync {
-		return nil
-	}
-
-	db.sequenceNumberMutex.Lock()
-	db.SyncSequenceNumber = value
-	db.sequenceNumberMutex.Unlock()
-
-	var outerErr error
-	var wg sync.WaitGroup
-	wg.Add(6)
-
-	go func() {
-
-		if err := db.syncRelays(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync relays: %v", err)
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		if err := db.syncCustomers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync customers: %v", err)
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		if err := db.syncBuyers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		if err := db.syncSellers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		if err := db.syncDatacenters(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		if err := db.syncDatacenterMaps(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
-		}
-		wg.Done()
-	}()
-
-	wg.Wait()
-
-	return outerErr
-}
-
 type sqlDatacenter struct {
 	ID            int64
 	Name          string
@@ -636,56 +612,6 @@ type sqlDatacenter struct {
 	SupplierName  string
 	StreetAddress string
 	SellerID      int64
-}
-
-func (db *SQL) syncDatacenters(ctx context.Context) error {
-
-	var sql bytes.Buffer
-	var dc sqlDatacenter
-	datacenters := make(map[uint64]routing.Datacenter)
-
-	sql.Write([]byte("select id, enabled, latitude, longitude,"))
-	sql.Write([]byte("supplier_name, street_address, seller_id from datacenters"))
-
-	rows, err := db.Client.QueryContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext returned an error: %v\n", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		err = rows.Scan(&dc.ID, // TODO: Add PK to routing.Datacenter
-			&dc.Name,
-			&dc.Enabled,
-			&dc.Latitude,
-			&dc.Longitude,
-			&dc.SupplierName,
-			&dc.StreetAddress,
-			&dc.SellerID,
-		)
-
-		did := crypto.HashID(dc.Name)
-		datacenters[did] = routing.Datacenter{
-			ID:      did,
-			Name:    dc.Name,
-			Enabled: dc.Enabled,
-			Location: routing.Location{
-				Latitude:  dc.Latitude,
-				Longitude: dc.Longitude,
-			},
-			SupplierName: dc.SupplierName,
-			SellerID:     dc.SellerID,
-		}
-	}
-
-	db.datacenterMutex.Lock()
-	db.datacenters = datacenters
-	db.datacenterMutex.Unlock()
-
-	level.Info(db.Logger).Log("during", "syncDatacenters", "num", len(db.datacenters))
-
-	return nil
 }
 
 // AddDatacenter adds the provided datacenter to storage. It enforces business rule
@@ -754,18 +680,81 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	return nil
 }
 
-func (db *SQL) syncRelays(ctx context.Context) error {
-	return nil
+type sqlRouteShader struct {
+	ABTest                    bool
+	AcceptableLatency         int64
+	AcceptablePacketLoss      float64
+	BandwidthEnvelopeDownKbps int64
+	BandwidthEnvelopeUpKbps   int64
+	DisableNetworkNext        bool
+	DisplayName               string
+	LatencyThreshold          int64
+	Multipath                 bool
+	ProMode                   bool
+	ReduceLatency             bool
+	ReducePacketLoss          bool
+	SelectionPercent          int64
 }
-func (db *SQL) syncBuyers(ctx context.Context) error {
-	return nil
-}
-func (db *SQL) syncSellers(ctx context.Context) error {
-	return nil
-}
-func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
-	return nil
-}
-func (db *SQL) syncCustomers(ctx context.Context) error {
-	return nil
+
+// GetRouteShaderForBuyerID TODO: will need to either return a slice of routeshaders or accept another
+// arg - buyerID returns (can return) multiple records.
+func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (core.RouteShader, error) {
+	var sql bytes.Buffer
+	var coreRS core.RouteShader
+
+	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
+	sql.Write([]byte("reduce_latency, reduce_packet_loss, selection_percent, from route_shaders"))
+	sql.Write([]byte("where buyer_id=$1"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		fmt.Printf("GetRouteShaderForBuyerID() QueryContext returned an error: %v\n", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var rs sqlRouteShader
+
+		err := rows.Scan(
+			&rs.ABTest,
+			&rs.AcceptableLatency,
+			&rs.AcceptablePacketLoss,
+			&rs.BandwidthEnvelopeDownKbps,
+			&rs.BandwidthEnvelopeUpKbps,
+			&rs.DisableNetworkNext,
+			&rs.LatencyThreshold,
+			&rs.Multipath,
+			&rs.ProMode,
+			&rs.ReduceLatency,
+			&rs.ReducePacketLoss,
+			&rs.SelectionPercent,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "rows.Scan returned an error", "err", err)
+			fmt.Printf("GetRouteShaderForBuyerID() rows.Scan returned an error: %v\n", err)
+		}
+
+		coreRS = core.RouteShader{
+			ABTest:                    rs.ABTest,
+			AcceptableLatency:         int32(rs.AcceptableLatency),
+			AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
+			BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
+			BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
+			DisableNetworkNext:        rs.DisableNetworkNext,
+			LatencyThreshold:          int32(rs.LatencyThreshold),
+			Multipath:                 rs.Multipath,
+			ProMode:                   rs.ProMode,
+			ReduceLatency:             rs.ReduceLatency,
+			ReducePacketLoss:          rs.ReducePacketLoss,
+			SelectionPercent:          int(rs.SelectionPercent),
+		}
+		coreRS.BannedUsers = make(map[uint64]bool) // not implemented yet
+
+		return coreRS, nil
+
+	}
+
+	return coreRS, &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%x", buyerID)}
 }

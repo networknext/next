@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
@@ -28,18 +29,16 @@ func TestSQL(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	// NewSQLStorage syncs the local sync number from the remote
+	fmt.Println("Starting SQL tests.")
+
+	// NewSQLStorage syncs the local sync number from the remote and
+	// runs all the sync*() methods
 	db, err := storage.NewSQLStorage(ctx, logger)
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
-	t.Run("Sync", func(t *testing.T) {
-		sync, _, err := db.CheckSequenceNumber(ctx)
-		assert.NoError(t, err)
-		assert.Equal(t, true, sync)
-	})
-
+	// NewSQLStorage() Sync() above sets up seq number
 	t.Run("Do Not Sync", func(t *testing.T) {
-		// CheckSequenceNumber() (above) syncs local to remote
 		sync, _, err := db.CheckSequenceNumber(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, false, sync)
@@ -51,11 +50,6 @@ func TestSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, true, sync)
 	})
-
-	// Due to the foreign key constraints, we can't add a
-	// datacenter if there isn't a relevant extant seller, and
-	// we can't add a seller if there isn't a relevant extant
-	// customer
 
 	// TODO: test "not null" constraints and failure modes
 	t.Run("AddCustomer", func(t *testing.T) {
@@ -73,11 +67,16 @@ func TestSQL(t *testing.T) {
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
 			CompanyCode:               "Compcode",
+			ID:                        "sellerID",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 		}
 
 		err = db.AddSeller(ctx, seller)
+		assert.NoError(t, err)
+
+		newSeller, err := db.Seller("sellerID")
+		fmt.Printf("newSeller: %v\n", newSeller)
 		assert.NoError(t, err)
 	})
 
@@ -91,5 +90,9 @@ func TestSQL(t *testing.T) {
 		// id := sellers[0]
 
 	})
+
+	// t.Run("syncDatacenters", func(t *testing.T) {
+	// 	err =
+	// })
 
 }

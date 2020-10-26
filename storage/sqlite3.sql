@@ -135,7 +135,10 @@ create table datacenter_maps (
 create table metadata (
   sync_sequence_number bigint not null
 );
--- File generation: 2020/10/22 11:01:04
+
+-- enforce primary keys
+PRAGMA foreign_keys=1;
+-- File generation: 2020/10/23 13:19:54
 
 -- machine_types
 insert into machine_types values (0, 'none');
@@ -637,5 +640,4 @@ create table sellers (
 );
 INSERT INTO sellers SELECT id, public_egress_price, public_ingress_price, customer_id FROM sellers_backup;
 DROP TABLE sellers_backup;
-COMMIT;
 COMMIT;

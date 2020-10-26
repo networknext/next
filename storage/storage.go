@@ -174,12 +174,14 @@ func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
 			return nil, err
 		}
 		if pgsql {
+			fmt.Println("Creating PostgreSQL Storer.")
 			db, err = NewPostgreSQL(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
 			}
 		} else {
+			fmt.Println("Creating SQLite3 Storer.")
 			db, err = NewSQLite3(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)

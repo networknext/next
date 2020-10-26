@@ -76,25 +76,23 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			os.Exit(1)
 		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   customerID,
-			CompanyCode:          "local",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RouteShader:          routeShader,
-			InternalConfig:       internalConfig,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			ID:             customerID,
+			CompanyCode:    "local",
+			Live:           true,
+			PublicKey:      customerPublicKey,
+			RouteShader:    routeShader,
+			InternalConfig: internalConfig,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 			os.Exit(1)
 		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   0,
-			CompanyCode:          "ghost-army",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RouteShader:          routeShader,
-			InternalConfig:       internalConfig,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			ID:             0,
+			CompanyCode:    "ghost-army",
+			Live:           true,
+			PublicKey:      customerPublicKey,
+			RouteShader:    routeShader,
+			InternalConfig: internalConfig,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 			os.Exit(1)
