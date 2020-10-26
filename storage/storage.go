@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 )
 
@@ -178,7 +178,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 	switch db := db.(type) {
 	case *Firestore:
 		level.Info(logger).Log("msg", "adding sequence number to firestore emulator")
-		_, err := db.CheckSequenceNumber(ctx)
+		_, _, err := db.CheckSequenceNumber(ctx)
 		if err != nil {
 			level.Error(logger).Log("msg", "unable to check sequence number, attempting to reset value", "err", err)
 			if err := db.SetSequenceNumber(ctx, 0); err != nil {
@@ -290,9 +290,9 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			numRelays := uint64(10)
 			numRelays, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v\n", err))
+				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v", err))
 			}
-			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore\n", numRelays))
+			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore", numRelays))
 			for i := uint64(0); i < numRelays; i++ {
 				addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 				id := crypto.HashID(addr.String())
@@ -316,6 +316,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 					EndDate:        time.Now(),
 					Type:           routing.BareMetal,
 					State:          routing.RelayStateOffline,
+					NICSpeedMbps:   1000,
 				}); err != nil {
 					level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 					os.Exit(1)

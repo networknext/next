@@ -198,7 +198,7 @@ func main() {
 			topicName := "ping_stats"
 			subscriptionName := "ping_stats"
 
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
 			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
@@ -244,7 +244,7 @@ func main() {
 			topicName := "relay_stats"
 			subscriptionName := "relay_stats"
 
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
 			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)

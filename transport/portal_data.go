@@ -15,17 +15,20 @@ import (
 )
 
 const (
-	SessionCountDataVersion = 0
-	SessionDataVersion      = 0
-	SessionMetaVersion      = 0
-	SessionSliceVersion     = 0
-	SessionMapPointVersion  = 0
+	SessionCountDataVersion  = 0
+	SessionPortalDataVersion = 1
+	SessionMetaVersion       = 0
+	SessionSliceVersion      = 0
+	SessionMapPointVersion   = 0
 )
 
 type SessionPortalData struct {
 	Meta  SessionMeta     `json:"meta"`
 	Slice SessionSlice    `json:"slice"`
 	Point SessionMapPoint `json:"point"`
+
+	LargeCustomer bool `json:"largeCustomer"`
+	EverOnNext    bool `json:"everOnNext"`
 }
 
 func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
@@ -36,7 +39,7 @@ func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionPortalData] invalid read at version number")
 	}
 
-	if version > SessionDataVersion {
+	if version > SessionPortalDataVersion {
 		return fmt.Errorf("unknown session data version: %d", version)
 	}
 
@@ -82,6 +85,16 @@ func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 		return err
 	}
 
+	if version >= 1 {
+		if !encoding.ReadBool(data, &index, &s.LargeCustomer) {
+			return errors.New("[SessionPortalData] invalid read at large customer bool")
+		}
+
+		if !encoding.ReadBool(data, &index, &s.EverOnNext) {
+			return errors.New("[SessionPortalData] invalid read at ever on next bool")
+		}
+	}
+
 	return nil
 }
 
@@ -89,7 +102,7 @@ func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	data := make([]byte, s.Size())
 	index := 0
 
-	encoding.WriteUint32(data, &index, SessionDataVersion)
+	encoding.WriteUint32(data, &index, SessionPortalDataVersion)
 
 	metaBytes, err := s.Meta.MarshalBinary()
 	if err != nil {
@@ -115,11 +128,14 @@ func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, uint32(len(pointBytes)))
 	encoding.WriteBytes(data, &index, pointBytes, len(pointBytes))
 
+	encoding.WriteBool(data, &index, s.LargeCustomer)
+	encoding.WriteBool(data, &index, s.EverOnNext)
+
 	return data, nil
 }
 
 func (s *SessionPortalData) Size() uint64 {
-	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size()
+	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1 + 1
 }
 
 type RelayHop struct {
