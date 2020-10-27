@@ -102,22 +102,26 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
   // BUG: Re-routes valid users to the map when it should just refresh the page...
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
+    store.commit('UPDATE_CURRENT_PAGE', 'map');
+    (window as any).Intercom('update')
     next('/')
-    store.commit('UPDATE_CURRENT_PAGE', 'map')
     return
   }
   if (to.name === 'settings') {
-    store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
+    store.commit('UPDATE_CURRENT_PAGE', 'account-settings');
+    (window as any).Intercom('update')
     next('/settings/account')
     return
   }
   // Email is verified
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
+    store.commit('UPDATE_CURRENT_PAGE', 'map');
+    (window as any).Intercom('update')
     next('/')
-    store.commit('UPDATE_CURRENT_PAGE', 'map')
     return
   }
-  store.commit('UPDATE_CURRENT_PAGE', to.name)
+  store.commit('UPDATE_CURRENT_PAGE', to.name);
+  (window as any).Intercom('update')
   next()
 })
 

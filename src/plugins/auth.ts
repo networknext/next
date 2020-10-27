@@ -2,6 +2,7 @@ import store from '@/store'
 import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { flatMap } from 'lodash'
 
 export class AuthService {
   private clientID: string
@@ -90,7 +91,15 @@ export class AuthService {
           userProfile.auth0ID = authResult.sub
           userProfile.verified = authResult.email_verified
           userProfile.companyCode = companyCode
-          userProfile.newsletterConsent = newsletterConsent
+          userProfile.newsletterConsent = newsletterConsent;
+          (window as any).Intercom('boot', {
+            app_id: 'o6hvdumw',
+            email: email,
+            user_id: userProfile.auth0ID,
+            unsubscribed_from_emails: newsletterConsent,
+            avatar: authResult.picture,
+            company: companyCode
+          })
 
           if (query.includes('signup=true')) {
             store.commit('UPDATE_IS_SIGNUP', true)
@@ -112,7 +121,11 @@ export class AuthService {
         })
       this.processAuthentication()
       router.push('/')
+      return
     }
+    (window as any).Intercom('boot', {
+      app_id: 'o6hvdumw'
+    })
   }
 }
 
