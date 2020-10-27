@@ -1732,45 +1732,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "set",
-				ShortUsage: "next shader set <buyer ID> [filepath]",
-				ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers\n"), 0)
-					}
-
-					jsonData := readJSONData("buyers", args[1:])
-
-					// Unmarshal the JSON and create the RoutingRuleSettings struct
-					var rrs routing.RoutingRulesSettings
-					if err := json.Unmarshal(jsonData, &rrs); err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not unmarshal route shader: %v\n", err), 1)
-					}
-
-					// Set the route shader in storage
-					setRoutingRulesSettings(rpcClient, env, args[0], rrs)
-					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next shader set example",
-						ShortHelp:  "Displays an example route shader for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal route shader struct"), 0)
-							}
-
-							fmt.Println("Example JSON schema to set a new route shader:")
-							fmt.Println(string(jsonBytes))
-							return nil
-						},
-					},
-				},
-			},
-			{
 				Name:       "id",
 				ShortUsage: "next shader id <buyer ID>",
 				ShortHelp:  "Retrieve route shader information for the given buyer ID",
