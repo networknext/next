@@ -26,6 +26,7 @@ import (
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 
+	"cloud.google.com/go/bigtable"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 )
@@ -201,47 +202,57 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Start portal cruncher subscriber
-	var portalSubscriber pubsub.Subscriber
-	{
-		cruncherPort := envvar.Get("CRUNCHER_PORT", "5555")
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
-			return 1
-		}
-
-		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
-			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
-			return 1
-		}
-
-		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
-			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
-			return 1
-		}
-
-		portalSubscriber = portalCruncherSubscriber
-	}
-
-	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
+	// Check to see if should enable Bigtable
+	useBT, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
+	// Get Bigtable client, table, and column family name
+	var btClient *storage.BigTable
+	var btTbl *bigtable.Table
+	var btCfNames []string
+
+	if useBT {
+		level.Info(logger).Log("msg", "Bigtable insertion is enabled")
+
+		// Setup Bigtable
+		btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+		if btEmulatorOK {
+			// Emulator is used for local testing
+			// Requires that emulator has been started in another terminal to work as intended
+			gcpProjectID = "local"
+			level.Info(logger).Log("msg", "Detected Bigtable emulator")
+		}
+
+		if gcpOK || btEmulatorOK {
+			btClient, btTbl, btCfNames, err = setupBigtable(ctx, gcpProjectID, logger)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+		} else {
+			level.Error(logger).Log("msg", "Could not find $BIGTABLE_EMULATOR_HOST for local testing. Include an export statement in the Makefile.")
+			return 1
+		}
+	}
+
+	// Start redis portal cruncher subscriber
+	redisCruncherPort := envvar.Get("CRUNCHER_PORT_REDIS", "5555")
+	redisPortalSubscriber, err := getPortalSubscriber(logger, redisCruncherPort)
+	if err != nil {
+		return 1
+	}
+
 	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+	
+	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -253,13 +264,35 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	messageChan := make(chan []byte, messageChanSize)
+	redisMessageChan := make(chan []byte, messageChanSize)
+	
+
+	var btPortalSubscriber pubsub.Subscriber
+	var btGoroutineCount int
+	var btMessageChan chan []byte
+	if useBT {
+		// Start Bigtable portal cruncher subscriber
+		btCruncherPort := envvar.Get("CRUNCHER_PORT_BIGTABLE", "5556")
+		btPortalSubscriber, err = getPortalSubscriber(logger, btCruncherPort)
+		if err != nil {
+			return 1
+		}
+		
+		btGoroutineCount, err = envvar.GetInt("CRUNCHER_BIGTABLE_GOROUTINE_COUNT", 1)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		btMessageChan = make(chan []byte, messageChanSize)
+	}
 
 	// Start receive loops
 	for i := 0; i < receiveGoroutineCount; i++ {
+		// Redis portal subscriber
 		go func() {
 			for {
-				if err := ReceivePortalMessage(portalSubscriber, portalCruncherMetrics, messageChan); err != nil {
+				if err := ReceivePortalMessage(redisPortalSubscriber, portalCruncherMetrics, redisMessageChan); err != nil {
 					switch err.(type) {
 					case *ErrReceiveMessage:
 						level.Error(logger).Log("err", err)
@@ -270,6 +303,25 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
+
+		if useBT {
+			// Bigtable portal subscriber
+			go func() {
+				for {
+					if err := ReceivePortalMessage(btPortalSubscriber, portalCruncherMetrics, btMessageChan); err != nil {
+						switch err.(type) {
+						case *ErrReceiveMessage:
+							level.Error(logger).Log("err", err)
+							os.Exit(1) // todo: don't os.Exit() here, but somehow quit
+						case *ErrChannelFull:
+							level.Error(logger).Log("err", err)
+						}
+					}
+				}
+			}()
+			// Increment i here also to account for Bigtable goroutine
+			i++
+		}
 	}
 
 	redisHostTopSessions := envvar.Get("REDIS_HOST_TOP_SESSIONS", "127.0.0.1:6379")
@@ -292,13 +344,21 @@ func mainReturnWithCode() int {
 					os.Exit(1) // todo: don't exit here but find some way to return
 				}
 
-				portalDataBuffer := make([]transport.SessionPortalData, 0)
+				redisPortalDataBuffer := make([]transport.SessionPortalData, 0)
 
 				flushTime := time.Now()
 				pingTime := time.Now()
 
 				for {
-					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, messageChan, portalDataBuffer, flushTime, pingTime, redisFlushCount); err != nil {
+					// Pull the message out of the channel
+					sessionData, err := PullMessage(redisMessageChan)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
+
+					// Handle Redis functionality
+					if err := RedisHandler(clientTopSessions, clientSessionMap, clientSessionMeta, clientSessionSlices, sessionData, redisPortalDataBuffer, flushTime, pingTime, redisFlushCount); err != nil {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
@@ -306,6 +366,33 @@ func mainReturnWithCode() int {
 			}()
 		}
 	}
+
+	// Start Bigtable insertion loop
+	if useBT {
+		for i := 0; i < btGoroutineCount; i++ {
+			go func() {
+				
+				btPortalDataBuffer := make([]transport.SessionPortalData, 0)
+
+				for {
+					// Pull the message out of the channel
+					sessionData, err := PullMessage(btMessageChan)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
+
+					// Insert data into bigtable
+					if err := BTHandler(ctx, btClient, btTbl, btCfNames, sessionData, btPortalDataBuffer); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't exit here but find some way to return
+					}
+
+				}
+			}()
+		}
+	}
+
 
 	// Start HTTP server
 	{
@@ -332,6 +419,9 @@ func mainReturnWithCode() int {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	// Close the Bigtable client
+	btClient.Close()
 
 	return 0
 }
@@ -375,21 +465,62 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 	return nil
 }
 
+func BTHandler(	ctx context.Context,
+				bt *storage.BigTable,
+				btTbl *bigtable.Table,
+				btCfNames []string,
+				sessionData transport.SessionPortalData,
+				portalDataBuffer []transport.SessionPortalData) error {
+
+	portalDataBuffer = append(portalDataBuffer, sessionData)
+
+	for j := range portalDataBuffer {
+		meta := &portalDataBuffer[j].Meta
+		slice := &portalDataBuffer[j].Slice
+
+		// Use customer (buyer) ID and user hash as our row key prefixes
+		// Then have session ID as the identifier in the row key to indicate what to group by
+		sessionRowKey := fmt.Sprintf("%d#%d", meta.BuyerID, meta.ID)
+		userRowKey := fmt.Sprintf("%d#%d", meta.UserHash, meta.ID)
+
+		rowKeys := []string{sessionRowKey, userRowKey}
+
+		// Have 2 columns under 1 column family
+		// 1) Meta
+		// 2) Slice
+
+		// Create byte slices of the session data
+		metaBinary, err := meta.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		sliceBinary, err := slice.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		// Insert session data into Bigtable
+		if err := bt.InsertSessionData(ctx, btTbl, btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
+			return err
+		}
+	}
+
+	portalDataBuffer = portalDataBuffer[:0]
+
+	return nil
+}
+
+
 func RedisHandler(
 	clientTopSessions storage.RedisClient,
 	clientSessionMap storage.RedisClient,
 	clientSessionMeta storage.RedisClient,
 	clientSessionSlices storage.RedisClient,
-	messageChan chan []byte,
+	sessionData transport.SessionPortalData,
 	portalDataBuffer []transport.SessionPortalData,
 	flushTime time.Time,
 	pingTime time.Time,
 	redisFlushCount int) error {
-
-	sessionData, err := PullMessage(messageChan)
-	if err != nil {
-		return err
-	}
 
 	portalDataBuffer = append(portalDataBuffer, sessionData)
 
@@ -572,4 +703,91 @@ func pingRedis(clientTopSessions storage.RedisClient, clientSessionMap storage.R
 	}
 
 	return nil
+}
+
+// Provides a bigtable client, table, and slice of column family names
+func setupBigtable(ctx context.Context, gcpProjectID string, logger log.Logger) (*storage.BigTable, *bigtable.Table, []string, error){
+	// Get Bigtable instance ID
+	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+
+	// Get the table name
+	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+	// Get the column family names and put them in a slice
+	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	btCfNames := []string{btCfName}
+
+	// Create a bigtable admin for setup
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Check if the table exists in the instance
+	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Verify if the table needed exists
+	if !tableExists {
+		// Create a table with the given name and column families
+		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
+			return nil, nil, nil, err
+		}
+
+		// Get the max number of days the data should be kept in Bigtable
+		maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		// Set a garbage collection policy of 90 days
+		maxAge := time.Hour * time.Duration(24*maxDays)
+		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	// Close the admin client
+	if err = btAdmin.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Create a standard client for writing to the table
+	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	btTbl := btClient.GetTable(btTableName)
+
+	return btClient, btTbl, btCfNames, nil
+}
+
+func getPortalSubscriber(logger log.Logger, cruncherPort string) (pubsub.Subscriber, error) {
+
+	receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return nil, err
+	}
+
+	portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
+	if err != nil {
+		level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
+		return nil, err
+	}
+
+	if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
+		level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
+		return nil, err
+	}
+
+	if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
+		level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
+		return nil, err
+	}
+
+	return portalCruncherSubscriber, nil
 }
