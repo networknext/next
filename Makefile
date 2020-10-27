@@ -224,12 +224,6 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
-# Max age limit for data stored in Bigtable
-ifndef GOOGLE_BIGTABLE_MAX_AGE_DAYS
-export GOOGLE_BIGTABLE_MAX_AGE_DAYS = 90
-endif
-
-
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
