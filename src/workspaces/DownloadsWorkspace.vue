@@ -37,12 +37,12 @@
             href="#"
             onclick="window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')"
             class="btn btn-primary m-1 btn-width"
-            title="v3.4.6 Documentation"
+            title="Documentation"
           >
             <font-awesome-icon icon="download"
                                 class="fa-w-16 fa-fw"
             />
-            v3.4.6 Documentation
+            Documentation
           </a>
       </div>
       <h5 class="card-title">

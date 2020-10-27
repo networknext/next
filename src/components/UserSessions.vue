@@ -70,6 +70,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { NavigationGuardNext, Route } from 'vue-router'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
@@ -85,6 +86,7 @@ export default class UserSessions extends Vue {
   private searchID: string
   private message: string
   private alertType: string
+  private unwatch: any
 
   constructor () {
     super()
@@ -106,6 +108,21 @@ export default class UserSessions extends Vue {
     }
   }
 
+  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+    if (this.sessionLoop) {
+      clearInterval(this.sessionLoop)
+    }
+    this.showSessions = false
+    this.searchID = to.params.pathMatch || ''
+    if (this.searchID !== '') {
+      this.fetchUserSessions()
+      this.sessionLoop = setInterval(() => {
+        this.fetchUserSessions()
+      }, 10000)
+    }
+    next()
+  }
+
   private fetchUserSessions () {
     if (this.searchID === '') {
       return
@@ -113,7 +130,7 @@ export default class UserSessions extends Vue {
 
     // TODO: Figure out how to get rid of this. this.$apiService should be possible...
     // HACK: This is a hack to get tests to work properly
-    this.$apiService.fetchUserSessions({ user_hash: this.searchID })
+    this.$apiService.fetchUserSessions({ user_id: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
         this.showSessions = true

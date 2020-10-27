@@ -20,7 +20,7 @@
             <th>
               <span>Session ID</span>
             </th>
-            <th v-if="!$store.getters.isAnonymous">
+            <th v-if="$store.getters.isAdmin">
               <span>User Hash</span>
             </th>
             <th>
@@ -59,7 +59,7 @@
                 class="text-dark fixed-width"
               >{{ session.id }}</router-link>
             </td>
-            <td v-if="!$store.getters.isAnonymous">
+            <td v-if="$store.getters.isAdmin">
               <router-link
                 v-bind:to="`/user-tool/${session.user_hash}`"
                 class="text-dark fixed-width"
