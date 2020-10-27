@@ -202,14 +202,11 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Setup Bigtable
-
-	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
-	if btEmulatorOK {
-		// Emulator is used for local testing
-		// Requires that emulator has been started in another terminal to work as intended
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected bigtable emulator")
+	// Check to see if should enable Bigtable
+	useBT, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	// Get Bigtable client, table, and column family name
@@ -217,91 +214,35 @@ func mainReturnWithCode() int {
 	var btTbl *bigtable.Table
 	var btCfNames []string
 
-	if gcpOK || btEmulatorOK {
-		// Get Bigtable instance ID
-		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+	if useBT {
+		level.Info(logger).Log("msg", "Bigtable insertion is enabled")
 
-		// Get the table name
-		btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
-
-		// Get the column family names and put them in a slice
-		btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
-		btCfNames = []string{btCfName}
-
-		// Create a bigtable admin for setup
-		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
+		// Setup Bigtable
+		btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+		if btEmulatorOK {
+			// Emulator is used for local testing
+			// Requires that emulator has been started in another terminal to work as intended
+			gcpProjectID = "local"
+			level.Info(logger).Log("msg", "Detected Bigtable emulator")
 		}
 
-		// Check if the table exists in the instance
-		tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		// Verify if the table needed exists
-		if !tableExists {
-			// Create a table with the given name and column families
-			if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			// Get the max number of days the data should be kept in Bigtable
-			maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+		if gcpOK || btEmulatorOK {
+			btClient, btTbl, btCfNames, err = setupBigtable(ctx, gcpProjectID, logger)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				return 1
 			}
 
-			// Set a garbage collection policy of 90 days
-			maxAge := time.Hour * time.Duration(24*maxDays)
-			if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-		}
-
-		// Close the admin client
-		if err = btAdmin.Close(); err != nil {
-			level.Error(logger).Log("err", err)
+		} else {
+			level.Error(logger).Log("msg", "Could not find $BIGTABLE_EMULATOR_HOST for local testing. Include an export statement in the Makefile.")
 			return 1
 		}
-
-		// Create a standard client for writing to the table
-		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		btTbl = btClient.GetTable(btTableName)
-
-	} else {
-		level.Error(logger).Log("msg", "Could not find $BIGTABLE_EMULATOR_HOST for local testing. Include an export statement in the Makefile.")
-		return 1
 	}
 
-	// Start portal cruncher subscriber
+	// Start redis portal cruncher subscriber
 	redisCruncherPort := envvar.Get("CRUNCHER_PORT_REDIS", "5555")
 	redisPortalSubscriber, err := getPortalSubscriber(logger, redisCruncherPort)
 	if err != nil {
-		return 1
-	}
-
-	btCruncherPort := envvar.Get("CRUNCHER_PORT_BIGTABLE", "5556")
-	btPortalSubscriber, err := getPortalSubscriber(logger, btCruncherPort)
-	if err != nil {
-		return 1
-	}
-	
-
-	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
-	if err != nil {
-		level.Error(logger).Log("err", err)
 		return 1
 	}
 
@@ -310,8 +251,8 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-
-	btGoroutineCount, err := envvar.GetInt("CRUNCHER_BIGTABLE_GOROUTINE_COUNT", 1)
+	
+	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -324,10 +265,30 @@ func mainReturnWithCode() int {
 	}
 
 	redisMessageChan := make(chan []byte, messageChanSize)
-	btMessageChan := make(chan []byte, messageChanSize)
+	
+
+	var btPortalSubscriber pubsub.Subscriber
+	var btGoroutineCount int
+	var btMessageChan chan []byte
+	if useBT {
+		// Start Bigtable portal cruncher subscriber
+		btCruncherPort := envvar.Get("CRUNCHER_PORT_BIGTABLE", "5556")
+		btPortalSubscriber, err = getPortalSubscriber(logger, btCruncherPort)
+		if err != nil {
+			return 1
+		}
+		
+		btGoroutineCount, err = envvar.GetInt("CRUNCHER_BIGTABLE_GOROUTINE_COUNT", 1)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		btMessageChan = make(chan []byte, messageChanSize)
+	}
 
 	// Start receive loops
-	for i := 0; i < receiveGoroutineCount; i += 2 {
+	for i := 0; i < receiveGoroutineCount; i++ {
 		// Redis portal subscriber
 		go func() {
 			for {
@@ -342,20 +303,25 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
-		// Bigtable portal subscriber
-		go func() {
-			for {
-				if err := ReceivePortalMessage(btPortalSubscriber, portalCruncherMetrics, btMessageChan); err != nil {
-					switch err.(type) {
-					case *ErrReceiveMessage:
-						level.Error(logger).Log("err", err)
-						os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-					case *ErrChannelFull:
-						level.Error(logger).Log("err", err)
+
+		if useBT {
+			// Bigtable portal subscriber
+			go func() {
+				for {
+					if err := ReceivePortalMessage(btPortalSubscriber, portalCruncherMetrics, btMessageChan); err != nil {
+						switch err.(type) {
+						case *ErrReceiveMessage:
+							level.Error(logger).Log("err", err)
+							os.Exit(1) // todo: don't os.Exit() here, but somehow quit
+						case *ErrChannelFull:
+							level.Error(logger).Log("err", err)
+						}
 					}
 				}
-			}
-		}()
+			}()
+			// Increment i here also to account for Bigtable goroutine
+			i++
+		}
 	}
 
 	redisHostTopSessions := envvar.Get("REDIS_HOST_TOP_SESSIONS", "127.0.0.1:6379")
@@ -402,7 +368,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Start Bigtable insertion loop
-	{
+	if useBT {
 		for i := 0; i < btGoroutineCount; i++ {
 			go func() {
 				
@@ -421,6 +387,7 @@ func mainReturnWithCode() int {
 						level.Error(logger).Log("err", err)
 						os.Exit(1) // todo: don't exit here but find some way to return
 					}
+
 				}
 			}()
 		}
@@ -736,6 +703,66 @@ func pingRedis(clientTopSessions storage.RedisClient, clientSessionMap storage.R
 	}
 
 	return nil
+}
+
+// Provides a bigtable client, table, and slice of column family names
+func setupBigtable(ctx context.Context, gcpProjectID string, logger log.Logger) (*storage.BigTable, *bigtable.Table, []string, error){
+	// Get Bigtable instance ID
+	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+
+	// Get the table name
+	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+	// Get the column family names and put them in a slice
+	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	btCfNames := []string{btCfName}
+
+	// Create a bigtable admin for setup
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Check if the table exists in the instance
+	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Verify if the table needed exists
+	if !tableExists {
+		// Create a table with the given name and column families
+		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
+			return nil, nil, nil, err
+		}
+
+		// Get the max number of days the data should be kept in Bigtable
+		maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		// Set a garbage collection policy of 90 days
+		maxAge := time.Hour * time.Duration(24*maxDays)
+		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	// Close the admin client
+	if err = btAdmin.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Create a standard client for writing to the table
+	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	btTbl := btClient.GetTable(btTableName)
+
+	return btClient, btTbl, btCfNames, nil
 }
 
 func getPortalSubscriber(logger log.Logger, cruncherPort string) (pubsub.Subscriber, error) {
