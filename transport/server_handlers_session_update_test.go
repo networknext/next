@@ -1405,12 +1405,17 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	relayAddr1External, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
 	assert.NoError(t, err)
-	relayAddr2External, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	relayAddr1Internal, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
 	assert.NoError(t, err)
 
-	relayAddr1Internal, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+	relayAddr2External, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
 	assert.NoError(t, err)
 	relayAddr2Internal, err := net.ResolveUDPAddr("udp", "127.0.0.1:10003")
+	assert.NoError(t, err)
+
+	relayAddr3External, err := net.ResolveUDPAddr("udp", "127.0.0.1:10004")
+	assert.NoError(t, err)
+	relayAddr3Internal, err := net.ResolveUDPAddr("udp", "127.0.0.1:10005")
 	assert.NoError(t, err)
 
 	publicKey := make([]byte, crypto.KeySize)
@@ -1436,6 +1441,16 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	err = storer.AddRelay(context.Background(), routing.Relay{
+		ID:           3,
+		Addr:         *relayAddr3External,
+		InternalAddr: *relayAddr3Internal,
+		PublicKey:    publicKey,
+		Seller:       routing.Seller{ID: "seller"},
+		Datacenter:   routing.Datacenter{ID: 10},
+	})
+	assert.NoError(t, err)
+
 	sessionDataStruct := transport.SessionData{
 		Version:         transport.SessionDataVersion,
 		SessionID:       1111,
@@ -1451,7 +1466,9 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	copy(sessionDataArray[:], sessionDataSlice)
 
 	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:57247")
+	assert.NoError(t, err)
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -1480,25 +1497,49 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	}
 
 	routeMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1},
-		RelayIDs:           []uint64{1, 2},
-		RelayAddresses:     []net.UDPAddr{*relayAddr1External, *relayAddr2External},
-		RelayNames:         []string{"test.relay.1", "test.relay.2"},
-		RelayLatitudes:     []float32{90, 89},
-		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1, 3: 2},
+		RelayIDs:           []uint64{1, 2, 3},
+		RelayAddresses:     []net.UDPAddr{*relayAddr1External, *relayAddr2External, *relayAddr3External},
+		RelayNames:         []string{"test.relay.1", "test.relay.2", "test.relay.3"},
+		RelayLatitudes:     []float32{90, 89, 88},
+		RelayLongitudes:    []float32{180, 179, 178},
+		RelayDatacenterIDs: []uint64{10, 10, 10},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
 				NumRoutes:      int32(core.TriMatrixLength(2)),
 				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
-				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
+				RouteNumRelays: [core.MaxRoutesPerEntry]int32{3},
 				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
 					{
-						0, 1,
+						0, 1, 2,
 					},
 				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1, 2)},
+			},
+			{
+				DirectCost:     65,
+				NumRoutes:      int32(core.TriMatrixLength(2)),
+				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
+				RouteNumRelays: [core.MaxRoutesPerEntry]int32{3},
+				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
+					{
+						0, 1, 2,
+					},
+				},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1, 2)},
+			},
+			{
+				DirectCost:     65,
+				NumRoutes:      int32(core.TriMatrixLength(2)),
+				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
+				RouteNumRelays: [core.MaxRoutesPerEntry]int32{3},
+				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
+					{
+						0, 1, 2,
+					},
+				},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1, 2)},
 			},
 		},
 	}
@@ -1517,18 +1558,18 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES*4)
 	routeAddresses := make([]*net.UDPAddr, 0)
-	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2External, serverAddr)
+	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3External, serverAddr)
 	routePublicKeys := make([][]byte, 0)
-	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
+	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2External},
-		NumTokens:          4,
+		NumNearRelays:      3,
+		NearRelayIDs:       []uint64{1, 2, 3},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2External, *relayAddr3External},
+		NumTokens:          5,
 		Tokens:             tokenData,
 	}
 
@@ -1539,9 +1580,9 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
-		RouteNumRelays:  2,
-		RouteCost:       45,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteNumRelays:  3,
+		RouteCost:       50,
+		RouteRelayIDs:   [routing.MaxRelays]uint64{1, 2, 3},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
