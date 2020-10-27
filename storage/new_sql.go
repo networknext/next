@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -57,7 +58,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	}
 
 	// populate the db with some data from dev
-	file, err := ioutil.ReadFile("sqlite3.sql")
+	file, err := ioutil.ReadFile("sqlite3-empty.sql")
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
 		return nil, err
@@ -429,8 +430,79 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	return nil
 }
 
+type sqlBuyer struct {
+	ID                       uint64
+	IsLiveCustomer           bool
+	Name                     string
+	SdkVersion3PublicKeyData []byte
+	PublicKeyDataString      string
+	SdkVersion3PublicKeyID   int64
+	CompanyCode              string
+	BuyerID                  int64 // sql PK
+	CustomerID               int64 // sql PK
+}
+
 func (db *SQL) syncBuyers(ctx context.Context) error {
 	fmt.Println("SQL syncBuyers()")
+
+	var sql bytes.Buffer
+	var buyer sqlBuyer
+
+	buyers := make(map[uint64]routing.Buyer)
+	buyerIDs := make(map[int64]uint64)
+
+	sql.Write([]byte("select id, is_live_customer, sdk3_public_key_data, "))
+	sql.Write([]byte("sdk3_public_key_id, customer_id "))
+	sql.Write([]byte("from buyers"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		fmt.Printf("QueryContext returned an error: %v\n", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&buyer.BuyerID,
+			&buyer.IsLiveCustomer,
+			&buyer.SdkVersion3PublicKeyData,
+			&buyer.SdkVersion3PublicKeyID,
+			&buyer.CustomerID,
+		)
+		buyer.ID = binary.LittleEndian.Uint64(buyer.SdkVersion3PublicKeyData[:8])
+
+		buyerIDs[buyer.BuyerID] = buyer.ID
+
+		rs, err := db.GetRouteShaderForBuyerID(ctx, buyer.BuyerID)
+		if err != nil {
+			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
+		}
+
+		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.BuyerID)
+		if err != nil {
+			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
+		}
+
+		buyers[buyer.ID] = routing.Buyer{
+			CompanyCode:    db.customerIDs[buyer.CustomerID],
+			ID:             buyer.ID,
+			Live:           buyer.IsLiveCustomer,
+			PublicKey:      buyer.SdkVersion3PublicKeyData,
+			RouteShader:    rs,
+			InternalConfig: ic,
+		}
+
+	}
+
+	db.buyerIDsMutex.Lock()
+	db.buyerIDs = buyerIDs
+	db.buyerIDsMutex.Unlock()
+
+	db.buyerMutex.Lock()
+	db.buyers = buyers
+	db.buyerMutex.Unlock()
+
+	level.Info(db.Logger).Log("during", "syncBuyers", "num", len(db.customers))
 
 	return nil
 }

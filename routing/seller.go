@@ -7,4 +7,5 @@ type Seller struct {
 	IngressPriceNibblinsPerGB Nibblin
 	EgressPriceNibblinsPerGB  Nibblin
 	SellerID                  int64 // seller_id db PK
+	CustomerID                int64 // customer_id FK
 }

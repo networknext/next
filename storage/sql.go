@@ -218,20 +218,6 @@ func (db *SQL) Buyers() []routing.Buyer {
 	return buyers
 }
 
-type sqlBuyer struct {
-	IsLiveCustomer           bool
-	Name                     string
-	SdkVersion3PublicKeyData []byte
-	PublicKeyDataString      string
-	SdkVersion3PublicKeyID   int64
-	CompanyCode              string
-	// HexID                    string // needed for resolving datacenter map refs
-	// Customer                 string // needed for resolving customer refs
-	// banned_users integer not null,
-	// route_shader integer not null,
-	// rs_internal_config integer,
-}
-
 // AddBuyer adds the provided buyer to storage and returns an error if the buyer could not be added.
 func (db *SQL) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
 	return nil
@@ -278,6 +264,7 @@ func (db *SQL) Sellers() []routing.Seller {
 type sqlSeller struct {
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
+	CustomerID                int64
 }
 
 // The seller_id is reqired by the schema. The client interface must already have a
@@ -308,6 +295,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	newSellerData := sqlSeller{
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
+		CustomerID:                s.CustomerID,
 	}
 
 	// Add the seller in remote storage
@@ -323,7 +311,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	result, err := stmt.Exec(newSellerData.EgressPriceNibblinsPerGB,
 		newSellerData.IngressPriceNibblinsPerGB,
-		s.Name,
+		newSellerData.CustomerID,
 	)
 
 	if err != nil {
@@ -702,10 +690,11 @@ func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (cor
 	var sql bytes.Buffer
 	var coreRS core.RouteShader
 
+	fmt.Printf("GetRouteShaderForBuyerID() buyerID = %v\n", buyerID)
 	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
-	sql.Write([]byte("reduce_latency, reduce_packet_loss, selection_percent from route_shaders"))
-	sql.Write([]byte("where buyer_id=$1"))
+	sql.Write([]byte("reduce_latency, reduce_packet_loss, selection_percent from route_shaders "))
+	sql.Write([]byte("where id=$1"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
 	if err != nil {
@@ -826,4 +815,17 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 	}
 
 	return coreIC, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%x", buyerID)}
+}
+
+// utility functions for unit testing - methods not defined by the interface
+// are not available in testing
+func GetCustomerID(ctx context.Context, db *SQL, companyCode string) (int64, error) {
+
+	customer, ok := db.customers[companyCode]
+	if !ok {
+		return -1, &DoesNotExistError{resourceType: "Customer", resourceRef: fmt.Sprintf("%s", companyCode)}
+	}
+
+	sqlID := customer.CustomerID
+	return sqlID, nil
 }

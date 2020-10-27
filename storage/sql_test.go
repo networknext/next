@@ -64,12 +64,16 @@ func TestSQL(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	customer, err := db.Customer("Compcode")
+	assert.NoError(t, err)
+
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
 			CompanyCode:               "Compcode",
 			ID:                        "sellerID",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
+			CustomerID:                customer.CustomerID,
 		}
 
 		err = db.AddSeller(ctx, seller)
