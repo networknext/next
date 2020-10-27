@@ -342,7 +342,7 @@ dev-analytics: build-analytics ## runs a local analytics service
 
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT_REDIS=5555 CRUNCHER_PORT_BIGTABLE=5556 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army
