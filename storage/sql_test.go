@@ -67,7 +67,6 @@ func TestSQL(t *testing.T) {
 
 	customer, err := db.Customer("Compcode")
 	assert.NoError(t, err)
-	fmt.Printf("testing - customer: %s\n", customer.String())
 
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
@@ -88,8 +87,6 @@ func TestSQL(t *testing.T) {
 
 		seller, err := db.Seller("Compcode")
 		assert.NoError(t, err)
-
-		fmt.Printf("AddDatacenter() test seller.SellerID: %v\n", seller.SellerID)
 
 		datacenter := routing.Datacenter{
 			ID:      crypto.HashID("datacenter name"),

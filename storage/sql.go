@@ -317,7 +317,6 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	fmt.Printf("--> AddSeller() forcing sync")
 	// Must re-sync to get the relevant SQL IDs
 	db.syncSellers(ctx)
 
@@ -522,7 +521,6 @@ func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 	db.sequenceNumberMutex.RLock()
 	localSeqNum := db.SyncSequenceNumber
 	db.sequenceNumberMutex.RUnlock()
-	fmt.Printf("db.SyncSequenceNumber: %d\n", db.SyncSequenceNumber)
 
 	if localSeqNum < sequenceNumber {
 		db.sequenceNumberMutex.Lock()
@@ -678,7 +676,6 @@ func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (cor
 	var sql bytes.Buffer
 	var coreRS core.RouteShader
 
-	fmt.Printf("GetRouteShaderForBuyerID() buyerID = %v\n", buyerID)
 	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
 	sql.Write([]byte("reduce_latency, reduce_packet_loss, selection_percent from route_shaders "))
@@ -687,7 +684,7 @@ func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (cor
 	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("GetRouteShaderForBuyerID() QueryContext returned an error: %v\n", err)
+		return core.RouteShader{}, err
 	}
 	defer rows.Close()
 
@@ -710,7 +707,7 @@ func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (cor
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "rows.Scan returned an error", "err", err)
-			fmt.Printf("GetRouteShaderForBuyerID() rows.Scan returned an error: %v\n", err)
+			return core.RouteShader{}, err
 		}
 
 		coreRS = core.RouteShader{
@@ -762,7 +759,7 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("GetInternalConfigForBuyerID() QueryContext returned an error: %v\n", err)
+		return core.InternalConfig{}, err
 	}
 	defer rows.Close()
 
@@ -783,7 +780,7 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 
 		if err != nil {
 			level.Error(db.Logger).Log("during", "rows.Scan returned an error", "err", err)
-			fmt.Printf("GetInternalConfigForBuyerID() rows.Scan returned an error: %v\n", err)
+			return core.InternalConfig{}, err
 		}
 
 		coreIC = core.InternalConfig{

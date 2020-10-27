@@ -25,12 +25,9 @@ import (
 // only used for unit testing.
 func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
-	fmt.Println("NewSQLite3()")
-
 	// remove the old db file if it exists (SQLite3 save one by default when
 	// exiting)
 	if _, err := os.Stat("network_next.db"); err == nil || os.IsExist(err) {
-		fmt.Println("Removing existing db file")
 		err = os.Remove("network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
@@ -43,7 +40,6 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 		return nil, err
 	}
-	fmt.Println("--> SQLite3 connection created.")
 
 	db := &SQL{
 		Client:             sqlite3,
@@ -70,10 +66,9 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		_, err := db.Client.Exec(request)
 		if err != nil {
 			// fmt.Printf("NewSQLite3() error executing seed file sql line: %v\n", err)
-			// return nil, err
+			return nil, err
 		}
 	}
-	fmt.Println("Finished processing sqlite3.sql sideload.")
 	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
@@ -82,7 +77,6 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	}
 	// Start a goroutine to sync from the database
 	go func() {
-		fmt.Println("Calling db.SyncLoop()")
 		ticker := time.NewTicker(syncInterval)
 		db.SyncLoop(ctx, ticker.C)
 	}()
@@ -157,7 +151,6 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	for {
 		select {
 		case <-c:
-			fmt.Println("calling db.Sync()")
 			if err := db.Sync(ctx); err != nil {
 				level.Error(db.Logger).Log("during", "SyncLoop", "err", err)
 			}
@@ -170,14 +163,12 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 // Sync is a utility function that calls the individual sync* methods in the proper order.
 func (db *SQL) Sync(ctx context.Context) error {
 
-	fmt.Println("SQL Sync()")
 	seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
 	if err != nil {
 		return err
 	}
 
 	if !seqNumberNotInSync {
-		fmt.Println("not sync'ing (!seqNumberNotInSync)")
 		return nil
 	}
 
@@ -199,7 +190,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	//	6 Relays
 
 	go func() {
-		fmt.Println("calling db.syncCustomers()")
 		if err := db.syncCustomers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync customers: %v", err)
 		}
@@ -207,7 +197,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	}()
 
 	go func() {
-		fmt.Println("calling db.syncBuyers()")
 		if err := db.syncBuyers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
 		}
@@ -215,7 +204,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	}()
 
 	go func() {
-		fmt.Println("calling db.syncSellers()")
 		if err := db.syncSellers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
 		}
@@ -223,7 +211,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	}()
 
 	go func() {
-		fmt.Println("calling db.syncDatacenters()")
 		if err := db.syncDatacenters(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
 		}
@@ -231,7 +218,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	}()
 
 	go func() {
-		fmt.Println("calling db.syncDatacenterMaps()")
 		if err := db.syncDatacenterMaps(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
 		}
@@ -239,7 +225,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	}()
 
 	go func() {
-		fmt.Println("calling db.syncRelays()")
 		if err := db.syncRelays(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync relays: %v", err)
 		}
@@ -253,8 +238,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 func (db *SQL) syncDatacenters(ctx context.Context) error {
 
-	fmt.Println("SQL syncDatacenters()")
-
 	var sql bytes.Buffer
 	var dc sqlDatacenter
 
@@ -267,7 +250,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext returned an error: %v\n", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -313,7 +296,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 }
 
 func (db *SQL) syncRelays(ctx context.Context) error {
-	fmt.Println("SQL syncRelays()")
+
 	var sql bytes.Buffer
 	var relay sqlRelay
 
@@ -331,7 +314,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext returned an error: %v\n", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -443,7 +426,6 @@ type sqlBuyer struct {
 }
 
 func (db *SQL) syncBuyers(ctx context.Context) error {
-	fmt.Println("SQL syncBuyers()")
 
 	var sql bytes.Buffer
 	var buyer sqlBuyer
@@ -458,7 +440,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext returned an error: %v\n", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -507,7 +489,6 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	return nil
 }
 func (db *SQL) syncSellers(ctx context.Context) error {
-	fmt.Println("SQL syncSellers()")
 
 	var sql bytes.Buffer
 	var seller sqlSeller
@@ -521,12 +502,11 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext returned an error: %v\n", err)
+		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		fmt.Println("--> syncSellers row")
 		err = rows.Scan(&seller.SellerID,
 			&seller.EgressPriceNibblinsPerGB,
 			&seller.IngressPriceNibblinsPerGB,
@@ -535,8 +515,6 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 
 		// seller name is defined by the parent customer
 		sellerIDs[seller.SellerID] = db.customerIDs[seller.CustomerID]
-		fmt.Printf("syncSellers() row seller.CustomerID: %v\n", seller.CustomerID)
-		fmt.Printf("syncSellers() row sellerIDs[seller.SellerID]: %v\n", sellerIDs[seller.SellerID])
 
 		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
 			ID:                        db.customerIDs[seller.CustomerID],
@@ -556,12 +534,6 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	db.sellers = sellers
 	db.sellerMutex.Unlock()
 
-	fmt.Println("after sync - db.sellers:")
-	for seller := range db.sellers {
-		local := db.sellers[seller]
-		fmt.Printf("%s", local.String())
-	}
-
 	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 
 	return nil
@@ -570,8 +542,6 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 	return nil
 }
 func (db *SQL) syncCustomers(ctx context.Context) error {
-	fmt.Println("SQL syncCustomers()")
-
 	var sql bytes.Buffer
 	var customer sqlCustomer
 
@@ -584,7 +554,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext returned an error: %v\n", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -596,8 +566,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 			&customer.CustomerCode,
 		)
 
-		fmt.Printf("--> syncCustomers() row customer.ID: %v\n", customer.ID)
-		fmt.Printf("--> syncCustomers() row customer.CustomerCode: %s\n", customer.CustomerCode)
 		customerIDs[customer.ID] = customer.CustomerCode
 
 		customers[customer.CustomerCode] = routing.Customer{
@@ -616,12 +584,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	db.customerMutex.Lock()
 	db.customers = customers
 	db.customerMutex.Unlock()
-
-	fmt.Println("after sync - db.customers:")
-	for customer := range db.customers {
-		local := db.customers[customer]
-		fmt.Printf("%s", local.String())
-	}
 
 	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 

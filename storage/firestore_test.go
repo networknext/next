@@ -688,44 +688,6 @@ func TestFirestore(t *testing.T) {
 			assert.Equal(t, expectedCustomer.BuyerRef.ID, customerInRemoteStorage.BuyerRef.ID)
 		})
 
-		t.Run("validate only 1 route shader", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
-			assert.NoError(t, err)
-
-			defer func() {
-				err := cleanFireStore(ctx, fs.Client)
-				assert.NoError(t, err)
-			}()
-
-			expected := routing.Buyer{
-				CompanyCode: "local",
-				ID:          1,
-				Live:        false,
-				PublicKey:   make([]byte, crypto.KeySize),
-			}
-
-			actualCustomer := routing.Customer{
-				Code: "local",
-				Name: "Local",
-			}
-
-			err = fs.AddCustomer(ctx, actualCustomer)
-			assert.NoError(t, err)
-
-			err = fs.AddBuyer(ctx, expected)
-			assert.NoError(t, err)
-
-			actual, err := fs.Buyer(expected.ID)
-			assert.NoError(t, err)
-
-			assert.Equal(t, expected, actual)
-
-			// Check that only 1 route shader exists in firestore at this point
-			rsdocs := fs.Client.Collection("RouteShader").Documents(ctx)
-			rsSnapshot, err := rsdocs.GetAll()
-			assert.NoError(t, err)
-			assert.Len(t, rsSnapshot, 1)
-		})
 	})
 
 	t.Run("RemoveBuyer", func(t *testing.T) {
