@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -678,6 +679,8 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
+
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
 		Storer:           storer,
@@ -686,10 +689,11 @@ func mainReturnWithCode() int {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap: relayMap,
-		StatsDB:  statsdb,
-		Metrics:  relayUpdateMetrics,
-		Storer:   storer,
+		RelayMap:          relayMap,
+		StatsDB:           statsdb,
+		Metrics:           relayUpdateMetrics,
+		Storer:            storer,
+		InternalIPSellers: internalIPSellers,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
