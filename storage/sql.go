@@ -51,7 +51,7 @@ type SQL struct {
 	relayIDs      map[int64]uint64
 	customerIDs   map[int64]string
 	buyerIDs      map[int64]uint64
-	sellerIDs     map[int64]uint64
+	sellerIDs     map[int64]string
 
 	datacenterIDsMutex sync.RWMutex
 	relayIDsMutex      sync.RWMutex
@@ -160,9 +160,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	}
 
 	// Add the buyer in cached storage
-	db.customerMutex.Lock()
-	db.customers[c.Code] = c
-	db.customerMutex.Unlock()
+	db.syncCustomers(ctx)
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -262,12 +260,14 @@ func (db *SQL) Sellers() []routing.Seller {
 }
 
 type sqlSeller struct {
+	ID                        string
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
 	CustomerID                int64
+	SellerID                  int64
 }
 
-// The seller_id is reqired by the schema. The client interface must already have a
+// The seller_id is required by the schema. The client interface must already have a
 // seller defined.
 func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	var sql bytes.Buffer
@@ -280,19 +280,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
 	}
 
-	var company routing.Customer
-	for _, customer := range db.customers {
-		if customer.Code == s.CompanyCode {
-			company = customer
-		}
-	}
-
-	// A relevant customer entry must exist to add a seller
-	if company.Code == "" {
-		return &DoesNotExistError{resourceType: "customer", resourceRef: s.CompanyCode}
-	}
-
 	newSellerData := sqlSeller{
+		ID:                        s.ID,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 		CustomerID:                s.CustomerID,
@@ -328,10 +317,9 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	// Add the seller in cached storage
-	db.sellerMutex.Lock()
-	db.sellers[s.ID] = s
-	db.sellerMutex.Unlock()
+	fmt.Printf("--> AddSeller() forcing sync")
+	// Must re-sync to get the relevant SQL IDs
+	db.syncSellers(ctx)
 
 	db.IncrementSequenceNumber(ctx)
 

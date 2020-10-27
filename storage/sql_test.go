@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
@@ -66,11 +67,11 @@ func TestSQL(t *testing.T) {
 
 	customer, err := db.Customer("Compcode")
 	assert.NoError(t, err)
+	fmt.Printf("testing - customer: %s\n", customer.String())
 
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
-			CompanyCode:               "Compcode",
-			ID:                        "sellerID",
+			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                customer.CustomerID,
@@ -79,24 +80,31 @@ func TestSQL(t *testing.T) {
 		err = db.AddSeller(ctx, seller)
 		assert.NoError(t, err)
 
-		newSeller, err := db.Seller("sellerID")
-		fmt.Printf("newSeller: %v\n", newSeller)
+		_, err := db.Seller("Compcode")
 		assert.NoError(t, err)
 	})
 
 	t.Run("AddDatacenter", func(t *testing.T) {
 
-		sellers := db.Sellers()
-		if len(sellers) < 1 {
-			assert.Error(t, fmt.Errorf("no sellers returned"))
+		seller, err := db.Seller("Compcode")
+		assert.NoError(t, err)
+
+		fmt.Printf("AddDatacenter() test seller.SellerID: %v\n", seller.SellerID)
+
+		datacenter := routing.Datacenter{
+			ID:      crypto.HashID("datacenter name"),
+			Name:    "datacenter.name",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+			StreetAddress: "Somewhere, USA",
+			SellerID:      seller.SellerID,
 		}
 
-		// id := sellers[0]
-
+		err = db.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
 	})
-
-	// t.Run("syncDatacenters", func(t *testing.T) {
-	// 	err =
-	// })
 
 }

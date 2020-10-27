@@ -507,6 +507,63 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	return nil
 }
 func (db *SQL) syncSellers(ctx context.Context) error {
+	fmt.Println("SQL syncSellers()")
+
+	var sql bytes.Buffer
+	var seller sqlSeller
+
+	sellers := make(map[string]routing.Seller)
+	sellerIDs := make(map[int64]string)
+
+	sql.Write([]byte("select id, public_egress_price, public_ingress_price, "))
+	sql.Write([]byte("customer_id from sellers"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		fmt.Printf("QueryContext returned an error: %v\n", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		fmt.Println("--> syncSellers row")
+		err = rows.Scan(&seller.SellerID,
+			&seller.EgressPriceNibblinsPerGB,
+			&seller.IngressPriceNibblinsPerGB,
+			&seller.CustomerID,
+		)
+
+		// seller name is defined by the parent customer
+		sellerIDs[seller.SellerID] = db.customerIDs[seller.CustomerID]
+		fmt.Printf("syncSellers() row seller.CustomerID: %v\n", seller.CustomerID)
+		fmt.Printf("syncSellers() row sellerIDs[seller.SellerID]: %v\n", sellerIDs[seller.SellerID])
+
+		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
+			ID:                        db.customerIDs[seller.CustomerID],
+			IngressPriceNibblinsPerGB: routing.Nibblin(seller.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			SellerID:                  seller.SellerID,
+			CustomerID:                seller.CustomerID,
+		}
+
+	}
+
+	db.sellerIDsMutex.Lock()
+	db.sellerIDs = sellerIDs
+	db.sellerIDsMutex.Unlock()
+
+	db.sellerMutex.Lock()
+	db.sellers = sellers
+	db.sellerMutex.Unlock()
+
+	fmt.Println("after sync - db.sellers:")
+	for seller := range db.sellers {
+		local := db.sellers[seller]
+		fmt.Printf("%s", local.String())
+	}
+
+	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
+
 	return nil
 }
 func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
@@ -533,11 +590,14 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(&customer.ID,
+			&customer.Active,
 			&customer.AutomaticSignInDomains,
 			&customer.CustomerName,
 			&customer.CustomerCode,
 		)
 
+		fmt.Printf("--> syncCustomers() row customer.ID: %v\n", customer.ID)
+		fmt.Printf("--> syncCustomers() row customer.CustomerCode: %s\n", customer.CustomerCode)
 		customerIDs[customer.ID] = customer.CustomerCode
 
 		customers[customer.CustomerCode] = routing.Customer{
@@ -545,8 +605,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 			Name:                   customer.Name,
 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
 			Active:                 customer.Active,
-			// BuyerRef:               c.BuyerRef,
-			// SellerRef:              c.SellerRef,
+			CustomerID:             customer.ID,
 		}
 	}
 
@@ -557,6 +616,12 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	db.customerMutex.Lock()
 	db.customers = customers
 	db.customerMutex.Unlock()
+
+	fmt.Println("after sync - db.customers:")
+	for customer := range db.customers {
+		local := db.customers[customer]
+		fmt.Printf("%s", local.String())
+	}
 
 	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 
