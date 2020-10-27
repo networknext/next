@@ -294,18 +294,19 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			}
 			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore", numRelays))
 			for i := uint64(0); i < numRelays; i++ {
-				addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
-				id := crypto.HashID(addr.String())
+				addrExternal := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
+				addrInternal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10000 + int(i)}
+				id := crypto.HashID(addrExternal.String())
 				if err := db.AddRelay(ctx, routing.Relay{
 					Name:           fmt.Sprintf("local.test_relay.%d", i),
 					ID:             id,
 					SignedID:       int64(id),
-					Addr:           addr,
-					InternalAddr:   addr,
+					Addr:           addrExternal,
+					InternalAddr:   addrInternal,
 					PublicKey:      relayPublicKey,
 					Seller:         seller,
 					Datacenter:     datacenter,
-					ManagementAddr: addr.String(),
+					ManagementAddr: addrExternal.String(),
 					SSHUser:        "root",
 					SSHPort:        22,
 					MaxSessions:    3000,
@@ -327,14 +328,15 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				}
 			}
 		} else {
-			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			rid1 := crypto.HashID(addr1.String())
+			addr1External := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
+			addr1Internal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10000}
+			rid1 := crypto.HashID(addr1External.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "local.test_relay.a",
 				ID:             rid1,
 				SignedID:       int64(rid1),
-				Addr:           addr1,
-				InternalAddr:   addr1,
+				Addr:           addr1External,
+				InternalAddr:   addr1Internal,
 				PublicKey:      relayPublicKey,
 				Seller:         seller,
 				Datacenter:     datacenter,
@@ -353,14 +355,15 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 				os.Exit(1)
 			}
-			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			rid2 := crypto.HashID(addr2.String())
+			addr2External := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
+			addr2Internal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10001}
+			rid2 := crypto.HashID(addr2External.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "local.test_relay.b",
 				ID:             rid2,
 				SignedID:       int64(rid2),
-				Addr:           addr2,
-				InternalAddr:   addr2,
+				Addr:           addr2External,
+				InternalAddr:   addr2Internal,
 				PublicKey:      relayPublicKey,
 				Seller:         seller,
 				Datacenter:     datacenter,
@@ -372,14 +375,15 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 				os.Exit(1)
 			}
-			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			rid3 := crypto.HashID(addr3.String())
+			addr3External := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
+			addr3Internal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10002}
+			rid3 := crypto.HashID(addr3External.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "abc.xyz",
 				ID:             rid3,
 				SignedID:       int64(rid3),
-				Addr:           addr3,
-				InternalAddr:   addr3,
+				Addr:           addr3External,
+				InternalAddr:   addr3Internal,
 				PublicKey:      relayPublicKey,
 				Seller:         seller,
 				Datacenter:     datacenter,
