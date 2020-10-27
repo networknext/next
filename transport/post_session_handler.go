@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"syscall"
+	"sync"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/transport/pubsub"
-	"github.com/pebbe/zmq4"
 )
 
 type PostSessionHandler struct {
@@ -24,8 +23,6 @@ type PostSessionHandler struct {
 	biller                     billing.Biller
 	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
-
-	maxBufferSize int
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, portalPublishMaxRetries int,
@@ -40,19 +37,24 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		biller:                     biller,
 		logger:                     logger,
 		metrics:                    metrics,
-		maxBufferSize:              chanBufferSize,
 	}
 }
 
 func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
+	var wg sync.WaitGroup
+
 	for i := 0; i < post.numGoroutines; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
+
 			for {
 				select {
 				case billingEntry := <-post.postSessionBillingChannel:
 					if err := post.biller.Bill(ctx, billingEntry); err != nil {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
 						post.metrics.BillingFailure.Add(1)
+						continue
 					}
 
 					post.metrics.BillingEntriesFinished.Add(1)
@@ -64,7 +66,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 	}
 
 	for i := 0; i < post.numGoroutines; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
+
 			for {
 				select {
 				case postSessionCountData := <-post.sessionPortalCountsChannel:
@@ -75,13 +80,14 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						continue
 					}
 
-					if portalDataBytes, err := TransmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionCounts, countBytes, post.portalPublishMaxRetries); err != nil {
+					portalDataBytes, err := transmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionCounts, countBytes, post.portalPublishMaxRetries)
+					if err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal counts", "err", err)
 						post.metrics.PortalFailure.Add(1)
-					} else {
-						level.Debug(post.logger).Log("type", "session counts", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+						continue
 					}
 
+					level.Debug(post.logger).Log("type", "session counts", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
@@ -91,7 +97,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 	}
 
 	for i := 0; i < post.numGoroutines; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
+
 			for {
 				select {
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
@@ -102,14 +111,14 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						continue
 					}
 
-					if portalDataBytes, err := TransmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionData, sessionBytes, post.portalPublishMaxRetries); err != nil {
+					portalDataBytes, err := transmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionData, sessionBytes, post.portalPublishMaxRetries)
+					if err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
-					} else {
-						level.Debug(post.logger).Log("type", "session data", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					}
 
+					level.Debug(post.logger).Log("type", "session data", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
@@ -117,6 +126,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			}
 		}()
 	}
+
+	wg.Wait()
 }
 
 func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEntry) {
@@ -161,25 +172,25 @@ func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
 }
 
-func TransmitPortalData(publisher pubsub.Publisher, topic pubsub.Topic, data []byte, maxRetries int) (int, error) {
+func transmitPortalData(publisher pubsub.Publisher, topic pubsub.Topic, data []byte, maxRetries int) (int, error) {
 	var byteCount int
 	var retryCount int
 
-	for retryCount < maxRetries { // only retry so many times, then error out after that
+	for retryCount < maxRetries+1 { // only retry so many times, then error out after that
 		singleByteCount, err := publisher.Publish(topic, data)
 		if err != nil {
-			errno := zmq4.AsErrno(err)
-			switch errno {
-			case zmq4.AsErrno(syscall.EAGAIN):
+			switch err.(type) {
+			case *pubsub.ErrRetry:
 				retryCount++
+				continue
 			default:
 				return 0, err
 			}
-		} else {
-			retryCount = -1
-			byteCount += singleByteCount
-			break
 		}
+
+		retryCount = -1
+		byteCount += singleByteCount
+		break
 	}
 
 	if retryCount >= maxRetries {

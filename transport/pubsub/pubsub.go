@@ -19,3 +19,9 @@ type Subscriber interface {
 	Unsubscribe(topic Topic) error
 	ReceiveMessage() (Topic, []byte, error)
 }
+
+type ErrRetry struct{}
+
+func (e *ErrRetry) Error() string {
+	return fmt.Sprintf("retry")
+}

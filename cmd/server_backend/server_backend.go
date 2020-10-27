@@ -460,7 +460,7 @@ func mainReturnWithCode() int {
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
-	postSessionHandler.StartProcessing(ctx)
+	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
