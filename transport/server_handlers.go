@@ -414,7 +414,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 			nearRelayIDs[i] = nearRelay.ID
 			nearRelayAddresses[i] = *nearRelay.Addr
-			if i < 1 && i < numNearRelays-1 {
+			if i >= 1 && i < numNearRelays-1 {
 				prev, err := storer.Relay(nearRelayIDs[i-1])
 				if err != nil {
 					curr, err := storer.Relay(nearRelayIDs[i])
