@@ -65,7 +65,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	for _, request := range requests {
 		_, err := db.Client.Exec(request)
 		if err != nil {
-			// fmt.Printf("NewSQLite3() error executing seed file sql line: %v\n", err)
+			err = fmt.Errorf("NewSQLite3() error executing seed file sql line: %v\n", err)
 			return nil, err
 		}
 	}
