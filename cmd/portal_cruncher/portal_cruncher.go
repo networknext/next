@@ -280,9 +280,6 @@ func mainReturnWithCode() int {
 
 		btTbl = btClient.GetTable(btTableName)
 
-	} else {
-		level.Error(logger).Log("msg", "Could not find $BIGTABLE_EMULATOR_HOST for local testing. Include an export statement in the Makefile.")
-		return 1
 	}
 
 	// Start portal cruncher subscriber
