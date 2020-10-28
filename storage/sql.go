@@ -167,10 +167,17 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	return nil
 }
 
+// RemoveCustomer removes a customer from the database. An error is returned if
+//  1. The customer ID does not exist
+//  2. Removing the customer would break a foreign key relationship (buyer, seller)
+//  3. Any other error returned from the database
+// TODO: RemoveCustomer
 func (db *SQL) RemoveCustomer(ctx context.Context, code string) error {
 	return nil
 }
 
+// SetCustomer
+// TODO: SetCustomer
 func (db *SQL) SetCustomer(ctx context.Context, customer routing.Customer) error {
 	return nil
 }
@@ -275,12 +282,19 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	return nil
 }
 
-// RemoveBuyer removes a buyer with the provided buyer ID from storage and returns an error if the buyer could not be removed.
+// RemoveBuyer removes a buyer with the provided buyer ID from storage
+// and returns an error if:
+//  1. The buyer ID does not exist
+//  2. Removing the buyer would break the foreigh key relationship (datacenter_maps)
+//  3. Any other error returned from the database
+// TODO: RemoveBuyer
 func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// SetBuyer updates the buyer in storage with the provided copy and returns an error if the buyer could not be updated.
+// SetBuyer updates the buyer in storage with the provided copy and
+// returns an error if the buyer could not be updated.
+// TODO: SetBuyer
 func (db *SQL) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
 	return nil
 }
@@ -379,24 +393,33 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	return nil
 }
 
-// RemoveSeller removes a seller with the provided seller ID from storage and returns an error if the seller could not be removed.
+// RemoveSeller removes a seller with the provided seller ID from storage and
+// returns an error if:
+//  1. The seller ID does not exist
+//  2. Removing the seller would break the foreigh key relationship (datacenters)
+//  3. Any other error returned from the database
+// TODO: RemoveSeller
 func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 	return nil
 }
 
-// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
+// SetSeller updates the seller in storage with the provided copy and returns
+// an error if the seller could not be updated.
+// TODO: SetSeller
 func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
 	return nil
 }
 
 // BuyerIDFromCustomerName returns the buyer ID associated with the given customer name and an error if the customer wasn't found.
 // If the customer has no buyer linked, then it will return a buyer ID of 0 and no error.
+// TODO: BuyerIDFromCustomerName
 func (db *SQL) BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error) {
 	return 0, nil
 }
 
 // SellerIDFromCustomerName returns the seller ID associated with the given customer name and an error if the customer wasn't found.
 // If the customer has no seller linked, then it will return an empty seller ID and no error.
+// TODO: SellerIDFromCustomerName
 func (db *SQL) SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error) {
 	return "", nil
 }
@@ -414,6 +437,7 @@ func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
 }
 
 // SetCustomerLink update the customer's buyer and seller references.
+// TODO: SetCustomerLink
 func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error {
 	return nil
 }
@@ -471,16 +495,20 @@ type sqlRelay struct {
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
+// TODO: AddRelay
 func (db *SQL) AddRelay(ctx context.Context, relay routing.Relay) error {
 	return nil
 }
 
 // RemoveRelay removes a relay with the provided relay ID from storage and returns an error if the relay could not be removed.
+// TODO: RemoveRelay
 func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// SetRelay updates the relay in storage with the provided copy and returns an error if the relay could not be updated.
+// SetRelay updates the relay in storage with the provided copy and returns an
+// error if the relay could not be updated.
+// TODO: SetRelay
 func (db *SQL) SetRelay(ctx context.Context, relay routing.Relay) error {
 	return nil
 }
@@ -513,39 +541,51 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 	return datacenters
 }
 
-// RemoveDatacenter removes a datacenter with the provided datacenter ID from storage and returns an error if the datacenter could not be removed.
+// RemoveDatacenter removes a datacenter with the provided datacenter ID from storage
+// and returns an error if:
+//  1. The datacenter ID does not exist
+//  2. Removing the datacenter would break foreigh key relationships (datacenter_maps, relays)
+//  3. Any other error returned from the database
+// TODO: RemoveDatacenter
 func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
+// SetDatacenter updates the datacenter in storage with the provided copy and returns
+// an error if the datacenter could not be updated.
+// TODO: SetDatacenter
 func (db *SQL) SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
 	return nil
 }
 
 // GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 // an empty []routing.DatacenterMap if there are no aliases for that buyerID.
+// TODO: GetDatacenterMapsForBuyer
 func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
 	return map[uint64]routing.DatacenterMap{}
 }
 
 // AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
+// TODO: AddDatacenterMap
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	return nil
 }
 
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
+// TODO: ListDatacenterMaps
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
 	return map[uint64]routing.DatacenterMap{}
 }
 
 // RemoveDatacenterMap removes an entry from the DatacenterMaps table
+// TODO: RemoveDatacenterMap
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	return nil
 }
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
+// TODO: SetRelayMetadata
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
 	return nil
 }
