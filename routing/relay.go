@@ -726,7 +726,7 @@ func (r *Relay) String() string {
 	relay += "\tName: " + r.Name + "\n"
 	relay += "\tAddr: " + r.Addr.String() + "\n"
 	relay += "\tPublicKey: " + string(r.PublicKey) + "\n"
-	relay += "\tSeller: " + r.Seller.String() + "\n"
+	relay += "\tSeller: " + fmt.Sprintf("%d", r.Seller.SellerID) + "\n"
 	relay += "\tDatacenter: " + r.Datacenter.Name + "\n"
 	relay += "\tNICSpeedMbps: " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
 	relay += "\tIncludedBandwidthGB: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"

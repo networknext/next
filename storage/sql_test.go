@@ -100,7 +100,7 @@ func TestSQL(t *testing.T) {
 
 		datacenter := routing.Datacenter{
 			ID:      crypto.HashID("datacenter name"),
-			Name:    "datacenter.name",
+			Name:    "some.locale.name",
 			Enabled: true,
 			Location: routing.Location{
 				Latitude:  70.5,
@@ -156,11 +156,16 @@ func TestSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
+		updateKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(updateKey)
+		assert.NoError(t, err)
+
 		relay := routing.Relay{
 			ID:           rid,
 			Name:         "local.1",
 			Addr:         *addr,
 			PublicKey:    publicKey,
+			UpdateKey:    updateKey,
 			Datacenter:   outerDatacenter,
 			MRC:          19700000000000,
 			Overage:      26000000000000,
@@ -169,10 +174,27 @@ func TestSQL(t *testing.T) {
 			StartDate:    time.Now(),
 			EndDate:      time.Now(),
 			Type:         routing.BareMetal,
+			State:        routing.RelayStateMaintenance,
 		}
 
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
+
+		checkRelay, err := db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, relay.Name, checkRelay.Name)
+		assert.Equal(t, relay.Addr, checkRelay.Addr)
+		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
+		assert.Equal(t, relay.UpdateKey, checkRelay.UpdateKey)
+		assert.Equal(t, relay.Datacenter.DatacenterID, checkRelay.Datacenter.DatacenterID)
+		assert.Equal(t, relay.MRC, checkRelay.MRC)
+		assert.Equal(t, relay.Overage, checkRelay.Overage)
+		assert.Equal(t, relay.BWRule, checkRelay.BWRule)
+		assert.Equal(t, relay.ContractTerm, checkRelay.ContractTerm)
+		assert.Equal(t, relay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
+		assert.Equal(t, relay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
+		assert.Equal(t, relay.Type, checkRelay.Type)
+		assert.Equal(t, relay.State, checkRelay.State)
 
 	})
 

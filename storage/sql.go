@@ -516,7 +516,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		ID:                 r.ID,
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
 		PublicIPPort:       publicIPPort,
@@ -540,12 +539,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	sql.Write([]byte("insert into relays ("))
-	sql.Write([]byte("id, contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
 	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -554,7 +553,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	result, err := stmt.Exec(
-		relay.ID,
 		relay.ContractTerm,
 		relay.Name,
 		relay.EndDate,

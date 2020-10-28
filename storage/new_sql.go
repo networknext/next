@@ -303,17 +303,21 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select relays.id, relays.contract_term, relays.end_date, relays.included_bandwidth_gb, relays.management_ip, "))
-	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, relays.public_ip, relays.public_ip_port, relays.public_key, "))
-	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.update_key, bw_billing_rules.name, relays.datacenter, "))
-	sql.Write([]byte("machine_types.name, relay_states.name from relays "))
-	sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
-	sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
-	sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
+	sql.Write([]byte("select relays.id, display_name, relays.contract_term, relays.end_date, "))
+	sql.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
+	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
+	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.update_key, "))
+	sql.Write([]byte("relays.bw_billing_rule, relays.datacenter, "))
+	sql.Write([]byte("machine_type, relay_state from relays "))
+	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
+	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
+	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		fmt.Printf("syncRelays() QueryContext error: %v\n", err)
 		return err
 	}
 	defer rows.Close()
@@ -340,7 +344,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.DatacenterID,
 			&relay.MachineType,
 			&relay.State,
-			&relay.RelayID,
 		)
 
 		fullPublicAddress := relay.PublicIP + ":" + fmt.Sprintf("%d", relay.PublicIPPort)
@@ -375,7 +378,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 		relayIDs[relay.RelayID] = rid
 
-		relays[rid] = routing.Relay{
+		r := routing.Relay{
 			ID:                  rid,
 			Name:                relay.Name,
 			Addr:                *publicAddr,
@@ -398,6 +401,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Type:                machineType,
 			RelayID:             relay.RelayID,
 		}
+		relays[rid] = r
+
 	}
 
 	db.relayMutex.Lock()
