@@ -17,11 +17,13 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
-	"github.com/networknext/backend/encoding"
-	ghostarmy "github.com/networknext/backend/ghost_army"
+
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
+
+	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
 
 const (

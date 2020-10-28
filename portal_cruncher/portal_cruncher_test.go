@@ -14,14 +14,15 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/alicebob/miniredis/v2/server"
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
-	portalcruncher "github.com/networknext/backend/portal_cruncher"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
+
+	portalcruncher "github.com/networknext/backend/portal_cruncher"
 )
 
 func getTestCountData(serverID uint64, buyerID uint64) transport.SessionCountData {

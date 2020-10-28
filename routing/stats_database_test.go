@@ -3,7 +3,7 @@ package routing_test
 import (
 	"testing"
 
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
