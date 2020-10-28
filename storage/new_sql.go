@@ -17,7 +17,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 )
 

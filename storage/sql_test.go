@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
