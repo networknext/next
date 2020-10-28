@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
