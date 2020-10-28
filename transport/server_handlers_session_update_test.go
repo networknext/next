@@ -1832,7 +1832,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		RouteType:          routing.RouteTypeNew,
 		NumNearRelays:      3,
 		NearRelayIDs:       []uint64{1, 2, 3},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2External, *relayAddr3External},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2Internal, *relayAddr3Internal},
 		NumTokens:          5,
 		Tokens:             tokenData,
 	}
