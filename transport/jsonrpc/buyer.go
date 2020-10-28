@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"os"
 	"sort"
@@ -14,10 +15,12 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigtable"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/envvar"
 	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -88,7 +91,7 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserHash string `json:"user_hash"`
+	UserID string `json:"user_id"`
 }
 
 type UserSessionsReply struct {
@@ -96,12 +99,25 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
-	if args.UserHash == "" {
-		err := fmt.Errorf("UserSessions() user hash is required")
+	if args.UserID == "" {
+		err := fmt.Errorf("UserSessions() user id is required")
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 	reply.Sessions = make([]transport.SessionMeta, 0)
+	sessionIDs := make([]string, 0)
+
+	userID := args.UserID
+
+	// Hash the ID
+	hash := fnv.New64a()
+	_, err := hash.Write([]byte(userID))
+	if err != nil {
+		err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
 	// Fetch live sessions if there are any
 	liveSessions, err := s.FetchCurrentTopSessions(r, "")
@@ -112,22 +128,47 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	for _, session := range liveSessions {
-		if args.UserHash == fmt.Sprintf("%016x", session.UserHash) {
+		// Check both the ID and the hash just in case the ID is actually a hash from the top sessions table
+		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) {
 			reply.Sessions = append(reply.Sessions, session)
+			sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 		}
 	}
 
+	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+
 	// Fetch historic sessions if there are any
-	dataRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), s.BigTable.SessionTable, fmt.Sprintf("%s#", args.UserHash))
+	rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), s.BigTable.SessionTable, fmt.Sprintf("%s#", userHash))
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	fmt.Println("")
-	for _, r := range dataRows {
-		fmt.Println(r)
+	rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), s.BigTable.SessionTable, fmt.Sprintf("%s#", userID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+	if err != nil {
+		err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	liveIDString := strings.Join(sessionIDs, ",")
+
+	var sessionMeta transport.SessionMeta
+	if len(rowsByHash) > 0 {
+		for _, row := range rowsByHash {
+			sessionMeta.UnmarshalBinary(row[btCfName][0].Value)
+			if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+				reply.Sessions = append(reply.Sessions, sessionMeta)
+			}
+		}
+	} else if len(rowsByID) > 0 {
+		for _, row := range rowsByID {
+			sessionMeta.UnmarshalBinary(row[btCfName][0].Value)
+			if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+				reply.Sessions = append(reply.Sessions, sessionMeta)
+			}
+		}
 	}
 
 	return nil

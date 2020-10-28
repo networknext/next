@@ -26,6 +26,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -196,6 +197,82 @@ func main() {
 		}
 	}
 
+	// Setup Bigtable
+
+	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	if btEmulatorOK {
+		// Emulator is used for local testing
+		// Requires that emulator has been started in another terminal to work as intended
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected bigtable emulator")
+	}
+
+	// Get Bigtable client, table, and column family name
+	var btClient *storage.BigTable
+	var btCfNames []string
+
+	if gcpOK || btEmulatorOK {
+		// Get Bigtable instance ID
+		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+
+		// Get the table name
+		btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+		// Get the column family names and put them in a slice
+		btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+		btCfNames = []string{btCfName}
+
+		// Create a bigtable admin for setup
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Check if the table exists in the instance
+		tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Verify if the table needed exists
+		if !tableExists {
+			// Create a table with the given name and column families
+			if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			// Get the max number of days the data should be kept in Bigtable
+			maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			// Set a garbage collection policy of 90 days
+			maxAge := time.Hour * time.Duration(24*maxDays)
+			if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+		}
+
+		// Close the admin client
+		if err = btAdmin.Close(); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Create a standard client for writing to the table
+		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -282,6 +359,7 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
+		BigTable:               *btClient,
 		Logger:                 logger,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,

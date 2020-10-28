@@ -204,7 +204,7 @@ func mainReturnWithCode() int {
 
 	// Setup Bigtable
 
-	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
 	if btEmulatorOK {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
@@ -283,14 +283,8 @@ func mainReturnWithCode() int {
 	}
 
 	// Start portal cruncher subscriber
-	redisCruncherPort := envvar.Get("CRUNCHER_PORT_REDIS", "5555")
-	redisPortalSubscriber, err := getPortalSubscriber(logger, redisCruncherPort)
-	if err != nil {
-		return 1
-	}
-
-	btCruncherPort := envvar.Get("CRUNCHER_PORT_BIGTABLE", "5556")
-	btPortalSubscriber, err := getPortalSubscriber(logger, btCruncherPort)
+	zeroMQCruncherPort := envvar.Get("CRUNCHER_PORT_REDIS", "5555")
+	zeroMQSubscriber, err := getPortalSubscriber(logger, zeroMQCruncherPort)
 	if err != nil {
 		return 1
 	}
@@ -327,21 +321,7 @@ func mainReturnWithCode() int {
 		// Redis portal subscriber
 		go func() {
 			for {
-				if err := ReceivePortalMessage(redisPortalSubscriber, portalCruncherMetrics, redisMessageChan); err != nil {
-					switch err.(type) {
-					case *ErrReceiveMessage:
-						level.Error(logger).Log("err", err)
-						os.Exit(1) // todo: don't os.Exit() here, but somehow quit
-					case *ErrChannelFull:
-						level.Error(logger).Log("err", err)
-					}
-				}
-			}
-		}()
-		// Bigtable portal subscriber
-		go func() {
-			for {
-				if err := ReceivePortalMessage(btPortalSubscriber, portalCruncherMetrics, btMessageChan); err != nil {
+				if err := ReceivePortalMessage(zeroMQSubscriber, portalCruncherMetrics, redisMessageChan, btMessageChan); err != nil {
 					switch err.(type) {
 					case *ErrReceiveMessage:
 						level.Error(logger).Log("err", err)
@@ -476,7 +456,7 @@ func (e *ErrUnmarshalMessage) Error() string {
 	return fmt.Sprintf("could not unmarshal message: %v", e.err)
 }
 
-func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.PortalCruncherMetrics, messageChan chan []byte) error {
+func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.PortalCruncherMetrics, redisMessageChan chan []byte, btMessageChan chan []byte) error {
 	_, message, err := portalSubscriber.ReceiveMessage()
 	if err != nil {
 		return &ErrReceiveMessage{err: err}
@@ -485,7 +465,8 @@ func ReceivePortalMessage(portalSubscriber pubsub.Subscriber, metrics *metrics.P
 	metrics.ReceivedMessageCount.Add(1)
 
 	select {
-	case messageChan <- message:
+	case redisMessageChan <- message:
+	case btMessageChan <- message:
 	default:
 		return &ErrChannelFull{}
 	}
@@ -508,8 +489,8 @@ func BTHandler(ctx context.Context,
 
 		// Use customer (buyer) ID and user hash as our row key prefixes
 		// Then have session ID as the identifier in the row key to indicate what to group by
-		sessionRowKey := fmt.Sprintf("%d#%d", meta.BuyerID, meta.ID)
-		userRowKey := fmt.Sprintf("%d#%d", meta.UserHash, meta.ID)
+		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
 
 		rowKeys := []string{sessionRowKey, userRowKey}
 

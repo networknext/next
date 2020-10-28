@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/envvar"
+
 	// "github.com/go-kit/kit/log/level"
 
 	"cloud.google.com/go/bigtable"
@@ -13,8 +16,9 @@ import (
 )
 
 type BigTable struct {
-	Client *bigtable.Client
-	Logger log.Logger
+	Client       *bigtable.Client
+	Logger       log.Logger
+	SessionTable *bigtable.Table
 }
 
 type BigTableAdmin struct {
@@ -37,10 +41,19 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, lo
 	if err != nil {
 		return nil, err
 	}
+	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+	if btTableName == "" {
+		err := fmt.Errorf("NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
+		level.Error(logger).Log("err", err)
+		return nil, err
+	}
+	table := client.Open(btTableName)
 
 	return &BigTable{
-		Client: client,
-		Logger: logger,
+		Client:       client,
+		Logger:       logger,
+		SessionTable: table,
 	}, nil
 }
 
