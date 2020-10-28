@@ -46,9 +46,9 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, o
 			DatacenterName:  "local",
 			DatacenterAlias: "alias",
 			OnNetworkNext:   onNetworkNext,
-			NextRTT:         20,
-			DirectRTT:       50,
-			DeltaRTT:        30,
+			NextRTT:         50,
+			DirectRTT:       20,
+			DeltaRTT:        -30,
 			Location:        routing.LocationNullIsland,
 			ClientAddr:      "127.0.0.1:34629",
 			ServerAddr:      "127.0.0.1:50000",
@@ -539,6 +539,8 @@ func TestDirectSession(t *testing.T) {
 	minutes := time.Now().Unix() / 60
 
 	{
+		assert.Len(t, mockRedises[0].db.Keys(), 2)
+
 		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
@@ -547,20 +549,20 @@ func TestDirectSession(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.ID, sessionID)
-	}
 
-	{
 		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
-		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.ID, sessionID)
 	}
 
 	{
+		assert.Len(t, mockRedises[1].db.Keys(), 2)
+
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 
@@ -574,6 +576,8 @@ func TestDirectSession(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[2].db.Keys(), 1)
+
 		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
@@ -581,6 +585,8 @@ func TestDirectSession(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[3].db.Keys(), 1)
+
 		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 1)
@@ -623,6 +629,8 @@ func TestNextSession(t *testing.T) {
 	minutes := time.Now().Unix() / 60
 
 	{
+		assert.Len(t, mockRedises[0].db.Keys(), 2)
+
 		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
@@ -631,20 +639,20 @@ func TestNextSession(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.ID, sessionID)
-	}
 
-	{
 		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
-		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
 		assert.NoError(t, err)
 
 		assert.Equal(t, sessionData.Meta.ID, sessionID)
 	}
 
 	{
+		assert.Len(t, mockRedises[1].db.Keys(), 2)
+
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
 
@@ -658,6 +666,8 @@ func TestNextSession(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[2].db.Keys(), 1)
+
 		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 
@@ -665,6 +675,8 @@ func TestNextSession(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[3].db.Keys(), 1)
+
 		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 1)
@@ -683,7 +695,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	countDataBytes, err := countData.MarshalBinary()
 	assert.NoError(t, err)
 
-	sessionData := getTestSessionData(true, rand.Uint64(), rand.Uint64(), true, false, time.Now())
+	sessionData := getTestSessionData(true, rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -707,30 +719,11 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	minutes := time.Now().Unix() / 60
 
 	{
-		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
-		assert.NoError(t, err)
-		assert.Len(t, topSessionIDs, 1)
-
-		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
-		assert.NoError(t, err)
-
-		assert.Equal(t, sessionData.Meta.ID, sessionID)
+		assert.Empty(t, mockRedises[0].db.Keys())
 	}
 
 	{
-		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
-		assert.NoError(t, err)
-		assert.Len(t, customerTopSessionIDs, 1)
-
-		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
-		assert.NoError(t, err)
-
-		assert.Equal(t, sessionData.Meta.ID, sessionID)
-	}
-
-	{
-		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
-		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+		assert.Len(t, mockRedises[1].db.Keys(), 1)
 
 		fields, err := mockRedises[1].db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
 		assert.NoError(t, err)
@@ -742,20 +735,11 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	}
 
 	{
-		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
-		assert.NoError(t, err)
-
-		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
+		assert.Empty(t, mockRedises[2].db.Keys())
 	}
 
 	{
-		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
-		assert.NoError(t, err)
-		assert.Len(t, sliceVals, 1)
-
-		sliceVal := sliceVals[0]
-
-		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
+		assert.Empty(t, mockRedises[3].db.Keys())
 	}
 }
 
@@ -819,6 +803,8 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
+		assert.Len(t, mockRedises[0].db.Keys(), 2)
+
 		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
@@ -827,20 +813,20 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, nextSessionData.Meta.ID, sessionID)
-	}
 
-	{
 		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
-		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
 		assert.NoError(t, err)
 
 		assert.Equal(t, nextSessionData.Meta.ID, sessionID)
 	}
 
 	{
+		assert.Len(t, mockRedises[1].db.Keys(), 2)
+
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 		assert.Equal(t, nextSessionData.Point.RedisString(), pointVal)
 
@@ -854,6 +840,8 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[2].db.Keys(), 1)
+
 		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID))
 		assert.NoError(t, err)
 
@@ -861,6 +849,8 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[3].db.Keys(), 1)
+
 		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 2)
@@ -933,6 +923,8 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
+		assert.Len(t, mockRedises[0].db.Keys(), 2)
+
 		topSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("s-%d", minutes))
 		assert.NoError(t, err)
 		assert.Len(t, topSessionIDs, 1)
@@ -941,20 +933,20 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, directSessionData.Meta.ID, sessionID)
-	}
 
-	{
 		customerTopSessionIDs, err := mockRedises[0].db.ZMembers(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes))
 		assert.NoError(t, err)
 		assert.Len(t, customerTopSessionIDs, 1)
 
-		sessionID, err := strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
 		assert.NoError(t, err)
 
 		assert.Equal(t, directSessionData.Meta.ID, sessionID)
 	}
 
 	{
+		assert.Len(t, mockRedises[1].db.Keys(), 2)
+
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
 		assert.Equal(t, directSessionData.Point.RedisString(), pointVal)
 
@@ -968,6 +960,8 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[2].db.Keys(), 1)
+
 		metaVal, err := mockRedises[2].db.Get(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID))
 		assert.NoError(t, err)
 
@@ -975,6 +969,8 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	}
 
 	{
+		assert.Len(t, mockRedises[3].db.Keys(), 1)
+
 		sliceVals, err := mockRedises[3].db.List(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID))
 		assert.NoError(t, err)
 		assert.Len(t, sliceVals, 2)
