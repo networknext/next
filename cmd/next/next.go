@@ -28,7 +28,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/peterbourgon/ff/v3/ffcli"

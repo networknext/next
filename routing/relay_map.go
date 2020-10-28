@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (

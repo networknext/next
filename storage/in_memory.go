@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 )
 

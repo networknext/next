@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/routing"
 )
 

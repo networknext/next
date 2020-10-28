@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/transport/pubsub"
 	"github.com/pebbe/zmq4"
 )
@@ -66,7 +66,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
-					if portalDataBytes, err := postSessionPortalData.ProcessPortalData(post.portalPublisher, post.portalPublishMaxRetries); err != nil {
+					if portalDataBytes, err := postSessionPortalData.ProcessPortalData(ctx, post.portalPublisher, post.portalPublishMaxRetries); err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
 						post.metrics.PortalFailure.Add(1)
 					} else {
@@ -110,7 +110,7 @@ func (post *PostSessionHandler) PortalBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
 }
 
-func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, maxRetries int) (int, error) {
+func (data *SessionPortalData) ProcessPortalData(ctx context.Context, publisher pubsub.Publisher, maxRetries int) (int, error) {
 	sessionBytes, err := data.MarshalBinary()
 	if err != nil {
 		return 0, fmt.Errorf("could not marshal portal data: %v", err)
@@ -121,7 +121,7 @@ func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, max
 	var retryCount int
 
 	for retryCount < maxRetries { // only retry so many times, then error out after that
-		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+		singleByteCount, err := publisher.Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
 		if err != nil {
 			errno := zmq4.AsErrno(err)
 			switch errno {
