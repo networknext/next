@@ -28,10 +28,7 @@ create table buyers (
   id integer primary key autoincrement,
   is_live_customer boolean default false,
   public_key bytea not null,
-  -- sdk3_public_key_id bigint not null,
-  -- display_name varchar not null unique,
   customer_id integer not null,
-  -- large_customer boolean not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
 );
 
@@ -138,7 +135,7 @@ create table metadata (
 
 -- enforce primary keys
 PRAGMA foreign_keys=1;
--- File generation: 2020/10/28 11:18:39
+-- File generation: 2020/10/28 12:28:28
 
 -- machine_types
 insert into machine_types values (0, 'none');

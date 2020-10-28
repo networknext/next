@@ -2,7 +2,9 @@ package storage_test
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -112,16 +114,32 @@ func TestSQL(t *testing.T) {
 	})
 
 	t.Run("AddBuyer", func(t *testing.T) {
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err := rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
 		buyer := routing.Buyer{
-			ID:         1,
+			ID:         internalID,
 			Live:       true,
 			Debug:      false,
-			PublicKey:  make([]byte, crypto.KeySize),
+			PublicKey:  publicKey,
 			CustomerID: customer.CustomerID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
+
+		checkBuyer, err := db.Buyer(internalID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, buyer.Live, checkBuyer.Live)
+		assert.Equal(t, buyer.Debug, checkBuyer.Debug)
+		assert.Equal(t, publicKey, checkBuyer.PublicKey)
+		assert.Equal(t, buyer.CustomerID, checkBuyer.CustomerID)
+
 	})
 
 }
