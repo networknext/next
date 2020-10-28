@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,9 +34,12 @@ func newRelay() *routing.RelayData {
 }
 
 func TestRelayMapTimeoutLoop(t *testing.T) {
+	callbackChan := make(chan bool, 1)
+
 	expiredRelays := new(int)
 	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error {
 		(*expiredRelays)++
+		callbackChan <- true
 		return nil
 	})
 
@@ -45,21 +49,25 @@ func TestRelayMapTimeoutLoop(t *testing.T) {
 	relay.LastUpdateTime = time.Unix(time.Now().Unix()-2, 0)
 	rmap.AddRelayDataEntry(relay.Addr.String(), &relay)
 
-	ctx := context.Background()
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		var timeout int64 = 1
 		frequency := time.Millisecond * 100
 		ticker := time.NewTicker(frequency)
 		rmap.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
 
-	time.Sleep(time.Millisecond * 200)
+	<-callbackChan
+	ctxCancelFunc()
+	wg.Wait()
 
 	assert.Equal(t, 1, *expiredRelays)
 	assert.Zero(t, rmap.GetRelayCount())
-
-	ctx.Done()
 }
 
 func TestRelayMapGetAllRelayData(t *testing.T) {

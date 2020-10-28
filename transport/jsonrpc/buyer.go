@@ -214,8 +214,9 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	case "":
 		buyers := s.Storage.Buyers()
 
-		var oldCount int
-		var newCount int
+		var firstNextCount int
+		var secondNextCount int
+		var ghostArmyNextCount int
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -224,76 +225,103 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		var ghostArmyNextCount int
 		for _, buyer := range buyers {
-			firstCount, err := redis.Int(redisClient.Receive())
+			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			oldCount += firstCount
+			firstNextCount += count
 
-			secondCount, err := redis.Int(redisClient.Receive())
+			count, err = redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			newCount += secondCount
+			secondNextCount += count
 
 			if buyer.ID == ghostArmyBuyerID {
-				if firstCount > secondCount {
-					ghostArmyNextCount = firstCount
+				if firstNextCount > secondNextCount {
+					ghostArmyNextCount = firstNextCount
 				} else {
-					ghostArmyNextCount = secondCount
+					ghostArmyNextCount = secondNextCount
 				}
 			}
 		}
 
-		reply.Next = oldCount
-		if newCount > oldCount {
-			reply.Next = newCount
+		reply.Next = firstNextCount
+		if secondNextCount > firstNextCount {
+			reply.Next = secondNextCount
 		}
 
-		oldCount = 0
-		newCount = 0
+		var firstTotalCount int
+		var secondTotalCount int
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
+			redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", stringID, minutes-1))
+			redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", stringID, minutes))
 		}
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
-			count, err := redis.Int(redisClient.Receive())
+			firstCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			oldCount += count
-
-			count, err = redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
+				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
-			if buyer.ID == ghostArmyBuyerID {
-				// scale by next values because ghost army data contains 0 direct
-				// if ghost army is turned off then this number will be 0 and have no effect
-				count = ghostArmyNextCount * int(ghostArmyScalar)
+			if len(firstCounts)%2 == 0 {
+				for i := 1; i < len(firstCounts); i += 2 {
+					count, err := strconv.ParseUint(firstCounts[i], 10, 32)
+					if err != nil {
+						err = fmt.Errorf("TotalSessions() failed to parse first session count: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					firstTotalCount += int(count)
+				}
 			}
-			newCount += count
+
+			secondCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to receive second session count: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			if len(secondCounts)%2 == 0 {
+				for i := 1; i < len(secondCounts); i += 2 {
+					count, err := strconv.ParseUint(secondCounts[i], 10, 32)
+					if err != nil {
+						err = fmt.Errorf("TotalSessions() failed to parse second session count: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					if buyer.ID == ghostArmyBuyerID {
+						// scale by next values because ghost army data contains 0 direct
+						// if ghost army is turned off then this number will be 0 and have no effect
+						count = uint64(ghostArmyNextCount)*ghostArmyScalar + uint64(ghostArmyNextCount)
+					}
+
+					secondTotalCount += int(count)
+				}
+			}
 		}
 
-		reply.Direct = oldCount
-		if newCount > oldCount {
-			reply.Direct = newCount
+		firstDirectCount := firstTotalCount - firstNextCount
+		secondDirectCount := secondTotalCount - secondNextCount
+
+		reply.Direct = firstDirectCount
+		if secondDirectCount > firstDirectCount {
+			reply.Direct = secondDirectCount
 		}
+
 	default:
 		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
 		if err != nil {
@@ -308,48 +336,80 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes))
 		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
 		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes))
+		redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", buyerID, minutes-1))
+		redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", buyerID, minutes))
 		redisClient.Flush()
 
-		oldDirectCount, err := redis.Int(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		newDirectCount, err := redis.Int(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		reply.Direct = oldDirectCount
-		if newDirectCount > oldDirectCount {
-			reply.Direct = newDirectCount
-		}
-
-		oldNextCount, err := redis.Int(redisClient.Receive())
+		firstNextCount, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		newNextCount, err := redis.Int(redisClient.Receive())
+		secondNextCount, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		reply.Next = oldNextCount
-		if newNextCount > oldNextCount {
-			reply.Next = newNextCount
+		reply.Next = firstNextCount
+		if secondNextCount > firstNextCount {
+			reply.Next = secondNextCount
+		}
+
+		var firstTotalCount int
+		var secondTotalCount int
+
+		firstCounts, err := redis.Strings(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		if len(firstCounts)%2 == 0 {
+			for i := 1; i < len(firstCounts); i += 2 {
+				count, err := strconv.ParseUint(firstCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				firstTotalCount += int(count)
+			}
+		}
+
+		secondCounts, err := redis.Strings(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		if len(secondCounts)%2 == 0 {
+			for i := 1; i < len(secondCounts); i += 2 {
+				count, err := strconv.ParseUint(secondCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				secondTotalCount += int(count)
+			}
+		}
+
+		firstDirectCount := firstTotalCount - firstNextCount
+		secondDirectCount := secondTotalCount - secondNextCount
+
+		reply.Direct = firstDirectCount
+		if secondDirectCount > firstDirectCount {
+			reply.Direct = secondDirectCount
 		}
 	}
 
