@@ -356,17 +356,17 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing management address", "err", err)
 		}
 
-		relayState, err := routing.ParseRelayState(relay.State)
+		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "routing.ParseRelayState returned an error", "err", err)
+			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
 		}
 
-		bwRule, err := routing.ParseBandwidthRule(relay.BWRule)
+		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "routing.ParseBandwidthRule returned an error", "err", err)
 		}
 
-		machineType, err := routing.ParseMachineType(relay.MachineType)
+		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}

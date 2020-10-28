@@ -66,6 +66,25 @@ func ParseRelayState(str string) (RelayState, error) {
 	}
 }
 
+func GetRelayStateSQL(state int64) (RelayState, error) {
+	switch state {
+	case 0:
+		return RelayStateEnabled, nil
+	case 1:
+		return RelayStateMaintenance, nil
+	case 2:
+		return RelayStateDisabled, nil
+	case 3:
+		return RelayStateQuarantine, nil
+	case 4:
+		return RelayStateDecommissioned, nil
+	case 5:
+		return RelayStateOffline, nil
+	default:
+		return RelayStateDisabled, fmt.Errorf("invalid relay state '%d'", state)
+	}
+}
+
 const (
 	// RelayStateEnabled if running and communicating with backend
 	RelayStateEnabled RelayState = 0
@@ -106,6 +125,21 @@ func ParseBandwidthRule(bwRule string) (BandWidthRule, error) {
 	}
 }
 
+func GetBandwidthRuleSQL(bwRule int64) (BandWidthRule, error) {
+	switch bwRule {
+	case 0:
+		return BWRuleNone, nil
+	case 1:
+		return BWRuleFlat, nil
+	case 2:
+		return BWRuleBurst, nil
+	case 4:
+		return BWRulePool, nil
+	default:
+		return BWRuleNone, fmt.Errorf("invalid BandWidthRule '%d'", bwRule)
+	}
+}
+
 // MachineType is the type of server the relay is running on
 type MachineType uint32
 
@@ -125,6 +159,19 @@ func ParseMachineType(machineType string) (MachineType, error) {
 		return VirtualMachine, nil
 	default:
 		return NoneSpecified, fmt.Errorf("invalid MachineType '%s'", machineType)
+	}
+}
+
+func GetMachineTypeSQL(machineType int64) (MachineType, error) {
+	switch machineType {
+	case 0:
+		return NoneSpecified, nil
+	case 1:
+		return BareMetal, nil
+	case 2:
+		return VirtualMachine, nil
+	default:
+		return NoneSpecified, fmt.Errorf("invalid MachineType '%d'", machineType)
 	}
 }
 
@@ -675,7 +722,7 @@ func RelayAddrs(relays []Relay) string {
 func (r *Relay) String() string {
 	relay := "\nrouting.Relay:\n"
 
-	relay += "\tID: " + fmt.Sprintf("D", r.ID) + "\n"
+	relay += "\tID: " + fmt.Sprintf("%d", r.ID) + "\n"
 	relay += "\tName: " + r.Name + "\n"
 	relay += "\tAddr: " + r.Addr.String() + "\n"
 	relay += "\tPublicKey: " + string(r.PublicKey) + "\n"
@@ -701,4 +748,6 @@ func (r *Relay) String() string {
 	relay += "\tEndDate: " + r.EndDate.String() + "\n"
 	relay += "\tType: " + fmt.Sprintf("%v", r.Type) + "\n"
 	relay += "\tRelayID: " + fmt.Sprintf("%d", r.RelayID) + "\n"
+
+	return relay
 }
