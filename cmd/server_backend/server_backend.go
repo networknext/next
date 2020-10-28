@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -569,11 +570,13 @@ func mainReturnWithCode() int {
 		},
 	}
 
+	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
+
 	connections := make([]*net.UDPConn, numThreads)
 
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, internalIPSellers)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
