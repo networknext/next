@@ -44,16 +44,16 @@ type PortalCruncher struct {
 	subscriber pubsub.Subscriber
 	metrics    *metrics.PortalCruncherMetrics
 
-	// portalCountMessageChan chan *transport.SessionCountData
-	portalDataMessageChan chan *transport.SessionPortalData
+	redisCountMessageChan chan *transport.SessionCountData
+	redisDataMessageChan  chan *transport.SessionPortalData
 
 	topSessions   storage.RedisClient
 	sessionMap    storage.RedisClient
 	sessionMeta   storage.RedisClient
 	sessionSlices storage.RedisClient
 
-	// portalCountBuffer []*transport.SessionCountData
-	portalDataBuffer []*transport.SessionPortalData
+	redisPortalCountBuffer []*transport.SessionCountData
+	redisPortalDataBuffer  []*transport.SessionPortalData
 
 	redisFlushCount int
 	flushTime       time.Time
@@ -91,17 +91,19 @@ func NewPortalCruncher(
 	}
 
 	return &PortalCruncher{
-		subscriber: subscriber,
-		metrics:    metrics,
-		// portalCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
-		portalDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
-		topSessions:           topSessions,
-		sessionMap:            sessionMap,
-		sessionMeta:           sessionMeta,
-		sessionSlices:         sessionSlices,
-		redisFlushCount:       redisFlushCount,
-		flushTime:             time.Now(),
-		pingTime:              time.Now(),
+		subscriber:             subscriber,
+		metrics:                metrics,
+		redisCountMessageChan:  make(chan *transport.SessionCountData, chanBufferSize),
+		redisDataMessageChan:   make(chan *transport.SessionPortalData, chanBufferSize),
+		topSessions:            topSessions,
+		sessionMap:             sessionMap,
+		sessionMeta:            sessionMeta,
+		sessionSlices:          sessionSlices,
+		redisPortalCountBuffer: make([]*transport.SessionCountData, 0),
+		redisPortalDataBuffer:  make([]*transport.SessionPortalData, 0),
+		redisFlushCount:        redisFlushCount,
+		flushTime:              time.Now(),
+		pingTime:               time.Now(),
 	}, nil
 }
 
@@ -142,32 +144,37 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 
 			for {
 				select {
+				// Buffer up some portal count entries and only insert into redis periodically to avoid overworking redis
+				case portalCount := <-cruncher.redisCountMessageChan:
+					cruncher.redisPortalCountBuffer = append(cruncher.redisPortalCountBuffer, portalCount)
+
 				// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
-				case portalData := <-cruncher.portalDataMessageChan:
-					cruncher.portalDataBuffer = append(cruncher.portalDataBuffer, portalData)
-
-					if time.Since(cruncher.flushTime) < time.Second && len(cruncher.portalDataBuffer) < cruncher.redisFlushCount {
-						continue
-					}
-
-					// Periodically ping the redis instances and error out if we don't get a pong
-					if time.Since(cruncher.pingTime) >= time.Second*10 {
-						if err := cruncher.PingRedis(); err != nil {
-							errChan <- err
-							return
-						}
-
-						cruncher.pingTime = time.Now()
-					}
-
-					cruncher.flushTime = time.Now()
-					minutes := cruncher.flushTime.Unix() / 60
-
-					cruncher.InsertIntoRedis(minutes)
+				case portalData := <-cruncher.redisDataMessageChan:
+					cruncher.redisPortalDataBuffer = append(cruncher.redisPortalDataBuffer, portalData)
 
 				case <-ctx.Done():
 					return
 				}
+
+				// If it's too early to insert into redis, early out
+				if time.Since(cruncher.flushTime) < time.Second && len(cruncher.redisPortalCountBuffer)+len(cruncher.redisPortalDataBuffer) < cruncher.redisFlushCount {
+					continue
+				}
+
+				// Periodically ping the redis instances and error out if we don't get a pong
+				if time.Since(cruncher.pingTime) >= time.Second*10 {
+					if err := cruncher.PingRedis(); err != nil {
+						errChan <- err
+						return
+					}
+
+					cruncher.pingTime = time.Now()
+				}
+
+				cruncher.flushTime = time.Now()
+				minutes := cruncher.flushTime.Unix() / 60
+
+				cruncher.InsertIntoRedis(minutes)
 			}
 		}()
 	}
@@ -198,16 +205,16 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 
 		switch topic {
 		case pubsub.TopicPortalCruncherSessionCounts:
-			// var sessionCountData transport.SessionCountData
-			// if err := sessionCountData.UnmarshalBinary(message); err != nil {
-			// 	return &ErrUnmarshalMessage{err: err}
-			// }
+			var sessionCountData transport.SessionCountData
+			if err := sessionCountData.UnmarshalBinary(message); err != nil {
+				return &ErrUnmarshalMessage{err: err}
+			}
 
-			// select {
-			// case cruncher.portalCountMessageChan <- &sessionCountData:
-			// default:
-			// 	return &ErrChannelFull{}
-			// }
+			select {
+			case cruncher.redisCountMessageChan <- &sessionCountData:
+			default:
+				return &ErrChannelFull{}
+			}
 
 		case pubsub.TopicPortalCruncherSessionData:
 			var sessionPortalData transport.SessionPortalData
@@ -216,10 +223,17 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 			}
 
 			select {
-			case cruncher.portalDataMessageChan <- &sessionPortalData:
+			case cruncher.redisDataMessageChan <- &sessionPortalData:
 			default:
 				return &ErrChannelFull{}
 			}
+
+			// todo: something like this should work for bigtable insertion
+			// select {
+			// case cruncher.bigtableDataMessageChan <- &sessionPortalData:
+			// default:
+			// 	return &ErrChannelFull{}
+			// }
 		default:
 			return &ErrUnknownMessage{}
 		}
@@ -229,6 +243,28 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 }
 
 func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
+	cruncher.insertCountDataIntoRedis(minutes)
+	cruncher.insertPortalDataIntoRedis(minutes)
+}
+
+func (cruncher *PortalCruncher) insertCountDataIntoRedis(minutes int64) {
+	for i := range cruncher.redisPortalCountBuffer {
+		customerID := fmt.Sprintf("%016x", cruncher.redisPortalCountBuffer[i].BuyerID)
+		serverID := fmt.Sprintf("%016x", cruncher.redisPortalCountBuffer[i].ServerID)
+		numSessions := cruncher.redisPortalCountBuffer[i].NumSessions
+
+		// Remove the old count minute bucket from 2 minutes ago if it didn't expire
+		cruncher.sessionMap.Command("DEL", "c-%s-%d", customerID, minutes-2)
+
+		// Add the new session count
+		cruncher.sessionMap.Command("HSET", "c-%s-%d %s %d", customerID, minutes, serverID, numSessions)
+		cruncher.sessionMap.Command("EXPIRE", "c-%s-%d %d", customerID, minutes, 30)
+	}
+
+	cruncher.redisPortalCountBuffer = cruncher.redisPortalCountBuffer[:0]
+}
+
+func (cruncher *PortalCruncher) insertPortalDataIntoRedis(minutes int64) {
 	// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
 	cruncher.topSessions.Command("DEL", "s-%d", minutes-2)
 
@@ -239,10 +275,10 @@ func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
 	format += "s-%d"
 	args = append(args, minutes)
 
-	for j := range cruncher.portalDataBuffer {
-		meta := cruncher.portalDataBuffer[j].Meta
-		largeCustomer := cruncher.portalDataBuffer[j].LargeCustomer
-		everOnNext := cruncher.portalDataBuffer[j].EverOnNext
+	for i := range cruncher.redisPortalDataBuffer {
+		meta := cruncher.redisPortalDataBuffer[i].Meta
+		largeCustomer := cruncher.redisPortalDataBuffer[i].LargeCustomer
+		everOnNext := cruncher.redisPortalDataBuffer[i].EverOnNext
 
 		// For large customers, only insert the session if they have ever taken network next
 		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
@@ -265,18 +301,18 @@ func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
 	cruncher.topSessions.Command("ZADD", format, args...)
 	cruncher.topSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
 
-	for j := range cruncher.portalDataBuffer {
-		meta := &cruncher.portalDataBuffer[j].Meta
-		largeCustomer := cruncher.portalDataBuffer[j].LargeCustomer
-		everOnNext := cruncher.portalDataBuffer[j].EverOnNext
+	for i := range cruncher.redisPortalDataBuffer {
+		meta := &cruncher.redisPortalDataBuffer[i].Meta
+		largeCustomer := cruncher.redisPortalDataBuffer[i].LargeCustomer
+		everOnNext := cruncher.redisPortalDataBuffer[i].EverOnNext
 
 		// For large customers, only insert the session if they have ever taken network next
 		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
 			continue // Early out if we shouldn't add this session
 		}
 
-		slice := &cruncher.portalDataBuffer[j].Slice
-		point := &cruncher.portalDataBuffer[j].Point
+		slice := &cruncher.redisPortalDataBuffer[i].Slice
+		point := &cruncher.redisPortalDataBuffer[i].Point
 		sessionID := fmt.Sprintf("%016x", meta.ID)
 		customerID := fmt.Sprintf("%016x", meta.BuyerID)
 		next := meta.OnNetworkNext
@@ -324,7 +360,7 @@ func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
 		cruncher.sessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
 	}
 
-	cruncher.portalDataBuffer = cruncher.portalDataBuffer[:0]
+	cruncher.redisPortalDataBuffer = cruncher.redisPortalDataBuffer[:0]
 }
 
 func (cruncher *PortalCruncher) PingRedis() error {

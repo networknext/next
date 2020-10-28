@@ -238,6 +238,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacente
 		// Send the number of sessions on the server to the portal cruncher
 		countData := &SessionCountData{
 			ServerID:    crypto.HashID(packet.ServerAddress.String()),
+			BuyerID:     buyer.ID,
 			NumSessions: packet.NumSessions,
 		}
 		postSessionHandler.SendPortalCounts(countData)

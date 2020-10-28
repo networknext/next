@@ -24,6 +24,7 @@ const (
 
 type SessionCountData struct {
 	ServerID    uint64
+	BuyerID     uint64
 	NumSessions uint32
 }
 
@@ -43,6 +44,10 @@ func (s *SessionCountData) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionCountData] invalid read at server ID")
 	}
 
+	if !encoding.ReadUint64(data, &index, &s.BuyerID) {
+		return errors.New("[SessionCountData] invalid read at buyer ID")
+	}
+
 	if !encoding.ReadUint32(data, &index, &s.NumSessions) {
 		return errors.New("[SessionCountData] invalid read at num sessions")
 	}
@@ -56,13 +61,14 @@ func (s SessionCountData) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, SessionCountDataVersion)
 	encoding.WriteUint64(data, &index, s.ServerID)
+	encoding.WriteUint64(data, &index, s.BuyerID)
 	encoding.WriteUint32(data, &index, s.NumSessions)
 
 	return data, nil
 }
 
 func (s *SessionCountData) Size() uint64 {
-	return 4 + 8 + 4
+	return 4 + 8 + 8 + 4
 }
 
 type SessionPortalData struct {

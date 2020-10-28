@@ -120,6 +120,7 @@ func testBillingEntry() *billing.BillingEntry {
 func testCountData() *transport.SessionCountData {
 	return &transport.SessionCountData{
 		ServerID:    rand.Uint64(),
+		BuyerID:     rand.Uint64(),
 		NumSessions: rand.Uint32(),
 	}
 }

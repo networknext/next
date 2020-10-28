@@ -24,6 +24,14 @@ import (
 	"golang.org/x/net/context"
 )
 
+func getTestCountData(serverID uint64, buyerID uint64) transport.SessionCountData {
+	return transport.SessionCountData{
+		ServerID:    serverID,
+		BuyerID:     buyerID,
+		NumSessions: rand.Uint32(),
+	}
+}
+
 func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, onNetworkNext bool, everOnNetworkNext bool, timestamp time.Time) transport.SessionPortalData {
 	relayID1 := crypto.HashID("127.0.0.1:10000")
 	relayID2 := crypto.HashID("127.0.0.1:10001")
@@ -86,17 +94,30 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, o
 }
 
 type MockSubscriber struct {
-	topic        pubsub.Topic
-	sessionData  []byte
-	bad          bool
+	topics     []pubsub.Topic
+	topicIndex int
+
+	countData   []byte
+	sessionData []byte
+
+	bad bool
+
 	receiveCount int
 }
 
 func (mock *MockSubscriber) Subscribe(topic pubsub.Topic) error {
+	mock.topics = append(mock.topics, topic)
 	return nil
 }
 
 func (mock *MockSubscriber) Unsubscribe(topic pubsub.Topic) error {
+	for i, t := range mock.topics {
+		if t == topic {
+			mock.topics = append(mock.topics[:i], mock.topics[i+1:]...)
+			return nil
+		}
+	}
+
 	return nil
 }
 
@@ -105,15 +126,37 @@ func (mock *MockSubscriber) ReceiveMessage(ctx context.Context) (pubsub.Topic, <
 		return 0, nil, errors.New("bad data")
 	}
 
-	out := make(chan []byte)
-	if mock.receiveCount == 0 {
-		go func() {
-			out <- mock.sessionData
-		}()
+	if mock.receiveCount >= 2 {
+		return 0, nil, nil
 	}
 
 	mock.receiveCount++
-	return mock.topic, out, nil
+
+	topic := mock.topics[mock.topicIndex]
+	mock.topicIndex = (mock.topicIndex + 1) % len(mock.topics)
+
+	out := make(chan []byte)
+
+	switch topic {
+	case pubsub.TopicPortalCruncherSessionCounts:
+		go func() {
+			out <- mock.countData
+		}()
+
+		return topic, out, nil
+	case pubsub.TopicPortalCruncherSessionData:
+		go func() {
+			out <- mock.sessionData
+		}()
+
+		return topic, out, nil
+
+	default:
+		go func() {
+			out <- []byte("bad data")
+		}()
+		return topic, out, nil
+	}
 }
 
 type MockRedis struct {
@@ -246,10 +289,50 @@ func TestReceiveMessage(t *testing.T) {
 		assert.EqualError(t, err, "error receiving message: bad data")
 	})
 
-	// todo: count tests
+	t.Run("count data unmarshal failure", func(t *testing.T) {
+		subscriber := &MockSubscriber{countData: []byte("bad data")}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+
+		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		assert.NoError(t, err)
+
+		err = portalCruncher.ReceiveMessage(ctx)
+		assert.Contains(t, err.Error(), "could not unmarshal message: ")
+	})
+
+	t.Run("count data channel full", func(t *testing.T) {
+		countData := getTestCountData(rand.Uint64(), rand.Uint64())
+		countDataBytes, err := countData.MarshalBinary()
+		assert.NoError(t, err)
+
+		subscriber := &MockSubscriber{countData: countDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+
+		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		assert.NoError(t, err)
+
+		err = portalCruncher.ReceiveMessage(ctx)
+		assert.Equal(t, err, &portalcruncher.ErrChannelFull{})
+	})
+
+	t.Run("count data success", func(t *testing.T) {
+		countData := getTestCountData(rand.Uint64(), rand.Uint64())
+		countDataBytes, err := countData.MarshalBinary()
+		assert.NoError(t, err)
+
+		subscriber := &MockSubscriber{countData: countDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+
+		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 1, 0, &metrics.EmptyPortalCruncherMetrics)
+		assert.NoError(t, err)
+
+		err = portalCruncher.ReceiveMessage(ctx)
+		assert.NoError(t, err)
+	})
 
 	t.Run("portal data unmarshal failure", func(t *testing.T) {
-		subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: []byte("bad data")}
+		subscriber := &MockSubscriber{sessionData: []byte("bad data")}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
@@ -263,7 +346,8 @@ func TestReceiveMessage(t *testing.T) {
 		sessionDataBytes, err := sessionData.MarshalBinary()
 		assert.NoError(t, err)
 
-		subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+		subscriber := &MockSubscriber{sessionData: sessionDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
@@ -277,7 +361,8 @@ func TestReceiveMessage(t *testing.T) {
 		sessionDataBytes, err := sessionData.MarshalBinary()
 		assert.NoError(t, err)
 
-		subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+		subscriber := &MockSubscriber{sessionData: sessionDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 1, 0, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
@@ -291,13 +376,14 @@ func TestReceiveMessage(t *testing.T) {
 		sessionDataBytes, err := sessionData.MarshalBinary()
 		assert.NoError(t, err)
 
-		subscriber := &MockSubscriber{topic: 255, sessionData: sessionDataBytes}
+		subscriber := &MockSubscriber{sessionData: sessionDataBytes}
+		subscriber.Subscribe(255)
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 1, 0, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
-		assert.Equal(t, err, &portalcruncher.ErrUnknownMessage{})
+		assert.Equal(t, &portalcruncher.ErrUnknownMessage{}, err)
 	})
 }
 
@@ -424,6 +510,10 @@ func TestDirectSession(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
+	countData := getTestCountData(rand.Uint64(), rand.Uint64())
+	countDataBytes, err := countData.MarshalBinary()
+	assert.NoError(t, err)
+
 	sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -434,7 +524,10 @@ func TestDirectSession(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+	subscriber := &MockSubscriber{countData: countDataBytes, sessionData: sessionDataBytes}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
 	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
@@ -469,6 +562,14 @@ func TestDirectSession(t *testing.T) {
 	{
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedises[1].db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", countData.ServerID), fields[0])
+
+		countVal := mockRedises[1].db.HGet(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes), fmt.Sprintf("%016x", countData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", countData.NumSessions), countVal)
 	}
 
 	{
@@ -493,6 +594,10 @@ func TestNextSession(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
+	countData := getTestCountData(rand.Uint64(), rand.Uint64())
+	countDataBytes, err := countData.MarshalBinary()
+	assert.NoError(t, err)
+
 	sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -503,7 +608,10 @@ func TestNextSession(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+	subscriber := &MockSubscriber{countData: countDataBytes, sessionData: sessionDataBytes}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
 	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
@@ -538,6 +646,14 @@ func TestNextSession(t *testing.T) {
 	{
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedises[1].db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", countData.ServerID), fields[0])
+
+		countVal := mockRedises[1].db.HGet(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes), fmt.Sprintf("%016x", countData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", countData.NumSessions), countVal)
 	}
 
 	{
@@ -562,6 +678,10 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
+	countData := getTestCountData(rand.Uint64(), rand.Uint64())
+	countDataBytes, err := countData.MarshalBinary()
+	assert.NoError(t, err)
+
 	sessionData := getTestSessionData(true, rand.Uint64(), rand.Uint64(), true, false, time.Now())
 	sessionDataBytes, err := sessionData.MarshalBinary()
 	assert.NoError(t, err)
@@ -572,7 +692,10 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+	subscriber := &MockSubscriber{countData: countDataBytes, sessionData: sessionDataBytes}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
 	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
@@ -607,6 +730,14 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	{
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
 		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedises[1].db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", countData.ServerID), fields[0])
+
+		countVal := mockRedises[1].db.HGet(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes), fmt.Sprintf("%016x", countData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", countData.NumSessions), countVal)
 	}
 
 	{
@@ -645,6 +776,10 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	serverID := rand.Uint64()
+	buyerID := rand.Uint64()
+	oldCountData := getTestCountData(serverID, buyerID)
+
 	directSessionData := getTestSessionData(true, sessionID, userHash, false, false, flushTime)
 
 	_, err = mockRedises[0].db.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
@@ -655,17 +790,26 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 
 	mockRedises[1].db.HSet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
 
+	mockRedises[1].db.HSet(fmt.Sprintf("c-%016x-%d", oldCountData.BuyerID, minutes), fmt.Sprintf("%016x", oldCountData.ServerID))
+
 	err = mockRedises[2].db.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), directSessionData.Meta.RedisString())
 	assert.NoError(t, err)
 
 	_, err = mockRedises[3].db.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), directSessionData.Slice.RedisString())
 	assert.NoError(t, err)
 
+	newCountData := getTestCountData(serverID, buyerID)
+	countDataBytes, err := newCountData.MarshalBinary()
+	assert.NoError(t, err)
+
 	nextSessionData := getTestSessionData(true, sessionID, userHash, true, false, flushTime)
 	sessionDataBytes, err := nextSessionData.MarshalBinary()
 	assert.NoError(t, err)
 
-	subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+	subscriber := &MockSubscriber{countData: countDataBytes, sessionData: sessionDataBytes}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
 	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
@@ -698,6 +842,14 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	{
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 		assert.Equal(t, nextSessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedises[1].db.HKeys(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", newCountData.ServerID), fields[0])
+
+		countVal := mockRedises[1].db.HGet(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes), fmt.Sprintf("%016x", newCountData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", newCountData.NumSessions), countVal)
 	}
 
 	{
@@ -738,6 +890,10 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	serverID := rand.Uint64()
+	buyerID := rand.Uint64()
+	oldCountData := getTestCountData(serverID, buyerID)
+
 	nextSessionData := getTestSessionData(true, sessionID, userHash, true, false, flushTime)
 
 	_, err = mockRedises[0].db.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
@@ -748,17 +904,26 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 
 	mockRedises[1].db.HSet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
 
+	mockRedises[1].db.HSet(fmt.Sprintf("c-%016x-%d", oldCountData.BuyerID, minutes), fmt.Sprintf("%016x", oldCountData.ServerID))
+
 	err = mockRedises[2].db.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), nextSessionData.Meta.RedisString())
 	assert.NoError(t, err)
 
 	_, err = mockRedises[3].db.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), nextSessionData.Slice.RedisString())
 	assert.NoError(t, err)
 
+	newCountData := getTestCountData(serverID, buyerID)
+	countDataBytes, err := newCountData.MarshalBinary()
+	assert.NoError(t, err)
+
 	directSessionData := getTestSessionData(true, sessionID, userHash, false, true, flushTime)
 	sessionDataBytes, err := directSessionData.MarshalBinary()
 	assert.NoError(t, err)
 
-	subscriber := &MockSubscriber{topic: pubsub.TopicPortalCruncherSessionData, sessionData: sessionDataBytes}
+	subscriber := &MockSubscriber{countData: countDataBytes, sessionData: sessionDataBytes}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
 	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
@@ -791,6 +956,14 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	{
 		pointVal := mockRedises[1].db.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
 		assert.Equal(t, directSessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedises[1].db.HKeys(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", newCountData.ServerID), fields[0])
+
+		countVal := mockRedises[1].db.HGet(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes), fmt.Sprintf("%016x", newCountData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", newCountData.NumSessions), countVal)
 	}
 
 	{
