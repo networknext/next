@@ -181,7 +181,7 @@ func mainReturnWithCode() int {
 	// Get the column family name
 	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
 	// Get the max number of days the data should be kept in Bigtable
-	maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+	btMaxAgeDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

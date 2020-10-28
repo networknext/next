@@ -48,7 +48,7 @@ type PortalCruncher struct {
 	subscriber pubsub.Subscriber
 	metrics    *metrics.PortalCruncherMetrics
 
-	// portalCountMessageChan chan *transport.SessionCountData
+	// redisCountMessageChan chan *transport.SessionCountData
 	redisDataMessageChan 	chan *transport.SessionPortalData
 	btDataMessageChan 		chan *transport.SessionPortalData
 
@@ -57,12 +57,12 @@ type PortalCruncher struct {
 	sessionMeta   storage.RedisClient
 	sessionSlices storage.RedisClient
 
-	// portalCountBuffer []*transport.SessionCountData
+	// redisPortalCountBuffer []*transport.SessionCountData
 	redisPortalDataBuffer 	[]*transport.SessionPortalData
 	btPortalDataBuffer		[]*transport.SessionPortalData
 
 	useBigtable 	bool
-	btClient 		storage.BigTable
+	btClient 		*storage.BigTable
 	btCfNames		[]string
 
 	redisFlushCount int
@@ -112,7 +112,7 @@ func NewPortalCruncher(
 	var btCfNames []string
 
 	if useBigtable {
-		btClient, btCfNames, err := SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfNames, btMaxAgeDays, logger)
+		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays, logger)
 		if err != nil {
 			return nil, err
 		}		
@@ -122,16 +122,16 @@ func NewPortalCruncher(
 		subscriber: subscriber,
 		metrics:    metrics,
 		// portalCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
-		redisPortalDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
-		btPortalDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
+		redisDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
+		btDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
 		topSessions:           topSessions,
 		sessionMap:            sessionMap,
 		sessionMeta:           sessionMeta,
 		sessionSlices:         sessionSlices,
 		redisFlushCount:       redisFlushCount,
-		useBigtable 		   useBigtable,
-		btClient			   btClient,
-		btCfNames			   btCfnames,
+		useBigtable: 		   useBigtable,
+		btClient:			   btClient,
+		btCfNames:			   btCfNames,
 		flushTime:             time.Now(),
 		pingTime:              time.Now(),
 
@@ -176,7 +176,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 			for {
 				select {
 				// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
-				case portalData := <-cruncher.redisPortalDataMessageChan:
+				case portalData := <-cruncher.redisDataMessageChan:
 					cruncher.redisPortalDataBuffer = append(cruncher.redisPortalDataBuffer, portalData)
 
 					if time.Since(cruncher.flushTime) < time.Second && len(cruncher.redisPortalDataBuffer) < cruncher.redisFlushCount {
@@ -215,7 +215,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 				for {
 					select {
 					// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
-					case portalData := <-cruncher.btPortalDataMessageChan:
+					case portalData := <-cruncher.btDataMessageChan:
 						cruncher.btPortalDataBuffer = append(cruncher.btPortalDataBuffer, portalData)
 
 						if err := cruncher.InsertIntoBigtable(ctx); err != nil {
@@ -275,10 +275,18 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 			}
 
 			select {
-			case cruncher.portalDataMessageChan <- &sessionPortalData:
+			case cruncher.redisDataMessageChan <- &sessionPortalData:
 			default:
 				return &ErrChannelFull{}
 			}
+
+			select {
+			case cruncher.btDataMessageChan <- &sessionPortalData:
+			default:
+				return &ErrChannelFull{}
+			}
+
+
 		default:
 			return &ErrUnknownMessage{}
 		}
@@ -406,15 +414,15 @@ func (cruncher *PortalCruncher) PingRedis() error {
 	return nil
 }
 
-func (cruncher *PortalCruncher) SetupBigtable(	ctx context.Context, 
-												gcpProjectID string,
-												btInstanceID string,
-												btTableName string,
-												btCfNames string,
-												btMaxAgeDays int,
-												logger log.Logger) (*storage.Bigtable, []string, error) {
+func SetupBigtable(	ctx context.Context, 
+					gcpProjectID string,
+					btInstanceID string,
+					btTableName string,
+					btCfName string,
+					btMaxAgeDays int,
+					logger log.Logger) (*storage.BigTable, []string, error) {
 	// Setup Bigtable
-	btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
+	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
 	if btEmulatorOK {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
@@ -447,9 +455,9 @@ func (cruncher *PortalCruncher) SetupBigtable(	ctx context.Context,
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
 			return nil, nil, err
 		}
-		
+
 		// Set a garbage collection policy of maxAgeDays
-		maxAge := time.Hour * time.Duration(24*maxAgeDays)
+		maxAge := time.Hour * time.Duration(24*btMaxAgeDays)
 		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
 			return nil, nil, err
 		}
@@ -471,8 +479,8 @@ func (cruncher *PortalCruncher) SetupBigtable(	ctx context.Context,
 
 func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
 	for j := range cruncher.btPortalDataBuffer {
-		meta := &cruncher.redisPortalDataBuffer[j].Meta
-		slice := &cruncher.redisPortalDataBuffer[j].Slice
+		meta := &cruncher.btPortalDataBuffer[j].Meta
+		slice := &cruncher.btPortalDataBuffer[j].Slice
 		
 		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
 		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
@@ -494,7 +502,7 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
 		}
 
 		// Insert session data into Bigtable
-		if err := bt.InsertSessionData(ctx, cruncher.btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
+		if err := cruncher.btClient.InsertSessionData(ctx, cruncher.btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
 			return err
 		}
 	}
