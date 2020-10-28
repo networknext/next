@@ -1887,6 +1887,25 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
+	var clientToken core.RouteToken
+	assert.NoError(t, core.ReadRouteToken(&clientToken, responsePacket.Tokens[0*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+
+	var relay1Token core.RouteToken
+	assert.NoError(t, core.ReadRouteToken(&relay1Token, responsePacket.Tokens[1*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+
+	var relay2Token core.RouteToken
+	assert.NoError(t, core.ReadRouteToken(&relay2Token, responsePacket.Tokens[2*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+
+	var relay3Token core.RouteToken
+	assert.NoError(t, core.ReadRouteToken(&relay3Token, responsePacket.Tokens[3*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+
+	var serverToken core.RouteToken
+	assert.NoError(t, core.ReadRouteToken(&serverToken, responsePacket.Tokens[4*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+
+	assert.Equal(t, routeAddresses[0], clientToken.NextAddress)
+	assert.Equal(t, routeAddresses[1], relay1Token.NextAddress)
+	assert.Equal(t, routeAddresses[2], relay2Token.NextAddress)
+
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
