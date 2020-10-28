@@ -1822,7 +1822,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES*5)
 	routeAddresses := make([]*net.UDPAddr, 0)
-	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3External, serverAddr)
+	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3Internal, serverAddr)
 	routePublicKeys := make([][]byte, 0)
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
@@ -1832,7 +1832,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		RouteType:          routing.RouteTypeNew,
 		NumNearRelays:      3,
 		NearRelayIDs:       []uint64{1, 2, 3},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2Internal, *relayAddr3Internal},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2External, *relayAddr3External},
 		NumTokens:          5,
 		Tokens:             tokenData,
 	}
@@ -1862,7 +1862,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{})
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{"seller"})
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
