@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -40,6 +41,11 @@ func TestSQL(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
+	var outerCustomer routing.Customer
+	// var outerBuyer routing.Buyer
+	var outerSeller routing.Seller
+	var outerDatacenter routing.Datacenter
+
 	// NewSQLStorage() Sync() above sets up seq number
 	t.Run("Do Not Sync", func(t *testing.T) {
 		sync, _, err := db.CheckSequenceNumber(ctx)
@@ -70,7 +76,7 @@ func TestSQL(t *testing.T) {
 
 	})
 
-	customer, err := db.Customer("Compcode")
+	outerCustomer, err = db.Customer("Compcode")
 	assert.NoError(t, err)
 
 	t.Run("AddSeller", func(t *testing.T) {
@@ -78,22 +84,19 @@ func TestSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
-			CustomerID:                customer.CustomerID,
+			CustomerID:                outerCustomer.CustomerID,
 		}
 
 		err = db.AddSeller(ctx, seller)
 		assert.NoError(t, err)
 
-		_, err := db.Seller("Compcode")
+		outerSeller, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 
 		// TODO: retrieve seller, make sure it matches
 	})
 
 	t.Run("AddDatacenter", func(t *testing.T) {
-
-		seller, err := db.Seller("Compcode")
-		assert.NoError(t, err)
 
 		datacenter := routing.Datacenter{
 			ID:      crypto.HashID("datacenter name"),
@@ -104,13 +107,15 @@ func TestSQL(t *testing.T) {
 				Longitude: 120.5,
 			},
 			StreetAddress: "Somewhere, USA",
-			SellerID:      seller.SellerID,
+			SellerID:      outerSeller.SellerID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
 		// TODO: retrieve dc, make sure it matches
+		outerDatacenter, err = db.Datacenter(datacenter.ID)
+		assert.NoError(t, err)
 	})
 
 	t.Run("AddBuyer", func(t *testing.T) {
@@ -126,7 +131,7 @@ func TestSQL(t *testing.T) {
 			Live:       true,
 			Debug:      false,
 			PublicKey:  publicKey,
-			CustomerID: customer.CustomerID,
+			CustomerID: outerCustomer.CustomerID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -139,6 +144,35 @@ func TestSQL(t *testing.T) {
 		assert.Equal(t, buyer.Debug, checkBuyer.Debug)
 		assert.Equal(t, publicKey, checkBuyer.PublicKey)
 		assert.Equal(t, buyer.CustomerID, checkBuyer.CustomerID)
+	})
+
+	t.Run("AddRelay", func(t *testing.T) {
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		assert.NoError(t, err)
+
+		rid := crypto.HashID(addr.String())
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		relay := routing.Relay{
+			ID:           rid,
+			Name:         "local.1",
+			Addr:         *addr,
+			PublicKey:    publicKey,
+			Datacenter:   outerDatacenter,
+			MRC:          19700000000000,
+			Overage:      26000000000000,
+			BWRule:       routing.BWRuleBurst,
+			ContractTerm: 12,
+			StartDate:    time.Now(),
+			EndDate:      time.Now(),
+			Type:         routing.BareMetal,
+		}
+
+		err = db.AddRelay(ctx, relay)
+		assert.NoError(t, err)
 
 	})
 
