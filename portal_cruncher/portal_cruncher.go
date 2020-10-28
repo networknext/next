@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"os"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -76,8 +77,12 @@ func NewPortalCruncher(
 	redisHostSessionMap string,
 	redisHostSessionMeta string,
 	redisHostSessionSlices string,
-	gcpProjectID string,
 	useBigtable bool,
+	gcpProjectID string,
+	btInstanceID string,
+	btTableName string,
+	btCfName string,
+	btMaxAgeDays int,
 	chanBufferSize int,
 	redisFlushCount int,
 	logger log.Logger,
@@ -107,7 +112,7 @@ func NewPortalCruncher(
 	var btCfNames []string
 
 	if useBigtable {
-		btClient, btCfNames, err := SetupBigtable(ctx, gcpProjectID, logger)
+		btClient, btCfNames, err := SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfNames, btMaxAgeDays, logger)
 		if err != nil {
 			return nil, err
 		}		
@@ -401,9 +406,15 @@ func (cruncher *PortalCruncher) PingRedis() error {
 	return nil
 }
 
-func (cruncher *PortalCruncher) SetupBigtable(ctx context.Context, gcpProjectID string, logger log.Logger) (*storage.Bigtable, []string, error) {
+func (cruncher *PortalCruncher) SetupBigtable(	ctx context.Context, 
+												gcpProjectID string,
+												btInstanceID string,
+												btTableName string,
+												btCfNames string,
+												btMaxAgeDays int,
+												logger log.Logger) (*storage.Bigtable, []string, error) {
 	// Setup Bigtable
-	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
 	if btEmulatorOK {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
@@ -415,14 +426,7 @@ func (cruncher *PortalCruncher) SetupBigtable(ctx context.Context, gcpProjectID 
 		return nil, nil, fmt.Errorf("No GCP Project ID found. Could not find $BIGTABLE_EMULATOR_HOST for local testing.")
 	}
 
-	// Get Bigtable instance ID
-	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
-
-	// Get the table name
-	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
-
-	// Get the column family names and put them in a slice
-	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	// Put the column family names in a slice
 	btCfNames := []string{btCfName}
 
 	// Create a bigtable admin for setup
@@ -443,15 +447,9 @@ func (cruncher *PortalCruncher) SetupBigtable(ctx context.Context, gcpProjectID 
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
 			return nil, nil, err
 		}
-
-		// Get the max number of days the data should be kept in Bigtable
-		maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// Set a garbage collection policy of 90 days
-		maxAge := time.Hour * time.Duration(24*maxDays)
+		
+		// Set a garbage collection policy of maxAgeDays
+		maxAge := time.Hour * time.Duration(24*maxAgeDays)
 		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
 			return nil, nil, err
 		}
