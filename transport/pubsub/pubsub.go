@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -11,11 +12,11 @@ func (topic Topic) String() string {
 }
 
 type Publisher interface {
-	Publish(topic Topic, message []byte) (int, error)
+	Publish(ctx context.Context, topic Topic, message []byte) (int, error)
 }
 
 type Subscriber interface {
 	Subscribe(topic Topic) error
 	Unsubscribe(topic Topic) error
-	ReceiveMessage() (Topic, []byte, error)
+	ReceiveMessage(ctx context.Context) (Topic, <-chan []byte, error)
 }
