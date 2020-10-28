@@ -9,15 +9,18 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
+// TODO: The RouteShader and InternalConfig fields need to be
+// converted to slices or moved to different objects.
 type Buyer struct {
-	CompanyCode          string
-	ID                   uint64
-	Live                 bool
-	Debug                bool
-	PublicKey            []byte
-	RouteShader          core.RouteShader
-	InternalConfig       core.InternalConfig
-	RoutingRulesSettings RoutingRulesSettings
+	CompanyCode    string // TODO: remove field? It is defined by the parent customer
+	ID             uint64
+	Live           bool
+	Debug          bool
+	PublicKey      []byte
+	RouteShader    core.RouteShader
+	InternalConfig core.InternalConfig
+	BuyerID        int64 // sql PK
+	CustomerID     int64 // sql FK
 }
 
 func (b *Buyer) EncodedPublicKey() string {
