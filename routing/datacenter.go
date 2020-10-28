@@ -15,5 +15,6 @@ type Datacenter struct {
 	Location      Location
 	SupplierName  string
 	StreetAddress string
-	SellerID      int64
+	SellerID      int64 // sql FK
+	DatacenterID  int64 // sql PK
 }

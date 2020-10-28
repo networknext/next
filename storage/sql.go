@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -471,6 +472,7 @@ func (db *SQL) Relays() []routing.Relay {
 }
 
 type sqlRelay struct {
+	ID                 uint64
 	Name               string
 	PublicIP           string // []byte?
 	PublicIPPort       int64
@@ -482,21 +484,119 @@ type sqlRelay struct {
 	ManagementIP       string // []byte?
 	SSHUser            string
 	SSHPort            int64
-	State              string
+	State              int64
 	MaxSessions        int64
 	MRC                int64
 	Overage            int64
-	BWRule             string
+	BWRule             int64
 	ContractTerm       int64
 	StartDate          time.Time
 	EndDate            time.Time
-	MachineType        string
+	MachineType        int64
 	RelayID            int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 // TODO: AddRelay
-func (db *SQL) AddRelay(ctx context.Context, relay routing.Relay) error {
+func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
+
+	var sql bytes.Buffer
+
+	db.relayMutex.RLock()
+	_, ok := db.relays[r.ID]
+	db.relayMutex.RUnlock()
+
+	if ok {
+		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.ID}
+	}
+
+	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	}
+
+	relay := sqlRelay{
+		ID:                 r.ID,
+		Name:               r.Name,
+		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIPPort:       publicIPPort,
+		PublicKey:          r.PublicKey,
+		UpdateKey:          r.UpdateKey,
+		NICSpeedMbps:       int64(r.NICSpeedMbps),
+		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
+		DatacenterID:       r.Datacenter.DatacenterID,
+		ManagementIP:       r.ManagementAddr,
+		SSHUser:            r.SSHUser,
+		SSHPort:            r.SSHPort,
+		State:              int64(r.State),
+		MaxSessions:        int64(r.MaxSessions),
+		MRC:                int64(r.MRC),
+		Overage:            int64(r.Overage),
+		BWRule:             int64(r.BWRule),
+		ContractTerm:       int64(r.ContractTerm),
+		StartDate:          r.StartDate,
+		EndDate:            r.EndDate,
+		MachineType:        int64(r.Type),
+	}
+
+	sql.Write([]byte("insert into relays ("))
+	sql.Write([]byte("id, contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
+	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 "))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing AddRelay SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		relay.ID,
+		relay.ContractTerm,
+		relay.Name,
+		relay.EndDate,
+		relay.IncludedBandwithGB,
+		relay.ManagementIP,
+		relay.MaxSessions,
+		relay.MRC,
+		relay.Overage,
+		relay.NICSpeedMbps,
+		relay.PublicIP,
+		relay.PublicIPPort,
+		relay.PublicKey,
+		relay.SSHPort,
+		relay.SSHUser,
+		relay.StartDate,
+		relay.UpdateKey,
+		relay.BWRule,
+		relay.DatacenterID,
+		relay.MachineType,
+		relay.State,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding relay", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncRelays(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
