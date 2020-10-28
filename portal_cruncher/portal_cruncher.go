@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -45,7 +48,8 @@ type PortalCruncher struct {
 	metrics    *metrics.PortalCruncherMetrics
 
 	// portalCountMessageChan chan *transport.SessionCountData
-	portalDataMessageChan chan *transport.SessionPortalData
+	redisDataMessageChan 	chan *transport.SessionPortalData
+	btDataMessageChan 		chan *transport.SessionPortalData
 
 	topSessions   storage.RedisClient
 	sessionMap    storage.RedisClient
@@ -53,7 +57,12 @@ type PortalCruncher struct {
 	sessionSlices storage.RedisClient
 
 	// portalCountBuffer []*transport.SessionCountData
-	portalDataBuffer []*transport.SessionPortalData
+	redisPortalDataBuffer 	[]*transport.SessionPortalData
+	btPortalDataBuffer		[]*transport.SessionPortalData
+
+	useBigtable 	bool
+	btClient 		storage.BigTable
+	btCfNames		[]string
 
 	redisFlushCount int
 	flushTime       time.Time
@@ -61,13 +70,17 @@ type PortalCruncher struct {
 }
 
 func NewPortalCruncher(
+	ctx context.Context,
 	subscriber pubsub.Subscriber,
 	redisHostTopSessions string,
 	redisHostSessionMap string,
 	redisHostSessionMeta string,
 	redisHostSessionSlices string,
+	gcpProjectID string,
+	useBigtable bool,
 	chanBufferSize int,
 	redisFlushCount int,
+	logger log.Logger,
 	metrics *metrics.PortalCruncherMetrics,
 ) (*PortalCruncher, error) {
 	topSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
@@ -90,22 +103,37 @@ func NewPortalCruncher(
 		return nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionSlices, err)
 	}
 
+	var btClient *storage.BigTable
+	var btCfNames []string
+
+	if useBigtable {
+		btClient, btCfNames, err := SetupBigtable(ctx, gcpProjectID, logger)
+		if err != nil {
+			return nil, err
+		}		
+	}
+
 	return &PortalCruncher{
 		subscriber: subscriber,
 		metrics:    metrics,
 		// portalCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
-		portalDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
+		redisPortalDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
+		btPortalDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
 		topSessions:           topSessions,
 		sessionMap:            sessionMap,
 		sessionMeta:           sessionMeta,
 		sessionSlices:         sessionSlices,
 		redisFlushCount:       redisFlushCount,
+		useBigtable 		   useBigtable,
+		btClient			   btClient,
+		btCfNames			   btCfnames,
 		flushTime:             time.Now(),
 		pingTime:              time.Now(),
+
 	}, nil
 }
 
-func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines int, numRedisInsertGoroutines int) error {
+func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines int, numRedisInsertGoroutines int, numBigtableInsertGoroutines int) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
@@ -143,10 +171,10 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 			for {
 				select {
 				// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
-				case portalData := <-cruncher.portalDataMessageChan:
-					cruncher.portalDataBuffer = append(cruncher.portalDataBuffer, portalData)
+				case portalData := <-cruncher.redisPortalDataMessageChan:
+					cruncher.redisPortalDataBuffer = append(cruncher.redisPortalDataBuffer, portalData)
 
-					if time.Since(cruncher.flushTime) < time.Second && len(cruncher.portalDataBuffer) < cruncher.redisFlushCount {
+					if time.Since(cruncher.flushTime) < time.Second && len(cruncher.redisPortalDataBuffer) < cruncher.redisFlushCount {
 						continue
 					}
 
@@ -170,6 +198,32 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 				}
 			}
 		}()
+	}
+
+	if cruncher.useBigtable {
+		// Start the bigtable goroutines
+		for i := 0; i < numBigtableInsertGoroutines; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				for {
+					select {
+					// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
+					case portalData := <-cruncher.btPortalDataMessageChan:
+						cruncher.btPortalDataBuffer = append(cruncher.btPortalDataBuffer, portalData)
+
+						if err := cruncher.InsertIntoBigtable(ctx); err != nil {
+							errChan <- err
+							return
+						}
+
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+		}
 	}
 
 	// Wait until either there is an error or the context is done
@@ -239,10 +293,10 @@ func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
 	format += "s-%d"
 	args = append(args, minutes)
 
-	for j := range cruncher.portalDataBuffer {
-		meta := cruncher.portalDataBuffer[j].Meta
-		largeCustomer := cruncher.portalDataBuffer[j].LargeCustomer
-		everOnNext := cruncher.portalDataBuffer[j].EverOnNext
+	for j := range cruncher.redisPortalDataBuffer {
+		meta := cruncher.redisPortalDataBuffer[j].Meta
+		largeCustomer := cruncher.redisPortalDataBuffer[j].LargeCustomer
+		everOnNext := cruncher.redisPortalDataBuffer[j].EverOnNext
 
 		// For large customers, only insert the session if they have ever taken network next
 		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
@@ -265,18 +319,18 @@ func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
 	cruncher.topSessions.Command("ZADD", format, args...)
 	cruncher.topSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
 
-	for j := range cruncher.portalDataBuffer {
-		meta := &cruncher.portalDataBuffer[j].Meta
-		largeCustomer := cruncher.portalDataBuffer[j].LargeCustomer
-		everOnNext := cruncher.portalDataBuffer[j].EverOnNext
+	for j := range cruncher.redisPortalDataBuffer {
+		meta := &cruncher.redisPortalDataBuffer[j].Meta
+		largeCustomer := cruncher.redisPortalDataBuffer[j].LargeCustomer
+		everOnNext := cruncher.redisPortalDataBuffer[j].EverOnNext
 
 		// For large customers, only insert the session if they have ever taken network next
 		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
 			continue // Early out if we shouldn't add this session
 		}
 
-		slice := &cruncher.portalDataBuffer[j].Slice
-		point := &cruncher.portalDataBuffer[j].Point
+		slice := &cruncher.redisPortalDataBuffer[j].Slice
+		point := &cruncher.redisPortalDataBuffer[j].Point
 		sessionID := fmt.Sprintf("%016x", meta.ID)
 		customerID := fmt.Sprintf("%016x", meta.BuyerID)
 		next := meta.OnNetworkNext
@@ -324,7 +378,7 @@ func (cruncher *PortalCruncher) InsertIntoRedis(minutes int64) {
 		cruncher.sessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
 	}
 
-	cruncher.portalDataBuffer = cruncher.portalDataBuffer[:0]
+	cruncher.redisPortalDataBuffer = cruncher.redisPortalDataBuffer[:0]
 }
 
 func (cruncher *PortalCruncher) PingRedis() error {
@@ -344,5 +398,109 @@ func (cruncher *PortalCruncher) PingRedis() error {
 		return err
 	}
 
+	return nil
+}
+
+func (cruncher *PortalCruncher) SetupBigtable(ctx context.Context, gcpProjectID string, logger log.Logger) (*storage.Bigtable, []string, error) {
+	// Setup Bigtable
+	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	if btEmulatorOK {
+		// Emulator is used for local testing
+		// Requires that emulator has been started in another terminal to work as intended
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected Bigtable emulator")
+	}
+
+	if gcpProjectID == "" && !btEmulatorOK {
+		return nil, nil, fmt.Errorf("No GCP Project ID found. Could not find $BIGTABLE_EMULATOR_HOST for local testing.")
+	}
+
+	// Get Bigtable instance ID
+	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+
+	// Get the table name
+	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+	// Get the column family names and put them in a slice
+	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	btCfNames := []string{btCfName}
+
+	// Create a bigtable admin for setup
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Check if the table exists in the instance
+	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Verify if the table needed exists
+	if !tableExists {
+		// Create a table with the given name and column families
+		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
+			return nil, nil, err
+		}
+
+		// Get the max number of days the data should be kept in Bigtable
+		maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Set a garbage collection policy of 90 days
+		maxAge := time.Hour * time.Duration(24*maxDays)
+		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Close the admin client
+	if err = btAdmin.Close(); err != nil {
+		return nil, nil, err
+	}
+
+	// Create a standard client for writing to the table
+	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return btClient, btCfNames, nil
+}
+
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
+	for j := range cruncher.btPortalDataBuffer {
+		meta := &cruncher.redisPortalDataBuffer[j].Meta
+		slice := &cruncher.redisPortalDataBuffer[j].Slice
+		
+		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
+
+		rowKeys := []string{sessionRowKey, userRowKey}
+
+		// Have 2 columns under 1 column family
+		// 1) Meta
+		// 2) Slice
+
+		// Create byte slices of the session data
+		metaBinary, err := meta.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		sliceBinary, err := slice.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		// Insert session data into Bigtable
+		if err := bt.InsertSessionData(ctx, cruncher.btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
+			return err
+		}
+	}
+
+	cruncher.btPortalDataBuffer = cruncher.btPortalDataBuffer[:0]
 	return nil
 }
