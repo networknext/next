@@ -228,7 +228,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
-	fmt.Printf("AddBuyer() - b:\n%s\n", b.String())
 	// skip Name and CompanyCode - they are part of the parent routing.Customer
 	buyer := sqlBuyer{
 		ID:             b.ID,
@@ -242,14 +241,12 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	sql.Write([]byte("is_live_customer, public_key, customer_id"))
 	sql.Write([]byte(") values ($1, $2, $3)"))
 
-	fmt.Println("AddBuyer(): Client.PrepareContext")
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error perparing AddBuyer SQL", "err", err)
 		return err
 	}
 
-	fmt.Println("AddBuyer(): stmt.Exec")
 	result, err := stmt.Exec(buyer.IsLiveCustomer,
 		buyer.PublicKey,
 		buyer.CustomerID,
@@ -260,7 +257,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	fmt.Println("AddBuyer(): result.RowsAffected")
 	rows, err := result.RowsAffected()
 	if err != nil {
 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
@@ -272,8 +268,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	// Add the buyer in cached storage
-	fmt.Println("AddBuyer(): syncBuyers()")
 	db.syncBuyers(ctx)
 
 	db.IncrementSequenceNumber(ctx)

@@ -434,18 +434,14 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	sql.Write([]byte("select id, is_live_customer, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
-	fmt.Println("syncBuyers(): Client.QueryContext")
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("QueryContext error: %v\n", err)
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		fmt.Println("syncBuyers(): rows.Next()")
-
 		err = rows.Scan(&buyer.BuyerID,
 			&buyer.IsLiveCustomer,
 			&buyer.PublicKey,
@@ -484,10 +480,6 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	db.buyerMutex.Lock()
 	db.buyers = buyers
 	db.buyerMutex.Unlock()
-
-	for _, local := range db.buyers {
-		fmt.Printf("%s\n", local.String())
-	}
 
 	level.Info(db.Logger).Log("during", "syncBuyers", "num", len(db.customers))
 
