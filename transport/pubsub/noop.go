@@ -1,8 +1,10 @@
 package pubsub
 
+import "context"
+
 type NoOpPublisher struct{}
 
-func (noop *NoOpPublisher) Publish(topic Topic, message []byte) (int, error) {
+func (noop *NoOpPublisher) Publish(ctx context.Context, topic Topic, message []byte) (int, error) {
 	return 0, nil
 }
 

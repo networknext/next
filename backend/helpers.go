@@ -69,7 +69,7 @@ func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (lo
 				return logger, fmt.Errorf("failed to create GCP logging client: %v", err)
 			}
 
-			return logging.NewStackdriverLogger(loggingClient, serviceName), nil
+			logger = logging.NewStackdriverLogger(loggingClient, serviceName)
 		}
 	}
 

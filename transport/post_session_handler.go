@@ -80,7 +80,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						continue
 					}
 
-					portalDataBytes, err := transmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionCounts, countBytes, post.portalPublishMaxRetries)
+					portalDataBytes, err := post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionCounts, countBytes)
 					if err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal counts", "err", err)
 						post.metrics.PortalFailure.Add(1)
@@ -111,7 +111,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						continue
 					}
 
-					portalDataBytes, err := transmitPortalData(post.portalPublisher, pubsub.TopicPortalCruncherSessionData, sessionBytes, post.portalPublishMaxRetries)
+					portalDataBytes, err := post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
 					if err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
 						post.metrics.PortalFailure.Add(1)
@@ -172,12 +172,12 @@ func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
 }
 
-func transmitPortalData(publisher pubsub.Publisher, topic pubsub.Topic, data []byte, maxRetries int) (int, error) {
+func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
 	var byteCount int
 	var retryCount int
 
-	for retryCount < maxRetries+1 { // only retry so many times, then error out after that
-		singleByteCount, err := publisher.Publish(topic, data)
+	for retryCount < post.portalPublishMaxRetries+1 { // only retry so many times, then error out after that
+		singleByteCount, err := post.portalPublisher.Publish(ctx, pubsub.TopicPortalCruncherSessionData, data)
 		if err != nil {
 			switch err.(type) {
 			case *pubsub.ErrRetry:
@@ -193,7 +193,7 @@ func transmitPortalData(publisher pubsub.Publisher, topic pubsub.Topic, data []b
 		break
 	}
 
-	if retryCount >= maxRetries {
+	if retryCount >= post.portalPublishMaxRetries {
 		return byteCount, errors.New("exceeded retry count on portal data")
 	}
 
