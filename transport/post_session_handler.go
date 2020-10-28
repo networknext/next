@@ -175,9 +175,10 @@ func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
 	var byteCount int
 	var retryCount int
+	var err error
 
 	for retryCount < post.portalPublishMaxRetries+1 { // only retry so many times, then error out after that
-		singleByteCount, err := post.portalPublisher.Publish(ctx, pubsub.TopicPortalCruncherSessionData, data)
+		byteCount, err = post.portalPublisher.Publish(ctx, topic, data)
 		if err != nil {
 			switch err.(type) {
 			case *pubsub.ErrRetry:
@@ -189,7 +190,6 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 		}
 
 		retryCount = -1
-		byteCount += singleByteCount
 		break
 	}
 

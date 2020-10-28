@@ -54,7 +54,7 @@ type retryPublisher struct {
 
 func (pub *retryPublisher) Publish(ctx context.Context, topic pubsub.Topic, message []byte) (int, error) {
 	if pub.retries >= pub.retryCount {
-		return 0, nil
+		return len(message), nil
 	}
 
 	pub.retries++
@@ -63,11 +63,11 @@ func (pub *retryPublisher) Publish(ctx context.Context, topic pubsub.Topic, mess
 
 type mockPublisher struct {
 	calledChan        chan bool
-	publishedMessages [][]byte
+	publishedMessages [][][]byte
 }
 
 func (pub *mockPublisher) Publish(ctx context.Context, topic pubsub.Topic, message []byte) (int, error) {
-	pub.publishedMessages = append(pub.publishedMessages, message)
+	pub.publishedMessages = append(pub.publishedMessages, [][]byte{[]byte{byte(topic)}, message})
 
 	pub.calledChan <- true
 	return len(message), nil
@@ -285,17 +285,17 @@ func TestPostSessionHandlerTransmitPortalDataRetriesSuccess(t *testing.T) {
 	postSessionHandler := transport.NewPostSessionHandler(4, 1000, publisher, 10, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
-	assert.Zero(t, bytes)
+	assert.Equal(t, 4, bytes)
 	assert.NoError(t, err)
 }
 
 func TestPostSessionHandlerTransmitPortalDataSuccess(t *testing.T) {
-	publisher := &pubsub.NoOpPublisher{}
+	publisher := &retryPublisher{}
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 1000, publisher, 0, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
-	assert.Zero(t, bytes)
+	assert.Equal(t, 4, bytes)
 	assert.NoError(t, err)
 }
 
@@ -413,7 +413,11 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 		wg.Done()
 	}()
 
-	postSessionHandler.SendPortalCounts(testCountData())
+	countData := testCountData()
+	countDataBytes, err := countData.MarshalBinary()
+	assert.NoError(t, err)
+
+	postSessionHandler.SendPortalCounts(countData)
 	<-publisher.calledChan
 
 	ctxCancelFunc()
@@ -421,6 +425,11 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 
 	assert.Equal(t, 1.0, metrics.PortalEntriesFinished.Value())
 	assert.Equal(t, 0.0, metrics.PortalFailure.Value())
+
+	assert.Len(t, publisher.publishedMessages, 1)
+	assert.Len(t, publisher.publishedMessages[0], 2)
+	assert.Equal(t, []byte{byte(pubsub.TopicPortalCruncherSessionCounts)}, publisher.publishedMessages[0][0])
+	assert.Equal(t, countDataBytes, publisher.publishedMessages[0][1])
 }
 
 func TestPostSessionHandlerStartProcessingPortalDataFailure(t *testing.T) {
@@ -475,7 +484,11 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 		wg.Done()
 	}()
 
-	postSessionHandler.SendPortalData(testPortalData())
+	portalData := testPortalData()
+	portalDataBytes, err := portalData.MarshalBinary()
+	assert.NoError(t, err)
+
+	postSessionHandler.SendPortalData(portalData)
 	<-publisher.calledChan
 
 	ctxCancelFunc()
@@ -483,4 +496,9 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 
 	assert.Equal(t, 1.0, metrics.PortalEntriesFinished.Value())
 	assert.Equal(t, 0.0, metrics.PortalFailure.Value())
+
+	assert.Len(t, publisher.publishedMessages, 1)
+	assert.Len(t, publisher.publishedMessages[0], 2)
+	assert.Equal(t, []byte{byte(pubsub.TopicPortalCruncherSessionData)}, publisher.publishedMessages[0][0])
+	assert.Equal(t, portalDataBytes, publisher.publishedMessages[0][1])
 }
