@@ -202,21 +202,6 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 	return
 }
 
-func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
-	args := localjsonrpc.SetRoutingRulesSettingsArgs{
-		BuyerID:              buyerID,
-		RoutingRulesSettings: rrs,
-	}
-
-	var reply localjsonrpc.SetRoutingRulesSettingsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.SetRoutingRulesSettings", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
-}
-
 func datacenterMapsForBuyer(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
