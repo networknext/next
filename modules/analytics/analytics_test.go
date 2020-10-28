@@ -9,9 +9,11 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/metrics"
+
+	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
+	
 	"github.com/stretchr/testify/assert"
 )
 

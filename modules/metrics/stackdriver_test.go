@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/metrics"
-
 	"github.com/go-kit/kit/log"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/networknext/backend/modules/metrics"
 )
 
 func TestStackDriverMetrics(t *testing.T) {

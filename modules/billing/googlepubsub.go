@@ -9,8 +9,9 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/encoding"
-	"github.com/networknext/backend/metrics"
+
+	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/metrics"
 )
 
 // GooglePubSubBiller is an implementation of a billing handler that sends billing data to Google Pub/Sub through multiple clients

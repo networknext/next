@@ -7,8 +7,8 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/stretchr/testify/assert"
 )
 

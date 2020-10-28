@@ -7,7 +7,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/metrics"
+
+	"github.com/networknext/backend/modules/metrics"
 )
 
 type LocalBiller struct {

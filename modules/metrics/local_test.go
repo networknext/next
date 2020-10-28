@@ -3,9 +3,8 @@ package metrics_test
 import (
 	"context"
 	"testing"
-
-	"github.com/networknext/backend/metrics"
 	"github.com/stretchr/testify/assert"
+	"github.com/networknext/backend/modules/metrics"
 )
 
 func TestLocalMetrics(t *testing.T) {

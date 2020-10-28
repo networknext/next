@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"

@@ -3,7 +3,7 @@ package billing
 import (
 	"fmt"
 
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
