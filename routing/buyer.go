@@ -9,17 +9,34 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
+// TODO: The RouteShader and InternalConfig fields need to be
+// converted to slices or moved to different objects.
 type Buyer struct {
-	CompanyCode          string
-	ID                   uint64
-	Live                 bool
-	Debug                bool
-	PublicKey            []byte
-	RouteShader          core.RouteShader
-	InternalConfig       core.InternalConfig
-	RoutingRulesSettings RoutingRulesSettings
+	CompanyCode    string // TODO: remove field? It is defined by the parent customer
+	ID             uint64
+	Live           bool
+	Debug          bool
+	PublicKey      []byte
+	RouteShader    core.RouteShader
+	InternalConfig core.InternalConfig
+	BuyerID        int64 // sql PK
+	CustomerID     int64 // sql FK
 }
 
+func (b *Buyer) String() string {
+
+	buyer := "\nrouting.Buyer:\n"
+	buyer += "\tID            : " + fmt.Sprintf("%d", b.ID) + "\n"
+	buyer += "\tLive          : " + strconv.FormatBool(b.Live) + "\n"
+	buyer += "\tDebug         : " + strconv.FormatBool(b.Debug) + "\n"
+	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
+	buyer += "\tRouteShader   : TBD\n"
+	buyer += "\tInternalConfig: TBD\n"
+	buyer += "\tBuyerID       : " + fmt.Sprintf("%d", b.BuyerID) + "\n"
+	buyer += "\tCustomerID    : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
+
+	return buyer
+}
 func (b *Buyer) EncodedPublicKey() string {
 	totalPubkey := make([]byte, 0)
 	buyerIDBytes := make([]byte, 8)
