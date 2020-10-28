@@ -490,11 +490,10 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expected := routing.Buyer{
-				CompanyCode:          "local",
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				CompanyCode: "local",
+				ID:          1,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			}
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
@@ -521,18 +520,16 @@ func TestFirestore(t *testing.T) {
 
 		expected := []routing.Buyer{
 			{
-				CompanyCode:          "local",
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				CompanyCode: "local",
+				ID:          1,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			},
 			{
-				CompanyCode:          "local-local",
-				ID:                   2,
-				Live:                 true,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+				CompanyCode: "local-local",
+				ID:          2,
+				Live:        true,
+				PublicKey:   make([]byte, crypto.KeySize),
 			},
 		}
 
@@ -572,11 +569,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				CompanyCode:          "local",
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				CompanyCode: "local",
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			}
 
 			expectedCustomer := routing.Customer{
@@ -632,11 +628,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				CompanyCode:          "local",
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				CompanyCode: "local",
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			}
 
 			expectedCustomer := routing.Customer{
@@ -693,45 +688,6 @@ func TestFirestore(t *testing.T) {
 			assert.Equal(t, expectedCustomer.BuyerRef.ID, customerInRemoteStorage.BuyerRef.ID)
 		})
 
-		t.Run("validate only 1 route shader", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
-			assert.NoError(t, err)
-
-			defer func() {
-				err := cleanFireStore(ctx, fs.Client)
-				assert.NoError(t, err)
-			}()
-
-			expected := routing.Buyer{
-				CompanyCode:          "local",
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
-			}
-
-			actualCustomer := routing.Customer{
-				Code: "local",
-				Name: "Local",
-			}
-
-			err = fs.AddCustomer(ctx, actualCustomer)
-			assert.NoError(t, err)
-
-			err = fs.AddBuyer(ctx, expected)
-			assert.NoError(t, err)
-
-			actual, err := fs.Buyer(expected.ID)
-			assert.NoError(t, err)
-
-			assert.Equal(t, expected, actual)
-
-			// Check that only 1 route shader exists in firestore at this point
-			rsdocs := fs.Client.Collection("RouteShader").Documents(ctx)
-			rsSnapshot, err := rsdocs.GetAll()
-			assert.NoError(t, err)
-			assert.Len(t, rsSnapshot, 1)
-		})
 	})
 
 	t.Run("RemoveBuyer", func(t *testing.T) {
@@ -758,11 +714,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				CompanyCode:          "local",
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				CompanyCode: "local",
+				ID:          1,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			}
 
 			actualCustomer := routing.Customer{
@@ -812,11 +767,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				CompanyCode:          "local",
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				CompanyCode: "local",
+				ID:          1,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			}
 
 			actualCustomer := routing.Customer{
@@ -852,10 +806,9 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:        1,
+				Live:      false,
+				PublicKey: make([]byte, crypto.KeySize),
 			}
 
 			err = fs.SetBuyer(ctx, buyer)
@@ -872,11 +825,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				CompanyCode:          "local",
-				ID:                   1,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				CompanyCode: "local",
+				ID:          1,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
 			}
 
 			actualCustomer := routing.Customer{
@@ -2575,13 +2527,12 @@ func TestFirestore(t *testing.T) {
 		expectedInternalConfig.MultipathOverloadThreshold = 10
 
 		expectedBuyer := routing.Buyer{
-			CompanyCode:          "local",
-			ID:                   1,
-			Live:                 false,
-			PublicKey:            make([]byte, crypto.KeySize),
-			RouteShader:          expectedRouteShader,
-			InternalConfig:       expectedInternalConfig,
-			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+			CompanyCode:    "local",
+			ID:             1,
+			Live:           false,
+			PublicKey:      make([]byte, crypto.KeySize),
+			RouteShader:    expectedRouteShader,
+			InternalConfig: expectedInternalConfig,
 		}
 
 		expectedSeller := routing.Seller{
@@ -2675,7 +2626,7 @@ func TestFirestore(t *testing.T) {
 		assert.Equal(t, expectedRelay, actualRelay)
 	})
 
-	t.Run("Test buyer routing obects", func(t *testing.T) {
+	t.Run("Test buyer routing objects", func(t *testing.T) {
 		expectedRouteShader := core.NewRouteShader()
 		expectedRouteShader.AcceptableLatency = -1
 		expectedRouteShader.LatencyThreshold = -1
@@ -2689,18 +2640,13 @@ func TestFirestore(t *testing.T) {
 			Name: "Local",
 		}
 
-		expectedRoutingRulesSettings := routing.DefaultRoutingRulesSettings
-		expectedRoutingRulesSettings.RTTThreshold = routing.DefaultRoutingRulesSettings.RTTThreshold + 100
-		expectedRoutingRulesSettings.ExcludedUserHashes[1234567890] = true
-
 		expectedBuyer := routing.Buyer{
-			CompanyCode:          "local",
-			ID:                   1,
-			Live:                 false,
-			PublicKey:            make([]byte, crypto.KeySize),
-			RouteShader:          expectedRouteShader,
-			InternalConfig:       expectedInternalConfig,
-			RoutingRulesSettings: expectedRoutingRulesSettings,
+			CompanyCode:    "local",
+			ID:             1,
+			Live:           false,
+			PublicKey:      make([]byte, crypto.KeySize),
+			RouteShader:    expectedRouteShader,
+			InternalConfig: expectedInternalConfig,
 		}
 
 		t.Run("delete", func(t *testing.T) {
@@ -2783,7 +2729,6 @@ func TestFirestore(t *testing.T) {
 				actualBuyer, err := fs.Buyer(1)
 				assert.NoError(t, err)
 
-				assert.Equal(t, routing.DefaultRoutingRulesSettings, actualBuyer.RoutingRulesSettings)
 				assert.Equal(t, core.NewRouteShader(), actualBuyer.RouteShader)
 				assert.Equal(t, core.NewInternalConfig(), actualBuyer.InternalConfig)
 			})
@@ -2805,16 +2750,12 @@ func TestFirestore(t *testing.T) {
 				err = fs.AddBuyer(ctx, expectedBuyer)
 				assert.NoError(t, err)
 
-				actualRoutingRulesSettings, err := fs.GetRoutingRulesSettingsForBuyerID(ctx, "0")
-				assert.Error(t, err)
-
 				actualRouteShader, err := fs.GetRouteShaderForBuyerID(ctx, "0")
 				assert.Error(t, err)
 
 				actualInternalConfig, err := fs.GetInternalConfigForBuyerID(ctx, "0")
 				assert.Error(t, err)
 
-				assert.Equal(t, routing.DefaultRoutingRulesSettings, actualRoutingRulesSettings)
 				assert.Equal(t, core.NewRouteShader(), actualRouteShader)
 				assert.Equal(t, core.NewInternalConfig(), actualInternalConfig)
 			})
@@ -2842,16 +2783,12 @@ func TestFirestore(t *testing.T) {
 
 				buyerFirestoreID := bdoc.Ref.ID
 
-				actualRoutingRulesSettings, err := fs.GetRoutingRulesSettingsForBuyerID(ctx, buyerFirestoreID)
-				assert.NoError(t, err)
-
 				actualRouteShader, err := fs.GetRouteShaderForBuyerID(ctx, buyerFirestoreID)
 				assert.NoError(t, err)
 
 				actualInternalConfig, err := fs.GetInternalConfigForBuyerID(ctx, buyerFirestoreID)
 				assert.NoError(t, err)
 
-				assert.Equal(t, expectedRoutingRulesSettings, actualRoutingRulesSettings)
 				assert.Equal(t, expectedRouteShader, actualRouteShader)
 				assert.Equal(t, expectedInternalConfig, actualInternalConfig)
 			})
@@ -2876,9 +2813,6 @@ func TestFirestore(t *testing.T) {
 				err = fs.AddBuyer(ctx, expectedBuyer)
 				assert.NoError(t, err)
 
-				err = fs.SetRoutingRulesSettingsForBuyerID(ctx, "0", expectedCustomer.Name, routing.DefaultRoutingRulesSettings)
-				assert.NoError(t, err)
-
 				err = fs.SetRouteShaderForBuyerID(ctx, "0", expectedCustomer.Name, core.NewRouteShader())
 				assert.NoError(t, err)
 
@@ -2891,7 +2825,6 @@ func TestFirestore(t *testing.T) {
 				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
 				assert.NoError(t, err)
 
-				assert.Equal(t, expectedRoutingRulesSettings, actualBuyer.RoutingRulesSettings)
 				assert.Equal(t, expectedRouteShader, actualBuyer.RouteShader)
 				assert.Equal(t, expectedInternalConfig, actualBuyer.InternalConfig)
 			})
@@ -2922,9 +2855,6 @@ func TestFirestore(t *testing.T) {
 
 				buyerFirestoreID := bdoc.Ref.ID
 
-				err = fs.SetRoutingRulesSettingsForBuyerID(ctx, buyerFirestoreID, expectedCustomer.Name, routing.DefaultRoutingRulesSettings)
-				assert.NoError(t, err)
-
 				err = fs.SetRouteShaderForBuyerID(ctx, buyerFirestoreID, expectedCustomer.Name, core.NewRouteShader())
 				assert.NoError(t, err)
 
@@ -2937,7 +2867,6 @@ func TestFirestore(t *testing.T) {
 				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
 				assert.NoError(t, err)
 
-				assert.Equal(t, routing.DefaultRoutingRulesSettings, actualBuyer.RoutingRulesSettings)
 				assert.Equal(t, core.NewRouteShader(), actualBuyer.RouteShader)
 				assert.Equal(t, core.NewInternalConfig(), actualBuyer.InternalConfig)
 			})
