@@ -146,7 +146,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding datacenter", "err", err)
+		level.Error(db.Logger).Log("during", "error adding customer", "err", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
@@ -217,7 +217,60 @@ func (db *SQL) Buyers() []routing.Buyer {
 }
 
 // AddBuyer adds the provided buyer to storage and returns an error if the buyer could not be added.
-func (db *SQL) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
+func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
+	var sql bytes.Buffer
+
+	db.buyerMutex.RLock()
+	_, ok := db.buyers[b.ID]
+	db.buyerMutex.RUnlock()
+
+	if ok {
+		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
+	}
+
+	// skip Name and CompanyCode - they are part of the parent routing.Customer
+	buyer := sqlBuyer{
+		ID:             b.ID,
+		IsLiveCustomer: b.Live,
+		PublicKey:      b.PublicKey,
+		CustomerID:     b.CustomerID,
+	}
+
+	// Add the buyer in remote storage
+	sql.Write([]byte("insert into buyers ("))
+	sql.Write([]byte("is_live_customer, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing AddBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(buyer.IsLiveCustomer,
+		buyer.PublicKey,
+		buyer.CustomerID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding buyer", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	// Add the buyer in cached storage
+	db.syncBuyers(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 

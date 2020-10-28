@@ -414,15 +414,13 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 }
 
 type sqlBuyer struct {
-	ID                       uint64
-	IsLiveCustomer           bool
-	Name                     string
-	SdkVersion3PublicKeyData []byte
-	PublicKeyDataString      string
-	SdkVersion3PublicKeyID   int64
-	CompanyCode              string
-	BuyerID                  int64 // sql PK
-	CustomerID               int64 // sql PK
+	ID             uint64
+	IsLiveCustomer bool
+	Name           string
+	PublicKey      []byte
+	CompanyCode    string
+	BuyerID        int64 // sql PK
+	CustomerID     int64 // sql PK
 }
 
 func (db *SQL) syncBuyers(ctx context.Context) error {
@@ -447,11 +445,10 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	for rows.Next() {
 		err = rows.Scan(&buyer.BuyerID,
 			&buyer.IsLiveCustomer,
-			&buyer.SdkVersion3PublicKeyData,
-			&buyer.SdkVersion3PublicKeyID,
+			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
-		buyer.ID = binary.LittleEndian.Uint64(buyer.SdkVersion3PublicKeyData[:8])
+		buyer.ID = binary.LittleEndian.Uint64(buyer.PublicKey[:8])
 
 		buyerIDs[buyer.BuyerID] = buyer.ID
 
@@ -469,7 +466,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			CompanyCode:    db.customerIDs[buyer.CustomerID],
 			ID:             buyer.ID,
 			Live:           buyer.IsLiveCustomer,
-			PublicKey:      buyer.SdkVersion3PublicKeyData,
+			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
 		}

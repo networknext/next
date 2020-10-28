@@ -63,6 +63,9 @@ func TestSQL(t *testing.T) {
 
 		err = db.AddCustomer(ctx, customer)
 		assert.NoError(t, err)
+
+		// TODO: retrieve customer, make sure it matches
+
 	})
 
 	customer, err := db.Customer("Compcode")
@@ -81,6 +84,8 @@ func TestSQL(t *testing.T) {
 
 		_, err := db.Seller("Compcode")
 		assert.NoError(t, err)
+
+		// TODO: retrieve seller, make sure it matches
 	})
 
 	t.Run("AddDatacenter", func(t *testing.T) {
@@ -101,6 +106,21 @@ func TestSQL(t *testing.T) {
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		// TODO: retrieve dc, make sure it matches
+	})
+
+	t.Run("AddBuyer", func(t *testing.T) {
+		buyer := routing.Buyer{
+			ID:         1,
+			Live:       true,
+			Debug:      false,
+			PublicKey:  make([]byte, crypto.KeySize),
+			CustomerID: customer.CustomerID,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
 	})
 
