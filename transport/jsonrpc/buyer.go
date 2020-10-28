@@ -43,7 +43,7 @@ type BuyersService struct {
 	mapPointsBuyerCache        map[string]json.RawMessage
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
-	BigTable storage.BigTable
+	BigTable 				*storage.BigTable
 
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
@@ -138,14 +138,14 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
 
 	// Fetch historic sessions if there are any
-	rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), s.BigTable.SessionTable, fmt.Sprintf("%s#", userHash))
+	rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash))
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), s.BigTable.SessionTable, fmt.Sprintf("%s#", userID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+	rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)

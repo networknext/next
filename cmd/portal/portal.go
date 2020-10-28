@@ -359,7 +359,7 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
-		BigTable:               *btClient,
+		BigTable:               btClient,
 		Logger:                 logger,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
