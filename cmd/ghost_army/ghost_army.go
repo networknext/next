@@ -172,7 +172,7 @@ func main() {
 					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
 					continue
 				}
-				portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+				portalPublisher.Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
 			case <-ctx.Done():
 				return
 			}
