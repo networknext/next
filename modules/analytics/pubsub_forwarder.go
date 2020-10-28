@@ -50,10 +50,9 @@ func (psf *PingStatsPubSubForwarder) Forward(ctx context.Context) {
 			m.Ack()
 
 			for i := range entries {
-				entry := &entries[i]
-				entry.Timestamp = uint64(m.PublishTime.Unix())
-				psf.Writer.Write(context.Background(), entry)
+				entries[i].Timestamp = uint64(m.PublishTime.Unix())
 			}
+			psf.Writer.Write(context.Background(), entries)
 		} else {
 			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
 		}
@@ -103,10 +102,9 @@ func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context) {
 			m.Ack()
 
 			for i := range entries {
-				entry := &entries[i]
-				entry.Timestamp = uint64(m.PublishTime.Unix())
-				psf.Writer.Write(context.Background(), entry)
+				entries[i].Timestamp = uint64(m.PublishTime.Unix())
 			}
+			psf.Writer.Write(context.Background(), entries)
 		} else {
 			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
 		}
