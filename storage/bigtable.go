@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/envvar"
+	"github.com/networknext/backend/modules/envvar"
 
 	"cloud.google.com/go/bigtable"
 	"google.golang.org/api/option"

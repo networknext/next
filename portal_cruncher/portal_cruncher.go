@@ -515,8 +515,8 @@ func SetupBigtable(	ctx context.Context,
 
 func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData,) error {
 	for j := range btPortalDataBuffer {
-		meta := &cruncher.btPortalDataBuffer[j].Meta
-		slice := &cruncher.btPortalDataBuffer[j].Slice
+		meta := &btPortalDataBuffer[j].Meta
+		slice := &btPortalDataBuffer[j].Slice
 		
 		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
 		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
@@ -543,6 +543,6 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 		}
 	}
 
-	cruncher.btPortalDataBuffer = cruncher.btPortalDataBuffer[:0]
+	btPortalDataBuffer = btPortalDataBuffer[:0]
 	return nil
 }

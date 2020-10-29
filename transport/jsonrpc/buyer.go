@@ -21,7 +21,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/envar"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
