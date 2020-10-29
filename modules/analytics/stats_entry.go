@@ -78,7 +78,7 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 	return data
 }
 
-func ReadPingStatsEntries(data []byte) ([]PingStatsEntry, bool) {
+func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
 	index := 0
 
 	var version uint8
@@ -91,10 +91,10 @@ func ReadPingStatsEntries(data []byte) ([]PingStatsEntry, bool) {
 		return nil, false
 	}
 
-	entries := make([]PingStatsEntry, length)
+	entries := make([]*PingStatsEntry, length)
 
 	for i := range entries {
-		entry := &entries[i]
+		entry := new(PingStatsEntry)
 
 		if !encoding.ReadUint64(data, &index, &entry.RelayA) {
 			return nil, false
@@ -121,6 +121,7 @@ func ReadPingStatsEntries(data []byte) ([]PingStatsEntry, bool) {
 				return nil, false
 			}
 		}
+		entries[i] = entry
 	}
 
 	return entries, true
@@ -208,7 +209,7 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 	return data
 }
 
-func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
+func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
 	index := 0
 
 	var version uint8
@@ -221,10 +222,10 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 		return nil, false
 	}
 
-	entries := make([]RelayStatsEntry, length)
+	entries := make([]*RelayStatsEntry, length)
 
 	for i := range entries {
-		entry := &entries[i]
+		entry := new(RelayStatsEntry)
 
 		if version >= 2 {
 			if !encoding.ReadUint64(data, &index, &entry.ID) {
@@ -325,6 +326,8 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 				return nil, false
 			}
 		}
+
+		entries[i] = entry
 	}
 
 	return entries, true
