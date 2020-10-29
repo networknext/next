@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,9 +34,12 @@ func newRelay() *routing.RelayData {
 }
 
 func TestRelayMapTimeoutLoop(t *testing.T) {
+	callbackChan := make(chan bool, 1)
+
 	expiredRelays := new(int)
 	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error {
 		(*expiredRelays)++
+		callbackChan <- true
 		return nil
 	})
 
@@ -45,21 +49,25 @@ func TestRelayMapTimeoutLoop(t *testing.T) {
 	relay.LastUpdateTime = time.Unix(time.Now().Unix()-2, 0)
 	rmap.AddRelayDataEntry(relay.Addr.String(), &relay)
 
-	ctx := context.Background()
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		var timeout int64 = 1
 		frequency := time.Millisecond * 100
 		ticker := time.NewTicker(frequency)
 		rmap.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
 
-	time.Sleep(time.Millisecond * 200)
+	<-callbackChan
+	ctxCancelFunc()
+	wg.Wait()
 
 	assert.Equal(t, 1, *expiredRelays)
 	assert.Zero(t, rmap.GetRelayCount())
-
-	ctx.Done()
 }
 
 func TestRelayMapGetAllRelayData(t *testing.T) {
@@ -77,7 +85,38 @@ func TestRelayMapGetAllRelayData(t *testing.T) {
 		relay.Version = "some other version"
 		expected := rmap.GetRelayData(relay.Addr.String())
 		assert.NotNil(t, expected)
-		assert.Equal(t, relay.Version, expected.Version)
+		assert.NotEqual(t, relay.Version, expected.Version)
+	}
+}
+
+func TestRelayMapGetAllRelayIDs(t *testing.T) {
+	excludeSeller := new(routing.Seller)
+	excludeSeller.ID = "valve"
+	normalSeller := new(routing.Seller)
+	normalSeller.ID = "normal"
+
+	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error { return nil })
+	for i := 0; i < 6; i++ {
+		relay := newRelay()
+		relay.ID = uint64(i)
+		if i == 0 || i == 3{
+			relay.Seller = *excludeSeller
+		}else{
+			relay.Seller = *normalSeller
+		}
+		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", 10000+i))
+		relay.Addr = *addr
+		rmap.AddRelayDataEntry(relay.Addr.String(), relay)
+	}
+
+	relayIDs := rmap.GetAllRelayIDs([]string{})
+	assert.Equal(t, 6, len(relayIDs))
+
+	relayIDsWithExclude := rmap.GetAllRelayIDs([]string{excludeSeller.ID})
+	assert.Equal(t,4, len(relayIDsWithExclude))
+	for _, relayID := range relayIDsWithExclude{
+		assert.NotEqual(t,0, relayID)
+		assert.NotEqual(t,3, relayID)
 	}
 }
 
