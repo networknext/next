@@ -408,8 +408,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if buyer.ID == ghostArmyBuyerID {
 			// scale by next values because ghost army data contains 0 direct
 			// if ghost army is turned off then this number will be 0 and have no effect
-			firstTotalCount += reply.Next*int(ghostArmyScalar) + firstNextCount
-			secondTotalCount += reply.Next*int(ghostArmyScalar) + secondNextCount
+			firstTotalCount += firstNextCount*int(ghostArmyScalar) + firstNextCount
+			secondTotalCount += secondNextCount*int(ghostArmyScalar) + secondNextCount
 		}
 
 		firstDirectCount := firstTotalCount - firstNextCount
