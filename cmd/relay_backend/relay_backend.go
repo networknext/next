@@ -10,6 +10,7 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"github.com/networknext/backend/cmd/helpers"
 	"net"
 	"net/http"
 	"os"
@@ -138,24 +139,7 @@ func mainReturnWithCode() int {
 	}
 
 	statsdb := routing.NewStatsDatabase()
-	costMatrix := &routing.CostMatrix{}
-	routeMatrix := &routing.RouteMatrix{}
 
-	var costMatrixMutex sync.RWMutex
-	getCostMatrixFunc := func() *routing.CostMatrix {
-		costMatrixMutex.RLock()
-		cm := costMatrix
-		costMatrixMutex.RUnlock()
-		return cm
-	}
-
-	var routeMatrixMutex sync.RWMutex
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
-		routeMatrixMutex.RLock()
-		rm := routeMatrix
-		routeMatrixMutex.RUnlock()
-		return rm
-	}
 
 	// Get the max jitter and max packet loss env vars
 	if !envvar.Exists("RELAY_ROUTER_MAX_JITTER") {
@@ -396,21 +380,24 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Separate route matrix specifically for Valve
-	valveRouteMatrix := &routing.RouteMatrix{}
-	var valveRouteMatrixMutex sync.RWMutex
 
-	getValveRouteMatrixFunc := func() *routing.RouteMatrix {
-		valveRouteMatrixMutex.RLock()
-		rm := valveRouteMatrix
-		valveRouteMatrixMutex.RUnlock()
-		return rm
-	}
 
 	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
+	}
+
+	costMatrixData := new(helpers.MatrixData)
+	routeMatrixData := new(helpers.MatrixData)
+
+	routeMatrix := routing.RouteMatrix{} //still needed for the route dashboard
+	var routeMatrixMutex sync.RWMutex
+	getRouteMatrixFunc := func() *routing.RouteMatrix { // makes copy and returns pointer to copy
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return &rm
 	}
 
 	// Generate the route matrix
@@ -470,11 +457,8 @@ func mainReturnWithCode() int {
 				continue
 			}
 
-			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
-
-			costMatrixMutex.Lock()
-			costMatrix = costMatrixNew
-			costMatrixMutex.Unlock()
+			costMatrixData.SetMatrix(costMatrixNew.GetResponseData())
+			costMatrixMetrics.Bytes.Set(float64(costMatrixData.GetMatrixDataSize()))
 
 			numCPUs := runtime.NumCPU()
 			numSegments := numRelays
@@ -488,7 +472,7 @@ func mainReturnWithCode() int {
 			optimizeMetrics.Invocations.Add(1)
 			optimizeDurationStart := time.Now()
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, relayDatacenterIDs)
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				time.Sleep(syncInterval)
@@ -521,10 +505,12 @@ func mainReturnWithCode() int {
 			routeMatrixNew.WriteAnalysisData()
 
 			routeMatrixMutex.Lock()
-			routeMatrix = routeMatrixNew
+			routeMatrix = *routeMatrixNew
 			routeMatrixMutex.Unlock()
 
-			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrixNew.GetResponseData())))
+			routeMatrixData.SetMatrix(routeMatrixNew.GetResponseData())
+
+			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(routeMatrixData.GetMatrixDataSize()))
 			relayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(routeMatrixNew.RelayIDs)))
 			relayBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(routeMatrixNew.RelayDatacenterIDs)))
 
@@ -568,6 +554,9 @@ func mainReturnWithCode() int {
 			time.Sleep(syncInterval)
 		}
 	}()
+
+	// Separate route matrix specifically for Valve
+	valveMatrixData := new(helpers.MatrixData)
 
 	// Generate the route matrix specifically for valve
 	go func() {
@@ -656,11 +645,9 @@ func mainReturnWithCode() int {
 
 			valveRouteMatrixNew.WriteAnalysisData()
 
-			valveRouteMatrixMutex.Lock()
-			valveRouteMatrix = valveRouteMatrixNew
-			valveRouteMatrixMutex.Unlock()
+			valveMatrixData.SetMatrix(valveRouteMatrixNew.GetResponseData())
 
-			valveRouteMatrixMetrics.Bytes.Set(float64(len(valveRouteMatrixNew.GetResponseData())))
+			valveRouteMatrixMetrics.Bytes.Set(float64(valveMatrixData.GetMatrixDataSize()))
 			valveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
 			valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
 
@@ -692,11 +679,7 @@ func mainReturnWithCode() int {
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
-		routeMatrix := getRouteMatrixFunc()
-
-		data := routeMatrix.GetResponseData()
-
-		buffer := bytes.NewBuffer(data)
+		buffer := bytes.NewBuffer(routeMatrixData.GetMatrix())
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -706,11 +689,7 @@ func mainReturnWithCode() int {
 	serveValveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
-		m := getValveRouteMatrixFunc()
-
-		data := m.GetResponseData()
-
-		buffer := bytes.NewBuffer(data)
+		buffer := bytes.NewBuffer(valveMatrixData.GetMatrix())
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -720,10 +699,7 @@ func mainReturnWithCode() int {
 	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
-		m := getCostMatrixFunc()
-		data := m.GetResponseData()
-
-		buffer := bytes.NewBuffer(data)
+		buffer := bytes.NewBuffer(costMatrixData.GetMatrix())
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -762,3 +738,4 @@ func mainReturnWithCode() int {
 
 	return 0
 }
+
