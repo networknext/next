@@ -111,6 +111,11 @@ func (bt *BigTableAdmin) CreateTable(ctx context.Context, btTableName string, bt
 	return nil
 }
 
+// Deletes a table and all its data
+func (bt *BigTableAdmin) DeleteTable(ctx context.Context, btTableName string) error {
+	return bt.Client.DeleteTable(ctx, btTableName)
+}
+
 // Sets a garbage collection policy on column families listed in a table
 func (bt *BigTableAdmin) SetMaxAgePolicy(ctx context.Context, btTableName string, btCfNames []string, maxAge time.Duration) error {
 	maxAgePolicy := bigtable.MaxAgePolicy(maxAge)
@@ -142,15 +147,6 @@ func (bt *BigTable) Close() error {
 	return nil
 }
 
-// Delete a table from the instance
-func (bt *BigTableAdmin) DeleteTable(ctx context.Context, btTableName string) error {
-	if err := bt.Client.DeleteTable(ctx, btTableName); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Gets a table in the instance
 func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
 	return bt.Client.Open(btTableName)
@@ -168,9 +164,11 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, rowKeys []string, data
 	mut := bigtable.NewMutation()
 
 	for colName, value := range dataMap {
-		cfName := cfMap[colName]
-
-		mut.Set(cfName, colName, currentTimestamp, value)
+		if cfName, ok := cfMap[colName]; ok {
+			mut.Set(cfName, colName, currentTimestamp, value)
+		} else {
+			return fmt.Errorf("Column name %v not present in column family map", colName)
+		}
 	}
 
 	// Insert into table
@@ -197,6 +195,9 @@ func (bt *BigTable) InsertSessionData(ctx context.Context,
 
 	// Create a map of column name to column family
 	// Always map meta and slice to the first column family
+	if len(btCfNames) == 0 {
+		return fmt.Errorf("Column family names slice is empty")
+	} 
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
 	cfMap["slice"] = btCfNames[0]
