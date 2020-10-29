@@ -10,10 +10,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/networknext/backend/encoding"
-	ghostarmy "github.com/networknext/backend/ghost_army"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
+
+	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
 
 const (

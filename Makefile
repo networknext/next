@@ -423,7 +423,7 @@ build-relay-backend:
 
 .PHONY: build-server-backend
 build-server-backend:
-	@printf "Building server_backend... "
+	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 

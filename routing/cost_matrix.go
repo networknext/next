@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type CostMatrix struct {
