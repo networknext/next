@@ -51,7 +51,7 @@ func TestGooglePubSubPublisher(t *testing.T) {
 func TestLocalBigQueryWriter(t *testing.T) {
 	t.Run("no logger", func(t *testing.T) {
 		writer := analytics.LocalPingStatsWriter{}
-		err := writer.Write(context.Background(), []analytics.PingStatsEntry{})
+		err := writer.Write(context.Background(), []*analytics.PingStatsEntry{})
 		assert.EqualError(t, err, "no logger for local big query writer, can't display entry")
 	})
 
@@ -60,7 +60,7 @@ func TestLocalBigQueryWriter(t *testing.T) {
 			Logger: log.NewNopLogger(),
 		}
 
-		err := writer.Write(context.Background(), []analytics.PingStatsEntry{})
+		err := writer.Write(context.Background(), []*analytics.PingStatsEntry{})
 		assert.NoError(t, err)
 	})
 }
@@ -73,7 +73,7 @@ func TestNoOp(t *testing.T) {
 
 	t.Run("bigquery", func(t *testing.T) {
 		writer := analytics.NoOpPingStatsWriter{}
-		writer.Write(context.Background(), []analytics.PingStatsEntry{})
+		writer.Write(context.Background(), []*analytics.PingStatsEntry{})
 	})
 }
 
