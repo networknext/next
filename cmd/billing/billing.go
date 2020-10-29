@@ -22,9 +22,10 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/metrics"
+	
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/transport"
 
 	"cloud.google.com/go/bigquery"
