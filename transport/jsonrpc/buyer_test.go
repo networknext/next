@@ -251,7 +251,11 @@ func TestTotalSessions(t *testing.T) {
 	redisServer.HSet(fmt.Sprintf("n-0000000000000002-%d", minutes), "456", "")
 	redisServer.HSet(fmt.Sprintf("n-0000000000000003-%d", minutes), "789", "")
 
-	redisServer.HSet(fmt.Sprintf("d-0000000000000001-%d", minutes), "789", "")
+	redisServer.HSet(fmt.Sprintf("d-0000000000000001-%d", minutes), "012", "")
+
+	redisServer.HSet(fmt.Sprintf("c-0000000000000001-%d", minutes), "101", "2")
+	redisServer.HSet(fmt.Sprintf("c-0000000000000002-%d", minutes), "102", "1")
+	redisServer.HSet(fmt.Sprintf("c-0000000000000003-%d", minutes), "103", "1")
 
 	pubkey := make([]byte, 4)
 
