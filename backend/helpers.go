@@ -10,9 +10,10 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/envvar"
-	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/metrics"
+	
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/storage"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -69,7 +70,7 @@ func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (lo
 				return logger, fmt.Errorf("failed to create GCP logging client: %v", err)
 			}
 
-			return logging.NewStackdriverLogger(loggingClient, serviceName), nil
+			logger = logging.NewStackdriverLogger(loggingClient, serviceName)
 		}
 	}
 

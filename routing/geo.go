@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/encoding"
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/oschwald/geoip2-golang"
 )
 

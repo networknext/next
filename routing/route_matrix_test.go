@@ -4,8 +4,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"

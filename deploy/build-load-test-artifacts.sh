@@ -14,12 +14,12 @@ SERVICE=
 build-artifacts() {
   printf "Building ${SERVICE} artifact... \n"
 	mkdir -p ${DIST_DIR}/artifact/${SERVICE}
-	if [ "$SERVICE" = "load_test_server" ] || [ "$SERVICE" = "load_test_server4" ]; then
+	if [ "$SERVICE" = "load_test_server" ]; then
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
     cp ${DIR}/server-spawner.service ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cp ${DIR}/server-spawner.sh ${DIST_DIR}/artifact/${SERVICE}/server-spawner.sh
     cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.tar.gz app server-spawner.sh ${SYSTEMD_SERVICE_FILE} && cd ../..
-  elif [ "$SERVICE" = "load_test_client" ] ||  [ "$SERVICE" = "load_test_client4" ]; then
+  elif [ "$SERVICE" = "load_test_client" ]; then
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
     cp ${DIR}/client-spawner.service ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cp ${DIR}/client-spawner.sh ${DIST_DIR}/artifact/${SERVICE}/client-spawner.sh
