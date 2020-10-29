@@ -206,21 +206,21 @@ func main() {
 		gcpProjectID = "local"
 		level.Info(logger).Log("msg", "Detected bigtable emulator")
 	}
+	
+	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
 
-	// Get Bigtable client, table, and column family name
 	var btClient *storage.BigTable
-	var btCfNames []string
 
-	if gcpOK || btEmulatorOK {
+	if useBigtable && (gcpOK || btEmulatorOK) {
 		// Get Bigtable instance ID
 		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
 
 		// Get the table name
 		btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
-
-		// Get the column family names and put them in a slice
-		btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
-		btCfNames = []string{btCfName}
 
 		// Create a bigtable admin for setup
 		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
@@ -236,27 +236,9 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Verify if the table needed exists
 		if !tableExists {
-			// Create a table with the given name and column families
-			if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			// Get the max number of days the data should be kept in Bigtable
-			maxDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			// Set a garbage collection policy of 90 days
-			maxAge := time.Hour * time.Duration(24*maxDays)
-			if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
+			level.Error(logger).Log("envvar", "GOOGLE_BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance")
+			os.Exit(1)
 		}
 
 		// Close the admin client
