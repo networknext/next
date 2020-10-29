@@ -497,7 +497,6 @@ type sqlRelay struct {
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
-// TODO: AddRelay
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	var sql bytes.Buffer
@@ -666,6 +665,55 @@ func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.Data
 // AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
 // TODO: AddDatacenterMap
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	var sql bytes.Buffer
+
+	bID := dcMap.BuyerID
+
+	dcID := dcMap.DatacenterID
+
+	if _, ok := db.buyers[bID]; !ok {
+		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
+	}
+
+	if _, ok := db.datacenters[dcID]; !ok {
+		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
+	}
+
+	sql.Write([]byte("insert into datacenter_maps (alias, buyer_id, datacenter_id) "))
+	sql.Write([]byte("values ($1, $2, $3)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing AddDatacenterMap SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(dcMap.Alias,
+		dcMap.BuyerID,
+		dcMap.DatacenterID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding DatacenterMap", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncDatacenterMaps(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 

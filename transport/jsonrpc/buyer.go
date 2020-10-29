@@ -1206,7 +1206,7 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
 			level.Error(s.Logger).Log("err", err)
@@ -1223,7 +1223,7 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
-			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 			SupplierName:   datacenter.SupplierName,

@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -138,7 +138,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterT
 			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			for _, dcMap := range datacenterAliases {
 				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
 
 					// If the customer does have a datacenter alias set up but its misconfigured
 					// in our database, then send an unknown datacenter response back.
@@ -223,7 +223,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacente
 			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			for _, dcMap := range datacenterAliases {
 				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
 					if err != nil {
 						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
 						return
@@ -365,7 +365,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			for _, dcMap := range datacenterAliases {
 				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
 					if err != nil {
 						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
 						return

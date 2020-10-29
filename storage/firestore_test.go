@@ -10,8 +10,8 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
@@ -2337,9 +2337,9 @@ func TestFirestore(t *testing.T) {
 		}
 
 		expected := routing.DatacenterMap{
-			BuyerID:    11,
-			Datacenter: 1,
-			Alias:      "local",
+			BuyerID:      11,
+			DatacenterID: 1,
+			Alias:        "local",
 		}
 
 		expectedCustomer := routing.Customer{
@@ -2347,7 +2347,7 @@ func TestFirestore(t *testing.T) {
 			Name: "Local",
 		}
 
-		id := crypto.HashID(expected.Alias + fmt.Sprintf("%x", expected.BuyerID) + fmt.Sprintf("%x", expected.Datacenter))
+		id := crypto.HashID(expected.Alias + fmt.Sprintf("%x", expected.BuyerID) + fmt.Sprintf("%x", expected.DatacenterID))
 
 		datacenter := routing.Datacenter{
 			ID:      1,
@@ -2405,15 +2405,15 @@ func TestFirestore(t *testing.T) {
 		}
 
 		expected1 := routing.DatacenterMap{
-			BuyerID:    11,
-			Datacenter: 1,
-			Alias:      "local.alias",
+			BuyerID:      11,
+			DatacenterID: 1,
+			Alias:        "local.alias",
 		}
 
 		expected2 := routing.DatacenterMap{
-			BuyerID:    22,
-			Datacenter: 1,
-			Alias:      "other.local.alias",
+			BuyerID:      22,
+			DatacenterID: 1,
+			Alias:        "other.local.alias",
 		}
 
 		datacenter := routing.Datacenter{
@@ -2426,8 +2426,8 @@ func TestFirestore(t *testing.T) {
 			},
 		}
 
-		id1 := crypto.HashID(expected1.Alias + fmt.Sprintf("%x", expected1.BuyerID) + fmt.Sprintf("%x", expected1.Datacenter))
-		id2 := crypto.HashID(expected2.Alias + fmt.Sprintf("%x", expected2.BuyerID) + fmt.Sprintf("%x", expected2.Datacenter))
+		id1 := crypto.HashID(expected1.Alias + fmt.Sprintf("%x", expected1.BuyerID) + fmt.Sprintf("%x", expected1.DatacenterID))
+		id2 := crypto.HashID(expected2.Alias + fmt.Sprintf("%x", expected2.BuyerID) + fmt.Sprintf("%x", expected2.DatacenterID))
 
 		err = fs.AddCustomer(ctx, company1)
 		assert.NoError(t, err)
@@ -2475,9 +2475,9 @@ func TestFirestore(t *testing.T) {
 		}
 
 		dcMap := routing.DatacenterMap{
-			BuyerID:    11,
-			Datacenter: 1,
-			Alias:      "local",
+			BuyerID:      11,
+			DatacenterID: 1,
+			Alias:        "local",
 		}
 
 		datacenter := routing.Datacenter{

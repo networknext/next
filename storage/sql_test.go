@@ -42,7 +42,6 @@ func TestSQL(t *testing.T) {
 	assert.NoError(t, err)
 
 	var outerCustomer routing.Customer
-	// var outerBuyer routing.Buyer
 	var outerSeller routing.Seller
 	var outerDatacenter routing.Datacenter
 
@@ -180,6 +179,7 @@ func TestSQL(t *testing.T) {
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
+		// check only the fields set above
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
 		assert.Equal(t, relay.Name, checkRelay.Name)

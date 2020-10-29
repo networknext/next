@@ -1367,7 +1367,7 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routin
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1380,20 +1380,20 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 	// ToDo: make sure buyer and datacenter exist?
 	bID := dcMap.BuyerID
 
-	dcID := dcMap.Datacenter
+	dcID := dcMap.DatacenterID
 
 	if _, ok := fs.buyers[bID]; !ok {
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
 
 	if _, ok := fs.datacenters[dcID]; !ok {
-		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.Datacenter}
+		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.DatacenterID}
 	}
 
 	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
 	if len(dcMaps) != 0 {
 		for _, dc := range dcMaps {
-			if dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+			if dc.Alias == dcMap.Alias && dc.DatacenterID == dcMap.DatacenterID {
 				return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
 			}
 		}
@@ -1402,7 +1402,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 	var dcMapInt64 datacenterMap
 	dcMapInt64.Alias = dcMap.Alias
 	dcMapInt64.Buyer = fmt.Sprintf("%016x", dcMap.BuyerID)
-	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.Datacenter)
+	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.DatacenterID)
 
 	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMapInt64)
 	if err != nil {
@@ -1411,7 +1411,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	// update local store
 	fs.datacenterMapMutex.Lock()
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 	fs.datacenterMaps[id] = dcMap
 	fs.datacenterMapMutex.Unlock()
 
@@ -1427,8 +1427,8 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.Datacenter == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+		if dc.DatacenterID == dcID || dcID == 0 {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1469,7 +1469,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			return &HexStringConversionError{hexString: dcm.Datacenter}
 		}
 
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.DatacenterID == datacenter {
 			_, err := ref.Delete(ctx)
 			if err != nil {
 				return &FirestoreError{err: err}
@@ -1477,7 +1477,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 			// delete local copy as well
 			fs.datacenterMapMutex.Lock()
-			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 			delete(fs.datacenterMaps, id)
 			fs.datacenterMapMutex.Unlock()
 
@@ -2123,9 +2123,9 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 
 		dcMap.Alias = dcMapInt64.Alias
 		dcMap.BuyerID = buyerID
-		dcMap.Datacenter = datacenterID
+		dcMap.DatacenterID = datacenterID
 
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 

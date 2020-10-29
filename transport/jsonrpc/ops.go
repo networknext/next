@@ -866,7 +866,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 			s.Logger.Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
 			s.Logger.Log("err", err)
@@ -883,7 +883,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
-			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      company.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 		}
