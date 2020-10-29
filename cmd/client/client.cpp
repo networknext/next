@@ -198,11 +198,10 @@ int main()
                 printf( "committed = %s\n", stats->committed ? "true" : "false" );
                 printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
                 printf( "reported = %s\n", stats->reported ? "true" : "false" );
+                printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
+                printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
+                printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
             }
-
-            printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
-            printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
-            printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
 
             printf( "fallback_to_direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 

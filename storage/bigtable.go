@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	// "github.com/go-kit/kit/log/level"
+	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/envvar"
 
 	"cloud.google.com/go/bigtable"
 	"google.golang.org/api/option"
 )
 
 type BigTable struct {
-	Client *bigtable.Client
-	Logger log.Logger
+	Client       *bigtable.Client
+	Logger       log.Logger
+	SessionTable *bigtable.Table
 }
 
 type BigTableAdmin struct {
@@ -37,10 +39,19 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, lo
 	if err != nil {
 		return nil, err
 	}
+	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+	if btTableName == "" {
+		err := fmt.Errorf("NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
+		level.Error(logger).Log("err", err)
+		return nil, err
+	}
+	table := client.Open(btTableName)
 
 	return &BigTable{
-		Client: client,
-		Logger: logger,
+		Client:       client,
+		Logger:       logger,
+		SessionTable: table,
 	}, nil
 }
 
@@ -148,7 +159,7 @@ func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
 // Inserts a row into a table given a slice of row keys,
 // a map of the column name to the data stored in thaat cell,
 // and a map of the column name to the column family
-func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Table, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
+func (bt *BigTable) InsertRowInTable(ctx context.Context, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
 
 	// Get the timestamp for time of insertion
 	currentTimestamp := bigtable.Now()
@@ -164,7 +175,7 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Tabl
 
 	// Insert into table
 	for _, rowKey := range rowKeys {
-		if err := btTable.Apply(ctx, rowKey, mut); err != nil {
+		if err := bt.SessionTable.Apply(ctx, rowKey, mut); err != nil {
 			return err
 		}
 	}
@@ -173,12 +184,11 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, btTable *bigtable.Tabl
 }
 
 // Inserts session data into Bigtable
-func (bt *BigTable) InsertSessionData(  ctx context.Context,
-										btTbl *bigtable.Table,
-										btCfNames []string,
-										metaBinary []byte,
-										sliceBinary []byte,
-										rowKeys []string) error {
+func (bt *BigTable) InsertSessionData(ctx context.Context,
+	btCfNames []string,
+	metaBinary []byte,
+	sliceBinary []byte,
+	rowKeys []string) error {
 
 	// Create a map of column name to session data
 	sessionDataMap := make(map[string][]byte)
@@ -191,13 +201,12 @@ func (bt *BigTable) InsertSessionData(  ctx context.Context,
 	cfMap["meta"] = btCfNames[0]
 	cfMap["slice"] = btCfNames[0]
 
-	if err := bt.InsertRowInTable(ctx, btTbl, rowKeys, sessionDataMap, cfMap); err != nil {
+	if err := bt.InsertRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
 		return err
 	}
 
 	return nil
 }
-
 
 // Gets all rows starting with a prefix (i.e. session ID)
 // Can provide a ReadOption, which can include various filters
@@ -211,14 +220,14 @@ func (bt *BigTable) InsertSessionData(  ctx context.Context,
 //     Value       []byte
 //     Labels      []string
 // }
-func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, btTable *bigtable.Table, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
+func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
 	// Get a range of all rows starting with a prefix
 	rowRange := bigtable.PrefixRange(prefix)
 
 	// Create a slice of all the rows to return
 	values := make([]bigtable.Row, 0)
 
-	err := btTable.ReadRows(ctx, rowRange, func(r bigtable.Row) bool {
+	err := bt.SessionTable.ReadRows(ctx, rowRange, func(r bigtable.Row) bool {
 		// Get the data and put it into a slice to return
 		values = append(values, r)
 
@@ -245,9 +254,9 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, btTable *bigtable.Tab
 //     Value       []byte
 //     Labels      []string
 // }
-func (bt *BigTable) GetRowWithRowKey(ctx context.Context, btTable *bigtable.Table, rowKey string, opts ...bigtable.ReadOption) (bigtable.Row, error) {
+func (bt *BigTable) GetRowWithRowKey(ctx context.Context, rowKey string, opts ...bigtable.ReadOption) (bigtable.Row, error) {
 
-	r, err := btTable.ReadRow(ctx, rowKey, opts...)
+	r, err := bt.SessionTable.ReadRow(ctx, rowKey, opts...)
 	if err != nil {
 		return nil, err
 	}
