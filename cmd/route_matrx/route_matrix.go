@@ -33,7 +33,7 @@ func main() {
 		var err error
 		enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
 		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
+			_ = level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
 			os.Exit(1)
 		}
 	}
@@ -42,7 +42,7 @@ func main() {
 		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 			loggingClient, err := gcplogging.NewClient(ctx, projectID)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				_ = level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
 
@@ -72,7 +72,7 @@ func main() {
 	// Get env
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
+		_ = level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
 	}
 
@@ -84,7 +84,7 @@ func main() {
 	if timeStr, ok := os.LookupEnv("MATRIX_SVC_TIME_VARIANCE"); ok{
 		matrixSvcTimeVariance, err = strconv.ParseInt(timeStr, 10, 64)
 		if err != nil {
-			level.Error(logger).Log("msg","unable to parse Matrix time variance", "err", err)
+			_ = level.Error(logger).Log("msg", "unable to parse Matrix time variance", "err", err)
 		}
 	}
 
@@ -92,14 +92,14 @@ func main() {
 	if timeStr, ok := os.LookupEnv("OPTIMIZER_TIME_VARIANCE"); ok{
 		optimizerTimeVariance, err = strconv.ParseInt(timeStr, 10, 64)
 		if err != nil {
-			level.Error(logger).Log("msg","unable to parse optimizer time variance", "err", err)
+			_ = level.Error(logger).Log("msg", "unable to parse optimizer time variance", "err", err)
 		}
 	}
 
 	store := storage.NewRedisMatrixStore()
 	svc, err := rm.New(store, matrixSvcTimeVariance, optimizerTimeVariance)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		_ = level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 
@@ -114,14 +114,15 @@ func main() {
 			case <-ticker.C:
 				err := svc.UpdateSvcDB()
 				if err != nil {
-					level.Error(logger).Log("err", err)
+					_ = level.Error(logger).Log("err", err)
 					errorCount++
 					if errorCount >= 3{
-						Level.Error(logger).Log("msg", "updating svc failed multiple times in a row")
+						_ = level.Error(logger).Log("msg", "updating svc failed multiple times in a row")
 						os.Exit(1)
 					}
-					errorCount = 0
+					continue
 				}
+				errorCount = 0
 			}
 		}
 	}()
@@ -136,7 +137,7 @@ func main() {
 			case <-ticker.C:
 				err := svc.DetermineMaster()
 				if err != nil {
-					level.Error(logger).Log("error", err)
+					_ = level.Error(logger).Log("error", err)
 					continue
 				}
 
@@ -146,7 +147,12 @@ func main() {
 
 				err = svc.UpdateLiveRouteMatrix()
 				if err != nil {
-					level.Error(logger).Log("error", err)
+					_ = level.Error(logger).Log("error", err)
+				}
+
+				err = svc.CleanUpDB()
+				if err != nil {
+					_ = level.Error(logger).Log("error", err)
 				}
 			}
 		}

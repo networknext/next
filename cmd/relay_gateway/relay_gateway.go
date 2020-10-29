@@ -48,7 +48,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "relay_backend"
+	serviceName := "relay_gateway"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()

@@ -8,13 +8,26 @@ import (
 
 //go:generate moq -out matrix_test_mocks.go . MatrixStore
 type MatrixStore interface{
-	GetMatrix() ([]byte, error)
-	GetMatrices() ([]Matrix, uint64, error)
-	GetMatrixSvcs() ([]MatrixSvcData, uint64, error)
-	StoreMatrix(matrix Matrix) error
+	//Live Matrix for server backend
+	GetLiveMatrix() ([]byte, error)
 	UpdateLiveMatrix(matrixData []byte) error
+
+	//optimizer matrices
+	GetOptimizerMatrices() ([]Matrix, error)
+	UpdateOptimizerMatrix(matrix Matrix) error
+	DeleteOptimizerMatrix(id uint64) error
+
+	//matrix svc data
+	GetMatrixSvcs() ([]MatrixSvcData, error)
 	UpdateMatrixSvc(matrixSvcData MatrixSvcData) error
+	DeleteMatrixSvc(id uint64) error
+
+	//matrix master
+	GetMatrixSvcMaster() (uint64, error)
 	UpdateMatrixSvcMaster(id uint64) error
+
+	//optimizer master
+	GetOptimizerMaster() (uint64, error)
 	UpdateOptimizerMaster(id uint64) error
 }
 

@@ -26,18 +26,20 @@ func testOptimizerMatrices() []storage.Matrix {
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{}
 	svc, err := New(&store, 10, 15)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
-	assert.Equal(t, int64(10), svc.matrixSvcTimeVariance)
-	assert.Equal(t, int64(15), svc.optimizerTimeVariance)
+	assert.Equal(t, timeVariance(10), svc.matrixSvcTimeVariance)
+	assert.Equal(t, timeVariance(15), svc.optimizerTimeVariance)
 	assert.Equal(t, &store, svc.store)
 	assert.False(t, svc.currentlyMaster)
 	assert.NotEqual(t, 0, svc.id)
 }
 
 func TestRouteMatrixSvc_UpdateSvcDB(t *testing.T) {
+	t.Parallel()
 	createdTime := time.Now().Add(-5*time.Second)
 	store := storage.MatrixStoreMock{UpdateMatrixSvcFunc: func(matrixSvcData storage.MatrixSvcData) error {
 		if matrixSvcData.ID != 5{
@@ -54,9 +56,11 @@ func TestRouteMatrixSvc_UpdateSvcDB(t *testing.T) {
 	svc.createdAt = createdTime
 
 	err = svc.UpdateSvcDB()
+	assert.Nil(t, err)
 }
 
 func TestRouteMatrixSvc_AmMaster(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{}
 	svc, _ := New(&store, 10, 15)
 	assert.False(t, svc.AmMaster())
@@ -65,9 +69,13 @@ func TestRouteMatrixSvc_AmMaster(t *testing.T) {
 }
 
 func TestRouteMatrixSvc_DetermineMaster_NotMaster(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{
-		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, u uint64, e error){
-			return testMatrixSvcData(), 3,nil
+		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, e error){
+			return testMatrixSvcData(), nil
+		},
+		GetMatrixSvcMasterFunc: func ()(uint64,error){
+			return 3, nil
 		},
 		UpdateMatrixSvcMasterFunc: func(uint64) error{
 			return fmt.Errorf("should not be called")
@@ -83,9 +91,13 @@ func TestRouteMatrixSvc_DetermineMaster_NotMaster(t *testing.T) {
 }
 
 func TestRouteMatrixSvc_DetermineMaster_ChosenMasterNotCurrent(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{
-		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, u uint64, e error){
-			return testMatrixSvcData(), 3,nil
+		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, e error){
+			return testMatrixSvcData(), nil
+		},
+		GetMatrixSvcMasterFunc: func ()(uint64,error){
+			return 3, nil
 		},
 		UpdateMatrixSvcMasterFunc: func(uint64) error{
 			return nil
@@ -101,9 +113,13 @@ func TestRouteMatrixSvc_DetermineMaster_ChosenMasterNotCurrent(t *testing.T) {
 }
 
 func TestRouteMatrixSvc_DetermineMaster_IsCurrentMaster(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{
-		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, u uint64, e error){
-			return testMatrixSvcData(), 3,nil
+		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, e error){
+			return testMatrixSvcData(), nil
+		},
+		GetMatrixSvcMasterFunc: func ()(uint64,error){
+			return 3, nil
 		},
 		UpdateMatrixSvcMasterFunc: func(uint64) error{
 			return fmt.Errorf("should not be called")
@@ -119,9 +135,13 @@ func TestRouteMatrixSvc_DetermineMaster_IsCurrentMaster(t *testing.T) {
 }
 
 func TestRouteMatrixSvc_UpdateLiveRouteMatrix_OptimizerMasterCurrent(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{
-		GetMatricesFunc: func() (matrices []storage.Matrix, u uint64, e error) {
-			return testOptimizerMatrices(), 3, nil
+		GetOptimizerMatricesFunc: func() (matrices []storage.Matrix, e error) {
+			return testOptimizerMatrices(), nil
+		},
+		GetOptimizerMasterFunc: func ()(uint64, error){
+			return 3, nil
 		},
 		UpdateOptimizerMasterFunc: func(id uint64) error {
 			return fmt.Errorf("should not be called")
@@ -143,9 +163,13 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_OptimizerMasterCurrent(t *testing.
 }
 
 func TestRouteMatrixSvc_UpdateLiveRouteMatrix_ChooseOptimizerMaster(t *testing.T) {
+	t.Parallel()
 	store := storage.MatrixStoreMock{
-		GetMatricesFunc: func() (matrices []storage.Matrix, u uint64, e error) {
-			return testOptimizerMatrices(), 3, nil
+		GetOptimizerMatricesFunc: func() (matrices []storage.Matrix, e error) {
+			return testOptimizerMatrices(), nil
+		},
+		GetOptimizerMasterFunc: func ()(uint64,error){
+			return 3, nil
 		},
 		UpdateOptimizerMasterFunc: func(id uint64) error {
 			if id != 2{
@@ -170,37 +194,73 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_ChooseOptimizerMaster(t *testing.T
 	assert.Equal(t, uint64(2), svc.currentMasterOptimizer)
 }
 
+func timeVariance(value int)time.Duration{
+	return time.Duration(value)*time.Millisecond
+}
 
 func TestRouteMatrixSvc_isMasterMatrixSvcValid(t *testing.T) {
+	t.Parallel()
 	matrices := testMatrixSvcData()
 
-	assert.True(t, isMasterMatrixSvcValid(matrices, 2, 2000))
-	assert.False(t, isMasterMatrixSvcValid(matrices, 1, 2000))
-	assert.False(t, isMasterMatrixSvcValid(matrices, 50, 2000))
+	assert.True(t, isMasterMatrixSvcValid(matrices, 2, timeVariance(2000)))
+	assert.False(t, isMasterMatrixSvcValid(matrices, 1, timeVariance(2000)))
+	assert.False(t, isMasterMatrixSvcValid(matrices, 50, timeVariance(2000)))
 }
 
 func TestRouteMatrixSvc_isMasterOptimizerValid(t *testing.T) {
+	t.Parallel()
 	matrices := testOptimizerMatrices()
 
-	assert.True(t, isMasterOptimizerValid(matrices, 2, 2000))
-	assert.False(t, isMasterOptimizerValid(matrices, 1, 2000))
-	assert.False(t, isMasterOptimizerValid(matrices, 50, 2000))
+	assert.True(t, isMasterOptimizerValid(matrices, 2, timeVariance(2000)))
+	assert.False(t, isMasterOptimizerValid(matrices, 1, timeVariance(2000)))
+	assert.False(t, isMasterOptimizerValid(matrices, 50, timeVariance(2000)))
 }
 
 func TestRouteMatrixSvc_chooseMatrixSvcMaster(t *testing.T) {
+	t.Parallel()
 	matrices := testMatrixSvcData()
 
-	assert.Equal(t, uint64(3), chooseMatrixSvcMaster(matrices, 4000))
-	assert.Equal(t, uint64(2), chooseMatrixSvcMaster(matrices, 2000))
-	assert.Equal(t, uint64(1), chooseMatrixSvcMaster(matrices, 6000))
-	assert.Equal(t, uint64(0), chooseMatrixSvcMaster(matrices, 500))
+	assert.Equal(t, uint64(3), chooseMatrixSvcMaster(matrices, timeVariance(4000)))
+	assert.Equal(t, uint64(2), chooseMatrixSvcMaster(matrices, timeVariance(2000)))
+	assert.Equal(t, uint64(1), chooseMatrixSvcMaster(matrices, timeVariance(6000)))
+	assert.Equal(t, uint64(0), chooseMatrixSvcMaster(matrices, timeVariance(500)))
 }
 
 func TestRouteMatrixSvc_chooseOptimizerMaster(t *testing.T) {
+	t.Parallel()
 	matrices := testOptimizerMatrices()
 
-	assert.Equal(t, uint64(3), chooseOptimizerMaster(matrices, 4000))
-	assert.Equal(t, uint64(2), chooseOptimizerMaster(matrices, 2000))
-	assert.Equal(t, uint64(1), chooseOptimizerMaster(matrices, 6000))
-	assert.Equal(t, uint64(0), chooseOptimizerMaster(matrices, 500))
+	assert.Equal(t, uint64(3), chooseOptimizerMaster(matrices, timeVariance(4000)))
+	assert.Equal(t, uint64(2), chooseOptimizerMaster(matrices, timeVariance(2000)))
+	assert.Equal(t, uint64(1), chooseOptimizerMaster(matrices, timeVariance(6000)))
+	assert.Equal(t, uint64(0), chooseOptimizerMaster(matrices, timeVariance(500)))
+}
+
+func TestRouteMatrixSvc_CleanUpDB(t *testing.T) {
+	store := storage.MatrixStoreMock{
+		GetMatrixSvcsFunc: func() (data []storage.MatrixSvcData, e error) {
+			return testMatrixSvcData(), nil
+		},
+		GetOptimizerMatricesFunc: func() (matrices []storage.Matrix, e error) {
+			return testOptimizerMatrices(), nil
+		},
+		DeleteMatrixSvcFunc: func(id uint64) (e error){
+			if id != 1{
+				return fmt.Errorf("should not have been called for matrix svc id %v", id)
+			}
+			return nil
+		},
+		DeleteOptimizerMatrixFunc: func(id uint64) (e error){
+			if id == 2{
+				return fmt.Errorf("should not have been called for optimizer id %v", id)
+			}
+			return nil
+		},
+	}
+
+	svc, err:= New(&store, 4000, 2000)
+	assert.Nil(t, err)
+	
+	err = svc.CleanUpDB()
+	assert.Nil(t, err)
 }

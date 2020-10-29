@@ -13,8 +13,8 @@ type RouteMatrixSvc struct {
 	createdAt              time.Time
 	currentlyMaster        bool
 	currentMasterOptimizer uint64
-	matrixSvcTimeVariance  int64
-	optimizerTimeVariance  int64
+	matrixSvcTimeVariance  time.Duration
+	optimizerTimeVariance  time.Duration
 }
 
 func New(store storage.MatrixStore, matrixSvcTimeVariance, optimizerTimeVariance int64) (*RouteMatrixSvc, error) {
@@ -25,8 +25,8 @@ func New(store storage.MatrixStore, matrixSvcTimeVariance, optimizerTimeVariance
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.currentlyMaster = false
-	r.matrixSvcTimeVariance = matrixSvcTimeVariance
-	r.optimizerTimeVariance = optimizerTimeVariance
+	r.matrixSvcTimeVariance = time.Duration(matrixSvcTimeVariance) * time.Millisecond
+	r.optimizerTimeVariance = time.Duration(optimizerTimeVariance) * time.Millisecond
 
 	return r, nil
 }
@@ -54,7 +54,12 @@ func (r *RouteMatrixSvc) AmMaster() bool {
 }
 
 func (r *RouteMatrixSvc) DetermineMaster() error {
-	matrixSvcs, masterId, err := r.store.GetMatrixSvcs()
+	matrixSvcs, err := r.store.GetMatrixSvcs()
+	if err != nil {
+		return svcError(err)
+	}
+
+	masterId, err := r.store.GetMatrixSvcMaster()
 	if err != nil {
 		return svcError(err)
 	}
@@ -79,7 +84,12 @@ func (r *RouteMatrixSvc) DetermineMaster() error {
 }
 
 func (r *RouteMatrixSvc) UpdateLiveRouteMatrix() error {
-	routeMatrices, masterOptimizerID, err := r.store.GetMatrices()
+	routeMatrices, err := r.store.GetOptimizerMatrices()
+	if err != nil {
+		return svcError(err)
+	}
+
+	masterOptimizerID, err := r.store.GetOptimizerMaster()
 	if err != nil {
 		return svcError(err)
 	}
@@ -104,6 +114,38 @@ func (r *RouteMatrixSvc) UpdateLiveRouteMatrix() error {
 	return nil
 }
 
+func (r *RouteMatrixSvc) CleanUpDB() error{
+	currentTime := time.Now().UTC()
+	matrixSvcs, err := r.store.GetMatrixSvcs()
+	if err != nil {
+		return svcError(err)
+	}
+
+	for _, m := range matrixSvcs {
+		if currentTime.Sub(m.UpdatedAt) > r.matrixSvcTimeVariance {
+			err := r.store.DeleteMatrixSvc(m.ID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	opMatrices, err := r.store.GetOptimizerMatrices()
+	if err != nil {
+		return svcError(err)
+	}
+
+	for _, m := range opMatrices {
+		if currentTime.Sub(m.CreatedAt) > r.optimizerTimeVariance  {
+			err := r.store.DeleteOptimizerMatrix(m.OptimizerID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (r *RouteMatrixSvc) updateLiveMatrix(matrices []storage.Matrix, id uint64) error {
 	for _, m := range matrices {
 		if m.OptimizerID == id {
@@ -113,12 +155,12 @@ func (r *RouteMatrixSvc) updateLiveMatrix(matrices []storage.Matrix, id uint64) 
 	return fmt.Errorf("unable to find master matrix to update")
 }
 
-func isMasterMatrixSvcValid(matrices []storage.MatrixSvcData, id uint64, timeVariance int64) bool {
+func isMasterMatrixSvcValid(matrices []storage.MatrixSvcData, id uint64, timeVariance time.Duration) bool {
 	found := false
 	for _, m := range matrices {
 		if m.ID == id {
 			found = true
-			if time.Now().Sub(m.UpdatedAt) > (time.Duration(timeVariance) * time.Millisecond) {
+			if time.Now().Sub(m.UpdatedAt) > timeVariance {
 				return false
 			}
 		}
@@ -130,12 +172,12 @@ func isMasterMatrixSvcValid(matrices []storage.MatrixSvcData, id uint64, timeVar
 	return true
 }
 
-func isMasterOptimizerValid(matrices []storage.Matrix, id uint64, timeVariance int64) bool {
+func isMasterOptimizerValid(matrices []storage.Matrix, id uint64, timeVariance time.Duration) bool {
 	found := false
 	for _, m := range matrices {
 		if m.OptimizerID == id {
 			found = true
-			if time.Now().Sub(m.CreatedAt) > (time.Duration(timeVariance) * time.Millisecond) {
+			if time.Now().Sub(m.CreatedAt) > timeVariance {
 				return false
 			}
 		}
@@ -147,11 +189,11 @@ func isMasterOptimizerValid(matrices []storage.Matrix, id uint64, timeVariance i
 	return true
 }
 
-func chooseMatrixSvcMaster(matrices []storage.MatrixSvcData, timeVariance int64) uint64 {
+func chooseMatrixSvcMaster(matrices []storage.MatrixSvcData, timeVariance time.Duration) uint64 {
 	currentTime := time.Now().UTC()
 	masterSvc := storage.NewMatrixSvcData(0, currentTime, currentTime)
 	for _, m := range matrices {
-		if currentTime.Sub(m.UpdatedAt) > (time.Duration(timeVariance) * time.Millisecond) {
+		if currentTime.Sub(m.UpdatedAt) > timeVariance {
 			continue
 		}
 		if m.CreatedAt.After(masterSvc.CreatedAt) {
@@ -165,11 +207,11 @@ func chooseMatrixSvcMaster(matrices []storage.MatrixSvcData, timeVariance int64)
 	return masterSvc.ID
 }
 
-func chooseOptimizerMaster(matrices []storage.Matrix, timeVariance int64) uint64 {
+func chooseOptimizerMaster(matrices []storage.Matrix, timeVariance time.Duration) uint64 {
 	currentTime := time.Now().UTC()
 	masterOp := storage.NewMatrix(0, currentTime, currentTime, []byte{})
 	for _, m := range matrices {
-		if currentTime.Sub(m.CreatedAt) > (time.Duration(timeVariance) * time.Millisecond) {
+		if currentTime.Sub(m.CreatedAt) > timeVariance {
 			continue
 		}
 		if m.CreatedAt.After(masterOp.CreatedAt) {
