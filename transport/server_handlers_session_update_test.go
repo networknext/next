@@ -12,9 +12,9 @@ import (
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"

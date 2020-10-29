@@ -20,19 +20,16 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/backend"
-	"github.com/networknext/backend/envvar"
-	"github.com/networknext/backend/transport"
-
 	"cloud.google.com/go/pubsub"
-
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/metrics"
-	"github.com/networknext/backend/routing"
-
+	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/modules/envvar"
 )
 
 var (

@@ -11,8 +11,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type RouteMatrix struct {
