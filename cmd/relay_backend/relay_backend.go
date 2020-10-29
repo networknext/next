@@ -240,8 +240,9 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
+			syncTimer := NewSyncTimer(publishInterval)
 			for {
-				time.Sleep(publishInterval)
+				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
 				entries := analytics.ExtractPingStats(cpy)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
@@ -296,8 +297,9 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
+			syncTimer := NewSyncTimer(publishInterval)
 			for {
-				time.Sleep(publishInterval)
+				syncTimer.Run()
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
@@ -415,7 +417,9 @@ func mainReturnWithCode() int {
 
 	// Generate the route matrix
 	go func() {
+		syncTimer := NewSyncTimer(syncInterval)
 		for {
+			syncTimer.Run()
 			// For now, exclude all valve relays
 			relayIDs := relayMap.GetAllRelayIDs([]string{"valve"})  // Filter out any relays whose seller has a Firestore key of "valve"
 
@@ -460,7 +464,6 @@ func mainReturnWithCode() int {
 
 			if err := costMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "cost", "op", "write_response", "msg", "could not write response data", "err", err)
-				time.Sleep(syncInterval)
 				continue
 			}
 
@@ -485,7 +488,6 @@ func mainReturnWithCode() int {
 			routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
-				time.Sleep(syncInterval)
 				continue
 			}
 
@@ -508,7 +510,6 @@ func mainReturnWithCode() int {
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
-				time.Sleep(syncInterval)
 				continue
 			}
 
@@ -558,14 +559,14 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
-
-			time.Sleep(syncInterval)
 		}
 	}()
 
 	// Generate the route matrix specifically for valve
 	go func() {
+		syncTimer := NewSyncTimer(syncInterval)
 		for {
+			syncTimer.Run()
 			// All relays included
 			relayIDs := relayMap.GetAllRelayIDs([]string{})
 
@@ -617,7 +618,6 @@ func mainReturnWithCode() int {
 			routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
-				time.Sleep(syncInterval)
 				continue
 			}
 
@@ -640,7 +640,6 @@ func mainReturnWithCode() int {
 
 			if err := valveRouteMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
-				time.Sleep(syncInterval)
 				continue
 			}
 
@@ -660,8 +659,6 @@ func mainReturnWithCode() int {
 				numRoutes += valveRouteMatrixNew.RouteEntries[i].NumRoutes
 			}
 			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
-
-			time.Sleep(syncInterval)
 		}
 	}()
 
@@ -751,4 +748,24 @@ func mainReturnWithCode() int {
 	<-sigint
 
 	return 0
+}
+
+type SyncTimer struct{
+	lastRun time.Time
+	interval time.Duration
+}
+
+func NewSyncTimer(interval time.Duration) *SyncTimer{
+	s := new(SyncTimer)
+	s.lastRun = time.Now().Add(interval*5)
+	s.interval = interval
+	return s
+}
+
+func (s *SyncTimer)Run() {
+	timeSince := time.Since(s.lastRun)
+	if timeSince < s.interval && timeSince > 0{
+		time.Sleep(s.interval - timeSince)
+	}
+	s.lastRun = time.Now()
 }
