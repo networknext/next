@@ -303,14 +303,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 						return err
 					}
 
-					if buyer.ID == ghostArmyBuyerID {
-						// scale by next values because ghost army data contains 0 direct
-						// if ghost army is turned off then this number will be 0 and have no effect
-						count = uint64(ghostArmyNextCount)*ghostArmyScalar + uint64(ghostArmyNextCount)
-					}
-
 					secondTotalCount += int(count)
 				}
+			}
+
+			if buyer.ID == ghostArmyBuyerID {
+				// scale by next values because ghost army data contains 0 direct
+				// if ghost army is turned off then this number will be 0 and have no effect
+				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 			}
 		}
 
@@ -402,6 +403,13 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 				secondTotalCount += int(count)
 			}
+		}
+
+		if buyer.ID == ghostArmyBuyerID {
+			// scale by next values because ghost army data contains 0 direct
+			// if ghost army is turned off then this number will be 0 and have no effect
+			firstTotalCount += firstNextCount*int(ghostArmyScalar) + firstNextCount
+			secondTotalCount += secondNextCount*int(ghostArmyScalar) + secondNextCount
 		}
 
 		firstDirectCount := firstTotalCount - firstNextCount
