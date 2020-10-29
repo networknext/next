@@ -15,7 +15,7 @@ type LocalPingStatsWriter struct {
 	written uint64
 }
 
-func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []PingStatsEntry) error {
+func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEntry) error {
 	writer.written++
 
 	if writer.Logger == nil {
@@ -25,8 +25,8 @@ func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []PingSta
 	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entries")
 
 	for i := range entries {
-		entry := &entries[i]
-		level.Debug(writer.Logger).Log(fmt.Sprintf("entry %d", i), fmt.Sprintf("%+v", entry))
+		entry := entries[i]
+		level.Debug(writer.Logger).Log(fmt.Sprintf("entry %d", i), fmt.Sprintf("%+v", *entry))
 	}
 
 	return nil
@@ -38,7 +38,7 @@ type LocalRelayStatsWriter struct {
 	written uint64
 }
 
-func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []RelayStatsEntry) error {
+func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*RelayStatsEntry) error {
 	writer.written++
 
 	if writer.Logger == nil {
@@ -48,8 +48,8 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []RelayS
 	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entries")
 
 	for i := range entries {
-		entry := &entries[i]
-		level.Debug(writer.Logger).Log(fmt.Sprintf("entry %d", i), fmt.Sprintf("%+v", entry))
+		entry := entries[i]
+		level.Debug(writer.Logger).Log(fmt.Sprintf("entry %d", i), fmt.Sprintf("%+v", *entry))
 	}
 
 	return nil
