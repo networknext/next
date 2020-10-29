@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/nacl/box"

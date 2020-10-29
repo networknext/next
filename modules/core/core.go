@@ -24,7 +24,7 @@ const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 const NEXT_PRIVATE_KEY_BYTES = 32
 
-func ProtocolVersionAtLeast(serverMajor int32, serverMinor int32, serverPatch int32, targetMajor int32, targetMinor int32, targetPatch int32) bool {
+func ProtocolVersionAtLeast(serverMajor uint32, serverMinor uint32, serverPatch uint32, targetMajor uint32, targetMinor uint32, targetPatch uint32) bool {
 	serverVersion := ((serverMajor & 0xFF) << 16) | ((serverMinor & 0xFF) << 8) | (serverPatch & 0xFF)
 	targetVersion := ((targetMajor & 0xFF) << 16) | ((targetMinor & 0xFF) << 8) | (targetPatch & 0xFF)
 	return serverVersion >= targetVersion

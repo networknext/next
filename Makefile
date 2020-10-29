@@ -419,7 +419,7 @@ build-relay-backend:
 
 .PHONY: build-server-backend
 build-server-backend:
-	@printf "Building server_backend... "
+	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
@@ -703,12 +703,6 @@ publish-bootstrap-script-dev:
 publish-bootstrap-script-staging:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-client-bootstrap-script-staging
-publish-client-bootstrap-script-staging:
-	@printf "Publishing client bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/client_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/client_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: publish-bootstrap-script-prod
