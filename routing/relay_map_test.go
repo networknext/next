@@ -77,7 +77,38 @@ func TestRelayMapGetAllRelayData(t *testing.T) {
 		relay.Version = "some other version"
 		expected := rmap.GetRelayData(relay.Addr.String())
 		assert.NotNil(t, expected)
-		assert.Equal(t, relay.Version, expected.Version)
+		assert.NotEqual(t, relay.Version, expected.Version)
+	}
+}
+
+func TestRelayMapGetAllRelayIDs(t *testing.T) {
+	excludeSeller := new(routing.Seller)
+	excludeSeller.ID = "valve"
+	normalSeller := new(routing.Seller)
+	normalSeller.ID = "normal"
+
+	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error { return nil })
+	for i := 0; i < 6; i++ {
+		relay := newRelay()
+		relay.ID = uint64(i)
+		if i == 0 || i == 3{
+			relay.Seller = *excludeSeller
+		}else{
+			relay.Seller = *normalSeller
+		}
+		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", 10000+i))
+		relay.Addr = *addr
+		rmap.AddRelayDataEntry(relay.Addr.String(), relay)
+	}
+
+	relayIDs := rmap.GetAllRelayIDs([]string{})
+	assert.Equal(t, 6, len(relayIDs))
+
+	relayIDsWithExclude := rmap.GetAllRelayIDs([]string{excludeSeller.ID})
+	assert.Equal(t,4, len(relayIDsWithExclude))
+	for _, relayID := range relayIDsWithExclude{
+		assert.NotEqual(t,0, relayID)
+		assert.NotEqual(t,3, relayID)
 	}
 }
 

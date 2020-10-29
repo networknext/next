@@ -417,13 +417,7 @@ func mainReturnWithCode() int {
 	go func() {
 		for {
 			// For now, exclude all valve relays
-			relayIDs := make([]uint64, 0)
-			allRelayData := relayMap.GetAllRelayData()
-			for _, relayData := range allRelayData {
-				if relayData.Seller.ID != "valve" { // Filter out any relays whose seller has a Firestore key of "valve"
-					relayIDs = append(relayIDs, relayData.ID)
-				}
-			}
+			relayIDs := relayMap.GetAllRelayIDs([]string{"valve"})  // Filter out any relays whose seller has a Firestore key of "valve"
 
 			numRelays := len(relayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
@@ -573,11 +567,7 @@ func mainReturnWithCode() int {
 	go func() {
 		for {
 			// All relays included
-			relayIDs := make([]uint64, 0)
-			allRelayData := relayMap.GetAllRelayData()
-			for _, relayData := range allRelayData {
-				relayIDs = append(relayIDs, relayData.ID)
-			}
+			relayIDs := relayMap.GetAllRelayIDs([]string{})
 
 			numRelays := len(relayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
