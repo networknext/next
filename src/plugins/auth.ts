@@ -93,7 +93,7 @@ export class AuthService {
           userProfile.companyCode = companyCode
           userProfile.newsletterConsent = newsletterConsent;
           (window as any).Intercom('boot', {
-            app_id: 'o6hvdumw',
+            app_id: 'tdvmuyh3',
             email: email,
             user_id: userProfile.auth0ID,
             unsubscribed_from_emails: newsletterConsent,
@@ -124,7 +124,7 @@ export class AuthService {
       return
     }
     (window as any).Intercom('boot', {
-      app_id: 'o6hvdumw'
+      app_id: 'tdvmuyh3'
     })
   }
 }
