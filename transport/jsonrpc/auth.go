@@ -313,7 +313,6 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 
 	// Create an account for each new email
 	var newUser *management.User
-	var userID string
 	for _, e := range emails {
 		user, ok := registered[e]
 		if !ok {
@@ -337,18 +336,6 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				err := fmt.Errorf("AddUserAccount() failed to create new user: %w", err)
 				s.Logger.Log("err", err)
 				return err
-			}
-			accountList, err := s.UserManager.List()
-			if err != nil {
-				err := fmt.Errorf("AddUserAccount() failed to get auth0 account list: %v", err)
-				s.Logger.Log("err", err)
-				return err
-			}
-			for _, a := range accountList.Users {
-				if *a.Email == e {
-					userID = *a.ID
-					break
-				}
 			}
 			if len(args.Roles) > 0 {
 				if err = s.UserManager.AssignRoles(*newUser.ID, args.Roles...); err != nil {
