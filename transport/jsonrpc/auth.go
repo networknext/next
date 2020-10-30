@@ -954,11 +954,11 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 		userAccount.Password = &args.Password
 	}
 
-	userAccount.AppMetadata = map[string]interface{}{
-		"newsletter": args.NewsLetterConsent,
-	}
-
-	err = s.UserManager.Update(requestID, userAccount)
+	err = s.UserManager.Update(requestID, &management.User{
+		AppMetadata: map[string]interface{}{
+			"newsletter": args.NewsLetterConsent,
+		},
+	})
 	if err != nil {
 		err = fmt.Errorf("UpdateAccountSettings() failed to update user: %v", err)
 		s.Logger.Log("err", err)
