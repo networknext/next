@@ -146,13 +146,13 @@ func mainReturnWithCode() int {
 		portalSubscriber = portalCruncherSubscriber
 	}
 
-	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
+	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 1)
+	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
