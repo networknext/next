@@ -254,8 +254,11 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		return err
 	}
 
-	user.AppMetadata["company_code"] = ""
-	if err := s.UserManager.Update(args.UserID, user); err != nil {
+	if err := s.UserManager.Update(args.UserID, &management.User{
+		AppMetadata: map[string]interface{}{
+			"company_code": "",
+		},
+	}); err != nil {
 		err = fmt.Errorf("DeleteUserAccount() failed to update user company code: %v", err)
 		s.Logger.Log("err", err)
 		return err
