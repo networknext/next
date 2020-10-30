@@ -11,7 +11,7 @@ First define configuration values for the server:
 	const char * bind_address = "0.0.0.0:50000";
 	const char * server_address = "127.0.0.1:50000";
 	const char * server_datacenter = "local";
-	const char * backend_hostname = "dev.networknext.com";
+	const char * backend_hostname = "dev.spacecats.net";
 	const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.

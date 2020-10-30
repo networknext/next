@@ -20,7 +20,7 @@ Configuration struct for the Network Next SDK.
 	    bool disable_packet_tagging;
 	};
 
-**hostname** - The hostname for the backend the Network Next SDK is talking to. Typically set to "prod.networknext.com" with your own customer account, or "dev.networknext.com" with the SDK test account.
+**hostname** - The hostname for the backend the Network Next SDK is talking to. Typically set to "prod.spacecats.net" with your own customer account, or "dev.spacecats.net" with the SDK test account.
 
 **customer_public_key** - The customer public key as a base64 encoded string.
 
@@ -45,7 +45,7 @@ Sets default configuration values.
 
 Use this to set default values for config variables, then make only the changes you want on top.
 
-- **hostname** -- "prod.networknext.com"
+- **hostname** -- "dev.spacecats.net"
 - **customer_public_key** -- ""
 - **customer_private_key** -- ""
 - **socket_send_buffer_size** -- 1000000
