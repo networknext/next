@@ -1,11 +1,9 @@
 package pubsub
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/pebbe/zmq4"
@@ -69,47 +67,46 @@ func (sub *PortalCruncherSubscriber) Poll(timeout time.Duration) error {
 	return nil
 }
 
-func (sub *PortalCruncherSubscriber) ReceiveMessage(ctx context.Context) (Topic, <-chan []byte, error) {
+func (sub *PortalCruncherSubscriber) ReceiveMessage() <-chan MessageInfo {
 	sub.mutex.Lock()
 	defer sub.mutex.Unlock()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return 0, nil, ctx.Err()
-		default:
-			message, err := sub.socket.RecvMessageBytes(zmq4.DONTWAIT)
-			if err != nil {
-				if zmq4.AsErrno(err) == zmq4.AsErrno(syscall.EAGAIN) {
-					continue
-				}
-
-				return 0, nil, err
-			}
-
-			if len(message) <= 1 {
-				return 0, nil, errors.New("message size is 0")
-			}
-
-			if len(message[0]) == 0 {
-				return 0, nil, errors.New("topic size is 0")
-			}
-
-			topic := Topic(message[0][0])
-
-			if containsTopic, topicIndex := sub.containsTopic(topic); containsTopic {
-				if topic.String() != sub.topics[topicIndex].String() {
-					return 0, nil, errors.New("subscriber received message from wrong topic")
-				}
-			}
-
-			out := make(chan []byte)
-			go func() {
-				out <- message[1]
-			}()
-			return topic, out, nil
+	receiveChan := make(chan MessageInfo)
+	receiveFunc := func(topic Topic, message []byte, err error) {
+		receiveChan <- MessageInfo{
+			Topic:   topic,
+			Message: message,
+			Err:     err,
 		}
 	}
+
+	message, err := sub.socket.RecvMessageBytes(0)
+	if err != nil {
+		go receiveFunc(0, nil, err)
+		return receiveChan
+	}
+
+	if len(message) <= 1 {
+		go receiveFunc(0, nil, errors.New("message size is 0"))
+		return receiveChan
+	}
+
+	if len(message[0]) == 0 {
+		go receiveFunc(0, nil, errors.New("topic size is 0"))
+		return receiveChan
+	}
+
+	topic := Topic(message[0][0])
+
+	if containsTopic, topicIndex := sub.containsTopic(topic); containsTopic {
+		if topic.String() != sub.topics[topicIndex].String() {
+			go receiveFunc(0, nil, errors.New("subscriber received message from wrong topic"))
+			return receiveChan
+		}
+	}
+
+	go receiveFunc(topic, message[1], nil)
+	return receiveChan
 }
 
 func (sub *PortalCruncherSubscriber) containsTopic(topic Topic) (bool, int) {
