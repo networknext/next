@@ -351,8 +351,8 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				}
 			}
 			if len(args.Roles) > 0 {
-				if err = s.UserManager.AssignRoles(userID, args.Roles...); err != nil {
-					err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
+				if err = s.UserManager.AssignRoles(*newUser.ID, args.Roles...); err != nil {
+					err := fmt.Errorf("AddUserAccount() failed to add user roles: %v, %w", userID, err)
 					s.Logger.Log("err", err)
 					return err
 				}
@@ -715,7 +715,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				}
 			} else {
 				// the company exists and the new user is not part of the auto signup
-				err = fmt.Errorf("UpdateCompanyInformation() email domain is not part of auto signup for this company: %v", err)
+				err = fmt.Errorf("UpdateCompanyInformation() email domain is not part of auto signup for this company")
 				s.Logger.Log("err", err)
 				return err
 			}
