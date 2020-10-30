@@ -352,7 +352,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			}
 			if len(args.Roles) > 0 {
 				if err = s.UserManager.AssignRoles(*newUser.ID, args.Roles...); err != nil {
-					err := fmt.Errorf("AddUserAccount() failed to add user roles: %v, %w", userID, err)
+					err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
 					s.Logger.Log("err", err)
 					return err
 				}
