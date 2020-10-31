@@ -8,6 +8,13 @@
 #include "private_ed25519_ref10.h"
 #include "utils.h"
 
+#if defined( _MSC_VER )
+#pragma warning(disable:4127)
+#pragma warning(disable:4244)
+#pragma warning(disable:4668)
+#pragma warning(disable:4456)
+#endif
+
 static inline uint64_t
 load_3(const unsigned char *in)
 {
@@ -986,7 +993,7 @@ int
 ge25519_is_canonical(const unsigned char *s)
 {
     unsigned char c;
-    unsigned char d;
+    unsigned char local_d;
     unsigned int  i;
 
     c = (s[31] & 0x7f) ^ 0x7f;
@@ -994,9 +1001,9 @@ ge25519_is_canonical(const unsigned char *s)
         c |= s[i] ^ 0xff;
     }
     c = (((unsigned int) c) - 1U) >> 8;
-    d = (0xed - 1U - (unsigned int) s[0]) >> 8;
+    local_d = (0xed - 1U - (unsigned int) s[0]) >> 8;
 
-    return 1 - (c & d & 1);
+    return 1 - (c & local_d & 1);
 }
 
 int
