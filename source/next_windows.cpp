@@ -24,19 +24,19 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-#if NETWORKNEXT_UNREAL_ENGINE
+#if NEXT_UNREAL_ENGINE
 #include "Windows/AllowWindowsPlatformTypes.h"
 #include "Windows/PreWindowsApi.h"
-#endif // #if NETWORKNEXT_UNREAL_ENGINE
+#endif // #if NEXT_UNREAL_ENGINE
 
 #define NOMINMAX
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
-#ifndef NETWORKNEXT_UNREAL_ENGINE
+#ifndef NEXT_UNREAL_ENGINE
 #include <windows.h>
-#else // #ifndef NETWORKNEXT_UNREAL_ENGINE
+#else // #ifndef NEXT_UNREAL_ENGINE
 #include "Windows/MinWindows.h"
-#endif // #ifndef NETWORKNEXT_UNREAL_ENGINE
+#endif // #ifndef NEXT_UNREAL_ENGINE
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <ws2ipdef.h>
@@ -664,10 +664,10 @@ static int get_connection_type()
     return result;
 }
 
-#if NETWORKNEXT_UNREAL_ENGINE
+#if NEXT_UNREAL_ENGINE
 #include "Windows/PostWindowsApi.h"
 #include "Windows/HideWindowsPlatformTypes.h"
-#endif // #if NETWORKNEXT_UNREAL_ENGINE
+#endif // #if NEXT_UNREAL_ENGINE
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
