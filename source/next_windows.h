@@ -27,17 +27,14 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
+#ifndef NETWORKNEXT_UNREAL_ENGINE
 #define _WINSOCKAPI_
-
-#pragma pack(push, 8)
 #include <windows.h>
 #include <winsock2.h>
-#pragma pack(pop)
+#endif // #ifndef NETWORKNEXT_UNREAL_ENGINE
 
 #define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
 #define NEXT_PLATFORM_SOCKET_BLOCKING           1
-
-NEXT_PACK_PUSH()
 
 // -------------------------------------
 
@@ -60,7 +57,7 @@ struct next_platform_socket_t
 struct next_platform_thread_t
 {
     void * context;
-    HANDLE handle;
+    void * handle;
 };
 
 typedef DWORD next_platform_thread_return_t;
@@ -76,12 +73,10 @@ typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_t
 struct next_platform_mutex_t
 {
 	bool ok;
-    CRITICAL_SECTION handle;
+    void * handle;
 };
 
 // -------------------------------------
-
-NEXT_PACK_POP()
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 

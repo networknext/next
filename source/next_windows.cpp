@@ -24,11 +24,19 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
+#if NETWORKNEXT_UNREAL_ENGINE
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include "Windows/PreWindowsApi.h"
+#endif // #if NETWORKNEXT_UNREAL_ENGINE
+
 #define NOMINMAX
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
-#pragma pack(push, 8)
+#ifndef NETWORKNEXT_UNREAL_ENGINE
 #include <windows.h>
+#else // #ifndef NETWORKNEXT_UNREAL_ENGINE
+#include "Windows/MinWindows.h"
+#endif // #ifndef NETWORKNEXT_UNREAL_ENGINE
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <ws2ipdef.h>
@@ -36,7 +44,6 @@
 #include <wininet.h>
 #include <iphlpapi.h>
 #include <qos2.h>
-#pragma pack(pop)
 
 #pragma comment( lib, "WS2_32.lib" )
 #pragma comment( lib, "IPHLPAPI.lib" )
@@ -45,8 +52,6 @@
 #ifdef SetPort
 #undef SetPort
 #endif // #ifdef SetPort
-
-NEXT_PACK_PUSH()
 
 extern void * next_global_context;
 
@@ -143,7 +148,7 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 
 	memset( mutex, 0, sizeof(next_platform_mutex_t) );
 
-    if ( !InitializeCriticalSectionAndSpinCount( &mutex->handle, 0xFF ) )
+    if ( !InitializeCriticalSectionAndSpinCount( (LPCRITICAL_SECTION)&mutex->handle, 0xFF ) )
     {
 		return NEXT_ERROR;
     }
@@ -157,14 +162,14 @@ void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
 	next_assert( mutex->ok );
-    EnterCriticalSection( &mutex->handle );
+    EnterCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
 	next_assert( mutex->ok );
-    LeaveCriticalSection( &mutex->handle );
+    LeaveCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
 }
 
 void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
@@ -172,7 +177,7 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
     next_assert( mutex );
 	if ( mutex->ok )
 	{
-		DeleteCriticalSection(&mutex->handle);
+		DeleteCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
 		memset(mutex, 0, sizeof(next_platform_mutex_t));
 	}
 }
@@ -659,7 +664,10 @@ static int get_connection_type()
     return result;
 }
 
-NEXT_PACK_POP()
+#if NETWORKNEXT_UNREAL_ENGINE
+#include "Windows/PostWindowsApi.h"
+#include "Windows/HideWindowsPlatformTypes.h"
+#endif // #if NETWORKNEXT_UNREAL_ENGINE
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
