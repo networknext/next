@@ -40,7 +40,7 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, lo
 		return nil, err
 	}
 	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
-
+	
 	if btTableName == "" {
 		err := fmt.Errorf("NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
 		level.Error(logger).Log("err", err)
@@ -167,14 +167,14 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, rowKeys []string, data
 		if cfName, ok := cfMap[colName]; ok {
 			mut.Set(cfName, colName, currentTimestamp, value)
 		} else {
-			return fmt.Errorf("Column name %v not present in column family map", colName)
+			return fmt.Errorf("InsertRowInTable() Column name %v not present in column family map", colName)
 		}
 	}
 
 	// Insert into table
 	for _, rowKey := range rowKeys {
 		if err := bt.SessionTable.Apply(ctx, rowKey, mut); err != nil {
-			return err
+			return fmt.Errorf("InsertRowInTable() Could not insert row in table %v", err)
 		}
 	}
 
@@ -196,14 +196,14 @@ func (bt *BigTable) InsertSessionData(ctx context.Context,
 	// Create a map of column name to column family
 	// Always map meta and slice to the first column family
 	if len(btCfNames) == 0 {
-		return fmt.Errorf("Column family names slice is empty")
+		return fmt.Errorf("InsertSessionData() Column family names slice is empty")
 	} 
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
 	cfMap["slice"] = btCfNames[0]
 
 	if err := bt.InsertRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
-		return err
+		return fmt.Errorf("InsertSessionData() Could not insert session data into table %v", err)
 	}
 
 	return nil
@@ -236,7 +236,7 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts .
 	}, opts...)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetRowsWithPrefix() Could not get rows with prefix %s: %v", prefix, err)
 	}
 
 	return values, nil

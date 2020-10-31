@@ -6,6 +6,7 @@ import (
     "time"
     "os"
     "strconv"
+    "fmt"
 
     "github.com/go-kit/kit/log"
 	"github.com/stretchr/testify/assert"
@@ -176,8 +177,6 @@ func TestBigTable(t *testing.T) {
 		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
 		assert.NoError(t, err)
 
-		btAdmin, err = storage.NewBigTableAdmin(ctx, "", "", logger)
-		assert.NoError(t, err)
 		defer func() {
 			err := btAdmin.DeleteTable(ctx, tblName)
 			assert.NoError(t, err)
@@ -217,8 +216,6 @@ func TestBigTable(t *testing.T) {
 		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
 		assert.NoError(t, err)
 
-		btAdmin, err = storage.NewBigTableAdmin(ctx, "", "", logger)
-		assert.NoError(t, err)
 		defer func() {
 			err := btAdmin.DeleteTable(ctx, tblName)
 			assert.NoError(t, err)
@@ -268,8 +265,6 @@ func TestBigTable(t *testing.T) {
 		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
 		assert.NoError(t, err)
 
-		btAdmin, err = storage.NewBigTableAdmin(ctx, "", "", logger)
-		assert.NoError(t, err)
 		defer func() {
 			err := btAdmin.DeleteTable(ctx, tblName)
 			assert.NoError(t, err)
@@ -325,7 +320,7 @@ func TestBigTable(t *testing.T) {
 
 			// Should not be able to find key "meta" in cfMap
 			err = btClient.InsertRowInTable(ctx, rowKeys, dataMap, cfMap)
-			assert.EqualError(t, err, "Column name meta not present in column family map")
+			assert.EqualError(t, err, "InsertRowInTable() Column name meta not present in column family map")
 		})
 
 		t.Run("Insert Invalid Row Into Table 100000 Mutations", func (t *testing.T) {
@@ -366,8 +361,6 @@ func TestBigTable(t *testing.T) {
 		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
 		assert.NoError(t, err)
 
-		btAdmin, err = storage.NewBigTableAdmin(ctx, "", "", logger)
-		assert.NoError(t, err)
 		defer func() {
 			err := btAdmin.DeleteTable(ctx, tblName)
 			assert.NoError(t, err)
@@ -414,8 +407,43 @@ func TestBigTable(t *testing.T) {
 			
 			// Should attempt to create column family map and fail
 			err = btClient.InsertSessionData(ctx, make([]string, 0), metaBinary, sliceBinary, rowKeys)
-			assert.EqualError(t, err, "Column family names slice is empty")
+			assert.EqualError(t, err, "InsertSessionData() Column family names slice is empty")
 		})
+	})
+
+	t.Run("Insert Session Data Into Nonexistent Table", func (t *testing.T) {
+		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		if exists {
+			// Delete the table that exists
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			assert.NoError(t, err)
+
+			err = btAdmin.DeleteTable(ctx, tblName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		} else {
+			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
+			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		}
+
+		btClient, err := storage.NewBigTable(ctx, "", "", logger)
+		assert.NoError(t, err)
+		
+		defer func () {
+			err = btClient.Close()
+			assert.NoError(t, err)
+		}()
+
+		btCfNames := []string{"ColFamName"}
+		rowKeys := []string{"meta", "slice"}
+		
+		metaBinary := make([]byte, 0)
+		sliceBinary := make([]byte, 0)
+
+		err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+		assert.NotNil(t, err)
 	})
 
 	t.Run("Get Rows With Prefix", func (t *testing.T) {
@@ -484,7 +512,43 @@ func TestBigTable(t *testing.T) {
 
 			assert.NoError(t, err)
 		})
+	})
 
+	t.Run("Get Rows With Prefix From Nonexistent Table", func (t *testing.T) {
+		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		if tblName == "" {
+			tblName = "Test"
+		}
+		if exists {
+			// Delete the table that exists
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			assert.NoError(t, err)
+
+			err = btAdmin.DeleteTable(ctx, tblName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		} else {
+			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", tblName)
+			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		}
+
+
+
+		btClient, err := storage.NewBigTable(ctx, "", "", logger)
+		assert.NoError(t, err)
+		
+		defer func () {
+			err = btClient.Close()
+			assert.NoError(t, err)
+		}()
+
+		prefix := "meta"
+		_, err = btClient.GetRowsWithPrefix(ctx, prefix)
+
+		errorStr := fmt.Sprintf("GetRowsWithPrefix() Could not get rows with prefix %s: rpc error: code = NotFound desc = table \"projects//instances//tables/%s\" not found", prefix, tblName)
+		assert.EqualError(t, err, errorStr)
 	})
 
 	t.Run("Get Row With Rowkey", func (t *testing.T) {
@@ -551,5 +615,42 @@ func TestBigTable(t *testing.T) {
 
 			assert.NoError(t, err)
 		})
+	})
+
+	t.Run("Get Rows With Rowkey From Nonexistent Table", func (t *testing.T) {
+		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		if tblName == "" {
+			tblName = "Test"
+		}
+
+		if exists {
+			// Delete the table that exists
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			assert.NoError(t, err)
+
+			err = btAdmin.DeleteTable(ctx, tblName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		} else {
+			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", tblName)
+			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		}
+
+		btClient, err := storage.NewBigTable(ctx, "", "", logger)
+		assert.NoError(t, err)
+		
+		defer func () {
+			err = btClient.Close()
+			assert.NoError(t, err)
+		}()
+
+		rowKeys := []string{"meta", "slice"}
+
+		_, err = btClient.GetRowWithRowKey(ctx, rowKeys[0])
+
+		errorStr := fmt.Sprintf("rpc error: code = NotFound desc = table \"projects//instances//tables/%s\" not found", tblName)
+		assert.EqualError(t, err, errorStr)
 	})
 }	
