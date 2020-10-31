@@ -146,7 +146,7 @@ Gets the state the server is in.
 
 	The server is initially in the direct only state. 
 
-	If a valid customer private key is setup, the server will first try to resolve the backend hostname, which is "prod.networknext.com" by default.
+	If a valid customer private key is setup, the server will first try to resolve the backend hostname, which is "dev.spacecats.net" by default.
 
 	Once the backend hostname is resolved, the server initializes with the backend. When everything works, the server lands in the initialized state and is ready to accelerate players.
 

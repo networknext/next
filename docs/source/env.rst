@@ -100,7 +100,7 @@ Overrides the hostname in *next_config_t*.
 
 .. code-block:: console
 
-	$ export NEXT_HOSTNAME=mygamecompany.networknext.com
+	$ export NEXT_HOSTNAME=mygamecompany.spacecats.net
 
 NEXT_SERVER_ADDRESS
 -------------------
