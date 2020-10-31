@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"os"
+
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/storage"
@@ -44,13 +48,18 @@ type PortalCruncher struct {
 	subscriber pubsub.Subscriber
 	metrics    *metrics.PortalCruncherMetrics
 
-	redisCountMessageChan chan *transport.SessionCountData
-	redisDataMessageChan  chan *transport.SessionPortalData
+	redisCountMessageChan 	chan *transport.SessionCountData
+	redisDataMessageChan  	chan *transport.SessionPortalData
+	btDataMessageChan 		chan *transport.SessionPortalData
 
 	topSessions   storage.RedisClient
 	sessionMap    storage.RedisClient
 	sessionMeta   storage.RedisClient
 	sessionSlices storage.RedisClient
+
+	useBigtable 	bool
+	btClient 		*storage.BigTable
+	btCfNames		[]string
 
 	redisFlushCount int
 	flushTime       time.Time
@@ -58,13 +67,21 @@ type PortalCruncher struct {
 }
 
 func NewPortalCruncher(
+	ctx context.Context,
 	subscriber pubsub.Subscriber,
 	redisHostTopSessions string,
 	redisHostSessionMap string,
 	redisHostSessionMeta string,
 	redisHostSessionSlices string,
+	useBigtable bool,
+	gcpProjectID string,
+	btInstanceID string,
+	btTableName string,
+	btCfName string,
+	btMaxAgeDays int,
 	chanBufferSize int,
 	redisFlushCount int,
+	logger log.Logger,
 	metrics *metrics.PortalCruncherMetrics,
 ) (*PortalCruncher, error) {
 	topSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
@@ -87,22 +104,36 @@ func NewPortalCruncher(
 		return nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionSlices, err)
 	}
 
+	var btClient *storage.BigTable
+	var btCfNames []string
+
+	if useBigtable {
+		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays, logger)
+		if err != nil {
+			return nil, err
+		}		
+	}
+
 	return &PortalCruncher{
 		subscriber:            subscriber,
 		metrics:               metrics,
 		redisCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
 		redisDataMessageChan:  make(chan *transport.SessionPortalData, chanBufferSize),
+		btDataMessageChan: 	   make(chan *transport.SessionPortalData, chanBufferSize),
 		topSessions:           topSessions,
 		sessionMap:            sessionMap,
 		sessionMeta:           sessionMeta,
 		sessionSlices:         sessionSlices,
 		redisFlushCount:       redisFlushCount,
+		useBigtable: 		   useBigtable,
+		btClient:			   btClient,
+		btCfNames:			   btCfNames,
 		flushTime:             time.Now(),
 		pingTime:              time.Now(),
 	}, nil
 }
 
-func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines int, numRedisInsertGoroutines int) error {
+func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines int, numRedisInsertGoroutines int, numBigtableInsertGoroutines int) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
@@ -178,6 +209,33 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 		}()
 	}
 
+	if cruncher.useBigtable {
+		// Start the bigtable goroutines
+		for i := 0; i < numBigtableInsertGoroutines; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				btPortalDataBuffer := make([]*transport.SessionPortalData, 0)
+				
+				for {
+					select {
+					// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
+					case portalData := <-cruncher.btDataMessageChan:
+						btPortalDataBuffer = append(btPortalDataBuffer, portalData)
+
+						if err := cruncher.InsertIntoBigtable(ctx, btPortalDataBuffer); err != nil {
+							errChan <- err
+							return
+						}
+
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+		}
+	}
+
 	// Wait until either there is an error or the context is done
 	select {
 	case err := <-errChan:
@@ -227,12 +285,12 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 				return &ErrChannelFull{}
 			}
 
-			// todo: something like this should work for bigtable insertion
-			// select {
-			// case cruncher.bigtableDataMessageChan <- &sessionPortalData:
-			// default:
-			// 	return &ErrChannelFull{}
-			// }
+
+			select {
+			case cruncher.btDataMessageChan <- &sessionPortalData:
+			default:
+				return &ErrChannelFull{}
+			}
 		default:
 			return &ErrUnknownMessage{}
 		}
@@ -389,5 +447,102 @@ func (cruncher *PortalCruncher) PingRedis() error {
 		return err
 	}
 
+	return nil
+}
+
+func SetupBigtable(	ctx context.Context, 
+					gcpProjectID string,
+					btInstanceID string,
+					btTableName string,
+					btCfName string,
+					btMaxAgeDays int,
+					logger log.Logger) (*storage.BigTable, []string, error) {
+	// Setup Bigtable
+	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
+	if btEmulatorOK {
+		// Emulator is used for local testing
+		// Requires that emulator has been started in another terminal to work as intended
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected Bigtable emulator")
+	}
+
+	if gcpProjectID == "" && !btEmulatorOK {
+		return nil, nil, fmt.Errorf("No GCP Project ID found. Could not find $BIGTABLE_EMULATOR_HOST for local testing.")
+	}
+
+	// Put the column family names in a slice
+	btCfNames := []string{btCfName}
+
+	// Create a bigtable admin for setup
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Check if the table exists in the instance
+	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Verify if the table needed exists
+	if !tableExists {
+		// Create a table with the given name and column families
+		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
+			return nil, nil, err
+		}
+
+		// Set a garbage collection policy of maxAgeDays
+		maxAge := time.Hour * time.Duration(24*btMaxAgeDays)
+		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Close the admin client
+	if err = btAdmin.Close(); err != nil {
+		return nil, nil, err
+	}
+
+	// Create a standard client for writing to the table
+	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return btClient, btCfNames, nil
+}
+
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData,) error {
+	for j := range btPortalDataBuffer {
+		meta := &btPortalDataBuffer[j].Meta
+		slice := &btPortalDataBuffer[j].Slice
+		
+		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
+
+		rowKeys := []string{sessionRowKey, userRowKey}
+
+		// Have 2 columns under 1 column family
+		// 1) Meta
+		// 2) Slice
+
+		// Create byte slices of the session data
+		metaBinary, err := meta.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		sliceBinary, err := slice.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		// Insert session data into Bigtable
+		if err := cruncher.btClient.InsertSessionData(ctx, cruncher.btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
+			return err
+		}
+	}
+
+	btPortalDataBuffer = btPortalDataBuffer[:0]
 	return nil
 }

@@ -169,7 +169,48 @@ func mainReturnWithCode() int {
 	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(portalSubscriber, redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices, messageChanSize, redisFlushCount, portalCruncherMetrics)
+	// Determine if should insert into Bigtable
+	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get Bigtable instance ID
+	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+	// Get the table name
+	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+	// Get the column family name
+	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	// Get the max number of days the data should be kept in Bigtable
+	btMaxAgeDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	btGoroutineCount, err := envvar.GetInt("CRUNCHER_BIGTABLE_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
+															portalSubscriber,
+															redisHostTopSessions,
+															redisHostSessionMap,
+															redisHostSessionMeta,
+															redisHostSessionSlices,
+															useBigtable,
+															gcpProjectID,
+															btInstanceID,
+															btTableName,
+															btCfName,
+															btMaxAgeDays,
+															messageChanSize,
+															redisFlushCount,
+															logger,
+															portalCruncherMetrics)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -182,7 +223,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := portalCruncher.Start(ctx, receiveGoroutineCount, redisGoroutineCount); err != nil {
+		if err := portalCruncher.Start(ctx, receiveGoroutineCount, redisGoroutineCount, btGoroutineCount); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return

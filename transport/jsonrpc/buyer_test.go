@@ -86,10 +86,13 @@ func TestBuyersList(t *testing.T) {
 }
 
 // User Sessions is currently disabled
-/* func TestUserSessions(t *testing.T) {
+func TestUserSessions(t *testing.T) {
 	t.Parallel()
 
+	var storer = storage.InMemory{}
+
 	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	userHash1 := fmt.Sprintf("%016x", 111)
@@ -100,25 +103,36 @@ func TestBuyersList(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 	sessionID4 := "missing"
 
-	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash2), sessionID1)
-	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID2)
-	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID3)
-	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID4)
+	now := time.Now()
+	secs := now.Unix()
+	minutes := secs / 60
 
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1}, time.Hour)
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
+	redisServer.ZAdd(fmt.Sprintf("s-%d", minutes), 50, sessionID1)
+	redisServer.ZAdd(fmt.Sprintf("s-%d", minutes), 100, sessionID2)
+	redisServer.ZAdd(fmt.Sprintf("s-%d", minutes), 150, sessionID3)
+	redisServer.ZAdd(fmt.Sprintf("s-%d", minutes), 150, sessionID4)
+
+	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", userHash2, minutes), 50, sessionID1)
+	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", userHash1, minutes), 100, sessionID2)
+	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", userHash1, minutes), 150, sessionID3)
+	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", userHash1, minutes), 150, sessionID4)
+
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, DeltaRTT: 50}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150}.RedisString(), time.Hour)
 
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.BuyersService{
-		RedisClient: redisClient,
-		Logger:      logger,
+		Storage:                &storer,
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		RedisPoolUserSessions:  redisPool,
+		Logger:                 logger,
 	}
 
-	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	t.Run("missing user_hash", func(t *testing.T) {
@@ -130,14 +144,14 @@ func TestBuyersList(t *testing.T) {
 
 	t.Run("user_hash not found", func(t *testing.T) {
 		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: "12345"}, &reply)
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: "12345"}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(reply.Sessions))
 	})
 
-	t.Run("list", func(t *testing.T) {
+	t.Run("list - ID", func(t *testing.T) {
 		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: userHash1}, &reply)
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: "111"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Sessions), 2)
@@ -145,7 +159,18 @@ func TestBuyersList(t *testing.T) {
 		assert.Equal(t, reply.Sessions[0].ID, sessionID3)
 		assert.Equal(t, reply.Sessions[1].ID, sessionID2)
 	})
-} */
+
+	t.Run("list - hash", func(t *testing.T) {
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userHash1}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(reply.Sessions), 2)
+
+		assert.Equal(t, reply.Sessions[0].ID, sessionID3)
+		assert.Equal(t, reply.Sessions[1].ID, sessionID2)
+	})
+}
 
 func TestDatacenterMaps(t *testing.T) {
 	var storer = storage.InMemory{}
