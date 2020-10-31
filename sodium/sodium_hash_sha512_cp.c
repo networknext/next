@@ -33,9 +33,9 @@
 
 #include <sys/types.h>
 
-#include "crypto_hash_sha512.h"
-#include "private_common.h"
-#include "utils.h"
+#include "sodium_crypto_hash_sha512.h"
+#include "sodium_private_common.h"
+#include "sodium_utils.h"
 
 static void
 be64enc_vect(unsigned char *dst, const uint64_t *src, size_t len)

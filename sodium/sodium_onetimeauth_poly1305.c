@@ -1,14 +1,14 @@
 
-#include "onetimeauth_poly1305.h"
-#include "crypto_onetimeauth_poly1305.h"
-#include "private_common.h"
-#include "private_implementations.h"
-#include "randombytes.h"
-#include "runtime.h"
+#include "sodium_onetimeauth_poly1305.h"
+#include "sodium_crypto_onetimeauth_poly1305.h"
+#include "sodium_private_common.h"
+#include "sodium_private_implementations.h"
+#include "sodium_randombytes.h"
+#include "sodium_runtime.h"
 
-#include "poly1305_donna.h"
+#include "sodium_poly1305_donna.h"
 #if defined(HAVE_TI_MODE) && defined(HAVE_EMMINTRIN_H)
-# include "poly1305-sse2.h"
+# include "sodium_poly1305-sse2.h"
 #endif
 
 static const crypto_onetimeauth_poly1305_implementation *implementation =

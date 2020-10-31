@@ -1,13 +1,13 @@
 
 #include <string.h>
 
-#include "crypto_hash_sha512.h"
-#include "crypto_scalarmult_curve25519.h"
-#include "crypto_sign_ed25519.h"
-#include "ref10_sign_ed25519.h"
-#include "private_ed25519_ref10.h"
-#include "randombytes.h"
-#include "utils.h"
+#include "sodium_crypto_hash_sha512.h"
+#include "sodium_crypto_scalarmult_curve25519.h"
+#include "sodium_crypto_sign_ed25519.h"
+#include "sodium_ref10_sign_ed25519.h"
+#include "sodium_private_ed25519_ref10.h"
+#include "sodium_randombytes.h"
+#include "sodium_utils.h"
 
 int
 crypto_sign_ed25519_seed_keypair(unsigned char *pk, unsigned char *sk,

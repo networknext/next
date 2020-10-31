@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "crypto_stream_salsa20.h"
-#include "private_common.h"
-#include "private_sse2_64_32.h"
-#include "utils.h"
+#include "sodium_crypto_stream_salsa20.h"
+#include "sodium_private_common.h"
+#include "sodium_private_sse2_64_32.h"
+#include "sodium_utils.h"
 
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
@@ -23,8 +23,8 @@
 #include <smmintrin.h>
 #include <tmmintrin.h>
 
-# include "stream_salsa20.h"
-# include "xmm6int_salsa20-avx2.h"
+# include "sodium_stream_salsa20.h"
+# include "sodium_xmm6int_salsa20-avx2.h"
 
 # define ROUNDS 20
 
@@ -72,10 +72,10 @@ salsa20_encrypt_bytes(salsa_ctx *ctx, const uint8_t *m, uint8_t *c,
         return; /* LCOV_EXCL_LINE */
     }
 
-#include "xmm6int_u8.h"
-#include "xmm6int_u4.h"
-#include "xmm6int_u1.h"
-#include "xmm6int_u0.h"
+#include "sodium_xmm6int_u8.h"
+#include "sodium_xmm6int_u4.h"
+#include "sodium_xmm6int_u1.h"
+#include "sodium_xmm6int_u0.h"
 }
 
 static int

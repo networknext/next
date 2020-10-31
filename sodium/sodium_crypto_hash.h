@@ -10,8 +10,8 @@
 
 #include <stddef.h>
 
-#include "crypto_hash_sha512.h"
-#include "export.h"
+#include "sodium_crypto_hash_sha512.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

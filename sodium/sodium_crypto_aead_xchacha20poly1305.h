@@ -2,7 +2,8 @@
 #define crypto_aead_xchacha20poly1305_H
 
 #include <stddef.h>
-#include "export.h"
+
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

@@ -1,7 +1,7 @@
 #include <string.h>
 
-#include "private_common.h"
-#include "utils.h"
+#include "sodium_private_common.h"
+#include "sodium_utils.h"
 
 /*
  h = 0

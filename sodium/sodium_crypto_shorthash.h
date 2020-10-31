@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include "crypto_shorthash_siphash24.h"
-#include "export.h"
+#include "sodium_crypto_shorthash_siphash24.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

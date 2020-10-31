@@ -2,7 +2,7 @@
 #ifndef sodium_core_H
 #define sodium_core_H
 
-#include "export.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 extern "C" {

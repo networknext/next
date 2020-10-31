@@ -86,7 +86,7 @@
     row4l = t1;                                                               \
     row4h = t0;
 
-#include "blake2b-load-sse2.h"
+#include "sodium_blake2b-load-sse2.h"
 
 #define ROUND(r)                                                         \
     LOAD_MSG_##r##_1(b0, b1);                                            \

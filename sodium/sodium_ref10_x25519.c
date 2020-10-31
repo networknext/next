@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "scalarmult_curve25519.h"
-#include "export.h"
-#include "private_ed25519_ref10.h"
-#include "utils.h"
-#include "ref10_x25519.h"
+#include "sodium_scalarmult_curve25519.h"
+#include "sodium_export.h"
+#include "sodium_private_ed25519_ref10.h"
+#include "sodium_utils.h"
+#include "sodium_ref10_x25519.h"
 
 /*
  * Reject small order points early to mitigate the implications of

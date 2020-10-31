@@ -5,13 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core.h"
-#include "crypto_core_hchacha20.h"
-#include "crypto_onetimeauth_poly1305.h"
-#include "crypto_secretbox_xchacha20poly1305.h"
-#include "crypto_stream_chacha20.h"
-#include "private_common.h"
-#include "utils.h"
+#include "sodium_core.h"
+#include "sodium_crypto_core_hchacha20.h"
+#include "sodium_crypto_onetimeauth_poly1305.h"
+#include "sodium_crypto_secretbox_xchacha20poly1305.h"
+#include "sodium_crypto_stream_chacha20.h"
+#include "sodium_private_common.h"
+#include "sodium_utils.h"
 
 #define crypto_secretbox_xchacha20poly1305_ZEROBYTES 32U
 

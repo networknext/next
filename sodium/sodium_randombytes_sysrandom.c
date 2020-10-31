@@ -41,11 +41,11 @@
 # include <poll.h>
 #endif
 
-#include "core.h"
-#include "private_common.h"
-#include "randombytes.h"
-#include "randombytes_sysrandom.h"
-#include "utils.h"
+#include "sodium_core.h"
+#include "sodium_private_common.h"
+#include "sodium_randombytes.h"
+#include "sodium_randombytes_sysrandom.h"
+#include "sodium_utils.h"
 
 #ifdef _WIN32
 /* `RtlGenRandom` is used over `CryptGenRandom` on Microsoft Windows based systems:

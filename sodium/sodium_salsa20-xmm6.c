@@ -1,10 +1,9 @@
 
 #include <stdint.h>
 
-#include "utils.h"
-
-#include "stream_salsa20.h"
-#include "salsa20-xmm6.h"
+#include "sodium_utils.h"
+#include "sodium_stream_salsa20.h"
+#include "sodium_salsa20-xmm6.h"
 
 #ifdef HAVE_AMD64_ASM
 

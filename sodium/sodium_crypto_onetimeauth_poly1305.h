@@ -14,7 +14,7 @@ extern "C" {
 
 #include <sys/types.h>
 
-#include "export.h"
+#include "sodium_export.h"
 
 typedef struct CRYPTO_ALIGN(16) crypto_onetimeauth_poly1305_state {
     unsigned char opaque[256];

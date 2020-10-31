@@ -1,20 +1,20 @@
-#include "crypto_stream_chacha20.h"
-#include "core.h"
-#include "private_chacha20_ietf_ext.h"
-#include "private_common.h"
-#include "private_implementations.h"
-#include "randombytes.h"
-#include "runtime.h"
-#include "stream_chacha20.h"
+#include "sodium_crypto_stream_chacha20.h"
+#include "sodium_core.h"
+#include "sodium_private_chacha20_ietf_ext.h"
+#include "sodium_private_common.h"
+#include "sodium_private_implementations.h"
+#include "sodium_randombytes.h"
+#include "sodium_runtime.h"
+#include "sodium_stream_chacha20.h"
 #include <stdio.h>
 
-#include "chacha20-ref.h"
+#include "sodium_chacha20-ref.h"
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
-# include "dolbeau_chacha20-avx2.h"
+# include "sodium_dolbeau_chacha20-avx2.h"
 #endif
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H)
-# include "dolbeau_chacha20-ssse3.h"
+# include "sodium_dolbeau_chacha20-ssse3.h"
 #endif
 
 static const crypto_stream_chacha20_implementation *implementation =

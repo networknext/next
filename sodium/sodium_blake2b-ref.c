@@ -20,11 +20,11 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "blake2.h"
-#include "core.h"
-#include "private_common.h"
-#include "runtime.h"
-#include "utils.h"
+#include "sodium_blake2.h"
+#include "sodium_core.h"
+#include "sodium_private_common.h"
+#include "sodium_runtime.h"
+#include "sodium_utils.h"
 
 static blake2b_compress_fn blake2b_compress = blake2b_compress_ref;
 

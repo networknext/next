@@ -1,5 +1,5 @@
 
-#include "crypto_box.h"
+#include "sodium_crypto_box.h"
 
 int
 crypto_box_keypair(unsigned char *pk, unsigned char *sk)

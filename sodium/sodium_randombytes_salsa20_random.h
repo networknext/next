@@ -2,8 +2,8 @@
 #ifndef randombytes_salsa20_random_H
 #define randombytes_salsa20_random_H
 
-#include "export.h"
-#include "randombytes.h"
+#include "sodium_export.h"
+#include "sodium_randombytes.h"
 
 #ifdef __cplusplus
 extern "C" {

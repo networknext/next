@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "blake2.h"
-#include "private_common.h"
-#include "private_sse2_64_32.h"
+#include "sodium_blake2.h"
+#include "sodium_private_common.h"
+#include "sodium_private_sse2_64_32.h"
 
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
@@ -25,7 +25,7 @@
 # include <smmintrin.h>
 # include <tmmintrin.h>
 
-# include "blake2b-compress-avx2.h"
+# include "sodium_blake2b-compress-avx2.h"
 
 CRYPTO_ALIGN(64)
 static const uint64_t blake2b_IV[8] = {

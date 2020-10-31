@@ -6,12 +6,12 @@ Public domain.
 
 #include <stdint.h>
 
-#include "crypto_core_salsa20.h"
-#include "crypto_stream_salsa20.h"
-#include "utils.h"
+#include "sodium_crypto_core_salsa20.h"
+#include "sodium_crypto_stream_salsa20.h"
+#include "sodium_utils.h"
 
-#include "stream_salsa20.h"
-#include "salsa20-ref.h"
+#include "sodium_stream_salsa20.h"
+#include "sodium_salsa20-ref.h"
 
 #ifndef HAVE_AMD64_ASM
 

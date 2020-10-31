@@ -3,8 +3,8 @@
 #define crypto_box_curve25519xchacha20poly1305_H
 
 #include <stddef.h>
-#include "crypto_stream_xchacha20.h"
-#include "export.h"
+#include "sodium_crypto_stream_xchacha20.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

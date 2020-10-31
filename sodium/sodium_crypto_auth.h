@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include "crypto_auth_hmacsha512256.h"
-#include "export.h"
+#include "sodium_crypto_auth_hmacsha512256.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

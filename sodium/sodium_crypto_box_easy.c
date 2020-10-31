@@ -3,11 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "core.h"
-#include "crypto_box.h"
-#include "crypto_secretbox.h"
-#include "private_common.h"
-#include "utils.h"
+#include "sodium_core.h"
+#include "sodium_crypto_box.h"
+#include "sodium_crypto_secretbox.h"
+#include "sodium_private_common.h"
+#include "sodium_utils.h"
 
 int
 crypto_box_detached_afternm(unsigned char *c, unsigned char *mac,

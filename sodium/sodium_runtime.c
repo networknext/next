@@ -4,8 +4,8 @@
 # include <cpu-features.h>
 #endif
 
-#include "private_common.h"
-#include "runtime.h"
+#include "sodium_private_common.h"
+#include "sodium_runtime.h"
 #include <stdio.h>
 
 typedef struct CPUFeatures_ {

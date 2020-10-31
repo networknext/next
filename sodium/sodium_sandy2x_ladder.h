@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#include "sandy2x_fe.h"
-#include "sandy2x_ladder_namespace.h"
+#include "sodium_sandy2x_fe.h"
+#include "sodium_sandy2x_ladder_namespace.h"
 
 extern void ladder(fe *, const unsigned char *);
 

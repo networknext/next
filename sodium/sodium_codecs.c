@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core.h"
-#include "utils.h"
+#include "sodium_core.h"
+#include "sodium_utils.h"
 
 /* Derived from original code by CodesInChaos */
 char *

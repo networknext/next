@@ -1,7 +1,7 @@
 #ifdef IN_SANDY2X
 
-#include "sandy2x_ladder_base_namespace.h"
-#include "sandy2x_consts_namespace.h"
+#include "sodium_sandy2x_ladder_base_namespace.h"
+#include "sodium_sandy2x_consts_namespace.h"
 .p2align 5
 
 #ifdef ASM_HIDE_SYMBOL

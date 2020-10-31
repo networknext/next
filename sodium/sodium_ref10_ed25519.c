@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "crypto_verify_32.h"
-#include "private_common.h"
-#include "private_ed25519_ref10.h"
-#include "utils.h"
+#include "sodium_crypto_verify_32.h"
+#include "sodium_private_common.h"
+#include "sodium_private_ed25519_ref10.h"
+#include "sodium_utils.h"
 
 #if defined( _MSC_VER )
 #pragma warning(disable:4127)
@@ -50,11 +50,11 @@ load_4(const unsigned char *in)
  */
 
 #ifdef HAVE_TI_MODE
-# include "fe_51_constants.h"
-# include "fe_51_fe.h"
+# include "sodium_fe_51_constants.h"
+# include "sodium_fe_51_fe.h"
 #else
-# include "fe_25_5_constants.h"
-# include "fe_25_5_fe.h"
+# include "sodium_fe_25_5_constants.h"
+# include "sodium_fe_25_5_fe.h"
 #endif
 
 void
@@ -583,9 +583,9 @@ ge25519_select_base(ge25519_precomp *t, const int pos, const signed char b)
 {
     static const ge25519_precomp base[32][8] = { /* base[i][j] = (j+1)*256^i*B */
 #ifdef HAVE_TI_MODE
-# include "fe_51_base.h"
+# include "sodium_fe_51_base.h"
 #else
-# include "fe_25_5_base.h"
+# include "sodium_fe_25_5_base.h"
 #endif
     };
     ge25519_select(t, base[pos], b);
@@ -665,9 +665,9 @@ ge25519_double_scalarmult_vartime(ge25519_p2 *r, const unsigned char *a,
 {
     static const ge25519_precomp Bi[8] = {
 #ifdef HAVE_TI_MODE
-# include "fe_51_base2.h"
+# include "sodium_fe_51_base2.h"
 #else
-# include "fe_25_5_base2.h"
+# include "sodium_fe_25_5_base2.h"
 #endif
     };
     signed char    aslide[256];

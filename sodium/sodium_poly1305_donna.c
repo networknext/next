@@ -1,15 +1,15 @@
 
-#include "poly1305_donna.h"
-#include "crypto_verify_16.h"
-#include "private_common.h"
-#include "utils.h"
+#include "sodium_poly1305_donna.h"
+#include "sodium_crypto_verify_16.h"
+#include "sodium_private_common.h"
+#include "sodium_utils.h"
 
 #ifdef HAVE_TI_MODE
-#include "poly1305_donna64.h"
+#include "sodium_poly1305_donna64.h"
 #else
-#include "poly1305_donna32.h"
+#include "sodium_poly1305_donna32.h"
 #endif
-#include "onetimeauth_poly1305.h"
+#include "sodium_onetimeauth_poly1305.h"
 
 static void
 poly1305_update(poly1305_state_internal_t *st, const unsigned char *m,

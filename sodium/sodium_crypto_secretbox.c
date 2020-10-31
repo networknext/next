@@ -1,6 +1,6 @@
 
-#include "crypto_secretbox.h"
-#include "randombytes.h"
+#include "sodium_crypto_secretbox.h"
+#include "sodium_randombytes.h"
 
 int
 crypto_secretbox(unsigned char *c, const unsigned char *m,

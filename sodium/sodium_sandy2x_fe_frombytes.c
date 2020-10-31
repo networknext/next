@@ -2,7 +2,7 @@
    This file is basically ref10/fe_frombytes.h.
 */
 
-#include "sandy2x_fe.h"
+#include "sodium_sandy2x_fe.h"
 
 #ifdef HAVE_AVX_ASM
 

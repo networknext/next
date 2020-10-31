@@ -1,5 +1,5 @@
 
-#include "version.h"
+#include "sodium_version.h"
 
 const char *
 sodium_version_string(void)

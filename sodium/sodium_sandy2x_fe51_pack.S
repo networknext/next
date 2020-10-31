@@ -4,8 +4,8 @@
    This file is the result of merging 
    amd64-51/fe25519_pack.c and amd64-51/fe25519_freeze.s.
 */
-#include "sandy2x_fe51_namespace.h"
-#include "sandy2x_consts_namespace.h"
+#include "sodium_sandy2x_fe51_namespace.h"
+#include "sodium_sandy2x_consts_namespace.h"
 .p2align 5
 
 #ifdef ASM_HIDE_SYMBOL

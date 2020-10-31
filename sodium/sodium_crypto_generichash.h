@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include "crypto_generichash_blake2b.h"
-#include "export.h"
+#include "sodium_crypto_generichash_blake2b.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

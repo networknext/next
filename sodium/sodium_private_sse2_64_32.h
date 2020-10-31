@@ -1,7 +1,7 @@
 #ifndef sse2_64_32_H
 #define sse2_64_32_H 1
 
-#include "private_common.h"
+#include "sodium_private_common.h"
 
 #ifdef HAVE_INTRIN_H
 # include <intrin.h>

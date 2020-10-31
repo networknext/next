@@ -1,11 +1,11 @@
 
 #include <stdint.h>
 
-#include "crypto_core_ed25519.h"
-#include "private_common.h"
-#include "private_ed25519_ref10.h"
-#include "randombytes.h"
-#include "utils.h"
+#include "sodium_crypto_core_ed25519.h"
+#include "sodium_private_common.h"
+#include "sodium_private_ed25519_ref10.h"
+#include "sodium_randombytes.h"
+#include "sodium_utils.h"
 
 int
 crypto_core_ed25519_is_valid_point(const unsigned char *p)

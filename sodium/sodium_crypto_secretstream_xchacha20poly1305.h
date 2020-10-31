@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-#include "crypto_aead_xchacha20poly1305.h"
-#include "crypto_stream_chacha20.h"
-#include "export.h"
+#include "sodium_crypto_aead_xchacha20poly1305.h"
+#include "sodium_crypto_stream_chacha20.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

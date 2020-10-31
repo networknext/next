@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include "crypto_scalarmult_curve25519.h"
-#include "export.h"
+#include "sodium_crypto_scalarmult_curve25519.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 extern "C" {

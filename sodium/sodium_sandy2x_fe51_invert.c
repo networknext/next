@@ -3,7 +3,7 @@
    Loops of squares are replaced by nsquares for better performance.
 */
 
-#include "sandy2x_fe51.h"
+#include "sodium_sandy2x_fe51.h"
 
 #ifdef HAVE_AVX_ASM
 

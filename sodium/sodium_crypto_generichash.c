@@ -1,6 +1,6 @@
 
-#include "crypto_generichash.h"
-#include "randombytes.h"
+#include "sodium_crypto_generichash.h"
+#include "sodium_randombytes.h"
 
 size_t
 crypto_generichash_bytes_min(void)

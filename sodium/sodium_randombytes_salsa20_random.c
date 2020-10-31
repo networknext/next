@@ -46,14 +46,14 @@
 # include <immintrin.h>
 #endif
 
-#include "core.h"
-#include "crypto_core_salsa20.h"
-#include "crypto_stream_salsa20.h"
-#include "private_common.h"
-#include "randombytes.h"
-#include "randombytes_salsa20_random.h"
-#include "runtime.h"
-#include "utils.h"
+#include "sodium_core.h"
+#include "sodium_crypto_core_salsa20.h"
+#include "sodium_crypto_stream_salsa20.h"
+#include "sodium_private_common.h"
+#include "sodium_randombytes.h"
+#include "sodium_randombytes_salsa20_random.h"
+#include "sodium_runtime.h"
+#include "sodium_utils.h"
 
 #ifdef _WIN32
 # include <windows.h>

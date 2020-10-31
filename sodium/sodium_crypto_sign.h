@@ -10,8 +10,8 @@
 
 #include <stddef.h>
 
-#include "crypto_sign_ed25519.h"
-#include "export.h"
+#include "sodium_crypto_sign_ed25519.h"
+#include "sodium_export.h"
 
 #ifdef __cplusplus
 # ifdef __GNUC__

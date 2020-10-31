@@ -3,10 +3,10 @@
 #include <limits.h>
 #include <stdint.h>
 
-#include "blake2.h"
-#include "crypto_generichash_blake2b.h"
-#include "private_common.h"
-#include "private_implementations.h"
+#include "sodium_blake2.h"
+#include "sodium_crypto_generichash_blake2b.h"
+#include "sodium_private_common.h"
+#include "sodium_private_implementations.h"
 #include <stdio.h>
 
 int

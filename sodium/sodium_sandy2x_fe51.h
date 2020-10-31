@@ -15,7 +15,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "sandy2x_fe51_namespace.h"
+#include "sodium_sandy2x_fe51_namespace.h"
 
 typedef struct
 {

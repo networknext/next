@@ -1,9 +1,9 @@
 
 #include <string.h>
 
-#include "crypto_hash_sha512.h"
-#include "crypto_sign_ed25519.h"
-#include "ref10_sign_ed25519.h"
+#include "sodium_crypto_hash_sha512.h"
+#include "sodium_crypto_sign_ed25519.h"
+#include "sodium_ref10_sign_ed25519.h"
 
 size_t
 crypto_sign_ed25519ph_statebytes(void)

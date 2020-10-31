@@ -1,5 +1,5 @@
 
-#include "crypto_sign.h"
+#include "sodium_crypto_sign.h"
 
 int
 crypto_sign_keypair(unsigned char *pk, unsigned char *sk)

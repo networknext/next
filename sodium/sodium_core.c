@@ -9,17 +9,17 @@
 # include <pthread.h>
 #endif
 
-#include "core.h"
-#include "crypto_generichash.h"
-#include "crypto_onetimeauth.h"
-#include "crypto_scalarmult.h"
-#include "crypto_stream_chacha20.h"
-#include "crypto_stream_salsa20.h"
-#include "randombytes.h"
-#include "runtime.h"
-#include "utils.h"
-#include "private_implementations.h"
-#include "private_mutex.h"
+#include "sodium_core.h"
+#include "sodium_crypto_generichash.h"
+#include "sodium_crypto_onetimeauth.h"
+#include "sodium_crypto_scalarmult.h"
+#include "sodium_crypto_stream_chacha20.h"
+#include "sodium_crypto_stream_salsa20.h"
+#include "sodium_randombytes.h"
+#include "sodium_runtime.h"
+#include "sodium_utils.h"
+#include "sodium_private_implementations.h"
+#include "sodium_private_mutex.h"
 
 static volatile int initialized;
 static volatile int locked;

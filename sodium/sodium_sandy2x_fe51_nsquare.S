@@ -4,8 +4,8 @@
    This file is adapted from amd64-51/fe25519_square.s:
    Adding loop to perform n squares.
 */
-#include "sandy2x_fe51_namespace.h"
-#include "sandy2x_consts_namespace.h"
+#include "sodium_sandy2x_fe51_namespace.h"
+#include "sodium_sandy2x_consts_namespace.h"
 .p2align 5
 
 #ifdef ASM_HIDE_SYMBOL

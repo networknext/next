@@ -4,8 +4,8 @@
 
 #ifdef __native_client__
 
-# include "export.h"
-# include "randombytes.h"
+# include "sodium_export.h"
+# include "sodium_randombytes.h"
 
 # ifdef __cplusplus
 extern "C" {

@@ -1,8 +1,8 @@
-#include "crypto_core_hsalsa20.h"
-#include "crypto_stream_salsa20.h"
-#include "crypto_stream_xsalsa20.h"
-#include "randombytes.h"
-#include "utils.h"
+#include "sodium_crypto_core_hsalsa20.h"
+#include "sodium_crypto_stream_salsa20.h"
+#include "sodium_crypto_stream_xsalsa20.h"
+#include "sodium_randombytes.h"
+#include "sodium_utils.h"
 
 int
 crypto_stream_xsalsa20(unsigned char *c, unsigned long long clen,
