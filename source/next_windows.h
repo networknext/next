@@ -27,12 +27,6 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-#ifndef NETWORKNEXT_UNREAL_ENGINE
-#define _WINSOCKAPI_
-#include <windows.h>
-#include <winsock2.h>
-#endif // #ifndef NETWORKNEXT_UNREAL_ENGINE
-
 #define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
 #define NEXT_PLATFORM_SOCKET_BLOCKING           1
 
