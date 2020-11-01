@@ -36,6 +36,11 @@
 #pragma warning(disable:4668)
 #endif
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#endif
+
 #if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                                "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
@@ -15391,5 +15396,9 @@ void next_test()
     RUN_TEST( test_jitter_tracker );
     RUN_TEST( test_wake_up );
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 NEXT_PACK_POP()
