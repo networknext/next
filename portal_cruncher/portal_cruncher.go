@@ -137,6 +137,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 			for {
 				// Periodically ping the redis instances and error out if we don't get a pong
 				if time.Since(pingTime) >= redisPingDuration {
+					pingTime = time.Now()
+
 					if err := cruncher.PingRedis(); err != nil {
 						errChan <- err
 						return
