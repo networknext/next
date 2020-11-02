@@ -485,9 +485,10 @@ func TestBigTable(t *testing.T) {
 
 			prefix := "meta"
 			opts := bigtable.RowFilter(bigtable.ColumnFilter("meta"))
-			_, err = btClient.GetRowsWithPrefix(ctx, prefix, opts)
+			rows, err := btClient.GetRowsWithPrefix(ctx, prefix, opts)
 
 			assert.NoError(t, err)
+			assert.NotNil(t, rows)
 		})
 
 		t.Run("Get Rows With Prefix Without Opts Success", func (t *testing.T) {
@@ -508,9 +509,10 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 
 			prefix := "meta"
-			_, err = btClient.GetRowsWithPrefix(ctx, prefix)
+			rows, err := btClient.GetRowsWithPrefix(ctx, prefix)
 
 			assert.NoError(t, err)
+			assert.NotNil(t, rows)
 		})
 	})
 

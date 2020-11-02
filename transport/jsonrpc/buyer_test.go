@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"os"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
@@ -121,10 +122,77 @@ func TestUserSessions(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100}.RedisString(), time.Hour)
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150}.RedisString(), time.Hour)
 
+	ctx := context.Background()
 	logger := log.NewNopLogger()
+
+	btTableName, btTableEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+	if !btTableEnvVarOK {
+		btTableName = "Test"
+		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", btTableName)
+		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+	}
+
+	// Get the column family name
+	btCfName, btCfNameEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_CF_NAME")
+	if !btCfNameEnvVarOK {
+		btCfName = "TestCfName"
+		os.Setenv("GOOGLE_BIGTABLE_CF_NAME", btCfName)
+		defer os.Unsetenv("GOOGLE_BIGTABLE_CF_NAME")
+	}
+
+	// Check if table exists and create it if needed
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+	assert.Nil(t, err)
+	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+	assert.Nil(t, err)
+	if !btTableExists {
+		// Create a table
+		btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
+	}
+
+	err = btAdmin.Close()
+	assert.Nil(t, err)
+
+	btClient, err := storage.NewBigTable(ctx, "", "", logger)
+	assert.Nil(t, err)
+
+	// Add user sessions to bigtable
+	metaBin1, err := transport.SessionMeta{ID: 111, UserHash: 222, BuyerID: 999}.MarshalBinary()
+	assert.Nil(t, err)
+	sliceBin1, err := transport.SessionSlice{}.MarshalBinary()
+	assert.Nil(t, err)
+	sessionRowKey1 := fmt.Sprintf("%016x#%016x", 999, 111)
+	userRowKey1 := fmt.Sprintf("%016x#%016x", 222, 111)
+	rowKeys1 := []string{sessionRowKey1, userRowKey1}
+
+	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: 111, BuyerID: 888}.MarshalBinary()
+	assert.Nil(t, err)
+	sliceBin2, err := transport.SessionSlice{}.MarshalBinary()
+	assert.Nil(t, err)
+	sessionRowKey2 := fmt.Sprintf("%016x#%016x", 888, 222)
+	userRowKey2 := fmt.Sprintf("%016x#%016x", 111, 222)
+	rowKeys2 := []string{sessionRowKey2, userRowKey2}
+
+	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: 111, BuyerID: 888}.MarshalBinary()
+	assert.Nil(t, err)
+	sliceBin3, err := transport.SessionSlice{}.MarshalBinary()
+	assert.Nil(t, err)
+	sessionRowKey3 := fmt.Sprintf("%016x#%016x", 888, 333)
+	userRowKey3 := fmt.Sprintf("%016x#%016x", 111, 333)
+	rowKeys3 := []string{sessionRowKey3, userRowKey3}
+
+
+	err = btClient.InsertSessionData(ctx, []string{btCfName}, metaBin1, sliceBin1, rowKeys1)
+	assert.Nil(t, err)
+	err = btClient.InsertSessionData(ctx, []string{btCfName}, metaBin2, sliceBin2, rowKeys2)
+	assert.Nil(t, err)
+	err = btClient.InsertSessionData(ctx, []string{btCfName}, metaBin3, sliceBin3, rowKeys3)
+	assert.Nil(t, err)
+	
 
 	svc := jsonrpc.BuyersService{
 		Storage:                &storer,
+		BigTable:				btClient,
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
@@ -138,7 +206,7 @@ func TestUserSessions(t *testing.T) {
 	t.Run("missing user_hash", func(t *testing.T) {
 		var reply jsonrpc.UserSessionsReply
 		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{}, &reply)
-		assert.NoError(t, err)
+		assert.EqualError(t, err, "UserSessions() user id is required")
 		assert.Equal(t, 0, len(reply.Sessions))
 	})
 
