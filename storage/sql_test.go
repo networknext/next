@@ -42,6 +42,7 @@ func TestSQL(t *testing.T) {
 	assert.NoError(t, err)
 
 	var outerCustomer routing.Customer
+	var outerBuyer routing.Buyer
 	var outerSeller routing.Seller
 	var outerDatacenter routing.Datacenter
 
@@ -98,7 +99,7 @@ func TestSQL(t *testing.T) {
 	t.Run("AddDatacenter", func(t *testing.T) {
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID("datacenter name"),
+			ID:      crypto.HashID("some.locale.name"),
 			Name:    "some.locale.name",
 			Enabled: true,
 			Location: routing.Location{
@@ -136,16 +137,17 @@ func TestSQL(t *testing.T) {
 		err = db.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
 
-		checkBuyer, err := db.Buyer(internalID)
+		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
-		assert.Equal(t, buyer.Live, checkBuyer.Live)
-		assert.Equal(t, buyer.Debug, checkBuyer.Debug)
-		assert.Equal(t, publicKey, checkBuyer.PublicKey)
-		assert.Equal(t, buyer.CustomerID, checkBuyer.CustomerID)
+		assert.Equal(t, buyer.Live, outerBuyer.Live)
+		assert.Equal(t, buyer.Debug, outerBuyer.Debug)
+		assert.Equal(t, publicKey, outerBuyer.PublicKey)
+		assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
 	})
 
 	t.Run("AddRelay", func(t *testing.T) {
+
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
@@ -158,6 +160,8 @@ func TestSQL(t *testing.T) {
 		updateKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(updateKey)
 		assert.NoError(t, err)
+
+		// fmt.Printf("AddRelay test - outerDatacenter: %s\n", outerDatacenter.String())
 
 		relay := routing.Relay{
 			ID:           rid,
@@ -175,6 +179,8 @@ func TestSQL(t *testing.T) {
 			Type:         routing.BareMetal,
 			State:        routing.RelayStateMaintenance,
 		}
+
+		// fmt.Printf("AddRelay test relay: %s\n", relay.String())
 
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
@@ -195,6 +201,22 @@ func TestSQL(t *testing.T) {
 		assert.Equal(t, relay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
 		assert.Equal(t, relay.Type, checkRelay.Type)
 		assert.Equal(t, relay.State, checkRelay.State)
+	})
+
+	t.Run("AddDatacenterMap", func(t *testing.T) {
+		t.Skip()
+		dcMap := routing.DatacenterMap{
+			Alias:        "local.map",
+			BuyerID:      outerBuyer.ID,
+			DatacenterID: outerDatacenter.ID,
+		}
+
+		err := db.AddDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		checkDCMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
+		assert.NotEqual(t, 1, len(checkDCMaps))
+		assert.Equal(t, dcMap, checkDCMaps[0])
 
 	})
 

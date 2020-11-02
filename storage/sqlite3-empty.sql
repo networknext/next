@@ -1,3 +1,6 @@
+-- enforce primary keys
+PRAGMA foreign_keys = on;
+
 create table relay_states (
   id integer not null,
   name varchar not null,
@@ -133,9 +136,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- enforce primary keys
-PRAGMA foreign_keys=1;
--- File generation: 2020/10/28 12:28:28
+-- File generation: 2020/10/29 14:32:24
 
 -- machine_types
 insert into machine_types values (0, 'none');

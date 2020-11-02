@@ -26,7 +26,7 @@ type Buyer struct {
 func (b *Buyer) String() string {
 
 	buyer := "\nrouting.Buyer:\n"
-	buyer += "\tID            : " + fmt.Sprintf("%d", b.ID) + "\n"
+	buyer += "\tID            : " + fmt.Sprintf("%16x", b.ID) + "\n"
 	buyer += "\tLive          : " + strconv.FormatBool(b.Live) + "\n"
 	buyer += "\tDebug         : " + strconv.FormatBool(b.Debug) + "\n"
 	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
@@ -37,6 +37,7 @@ func (b *Buyer) String() string {
 
 	return buyer
 }
+
 func (b *Buyer) EncodedPublicKey() string {
 	totalPubkey := make([]byte, 0)
 	buyerIDBytes := make([]byte, 8)

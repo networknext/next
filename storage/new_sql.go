@@ -35,7 +35,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		}
 	}
 
-	sqlite3, err := sql.Open("sqlite3", "network_next.db")
+	sqlite3, err := sql.Open("sqlite3", "file:network_next.db?_foreign_keys=on")
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 		return nil, err
@@ -69,6 +69,13 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 			return nil, err
 		}
 	}
+
+	// _, err = db.Client.Exec("pragma foreign_keys = on;")
+	// if err != nil {
+	// 	err = fmt.Errorf("NewSQLite3() error executing pragma line: %v\n", err)
+	// 	return nil, err
+	// }
+
 	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
@@ -244,7 +251,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	datacenters := make(map[uint64]routing.Datacenter)
 	datacenterIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select id, enabled, latitude, longitude,"))
+	sql.Write([]byte("select id, display_name, enabled, latitude, longitude,"))
 	sql.Write([]byte("supplier_name, street_address, seller_id from datacenters"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -255,7 +262,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&dc.ID, // TODO: Add PK to routing.Datacenter
+		err = rows.Scan(&dc.ID,
 			&dc.Name,
 			&dc.Enabled,
 			&dc.Latitude,
@@ -264,10 +271,14 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 			&dc.StreetAddress,
 			&dc.SellerID,
 		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
 
 		did := crypto.HashID(dc.Name)
 
-		datacenterIDs[dc.SellerID] = did
+		datacenterIDs[dc.ID] = did
 
 		datacenters[did] = routing.Datacenter{
 			ID:      did,
@@ -279,7 +290,9 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 			},
 			SupplierName: dc.SupplierName,
 			SellerID:     dc.SellerID,
+			DatacenterID: dc.ID,
 		}
+
 	}
 
 	db.datacenterIDsMutex.Lock()
@@ -345,6 +358,10 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.MachineType,
 			&relay.State,
 		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
 
 		fullPublicAddress := relay.PublicIP + ":" + fmt.Sprintf("%d", relay.PublicIPPort)
 		rid := crypto.HashID(fullPublicAddress)
@@ -452,6 +469,11 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
+
 		buyer.ID = binary.LittleEndian.Uint64(buyer.PublicKey[:8])
 
 		buyerIDs[buyer.BuyerID] = buyer.ID
@@ -514,6 +536,10 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 			&seller.IngressPriceNibblinsPerGB,
 			&seller.CustomerID,
 		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
 
 		// seller name is defined by the parent customer
 		sellerIDs[seller.SellerID] = db.customerIDs[seller.CustomerID]
@@ -540,7 +566,57 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 
 	return nil
 }
+
+type sqlDatacenterMap struct {
+	Alias        string
+	BuyerID      int64
+	DatacenterID int64
+}
+
 func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	var sqlMap sqlDatacenterMap
+
+	dcMaps := make(map[uint64]routing.DatacenterMap)
+
+	sql.Write([]byte("select alias, buyer_id, datacenter_id from datacenter_maps"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		fmt.Println("syncDatacenterMaps() rows.Next()")
+		err := rows.Scan(&sqlMap.Alias, &sqlMap.BuyerID, &sqlMap.DatacenterID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
+
+		fmt.Printf("sqlMap.Alias       : %s\n", sqlMap.Alias)
+		fmt.Printf("sqlMap.BuyerID     : %d\n", sqlMap.BuyerID)
+		fmt.Printf("sqlMap.DatacenterID: %d\n", sqlMap.DatacenterID)
+
+		dcMap := routing.DatacenterMap{
+			Alias:        sqlMap.Alias,
+			BuyerID:      db.buyerIDs[sqlMap.BuyerID],
+			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
+		}
+
+		fmt.Printf("syncDatacenterMaps() dcMap: %s\n", dcMap.String())
+
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+		dcMaps[id] = dcMap
+
+	}
+
+	db.datacenterMapMutex.Lock()
+	db.datacenterMaps = dcMaps
+	db.datacenterMapMutex.Unlock()
 	return nil
 }
 func (db *SQL) syncCustomers(ctx context.Context) error {
@@ -567,6 +643,10 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 			&customer.CustomerName,
 			&customer.CustomerCode,
 		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
 
 		customerIDs[customer.ID] = customer.CustomerCode
 

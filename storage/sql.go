@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -537,6 +538,9 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		MachineType:        int64(r.Type),
 	}
 
+	// fmt.Printf("AddRelay() relay.DatacenterID       : %d\n", relay.DatacenterID)
+	// fmt.Printf("AddRelay() r.Datacenter.DatacenterID: %d\n", r.Datacenter.DatacenterID)
+
 	sql.Write([]byte("insert into relays ("))
 	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
@@ -657,28 +661,43 @@ func (db *SQL) SetDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 // GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 // an empty []routing.DatacenterMap if there are no aliases for that buyerID.
-// TODO: GetDatacenterMapsForBuyer
 func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
-	return map[uint64]routing.DatacenterMap{}
+	db.datacenterMapMutex.RLock()
+	defer db.datacenterMapMutex.RUnlock()
+
+	// buyer can have multiple dc aliases
+	var dcs = make(map[uint64]routing.DatacenterMap)
+	for _, dc := range db.datacenterMaps {
+		if dc.BuyerID == buyerID {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			dcs[id] = dc
+		}
+	}
+
+	return dcs
 }
 
 // AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
-// TODO: AddDatacenterMap
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
+	// fmt.Printf("AddDatacenterMap() dcMap: %s\n", dcMap.String())
 	var sql bytes.Buffer
 
 	bID := dcMap.BuyerID
 
 	dcID := dcMap.DatacenterID
 
-	if _, ok := db.buyers[bID]; !ok {
+	buyer, ok := db.buyers[bID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
+	// fmt.Printf("AddDatacenterMap() buyer: %s\n", buyer.String())
 
-	if _, ok := db.datacenters[dcID]; !ok {
+	datacenter, ok := db.datacenters[dcID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
+	// fmt.Printf("AddDatacenterMap() datacenter: %s\n", datacenter.String())
 
 	sql.Write([]byte("insert into datacenter_maps (alias, buyer_id, datacenter_id) "))
 	sql.Write([]byte("values ($1, $2, $3)"))
@@ -690,8 +709,8 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	}
 
 	result, err := stmt.Exec(dcMap.Alias,
-		dcMap.BuyerID,
-		dcMap.DatacenterID,
+		buyer.BuyerID,
+		datacenter.DatacenterID,
 	)
 
 	if err != nil {
@@ -837,10 +856,15 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 	var sql bytes.Buffer
 
-	// TODO make sure it doesn't already exist
+	db.datacenterMutex.RLock()
+	_, ok := db.datacenters[datacenter.ID]
+	db.datacenterMutex.RUnlock()
 
+	if ok {
+		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
+	}
 	dc := sqlDatacenter{
-		Name:         strings.Split(datacenter.Name, ".")[0],
+		Name:         datacenter.Name,
 		Enabled:      datacenter.Enabled,
 		Latitude:     datacenter.Location.Latitude,
 		Longitude:    datacenter.Location.Longitude,
@@ -884,10 +908,7 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		return err
 	}
 
-	// Add the datacenter in cached storage
-	db.datacenterMutex.Lock()
-	db.datacenters[datacenter.ID] = datacenter
-	db.datacenterMutex.Unlock()
+	db.syncDatacenters(ctx)
 
 	db.IncrementSequenceNumber(ctx)
 
