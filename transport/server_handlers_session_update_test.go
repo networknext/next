@@ -3,6 +3,7 @@ package transport_test
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"errors"
 	"math/rand"
 	"net"
@@ -13,13 +14,14 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/nacl/box"
 )
 
 type badIPLocator struct{}
@@ -1663,7 +1665,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
 	assert.NoError(t, err)
 
-	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
+	seller := routing.Seller{ID: "seller_id", Name: "seller_name"}
+	err = storer.AddSeller(context.Background(), seller)
 	assert.NoError(t, err)
 
 	relayAddr1External, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
@@ -1682,14 +1685,16 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	assert.NoError(t, err)
 
 	publicKey := make([]byte, crypto.KeySize)
-	privateKey := [crypto.KeySize]byte{}
+	publicKeyArr, privateKey, err := box.GenerateKey(crand.Reader)
+	assert.NoError(t, err)
+	copy(publicKey, publicKeyArr[:])
 
 	err = storer.AddRelay(context.Background(), routing.Relay{
 		ID:           1,
 		Addr:         *relayAddr1External,
 		InternalAddr: *relayAddr1Internal,
 		PublicKey:    publicKey,
-		Seller:       routing.Seller{ID: "seller"},
+		Seller:       seller,
 		Datacenter:   routing.Datacenter{ID: 10},
 	})
 	assert.NoError(t, err)
@@ -1699,7 +1704,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		Addr:         *relayAddr2External,
 		InternalAddr: *relayAddr2Internal,
 		PublicKey:    publicKey,
-		Seller:       routing.Seller{ID: "seller"},
+		Seller:       seller,
 		Datacenter:   routing.Datacenter{ID: 10},
 	})
 	assert.NoError(t, err)
@@ -1709,7 +1714,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		Addr:         *relayAddr3External,
 		InternalAddr: *relayAddr3Internal,
 		PublicKey:    publicKey,
-		Seller:       routing.Seller{ID: "seller"},
+		Seller:       seller,
 		Datacenter:   routing.Datacenter{ID: 10},
 	})
 	assert.NoError(t, err)
@@ -1825,7 +1830,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3Internal, serverAddr)
 	routePublicKeys := make([][]byte, 0)
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
-	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
+	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, *privateKey)
 	expectedResponse := transport.SessionResponsePacket{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -1862,7 +1867,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{"seller"})
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, *privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{"seller_name"})
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1887,24 +1892,24 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
 
+	assert.Equal(t, 5*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, len(responsePacket.Tokens))
+
 	var clientToken core.RouteToken
-	assert.NoError(t, core.ReadRouteToken(&clientToken, responsePacket.Tokens[0*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+	assert.NoError(t, core.ReadEncryptedRouteToken(&clientToken, responsePacket.Tokens[0*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], publicKey, privateKey[:]))
 
 	var relay1Token core.RouteToken
-	assert.NoError(t, core.ReadRouteToken(&relay1Token, responsePacket.Tokens[1*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+	assert.NoError(t, core.ReadEncryptedRouteToken(&relay1Token, responsePacket.Tokens[1*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], publicKey, privateKey[:]))
 
 	var relay2Token core.RouteToken
-	assert.NoError(t, core.ReadRouteToken(&relay2Token, responsePacket.Tokens[2*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+	assert.NoError(t, core.ReadEncryptedRouteToken(&relay2Token, responsePacket.Tokens[2*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], publicKey, privateKey[:]))
 
 	var relay3Token core.RouteToken
-	assert.NoError(t, core.ReadRouteToken(&relay3Token, responsePacket.Tokens[3*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
+	assert.NoError(t, core.ReadEncryptedRouteToken(&relay3Token, responsePacket.Tokens[3*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], publicKey, privateKey[:]))
 
-	var serverToken core.RouteToken
-	assert.NoError(t, core.ReadRouteToken(&serverToken, responsePacket.Tokens[4*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:]))
-
-	assert.Equal(t, routeAddresses[0], clientToken.NextAddress)
-	assert.Equal(t, routeAddresses[1], relay1Token.NextAddress)
-	assert.Equal(t, routeAddresses[2], relay2Token.NextAddress)
+	assert.Equal(t, routeAddresses[1], clientToken.NextAddress)
+	assert.Equal(t, routeAddresses[2], relay1Token.NextAddress)
+	assert.Equal(t, routeAddresses[3], relay2Token.NextAddress)
+	assert.Equal(t, routeAddresses[4], relay3Token.NextAddress)
 
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }

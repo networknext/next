@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -606,18 +606,14 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 				}
 
 				routeAddresses[i+1] = &relay.Addr
-
 				// check if the previous relay is the same seller
 				if shouldTryUseInternalIPs && i >= 1 {
-					fmt.Println("relay =", relay.Addr, "seller =", relay.Seller.ID)
 					prevIndex := routeRelays[i-1]
 					for jprev := int32(0); jprev < totalNumRelays; jprev++ {
 						if jprev == prevIndex {
 							prevID := allRelayIDs[prevIndex]
 							prev, err := storer.Relay(prevID)
-							fmt.Println("prev =", prev.Addr, "seller =", prev.Seller.ID)
 							if err == nil && prev.Seller.ID == relay.Seller.ID {
-								fmt.Println("using internal ips for relays", relay.InternalAddr, "and", prev.InternalAddr)
 								routeAddresses[i+1] = &relay.InternalAddr
 							}
 							break
