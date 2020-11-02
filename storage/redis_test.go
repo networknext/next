@@ -30,7 +30,7 @@ func TestNewRawRedisClientPingFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Wait a little bit here to prevent a race condition within miniredis
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 100)
 
 	redisServer.Close()
 
@@ -79,7 +79,7 @@ func TestNewRawRedisClientCommandSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Wait a little bit here to prevent a race condition within miniredis
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 100)
 
 	redisServer.Close()
 

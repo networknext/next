@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -170,7 +170,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterT
 	}
 }
 
-func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -234,6 +234,14 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacente
 				}
 			}
 		}
+
+		// Send the number of sessions on the server to the portal cruncher
+		countData := &SessionCountData{
+			ServerID:    crypto.HashID(packet.ServerAddress.String()),
+			BuyerID:     buyer.ID,
+			NumSessions: packet.NumSessions,
+		}
+		postSessionHandler.SendPortalCounts(countData)
 
 		level.Debug(logger).Log("msg", "server updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String())
 	}
