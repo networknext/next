@@ -11675,12 +11675,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             server->last_backend_server_init = current_time;
 
-            next_printf( NEXT_LOG_LEVEL_INFO, "server sent init request to backend" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
         }
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. falling back to direct only" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server did not get an init response from backend. falling back to direct only" );
             next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
             server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
