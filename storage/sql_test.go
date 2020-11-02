@@ -204,7 +204,6 @@ func TestSQL(t *testing.T) {
 	})
 
 	t.Run("AddDatacenterMap", func(t *testing.T) {
-		t.Skip()
 		dcMap := routing.DatacenterMap{
 			Alias:        "local.map",
 			BuyerID:      outerBuyer.ID,
@@ -215,8 +214,8 @@ func TestSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		checkDCMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
-		assert.NotEqual(t, 1, len(checkDCMaps))
-		assert.Equal(t, dcMap, checkDCMaps[0])
+		assert.Equal(t, 1, len(checkDCMaps))
+		assert.Equal(t, dcMap, checkDCMaps[outerBuyer.ID])
 
 	})
 

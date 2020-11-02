@@ -496,6 +496,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			RouteShader:    rs,
 			InternalConfig: ic,
 			CustomerID:     buyer.CustomerID,
+			BuyerID:        buyer.BuyerID,
 		}
 
 	}
@@ -590,24 +591,17 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		fmt.Println("syncDatacenterMaps() rows.Next()")
 		err := rows.Scan(&sqlMap.Alias, &sqlMap.BuyerID, &sqlMap.DatacenterID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
 			return err
 		}
 
-		fmt.Printf("sqlMap.Alias       : %s\n", sqlMap.Alias)
-		fmt.Printf("sqlMap.BuyerID     : %d\n", sqlMap.BuyerID)
-		fmt.Printf("sqlMap.DatacenterID: %d\n", sqlMap.DatacenterID)
-
 		dcMap := routing.DatacenterMap{
 			Alias:        sqlMap.Alias,
 			BuyerID:      db.buyerIDs[sqlMap.BuyerID],
 			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
 		}
-
-		fmt.Printf("syncDatacenterMaps() dcMap: %s\n", dcMap.String())
 
 		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap

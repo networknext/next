@@ -14,7 +14,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -669,8 +668,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.Data
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
-			dcs[id] = dc
+			dcs[buyerID] = dc
 		}
 	}
 
@@ -680,7 +678,6 @@ func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.Data
 // AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
-	// fmt.Printf("AddDatacenterMap() dcMap: %s\n", dcMap.String())
 	var sql bytes.Buffer
 
 	bID := dcMap.BuyerID
@@ -691,13 +688,11 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	if !ok {
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
-	// fmt.Printf("AddDatacenterMap() buyer: %s\n", buyer.String())
 
 	datacenter, ok := db.datacenters[dcID]
 	if !ok {
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
-	// fmt.Printf("AddDatacenterMap() datacenter: %s\n", datacenter.String())
 
 	sql.Write([]byte("insert into datacenter_maps (alias, buyer_id, datacenter_id) "))
 	sql.Write([]byte("values ($1, $2, $3)"))
