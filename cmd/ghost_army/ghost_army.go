@@ -10,10 +10,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/networknext/backend/encoding"
-	ghostarmy "github.com/networknext/backend/ghost_army"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
+
+	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
 
 const (
@@ -172,7 +173,7 @@ func main() {
 					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
 					continue
 				}
-				portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+				portalPublisher.Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
 			case <-ctx.Done():
 				return
 			}
