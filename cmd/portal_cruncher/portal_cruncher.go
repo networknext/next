@@ -18,7 +18,7 @@ import (
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	
+
 	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
@@ -146,13 +146,13 @@ func mainReturnWithCode() int {
 		portalSubscriber = portalCruncherSubscriber
 	}
 
-	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 1)
+	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 1)
+	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -169,7 +169,7 @@ func mainReturnWithCode() int {
 	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(portalSubscriber, redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices, messageChanSize, redisFlushCount, portalCruncherMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(portalSubscriber, redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices, messageChanSize, portalCruncherMetrics)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -182,7 +182,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := portalCruncher.Start(ctx, receiveGoroutineCount, redisGoroutineCount); err != nil {
+		if err := portalCruncher.Start(ctx, receiveGoroutineCount, redisGoroutineCount, time.Second, redisFlushCount); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return
