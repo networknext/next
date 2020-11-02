@@ -94,34 +94,32 @@ func NewPortalCruncher(
 	}, nil
 }
 
-func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines int, numRedisInsertGoroutines int, redisFlushDuration time.Duration, redisFlushCount int) error {
+func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
-	// Start the receive goroutines
-	for i := 0; i < numReceiveGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	// Start the receive goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					if err := cruncher.ReceiveMessage(ctx); err != nil {
-						switch err.(type) {
-						case *ErrChannelFull: // We don't need to stop the portal cruncher if the channel is full
-							continue
-						default:
-							errChan <- err
-							return
-						}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if err := cruncher.ReceiveMessage(ctx); err != nil {
+					switch err.(type) {
+					case *ErrChannelFull: // We don't need to stop the portal cruncher if the channel is full
+						continue
+					default:
+						errChan <- err
+						return
 					}
 				}
 			}
-		}()
-	}
+		}
+	}()
 
 	// Start the redis goroutines
 	for i := 0; i < numRedisInsertGoroutines; i++ {
@@ -138,7 +136,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 
 			for {
 				// Periodically ping the redis instances and error out if we don't get a pong
-				if time.Since(pingTime) >= time.Second*10 {
+				if time.Since(pingTime) >= redisPingDuration {
 					if err := cruncher.PingRedis(); err != nil {
 						errChan <- err
 						return

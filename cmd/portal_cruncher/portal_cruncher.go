@@ -106,12 +106,6 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	redisFlushCount, err := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	// Start portal cruncher subscriber
 	var portalSubscriber pubsub.Subscriber
 	{
@@ -146,7 +140,19 @@ func mainReturnWithCode() int {
 		portalSubscriber = portalCruncherSubscriber
 	}
 
-	receiveGoroutineCount, err := envvar.GetInt("CRUNCHER_RECEIVE_GOROUTINE_COUNT", 5)
+	redisPingFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	redisFlushFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_FLUSH_FREQUENCY", time.Second)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	redisFlushCount, err := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -182,7 +188,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := portalCruncher.Start(ctx, receiveGoroutineCount, redisGoroutineCount, time.Second, redisFlushCount); err != nil {
+		if err := portalCruncher.Start(ctx, redisGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return

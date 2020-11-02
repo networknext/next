@@ -3,15 +3,14 @@ package pubsub
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pebbe/zmq4"
 )
 
+// PortalCruncherSubscriber is not thread safe.
 type PortalCruncherSubscriber struct {
 	socket *zmq4.Socket
-	mutex  sync.Mutex
 
 	topics []Topic
 }
@@ -36,17 +35,11 @@ func NewPortalCruncherSubscriber(port string, receiveBufferSize int) (*PortalCru
 }
 
 func (sub *PortalCruncherSubscriber) Subscribe(topic Topic) error {
-	sub.mutex.Lock()
-	defer sub.mutex.Unlock()
-
 	sub.topics = append(sub.topics, topic)
 	return sub.socket.SetSubscribe(string(topic))
 }
 
 func (sub *PortalCruncherSubscriber) Unsubscribe(topic Topic) error {
-	sub.mutex.Lock()
-	defer sub.mutex.Unlock()
-
 	containsTopic, topicIndex := sub.containsTopic(topic)
 	if !containsTopic {
 		return fmt.Errorf("failed to unsubscribe from topic %s: not subscribed to topic", topic.String())
@@ -68,9 +61,6 @@ func (sub *PortalCruncherSubscriber) Poll(timeout time.Duration) error {
 }
 
 func (sub *PortalCruncherSubscriber) ReceiveMessage() <-chan MessageInfo {
-	sub.mutex.Lock()
-	defer sub.mutex.Unlock()
-
 	receiveChan := make(chan MessageInfo)
 	receiveFunc := func(topic Topic, message []byte, err error) {
 		receiveChan <- MessageInfo{
