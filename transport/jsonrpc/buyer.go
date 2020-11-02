@@ -45,7 +45,7 @@ type BuyersService struct {
 	mapPointsBuyerCache        map[string]json.RawMessage
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
-	BigTable 				*storage.BigTable
+	BigTable *storage.BigTable
 
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
@@ -140,7 +140,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
 
 	// Fetch historic sessions if there are any
-	rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash))
+	rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -447,22 +447,46 @@ type SessionDetailsReply struct {
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
 	var err error
+	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	historic := true
+
+	if args.SessionID == "" {
+		err = fmt.Errorf("SessionDetails() session ID is required")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
 
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("SessionDetails() failed getting session meta: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
+		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		if err != nil {
+			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(metaRows) == 0 {
+			err = fmt.Errorf("SessionDetails() failed getting session meta")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		historic = true
+
+		for _, row := range metaRows {
+			reply.Meta.UnmarshalBinary(row[0].Value)
+		}
 	}
 
-	metaStringsSplit := strings.Split(metaString, "|")
-	if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
-		err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
+	if !historic {
+		metaStringsSplit := strings.Split(metaString, "|")
+		if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
+			err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
@@ -476,28 +500,47 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.Anonymise()
 	}
 
+	var slice transport.SessionSlice
 	reply.Slices = make([]transport.SessionSlice, 0)
 
-	sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-	defer sessionSlicesClient.Close()
+	if !historic {
+		sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+		defer sessionSlicesClient.Close()
 
-	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
-	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	for i := 0; i < len(slices); i++ {
-		sliceStrings := strings.Split(slices[i], "|")
-		var sessionSlice transport.SessionSlice
-		if err := sessionSlice.ParseRedisString(sliceStrings); err != nil {
-			err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+		slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		reply.Slices = append(reply.Slices, sessionSlice)
+		for i := 0; i < len(slices); i++ {
+			sliceStrings := strings.Split(slices[i], "|")
+			if err := slice.ParseRedisString(sliceStrings); err != nil {
+				err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			reply.Slices = append(reply.Slices, slice)
+		}
+	} else {
+		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		if err != nil {
+			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(sliceRows) == 0 {
+			err = fmt.Errorf("SessionDetails() failed getting session slices")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		for _, row := range sliceRows {
+			slice.UnmarshalBinary(row[btCfName][0].Value)
+			reply.Slices = append(reply.Slices, slice)
+		}
 	}
 
 	sort.Slice(reply.Slices, func(i, j int) bool {

@@ -3,9 +3,9 @@ package portalcruncher
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -111,7 +111,7 @@ func NewPortalCruncher(
 		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays, logger)
 		if err != nil {
 			return nil, err
-		}		
+		}
 	}
 
 	return &PortalCruncher{
@@ -450,13 +450,13 @@ func (cruncher *PortalCruncher) PingRedis() error {
 	return nil
 }
 
-func SetupBigtable(	ctx context.Context, 
-					gcpProjectID string,
-					btInstanceID string,
-					btTableName string,
-					btCfName string,
-					btMaxAgeDays int,
-					logger log.Logger) (*storage.BigTable, []string, error) {
+func SetupBigtable(ctx context.Context,
+	gcpProjectID string,
+	btInstanceID string,
+	btTableName string,
+	btCfName string,
+	btMaxAgeDays int,
+	logger log.Logger) (*storage.BigTable, []string, error) {
 	// Setup Bigtable
 	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
 	if btEmulatorOK {
@@ -513,15 +513,24 @@ func SetupBigtable(	ctx context.Context,
 	return btClient, btCfNames, nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData,) error {
-	for j := range btPortalDataBuffer {
-		meta := &btPortalDataBuffer[j].Meta
-		slice := &btPortalDataBuffer[j].Slice
-		
-		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
+	for j := range cruncher.btPortalDataBuffer {
+		meta := &cruncher.btPortalDataBuffer[j].Meta
+		slice := &cruncher.btPortalDataBuffer[j].Slice
+
+		// This seems redundant, try to figure out a better prefix to limit the number of keys
+		// Key for session ID
+		sessionRowKey := fmt.Sprintf("%016x", meta.ID)
+		sliceRowKey := fmt.Sprintf("%016x#%v", meta.ID, slice.Timestamp)
+
+		// Key for all buyer specific sessions
+		buyerRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+
+		// Key for all user specific
 		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
 
-		rowKeys := []string{sessionRowKey, userRowKey}
+		metaRowKeys := []string{sessionRowKey, buyerRowKey, userRowKey}
+		sliceRowKeys := []string{sliceRowKey}
 
 		// Have 2 columns under 1 column family
 		// 1) Meta
@@ -537,8 +546,13 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 			return err
 		}
 
-		// Insert session data into Bigtable
-		if err := cruncher.btClient.InsertSessionData(ctx, cruncher.btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
+		// Insert session meta data into Bigtable
+		if err := cruncher.btClient.InsertSessionMetaData(ctx, cruncher.btCfNames, metaBinary, metaRowKeys); err != nil {
+			return err
+		}
+
+		// Insert session slice data into Bigtable
+		if err := cruncher.btClient.InsertSessionSliceData(ctx, cruncher.btCfNames, sliceBinary, sliceRowKeys); err != nil {
 			return err
 		}
 	}
