@@ -20,3 +20,9 @@ type Subscriber interface {
 	Unsubscribe(topic Topic) error
 	ReceiveMessage(ctx context.Context) (Topic, <-chan []byte, error)
 }
+
+type ErrRetry struct{}
+
+func (e *ErrRetry) Error() string {
+	return fmt.Sprintf("retry")
+}
