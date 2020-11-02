@@ -22,14 +22,9 @@
 
 #pragma once
 
-#include "NetworkNextBuildConfig.h"
 #include "CoreMinimal.h"
 #include "UObject/ObjectMacros.h"
 #include "IpNetDriver.h"
-#include "NetworkNextUtils.h"
-#include "SocketNetworkNextClient.h"
-#include "SocketNetworkNextServer.h"
-#include "NetworkNextPackage.h"
 #include "NetworkNextNetDriver.generated.h"
 
 class FNetworkNotify;
@@ -39,8 +34,6 @@ class UNetworkNextNetDriver : public UIpNetDriver
 {
 	GENERATED_BODY()
 
-	UNetworkNextNetDriver();
-
 	virtual class ISocketSubsystem* GetSocketSubsystem() override;
 	virtual bool IsAvailable() const override;
 	virtual bool InitBase(bool bInitAsClient, FNetworkNotify* InNotify, const FURL& URL, bool bReuseAddressAndPort, FString& Error) override;
@@ -49,16 +42,20 @@ class UNetworkNextNetDriver : public UIpNetDriver
 	virtual void Shutdown() override;
 	virtual bool IsNetResourceValid() override;
 
-PACKAGE_SCOPE:
-
-	FSocketNetworkNextClient* ClientSocket;
-	FSocketNetworkNextServer* ServerSocket;
+	class FNetworkNextSocketClient* ClientSocket;
+	class FNetworkNextSocketServer* ServerSocket;
 
 public:
 
 	UPROPERTY(Config)
-	FString CustomerPublicKeyBase64;
+	FString NextHostname;
 
 	UPROPERTY(Config)
-	FString CustomerPrivateKeyBase64;
+	FString CustomerPublicKey;
+
+	UPROPERTY(Config)
+	FString CustomerPrivateKey;				// IMPORTANT: Only set this on your dedicated server!
+
+	UPROPERTY(Config)
+	bool DisableNetworkNext;
 };

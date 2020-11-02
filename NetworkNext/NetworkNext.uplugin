@@ -1,15 +1,16 @@
 {
   "FileVersion": 3,
   "Version": 1,
-  "VersionName": "3.4.5",
+  "VersionName": "4.0.2",
   "FriendlyName": "Network Next",
-  "Description": "",
-  "Category": "Other",
+  "Description": "Welcome to Network Next!",
+  "Category": "Networking",
   "CreatedBy": "Network Next, Inc.",
-  "CreatedByURL": "",
+  "CreatedByURL": "https://networknext.com",
   "DocsURL": "",
   "MarketplaceURL": "",
   "SupportURL": "",
+  "EnabledByDefault": true,
   "CanContainContent": true,
   "IsBetaVersion": false,
   "Installed": false,
@@ -19,9 +20,12 @@
       "Type": "Runtime",
       "LoadingPhase": "Default",
       "WhitelistPlatforms": [
+        "Win32",
         "Win64",
         "XboxOne",
-        "PS4"
+        "PS4",
+        "Switch",
+        "Linux"
       ]
     }
   ],

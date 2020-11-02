@@ -24,25 +24,22 @@
 #include "NetworkNext.h"
 #include "OnlineSubsystemNames.h"
 #include "OnlineSubsystem.h"
-#if defined(NETWORKNEXT_INCLUDE_ENGINE_BASE_TYPES_IN_NETDRIVER)
-#include "Engine/Classes/Engine/EngineBaseTypes.h"
-#endif
 #include "SocketSubsystem.h"
-#include "SocketSubsystemNetworkNext.h"
-
-UNetworkNextNetDriver::UNetworkNextNetDriver()
-{
-	this->ClientSocket = nullptr;
-	this->ServerSocket = nullptr;
-}
+#include "IpNetDriver.h"
+#include "NetworkNextSocketSubsystem.h"
+#include "NetworkNextSocketServer.h"
+#include "NetworkNextSocketClient.h"
 
 bool UNetworkNextNetDriver::IsAvailable() const
 {
 	ISocketSubsystem* NetworkNextSockets = ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
 	if (NetworkNextSockets)
 	{
+		UE_LOG(LogNetworkNext, Display, TEXT("Network Next net driver is available"));
 		return true;
 	}
+
+	UE_LOG(LogNetworkNext, Display, TEXT("Network Next net driver is NOT available"));
 
 	return false;
 }
@@ -54,7 +51,7 @@ ISocketSubsystem* UNetworkNextNetDriver::GetSocketSubsystem()
 
 bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotify, const FURL& URL, bool bReuseAddressAndPort, FString& Error)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitBase"));
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextNetDriver::InitBase"));
 
 	if (!UNetDriver::InitBase(bInitAsClient, InNotify, URL, bReuseAddressAndPort, Error))
 	{
@@ -70,10 +67,9 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 		return false;
 	}
 
-	if (Socket == NULL)
+	if (GetSocket() == NULL)
 	{
-		UE_LOG(LogNetworkNext, Warning, TEXT("Socket is NULL"));
-		Socket = 0;
+		UE_LOG(LogNetworkNext, Warning, TEXT("GetSocket() is NULL"));
 		Error = FString::Printf(TEXT("socket failed (%i)"), (int32)SocketSubsystem->GetLastErrorCode());
 		return false;
 	}
@@ -91,7 +87,7 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 		LocalAddr->SetPort(URL.Port);
 	}
 
-	int32 BoundPort = SocketSubsystem->BindNextPort(Socket, *LocalAddr, MaxPortCountToTry + 1, 1);
+	int32 BoundPort = SocketSubsystem->BindNextPort(GetSocket(), *LocalAddr, MaxPortCountToTry + 1, 1);
 
 	UE_LOG(LogNet, Display, TEXT("%s bound to port %d"), *GetName(), BoundPort);
 
@@ -100,62 +96,63 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 
 bool UNetworkNextNetDriver::InitConnect(FNetworkNotify* InNotify, const FURL& ConnectURL, FString& Error)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitConnect"));
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextNetDriver::InitConnect"));
 
-	FSocketSubsystemNetworkNext* NetworkNextSockets = (FSocketSubsystemNetworkNext*)ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
-	if (NetworkNextSockets)
-	{
-		Socket = NetworkNextSockets->CreateSocketWithNetDriver(FName(TEXT("NetworkNextClientSocket")), TEXT("Unreal client (Network Next)"), this
-#if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_PROTOCOLTYPE)
-			, ESocketProtocolFamily::None
-#endif
-#if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_FORCEUDP)
-			, false
-#endif
-		);
-		if (Socket->GetDescription().StartsWith(TEXT("SOCKET_TYPE_NEXT_CLIENT_")))
-		{
-			ClientSocket = (FSocketNetworkNextClient*)Socket;
-		}
-	}
+    FNetworkNextSocketSubsystem* NetworkNextSockets = (FNetworkNextSocketSubsystem*)ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
+    if (!NetworkNextSockets)
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("Could not find network next socket subsystem"));
+        return false;
+    }
+    
+    FSocket* NewSocket = NetworkNextSockets->CreateSocket(FName(TEXT("NetworkNextSocketClient")), TEXT("Unreal client (Network Next)"), FName(TEXT("NetworkNext")));
+    if (!NewSocket)
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("Could not create network next client socket"));
+        return false;
+    }
+
+    SetSocketAndLocalAddress(NewSocket);
+
+    ClientSocket = (FNetworkNextSocketClient*)NewSocket;
+    ServerSocket = NULL;
 
 	return Super::InitConnect(InNotify, ConnectURL, Error);
 }
 
 bool UNetworkNextNetDriver::InitListen(FNetworkNotify* InNotify, FURL& ListenURL, bool bReuseAddressAndPort, FString& Error)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitListen"));
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextNetDriver::InitListen"));
 
-	FSocketSubsystemNetworkNext* NetworkNextSockets = (FSocketSubsystemNetworkNext*)ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
-	if (NetworkNextSockets)
-	{
-		UE_LOG(LogNetworkNext, Display, TEXT("Create server socket"));
+	FNetworkNextSocketSubsystem* NetworkNextSockets = (FNetworkNextSocketSubsystem*)ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
+    if (!NetworkNextSockets)
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("Could not find network next socket subsystem"));
+        return false;
+    }
 
-		Socket = NetworkNextSockets->CreateSocketWithNetDriver(FName(TEXT("NetworkNextServerSocket")), TEXT("Unreal server (Network Next)"), this
-#if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_PROTOCOLTYPE)
-			, ESocketProtocolFamily::None
-#endif
-#if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_FORCEUDP)
-			, false
-#endif
-		);
-		if (Socket->GetDescription().StartsWith(TEXT("SOCKET_TYPE_NEXT_SERVER_")))
-		{
-			ServerSocket = (FSocketNetworkNextServer*)Socket;
-		}
-	}
-	else
-	{
-		UE_LOG(LogNetworkNext, Warning, TEXT("Could not find NetworkNextSockets module?"));
-	}
+    FSocket* NewSocket = NetworkNextSockets->CreateSocket(FName(TEXT("NetworkNextSocketServer")), TEXT("Unreal server (Network Next)"), FName(TEXT("NetworkNext")));
+    if (!NewSocket)
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("Could not create network next server socket"));
+        return false;
+    }
 
-	return Super::InitListen(InNotify, ListenURL, bReuseAddressAndPort, Error);
+    SetSocketAndLocalAddress(NewSocket);
+
+    ServerSocket = (FNetworkNextSocketServer*)NewSocket;
+    ClientSocket = NULL;
+
+    return Super::InitListen(InNotify, ListenURL, bReuseAddressAndPort, Error);
 }
 
 void UNetworkNextNetDriver::Shutdown()
 {
-	ClientSocket = nullptr;
-	ServerSocket = nullptr;
+	UE_LOG(LogNetworkNext, Display, TEXT("FNetworkNextNetDriver::Shutdown"));
+
+	ClientSocket = NULL;
+	ServerSocket = NULL;
+
 	Super::Shutdown();
 }
 

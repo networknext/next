@@ -22,9 +22,6 @@
 
 #pragma once
 
-#include "NetworkNextBuildConfig.h"
-#include "NetworkNextConfig.h"
-#include "NetworkNextServerConfig.h"
 #include "Modules/ModuleManager.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogNetworkNext, Display, Display);
@@ -37,39 +34,26 @@ class FNetworkNextModule : public IModuleInterface
 {
 public:
 
-	/** IModuleInterface implementation */
+	/** Called right after the module DLL has been loaded and the module object has been created */
 	virtual void StartupModule() override;
+	
+	/** Called before the module is unloaded, right before the module object is destroyed */
 	virtual void ShutdownModule() override;
 
-	void InitializeNetworkNextIfRequired();
-	bool IsNetworkNextSuccessfullyInitialized();
-	void SetConfig(const FNetworkNextConfig& Config);
-	void SetServerConfig(const FNetworkNextServerConfig& ServerConfig);
-	const FNetworkNextServerConfig* GetServerConfig() const;
+	/** This plugin does not support dynamic reloading */
+	virtual bool SupportsDynamicReloading() override {
+		return false;
+	};
 
 private:
-	
-	void ShutdownNetworkNextAfterPIE(bool bIsSimulating);
 
-	/** The static handler for log messages coming from the Network Next library */
-	static void NextLogFunction(int level, const char* format, ...);
+	/** The static handler for logs coming from the Network Next SDK */
+	static void Log(int level, const char* format, ...);
 
-	/** Static handlers for memory allocations */
+	/** Static handlers for memory allocations from the Network Next SDK */
 	static void* Malloc(void* context, size_t size);
 	static void Free(void* context, void* src);
 
-	bool NetworkNextIsInitialized;
-	bool NetworkNextIsSuccessfullyInitialized;
-
-	UPROPERTY()
-	FNetworkNextConfig* NetworkNextConfig;
-
-	UPROPERTY()
-	FNetworkNextServerConfig* NetworkNextServerConfig;
-
-#if defined(NETWORKNEXT_ENABLE_DELAY_LOAD)
-	void* NetworkNextHandle;
-#endif
-
-	FString GetEnvironmentVariable(const FString& EnvName);
+	/** Have we initialized the Network Next SDK? */
+	bool m_initialized_sdk = false;
 };

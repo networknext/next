@@ -21,207 +21,118 @@
 */
 
 #include "NetworkNext.h"
-#include "Core.h"
-#include "Misc/Base64.h"
-#include "Kismet/KismetMathLibrary.h"
-#include "Modules/ModuleManager.h"
-#include "Interfaces/IPluginManager.h"
-#if defined(NETWORKNEXT_INCLUDE_NEXT_H_WITH_SHORT_PATH)
-#include "next.h"
-#else
-#include "NetworkNextLibrary/next/include/next.h"
-#endif
-#include "SocketSubsystemNetworkNext.h"
 #include "NetworkNextNetDriver.h"
-#include "UObject/UObjectGlobals.h"
-#if WITH_EDITOR
-#include "Editor.h"
-#endif
-#include <cstdarg>
+#include "NetworkNextSocketSubsystem.h"
+#include "Core.h"
+#include "next.h"
 
 DEFINE_LOG_CATEGORY(LogNetworkNext);
 
+IMPLEMENT_MODULE(FNetworkNextModule, NetworkNext)
+
 void FNetworkNextModule::StartupModule()
 {
-#if defined(NETWORKNEXT_ENABLE_DELAY_LOAD)
-	FString BaseDir = IPluginManager::Get().FindPlugin("NetworkNext")->GetBaseDir();
+	UE_LOG(LogNetworkNext, Display, TEXT("Network Next Plugin loaded"));
 
-#if defined(NETWORKNEXT_ENABLE_DELAY_LOAD_WIN64)
-	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win64/Release/next-win64-3.4.5.dll"));
-#elif defined(NETWORKNEXT_ENABLE_DELAY_LOAD_WIN32)
-	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win32/Release/next-win32-3.4.5.dll"));
-#elif defined(NETWORKNEXT_ENABLE_DELAY_LOAD_PS4)
-	FString LibraryPath = "next-ps4-3.4.5.prx";
-#else
-#error Unsupported delay load path in NetworkNext.cpp
-#endif
+	m_initialized_sdk = false;
 
-	this->NetworkNextHandle = FPlatformProcess::GetDllHandle(*LibraryPath);
-
-	if (!this->NetworkNextHandle)
-	{
-		UE_LOG(LogNetworkNext, Error, TEXT("Delayed load of network next library failed."));
-	}
-
-#endif
-  
+	// Perform Network Next allocations through the UE4 allocator instead of default malloc/free
 	next_allocator(&FNetworkNextModule::Malloc, &FNetworkNextModule::Free);
 
-	next_log_function(&FNetworkNextModule::NextLogFunction);
-	next_log_level(NEXT_LOG_LEVEL_DEBUG);
+	// Setup logging to go to the "NetworkNext" log category
+	next_log_function(&FNetworkNextModule::Log);
 
-	this->NetworkNextIsInitialized = false;
-	this->NetworkNextIsSuccessfullyInitialized = false;
-	this->NetworkNextConfig = nullptr;
+	// Set the log level. If you need to debug something, increase the log level to NEXT_LOG_LEVEL_DEBUG and send us a log and we're happy to help you out
+	next_log_level(NEXT_LOG_LEVEL_INFO);
 
-	CreateNetworkNextSocketSubsystem();
+	// Setup default config values for the Network Next SDK
+	next_config_t config;
+	next_default_config(&config);
 
-#if WITH_EDITOR
-	FEditorDelegates::EndPIE.AddRaw(this, &FNetworkNextModule::ShutdownNetworkNextAfterPIE);
-#endif
-}
-
-void FNetworkNextModule::InitializeNetworkNextIfRequired()
-{
-	if (!this->NetworkNextIsInitialized)
+	// Get at the Network Next config from the NetworkNext.NetworkNextNetDriver object
+	UNetworkNextNetDriver* NetDriver = NewObject<UNetworkNextNetDriver>();
+	if (!NetDriver)
 	{
-		this->NetworkNextIsInitialized = true;
-		this->NetworkNextIsSuccessfullyInitialized = false;
-
-		next_config_t config;
-		next_default_config(&config);
-
-		// todo: make configurable
-		strcpy_s(config.hostname, "prod.networknext.com");
-
-		// Use values from engine / game config. We just make a UNetworkNextNetDriver
-		// here to get at the config.
-		UNetworkNextNetDriver* NetDriver = NewObject<UNetworkNextNetDriver>();
-		if (NetDriver->CustomerPublicKeyBase64.Len() > 0)
-		{
-			FString PublicKey = NetDriver->CustomerPublicKeyBase64;
-			int Len = FMath::Min(PublicKey.Len(), 256);
-			FMemory::Memzero(&config.customer_public_key, sizeof(config.customer_public_key));
-			for (int i = 0; i < Len; i++)
-			{
-				config.customer_public_key[i] = PublicKey[i];
-			}
-		}
-		if (NetDriver->CustomerPrivateKeyBase64.Len() > 0)
-		{
-			FString PrivateKey = NetDriver->CustomerPrivateKeyBase64;
-			int Len = FMath::Min(PrivateKey.Len(), 256);
-			FMemory::Memzero(&config.customer_private_key, sizeof(config.customer_private_key));
-			for (int i = 0; i < Len; i++)
-			{
-				config.customer_private_key[i] = PrivateKey[i];
-			}
-		}
-
-		// Use values from programmatic config.
-		if (this->NetworkNextConfig != nullptr)
-		{
-			if (this->NetworkNextConfig->PublicKeyBase64.Len() > 0)
-			{
-				int Len = FMath::Min(this->NetworkNextConfig->PublicKeyBase64.Len(), 256);
-				FMemory::Memzero(&config.customer_public_key, sizeof(config.customer_public_key));
-				for (int i = 0; i < Len; i++)
-				{
-					config.customer_public_key[i] = this->NetworkNextConfig->PublicKeyBase64[i];
-				}
-			}
-			if (this->NetworkNextConfig->PrivateKeyBase64.Len() > 0)
-			{
-				int Len = FMath::Min(this->NetworkNextConfig->PrivateKeyBase64.Len(), 256);
-				FMemory::Memzero(&config.customer_private_key, sizeof(config.customer_private_key));
-				for (int i = 0; i < Len; i++)
-				{
-					config.customer_private_key[i] = this->NetworkNextConfig->PrivateKeyBase64[i];
-				}
-			}
-
-			config.socket_send_buffer_size = this->NetworkNextConfig->SocketSendBufferSize;
-			config.socket_receive_buffer_size = this->NetworkNextConfig->SocketReceiveBufferSize;
-			config.disable_network_next = this->NetworkNextConfig->DisableNetworkNext;
-			config.disable_packet_tagging = this->NetworkNextConfig->DisablePacketTagging;
-		}
-
-		FString hostname = FString(config.hostname);
-		UE_LOG(LogNetworkNext, Display, TEXT("Hostname is: %s"), *hostname);
-			
-		if (next_init(nullptr, &config) != NEXT_OK)
-		{
-			UE_LOG(LogNetworkNext, Error, TEXT("Network Next could not be initialized"));
-			return;
-		}
-
-		this->NetworkNextIsSuccessfullyInitialized = true;
-
-		UE_LOG(LogNetworkNext, Display, TEXT("Network Next initialized"));
-	}
-}
-
-FString FNetworkNextModule::GetEnvironmentVariable(const FString& EnvName)
-{
-	int32 ResultLength = 512;
-	TCHAR* Result = new TCHAR[ResultLength];
-	FPlatformMisc::GetEnvironmentVariable(*EnvName, Result, ResultLength);
-	return FString(ResultLength, Result);
-}
-
-bool FNetworkNextModule::IsNetworkNextSuccessfullyInitialized()
-{
-	return this->NetworkNextIsInitialized && this->NetworkNextIsSuccessfullyInitialized;
-}
-
-void FNetworkNextModule::SetConfig(const FNetworkNextConfig& Config)
-{
-	if (this->NetworkNextIsInitialized)
-	{
-		UE_LOG(LogNetworkNext, Error, TEXT("Network Next is already initialized; you can not call SetConfig now."));
+		UE_LOG(LogNetworkNext, Error, TEXT("Network Next could not get config"));
 		return;
 	}
 
-	this->NetworkNextConfig = new FNetworkNextConfig(Config);
-}
-
-void FNetworkNextModule::SetServerConfig(const FNetworkNextServerConfig& ServerConfig)
-{
-	this->NetworkNextServerConfig = new FNetworkNextServerConfig(ServerConfig);
-}
-
-const FNetworkNextServerConfig* FNetworkNextModule::GetServerConfig() const
-{
-	return this->NetworkNextServerConfig;
-}
-
-void FNetworkNextModule::ShutdownNetworkNextAfterPIE(bool bIsSimulating)
-{
-	if (this->NetworkNextIsInitialized)
+	// Copy across the Network Next hostname.
+	// This is the custom backend setup for your studio. It is typically set to [yourcompany].spacecats.net
+	if (NetDriver->NextHostname.Len() > 0)
 	{
-		next_term();
+		FString Hostname = NetDriver->NextHostname;
+		int Len = FMath::Min(Hostname.Len(), (int)sizeof(config.hostname));
+		FMemory::Memzero(&config.hostname, sizeof(config.hostname));
+		for (int i = 0; i < Len; i++)
+		{
+			config.hostname[i] = Hostname[i];
+		}
 	}
 
-	this->NetworkNextIsInitialized = false;
-	this->NetworkNextIsSuccessfullyInitialized = false;
+	// Copy across the customer public key from the net driver. This is only required for the client.
+	if (NetDriver->CustomerPublicKey.Len() > 0)
+	{
+		FString PublicKey = NetDriver->CustomerPublicKey;
+		int Len = FMath::Min(PublicKey.Len(), (int)sizeof(config.customer_public_key));
+		FMemory::Memzero(&config.customer_public_key, sizeof(config.customer_public_key));
+		for (int i = 0; i < Len; i++)
+		{
+			config.customer_public_key[i] = PublicKey[i];
+		}
+	}
+
+	// Copy across the customer private key from the net driver. This is only required for the server.
+	// IMPORTANT: Do not set the private key on the client. You must not let your players know your customer private key!
+	if (NetDriver->CustomerPrivateKey.Len() > 0)
+	{
+		FString PrivateKey = NetDriver->CustomerPrivateKey;
+		int Len = FMath::Min(PrivateKey.Len(), (int)sizeof(config.customer_private_key));
+		FMemory::Memzero(&config.customer_private_key, sizeof(config.customer_private_key));
+		for (int i = 0; i < Len; i++)
+		{
+			config.customer_private_key[i] = PrivateKey[i];
+		}
+	}
+
+	// Copy across the disable flag.
+	// If you set this on the client, that client will not be monitored or accelerated, but can still connect to servers with Network Next enabled.
+	// If you set this on the server, the server will not monitor or accelerate any clients, even if those clients have Network Next enabled.
+	// TLDR: Enabled and disabled clients and servers are compatible!
+	config.disable_network_next = NetDriver->DisableNetworkNext;
+
+	// Print out the network next hostname for ease of debugging
+	FString hostname = FString(config.hostname);
+	UE_LOG(LogNetworkNext, Display, TEXT("Hostname is %s"), *hostname);
+
+	// Initialize the Network Next SDK
+	if (next_init(NULL, &config) != NEXT_OK)
+	{
+		UE_LOG(LogNetworkNext, Error, TEXT("Network Next SDK failed to initalize!"));
+		return;
+	}
+
+	UE_LOG(LogNetworkNext, Display, TEXT("Network Next SDK initialized"));
+
+	m_initialized_sdk = true;
+
+	CreateNetworkNextSocketSubsystem();
 }
 
 void FNetworkNextModule::ShutdownModule()
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("Network Next SDK shutting down"));
+
+	next_term();
+
+	m_initialized_sdk = false;
+
 	DestroyNetworkNextSocketSubsystem();
 
-	if (this->NetworkNextIsInitialized)
-	{
-		next_term();
-	}
-
-#if defined(NETWORKNEXT_ENABLE_DELAY_LOAD_PATH)
-	FPlatformProcess::FreeDllHandle(this->NetworkNextHandle);
-	this->NetworkNextHandle = nullptr;
-#endif
+	UE_LOG(LogNetworkNext, Display, TEXT("Network Next Plugin unloaded"));
 }
 
-void FNetworkNextModule::NextLogFunction(int level, const char* format, ...)
+void FNetworkNextModule::Log(int level, const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
@@ -258,5 +169,3 @@ void FNetworkNextModule::Free(void* context, void* src)
 {
 	return FMemory::Free(src);
 }
-
-IMPLEMENT_MODULE(FNetworkNextModule, NetworkNext)
