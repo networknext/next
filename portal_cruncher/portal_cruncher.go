@@ -3,9 +3,9 @@ package portalcruncher
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -49,8 +49,8 @@ type PortalCruncher struct {
 	metrics    *metrics.PortalCruncherMetrics
 
 	// redisCountMessageChan chan *transport.SessionCountData
-	redisDataMessageChan 	chan *transport.SessionPortalData
-	btDataMessageChan 		chan *transport.SessionPortalData
+	redisDataMessageChan chan *transport.SessionPortalData
+	btDataMessageChan    chan *transport.SessionPortalData
 
 	topSessions   storage.RedisClient
 	sessionMap    storage.RedisClient
@@ -58,12 +58,12 @@ type PortalCruncher struct {
 	sessionSlices storage.RedisClient
 
 	// redisPortalCountBuffer []*transport.SessionCountData
-	redisPortalDataBuffer 	[]*transport.SessionPortalData
-	btPortalDataBuffer		[]*transport.SessionPortalData
+	redisPortalDataBuffer []*transport.SessionPortalData
+	btPortalDataBuffer    []*transport.SessionPortalData
 
-	useBigtable 	bool
-	btClient 		*storage.BigTable
-	btCfNames		[]string
+	useBigtable bool
+	btClient    *storage.BigTable
+	btCfNames   []string
 
 	redisFlushCount int
 	flushTime       time.Time
@@ -115,7 +115,7 @@ func NewPortalCruncher(
 		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays, logger)
 		if err != nil {
 			return nil, err
-		}		
+		}
 	}
 
 	return &PortalCruncher{
@@ -123,18 +123,17 @@ func NewPortalCruncher(
 		metrics:    metrics,
 		// portalCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
 		redisDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
-		btDataMessageChan: make(chan *transport.SessionPortalData, chanBufferSize),
-		topSessions:           topSessions,
-		sessionMap:            sessionMap,
-		sessionMeta:           sessionMeta,
-		sessionSlices:         sessionSlices,
-		redisFlushCount:       redisFlushCount,
-		useBigtable: 		   useBigtable,
-		btClient:			   btClient,
-		btCfNames:			   btCfNames,
-		flushTime:             time.Now(),
-		pingTime:              time.Now(),
-
+		btDataMessageChan:    make(chan *transport.SessionPortalData, chanBufferSize),
+		topSessions:          topSessions,
+		sessionMap:           sessionMap,
+		sessionMeta:          sessionMeta,
+		sessionSlices:        sessionSlices,
+		redisFlushCount:      redisFlushCount,
+		useBigtable:          useBigtable,
+		btClient:             btClient,
+		btCfNames:            btCfNames,
+		flushTime:            time.Now(),
+		pingTime:             time.Now(),
 	}, nil
 }
 
@@ -286,7 +285,6 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 				return &ErrChannelFull{}
 			}
 
-
 		default:
 			return &ErrUnknownMessage{}
 		}
@@ -414,13 +412,13 @@ func (cruncher *PortalCruncher) PingRedis() error {
 	return nil
 }
 
-func SetupBigtable(	ctx context.Context, 
-					gcpProjectID string,
-					btInstanceID string,
-					btTableName string,
-					btCfName string,
-					btMaxAgeDays int,
-					logger log.Logger) (*storage.BigTable, []string, error) {
+func SetupBigtable(ctx context.Context,
+	gcpProjectID string,
+	btInstanceID string,
+	btTableName string,
+	btCfName string,
+	btMaxAgeDays int,
+	logger log.Logger) (*storage.BigTable, []string, error) {
 	// Setup Bigtable
 	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
 	if btEmulatorOK {
@@ -481,11 +479,20 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
 	for j := range cruncher.btPortalDataBuffer {
 		meta := &cruncher.btPortalDataBuffer[j].Meta
 		slice := &cruncher.btPortalDataBuffer[j].Slice
-		
-		sessionRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+
+		// This seems redundant, try to figure out a better prefix to limit the number of keys
+		// Key for session ID
+		sessionRowKey := fmt.Sprintf("%016x", meta.ID)
+		sliceRowKey := fmt.Sprintf("%016x#%v", meta.ID, slice.Timestamp)
+
+		// Key for all buyer specific sessions
+		buyerRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
+
+		// Key for all user specific
 		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
 
-		rowKeys := []string{sessionRowKey, userRowKey}
+		metaRowKeys := []string{sessionRowKey, buyerRowKey, userRowKey}
+		sliceRowKeys := []string{sliceRowKey}
 
 		// Have 2 columns under 1 column family
 		// 1) Meta
@@ -501,8 +508,13 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
 			return err
 		}
 
-		// Insert session data into Bigtable
-		if err := cruncher.btClient.InsertSessionData(ctx, cruncher.btCfNames, metaBinary, sliceBinary, rowKeys); err != nil {
+		// Insert session meta data into Bigtable
+		if err := cruncher.btClient.InsertSessionMetaData(ctx, cruncher.btCfNames, metaBinary, metaRowKeys); err != nil {
+			return err
+		}
+
+		// Insert session slice data into Bigtable
+		if err := cruncher.btClient.InsertSessionSliceData(ctx, cruncher.btCfNames, sliceBinary, sliceRowKeys); err != nil {
 			return err
 		}
 	}

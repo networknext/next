@@ -184,22 +184,41 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, rowKeys []string, data
 }
 
 // Inserts session data into Bigtable
-func (bt *BigTable) InsertSessionData(ctx context.Context,
+func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	btCfNames []string,
 	metaBinary []byte,
-	sliceBinary []byte,
 	rowKeys []string) error {
 
 	// Create a map of column name to session data
 	sessionDataMap := make(map[string][]byte)
 	sessionDataMap["meta"] = metaBinary
-	sessionDataMap["slice"] = sliceBinary
 
 	// Create a map of column name to column family
 	// Always map meta and slice to the first column family
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
-	cfMap["slice"] = btCfNames[0]
+
+	if err := bt.InsertRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Inserts session data into Bigtable
+func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
+	btCfNames []string,
+	sliceBinary []byte,
+	rowKeys []string) error {
+
+	// Create a map of column name to session data
+	sessionDataMap := make(map[string][]byte)
+	sessionDataMap["slices"] = sliceBinary
+
+	// Create a map of column name to column family
+	// Always map meta and slice to the first column family
+	cfMap := make(map[string]string)
+	cfMap["slices"] = btCfNames[0]
 
 	if err := bt.InsertRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
 		return err

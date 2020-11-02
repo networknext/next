@@ -206,7 +206,7 @@ func main() {
 		gcpProjectID = "local"
 		level.Info(logger).Log("msg", "Detected bigtable emulator")
 	}
-	
+
 	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
