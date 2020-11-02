@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -152,19 +152,46 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
 	return relayMap.relays[relayAddress]
 }
 
-func (relayMap *RelayMap) GetAllRelayData() []*RelayData {
+func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	relayMap.RLock()
-	relays := make([]*RelayData, len(relayMap.relays))
+	relays := make([]RelayData, len(relayMap.relays))
 
 	index := 0
 	for _, relayData := range relayMap.relays {
-		relays[index] = relayData
+		relays[index] = *relayData
 		index++
 	}
 
 	relayMap.RUnlock()
 
 	return relays
+}
+
+func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
+	relayMap.RLock()
+	defer relayMap.RUnlock()
+	relayIDs := make([]uint64, 0)
+
+
+	if len(excludeList) == 0 {
+		for _, relayData := range relayMap.relays {
+			relayIDs = append(relayIDs, relayData.ID)
+		}
+		return relayIDs
+	}
+
+	excludeMap := make(map[string]bool)
+	for _,exclude := range excludeList{
+		excludeMap[exclude] = true
+	}
+
+	for _, relayData := range relayMap.relays {
+		if _, ok := excludeMap[relayData.Seller.ID]; !ok {
+			relayIDs = append(relayIDs, relayData.ID)
+		}
+	}
+
+	return relayIDs
 }
 
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
