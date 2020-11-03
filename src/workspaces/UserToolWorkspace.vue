@@ -29,7 +29,7 @@
           <div class="col">
             <input class="form-control"
                     type="text"
-                    placeholder="Enter a User Hash to view statistics"
+                    placeholder="Enter a User Id to view their sessions"
                     v-model="searchID"
             >
           </div>
@@ -52,6 +52,7 @@ import { Route, NavigationGuardNext } from 'vue-router'
 import UserSessions from '@/components/UserSessions.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
+import * as fnv from 'fnv-plus'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -80,7 +81,7 @@ export default class UserToolWorkspace extends Vue {
     super()
     this.alertType = ''
     this.searchID = ''
-    this.message = 'Please enter a User ID or Hash to view their sessions.'
+    this.message = 'Please enter a User Id to view their sessions.'
     this.alertType = AlertTypes.INFO
   }
 
@@ -88,17 +89,15 @@ export default class UserToolWorkspace extends Vue {
     this.searchID = this.$route.params.pathMatch || ''
   }
 
-  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    this.searchID = ''
-    this.message = 'Please enter a User ID or Hash to view their sessions.'
-    this.alertType = AlertTypes.INFO
-    next()
-  }
-
   private fetchUserSessions () {
     this.message = ''
-    if (this.searchID === '') {
+    if (this.searchID === '' && this.$route.path !== '/user-tool') {
       this.$router.push({ path: '/user-tool' })
+      return
+    }
+    if (this.searchID === '' && this.$route.path === '/user-tool') {
+      this.message = 'Please enter a User Id to view their sessions.'
+      this.alertType = AlertTypes.INFO
       return
     }
     const newRoute = `/user-tool/${this.searchID}`

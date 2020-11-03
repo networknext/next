@@ -64,12 +64,12 @@
         </small>
       </div>
       <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="checkConfirmPassword()"/>
+        <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="updateAccountSettings()"/>
         <small>
           I would like to receive the Network Next newsletter
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;">
+      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -271,7 +271,7 @@ export default class AccountSettings extends Vue {
 
   private updateAccountSettings () {
     this.$apiService
-      .updateAccountSettings({ newPassword: this.newPassword, newsletter: this.newsletterConsent })
+      .updateAccountSettings({ newsletter: this.newsletterConsent })
       .then((response: any) => {
         this.message = 'Account settings updated successfully'
         this.alertType = AlertTypes.SUCCESS
