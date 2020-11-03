@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -318,7 +318,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		if newSession {
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionID = packet.SessionID
-			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+			sessionData.SliceNumber = packet.SliceNumber + 1
 			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 			sessionData.RouteState.UserID = packet.UserHash
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
@@ -341,13 +341,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			if sessionData.SliceNumber != uint32(packet.SliceNumber) {
+			if sessionData.SliceNumber != packet.SliceNumber {
 				level.Error(logger).Log("err", "bad sequence number in session data")
 				metrics.BadSliceNumber.Add(1)
 				return
 			}
 
-			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+			sessionData.SliceNumber = packet.SliceNumber + 1
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 		}
 

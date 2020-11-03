@@ -315,10 +315,14 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		largeCustomer := redisPortalDataBuffer[i].LargeCustomer
 		everOnNext := redisPortalDataBuffer[i].EverOnNext
 
+		// For large customers, only insert the session if they have ever taken network next
+		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
+			continue // Early out if we shouldn't add this session
+		}
+
 		// Update the map points for this minute bucket
 		// Make sure to remove the session ID from the opposite bucket in case the session
-		// has switched from direct -> next or next -> direct, even if we shouldn't insert the new one
-		// for large customers so that the next session counts will be accurate
+		// has switched from direct -> next or next -> direct
 		pointString := point.RedisString()
 		if next {
 			cruncher.sessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
@@ -328,16 +332,7 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		} else {
 			cruncher.sessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
 			cruncher.sessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
-
-			// For large customers, only insert the session if they have ever taken network next
-			if !largeCustomer || everOnNext {
-				cruncher.sessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, pointString)
-			}
-		}
-
-		// For large customers, only insert the session if they have ever taken network next
-		if largeCustomer && !meta.OnNetworkNext && !everOnNext {
-			continue // Early out if we shouldn't add this session
+			cruncher.sessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, pointString)
 		}
 
 		// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
