@@ -192,9 +192,9 @@ func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	sessionDataMap["meta"] = metaBinary
 
 	// Create a map of column name to column family
-	// Always map meta and slice to the first column family
+	// Always map meta to the first column family
 	if len(btCfNames) == 0 {
-		return fmt.Errorf("InsertSessionData() Column family names slice is empty")
+		return fmt.Errorf("InsertSessionMetaData() Column family names slice is empty")
 	} 
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
@@ -217,12 +217,15 @@ func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
 	sessionDataMap["slices"] = sliceBinary
 
 	// Create a map of column name to column family
-	// Always map meta and slice to the first column family
+	// Always map slice to the first column family
+	if len(btCfNames) == 0 {
+		return fmt.Errorf("InsertSessionSliceData() Column family names slice is empty")
+	} 
 	cfMap := make(map[string]string)
 	cfMap["slices"] = btCfNames[0]
 
 	if err := bt.InsertRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
-		return fmt.Errorf("InsertSessionData() Could not insert session data into table %v", err)
+		return fmt.Errorf("InsertSessionSliceData() Could not insert session data into table %v", err)
 	}
 
 	return nil

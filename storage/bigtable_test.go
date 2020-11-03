@@ -11,6 +11,7 @@ import (
     "github.com/go-kit/kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 
     "cloud.google.com/go/bigtable"
     "google.golang.org/api/option"
@@ -77,6 +78,29 @@ func TestBigTableAdmin(t *testing.T) {
 		btCfNames := []string{"ColFamName"}
 		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
 		assert.NoError(t, err)
+	})
+
+	t.Run("Create Table That Already Exists", func (t *testing.T) {
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		assert.NoError(t, err)
+		tblName := "Test"
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, tblName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+
+		
+		btCfNames := []string{"ColFamName"}
+		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
+		assert.NoError(t, err)
+
+		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
+
+		errorStr := fmt.Sprintf("rpc error: code = AlreadyExists desc = table \"projects//instances//tables/%s\" already exists", tblName)
+		assert.EqualError(t, err, errorStr)
 	})
 
 	t.Run("Verify Table Exists True", func (t *testing.T) {
@@ -276,7 +300,7 @@ func TestBigTable(t *testing.T) {
 		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
 		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
 
-		t.Run("Insert Valid Row Into Table", func (t *testing.T) {
+		t.Run("Insert Valid Meta Row Into Table", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -285,18 +309,40 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"meta"}
 			
-			metaBinary := make([]byte, 0)
-			sliceBinary := make([]byte, 0)
-			
+			metaBinary, err := transport.SessionMeta{}.MarshalBinary()
+			assert.NoError(t, err)
+
 			dataMap := make(map[string][]byte)
 			dataMap["meta"] = metaBinary
-			dataMap["slice"] = sliceBinary
 
 			cfMap := make(map[string]string)
 			cfMap["meta"] = btCfNames[0]
-			cfMap["slice"] = btCfNames[0]
+
+			err = btClient.InsertRowInTable(ctx, rowKeys, dataMap, cfMap)
+			assert.NoError(t, err)
+		})
+
+		t.Run("Insert Valid Slice Row Into Table", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"slices"}
+			
+			sliceBinary, err := transport.SessionSlice{}.MarshalBinary()
+			assert.NoError(t, err)
+
+			dataMap := make(map[string][]byte)
+			dataMap["slices"] = sliceBinary
+
+			cfMap := make(map[string]string)
+			cfMap["slices"] = btCfNames[0]
 
 			err = btClient.InsertRowInTable(ctx, rowKeys, dataMap, cfMap)
 			assert.NoError(t, err)
@@ -311,7 +357,7 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"meta"}
 			
 			dataMap := make(map[string][]byte)
 			dataMap["meta"] = []byte{}
@@ -332,7 +378,7 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"meta"}
 			
 			dataMap := make(map[string][]byte)
 			dataMap["meta"] = []byte{}
@@ -372,7 +418,7 @@ func TestBigTable(t *testing.T) {
 		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
 		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
 
-		t.Run("Insert Valid Session Data Into Table", func (t *testing.T) {
+		t.Run("Insert Valid Session Meta Data Into Table", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -381,17 +427,16 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"meta"}
 			
-			metaBinary := make([]byte, 0)
-			sliceBinary := make([]byte, 0)
+			metaBinary, err := transport.SessionMeta{}.MarshalBinary()
+			assert.NoError(t, err)
 
-
-			err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+			err = btClient.InsertSessionMetaData(ctx, btCfNames, metaBinary, rowKeys)
 			assert.NoError(t, err)
 		})
 
-		t.Run("Insert Invalid Session Data Into Table", func (t *testing.T) {
+		t.Run("Insert Valid Session Slice Data Into Table", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -400,18 +445,53 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"slices"}
+			
+			sliceBinary, err := transport.SessionSlice{}.MarshalBinary()
+			assert.NoError(t, err)
+
+			err = btClient.InsertSessionSliceData(ctx, btCfNames, sliceBinary, rowKeys)
+			assert.NoError(t, err)
+		})
+
+		t.Run("Insert Invalid Session Meta Data Into Table", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"meta"}
 			
 			metaBinary := make([]byte, 0)
-			sliceBinary := make([] byte, 0)
 			
 			// Should attempt to create column family map and fail
-			err = btClient.InsertSessionData(ctx, make([]string, 0), metaBinary, sliceBinary, rowKeys)
-			assert.EqualError(t, err, "InsertSessionData() Column family names slice is empty")
+			err = btClient.InsertSessionMetaData(ctx, make([]string, 0), metaBinary, rowKeys)
+			assert.EqualError(t, err, "InsertSessionMetaData() Column family names slice is empty")
+		})
+
+		t.Run("Insert Invalid Session Slice Data Into Table", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"slices"}
+			
+			sliceBinary := make([]byte, 0)
+			
+			// Should attempt to create column family map and fail
+			err = btClient.InsertSessionSliceData(ctx, make([]string, 0), sliceBinary, rowKeys)
+			assert.EqualError(t, err, "InsertSessionSliceData() Column family names slice is empty")
 		})
 	})
 
-	t.Run("Insert Session Data Into Nonexistent Table", func (t *testing.T) {
+	t.Run("Insert Session Meta Data Into Nonexistent Table", func (t *testing.T) {
 		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
 		if exists {
 			// Delete the table that exists
@@ -437,12 +517,45 @@ func TestBigTable(t *testing.T) {
 		}()
 
 		btCfNames := []string{"ColFamName"}
-		rowKeys := []string{"meta", "slice"}
+		rowKeys := []string{"meta"}
 		
 		metaBinary := make([]byte, 0)
+
+		err = btClient.InsertSessionMetaData(ctx, btCfNames, metaBinary, rowKeys)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("Insert Session Slice Data Into Nonexistent Table", func (t *testing.T) {
+		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		if exists {
+			// Delete the table that exists
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			assert.NoError(t, err)
+
+			err = btAdmin.DeleteTable(ctx, tblName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		} else {
+			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
+			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		}
+
+		btClient, err := storage.NewBigTable(ctx, "", "", logger)
+		assert.NoError(t, err)
+		
+		defer func () {
+			err = btClient.Close()
+			assert.NoError(t, err)
+		}()
+
+		btCfNames := []string{"ColFamName"}
+		rowKeys := []string{"slices"}
+		
 		sliceBinary := make([]byte, 0)
 
-		err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+		err = btClient.InsertSessionSliceData(ctx, btCfNames, sliceBinary, rowKeys)
 		assert.NotNil(t, err)
 	})
 
@@ -466,7 +579,7 @@ func TestBigTable(t *testing.T) {
 		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
 		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
 
-		t.Run("Get Rows With Prefix With Opts Success", func (t *testing.T) {
+		t.Run("Get Meta Rows With Prefix With Opts Success", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -475,12 +588,11 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"metaRow"}
 			
 			metaBinary := make([]byte, 0)
-			sliceBinary := make([]byte, 0)
 
-			err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+			err = btClient.InsertSessionMetaData(ctx, btCfNames, metaBinary, rowKeys)
 			assert.NoError(t, err)
 
 			prefix := "meta"
@@ -491,7 +603,7 @@ func TestBigTable(t *testing.T) {
 			assert.NotNil(t, rows)
 		})
 
-		t.Run("Get Rows With Prefix Without Opts Success", func (t *testing.T) {
+		t.Run("Get Slice Rows With Prefix With Opts Success", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -500,15 +612,61 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"sliceRow"}
 			
-			metaBinary := make([]byte, 0)
 			sliceBinary := make([]byte, 0)
 
-			err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+			err = btClient.InsertSessionSliceData(ctx, btCfNames, sliceBinary, rowKeys)
+			assert.NoError(t, err)
+
+			prefix := "slice"
+			opts := bigtable.RowFilter(bigtable.ColumnFilter("slices"))
+			rows, err := btClient.GetRowsWithPrefix(ctx, prefix, opts)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, rows)
+		})
+
+		t.Run("Get Meta Rows With Prefix Without Opts Success", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"metaRow"}
+			
+			metaBinary := make([]byte, 0)
+
+			err = btClient.InsertSessionMetaData(ctx, btCfNames, metaBinary, rowKeys)
 			assert.NoError(t, err)
 
 			prefix := "meta"
+			rows, err := btClient.GetRowsWithPrefix(ctx, prefix)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, rows)
+		})
+
+		t.Run("Get Slice Rows With Prefix Without Opts Success", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"sliceRow"}
+			
+			sliceBinary := make([]byte, 0)
+
+			err = btClient.InsertSessionSliceData(ctx, btCfNames, sliceBinary, rowKeys)
+			assert.NoError(t, err)
+
+			prefix := "slice"
 			rows, err := btClient.GetRowsWithPrefix(ctx, prefix)
 
 			assert.NoError(t, err)
@@ -535,8 +693,6 @@ func TestBigTable(t *testing.T) {
 			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", tblName)
 			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
 		}
-
-
 
 		btClient, err := storage.NewBigTable(ctx, "", "", logger)
 		assert.NoError(t, err)
@@ -573,7 +729,7 @@ func TestBigTable(t *testing.T) {
 		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
 		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
 
-		t.Run("Get Row With Rowkey With Opts Success", func (t *testing.T) {
+		t.Run("Get Meta Row With Rowkey With Opts Success", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -582,21 +738,21 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"metaRow"}
 			
 			metaBinary := make([]byte, 0)
-			sliceBinary := make([]byte, 0)
 
-			err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+			err = btClient.InsertSessionMetaData(ctx, btCfNames, metaBinary, rowKeys)
 			assert.NoError(t, err)
 
 			opts := bigtable.RowFilter(bigtable.ColumnFilter("meta"))
-			_, err = btClient.GetRowWithRowKey(ctx, rowKeys[0], opts)
+			row, err := btClient.GetRowWithRowKey(ctx, rowKeys[0], opts)
 
 			assert.NoError(t, err)
+			assert.NotEmpty(t, row)
 		})
 
-		t.Run("Get Rows With Rowkey Without Opts Success", func (t *testing.T) {
+		t.Run("Get Slice Row With Rowkey With Opts Success", func (t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
 			assert.NoError(t, err)
 			
@@ -605,17 +761,64 @@ func TestBigTable(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			rowKeys := []string{"meta", "slice"}
+			rowKeys := []string{"slices"}
+			
+			sliceBinary, err := transport.SessionSlice{}.MarshalBinary()
+			assert.NoError(t, err)
+
+			err = btClient.InsertSessionSliceData(ctx, btCfNames, sliceBinary, rowKeys)
+			assert.NoError(t, err)
+
+			opts := bigtable.RowFilter(bigtable.ColumnFilter("slices"))
+			row, err := btClient.GetRowWithRowKey(ctx, rowKeys[0], opts)
+
+			assert.NoError(t, err)
+
+			assert.NotEmpty(t, row)
+		})
+
+		t.Run("Get Meta Row With Rowkey Without Opts Success", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"metaRow"}
 			
 			metaBinary := make([]byte, 0)
+
+			err = btClient.InsertSessionMetaData(ctx, btCfNames, metaBinary, rowKeys)
+			assert.NoError(t, err)
+
+			row, err := btClient.GetRowWithRowKey(ctx, rowKeys[0])
+
+			assert.NoError(t, err)
+			assert.NotNil(t, row)
+		})
+
+		t.Run("Get Slice Row With Rowkey Without Opts Success", func (t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", logger)
+			assert.NoError(t, err)
+			
+			defer func () {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			rowKeys := []string{"sliceRow"}
+			
 			sliceBinary := make([]byte, 0)
 
-			err = btClient.InsertSessionData(ctx, btCfNames, metaBinary, sliceBinary, rowKeys)
+			err = btClient.InsertSessionSliceData(ctx, btCfNames, sliceBinary, rowKeys)
 			assert.NoError(t, err)
 
-			_, err = btClient.GetRowWithRowKey(ctx, rowKeys[0])
+			row, err := btClient.GetRowWithRowKey(ctx, rowKeys[0])
 
 			assert.NoError(t, err)
+			assert.NotNil(t, row)
 		})
 	})
 
@@ -648,7 +851,7 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		rowKeys := []string{"meta", "slice"}
+		rowKeys := []string{"meta"}
 
 		_, err = btClient.GetRowWithRowKey(ctx, rowKeys[0])
 
