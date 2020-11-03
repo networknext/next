@@ -371,10 +371,12 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
-		managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing management address", "err", err)
-		}
+		// TODO: this should be treated as a legit address
+		// managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
+		// if err != nil {
+		// 	fmt.Printf("error parsing mgmt ip: %v\n", err)
+		// 	level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing management address", "err", err)
+		// }
 
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
@@ -404,7 +406,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
 			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
 			State:               relayState,
-			ManagementAddr:      managementAddr.String(),
+			ManagementAddr:      relay.ManagementIP,
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
@@ -438,11 +440,12 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 type sqlBuyer struct {
 	ID             uint64
 	IsLiveCustomer bool
+	Debug          bool
 	Name           string
 	PublicKey      []byte
-	CompanyCode    string
-	BuyerID        int64 // sql PK
-	CustomerID     int64 // sql PK
+	CompanyCode    string // should not be needed
+	BuyerID        int64  // sql PK
+	CustomerID     int64  // sql PK
 }
 
 func (db *SQL) syncBuyers(ctx context.Context) error {
@@ -453,7 +456,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
 	buyerIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select id, is_live_customer, public_key, customer_id "))
+	sql.Write([]byte("select id, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -466,6 +469,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	for rows.Next() {
 		err = rows.Scan(&buyer.BuyerID,
 			&buyer.IsLiveCustomer,
+			&buyer.Debug,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -488,16 +492,18 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
 
-		buyers[buyer.ID] = routing.Buyer{
-			// CompanyCode:    db.customerIDs[buyer.CustomerID],
+		b := routing.Buyer{
 			ID:             buyer.ID,
 			Live:           buyer.IsLiveCustomer,
+			Debug:          buyer.Debug,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
 			CustomerID:     buyer.CustomerID,
 			BuyerID:        buyer.BuyerID,
 		}
+
+		buyers[buyer.ID] = b
 
 	}
 
@@ -634,7 +640,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 		err = rows.Scan(&customer.ID,
 			&customer.Active,
 			&customer.AutomaticSignInDomains,
-			&customer.CustomerName,
+			&customer.Name,
 			&customer.CustomerCode,
 		)
 		if err != nil {
@@ -644,13 +650,15 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 
 		customerIDs[customer.ID] = customer.CustomerCode
 
-		customers[customer.CustomerCode] = routing.Customer{
+		c := routing.Customer{
 			Code:                   customer.CustomerCode,
 			Name:                   customer.Name,
 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
 			Active:                 customer.Active,
 			CustomerID:             customer.ID,
 		}
+
+		customers[customer.CustomerCode] = c
 	}
 
 	db.customerIDsMutex.Lock()

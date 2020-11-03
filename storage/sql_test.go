@@ -26,14 +26,14 @@ func SetupEnv() {
 	os.Setenv("DB_SYNC_INTERVAL", "10s")
 }
 
-func TestSQL(t *testing.T) {
+func TestAddSQL(t *testing.T) {
 
 	SetupEnv()
 
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	fmt.Println("Starting SQL tests.")
+	fmt.Println("Starting Add SQL tests.")
 
 	// NewSQLStorage syncs the local sync number from the remote and
 	// runs all the sync*() methods
@@ -60,10 +60,10 @@ func TestSQL(t *testing.T) {
 		assert.Equal(t, true, sync)
 	})
 
-	// TODO: test "not null" constraints and failure modes
 	t.Run("AddCustomer", func(t *testing.T) {
 		customer := routing.Customer{
 			Active:                 true,
+			Debug:                  true,
 			Code:                   "Compcode",
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -72,12 +72,15 @@ func TestSQL(t *testing.T) {
 		err = db.AddCustomer(ctx, customer)
 		assert.NoError(t, err)
 
-		// TODO: retrieve customer, make sure it matches
-
+		_, err := db.Customer("Compcode")
+		assert.NoError(t, err)
+		outerCustomer, err = db.Customer("Compcode")
+		assert.NoError(t, err)
+		assert.Equal(t, customer.Active, outerCustomer.Active)
+		assert.Equal(t, customer.Code, outerCustomer.Code)
+		assert.Equal(t, customer.Name, outerCustomer.Name)
+		assert.Equal(t, customer.AutomaticSignInDomains, outerCustomer.AutomaticSignInDomains)
 	})
-
-	outerCustomer, err = db.Customer("Compcode")
-	assert.NoError(t, err)
 
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
@@ -92,8 +95,10 @@ func TestSQL(t *testing.T) {
 
 		outerSeller, err = db.Seller("Compcode")
 		assert.NoError(t, err)
-
-		// TODO: retrieve seller, make sure it matches
+		assert.Equal(t, seller.ID, outerSeller.ID)
+		assert.Equal(t, seller.IngressPriceNibblinsPerGB, outerSeller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, seller.EgressPriceNibblinsPerGB, outerSeller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, seller.CustomerID, outerSeller.CustomerID)
 	})
 
 	t.Run("AddDatacenter", func(t *testing.T) {
@@ -113,7 +118,6 @@ func TestSQL(t *testing.T) {
 		err = db.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
-		// TODO: retrieve dc, make sure it matches
 		outerDatacenter, err = db.Datacenter(datacenter.ID)
 		assert.NoError(t, err)
 	})
@@ -129,7 +133,7 @@ func TestSQL(t *testing.T) {
 		buyer := routing.Buyer{
 			ID:         internalID,
 			Live:       true,
-			Debug:      false,
+			Debug:      true,
 			PublicKey:  publicKey,
 			CustomerID: outerCustomer.CustomerID,
 		}
@@ -163,24 +167,27 @@ func TestSQL(t *testing.T) {
 
 		// fmt.Printf("AddRelay test - outerDatacenter: %s\n", outerDatacenter.String())
 
+		// fields not stored in the database are not tested here
 		relay := routing.Relay{
-			ID:           rid,
-			Name:         "local.1",
-			Addr:         *addr,
-			PublicKey:    publicKey,
-			UpdateKey:    updateKey,
-			Datacenter:   outerDatacenter,
-			MRC:          19700000000000,
-			Overage:      26000000000000,
-			BWRule:       routing.BWRuleBurst,
-			ContractTerm: 12,
-			StartDate:    time.Now(),
-			EndDate:      time.Now(),
-			Type:         routing.BareMetal,
-			State:        routing.RelayStateMaintenance,
+			ID:             rid,
+			Name:           "local.1",
+			Addr:           *addr,
+			ManagementAddr: "1.2.3.4",
+			SSHPort:        22,
+			SSHUser:        "fred",
+			MaxSessions:    1000,
+			PublicKey:      publicKey,
+			UpdateKey:      updateKey,
+			Datacenter:     outerDatacenter,
+			MRC:            19700000000000,
+			Overage:        26000000000000,
+			BWRule:         routing.BWRuleBurst,
+			ContractTerm:   12,
+			StartDate:      time.Now(),
+			EndDate:        time.Now(),
+			Type:           routing.BareMetal,
+			State:          routing.RelayStateMaintenance,
 		}
-
-		// fmt.Printf("AddRelay test relay: %s\n", relay.String())
 
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
@@ -190,6 +197,10 @@ func TestSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
+		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)
+		assert.Equal(t, relay.SSHPort, checkRelay.SSHPort)
+		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
+		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
 		assert.Equal(t, relay.UpdateKey, checkRelay.UpdateKey)
 		assert.Equal(t, relay.Datacenter.DatacenterID, checkRelay.Datacenter.DatacenterID)
@@ -215,8 +226,84 @@ func TestSQL(t *testing.T) {
 
 		checkDCMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
 		assert.Equal(t, 1, len(checkDCMaps))
-		assert.Equal(t, dcMap, checkDCMaps[outerBuyer.ID])
+		assert.Equal(t, dcMap.Alias, checkDCMaps[outerBuyer.ID].Alias)
+		assert.Equal(t, dcMap.BuyerID, checkDCMaps[outerBuyer.ID].BuyerID)
+		assert.Equal(t, dcMap.DatacenterID, checkDCMaps[outerBuyer.ID].DatacenterID)
+	})
+}
+
+func TestDeleteSQL(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// NewSQLStorage syncs the local sync number from the remote and
+	// runs all the sync*() methods
+	db, err := storage.NewSQLStorage(ctx, logger)
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	var outerCustomer routing.Customer
+	// var outerBuyer routing.Buyer
+	// var outerSeller routing.Seller
+	// var outerDatacenter routing.Datacenter
+
+	t.Run("RemoveCustomer", func(t *testing.T) {
+
+		customer := routing.Customer{
+			Active:                 true,
+			Code:                   "Compcode",
+			Name:                   "Company, Ltd.",
+			AutomaticSignInDomains: "fredscuttle.com",
+		}
+
+		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+
+		outerCustomer, err = db.Customer("Compcode")
+		assert.NoError(t, err)
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err := rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
+		buyer := routing.Buyer{
+			ID:         internalID,
+			Live:       true,
+			Debug:      false,
+			PublicKey:  publicKey,
+			CustomerID: outerCustomer.CustomerID,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		_, err = db.Buyer(internalID)
+		assert.NoError(t, err)
+
+		seller := routing.Seller{
+			ID:                        "Compcode",
+			IngressPriceNibblinsPerGB: 10,
+			EgressPriceNibblinsPerGB:  20,
+			CustomerID:                outerCustomer.CustomerID,
+		}
+
+		err = db.AddSeller(ctx, seller)
+		assert.NoError(t, err)
+
+		_, err = db.Seller("Compcode")
+		assert.NoError(t, err)
+
+		// Attempting to remove the customer should return a foreign
+		// key violation error (for buyer and seller)
+		// sqlite3: RemoveCustomer error :FOREIGN KEY constraint failed
+		err = db.RemoveCustomer(ctx, "Compcode")
+		// fmt.Printf("RemoveCustomer error :%v\n", err)
+		assert.Error(t, err)
 
 	})
-
 }

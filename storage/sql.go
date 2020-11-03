@@ -107,7 +107,6 @@ type sqlCustomer struct {
 	Name                   string
 	AutomaticSignInDomains string
 	Active                 bool
-	CustomerName           string
 	CustomerCode           string
 }
 
@@ -124,9 +123,9 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 
 	customer := sqlCustomer{
 		CustomerCode:           c.Code,
-		CustomerName:           c.Name,
+		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
-		Active:                 false,
+		Active:                 c.Active,
 	}
 
 	// Add the buyer in remote storage
@@ -142,7 +141,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 
 	result, err := stmt.Exec(customer.Active,
 		customer.AutomaticSignInDomains,
-		customer.CustomerName,
+		customer.Name,
 		customer.CustomerCode,
 	)
 
@@ -160,7 +159,6 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	// Add the buyer in cached storage
 	db.syncCustomers(ctx)
 
 	db.IncrementSequenceNumber(ctx)
@@ -170,10 +168,50 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 
 // RemoveCustomer removes a customer from the database. An error is returned if
 //  1. The customer ID does not exist
-//  2. Removing the customer would break a foreign key relationship (buyer, seller)
+//  2. Removing the customer will break a foreign key relationship (buyer, seller)
 //  3. Any other error returned from the database
-// TODO: RemoveCustomer
-func (db *SQL) RemoveCustomer(ctx context.Context, code string) error {
+//
+// #2 is not checked here - it is enforced by the database
+func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
+
+	var sql bytes.Buffer
+
+	db.customerMutex.RLock()
+	customer, ok := db.customers[customerCode]
+	db.customerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%x", customerCode)}
+	}
+
+	sql.Write([]byte("delete from customers where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing RemoveCustomer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(customer.CustomerID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing customer", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncCustomers(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -240,14 +278,15 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	buyer := sqlBuyer{
 		ID:             b.ID,
 		IsLiveCustomer: b.Live,
+		Debug:          b.Debug,
 		PublicKey:      b.PublicKey,
 		CustomerID:     b.CustomerID,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("is_live_customer, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3)"))
+	sql.Write([]byte("is_live_customer, debug, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -256,6 +295,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	result, err := stmt.Exec(buyer.IsLiveCustomer,
+		buyer.Debug,
 		buyer.PublicKey,
 		buyer.CustomerID,
 	)

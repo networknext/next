@@ -12,7 +12,7 @@ import (
 // TODO: The RouteShader and InternalConfig fields need to be
 // converted to slices or moved to different objects.
 type Buyer struct {
-	CompanyCode    string // TODO: remove field? It is defined by the parent customer
+	CompanyCode    string // TODO: chopping block - defined by the parent customer
 	ID             uint64
 	Live           bool
 	Debug          bool

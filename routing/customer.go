@@ -13,9 +13,9 @@ type Customer struct {
 	AutomaticSignInDomains string
 	Active                 bool
 	Debug                  bool
-	BuyerRef               *firestore.DocumentRef
-	SellerRef              *firestore.DocumentRef
-	CustomerID             int64 // customer_id - sql PK
+	BuyerRef               *firestore.DocumentRef // TODO: chopping block
+	SellerRef              *firestore.DocumentRef // TODO: chopping block
+	CustomerID             int64                  // customer_id - sql PK
 	// BuyerID                uint64 // binary.LittleEndian.Uint64(publicKey[:8]),
 	// SellerID               string // ID: name
 }

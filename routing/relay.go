@@ -182,7 +182,7 @@ type Relay struct {
 	Addr      net.UDPAddr `json:"addr"`
 	PublicKey []byte      `json:"public_key"`
 
-	Seller     Seller     `json:"seller"`
+	Seller     Seller     `json:"seller"` // TODO: chopping block
 	Datacenter Datacenter `json:"datacenter"`
 
 	NICSpeedMbps        int32 `json:"nicSpeedMbps"`
@@ -192,7 +192,7 @@ type Relay struct {
 
 	State RelayState `json:"state"`
 
-	ManagementAddr string `json:"management_addr"`
+	ManagementAddr string `json:"management_addr"` // TODO: convert to a legit network type
 	SSHUser        string `json:"ssh_user"`
 	SSHPort        int64  `json:"ssh_port"`
 
@@ -204,7 +204,7 @@ type Relay struct {
 	MemUsage float32 `json:"mem_usage"`
 
 	UpdateKey   []byte `json:"update_key"`
-	FirestoreID string `json:"firestore_id"`
+	FirestoreID string `json:"firestore_id"` // TODO: chopping block
 
 	// MRC is the monthly recurring cost for the relay
 	MRC Nibblin `json:"monthlyRecurringChargeNibblins"`
@@ -219,9 +219,7 @@ type Relay struct {
 	EndDate time.Time   `json:"endDate"`
 	Type    MachineType `json:"machineType"`
 
-	// Useful in data science analysis
-	// TODO: remove
-	SignedID int64 `json:"signed_id"`
+	SignedID int64 `json:"signed_id"` // TODO: chopping block
 
 	// SQL id (PK)
 	RelayID int64
