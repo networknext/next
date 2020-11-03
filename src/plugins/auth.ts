@@ -2,7 +2,6 @@ import store from '@/store'
 import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
-import { flatMap } from 'lodash'
 
 export class AuthService {
   private clientID: string
