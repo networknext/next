@@ -47,13 +47,13 @@ describe('UserToolWorkspace.vue', () => {
     expect(wrapper.find('input').exists()).toBe(true)
 
     // Check input placeholder
-    expect(wrapper.find('input').attributes('placeholder')).toBe('Enter a User Hash to view statistics')
+    expect(wrapper.find('input').attributes('placeholder')).toBe('Enter a User Id to view their sessions')
 
     // Check button
     expect(wrapper.find('button').text()).toBe('View Sessions')
 
     // Check for an info alert
-    expect(wrapper.find('.alert').text()).toBe('Please enter a User ID or Hash to view their sessions.')
+    expect(wrapper.find('.alert').text()).toBe('Please enter a User Id to view their sessions.')
     wrapper.destroy()
   })
 })
