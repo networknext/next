@@ -48,11 +48,9 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { Route, NavigationGuardNext } from 'vue-router'
 import UserSessions from '@/components/UserSessions.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
-import * as fnv from 'fnv-plus'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal

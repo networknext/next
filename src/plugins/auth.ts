@@ -90,7 +90,15 @@ export class AuthService {
           userProfile.auth0ID = authResult.sub
           userProfile.verified = authResult.email_verified
           userProfile.companyCode = companyCode
-          userProfile.newsletterConsent = newsletterConsent
+          userProfile.newsletterConsent = newsletterConsent;
+          (window as any).Intercom('boot', {
+            app_id: process.env.VUE_APP_INTERCOM_ID,
+            email: email,
+            user_id: userProfile.auth0ID,
+            unsubscribed_from_emails: newsletterConsent,
+            avatar: authResult.picture,
+            company: companyCode
+          })
 
           if (query.includes('signup=true')) {
             store.commit('UPDATE_IS_SIGNUP', true)
@@ -112,7 +120,11 @@ export class AuthService {
         })
       this.processAuthentication()
       router.push('/')
+      return
     }
+    (window as any).Intercom('boot', {
+      app_id: process.env.VUE_APP_INTERCOM_ID
+    })
   }
 }
 
