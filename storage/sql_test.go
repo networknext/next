@@ -413,3 +413,52 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestUpdateSQL(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	db, err := storage.NewSQLStorage(ctx, logger)
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	// var outerCustomer routing.Customer
+	// var outerBuyer routing.Buyer
+	// var outerSeller routing.Seller
+	// var outerDatacenter routing.Datacenter
+	// var outerDatacenterMap routing.DatacenterMap
+
+	t.Run("SetCustomer", func(t *testing.T) {
+		customer := routing.Customer{
+			Active:                 true,
+			Debug:                  true,
+			Code:                   "Compcode",
+			Name:                   "Company, Ltd.",
+			AutomaticSignInDomains: "fredscuttle.com",
+		}
+
+		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+
+		modifiedCustomer := customer
+		modifiedCustomer.Name = "No Longer The Company, Ltd."
+		modifiedCustomer.AutomaticSignInDomains = "fredscuttle.com,swampthing.com"
+		modifiedCustomer.Active = false
+		modifiedCustomer.Debug = false
+
+		err = db.SetCustomer(ctx, modifiedCustomer)
+		assert.NoError(t, err)
+
+		checkCustomer, err := db.Customer("Compcode")
+		assert.NoError(t, err)
+
+		assert.Equal(t, modifiedCustomer.Active, checkCustomer.Active)
+		assert.Equal(t, modifiedCustomer.Debug, checkCustomer.Debug)
+		assert.Equal(t, modifiedCustomer.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
+		assert.Equal(t, modifiedCustomer.Name, checkCustomer.Name)
+
+	})
+}

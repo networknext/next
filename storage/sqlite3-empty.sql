@@ -22,15 +22,15 @@ create table bw_billing_rules (
 create table customers (
   id integer primary key autoincrement,
   active boolean not null,
+  debug boolean not null default false,
   automatic_signin_domain varchar null,
   customer_name varchar not null,
-  customer_code varchar not null
+  customer_code varchar unique not null
 );
 
 create table buyers (
   id integer primary key autoincrement,
   is_live_customer boolean not null default false,
-  debug boolean not null default false,
   public_key bytea not null,
   customer_id integer not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
@@ -137,7 +137,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/11/03 09:23:50
+-- File generation: 2020/11/03 16:16:35
 
 -- machine_types
 insert into machine_types values (0, 'none');

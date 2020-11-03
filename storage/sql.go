@@ -136,7 +136,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing AddCustomer SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddCustomer SQL", "err", err)
 		return err
 	}
 
@@ -189,7 +189,7 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing RemoveCustomer SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveCustomer SQL", "err", err)
 		return err
 	}
 
@@ -216,9 +216,56 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 	return nil
 }
 
-// SetCustomer
-// TODO: SetCustomer
-func (db *SQL) SetCustomer(ctx context.Context, customer routing.Customer) error {
+// SetCustomer modifies a subset of fields in a customer record
+// in the database. Modifield fields:
+//		Name
+//		AutomaticSigninDomains
+//		Active
+//		Debug
+// TODO: change name to UpdateCustomer
+func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
+
+	var sql bytes.Buffer
+
+	db.customerMutex.RLock()
+	customer, ok := db.customers[c.Code]
+	if !ok {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", c.Code)}
+	}
+
+	sql.Write([]byte("update customers set (active, debug, automatic_signin_domain, customer_name) ="))
+	sql.Write([]byte("($1, $2, $3, $4) where id = $5"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing SetCustomer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, customer.CustomerID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	customer.Active = c.Active
+	customer.Debug = c.Debug
+	customer.AutomaticSignInDomains = c.AutomaticSignInDomains
+	customer.Name = c.Name
+
+	db.customers[c.Code] = customer
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -291,7 +338,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing AddBuyer SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddBuyer SQL", "err", err)
 		return err
 	}
 
@@ -344,7 +391,7 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing RemoveBuyer SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveBuyer SQL", "err", err)
 		return err
 	}
 
@@ -441,7 +488,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing AddSeller SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddSeller SQL", "err", err)
 		return err
 	}
 
@@ -492,7 +539,7 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing RemoveBuyer SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveBuyer SQL", "err", err)
 		return err
 	}
 
@@ -553,9 +600,12 @@ func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
 }
 
 // SetCustomerLink update the customer's buyer and seller references.
-// TODO: SetCustomerLink
+// TODO: SetCustomerLink chopping block
+// The Customer/Buyer/Seller relationship is controlled by primary and
+// foreign keys and can not be modified by any client. Also, the relevant
+// fields (BuyerRef and SellerRef) Are being dropped from the Customer type.
 func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error {
-	return nil
+	return fmt.Errorf("SetCustomerLink() not implemented in SQL Storer")
 }
 
 // Relay gets a copy of a relay with the specified relay ID
@@ -665,7 +715,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing AddRelay SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddRelay SQL", "err", err)
 		return err
 	}
 
@@ -732,7 +782,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing RemoveRelay SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveRelay SQL", "err", err)
 		return err
 	}
 
@@ -814,7 +864,7 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing RemoveDatacenter SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveDatacenter SQL", "err", err)
 		return err
 	}
 
@@ -889,7 +939,7 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing AddDatacenterMap SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddDatacenterMap SQL", "err", err)
 		return err
 	}
 
@@ -949,7 +999,7 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing RemoveDatacenterMap SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveDatacenterMap SQL", "err", err)
 		return err
 	}
 
@@ -1044,7 +1094,7 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
 		return err
 	}
 
@@ -1106,7 +1156,7 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error perparing AddDatacenter SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddDatacenter SQL", "err", err)
 		return err
 	}
 
