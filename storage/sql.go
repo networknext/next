@@ -181,7 +181,7 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 	db.customerMutex.RUnlock()
 
 	if !ok {
-		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%x", customerCode)}
+		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", customerCode)}
 	}
 
 	sql.Write([]byte("delete from customers where id = $1"))
@@ -330,6 +330,44 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 //  3. Any other error returned from the database
 // TODO: RemoveBuyer
 func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
+	var sql bytes.Buffer
+
+	db.buyerMutex.RLock()
+	buyer, ok := db.buyers[id]
+	db.buyerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", id)}
+	}
+
+	sql.Write([]byte("delete from buyers where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing RemoveBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(buyer.BuyerID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing buyer", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncBuyers(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 

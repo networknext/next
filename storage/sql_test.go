@@ -246,7 +246,7 @@ func TestDeleteSQL(t *testing.T) {
 	assert.NoError(t, err)
 
 	var outerCustomer routing.Customer
-	// var outerBuyer routing.Buyer
+	var outerBuyer routing.Buyer
 	// var outerSeller routing.Seller
 	// var outerDatacenter routing.Datacenter
 
@@ -282,7 +282,7 @@ func TestDeleteSQL(t *testing.T) {
 		err = db.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
 
-		_, err = db.Buyer(internalID)
+		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
 		seller := routing.Seller{
@@ -303,6 +303,14 @@ func TestDeleteSQL(t *testing.T) {
 		// sqlite3: RemoveCustomer error :FOREIGN KEY constraint failed
 		err = db.RemoveCustomer(ctx, "Compcode")
 		// fmt.Printf("RemoveCustomer error :%v\n", err)
+		assert.Error(t, err)
+
+		err = db.RemoveBuyer(ctx, outerBuyer.ID)
+		assert.NoError(t, err)
+
+		// Attempting to remove the customer should return a foreign
+		// key violation error (for the seller)
+		err = db.RemoveCustomer(ctx, "Compcode")
 		assert.Error(t, err)
 
 	})
