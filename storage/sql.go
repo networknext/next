@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -328,7 +329,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 //  1. The buyer ID does not exist
 //  2. Removing the buyer would break the foreigh key relationship (datacenter_maps)
 //  3. Any other error returned from the database
-// TODO: RemoveBuyer
 func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 	var sql bytes.Buffer
 
@@ -477,8 +477,45 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 //  1. The seller ID does not exist
 //  2. Removing the seller would break the foreigh key relationship (datacenters)
 //  3. Any other error returned from the database
-// TODO: RemoveSeller
 func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
+	var sql bytes.Buffer
+
+	db.sellerMutex.RLock()
+	seller, ok := db.sellers[id]
+	db.sellerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", id)}
+	}
+
+	sql.Write([]byte("delete from sellers where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing RemoveBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(seller.SellerID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing seller", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncSellers(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -678,9 +715,47 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	return nil
 }
 
-// RemoveRelay removes a relay with the provided relay ID from storage and returns an error if the relay could not be removed.
-// TODO: RemoveRelay
+// RemoveRelay removes a relay with the provided relay ID from storage and
+// returns any database errors to the caller
 func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
+	var sql bytes.Buffer
+
+	db.relayMutex.RLock()
+	relay, ok := db.relays[id]
+	db.relayMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", id)}
+	}
+
+	sql.Write([]byte("delete from relays where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing RemoveRelay SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(relay.RelayID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing relay", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncSellers(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -724,8 +799,45 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 //  1. The datacenter ID does not exist
 //  2. Removing the datacenter would break foreigh key relationships (datacenter_maps, relays)
 //  3. Any other error returned from the database
-// TODO: RemoveDatacenter
 func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
+	var sql bytes.Buffer
+
+	db.datacenterMutex.RLock()
+	datacenter, ok := db.datacenters[id]
+	db.datacenterMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", id)}
+	}
+
+	sql.Write([]byte("delete from datacenters where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing RemoveDatacenter SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(datacenter.DatacenterID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing datacenter", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncDatacenters(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -817,8 +929,50 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 }
 
 // RemoveDatacenterMap removes an entry from the DatacenterMaps table
-// TODO: RemoveDatacenterMap
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+	var sql bytes.Buffer
+
+	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+
+	db.datacenterMapMutex.RLock()
+	dcMap, ok := db.datacenterMaps[id]
+	db.datacenterMapMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "datacenter map", resourceRef: fmt.Sprintf("%016x", id)}
+	}
+
+	buyer := db.buyers[dcMap.BuyerID]
+	datacenter := db.datacenters[dcMap.DatacenterID]
+
+	sql.Write([]byte("delete from datacenter_maps where buyer_id = $1 and datacenter_id = $2"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error perparing RemoveDatacenterMap SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(buyer.BuyerID, datacenter.DatacenterID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncDatacenterMaps(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -937,20 +1091,18 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
 	}
 	dc := sqlDatacenter{
-		Name:         datacenter.Name,
-		Enabled:      datacenter.Enabled,
-		Latitude:     datacenter.Location.Latitude,
-		Longitude:    datacenter.Location.Longitude,
-		SupplierName: datacenter.SupplierName,
-		SellerID:     datacenter.SellerID,
+		Name:          datacenter.Name,
+		Enabled:       datacenter.Enabled,
+		Latitude:      datacenter.Location.Latitude,
+		Longitude:     datacenter.Location.Longitude,
+		SupplierName:  datacenter.SupplierName,
+		SellerID:      datacenter.SellerID,
+		StreetAddress: datacenter.StreetAddress,
 	}
 
-	// Add the datacenter in remote storage
 	sql.Write([]byte("insert into datacenters ("))
 	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
 	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5, $6, $7)"))
-
-	// sql.Write([]byte(" )")))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {

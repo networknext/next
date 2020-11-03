@@ -112,6 +112,7 @@ func TestAddSQL(t *testing.T) {
 				Longitude: 120.5,
 			},
 			StreetAddress: "Somewhere, USA",
+			SupplierName:  "supplier.local.name",
 			SellerID:      outerSeller.SellerID,
 		}
 
@@ -120,6 +121,13 @@ func TestAddSQL(t *testing.T) {
 
 		outerDatacenter, err = db.Datacenter(datacenter.ID)
 		assert.NoError(t, err)
+		assert.Equal(t, outerDatacenter.ID, datacenter.ID)
+		assert.Equal(t, outerDatacenter.Name, datacenter.Name)
+		assert.Equal(t, outerDatacenter.StreetAddress, datacenter.StreetAddress)
+		assert.Equal(t, outerDatacenter.Location.Latitude, datacenter.Location.Latitude)
+		assert.Equal(t, outerDatacenter.Location.Longitude, datacenter.Location.Longitude)
+		assert.Equal(t, outerDatacenter.SupplierName, datacenter.SupplierName)
+		assert.Equal(t, outerDatacenter.SellerID, datacenter.SellerID)
 	})
 
 	t.Run("AddBuyer", func(t *testing.T) {
@@ -239,18 +247,17 @@ func TestDeleteSQL(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	// NewSQLStorage syncs the local sync number from the remote and
-	// runs all the sync*() methods
 	db, err := storage.NewSQLStorage(ctx, logger)
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
 	var outerCustomer routing.Customer
 	var outerBuyer routing.Buyer
-	// var outerSeller routing.Seller
-	// var outerDatacenter routing.Datacenter
+	var outerSeller routing.Seller
+	var outerDatacenter routing.Datacenter
+	var outerDatacenterMap routing.DatacenterMap
 
-	t.Run("RemoveCustomer", func(t *testing.T) {
+	t.Run("ExerciseFKs", func(t *testing.T) {
 
 		customer := routing.Customer{
 			Active:                 true,
@@ -295,23 +302,114 @@ func TestDeleteSQL(t *testing.T) {
 		err = db.AddSeller(ctx, seller)
 		assert.NoError(t, err)
 
-		_, err = db.Seller("Compcode")
+		outerSeller, err = db.Seller("Compcode")
+		assert.NoError(t, err)
+
+		datacenter := routing.Datacenter{
+			ID:      crypto.HashID("some.locale.name"),
+			Name:    "some.locale.name",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+			StreetAddress: "Somewhere, USA",
+			SellerID:      outerSeller.SellerID,
+		}
+
+		err = db.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		outerDatacenter, err = db.Datacenter(datacenter.ID)
+		assert.NoError(t, err)
+
+		dcMap := routing.DatacenterMap{
+			Alias:        "local.map",
+			BuyerID:      outerBuyer.ID,
+			DatacenterID: outerDatacenter.ID,
+		}
+
+		err = db.AddDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		dcMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
+		assert.Equal(t, 1, len(dcMaps))
+		outerDatacenterMap = dcMaps[outerBuyer.ID]
+
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		assert.NoError(t, err)
+
+		rid := crypto.HashID(addr.String())
+
+		relayPublicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(relayPublicKey)
+		assert.NoError(t, err)
+
+		updateKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(updateKey)
+		assert.NoError(t, err)
+
+		relay := routing.Relay{
+			ID:             rid,
+			Name:           "local.1",
+			Addr:           *addr,
+			ManagementAddr: "1.2.3.4",
+			SSHPort:        22,
+			SSHUser:        "fred",
+			MaxSessions:    1000,
+			PublicKey:      relayPublicKey,
+			UpdateKey:      updateKey,
+			Datacenter:     outerDatacenter,
+			MRC:            19700000000000,
+			Overage:        26000000000000,
+			BWRule:         routing.BWRuleBurst,
+			ContractTerm:   12,
+			StartDate:      time.Now(),
+			EndDate:        time.Now(),
+			Type:           routing.BareMetal,
+			State:          routing.RelayStateMaintenance,
+		}
+
+		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
 		// Attempting to remove the customer should return a foreign
-		// key violation error (for buyer and seller)
-		// sqlite3: RemoveCustomer error :FOREIGN KEY constraint failed
+		// key violation error (for buyer and/or seller)
+		// sqlite3: FOREIGN KEY constraint failed
 		err = db.RemoveCustomer(ctx, "Compcode")
-		// fmt.Printf("RemoveCustomer error :%v\n", err)
 		assert.Error(t, err)
+
+		// Attempting the remove the buyer should return an FK
+		// violation error (for datacenter maps and banned users (TBD))
+		err = db.RemoveBuyer(ctx, outerBuyer.ID)
+		assert.Error(t, err)
+
+		// Attempting the remove the seller should return an FK
+		// violation error (for the datacenter)
+		err = db.RemoveSeller(ctx, outerSeller.ID)
+		assert.Error(t, err)
+
+		// Attempting to remove the datacenter should return an FK
+		// violation error (for the datacenter map)
+		err = db.RemoveDatacenter(ctx, outerDatacenter.ID)
+		assert.Error(t, err)
+
+		err = db.RemoveDatacenterMap(ctx, outerDatacenterMap)
+		assert.NoError(t, err)
 
 		err = db.RemoveBuyer(ctx, outerBuyer.ID)
 		assert.NoError(t, err)
 
-		// Attempting to remove the customer should return a foreign
-		// key violation error (for the seller)
-		err = db.RemoveCustomer(ctx, "Compcode")
-		assert.Error(t, err)
+		err = db.RemoveRelay(ctx, relay.ID)
+		assert.NoError(t, err)
 
+		err = db.RemoveDatacenter(ctx, outerDatacenter.ID)
+		assert.NoError(t, err)
+
+		err = db.RemoveSeller(ctx, outerSeller.ID)
+		assert.NoError(t, err)
+
+		err = db.RemoveCustomer(ctx, "Compcode")
+		assert.NoError(t, err)
 	})
 }

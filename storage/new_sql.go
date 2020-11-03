@@ -288,9 +288,10 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 				Latitude:  dc.Latitude,
 				Longitude: dc.Longitude,
 			},
-			SupplierName: dc.SupplierName,
-			SellerID:     dc.SellerID,
-			DatacenterID: dc.ID,
+			SupplierName:  dc.SupplierName,
+			StreetAddress: dc.StreetAddress,
+			SellerID:      dc.SellerID,
+			DatacenterID:  dc.ID,
 		}
 
 	}
@@ -611,7 +612,6 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 
 		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
-
 	}
 
 	db.datacenterMapMutex.Lock()
