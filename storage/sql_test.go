@@ -452,7 +452,7 @@ func TestUpdateSQL(t *testing.T) {
 
 	var customerWithID routing.Customer
 	var buyerWithID routing.Buyer
-	// var outerSeller routing.Seller
+	var sellerWithID routing.Seller
 	// var outerDatacenter routing.Datacenter
 	// var outerDatacenterMap routing.DatacenterMap
 
@@ -537,8 +537,10 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.AddSeller(ctx, seller)
 		assert.NoError(t, err)
 
-		sellerWithID, err := db.Seller("Compcode")
+		sellerWithID, err = db.Seller("Compcode")
 		assert.NoError(t, err)
+
+		// fmt.Printf("SetSeller test - sellerWithID: %s\n", sellerWithID.String())
 
 		sellerWithID.IngressPriceNibblinsPerGB = 100
 		sellerWithID.EgressPriceNibblinsPerGB = 200
@@ -550,6 +552,123 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
+
+		// fmt.Printf("SetSeller test - checkSeller: %s\n", checkSeller.String())
+
+	})
+
+	t.Run("SetRelay", func(t *testing.T) {
+
+		// fmt.Printf("SetRelay test - sellerWithID.SellerID: '%d'\n", sellerWithID.SellerID)
+
+		did := crypto.HashID("some.locale.name")
+		datacenter := routing.Datacenter{
+			ID:      did,
+			Name:    "some.locale.name",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+			StreetAddress: "Somewhere, USA",
+			SupplierName:  "supplier.local.name",
+			SellerID:      sellerWithID.SellerID,
+		}
+
+		// fmt.Printf("SetRelay test - datacenter: %s\n", datacenter.String())
+
+		err = db.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		datacenterWithID, err := db.Datacenter(did)
+		assert.NoError(t, err)
+
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		assert.NoError(t, err)
+
+		rid := crypto.HashID(addr.String())
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		updateKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(updateKey)
+		assert.NoError(t, err)
+
+		// fmt.Printf("AddRelay test - outerDatacenter: %s\n", outerDatacenter.String())
+
+		// fields not stored in the database are not tested here
+		relay := routing.Relay{
+			ID:             rid,
+			Name:           "local.1",
+			Addr:           *addr,
+			ManagementAddr: "1.2.3.4",
+			SSHPort:        22,
+			SSHUser:        "fred",
+			MaxSessions:    1000,
+			PublicKey:      publicKey,
+			UpdateKey:      updateKey,
+			Datacenter:     datacenterWithID,
+			MRC:            19700000000000,
+			Overage:        26000000000000,
+			BWRule:         routing.BWRuleBurst,
+			ContractTerm:   12,
+			StartDate:      time.Now(),
+			EndDate:        time.Now(),
+			Type:           routing.BareMetal,
+			State:          routing.RelayStateMaintenance,
+		}
+
+		err = db.AddRelay(ctx, relay)
+		assert.NoError(t, err)
+
+		checkRelay, err := db.Relay(rid)
+		assert.NoError(t, err)
+
+		// set some modifications
+		newAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+		assert.NoError(t, err)
+
+		checkRelay.Name = "local.2"
+		checkRelay.Addr = *newAddr
+		checkRelay.ManagementAddr = "9.8.7.6"
+		checkRelay.SSHPort = 13
+		checkRelay.SSHUser = "Fred"
+		checkRelay.MaxSessions = 10000
+		checkRelay.PublicKey = []byte("public key")
+		checkRelay.UpdateKey = []byte("update key")
+		// checkRelay.Datacenter = only one datacenter available...
+		checkRelay.MRC = 197
+		checkRelay.Overage = 260
+		checkRelay.BWRule = routing.BWRuleFlat
+		checkRelay.ContractTerm = 1
+		checkRelay.StartDate = time.Now()
+		checkRelay.EndDate = time.Now()
+		checkRelay.Type = routing.VirtualMachine
+		checkRelay.State = routing.RelayStateEnabled
+
+		err = db.SetRelay(ctx, checkRelay)
+		assert.NoError(t, err)
+
+		checkModifiedRelay, err := db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, checkModifiedRelay.Name, checkRelay.Name)
+		assert.Equal(t, checkModifiedRelay.Addr, checkRelay.Addr)
+		assert.Equal(t, checkModifiedRelay.ManagementAddr, checkRelay.ManagementAddr)
+		assert.Equal(t, checkModifiedRelay.SSHPort, checkRelay.SSHPort)
+		assert.Equal(t, checkModifiedRelay.SSHUser, checkRelay.SSHUser)
+		assert.Equal(t, checkModifiedRelay.MaxSessions, checkRelay.MaxSessions)
+		assert.Equal(t, checkModifiedRelay.PublicKey, checkRelay.PublicKey)
+		assert.Equal(t, checkModifiedRelay.UpdateKey, checkRelay.UpdateKey)
+		assert.Equal(t, checkModifiedRelay.MRC, checkRelay.MRC)
+		assert.Equal(t, checkModifiedRelay.Overage, checkRelay.Overage)
+		assert.Equal(t, checkModifiedRelay.BWRule, checkRelay.BWRule)
+		assert.Equal(t, checkModifiedRelay.ContractTerm, checkRelay.ContractTerm)
+		assert.Equal(t, checkModifiedRelay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
+		assert.Equal(t, checkModifiedRelay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
+		assert.Equal(t, checkModifiedRelay.Type, checkRelay.Type)
+		assert.Equal(t, checkModifiedRelay.State, checkRelay.State)
 
 	})
 }

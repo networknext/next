@@ -687,7 +687,6 @@ func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
 }
 
 // SetCustomerLink update the customer's buyer and seller references.
-// TODO: SetCustomerLink chopping block
 // The Customer/Buyer/Seller relationship is controlled by primary and
 // foreign keys and can not be modified by any client. Also, the relevant
 // fields (BuyerRef and SellerRef) Are being dropped from the Customer type.
@@ -900,8 +899,106 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 
 // SetRelay updates the relay in storage with the provided copy and returns an
 // error if the relay could not be updated.
-// TODO: SetRelay
-func (db *SQL) SetRelay(ctx context.Context, relay routing.Relay) error {
+func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
+
+	var sql bytes.Buffer
+
+	db.relayMutex.RLock()
+	_, ok := db.relays[r.ID]
+	db.relayMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", r.ID)}
+	}
+
+	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	}
+
+	relay := sqlRelay{
+		Name:               r.Name,
+		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIPPort:       publicIPPort,
+		PublicKey:          r.PublicKey,
+		UpdateKey:          r.UpdateKey,
+		NICSpeedMbps:       int64(r.NICSpeedMbps),
+		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
+		DatacenterID:       r.Datacenter.DatacenterID,
+		ManagementIP:       r.ManagementAddr,
+		SSHUser:            r.SSHUser,
+		SSHPort:            r.SSHPort,
+		State:              int64(r.State),
+		MaxSessions:        int64(r.MaxSessions),
+		MRC:                int64(r.MRC),
+		Overage:            int64(r.Overage),
+		BWRule:             int64(r.BWRule),
+		ContractTerm:       int64(r.ContractTerm),
+		StartDate:          r.StartDate,
+		EndDate:            r.EndDate,
+		MachineType:        int64(r.Type),
+	}
+
+	sql.Write([]byte("update relays set ("))
+	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
+	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
+	sql.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20) where id = $21"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing SetRelay SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		relay.ContractTerm,
+		relay.Name,
+		relay.EndDate,
+		relay.IncludedBandwithGB,
+		relay.ManagementIP,
+		relay.MaxSessions,
+		relay.MRC,
+		relay.Overage,
+		relay.NICSpeedMbps,
+		relay.PublicIP,
+		relay.PublicIPPort,
+		relay.PublicKey,
+		relay.SSHPort,
+		relay.SSHUser,
+		relay.StartDate,
+		relay.UpdateKey,
+		relay.BWRule,
+		relay.DatacenterID,
+		relay.MachineType,
+		relay.State,
+		r.RelayID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying relay", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.relayMutex.Lock()
+	db.relays[r.ID] = r
+	db.relayMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -1120,9 +1217,8 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 }
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
-// TODO: SetRelayMetadata
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-	return nil
+	return fmt.Errorf("SetRelayMetadata() not implemented in SQL Storer")
 }
 
 // CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
