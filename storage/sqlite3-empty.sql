@@ -31,6 +31,7 @@ create table customers (
 create table buyers (
   id integer primary key autoincrement,
   is_live_customer boolean not null default false,
+  debug boolean not null default false,
   public_key bytea not null,
   customer_id integer not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
@@ -137,7 +138,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/11/03 16:16:35
+-- File generation: 2020/11/04 09:23:38
 
 -- machine_types
 insert into machine_types values (0, 'none');

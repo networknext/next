@@ -26,7 +26,7 @@ func SetupEnv() {
 	os.Setenv("DB_SYNC_INTERVAL", "10s")
 }
 
-func TestAddSQL(t *testing.T) {
+func TestInsertSQL(t *testing.T) {
 
 	SetupEnv()
 
@@ -186,17 +186,24 @@ func TestAddSQL(t *testing.T) {
 			MaxSessions:    1000,
 			PublicKey:      publicKey,
 			UpdateKey:      updateKey,
-			Datacenter:     outerDatacenter,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
-			StartDate:      time.Now(),
-			EndDate:        time.Now(),
-			Type:           routing.BareMetal,
-			State:          routing.RelayStateMaintenance,
+			// Datacenter:     outerDatacenter,
+			MRC:          19700000000000,
+			Overage:      26000000000000,
+			BWRule:       routing.BWRuleBurst,
+			ContractTerm: 12,
+			StartDate:    time.Now(),
+			EndDate:      time.Now(),
+			Type:         routing.BareMetal,
+			State:        routing.RelayStateMaintenance,
 		}
 
+		// adding a relay w/o a valid datacenter should return an FK violation error
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+
+		// TODO repeat the above test with bwrule, type and state
+
+		relay.Datacenter = outerDatacenter
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
@@ -379,12 +386,12 @@ func TestDeleteSQL(t *testing.T) {
 		err = db.RemoveCustomer(ctx, "Compcode")
 		assert.Error(t, err)
 
-		// Attempting the remove the buyer should return an FK
+		// Attempting to remove the buyer should return an FK
 		// violation error (for datacenter maps and banned users (TBD))
 		err = db.RemoveBuyer(ctx, outerBuyer.ID)
 		assert.Error(t, err)
 
-		// Attempting the remove the seller should return an FK
+		// Attempting to remove the seller should return an FK
 		// violation error (for the datacenter)
 		err = db.RemoveSeller(ctx, outerSeller.ID)
 		assert.Error(t, err)
@@ -425,7 +432,7 @@ func TestUpdateSQL(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
-	// var outerCustomer routing.Customer
+	var customerWithID routing.Customer
 	// var outerBuyer routing.Buyer
 	// var outerSeller routing.Seller
 	// var outerDatacenter routing.Datacenter
@@ -434,7 +441,6 @@ func TestUpdateSQL(t *testing.T) {
 	t.Run("SetCustomer", func(t *testing.T) {
 		customer := routing.Customer{
 			Active:                 true,
-			Debug:                  true,
 			Code:                   "Compcode",
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -443,22 +449,62 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.AddCustomer(ctx, customer)
 		assert.NoError(t, err)
 
-		modifiedCustomer := customer
-		modifiedCustomer.Name = "No Longer The Company, Ltd."
-		modifiedCustomer.AutomaticSignInDomains = "fredscuttle.com,swampthing.com"
-		modifiedCustomer.Active = false
-		modifiedCustomer.Debug = false
+		// the CustomerID field is the PK and is set by AddCustomer(). In
+		// production usage this field would already be set and sync'd.
+		customerWithID, err = db.Customer("Compcode")
 
-		err = db.SetCustomer(ctx, modifiedCustomer)
+		customerWithID.Name = "No Longer The Company, Ltd."
+		customerWithID.AutomaticSignInDomains = "fredscuttle.com,swampthing.com"
+		customerWithID.Active = false
+		customerWithID.Debug = false
+
+		err = db.SetCustomer(ctx, customerWithID)
 		assert.NoError(t, err)
 
 		checkCustomer, err := db.Customer("Compcode")
 		assert.NoError(t, err)
 
-		assert.Equal(t, modifiedCustomer.Active, checkCustomer.Active)
-		assert.Equal(t, modifiedCustomer.Debug, checkCustomer.Debug)
-		assert.Equal(t, modifiedCustomer.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
-		assert.Equal(t, modifiedCustomer.Name, checkCustomer.Name)
+		assert.Equal(t, customerWithID.Active, checkCustomer.Active)
+		assert.Equal(t, customerWithID.Debug, checkCustomer.Debug)
+		assert.Equal(t, customerWithID.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
+		assert.Equal(t, customerWithID.Name, checkCustomer.Name)
+
+	})
+
+	t.Run("SetBuyer", func(t *testing.T) {
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
+		buyer := routing.Buyer{
+			ID:         internalID,
+			Live:       true,
+			Debug:      true,
+			PublicKey:  publicKey,
+			CustomerID: customerWithID.CustomerID,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		buyerWithID, err := db.Buyer(internalID)
+		assert.NoError(t, err)
+
+		buyerWithID.Live = false
+		buyerWithID.Debug = false
+		buyerWithID.PublicKey = []byte("")
+
+		err = db.SetBuyer(ctx, buyerWithID)
+		assert.NoError(t, err)
+
+		checkBuyer, err := db.Buyer(internalID)
+		assert.NoError(t, err)
+		assert.Equal(t, checkBuyer.Live, buyerWithID.Live)
+		assert.Equal(t, checkBuyer.Debug, buyerWithID.Debug)
+		assert.Equal(t, checkBuyer.PublicKey, buyerWithID.PublicKey)
 
 	})
 }

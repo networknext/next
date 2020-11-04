@@ -222,13 +222,14 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 //		AutomaticSigninDomains
 //		Active
 //		Debug
-// TODO: change name to UpdateCustomer
 func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 
 	var sql bytes.Buffer
 
 	db.customerMutex.RLock()
-	customer, ok := db.customers[c.Code]
+	_, ok := db.customers[c.Code]
+	db.customerMutex.RUnlock()
+
 	if !ok {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", c.Code)}
 	}
@@ -242,7 +243,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, customer.CustomerID)
+	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, c.CustomerID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -257,14 +258,9 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	customer.Active = c.Active
-	customer.Debug = c.Debug
-	customer.AutomaticSignInDomains = c.AutomaticSignInDomains
-	customer.Name = c.Name
-
-	db.customers[c.Code] = customer
-
-	db.IncrementSequenceNumber(ctx)
+	db.customerMutex.Lock()
+	db.customers[c.Code] = c
+	db.customerMutex.Unlock()
 
 	return nil
 }
@@ -273,9 +269,9 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 func (db *SQL) Buyer(id uint64) (routing.Buyer, error) {
 	db.buyerMutex.RLock()
-	defer db.buyerMutex.RUnlock()
-
 	b, found := db.buyers[id]
+	db.buyerMutex.RUnlock()
+
 	if !found {
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", id)}
 	}
@@ -299,12 +295,13 @@ func (db *SQL) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
 // Buyers returns a copy of all stored buyers.
 func (db *SQL) Buyers() []routing.Buyer {
 	db.buyerMutex.RLock()
-	defer db.buyerMutex.RUnlock()
 
 	var buyers []routing.Buyer
 	for _, buyer := range db.buyers {
 		buyers = append(buyers, buyer)
 	}
+
+	db.buyerMutex.RUnlock()
 
 	sort.Slice(buyers, func(i int, j int) bool { return buyers[i].ID < buyers[j].ID })
 	return buyers
@@ -418,10 +415,53 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// SetBuyer updates the buyer in storage with the provided copy and
-// returns an error if the buyer could not be updated.
+// SetBuyer updates a subset of the fields in the buyers table and
+// updates the local copy.
+//		Live
+//		Debug
+//		PublicKey
 // TODO: SetBuyer
-func (db *SQL) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
+func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
+
+	var sql bytes.Buffer
+
+	db.buyerMutex.RLock()
+	_, ok := db.buyers[b.ID]
+	db.buyerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", b.ID)}
+	}
+
+	sql.Write([]byte("update buyers set (is_live_customer, debug, public_key) = ($1, $2, $3) where id = $4 "))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(b.Live, b.Debug, b.PublicKey, b.BuyerID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.buyerMutex.Lock()
+	db.buyers[b.ID] = b
+	db.buyerMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
