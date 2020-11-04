@@ -570,8 +570,6 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	connections := make([]*net.UDPConn, numThreads)
-
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, postSessionHandler, backendMetrics.ServerUpdateMetrics)
 	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
@@ -584,6 +582,7 @@ func mainReturnWithCode() int {
 			}
 
 			conn := lp.(*net.UDPConn)
+			defer conn.Close()
 
 			if err := conn.SetReadBuffer(readBuffer); err != nil {
 				panic(fmt.Sprintf("could not set connection read buffer size: %v", err))
@@ -592,8 +591,6 @@ func mainReturnWithCode() int {
 			if err := conn.SetWriteBuffer(writeBuffer); err != nil {
 				panic(fmt.Sprintf("could not set connection write buffer size: %v", err))
 			}
-
-			connections[thread] = conn
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 			for {
@@ -657,10 +654,6 @@ func mainReturnWithCode() int {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
-
-	for _, connection := range connections {
-		connection.Close()
-	}
 
 	return 0
 }
