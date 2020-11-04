@@ -209,7 +209,9 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 		return err
 	}
 
-	db.syncCustomers(ctx)
+	db.customerMutex.Lock()
+	delete(db.customers, customerCode)
+	db.customerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -408,7 +410,9 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	db.syncBuyers(ctx)
+	db.buyerMutex.Lock()
+	delete(db.buyers, buyer.ID)
+	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -420,7 +424,6 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 //		Live
 //		Debug
 //		PublicKey
-// TODO: SetBuyer
 func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 	var sql bytes.Buffer
@@ -599,7 +602,9 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 		return err
 	}
 
-	db.syncSellers(ctx)
+	db.sellerMutex.Lock()
+	delete(db.sellers, seller.ID)
+	db.sellerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -842,7 +847,9 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	db.syncSellers(ctx)
+	db.relayMutex.Lock()
+	delete(db.relays, relay.ID)
+	db.relayMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -924,7 +931,9 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	db.syncDatacenters(ctx)
+	db.datacenterMutex.Lock()
+	delete(db.datacenters, datacenter.ID)
+	db.datacenterMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -1059,7 +1068,9 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return err
 	}
 
-	db.syncDatacenterMaps(ctx)
+	db.datacenterMapMutex.Lock()
+	delete(db.datacenterMaps, id)
+	db.datacenterMapMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 

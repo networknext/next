@@ -407,17 +407,32 @@ func TestDeleteSQL(t *testing.T) {
 		err = db.RemoveBuyer(ctx, outerBuyer.ID)
 		assert.NoError(t, err)
 
+		_, err = db.Buyer(outerBuyer.ID)
+		assert.Error(t, err)
+
 		err = db.RemoveRelay(ctx, relay.ID)
 		assert.NoError(t, err)
+
+		_, err = db.Relay(relay.ID)
+		assert.Error(t, err)
 
 		err = db.RemoveDatacenter(ctx, outerDatacenter.ID)
 		assert.NoError(t, err)
 
+		_, err = db.Datacenter(outerDatacenter.ID)
+		assert.Error(t, err)
+
 		err = db.RemoveSeller(ctx, outerSeller.ID)
 		assert.NoError(t, err)
 
+		_, err = db.Seller(outerSeller.ID)
+		assert.Error(t, err)
+
 		err = db.RemoveCustomer(ctx, "Compcode")
 		assert.NoError(t, err)
+
+		_, err = db.Customer("Compcode")
+		assert.Error(t, err)
 	})
 }
 
