@@ -44,6 +44,7 @@ type RelayUpdateHandlerConfig struct {
 	Metrics           *metrics.RelayUpdateMetrics
 	Storer            storage.Storer
 	InternalIPSellers []string
+	EnableInternalIPs bool
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -307,9 +308,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		allRelayData := params.RelayMap.GetAllRelayData()
 
 		shouldTryUseInternalIPs := false
-		for i := range params.InternalIPSellers {
-			if params.InternalIPSellers[i] == relay.Seller.Name {
-				shouldTryUseInternalIPs = true
+		if params.EnableInternalIPs {
+			for i := range params.InternalIPSellers {
+				if params.InternalIPSellers[i] == relay.Seller.Name {
+					shouldTryUseInternalIPs = true
+				}
 			}
 		}
 
