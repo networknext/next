@@ -652,6 +652,7 @@ func mainReturnWithCode() int {
 	enableInternalIPs, err := envvar.GetBool("ENABLE_INTERNAL_IPS", false)
 	if err != nil {
 		level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
+		return 1
 	}
 
 	commonInitParams := transport.RelayInitHandlerConfig{
