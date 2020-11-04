@@ -206,7 +206,7 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 
 		// If we've hit the retry limit, try again using another portal publisher.
 		// If this is the last iteration and we still can't publish the message, error out.
-		if retryCount >= post.portalPublishMaxRetries && i == len(post.portalPublishers)-1 {
+		if i == len(post.portalPublishers)-1 {
 			return byteCount, errors.New("exceeded retry count on portal data")
 		}
 	}
