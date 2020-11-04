@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -295,7 +295,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore", numRelays))
 			for i := uint64(0); i < numRelays; i++ {
 				addrExternal := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
-				addrInternal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10000 + int(i)}
+				addrInternal := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 				id := crypto.HashID(addrExternal.String())
 				if err := db.AddRelay(ctx, routing.Relay{
 					Name:           fmt.Sprintf("local.test_relay.%d", i),
@@ -329,7 +329,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			}
 		} else {
 			addr1External := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			addr1Internal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10000}
+			addr1Internal := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
 			rid1 := crypto.HashID(addr1External.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "local.test_relay.a",
@@ -356,7 +356,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				os.Exit(1)
 			}
 			addr2External := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			addr2Internal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10001}
+			addr2Internal := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
 			rid2 := crypto.HashID(addr2External.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "local.test_relay.b",
@@ -376,7 +376,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				os.Exit(1)
 			}
 			addr3External := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			addr3Internal := net.UDPAddr{IP: net.ParseIP("127.0.2.1"), Port: 10002}
+			addr3Internal := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
 			rid3 := crypto.HashID(addr3External.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "abc.xyz",
