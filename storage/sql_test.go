@@ -453,7 +453,7 @@ func TestUpdateSQL(t *testing.T) {
 	var customerWithID routing.Customer
 	var buyerWithID routing.Buyer
 	var sellerWithID routing.Seller
-	// var outerDatacenter routing.Datacenter
+	var datacenterWithID routing.Datacenter
 	// var outerDatacenterMap routing.DatacenterMap
 
 	t.Run("SetCustomer", func(t *testing.T) {
@@ -540,8 +540,6 @@ func TestUpdateSQL(t *testing.T) {
 		sellerWithID, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 
-		// fmt.Printf("SetSeller test - sellerWithID: %s\n", sellerWithID.String())
-
 		sellerWithID.IngressPriceNibblinsPerGB = 100
 		sellerWithID.EgressPriceNibblinsPerGB = 200
 
@@ -552,14 +550,9 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
-
-		// fmt.Printf("SetSeller test - checkSeller: %s\n", checkSeller.String())
-
 	})
 
-	t.Run("SetRelay", func(t *testing.T) {
-
-		// fmt.Printf("SetRelay test - sellerWithID.SellerID: '%d'\n", sellerWithID.SellerID)
+	t.Run("SetDatacenter", func(t *testing.T) {
 
 		did := crypto.HashID("some.locale.name")
 		datacenter := routing.Datacenter{
@@ -575,13 +568,36 @@ func TestUpdateSQL(t *testing.T) {
 			SellerID:      sellerWithID.SellerID,
 		}
 
-		// fmt.Printf("SetRelay test - datacenter: %s\n", datacenter.String())
+		// fmt.Printf("SetDatacenter test - datacenter: %s\n", datacenter.String())
 
 		err = db.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
-		datacenterWithID, err := db.Datacenter(did)
+		datacenterWithID, err = db.Datacenter(did)
 		assert.NoError(t, err)
+
+		modifiedDatacenter := datacenterWithID
+		modifiedDatacenter.Name = "some.newlocale.name"
+		modifiedDatacenter.Enabled = false
+		modifiedDatacenter.Location.Longitude = 70.5
+		modifiedDatacenter.Location.Latitude = 120.5
+		modifiedDatacenter.StreetAddress = "Somewhere, else, USA"
+		modifiedDatacenter.SupplierName = "supplier.nonlocal.name"
+
+		err = db.SetDatacenter(ctx, modifiedDatacenter)
+		assert.NoError(t, err)
+
+		checkModDC, err := db.Datacenter(did)
+		assert.NoError(t, err)
+		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
+		assert.Equal(t, modifiedDatacenter.Enabled, checkModDC.Enabled)
+		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
+		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
+		assert.Equal(t, modifiedDatacenter.StreetAddress, checkModDC.StreetAddress)
+		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
+	})
+
+	t.Run("SetRelay", func(t *testing.T) {
 
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
