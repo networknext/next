@@ -589,6 +589,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	for i := int32(0); i < numTokens-2; i++ {
 		relayIndex := routeRelays[i]
 
+		// if relayIndex < totalNumRelays ?
 		for j := int32(0); j < totalNumRelays; j++ {
 
 			if j == relayIndex {
@@ -605,20 +606,18 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 					for i := range internalIPSellers {
 						if internalIPSellers[i] == relay.Seller.Name {
 							shouldTryUseInternalIPs = true
+							break
 						}
 					}
 
 					// check if the previous relay is the same seller
 					if shouldTryUseInternalIPs && i >= 1 {
-						prevIndex := routeRelays[i-1]
-						for jprev := int32(0); jprev < totalNumRelays; jprev++ {
-							if jprev == prevIndex {
-								prevID := allRelayIDs[prevIndex]
-								prev, err := storer.Relay(prevID)
-								if err == nil && prev.Seller.ID == relay.Seller.ID {
-									routeAddresses[i+1] = &relay.InternalAddr
-								}
-								break
+						prevRelayIndex := routeRelays[i-1]
+						if prevRelayIndex < totalNumRelays {
+							prevID := allRelayIDs[prevRelayIndex]
+							prev, err := storer.Relay(prevID)
+							if err == nil && prev.Seller.ID == relay.Seller.ID {
+								routeAddresses[i+1] = &relay.InternalAddr
 							}
 						}
 					}
