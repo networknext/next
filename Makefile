@@ -225,7 +225,11 @@ export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
 ifndef ENABLE_BIGTABLE_INSERTION
-export ENABLE_BIGTABLE_INSERTION = true
+export ENABLE_BIGTABLE_INSERTION = false
+endif
+
+ifndef GOOGLE_BIGTABLE_TABLE_NAME
+export GOOGLE_BIGTABLE_TABLE_NAME = "BTTest"
 endif
 
 .PHONY: help

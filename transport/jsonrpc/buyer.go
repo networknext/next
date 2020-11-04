@@ -110,6 +110,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	sessionIDs := make([]string, 0)
 
 	userID := args.UserID
+	//fmt.printf("User ID is originally %s\n", userID)
 
 	// Hash the ID
 	hash := fnv.New64a()
@@ -129,13 +130,20 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		return err
 	}
 
+	//fmt.printf("Live sesions length is %d\n Len of reply.Sessions is %d\n", len(liveSessions), len(reply.Sessions))
+
 	for _, session := range liveSessions {
+		//fmt.printf("User Hash is %s, session User Hash is %016x\n", userHash, session.UserHash)
+		//fmt.printf("User ID is %s, session User Hash is %016x\n", userID, session.UserHash)
 		// Check both the ID and the hash just in case the ID is actually a hash from the top sessions table
 		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) {
 			reply.Sessions = append(reply.Sessions, session)
+			//fmt.printf("session.ID is %d, %016x\n", session.ID, session.ID)
 			sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 		}
 	}
+
+	//fmt.printf("After live sessions, len of reply.Sessions is %d\n", len(reply.Sessions))
 
 	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
 
@@ -147,12 +155,17 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		return err
 	}
 
+	//fmt.printf("Rows by Hash len is %d\n Len of reply.Sessions is %d\n", len(rowsByHash), len(reply.Sessions))
+
 	rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
+
+	//fmt.printf("Rows by ID len is %d\n Len of reply.Sessions is %d\n", len(rowsByID), len(reply.Sessions))
+
 
 	liveIDString := strings.Join(sessionIDs, ",")
 
@@ -167,11 +180,14 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	} else if len(rowsByID) > 0 {
 		for _, row := range rowsByID {
 			sessionMeta.UnmarshalBinary(row[btCfName][0].Value)
+			//fmt.printf("Live ID String is %s, sessionMeta.ID is %s / %016x\n", liveIDString, sessionMeta.ID, sessionMeta.ID)
 			if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 				reply.Sessions = append(reply.Sessions, sessionMeta)
 			}
 		}
 	}
+
+	//fmt.printf("End of Func: Len of reply.Sessions is %d\n", len(reply.Sessions))
 
 	return nil
 }
@@ -489,7 +505,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
+	//fmt.printf("Reply Meta BuyerID: %d\n", reply.Meta.BuyerID)
+	// //fmt.printf("Storage local buyers: %v", s.Storage.localBuyers)
 	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		level.Error(s.Logger).Log("err", err)
