@@ -452,10 +452,6 @@ deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-2 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-5 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-6 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-7 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-8 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
