@@ -611,10 +611,52 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 	return nil
 }
 
-// SetSeller updates the seller in storage with the provided copy and returns
-// an error if the seller could not be updated.
-// TODO: SetSeller
+// SetSeller updates a subset of the sellers table entry:
+//		Name		(not yet implemented, derived from parent customer)
+//		CompanyCode (not yet implemented, awaiting business rule decision)
+//		IngressPriceNibblinsPerGB
+//  	EgressPriceNibblinsPerGB
 func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
+
+	var sql bytes.Buffer
+
+	db.sellerMutex.RLock()
+	_, ok := db.sellers[seller.ID]
+	db.sellerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", seller.ID)}
+	}
+
+	sql.Write([]byte("update sellers set (public_egress_price, public_ingress_price) = ($1, $2) where id = $3 "))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.IngressPriceNibblinsPerGB, seller.SellerID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.sellerMutex.Lock()
+	db.sellers[seller.ID] = seller
+	db.sellerMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 

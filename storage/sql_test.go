@@ -404,6 +404,9 @@ func TestDeleteSQL(t *testing.T) {
 		err = db.RemoveDatacenterMap(ctx, outerDatacenterMap)
 		assert.NoError(t, err)
 
+		dcMapsCheck := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
+		assert.Equal(t, 0, len(dcMapsCheck))
+
 		err = db.RemoveBuyer(ctx, outerBuyer.ID)
 		assert.NoError(t, err)
 
@@ -448,7 +451,7 @@ func TestUpdateSQL(t *testing.T) {
 	assert.NoError(t, err)
 
 	var customerWithID routing.Customer
-	// var outerBuyer routing.Buyer
+	var buyerWithID routing.Buyer
 	// var outerSeller routing.Seller
 	// var outerDatacenter routing.Datacenter
 	// var outerDatacenterMap routing.DatacenterMap
@@ -505,7 +508,7 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
 
-		buyerWithID, err := db.Buyer(internalID)
+		buyerWithID, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
 		buyerWithID.Live = false
@@ -520,6 +523,33 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, checkBuyer.Live, buyerWithID.Live)
 		assert.Equal(t, checkBuyer.Debug, buyerWithID.Debug)
 		assert.Equal(t, checkBuyer.PublicKey, buyerWithID.PublicKey)
+
+	})
+
+	t.Run("SetSeller", func(t *testing.T) {
+		seller := routing.Seller{
+			ID:                        "Compcode",
+			IngressPriceNibblinsPerGB: 10,
+			EgressPriceNibblinsPerGB:  20,
+			CustomerID:                customerWithID.CustomerID,
+		}
+
+		err = db.AddSeller(ctx, seller)
+		assert.NoError(t, err)
+
+		sellerWithID, err := db.Seller("Compcode")
+		assert.NoError(t, err)
+
+		sellerWithID.IngressPriceNibblinsPerGB = 100
+		sellerWithID.EgressPriceNibblinsPerGB = 200
+
+		err = db.SetSeller(ctx, sellerWithID)
+		assert.NoError(t, err)
+
+		checkSeller, err := db.Seller("Compcode")
+		assert.NoError(t, err)
+		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
+		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
 
 	})
 }
