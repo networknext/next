@@ -12,8 +12,8 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
 )
@@ -1828,13 +1828,20 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (external): %v", err)}
 		}
 
-		internalHost, internalPort, err := net.SplitHostPort(r.InternalAddress)
-		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to split host and port (internal): %v", err)}
-		}
-		iinternalPort, err := strconv.ParseInt(internalPort, 10, 64)
-		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (internal): %v", err)}
+		var internalAddr net.UDPAddr
+		if r.InternalAddress != "" {
+			internalHost, internalPort, err := net.SplitHostPort(r.InternalAddress)
+			if err != nil {
+				return &UnmarshalError{err: fmt.Errorf("failed to split host and port (internal): %v", err)}
+			}
+			iinternalPort, err := strconv.ParseInt(internalPort, 10, 64)
+			if err != nil {
+				return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (internal): %v", err)}
+			}
+			internalAddr = net.UDPAddr{
+				IP:   net.ParseIP(internalHost),
+				Port: int(iinternalPort),
+			}
 		}
 
 		// Default to the relay public key, but if that isn't in firestore
@@ -1877,10 +1884,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
-			InternalAddr: net.UDPAddr{
-				IP:   net.ParseIP(internalHost),
-				Port: int(iinternalPort),
-			},
+			InternalAddr:        internalAddr,
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int32(r.NICSpeedMbps),
 			IncludedBandwidthGB: int32(r.IncludedBandwithGB),
