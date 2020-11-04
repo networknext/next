@@ -164,8 +164,8 @@ ifndef GOOGLE_FIRESTORE_SYNC_INTERVAL
 export GOOGLE_FIRESTORE_SYNC_INTERVAL = 10s
 endif
 
-ifndef PORTAL_CRUNCHER_HOST
-export PORTAL_CRUNCHER_HOST = tcp://127.0.0.1:5555
+ifndef PORTAL_CRUNCHER_HOSTS
+export PORTAL_CRUNCHER_HOSTS = tcp://127.0.0.1:5555,tcp://127.0.0.1:5556
 endif
 
 ifndef ALLOWED_ORIGINS
@@ -340,9 +340,13 @@ dev-billing: build-billing ## runs a local billing service
 dev-analytics: build-analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
 
-.PHONY: dev-portal-cruncher
-dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
+.PHONY: dev-portal-cruncher-1
+dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+
+.PHONY: dev-portal-cruncher-2
+dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
+	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army

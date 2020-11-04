@@ -18,21 +18,22 @@ type PostSessionHandler struct {
 	postSessionBillingChannel  chan *billing.BillingEntry
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
-	portalPublisher            pubsub.Publisher
+	portalPublishers           []pubsub.Publisher
+	portalPublisherIndex       int
 	portalPublishMaxRetries    int
 	biller                     billing.Biller
 	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
 }
 
-func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, portalPublishMaxRetries int,
+func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
 	biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
-		portalPublisher:            portalPublisher,
+		portalPublishers:           portalPublishers,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
 		biller:                     biller,
 		logger:                     logger,
@@ -174,29 +175,45 @@ func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 
 func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
 	var byteCount int
-	var retryCount int
 	var err error
 
-	for retryCount < post.portalPublishMaxRetries+1 { // only retry so many times, then error out after that
-		byteCount, err = post.portalPublisher.Publish(ctx, topic, data)
-		if err != nil {
-			switch err.(type) {
-			case *pubsub.ErrRetry:
-				retryCount++
-				continue
-			default:
-				return 0, err
+	for i := range post.portalPublishers {
+		var retryCount int
+
+		// Calculate the index of the portal publisher to use for this iteration
+		index := (post.portalPublisherIndex + i) % len(post.portalPublishers)
+
+		for retryCount < post.portalPublishMaxRetries+1 { // only retry so many times
+			byteCount, err = post.portalPublishers[index].Publish(ctx, topic, data)
+			if err != nil {
+				switch err.(type) {
+				case *pubsub.ErrRetry:
+					retryCount++
+					continue
+				default:
+					return 0, err
+				}
 			}
+
+			retryCount = -1
+			break
 		}
 
-		retryCount = -1
-		break
+		// We published the message, break out
+		if retryCount < post.portalPublishMaxRetries {
+			break
+		}
+
+		// If we've hit the retry limit, try again using another portal publisher.
+		// If this is the last iteration and we still can't publish the message, error out.
+		if retryCount >= post.portalPublishMaxRetries && i == len(post.portalPublishers)-1 {
+			return byteCount, errors.New("exceeded retry count on portal data")
+		}
 	}
 
-	if retryCount >= post.portalPublishMaxRetries {
-		return byteCount, errors.New("exceeded retry count on portal data")
-	}
-
+	// If we've successfully published the message, increment the portal publisher index
+	// so that we evenly distribute the load across each publisher.
+	post.portalPublisherIndex = (post.portalPublisherIndex + 1) % len(post.portalPublishers)
 	return byteCount, nil
 
 }

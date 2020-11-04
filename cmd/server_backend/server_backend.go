@@ -420,9 +420,9 @@ func mainReturnWithCode() int {
 	}
 
 	// Start portal cruncher publisher
-	var portalPublisher pubsub.Publisher
+	portalPublishers := make([]pubsub.Publisher, 0)
 	{
-		portalCruncherHost := envvar.Get("PORTAL_CRUNCHER_HOST", "tcp://127.0.0.1:5555")
+		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
 		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
@@ -430,13 +430,15 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, postSessionPortalSendBufferSize)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-			return 1
-		}
+		for _, host := range portalCruncherHosts {
+			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+				return 1
+			}
 
-		portalPublisher = portalCruncherPublisher
+			portalPublishers = append(portalPublishers, portalCruncherPublisher)
+		}
 	}
 
 	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
@@ -460,7 +462,7 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
