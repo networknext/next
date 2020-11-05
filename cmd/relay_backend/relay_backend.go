@@ -224,7 +224,7 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
-			syncTimer := NewSyncTimer(publishInterval)
+			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
@@ -281,7 +281,7 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
-			syncTimer := NewSyncTimer(publishInterval)
+			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
 				allRelayData := relayMap.GetAllRelayData()
@@ -404,7 +404,7 @@ func mainReturnWithCode() int {
 
 	// Generate the route matrix
 	go func() {
-		syncTimer := NewSyncTimer(syncInterval)
+		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
 			// For now, exclude all valve relays
@@ -553,7 +553,7 @@ func mainReturnWithCode() int {
 
 	// Generate the route matrix specifically for valve
 	go func() {
-		syncTimer := NewSyncTimer(syncInterval)
+		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
 			// All relays included
@@ -726,22 +726,4 @@ func mainReturnWithCode() int {
 	return 0
 }
 
-type SyncTimer struct{
-	lastRun time.Time
-	interval time.Duration
-}
 
-func NewSyncTimer(interval time.Duration) *SyncTimer{
-	s := new(SyncTimer)
-	s.lastRun = time.Now().Add(interval*5)
-	s.interval = interval
-	return s
-}
-
-func (s *SyncTimer)Run() {
-	timeSince := time.Since(s.lastRun)
-	if timeSince < s.interval && timeSince > 0{
-		time.Sleep(s.interval - timeSince)
-	}
-	s.lastRun = time.Now()
-}

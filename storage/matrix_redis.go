@@ -14,7 +14,9 @@ const(
 	hVals = "HVALS"
 	hDel = "HDEL"
 	set = "SET"
+	setex = "SETEX"
 	get = "GET"
+	mGet = "MGET"
 
 	optimizer = "OptimizerHash"
 	masters = "MatrixMastersHash"
@@ -62,7 +64,7 @@ func (r *RedisMatrixStore)GetLiveMatrix() ([]byte, error){
 }
 
 func (r *RedisMatrixStore)UpdateLiveMatrix(matrixData []byte) error{
-	_, err := r.conn.Do(set, matrixMaster, matrixData, "EX", r.matrixTimeout)
+	_, err := r.conn.Do("SET", matrixMaster, matrixData, "EX", r.matrixTimeout)
 	return err
 }
 

@@ -14,20 +14,21 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"sync"
 	"time"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/backend"
-	"github.com/networknext/backend/envvar"
+	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/transport"
 
-	"cloud.google.com/go/pubsub"
+
 
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 )
 
@@ -79,23 +80,6 @@ func mainReturnWithCode() int {
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
-	}
-
-	// Create relay init metrics
-	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay init metrics", "err", err)
-	}
-
-	//Create relay update metrics
-	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
-	}
-
-	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay backend metrics", "err", err)
 	}
 
 	cfg, err := GetConfig()
@@ -173,7 +157,7 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
-			syncTimer := NewSyncTimer(publishInterval)
+			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
 
@@ -332,13 +316,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	costMatrixData := new(matrixData)
-	routeMatrixData := new(matrixData)
-	valveRouteMatrixData := new(matrixData)
+	costMatrixData := new(helpers.MatrixData)
+	routeMatrixData := new(helpers.MatrixData)
+	valveRouteMatrixData := new(helpers.MatrixData)
 
 	// Generate the route matrix
 	go func() {
-		syncTimer := NewSyncTimer(syncInterval)
+		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 
 			syncTimer.Run()
@@ -358,9 +342,8 @@ func mainReturnWithCode() int {
 
 	// Generate the route matrix specifically for valve
 	go func() {
-		syncTimer := NewSyncTimer(syncInterval)
+		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
-
 			syncTimer.Run()
 
 			_, routeMatrix := optimizer.GetValveRouteMatrix()
@@ -433,43 +416,5 @@ func mainReturnWithCode() int {
 	<-sigint
 
 	return 0
-}
-
-type matrixData struct{
-	locker sync.RWMutex
-	data   []byte
-
-}
-
-func (c *matrixData)GetMatrix() []byte {
-	c.locker.RLock()
-	defer c.locker.RUnlock()
-	return c.data
-}
-
-func (c *matrixData)SetMatrix(matrix []byte){
-	c.locker.Lock()
-	c.data = matrix
-	c.locker.Unlock()
-}
-
-type SyncTimer struct{
-	lastRun time.Time
-	interval time.Duration
-}
-
-func NewSyncTimer(interval time.Duration) *SyncTimer{
-	s := new(SyncTimer)
-	s.lastRun = time.Now().Add(interval*5)
-	s.interval = interval
-	return s
-}
-
-func (s *SyncTimer)Run() {
-	timeSince := time.Since(s.lastRun)
-	if timeSince < s.interval && timeSince > 0{
-		time.Sleep(s.interval - timeSince)
-	}
-	s.lastRun = time.Now()
 }
 

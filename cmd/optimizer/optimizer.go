@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/kit/util/conn"
+	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -15,10 +17,13 @@ import (
 type Optimizer struct{
 	cfg         *Config
 	relayMap 	*routing.RelayMap
+	relayStore  storage.RelayStore
+	relayCache  storage.RelayCache
 	store  		storage.Storer
 	statsDB 	*routing.StatsDatabase
 	metrics     *Metrics
 	logger 		log.Logger
+	shutdown    bool
 }
 
 func New(cfg *Config, metrics *Metrics, relayMap *routing.RelayMap, storer storage.Storer, statsDB *routing.StatsDatabase, logger log.Logger) *Optimizer{
@@ -38,6 +43,7 @@ func (o *Optimizer) GetRelayIDs(excludeList []string) []uint64{
 }
 
 func (o *Optimizer) GetRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix){
+
 	relayIDs := o.relayMap.GetAllRelayIDs([]string{"valve"})
 	costMatrix, routeMatrix := o.NewCostAndRouteMatrixBaseRelayData(relayIDs)
 
@@ -178,7 +184,19 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 		}
 	o.metrics.valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
 
+	return costMatrix,routeMatrix
 }
+
+//todo
+func (o *Optimizer) initializeRelay(data *storage.RelayStoreData) error{
+	return nil
+}
+
+func (o *Optimizer) removeRelay(relayID uint64) error{
+	return nil
+}
+//todo
+func (o *Optimizer) UpdateRelay() {}
 
 func (o *Optimizer) NewCostAndRouteMatrixBaseRelayData(relayIDs []uint64) (*routing.CostMatrix, *routing.RouteMatrix) {
 	numRelays := len(relayIDs)
@@ -243,4 +261,49 @@ func (o *Optimizer) MetricsOutput(){
 	fmt.Printf("%d relay stats entries queued\n", int(o.metrics.relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 	fmt.Printf("%d relay stats entries flushed\n", int(o.metrics.relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 	fmt.Printf("-----------------------------\n")
+}
+
+func (o *Optimizer) RelayCacheRunner() error{
+
+	errCount := 0
+	syncTimer := helpers.NewSyncTimer(o.cfg.relayCacheUpdate)
+	for !o.shutdown{
+		syncTimer.Run()
+
+		if errCount > 10 {
+			return fmt.Errorf("relay cached errored %v in a row", conn.ErrConnectionUnavailable)
+		}
+
+		relayArr, err := o.relayStore.GetAll()
+		if err != nil {
+			level.Error(o.logger).Log("msg", "unable to get relays from Relay Store", "err", err.Error())
+			errCount++
+			continue
+		}
+
+		addArr, removeArr, err := o.relayCache.SetAllWithAddRemove(relayArr)
+		if err != nil {
+			level.Error(o.logger).Log("msg", "unable to get relays from Relay Store", "err", err.Error())
+			errCount++
+			continue
+		}
+
+		for _, relay := range addArr{
+			err := o.initializeRelay(relay)
+			if err != nil {
+				level.Error(o.logger).Log("msg", "unable to set relay in relayMap", "err", err.Error())
+			}
+		}
+
+		for _, id := range removeArr{
+			err := o.removeRelay(id)
+			if err != nil {
+				level.Error(o.logger).Log("msg", "unable to remove relay from relayMap", "err", err.Error())
+			}
+		}
+
+		errCount = 0
+	}
+
+	return nil
 }

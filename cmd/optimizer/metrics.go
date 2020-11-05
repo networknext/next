@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/modules/metrics"
 )
 type Metrics struct{
 	costMatrixMetrics *metrics.CostMatrixMetrics
