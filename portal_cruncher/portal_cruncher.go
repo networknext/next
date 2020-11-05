@@ -513,10 +513,10 @@ func SetupBigtable(ctx context.Context,
 	return btClient, btCfNames, nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
-	for j := range cruncher.btPortalDataBuffer {
-		meta := &cruncher.btPortalDataBuffer[j].Meta
-		slice := &cruncher.btPortalDataBuffer[j].Slice
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {
+	for j := range btPortalDataBuffer {
+		meta := &btPortalDataBuffer[j].Meta
+		slice := &btPortalDataBuffer[j].Slice
 
 		// This seems redundant, try to figure out a better prefix to limit the number of keys
 		// Key for session ID
