@@ -151,7 +151,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return err
 		}
 
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name, company.Code))
 	}
 
 	return nil
@@ -217,7 +217,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name)
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code)
 
 	return nil
 }
@@ -254,8 +254,11 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		return err
 	}
 
-	user.AppMetadata["company_code"] = ""
-	if err := s.UserManager.Update(args.UserID, user); err != nil {
+	if err := s.UserManager.Update(args.UserID, &management.User{
+		AppMetadata: map[string]interface{}{
+			"company_code": "",
+		},
+	}); err != nil {
 		err = fmt.Errorf("DeleteUserAccount() failed to update user company code: %v", err)
 		s.Logger.Log("err", err)
 		return err
@@ -266,16 +269,9 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var adminString string = "Admin"
 	var accounts []account
-	var buyer routing.Buyer
 
 	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	if len(args.Roles) == 0 {
-		err := fmt.Errorf("UserAccount(): roles are required")
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -301,12 +297,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	emails := args.Emails
 	falseValue := false
 
-	buyer, err := s.Storage.BuyerWithCompanyCode(userCompanyCode)
-	if err != nil {
-		err := fmt.Errorf("AddUserAccount() failed to fetch request buyer: %v", err)
-		s.Logger.Log("err", err)
-		return err
-	}
+	buyer, _ := s.Storage.BuyerWithCompanyCode(userCompanyCode)
 
 	registered := make(map[string]*management.User)
 	accountList, err := s.UserManager.List()
@@ -325,7 +316,6 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 
 	// Create an account for each new email
 	var newUser *management.User
-	var userID string
 	for _, e := range emails {
 		user, ok := registered[e]
 		if !ok {
@@ -350,22 +340,12 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				s.Logger.Log("err", err)
 				return err
 			}
-			accountList, err := s.UserManager.List()
-			if err != nil {
-				err := fmt.Errorf("AddUserAccount() failed to get auth0 account list: %v", err)
-				s.Logger.Log("err", err)
-				return err
-			}
-			for _, a := range accountList.Users {
-				if *a.Email == e {
-					userID = *a.ID
-					break
+			if len(args.Roles) > 0 {
+				if err = s.UserManager.AssignRoles(*newUser.ID, args.Roles...); err != nil {
+					err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
+					s.Logger.Log("err", err)
+					return err
 				}
-			}
-			if err = s.UserManager.AssignRoles(userID, args.Roles...); err != nil {
-				err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
-				s.Logger.Log("err", err)
-				return err
 			}
 		} else {
 			newUser = &management.User{
@@ -402,10 +382,12 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				s.Logger.Log("err", err)
 				return err
 			}
-			if err = s.UserManager.AssignRoles(*user.ID, args.Roles...); err != nil {
-				err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
-				s.Logger.Log("err", err)
-				return err
+			if len(args.Roles) > 0 {
+				if err = s.UserManager.AssignRoles(*user.ID, args.Roles...); err != nil {
+					err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
+					s.Logger.Log("err", err)
+					return err
+				}
 			}
 		}
 
@@ -415,7 +397,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			s.Logger.Log("err", err)
 			return err
 		}
-		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name))
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -446,7 +428,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string) account {
 	buyerID := ""
 	if buyer.ID != 0 {
 		buyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -455,7 +437,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 	account := account{
 		UserID:      *u.Identities[0].UserID,
 		ID:          buyerID,
-		CompanyCode: buyer.CompanyCode,
+		CompanyCode: companyCode,
 		CompanyName: companyName,
 		Name:        *u.Name,
 		Email:       *u.Email,
@@ -723,7 +705,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				}
 			} else {
 				// the company exists and the new user is not part of the auto signup
-				err = fmt.Errorf("UpdateCompanyInformation() email domain is not part of auto signup for this company: %v", err)
+				err = fmt.Errorf("UpdateCompanyInformation() email domain is not part of auto signup for this company")
 				s.Logger.Log("err", err)
 				return err
 			}
@@ -975,11 +957,11 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 		userAccount.Password = &args.Password
 	}
 
-	userAccount.AppMetadata = map[string]interface{}{
-		"newsletter": args.NewsLetterConsent,
-	}
-
-	err = s.UserManager.Update(requestID, userAccount)
+	err = s.UserManager.Update(requestID, &management.User{
+		AppMetadata: map[string]interface{}{
+			"newsletter": args.NewsLetterConsent,
+		},
+	})
 	if err != nil {
 		err = fmt.Errorf("UpdateAccountSettings() failed to update user: %v", err)
 		s.Logger.Log("err", err)

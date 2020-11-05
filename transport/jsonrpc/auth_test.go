@@ -784,7 +784,7 @@ func TestAddUserAccount(t *testing.T) {
 				Description: &roleDescriptions[0],
 			},
 		}}, &reply)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	})
 
 	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test", ID: 123})
