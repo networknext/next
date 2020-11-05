@@ -104,29 +104,29 @@ func NewRelayMap(callback RelayCleanupCallback) *RelayMap {
 	return relayMap
 }
 
-func (rmap *RelayMap) Lock() {
-	rmap.mutex.Lock()
+func (relayMap *RelayMap) Lock() {
+	relayMap.mutex.Lock()
 }
 
-func (rmap *RelayMap) Unlock() {
-	rmap.mutex.Unlock()
+func (relayMap *RelayMap) Unlock() {
+	relayMap.mutex.Unlock()
 }
 
-func (rmap *RelayMap) RLock() {
-	rmap.mutex.RLock()
+func (relayMap *RelayMap) RLock() {
+	relayMap.mutex.RLock()
 }
 
-func (rmap *RelayMap) RUnlock() {
-	rmap.mutex.RUnlock()
+func (relayMap *RelayMap) RUnlock() {
+	relayMap.mutex.RUnlock()
 }
 
-func (rmap *RelayMap) GetRelayCount() uint64 {
-	return uint64(len(rmap.relays))
+func (relayMap *RelayMap) GetRelayCount() uint64 {
+	return uint64(len(relayMap.relays))
 }
 
 // NewRelayData inserts a new entry into the map and returns the pointer
-func (rmap *RelayMap) AddRelayDataEntry(relayAddress string, data *RelayData) {
-	rmap.relays[relayAddress] = data
+func (relayMap *RelayMap) AddRelayDataEntry(relayAddress string, data *RelayData) {
+	relayMap.relays[relayAddress] = data
 }
 
 // UpdateRelayDataEntry updates specific fields that may change per update
@@ -190,7 +190,6 @@ func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
 			relayIDs = append(relayIDs, relayData.ID)
 		}
 	}
-
 	return relayIDs
 }
 
@@ -232,11 +231,11 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 }
 
 // | version | count | relay data ... |
-func (r *RelayMap) MarshalBinary() ([]byte, error) {
-	r.RLock()
-	defer r.RUnlock()
+func (relayMap *RelayMap) MarshalBinary() ([]byte, error) {
+	relayMap.RLock()
+	defer relayMap.RUnlock()
 
-	numRelays := r.GetRelayCount()
+	numRelays := relayMap.GetRelayCount()
 
 	// preallocate the entire buffer size
 	data := make([]byte, 1+8+numRelays*RelayDataBytes)
@@ -245,7 +244,7 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint8(data, &index, VersionNumberRelayMap)
 	encoding.WriteUint64(data, &index, numRelays)
 
-	for _, relay := range r.relays {
+	for _, relay := range relayMap.relays {
 
 		s := strings.Split(relay.Version, ".")
 		if len(s) != 3 {
