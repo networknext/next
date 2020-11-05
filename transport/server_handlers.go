@@ -588,45 +588,39 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 
 	for i := int32(0); i < numTokens-2; i++ {
 		relayIndex := routeRelays[i]
-
-		// if relayIndex < totalNumRelays ?
-		for j := int32(0); j < totalNumRelays; j++ {
-
-			if j == relayIndex {
-				relayID := allRelayIDs[relayIndex]
-				relay, err := storer.Relay(relayID)
-				if err != nil {
-					continue
-				}
-
-				routeAddresses[i+1] = &relay.Addr
-
-				if enableInternalIPs {
-					shouldTryUseInternalIPs := false
-					for i := range internalIPSellers {
-						if internalIPSellers[i] == relay.Seller.Name {
-							shouldTryUseInternalIPs = true
-							break
-						}
-					}
-
-					// check if the previous relay is the same seller
-					if shouldTryUseInternalIPs && i >= 1 {
-						prevRelayIndex := routeRelays[i-1]
-						if prevRelayIndex < totalNumRelays {
-							prevID := allRelayIDs[prevRelayIndex]
-							prev, err := storer.Relay(prevID)
-							if err == nil && prev.Seller.ID == relay.Seller.ID {
-								routeAddresses[i+1] = &relay.InternalAddr
-							}
-						}
-					}
-				}
-
-				routePublicKeys[i+1] = relay.PublicKey
-				foundRelayCount++
-				break
+		if relayIndex < totalNumRelays {
+			relayID := allRelayIDs[relayIndex]
+			relay, err := storer.Relay(relayID)
+			if err != nil {
+				continue
 			}
+
+			routeAddresses[i+1] = &relay.Addr
+
+			if enableInternalIPs {
+				shouldTryUseInternalIPs := false
+				for i := range internalIPSellers {
+					if internalIPSellers[i] == relay.Seller.Name {
+						shouldTryUseInternalIPs = true
+						break
+					}
+				}
+
+				// check if the previous relay is the same seller
+				if shouldTryUseInternalIPs && i >= 1 {
+					prevRelayIndex := routeRelays[i-1]
+					if prevRelayIndex < totalNumRelays {
+						prevID := allRelayIDs[prevRelayIndex]
+						prev, err := storer.Relay(prevID)
+						if err == nil && prev.Seller.ID == relay.Seller.ID {
+							routeAddresses[i+1] = &relay.InternalAddr
+						}
+					}
+				}
+			}
+
+			routePublicKeys[i+1] = relay.PublicKey
+			foundRelayCount++
 		}
 	}
 
