@@ -1,0 +1,62 @@
+package config
+
+import "github.com/networknext/backend/modules/envvar"
+
+type EnvVarConfig struct {
+	Features []Feature
+}
+
+func NewEnvVarConfig() *EnvVarConfig {
+	features := make([]Feature, 0)
+	for _, f := range Features {
+		value, _ := envvar.GetBool(f.Name, false)
+		f.Value = value
+		features = append(features, f)
+	}
+
+	return &EnvVarConfig{
+		Features: Features,
+	}
+}
+
+func (e *EnvVarConfig) FeatureEnabled(name string) bool {
+	for _, f := range e.Features {
+		if f.Name == name {
+			return f.Value
+		}
+	}
+	return false
+}
+
+func (e *EnvVarConfig) AllFeatures() []Feature {
+	return e.Features
+}
+
+func (e *EnvVarConfig) FeatureByName(name string) Feature {
+	for _, f := range e.Features {
+		if f.Name == name {
+			return f
+		}
+	}
+	return Feature{}
+}
+
+func (e *EnvVarConfig) AllEnabledFeatures() []Feature {
+	features := make([]Feature, 0)
+	for _, f := range e.Features {
+		if f.Value == true {
+			features = append(features, f)
+		}
+	}
+	return features
+}
+
+func (e *EnvVarConfig) AllDisabledFeatures() []Feature {
+	features := make([]Feature, 0)
+	for _, f := range e.Features {
+		if f.Value == false {
+			features = append(features, f)
+		}
+	}
+	return features
+}
