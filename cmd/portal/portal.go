@@ -26,7 +26,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -197,6 +197,64 @@ func main() {
 		}
 	}
 
+	// Setup Bigtable
+
+	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	if btEmulatorOK {
+		// Emulator is used for local testing
+		// Requires that emulator has been started in another terminal to work as intended
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected bigtable emulator")
+	}
+
+	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	var btClient *storage.BigTable
+
+	if useBigtable && (gcpOK || btEmulatorOK) {
+		// Get Bigtable instance ID
+		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+
+		// Get the table name
+		btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+
+		// Create a bigtable admin for setup
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Check if the table exists in the instance
+		tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		if !tableExists {
+			level.Error(logger).Log("envvar", "GOOGLE_BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance")
+			os.Exit(1)
+		}
+
+		// Close the admin client
+		if err = btAdmin.Close(); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Create a standard client for writing to the table
+		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -283,6 +341,7 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
+		BigTable:               btClient,
 		Logger:                 logger,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
