@@ -8,7 +8,7 @@ type Feature struct {
 
 var Features []Feature = []Feature{
 	{
-		Name:        "ENABLE_BIGTABLE",
+		Name:        "FEATURE_BIGTABLE",
 		Value:       false,
 		Description: "Bigtable integration for historic session data",
 	},
@@ -18,7 +18,7 @@ var Features []Feature = []Feature{
 		Description: "New relay backend architectural changes",
 	},
 	{
-		Name:        "PGSQL",
+		Name:        "FEATURE_POSTGRES",
 		Value:       false,
 		Description: "Postgres implementation to replace Firestore",
 	},
