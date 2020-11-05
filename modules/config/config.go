@@ -12,24 +12,6 @@ type Feature struct {
 	Description string
 }
 
-var Features []Feature = []Feature{
-	{
-		Name:        "FEATURE_BIGTABLE",
-		Value:       false,
-		Description: "Bigtable integration for historic session data",
-	},
-	{
-		Name:        "FEATURE_NEW_RELAY_BACKEND",
-		Value:       false,
-		Description: "New relay backend architectural changes",
-	},
-	{
-		Name:        "FEATURE_POSTGRES",
-		Value:       false,
-		Description: "Postgres implementation to replace Firestore",
-	},
-}
-
 type Config interface {
 	FeatureEnabled(enum int) bool
 	AllFeatures() []Feature

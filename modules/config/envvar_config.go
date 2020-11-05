@@ -6,16 +6,16 @@ type EnvVarConfig struct {
 	Features []Feature
 }
 
-func NewEnvVarConfig() *EnvVarConfig {
+func NewEnvVarConfig(defaultFeatures []Feature) *EnvVarConfig {
 	features := make([]Feature, 0)
-	for _, f := range Features {
+	for _, f := range defaultFeatures {
 		value, _ := envvar.GetBool(f.Name, false)
 		f.Value = value
 		features = append(features, f)
 	}
 
 	return &EnvVarConfig{
-		Features: Features,
+		Features: features,
 	}
 }
 

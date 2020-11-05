@@ -11,9 +11,7 @@ func TestConfigInterface(t *testing.T) {
 	t.Run("NewConfig", func(t *testing.T) {
 		var featureConfig config.Config
 
-		envVarConfig := config.NewEnvVarConfig()
-
-		envVarConfig.Features = []config.Feature{
+		envVarConfig := config.NewEnvVarConfig([]config.Feature{
 			{
 				Name:        "ENABLE_BIGTABLE",
 				Value:       false,
@@ -29,7 +27,7 @@ func TestConfigInterface(t *testing.T) {
 				Value:       false,
 				Description: "Postgres implementation to replace Firestore",
 			},
-		}
+		})
 
 		featureConfig = envVarConfig
 
