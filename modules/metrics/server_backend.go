@@ -442,7 +442,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectUnknownReason, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Unknown Reason",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct",
 		Unit:        "errors",
@@ -453,7 +453,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectBadRouteToken, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Bad Route Token",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.bad_route_token",
 		Unit:        "errors",
@@ -464,7 +464,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectNoNextRouteToContinue, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct No Next Route To Continue",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.no_next_route_to_continue",
 		Unit:        "errors",
@@ -475,7 +475,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectPreviousUpdateStillPending, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Previous Update Still Pending",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.previous_update_still_pending",
 		Unit:        "errors",
@@ -486,7 +486,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectBadContinueToken, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Bad Continue Token",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.bad_continue_token",
 		Unit:        "errors",
@@ -497,7 +497,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectRouteExpired, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Route Expired",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.route_expired",
 		Unit:        "errors",
@@ -508,7 +508,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectRouteRequestTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Route Request Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.route_request_timed_out",
 		Unit:        "errors",
@@ -519,7 +519,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectContinueRequestTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Continue Request Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.continue_request_timed_out",
 		Unit:        "errors",
@@ -530,7 +530,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectClientTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Client Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.client_timed_out",
 		Unit:        "errors",
@@ -541,7 +541,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectUpgradeResponseTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Upgradr Response Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.upgrade_response_timed_out",
 		Unit:        "errors",
@@ -552,7 +552,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectRouteUpdateTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Route Update Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.route_update_timed_out",
 		Unit:        "errors",
@@ -563,7 +563,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectDirectPongTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Direct Pong Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.direct_pong_timed_out",
 		Unit:        "errors",
@@ -574,7 +574,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	}
 
 	m.FallbackToDirectNextPongTimedOut, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Fallback To Direct",
+		DisplayName: handlerName + " Fallback To Direct Next Pong Timed Out",
 		ServiceName: serviceName,
 		ID:          handlerID + ".fallback_to_direct.next_pong_timed_out",
 		Unit:        "errors",
