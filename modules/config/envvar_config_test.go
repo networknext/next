@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSequenceNumbers(t *testing.T) {
+func TestConfigInterface(t *testing.T) {
 	t.Run("NewConfig", func(t *testing.T) {
 		var featureConfig config.Config
 
