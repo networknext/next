@@ -207,7 +207,7 @@ func main() {
 		level.Info(logger).Log("msg", "Detected bigtable emulator")
 	}
 
-	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
+	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)

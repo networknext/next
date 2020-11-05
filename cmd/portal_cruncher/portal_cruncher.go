@@ -170,7 +170,7 @@ func mainReturnWithCode() int {
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
 	// Determine if should insert into Bigtable
-	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE_INSERTION", false)
+	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

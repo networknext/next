@@ -87,7 +87,6 @@ func TestBuyersList(t *testing.T) {
 	})
 }
 
-// User Sessions is currently disabled
 func TestUserSessions(t *testing.T) {
 	t.Parallel()
 
@@ -153,26 +152,35 @@ func TestUserSessions(t *testing.T) {
 
 	// Check if table exists and create it if needed
 	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	if !btTableExists {
 		// Create a table
 		btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
 	}
 
-	err = btAdmin.Close()
-	assert.Nil(t, err)
+	defer func() {
+		err := btAdmin.DeleteTable(ctx, btTableName)
+		assert.NoError(t, err)
+
+		err = btAdmin.Close()
+		assert.NoError(t, err)
+	}()
 
 	btClient, err := storage.NewBigTable(ctx, "", "", logger)
 	assert.Nil(t, err)
+	defer func() {
+		err := btClient.Close()
+		assert.NoError(t, err)
+	}()
 
 	// Add user sessions to bigtable
 	metaBin1, err := transport.SessionMeta{ID: 111, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	slice1 := transport.SessionSlice{}
 	sliceBin1, err := slice1.MarshalBinary()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	sessionRowKey1 := sessionID1
 	sliceRowKey1 := fmt.Sprintf("%s#%v", sessionID1, slice1.Timestamp)
 	buyerRowKey1 := fmt.Sprintf("%016x#%s", 999, sessionID1)
@@ -180,12 +188,11 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys1 := []string{sessionRowKey1, buyerRowKey1, userRowKey1}
 	sliceRowKeys1 := []string{sliceRowKey1}
 
-
 	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	slice2 := transport.SessionSlice{}
 	sliceBin2, err := slice2.MarshalBinary()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	sessionRowKey2 := sessionID2
 	sliceRowKey2 := fmt.Sprintf("%s#%v", sessionID2, slice2.Timestamp)
 	buyerRowKey2 := fmt.Sprintf("%016x#%s", 888, sessionID1)
@@ -194,10 +201,10 @@ func TestUserSessions(t *testing.T) {
 	sliceRowKeys2 := []string{sliceRowKey2}
 
 	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	slice3 := transport.SessionSlice{}
 	sliceBin3, err := slice3.MarshalBinary()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	sessionRowKey3 := sessionID3
 	sliceRowKey3 := fmt.Sprintf("%s#%v", sessionID3, slice3.Timestamp)
 	buyerRowKey3 := fmt.Sprintf("%016x#%s", 888, sessionID3)
@@ -206,17 +213,17 @@ func TestUserSessions(t *testing.T) {
 	sliceRowKeys3 := []string{sliceRowKey3}
 
 	err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin1, metaRowKeys1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin1, sliceRowKeys1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin2, metaRowKeys2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin2, sliceRowKeys2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin3, metaRowKeys3)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin3, sliceRowKeys3)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	
 
 	svc := jsonrpc.BuyersService{
@@ -246,26 +253,90 @@ func TestUserSessions(t *testing.T) {
 		assert.Equal(t, 0, len(reply.Sessions))
 	})
 
-	t.Run("list - ID", func(t *testing.T) {
-		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
-		assert.NoError(t, err)
+	t.Run("Live Sessions", func(t *testing.T) {
 
-		assert.Equal(t, len(reply.Sessions), 2)
+		t.Run("list live - ID", func(t *testing.T) {
+			var reply jsonrpc.UserSessionsReply
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
+			assert.NoError(t, err)
 
-		assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-		assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			assert.Equal(t, len(reply.Sessions), 2)
+
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+		})
+
+		t.Run("list live - hash", func(t *testing.T) {
+			var reply jsonrpc.UserSessionsReply
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
+			assert.NoError(t, err)
+
+			assert.Equal(t, len(reply.Sessions), 2)
+
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+		})
 	})
 
-	t.Run("list - hash", func(t *testing.T) {
-		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
+	t.Run("Historic and Live Sessions", func(t *testing.T) {
+		// Insert additional historic sessions
+		sessionID4 := fmt.Sprintf("%016x", 444)
+		sessionID5 := fmt.Sprintf("%016x", 555)
+
+		metaBin4, err := transport.SessionMeta{ID: 444, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
+		assert.NoError(t, err)
+		slice4 := transport.SessionSlice{}
+		sliceBin4, err := slice4.MarshalBinary()
+		assert.NoError(t, err)
+		sessionRowKey4 := sessionID4
+		sliceRowKey4 := fmt.Sprintf("%s#%v", sessionID4, slice4.Timestamp)
+		buyerRowKey4 := fmt.Sprintf("%016x#%s", 999, sessionID4)
+		userRowKey4 := fmt.Sprintf("%016x#%s", userHash2, sessionID4)
+		metaRowKeys4 := []string{sessionRowKey4, buyerRowKey4, userRowKey4}
+		sliceRowKeys4 := []string{sliceRowKey4}
+
+		metaBin5, err := transport.SessionMeta{ID: 555, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+		assert.NoError(t, err)
+		slice5 := transport.SessionSlice{}
+		sliceBin5, err := slice5.MarshalBinary()
+		assert.NoError(t, err)
+		sessionRowKey5 := sessionID5
+		sliceRowKey5 := fmt.Sprintf("%s#%v", sessionID5, slice5.Timestamp)
+		buyerRowKey5 := fmt.Sprintf("%016x#%s", 888, sessionID5)
+		userRowKey5 := fmt.Sprintf("%016x#%s", userHash1, sessionID5)
+		metaRowKeys5 := []string{sessionRowKey5, buyerRowKey5, userRowKey5}
+		sliceRowKeys5 := []string{sliceRowKey5}
+
+		err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin4, metaRowKeys4)
+		assert.NoError(t, err)
+		err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin4, sliceRowKeys4)
+		assert.NoError(t, err)
+		err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin5, metaRowKeys5)
+		assert.NoError(t, err)
+		err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin5, sliceRowKeys5)
 		assert.NoError(t, err)
 
-		assert.Equal(t, len(reply.Sessions), 2)
-		fmt.Printf("session[0]ID is %d\n", reply.Sessions[0].ID)
-		assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-		assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+		t.Run("list live and historic - ID", func(t *testing.T) {
+			var reply jsonrpc.UserSessionsReply
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
+			assert.NoError(t, err)
+
+			assert.Equal(t, len(reply.Sessions), 3)
+
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+		})
+
+		t.Run("list live and historic - hash", func(t *testing.T) {
+			var reply jsonrpc.UserSessionsReply
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
+			assert.NoError(t, err)
+
+			assert.Equal(t, len(reply.Sessions), 3)
+
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+		})
 	})
 }
 
@@ -669,16 +740,82 @@ func TestSessionDetails(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID), meta.RedisString(), 30*time.Second)
 	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID), slice1.RedisString(), slice2.RedisString())
 
-	inMemory := storage.InMemory{}
-	inMemory.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	inMemory.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local"})
-	inMemory.AddSeller(context.Background(), routing.Seller{ID: "local"})
-	inMemory.AddDatacenter(context.Background(), routing.Datacenter{ID: 1})
-	inMemory.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local", Seller: routing.Seller{ID: "local"}, Datacenter: routing.Datacenter{ID: 1}})
-
+	ctx := context.Background()
 	logger := log.NewNopLogger()
+
+	// Setup Bigtable
+	btTableName, btTableEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+	if !btTableEnvVarOK {
+		btTableName = "Test"
+		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", btTableName)
+		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+	}
+
+	// Get the column family name
+	btCfName, btCfNameEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_CF_NAME")
+	if !btCfNameEnvVarOK {
+		btCfName = "TestCfName"
+		os.Setenv("GOOGLE_BIGTABLE_CF_NAME", btCfName)
+		defer os.Unsetenv("GOOGLE_BIGTABLE_CF_NAME")
+	}
+
+	// Check if table exists and create it if needed
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+	assert.NoError(t, err)
+	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+	assert.NoError(t, err)
+	if !btTableExists {
+		// Create a table
+		btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
+	}
+
+	defer func() {
+		err := btAdmin.DeleteTable(ctx, btTableName)
+		assert.NoError(t, err)
+
+		err = btAdmin.Close()
+		assert.NoError(t, err)
+	}()
+
+	btClient, err := storage.NewBigTable(ctx, "", "", logger)
+	assert.Nil(t, err)
+	defer func() {
+		err := btClient.Close()
+		assert.NoError(t, err)
+	}()
+
+	// Add user sessions to bigtable
+	metaBin, err := meta.MarshalBinary()
+	assert.NoError(t, err)
+	sliceBin1, err := slice1.MarshalBinary()
+	assert.NoError(t, err)
+	sliceBin2, err := slice2.MarshalBinary()
+	assert.NoError(t, err)
+	sessionRowKey := sessionID
+	sliceRowKey1 := fmt.Sprintf("%s#%v", sessionID, slice1.Timestamp)
+	sliceRowKey2 := fmt.Sprintf("%s#%v", sessionID, slice2.Timestamp)
+	buyerRowKey := fmt.Sprintf("%016x#%s", 111, sessionID)
+	metaRowKeys := []string{sessionRowKey, buyerRowKey}
+	sliceRowKeys1 := []string{sliceRowKey1}
+	sliceRowKeys2 := []string{sliceRowKey2}
+
+	err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin, metaRowKeys)
+	assert.NoError(t, err)
+	err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin1, sliceRowKeys1)
+	assert.NoError(t, err)
+	err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin2, sliceRowKeys2)
+	assert.NoError(t, err)
+
+	inMemory := storage.InMemory{}
+	inMemory.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
+	inMemory.AddBuyer(ctx, routing.Buyer{ID: 111, CompanyCode: "local"})
+	inMemory.AddSeller(ctx, routing.Seller{ID: "local"})
+	inMemory.AddDatacenter(ctx, routing.Datacenter{ID: 1})
+	inMemory.AddRelay(ctx, routing.Relay{ID: 1, Name: "local", Seller: routing.Seller{ID: "local"}, Datacenter: routing.Datacenter{ID: 1}})
+
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
+		BigTable:				btClient,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
@@ -694,20 +831,20 @@ func TestSessionDetails(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	// t.Run("success - !admin", func(t *testing.T) {
-	// 	var reply jsonrpc.SessionDetailsReply
-	// 	err := svc.SessionDetails(req, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, anonMeta, reply.Meta)
-	// 	assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
-	// 	assert.Equal(t, slice1.Next, reply.Slices[0].Next)
-	// 	assert.Equal(t, slice1.Direct, reply.Slices[0].Direct)
-	// 	assert.Equal(t, slice1.Envelope, reply.Slices[0].Envelope)
-	// 	assert.Equal(t, slice2.Timestamp.Hour(), reply.Slices[1].Timestamp.Hour())
-	// 	assert.Equal(t, slice2.Next, reply.Slices[1].Next)
-	// 	assert.Equal(t, slice2.Direct, reply.Slices[1].Direct)
-	// 	assert.Equal(t, slice2.Envelope, reply.Slices[1].Envelope)
-	// })
+	t.Run("success - !admin", func(t *testing.T) {
+		var reply jsonrpc.SessionDetailsReply
+		err := svc.SessionDetails(req, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, anonMeta, reply.Meta)
+		assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
+		assert.Equal(t, slice1.Next, reply.Slices[0].Next)
+		assert.Equal(t, slice1.Direct, reply.Slices[0].Direct)
+		assert.Equal(t, slice1.Envelope, reply.Slices[0].Envelope)
+		assert.Equal(t, slice2.Timestamp.Hour(), reply.Slices[1].Timestamp.Hour())
+		assert.Equal(t, slice2.Next, reply.Slices[1].Next)
+		assert.Equal(t, slice2.Direct, reply.Slices[1].Direct)
+		assert.Equal(t, slice2.Envelope, reply.Slices[1].Envelope)
+	})
 
 	reqContext := req.Context()
 	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
@@ -716,20 +853,20 @@ func TestSessionDetails(t *testing.T) {
 	})
 	req = req.WithContext(reqContext)
 
-// 	t.Run("success - admin", func(t *testing.T) {
-// 		var reply jsonrpc.SessionDetailsReply
-// 		err := svc.SessionDetails(req, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, meta, reply.Meta)
-// 		assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
-// 		assert.Equal(t, slice1.Next, reply.Slices[0].Next)
-// 		assert.Equal(t, slice1.Direct, reply.Slices[0].Direct)
-// 		assert.Equal(t, slice1.Envelope, reply.Slices[0].Envelope)
-// 		assert.Equal(t, slice2.Timestamp.Hour(), reply.Slices[1].Timestamp.Hour())
-// 		assert.Equal(t, slice2.Next, reply.Slices[1].Next)
-// 		assert.Equal(t, slice2.Direct, reply.Slices[1].Direct)
-// 		assert.Equal(t, slice2.Envelope, reply.Slices[1].Envelope)
-// 	})
+	t.Run("success - admin", func(t *testing.T) {
+		var reply jsonrpc.SessionDetailsReply
+		err := svc.SessionDetails(req, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, meta, reply.Meta)
+		assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
+		assert.Equal(t, slice1.Next, reply.Slices[0].Next)
+		assert.Equal(t, slice1.Direct, reply.Slices[0].Direct)
+		assert.Equal(t, slice1.Envelope, reply.Slices[0].Envelope)
+		assert.Equal(t, slice2.Timestamp.Hour(), reply.Slices[1].Timestamp.Hour())
+		assert.Equal(t, slice2.Next, reply.Slices[1].Next)
+		assert.Equal(t, slice2.Direct, reply.Slices[1].Direct)
+		assert.Equal(t, slice2.Envelope, reply.Slices[1].Envelope)
+	})
 }
 
 func TestSessionMapPoints(t *testing.T) {

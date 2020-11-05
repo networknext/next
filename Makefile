@@ -224,8 +224,8 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
-ifndef ENABLE_BIGTABLE_INSERTION
-export ENABLE_BIGTABLE_INSERTION = false
+ifndef ENABLE_BIGTABLE
+export ENABLE_BIGTABLE = false
 endif
 
 ifndef GOOGLE_BIGTABLE_TABLE_NAME
