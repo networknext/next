@@ -5564,7 +5564,7 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_OPEN_SESSION            0
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
-#define NEXT_CLIENT_COMMAND_FLAG_SESSION            3
+#define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
 #define NEXT_CLIENT_COMMAND_USER_FLAGS              4
 
 struct next_client_command_t
@@ -5587,7 +5587,7 @@ struct next_client_command_destroy_t : public next_client_command_t
     // ...
 };
 
-struct next_client_command_flag_session_t : public next_client_command_t
+struct next_client_command_report_session_t : public next_client_command_t
 {
     // ...
 };
@@ -6865,7 +6865,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             }
             break;
 
-            case NEXT_CLIENT_COMMAND_FLAG_SESSION:
+            case NEXT_CLIENT_COMMAND_REPORT_SESSION:
             {
                 if ( client->session_id != 0 && !client->reported )
                 {
@@ -7817,19 +7817,19 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     client->internal->packets_sent++;
 }
 
-void next_client_flag_session( next_client_t * client )
+void next_client_report_session( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
-    next_client_command_flag_session_t * command = (next_client_command_flag_session_t*) next_malloc( client->context, sizeof( next_client_command_flag_session_t ) );
+    next_client_command_report_session_t * command = (next_client_command_report_session_t*) next_malloc( client->context, sizeof( next_client_command_report_session_t ) );
 
     if ( !command )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "flag session failed. could not create flag session command" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "report session failed. could not create report session command" );
         return;
     }
 
-    command->type = NEXT_CLIENT_COMMAND_FLAG_SESSION;
+    command->type = NEXT_CLIENT_COMMAND_REPORT_SESSION;
     {    
         next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
