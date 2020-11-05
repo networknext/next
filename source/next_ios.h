@@ -33,8 +33,6 @@
 #define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
 #define NEXT_PLATFORM_SOCKET_BLOCKING           1
 
-NEXT_PACK_PUSH()
-
 // -------------------------------------
 
 typedef int next_platform_socket_handle_t;
@@ -70,8 +68,6 @@ struct next_platform_mutex_t
 };
 
 // -------------------------------------
-
-NEXT_PACK_POP()
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_IOS
 

@@ -40,8 +40,6 @@
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-NEXT_PACK_PUSH()
-
 extern void * next_malloc( void * context, size_t bytes );
 
 extern void next_free( void * context, void * p );
@@ -592,8 +590,6 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 }
 
 // ---------------------------------------------------
-
-NEXT_PACK_POP()
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_MAC
 

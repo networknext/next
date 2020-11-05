@@ -332,8 +332,6 @@ uint16_t next_htons( uint16_t in )
 #include "next_xboxone.h"
 #endif
 
-NEXT_PACK_PUSH()
-
 extern int next_platform_init();
 
 extern void next_platform_term();
@@ -15415,5 +15413,3 @@ void next_test()
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-
-NEXT_PACK_POP()

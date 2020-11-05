@@ -44,8 +44,6 @@
 #include <math.h>
 #include <alloca.h>
 
-NEXT_PACK_PUSH()
-
 extern void * next_global_context;
 
 extern void * next_malloc( void * context, size_t bytes );
@@ -1135,8 +1133,6 @@ static int get_connection_type()
 }
 
 // ---------------------------------------------------
-
-NEXT_PACK_POP()
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
