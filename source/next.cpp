@@ -1225,6 +1225,7 @@ namespace next
         BitWriter( void * data, int bytes ) : m_data( (uint32_t*) data ), m_numWords( bytes / 4 )
         {
             next_assert( data );
+            // todo: make sure data is aligned to 4 bytes
             next_assert( ( bytes % 4 ) == 0 );
             m_numBits = m_numWords * 32;
             m_bitsWritten = 0;
@@ -1440,6 +1441,7 @@ namespace next
     #endif // #ifndef NDEBUG
         {
             next_assert( data );
+            // todo: make sure data is aligned to 4 bytes
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
             m_scratch = 0;
@@ -1663,7 +1665,10 @@ namespace next
             @param allocator The allocator to use for stream allocations. This lets you dynamically allocate memory as you read and write packets.
          */
 
-        WriteStream( uint8_t * buffer, int bytes ) : m_writer( buffer, bytes ) {}
+        WriteStream( uint8_t * buffer, int bytes ) : m_writer( buffer, bytes )
+        {
+            // todo: make sure buffer is aligned to 4 bytes
+        }
 
         /**
             Serialize an integer (write).
@@ -1804,7 +1809,10 @@ namespace next
             @param allocator The allocator to use for stream allocations. This lets you dynamically allocate memory as you read and write packets.
          */
 
-        ReadStream( const uint8_t * buffer, int bytes ) : BaseStream(), m_reader( buffer, bytes ) {}
+        ReadStream( const uint8_t * buffer, int bytes ) : BaseStream(), m_reader( buffer, bytes )
+        {
+            // todo: make sure buffer is aligned to 4 byte address
+        }
 
         /**
             Serialize an integer (read).
@@ -3254,6 +3262,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
     next_assert( packet_data );
     next_assert( packet_bytes );
 
+    // todo: make sure packet data is aligned
     next::WriteStream stream( packet_data, NEXT_MAX_PACKET_BYTES );
 
     typedef next::WriteStream Stream;
@@ -3520,6 +3529,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         packet_bytes -= 1;
     }
 
+    // todo: check to make sure packet data is aligned
     next::ReadStream stream( packet_data, packet_bytes );
 
     switch ( packet_id )
@@ -9576,6 +9586,7 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( packet_data );
     next_assert( packet_bytes );
 
+    // todo: make sure packet data is aligned
     next::WriteStream stream( packet_data, NEXT_MAX_PACKET_BYTES );
 
     typedef next::WriteStream Stream;
@@ -9707,6 +9718,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         }
     }
 
+    // todo: check to make sure packet data is aligned
     next::ReadStream stream( packet_data, packet_bytes );
 
     switch ( packet_id )
@@ -12844,6 +12856,7 @@ static void test_stream()
     context.min = -10;
     context.max = +10;
 
+    // todo: make sure buffer is aligned
     WriteStream writeStream( buffer, BufferSize );
 
     TestObject writeObject;
@@ -12857,6 +12870,8 @@ static void test_stream()
     memset( buffer + bytesWritten, 0, size_t(BufferSize) - bytesWritten );
 
     TestObject readObject;
+
+    // todo: check to make sure buffer is aligned
     ReadStream readStream( buffer, bytesWritten );
     readStream.SetContext( &context );
     readObject.Serialize( readStream );
