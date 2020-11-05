@@ -40,6 +40,6 @@ func TestConfigInterface(t *testing.T) {
 		assert.Equal(t, featureConfig.AllFeatures()[0].Name, "ENABLE_BIGTABLE")
 		assert.Equal(t, featureConfig.AllFeatures()[0].Value, false)
 		assert.Equal(t, featureConfig.AllFeatures()[0].Description, "Bigtable integration for historic session data")
-		assert.Equal(t, featureConfig.AllFeatures()[0].Value, featureConfig.FeatureEnabled("ENABLE_BIGTABLE"))
+		assert.Equal(t, featureConfig.AllFeatures()[0].Value, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
 	})
 }
