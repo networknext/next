@@ -683,7 +683,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	assert.Equal(t, expectedSessionData, sessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
 
-	assert.Equal(t, metrics.SessionUpdateMetrics.FallbackToDirect.Value(), 1.0)
+	assert.Equal(t, metrics.SessionUpdateMetrics.FallbackToDirectUnknownReason.Value(), 1.0)
 }
 
 func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
