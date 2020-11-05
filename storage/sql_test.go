@@ -60,11 +60,13 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, true, sync)
 	})
 
+	customerShortname := "Compcode"
+
 	t.Run("AddCustomer", func(t *testing.T) {
 		customer := routing.Customer{
 			Active:                 true,
 			Debug:                  true,
-			Code:                   "Compcode",
+			Code:                   customerShortname,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
 		}
@@ -84,7 +86,8 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
-			ID:                        "Compcode",
+			ID:                        customerShortname,
+			ShortName:                 customerShortname,
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                outerCustomer.CustomerID,
@@ -96,6 +99,7 @@ func TestInsertSQL(t *testing.T) {
 		outerSeller, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 		assert.Equal(t, seller.ID, outerSeller.ID)
+		assert.Equal(t, seller.ShortName, outerSeller.ShortName)
 		assert.Equal(t, seller.IngressPriceNibblinsPerGB, outerSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, seller.EgressPriceNibblinsPerGB, outerSeller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, seller.CustomerID, outerSeller.CustomerID)
@@ -612,9 +616,6 @@ func TestUpdateSQL(t *testing.T) {
 		_, err = rand.Read(updateKey)
 		assert.NoError(t, err)
 
-		// fmt.Printf("AddRelay test - outerDatacenter: %s\n", outerDatacenter.String())
-
-		// fields not stored in the database are not tested here
 		relay := routing.Relay{
 			ID:             rid,
 			Name:           "local.1",

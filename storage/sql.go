@@ -498,6 +498,7 @@ func (db *SQL) Sellers() []routing.Seller {
 
 type sqlSeller struct {
 	ID                        string
+	ShortName                 string
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
 	CustomerID                int64
@@ -519,6 +520,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	newSellerData := sqlSeller{
 		ID:                        s.ID,
+		ShortName:                 s.ShortName,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 		CustomerID:                s.CustomerID,
@@ -526,8 +528,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	// Add the seller in remote storage
 	sql.Write([]byte("insert into sellers ("))
-	sql.Write([]byte("public_egress_price, public_ingress_price, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3)"))
+	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -535,7 +537,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	result, err := stmt.Exec(newSellerData.EgressPriceNibblinsPerGB,
+	result, err := stmt.Exec(newSellerData.ShortName, newSellerData.EgressPriceNibblinsPerGB,
 		newSellerData.IngressPriceNibblinsPerGB,
 		newSellerData.CustomerID,
 	)
@@ -660,18 +662,15 @@ func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
 	return nil
 }
 
-// BuyerIDFromCustomerName returns the buyer ID associated with the given customer name and an error if the customer wasn't found.
-// If the customer has no buyer linked, then it will return a buyer ID of 0 and no error.
-// TODO: BuyerIDFromCustomerName
+// BuyerIDFromCustomerName is called by the SetCustomerLink endpoint, which is deprecated.
 func (db *SQL) BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error) {
-	return 0, nil
+	return 0, fmt.Errorf("BuyerIDFromCustomerName() not implemented in SQL Storer")
+
 }
 
-// SellerIDFromCustomerName returns the seller ID associated with the given customer name and an error if the customer wasn't found.
-// If the customer has no seller linked, then it will return an empty seller ID and no error.
-// TODO: SellerIDFromCustomerName
+// SellerIDFromCustomerName is called by the SetCustomerLink endpoint, which is deprecated.
 func (db *SQL) SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error) {
-	return "", nil
+	return "", fmt.Errorf("BuyerIDFromCustomerName() not implemented in SQL Storer")
 }
 
 func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
@@ -1225,9 +1224,19 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
-// TODO: ListDatacenterMaps
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
-	return map[uint64]routing.DatacenterMap{}
+	db.datacenterMapMutex.RLock()
+	defer db.datacenterMapMutex.RUnlock()
+
+	var dcs = make(map[uint64]routing.DatacenterMap)
+	for _, dc := range db.datacenterMaps {
+		if dc.DatacenterID == dcID || dcID == 0 {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			dcs[id] = dc
+		}
+	}
+
+	return dcs
 }
 
 // RemoveDatacenterMap removes an entry from the DatacenterMaps table
