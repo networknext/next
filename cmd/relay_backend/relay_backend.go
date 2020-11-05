@@ -10,14 +10,16 @@ import (
 	"context"
 	"expvar"
 	"fmt"
-	"github.com/networknext/backend/modules/common/helpers"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/networknext/backend/modules/common/helpers"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log/level"
@@ -139,7 +141,6 @@ func mainReturnWithCode() int {
 	}
 
 	statsdb := routing.NewStatsDatabase()
-
 
 	// Get the max jitter and max packet loss env vars
 	if !envvar.Exists("RELAY_ROUTER_MAX_JITTER") {
@@ -382,8 +383,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-
-
 	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -408,7 +407,7 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 			// For now, exclude all valve relays
-			relayIDs := relayMap.GetAllRelayIDs([]string{"valve"})  // Filter out any relays whose seller has a Firestore key of "valve"
+			relayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
 
 			numRelays := len(relayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
@@ -649,6 +648,13 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
+	enableInternalIPs, err := envvar.GetBool("ENABLE_INTERNAL_IPS", false)
+	if err != nil {
+		level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
+		return 1
+	}
+
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
 		Storer:           storer,
@@ -657,10 +663,12 @@ func mainReturnWithCode() int {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap: relayMap,
-		StatsDB:  statsdb,
-		Metrics:  relayUpdateMetrics,
-		Storer:   storer,
+		RelayMap:          relayMap,
+		StatsDB:           statsdb,
+		Metrics:           relayUpdateMetrics,
+		Storer:            storer,
+		InternalIPSellers: internalIPSellers,
+		EnableInternalIPs: enableInternalIPs,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -726,21 +734,21 @@ func mainReturnWithCode() int {
 	return 0
 }
 
-type SyncTimer struct{
-	lastRun time.Time
+type SyncTimer struct {
+	lastRun  time.Time
 	interval time.Duration
 }
 
-func NewSyncTimer(interval time.Duration) *SyncTimer{
+func NewSyncTimer(interval time.Duration) *SyncTimer {
 	s := new(SyncTimer)
-	s.lastRun = time.Now().Add(interval*5)
+	s.lastRun = time.Now().Add(interval * 5)
 	s.interval = interval
 	return s
 }
 
-func (s *SyncTimer)Run() {
+func (s *SyncTimer) Run() {
 	timeSince := time.Since(s.lastRun)
-	if timeSince < s.interval && timeSince > 0{
+	if timeSince < s.interval && timeSince > 0 {
 		time.Sleep(s.interval - timeSince)
 	}
 	s.lastRun = time.Now()
