@@ -323,6 +323,8 @@ type buyer struct {
 
 type seller struct {
 	Name                 string
+	ShortName            string
+	CompanyCode          string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
 }
@@ -1638,6 +1640,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					// Unmarshal the JSON and create the Seller struct
 					var sellerUSD struct {
 						Name            string
+						ShortName       string
+						CompanyCode     string
 						IngressPriceUSD string
 						EgressPriceUSD  string
 					}
@@ -1659,6 +1663,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					s := seller{
 						Name:                 sellerUSD.Name,
+						ShortName:            sellerUSD.ShortName,
+						CompanyCode:          sellerUSD.ShortName,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
@@ -1667,6 +1673,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					addSeller(rpcClient, env, routing.Seller{
 						ID:                        s.Name,
 						Name:                      s.Name,
+						ShortName:                 s.ShortName,
+						CompanyCode:               s.CompanyCode,
 						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
 						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
 					})
@@ -1680,10 +1688,12 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Exec: func(_ context.Context, args []string) error {
 							example := struct {
 								Name            string
+								ShortName       string
 								IngressPriceUSD string
 								EgressPriceUSD  string
 							}{
-								Name:            "amazon",
+								Name:            "Amazon.com, Inc.",
+								ShortName:       "amazon",
 								IngressPriceUSD: "0.01",
 								EgressPriceUSD:  "0.1",
 							}
@@ -1695,7 +1705,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
-							return nil
+
 							return nil
 						},
 					},
