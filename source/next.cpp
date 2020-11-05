@@ -1225,7 +1225,7 @@ namespace next
         BitWriter( void * data, int bytes ) : m_data( (uint32_t*) data ), m_numWords( bytes / 4 )
         {
             next_assert( data );
-            // todo: make sure data is aligned to 4 bytes
+            next_assert( ( size_t(data) % 4 ) == 0 );
             next_assert( ( bytes % 4 ) == 0 );
             m_numBits = m_numWords * 32;
             m_bitsWritten = 0;
@@ -1441,7 +1441,7 @@ namespace next
     #endif // #ifndef NDEBUG
         {
             next_assert( data );
-            // todo: make sure data is aligned to 4 bytes
+            next_assert( ( size_t(data) % 4 ) == 0 );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
             m_scratch = 0;
@@ -1665,10 +1665,7 @@ namespace next
             @param allocator The allocator to use for stream allocations. This lets you dynamically allocate memory as you read and write packets.
          */
 
-        WriteStream( uint8_t * buffer, int bytes ) : m_writer( buffer, bytes )
-        {
-            // todo: make sure buffer is aligned to 4 bytes
-        }
+        WriteStream( uint8_t * buffer, int bytes ) : m_writer( buffer, bytes ) {}
 
         /**
             Serialize an integer (write).
@@ -1809,10 +1806,7 @@ namespace next
             @param allocator The allocator to use for stream allocations. This lets you dynamically allocate memory as you read and write packets.
          */
 
-        ReadStream( const uint8_t * buffer, int bytes ) : BaseStream(), m_reader( buffer, bytes )
-        {
-            // todo: make sure buffer is aligned to 4 byte address
-        }
+        ReadStream( const uint8_t * buffer, int bytes ) : BaseStream(), m_reader( buffer, bytes ) {}
 
         /**
             Serialize an integer (read).
@@ -3262,7 +3256,6 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    // todo: make sure packet data is aligned
     next::WriteStream stream( packet_data, NEXT_MAX_PACKET_BYTES );
 
     typedef next::WriteStream Stream;
@@ -3453,7 +3446,12 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
 
+    next::ReadStream stream( packet_data, packet_bytes );
+
     uint8_t packet_id = packet_data[0];
+
+    uint8_t dummy[256];
+    serialize_bytes( stream, dummy, 1 );
 
     if ( signed_packet && signed_packet[packet_id] )
     {
@@ -3512,9 +3510,8 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         next_assert( decrypted_bytes == uint64_t(message_length) - NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES );
 
-        packet_data += 1 + 8;
-        packet_bytes -= 1 + 8;
-
+        serialize_bytes( stream, dummy, 8 );
+    
         uint64_t clean_sequence = next_clean_sequence( *sequence );
 
         if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
@@ -3523,14 +3520,6 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
             return NEXT_ERROR;
         }
     }
-    else
-    {
-        packet_data += 1;
-        packet_bytes -= 1;
-    }
-
-    // todo: check to make sure packet data is aligned
-    next::ReadStream stream( packet_data, packet_bytes );
 
     switch ( packet_id )
     {
@@ -4505,6 +4494,8 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     next_assert( socket );
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
     double current_time = next_time();
 
@@ -6724,6 +6715,8 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
     next_address_t from;
     
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
@@ -7171,6 +7164,8 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         sequence |= (1ULL<<62);
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+        next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
         if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, private_key, packet_data ) != NEXT_OK )
         {
@@ -9586,7 +9581,6 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    // todo: make sure packet data is aligned
     next::WriteStream stream( packet_data, NEXT_MAX_PACKET_BYTES );
 
     typedef next::WriteStream Stream;
@@ -9683,6 +9677,11 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
     uint8_t packet_id = packet_data[0];
 
+    next::ReadStream stream( packet_data, packet_bytes );
+
+    uint8_t dummy[256];
+    serialize_bytes( stream, dummy, 1 );
+
     if ( packet_bytes < NEXT_PACKET_HASH_BYTES + 1 )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet is too small to be valid" );
@@ -9695,14 +9694,16 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         return NEXT_ERROR;
     }
 
-    packet_bytes -= NEXT_PACKET_HASH_BYTES + 1;
-    packet_data += NEXT_PACKET_HASH_BYTES + 1;
+    serialize_bytes( stream, dummy, NEXT_PACKET_HASH_BYTES );
+
+    const uint8_t * signed_packet_data = packet_data + NEXT_PACKET_HASH_BYTES + 1;
+    const int signed_packet_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + 1 );
 
     if ( signed_packet && signed_packet[packet_id] )
     {
         next_assert( sign_public_key );
 
-        if ( packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
+        if ( signed_packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
             return NEXT_ERROR;
@@ -9710,16 +9711,13 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
         next_crypto_sign_state_t state;
         next_crypto_sign_init( &state );
-        next_crypto_sign_update( &state, packet_data, size_t(packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
-        if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
+        next_crypto_sign_update( &state, signed_packet_data, size_t(signed_packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
+        if ( next_crypto_sign_final_verify( &state, signed_packet_data + signed_packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
             return NEXT_ERROR;
         }
     }
-
-    // todo: check to make sure packet data is aligned
-    next::ReadStream stream( packet_data, packet_bytes );
 
     switch ( packet_id )
     {
@@ -11377,6 +11375,8 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
     next_address_t from;
     
     const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
@@ -11656,6 +11656,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
 	uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 	
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
 	if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
@@ -12856,7 +12858,6 @@ static void test_stream()
     context.min = -10;
     context.max = +10;
 
-    // todo: make sure buffer is aligned
     WriteStream writeStream( buffer, BufferSize );
 
     TestObject writeObject;
@@ -12871,7 +12872,6 @@ static void test_stream()
 
     TestObject readObject;
 
-    // todo: check to make sure buffer is aligned
     ReadStream readStream( buffer, bytesWritten );
     readStream.SetContext( &context );
     readObject.Serialize( readStream );
