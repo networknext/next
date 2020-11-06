@@ -258,6 +258,10 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		fmt.Printf("client reported session\n")
 	}
 
+ 	if sessionUpdate.ClientPingTimedOut {
+		fmt.Printf("client ping timed out\n")
+	}
+
 	if sessionUpdate.ClientBandwidthOverLimit {
 		fmt.Printf("client bandwidth over limit\n")
 	}

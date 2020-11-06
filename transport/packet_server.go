@@ -270,6 +270,7 @@ type SessionUpdatePacket struct {
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
+	ClientPingTimedOut              bool
 	Tag                             uint64
 	Flags                           uint32
 	UserFlags                       uint64
@@ -345,6 +346,9 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 2) {
+		stream.SerializeBool(&packet.ClientPingTimedOut)
+	}
 	
 	hasTag := stream.IsWriting() && packet.Tag != 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
