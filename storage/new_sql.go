@@ -65,7 +65,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	for _, request := range requests {
 		_, err := db.Client.Exec(request)
 		if err != nil {
-			err = fmt.Errorf("NewSQLite3() error executing seed file sql line: %v\n", err)
+			err = fmt.Errorf("NewSQLite3() error executing seed file sql line: %v", err)
 			return nil, err
 		}
 	}
@@ -80,8 +80,9 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
 		level.Error(logger).Log("envvar", "DB_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
-		os.Exit(1)
+		return nil, err
 	}
+
 	// Start a goroutine to sync from the database
 	go func() {
 		ticker := time.NewTicker(syncInterval)
@@ -136,8 +137,9 @@ func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
 		level.Error(logger).Log("envvar", "DB_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
-		os.Exit(1)
+		return nil, err
 	}
+
 	// Start a goroutine to sync from the database
 	go func() {
 
@@ -296,8 +298,6 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 
 		datacenters[did] = d
 
-		// fmt.Printf("syncDatacenters() d: %s\n", d.String())
-
 	}
 
 	db.datacenterIDsMutex.Lock()
@@ -335,7 +335,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		fmt.Printf("syncRelays() QueryContext error: %v\n", err)
 		return err
 	}
 	defer rows.Close()
@@ -427,8 +426,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 		}
 		relays[rid] = r
 
-		// fmt.Printf("syncRelays() r: %s\n", r.String())
-
 	}
 
 	db.relayMutex.Lock()
@@ -436,7 +433,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	db.relayMutex.Unlock()
 
 	db.relayIDsMutex.Lock()
-	db.relays = relays
+	db.relayIDs = relayIDs
 	db.relayIDsMutex.Unlock()
 
 	level.Info(db.Logger).Log("during", "syncRelays", "num", len(db.relays))

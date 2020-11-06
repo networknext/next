@@ -9,8 +9,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-// TODO: The RouteShader and InternalConfig fields need to be
-// converted to slices or moved to different objects.
 type Buyer struct {
 	CompanyCode    string // TODO: chopping block - defined by the parent customer
 	ShortName      string // TBD: same as above

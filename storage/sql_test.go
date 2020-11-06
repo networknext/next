@@ -178,8 +178,6 @@ func TestInsertSQL(t *testing.T) {
 		_, err = rand.Read(updateKey)
 		assert.NoError(t, err)
 
-		// fmt.Printf("AddRelay test - outerDatacenter: %s\n", outerDatacenter.String())
-
 		// fields not stored in the database are not tested here
 		relay := routing.Relay{
 			ID:             rid,
@@ -573,8 +571,6 @@ func TestUpdateSQL(t *testing.T) {
 			SupplierName:  "supplier.local.name",
 			SellerID:      sellerWithID.DatabaseID,
 		}
-
-		// fmt.Printf("SetDatacenter test - datacenter: %s\n", datacenter.String())
 
 		err = db.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
