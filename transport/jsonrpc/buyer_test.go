@@ -691,6 +691,7 @@ func TestTopSessions(t *testing.T) {
 }
 
 func TestSessionDetails(t *testing.T) {
+	checkBigtableEmulation(t)
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
