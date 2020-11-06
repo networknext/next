@@ -316,9 +316,13 @@ func TestNewPortalCruncher(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -396,9 +400,13 @@ func TestReceiveMessage(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -534,9 +542,13 @@ func TestPingRedis(t *testing.T) {
 
 		var useBigtable bool
 		{
-			bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-			assert.NoError(t, err)
-
+			var bigtableEnabled bool
+			if os.Getenv("ENABLE_BIGTABLE") == "" {
+				bigtableEnabled = false
+			} else {
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				assert.NoError(t, err)
+			}
 			bigtableEmulation := checkBigtableEmulation()
 
 			useBigtable = bigtableEnabled && bigtableEmulation
@@ -575,9 +587,13 @@ func TestPingRedis(t *testing.T) {
 
 		var useBigtable bool
 		{
-			bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-			assert.NoError(t, err)
-
+			var bigtableEnabled bool
+			if os.Getenv("ENABLE_BIGTABLE") == "" {
+				bigtableEnabled = false
+			} else {
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				assert.NoError(t, err)
+			}
 			bigtableEmulation := checkBigtableEmulation()
 
 			useBigtable = bigtableEnabled && bigtableEmulation
@@ -619,9 +635,13 @@ func TestPingRedis(t *testing.T) {
 
 		var useBigtable bool
 		{
-			bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-			assert.NoError(t, err)
-
+			var bigtableEnabled bool
+			if os.Getenv("ENABLE_BIGTABLE") == "" {
+				bigtableEnabled = false
+			} else {
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				assert.NoError(t, err)
+			}
 			bigtableEmulation := checkBigtableEmulation()
 
 			useBigtable = bigtableEnabled && bigtableEmulation
@@ -663,9 +683,13 @@ func TestPingRedis(t *testing.T) {
 
 		var useBigtable bool
 		{
-			bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-			assert.NoError(t, err)
-
+			var bigtableEnabled bool
+			if os.Getenv("ENABLE_BIGTABLE") == "" {
+				bigtableEnabled = false
+			} else {
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				assert.NoError(t, err)
+			}
 			bigtableEmulation := checkBigtableEmulation()
 
 			useBigtable = bigtableEnabled && bigtableEmulation
@@ -707,9 +731,13 @@ func TestPingRedis(t *testing.T) {
 
 		var useBigtable bool
 		{
-			bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-			assert.NoError(t, err)
-
+			var bigtableEnabled bool
+			if os.Getenv("ENABLE_BIGTABLE") == "" {
+				bigtableEnabled = false
+			} else {
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				assert.NoError(t, err)
+			}
 			bigtableEmulation := checkBigtableEmulation()
 
 			useBigtable = bigtableEnabled && bigtableEmulation
@@ -759,9 +787,13 @@ func TestDirectSession(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -867,9 +899,13 @@ func TestNextSession(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -975,9 +1011,13 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -1079,9 +1119,13 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -1217,9 +1261,13 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
@@ -1333,9 +1381,13 @@ func TestNoReinsertion(t *testing.T) {
 
 	var useBigtable bool
 	{
-		bigtableEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
-		assert.NoError(t, err)
-
+		var bigtableEnabled bool
+		if os.Getenv("ENABLE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
 		bigtableEmulation := checkBigtableEmulation()
 
 		useBigtable = bigtableEnabled && bigtableEmulation
