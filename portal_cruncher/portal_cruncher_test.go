@@ -1301,6 +1301,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 }
 
 func TestNoReinsertion(t *testing.T) {
+	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
