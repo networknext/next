@@ -3,7 +3,6 @@ package storage_test
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -22,7 +21,7 @@ import (
 // TODO: sort environment in/from Makefile
 func SetupEnv() {
 	os.Setenv("ENV", "local")
-	os.Setenv("PGSQL", "false")
+	os.Setenv("PGSQL", "true")
 	os.Setenv("DB_SYNC_INTERVAL", "10s")
 }
 
@@ -32,8 +31,6 @@ func TestInsertSQL(t *testing.T) {
 
 	ctx := context.Background()
 	logger := log.NewNopLogger()
-
-	fmt.Println("Starting Add SQL tests.")
 
 	// NewSQLStorage syncs the local sync number from the remote and
 	// runs all the sync*() methods
@@ -144,6 +141,7 @@ func TestInsertSQL(t *testing.T) {
 
 		buyer := routing.Buyer{
 			ID:         internalID,
+			ShortName:  outerCustomer.Code,
 			Live:       true,
 			Debug:      true,
 			PublicKey:  publicKey,
@@ -160,6 +158,9 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, buyer.Debug, outerBuyer.Debug)
 		assert.Equal(t, publicKey, outerBuyer.PublicKey)
 		assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
+		assert.Equal(t, buyer.ShortName, outerBuyer.ShortName)
+		// Currently not covered by storer
+		// assert.Equal(t, buyer.CompanyCode, outerBuyer.CompanyCode)
 	})
 
 	t.Run("AddRelay", func(t *testing.T) {
@@ -214,6 +215,7 @@ func TestInsertSQL(t *testing.T) {
 		// check only the fields set above
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
+
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
 		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)

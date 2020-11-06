@@ -13,6 +13,7 @@ import (
 // converted to slices or moved to different objects.
 type Buyer struct {
 	CompanyCode    string // TODO: chopping block - defined by the parent customer
+	ShortName      string // TBD: same as above
 	ID             uint64
 	Live           bool
 	Debug          bool
@@ -28,6 +29,8 @@ func (b *Buyer) String() string {
 	buyer := "\nrouting.Buyer:\n"
 	buyer += "\tID (hex)      : " + fmt.Sprintf("%16x", b.ID) + "\n"
 	buyer += "\tID            : " + fmt.Sprintf("%d", b.ID) + "\n"
+	buyer += "\tShortName     : '" + b.ShortName + "'\n"
+	buyer += "\tCompanyCode   : '" + b.CompanyCode + "'\n"
 	buyer += "\tLive          : " + strconv.FormatBool(b.Live) + "\n"
 	buyer += "\tDebug         : " + strconv.FormatBool(b.Debug) + "\n"
 	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"

@@ -280,7 +280,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 
 		datacenterIDs[dc.ID] = did
 
-		datacenters[did] = routing.Datacenter{
+		d := routing.Datacenter{
 			ID:      did,
 			Name:    dc.Name,
 			Enabled: dc.Enabled,
@@ -293,6 +293,10 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 			SellerID:      dc.SellerID,
 			DatacenterID:  dc.ID,
 		}
+
+		datacenters[did] = d
+
+		// fmt.Printf("syncDatacenters() d: %s\n", d.String())
 
 	}
 
@@ -323,7 +327,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.update_key, "))
 	sql.Write([]byte("relays.bw_billing_rule, relays.datacenter, "))
-	sql.Write([]byte("machine_type, relay_state from relays "))
+	sql.Write([]byte("relays.machine_type, relays.relay_state from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -394,7 +398,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter := db.datacenters[db.datacenterIDs[relay.RelayID]]
+		datacenter := db.datacenters[db.datacenterIDs[relay.DatacenterID]]
 
 		relayIDs[relay.RelayID] = rid
 
@@ -423,6 +427,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 		}
 		relays[rid] = r
 
+		// fmt.Printf("syncRelays() r: %s\n", r.String())
+
 	}
 
 	db.relayMutex.Lock()
@@ -444,6 +450,7 @@ type sqlBuyer struct {
 	Debug          bool
 	Name           string
 	PublicKey      []byte
+	ShortName      string
 	CompanyCode    string // should not be needed
 	BuyerID        int64  // sql PK
 	CustomerID     int64  // sql PK
@@ -457,7 +464,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
 	buyerIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select id, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -468,7 +475,9 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&buyer.BuyerID,
+		err = rows.Scan(
+			&buyer.BuyerID,
+			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
 			&buyer.PublicKey,
@@ -495,6 +504,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		b := routing.Buyer{
 			ID:             buyer.ID,
+			ShortName:      buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
 			PublicKey:      buyer.PublicKey,

@@ -321,9 +321,9 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
-	// skip Name and CompanyCode - they are part of the parent routing.Customer
 	buyer := sqlBuyer{
 		ID:             b.ID,
+		ShortName:      b.ShortName,
 		IsLiveCustomer: b.Live,
 		Debug:          b.Debug,
 		PublicKey:      b.PublicKey,
@@ -332,8 +332,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("is_live_customer, debug, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("short_name, is_live_customer, debug, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -341,7 +341,9 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.IsLiveCustomer,
+	result, err := stmt.Exec(
+		buyer.ShortName,
+		buyer.IsLiveCustomer,
 		buyer.Debug,
 		buyer.PublicKey,
 		buyer.CustomerID,
@@ -786,9 +788,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		EndDate:            r.EndDate,
 		MachineType:        int64(r.Type),
 	}
-
-	// fmt.Printf("AddRelay() relay.DatacenterID       : %d\n", relay.DatacenterID)
-	// fmt.Printf("AddRelay() r.Datacenter.DatacenterID: %d\n", r.Datacenter.DatacenterID)
 
 	sql.Write([]byte("insert into relays ("))
 	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
