@@ -21,7 +21,7 @@ import (
 // TODO: sort environment in/from Makefile
 func SetupEnv() {
 	os.Setenv("ENV", "local")
-	os.Setenv("PGSQL", "true")
+	os.Setenv("PGSQL", "false")
 	os.Setenv("DB_SYNC_INTERVAL", "10s")
 }
 
