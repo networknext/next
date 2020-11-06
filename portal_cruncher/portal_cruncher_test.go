@@ -285,6 +285,21 @@ func TestNewPortalCruncher(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("bigtable failure", func (t *testing.T) {
+		// Unset the emulator host env var
+		btEmulatorHost := os.Getenv("BIGTABLE_EMULATOR_HOST")
+		err := os.Unsetenv("BIGTABLE_EMULATOR_HOST")
+		assert.NoError(t, err)
+		
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), true, "", btInstanceID, btTableName, btCfName, btMaxAgeDays, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
+		assert.Nil(t, portalCruncher)
+		assert.Error(t, err)
+
+		// Set the emulator host env var
+		err = os.Setenv("BIGTABLE_EMULATOR_HOST", btEmulatorHost)
+		assert.NoError(t, err)
+	})
+
 	t.Run("success", func(t *testing.T) {
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)

@@ -485,7 +485,6 @@ func SetupBigtable(ctx context.Context,
 		return nil, nil, err
 	}
 
-	// Verify if the table needed exists
 	if !tableExists {
 		// Create a table with the given name and column families
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
