@@ -254,6 +254,10 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
+ 	if sessionUpdate.Reported {
+		fmt.Printf("client reported session\n")
+	}
+
 	if sessionUpdate.ClientBandwidthOverLimit {
 		fmt.Printf("client bandwidth over limit\n")
 	}
