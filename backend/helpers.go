@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	
+
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
@@ -195,7 +195,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		}
 
 		// Create dummy buyer and datacenter for local testing
-		storage.SeedStorage(logger, ctx, storer, relayPublicKey, customerID, customerPublicKey)
+		storage.SeedStorage(ctx, storer, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	return storer, nil
