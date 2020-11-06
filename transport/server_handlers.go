@@ -264,6 +264,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		var packet SessionUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read session update packet", "err", err)
+			level.Debug(logger).Log("incoming_data", fmt.Sprintf("%d", incoming.Data))
+			level.Debug(logger).Log("packet", fmt.Sprintf("%#v", packet))
 			metrics.ReadPacketFailure.Add(1)
 			return
 		}
