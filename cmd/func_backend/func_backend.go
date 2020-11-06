@@ -166,9 +166,9 @@ func TimeoutThread() {
 				continue
 			}
 		}
+
 		if backend.dirty {
 			fmt.Printf("-----------------------------\n")
-			allRelayData := backend.relayMap.GetAllRelayData()
 			for _, relayData := range allRelayData {
 				fmt.Printf("relay: %v\n", &relayData.Addr)
 			}
@@ -185,7 +185,7 @@ func TimeoutThread() {
 	}
 }
 
-func (backend *Backend) GetNearRelays() []*routing.RelayData {
+func (backend *Backend) GetNearRelays() []routing.RelayData {
 	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
 	backend.mutex.Unlock()
@@ -252,6 +252,14 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if sessionUpdate.FallbackToDirect {
 		fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
 		return
+	}
+
+ 	if sessionUpdate.Reported {
+		fmt.Printf("client reported session\n")
+	}
+
+ 	if sessionUpdate.ClientPingTimedOut {
+		fmt.Printf("client ping timed out\n")
 	}
 
 	if sessionUpdate.ClientBandwidthOverLimit {

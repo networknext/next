@@ -24,7 +24,8 @@ func TestServerUpdateHandlerReadPacketFailure(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
@@ -46,7 +47,8 @@ func TestServerUpdateHandlerBuyerNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -76,7 +78,8 @@ func TestServerUpdateHandlerSDKTooOld(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -114,7 +117,8 @@ func TestServerUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -148,7 +152,8 @@ func TestServerUpdateHandlerDatacenterAndAliasNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -188,7 +193,8 @@ func TestServerUpdateHandlerSuccess(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -233,7 +239,8 @@ func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})

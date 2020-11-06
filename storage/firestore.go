@@ -69,6 +69,7 @@ type seller struct {
 type relay struct {
 	Name               string                 `firestore:"displayName"`
 	Address            string                 `firestore:"publicAddress"`
+	InternalAddress    string                 `firestore:"internalAddress"`
 	PublicKey          []byte                 `firestore:"publicKey"`
 	UpdateKey          []byte                 `firestore:"updateKey"`
 	NICSpeedMbps       int64                  `firestore:"nicSpeedMbps"`
@@ -1853,11 +1854,27 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 
 		host, port, err := net.SplitHostPort(r.Address)
 		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to split host and port: %v", err)}
+			return &UnmarshalError{err: fmt.Errorf("failed to split host and port (external): %v", err)}
 		}
 		iport, err := strconv.ParseInt(port, 10, 64)
 		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int: %v", err)}
+			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (external): %v", err)}
+		}
+
+		var internalAddr net.UDPAddr
+		if r.InternalAddress != "" {
+			internalHost, internalPort, err := net.SplitHostPort(r.InternalAddress)
+			if err != nil {
+				return &UnmarshalError{err: fmt.Errorf("failed to split host and port (internal): %v", err)}
+			}
+			iinternalPort, err := strconv.ParseInt(internalPort, 10, 64)
+			if err != nil {
+				return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (internal): %v", err)}
+			}
+			internalAddr = net.UDPAddr{
+				IP:   net.ParseIP(internalHost),
+				Port: int(iinternalPort),
+			}
 		}
 
 		// Default to the relay public key, but if that isn't in firestore
@@ -1900,6 +1917,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
+			InternalAddr:        internalAddr,
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int32(r.NICSpeedMbps),
 			IncludedBandwidthGB: int32(r.IncludedBandwithGB),

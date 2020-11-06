@@ -51,4 +51,5 @@ require (
 	google.golang.org/protobuf v1.24.0 // indirect
 	gopkg.in/auth0.v4 v4.3.4
 	gopkg.in/go-playground/assert.v1 v1.2.1
+	gopkg.in/yaml.v2 v2.2.7 // indirect
 )

@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -420,9 +421,9 @@ func mainReturnWithCode() int {
 	}
 
 	// Start portal cruncher publisher
-	var portalPublisher pubsub.Publisher
+	portalPublishers := make([]pubsub.Publisher, 0)
 	{
-		portalCruncherHost := envvar.Get("PORTAL_CRUNCHER_HOST", "tcp://127.0.0.1:5555")
+		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
 		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
@@ -430,13 +431,15 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, postSessionPortalSendBufferSize)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-			return 1
-		}
+		for _, host := range portalCruncherHosts {
+			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+				return 1
+			}
 
-		portalPublisher = portalCruncherPublisher
+			portalPublishers = append(portalPublishers, portalCruncherPublisher)
+		}
 	}
 
 	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
@@ -460,8 +463,8 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
-	postSessionHandler.StartProcessing(ctx)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
+	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
@@ -570,11 +573,16 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	connections := make([]*net.UDPConn, numThreads)
+	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
+	enableInternalIPs, err := envvar.GetBool("ENABLE_INTERNAL_IPS", false)
+	if err != nil {
+		level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
+		return 1
+	}
 
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, internalIPSellers, enableInternalIPs)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -584,6 +592,7 @@ func mainReturnWithCode() int {
 			}
 
 			conn := lp.(*net.UDPConn)
+			defer conn.Close()
 
 			if err := conn.SetReadBuffer(readBuffer); err != nil {
 				panic(fmt.Sprintf("could not set connection read buffer size: %v", err))
@@ -592,8 +601,6 @@ func mainReturnWithCode() int {
 			if err := conn.SetWriteBuffer(writeBuffer); err != nil {
 				panic(fmt.Sprintf("could not set connection write buffer size: %v", err))
 			}
-
-			connections[thread] = conn
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 			for {
@@ -657,10 +664,6 @@ func mainReturnWithCode() int {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
-
-	for _, connection := range connections {
-		connection.Close()
-	}
 
 	return 0
 }

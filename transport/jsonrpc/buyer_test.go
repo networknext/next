@@ -251,7 +251,11 @@ func TestTotalSessions(t *testing.T) {
 	redisServer.HSet(fmt.Sprintf("n-0000000000000002-%d", minutes), "456", "")
 	redisServer.HSet(fmt.Sprintf("n-0000000000000003-%d", minutes), "789", "")
 
-	redisServer.HSet(fmt.Sprintf("d-0000000000000001-%d", minutes), "789", "")
+	redisServer.HSet(fmt.Sprintf("d-0000000000000001-%d", minutes), "012", "")
+
+	redisServer.HSet(fmt.Sprintf("c-0000000000000001-%d", minutes), "101", "2")
+	redisServer.HSet(fmt.Sprintf("c-0000000000000002-%d", minutes), "102", "1")
+	redisServer.HSet(fmt.Sprintf("c-0000000000000003-%d", minutes), "103", "1")
 
 	pubkey := make([]byte, 4)
 
@@ -320,6 +324,72 @@ func TestTotalSessions(t *testing.T) {
 
 		assert.Equal(t, 0, reply.Direct)
 		assert.Equal(t, 1, reply.Next)
+	})
+}
+
+func TestTotalSessionsWithGhostArmy(t *testing.T) {
+	t.Parallel()
+	var storer = storage.InMemory{}
+
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+
+	minutes := time.Now().Unix() / 60
+
+	redisServer.HSet(fmt.Sprintf("n-0000000000000000-%d", minutes), "123", "") // ghost army
+	redisServer.HSet(fmt.Sprintf("n-0000000000000001-%d", minutes), "456", "")
+	redisServer.HSet(fmt.Sprintf("n-0000000000000002-%d", minutes), "789", "")
+
+	redisServer.HSet(fmt.Sprintf("d-0000000000000001-%d", minutes), "012", "")
+
+	redisServer.HSet(fmt.Sprintf("c-0000000000000001-%d", minutes), "102", "2")
+	redisServer.HSet(fmt.Sprintf("c-0000000000000002-%d", minutes), "103", "1")
+
+	pubkey := make([]byte, 4)
+
+	ctx := context.Background()
+
+	storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
+	storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
+	storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+
+	storer.AddBuyer(ctx, routing.Buyer{ID: 0, CompanyCode: "local", PublicKey: pubkey})
+	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local-local", PublicKey: pubkey})
+	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local-local", PublicKey: pubkey})
+
+	logger := log.NewNopLogger()
+	svc := jsonrpc.BuyersService{
+		RedisPoolTopSessions:   redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolSessionMap:    redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	req = req.WithContext(reqContext)
+
+	t.Run("all", func(t *testing.T) {
+		var reply jsonrpc.TotalSessionsReply
+		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 3, reply.Next)
+		assert.Equal(t, 51, reply.Direct)
+	})
+
+	t.Run("filtered - sameBuyer - !admin", func(t *testing.T) {
+		var reply jsonrpc.TotalSessionsReply
+		// test per buyer counts
+		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{CompanyCode: "local"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, reply.Next)
+		assert.Equal(t, 50, reply.Direct)
 	})
 }
 
