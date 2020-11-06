@@ -48,18 +48,18 @@ type PortalCruncher struct {
 	subscriber pubsub.Subscriber
 	metrics    *metrics.PortalCruncherMetrics
 
-	redisCountMessageChan 	chan *transport.SessionCountData
-	redisDataMessageChan  	chan *transport.SessionPortalData
-	btDataMessageChan 		chan *transport.SessionPortalData
+	redisCountMessageChan chan *transport.SessionCountData
+	redisDataMessageChan  chan *transport.SessionPortalData
+	btDataMessageChan     chan *transport.SessionPortalData
 
 	topSessions   storage.RedisClient
 	sessionMap    storage.RedisClient
 	sessionMeta   storage.RedisClient
 	sessionSlices storage.RedisClient
 
-	useBigtable 	bool
-	btClient 		*storage.BigTable
-	btCfNames		[]string
+	useBigtable bool
+	btClient    *storage.BigTable
+	btCfNames   []string
 
 	redisFlushCount int
 	flushTime       time.Time
@@ -119,15 +119,15 @@ func NewPortalCruncher(
 		metrics:               metrics,
 		redisCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
 		redisDataMessageChan:  make(chan *transport.SessionPortalData, chanBufferSize),
-		btDataMessageChan: 	   make(chan *transport.SessionPortalData, chanBufferSize),
+		btDataMessageChan:     make(chan *transport.SessionPortalData, chanBufferSize),
 		topSessions:           topSessions,
 		sessionMap:            sessionMap,
 		sessionMeta:           sessionMeta,
 		sessionSlices:         sessionSlices,
 		redisFlushCount:       redisFlushCount,
-		useBigtable: 		   useBigtable,
-		btClient:			   btClient,
-		btCfNames:			   btCfNames,
+		useBigtable:           useBigtable,
+		btClient:              btClient,
+		btCfNames:             btCfNames,
 		flushTime:             time.Now(),
 		pingTime:              time.Now(),
 	}, nil
@@ -216,7 +216,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numReceiveGoroutines 
 			go func() {
 				defer wg.Done()
 				btPortalDataBuffer := make([]*transport.SessionPortalData, 0)
-				
+
 				for {
 					select {
 					// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
@@ -284,7 +284,6 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 			default:
 				return &ErrChannelFull{}
 			}
-
 
 			select {
 			case cruncher.btDataMessageChan <- &sessionPortalData:
@@ -513,10 +512,10 @@ func SetupBigtable(ctx context.Context,
 	return btClient, btCfNames, nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context) error {
-	for j := range cruncher.btPortalDataBuffer {
-		meta := &cruncher.btPortalDataBuffer[j].Meta
-		slice := &cruncher.btPortalDataBuffer[j].Slice
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {
+	for j := range btPortalDataBuffer {
+		meta := btPortalDataBuffer[j].Meta
+		slice := btPortalDataBuffer[j].Slice
 
 		// This seems redundant, try to figure out a better prefix to limit the number of keys
 		// Key for session ID

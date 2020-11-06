@@ -448,13 +448,8 @@ type SessionDetailsReply struct {
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
 	var err error
-	
-	// Decide if should use bigtable 
-	historic, err := envvar.GetBool("ENABLE_BIGTABLE", false)
-	if err != nil {
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
+	var historic bool = false
+
 	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
 
 	if args.SessionID == "" {
@@ -468,7 +463,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	// Use bigtable if error from redis or requesting historic information
-	if (err != nil && err != redis.ErrNil) || historic {
+	if err != nil || metaString == "" {
 		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
@@ -480,6 +475,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
+
+		historic = true
 
 		for _, row := range metaRows {
 			reply.Meta.UnmarshalBinary(row[0].Value)

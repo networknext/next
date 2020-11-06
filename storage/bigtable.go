@@ -40,7 +40,7 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, lo
 		return nil, err
 	}
 	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
-	
+
 	if btTableName == "" {
 		err := fmt.Errorf("NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
 		level.Error(logger).Log("err", err)
@@ -195,7 +195,7 @@ func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	// Always map meta to the first column family
 	if len(btCfNames) == 0 {
 		return fmt.Errorf("InsertSessionMetaData() Column family names slice is empty")
-	} 
+	}
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
 
@@ -220,7 +220,7 @@ func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
 	// Always map slice to the first column family
 	if len(btCfNames) == 0 {
 		return fmt.Errorf("InsertSessionSliceData() Column family names slice is empty")
-	} 
+	}
 	cfMap := make(map[string]string)
 	cfMap["slices"] = btCfNames[0]
 

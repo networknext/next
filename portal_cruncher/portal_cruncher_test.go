@@ -14,6 +14,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/alicebob/miniredis/v2/server"
+	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
@@ -222,6 +223,10 @@ func (m *MockRedis) Close() error {
 }
 
 func TestNewPortalCruncher(t *testing.T) {
+	ctx := context.Background()
+
+	logger := log.NewNopLogger()
+
 	redisTopSessions, err := miniredis.Run()
 	assert.NoError(t, err)
 
@@ -235,31 +240,31 @@ func TestNewPortalCruncher(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("top sessions failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, "", redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, "", redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("session map failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), "", redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), "", redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("session meta failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), "", redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), "", redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("session slices failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), "", 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), "", false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 	})
@@ -267,6 +272,8 @@ func TestNewPortalCruncher(t *testing.T) {
 
 func TestReceiveMessage(t *testing.T) {
 	ctx := context.Background()
+
+	logger := log.NewNopLogger()
 
 	redisTopSessions, err := miniredis.Run()
 	assert.NoError(t, err)
@@ -283,7 +290,7 @@ func TestReceiveMessage(t *testing.T) {
 	t.Run("receive error", func(t *testing.T) {
 		subscriber := &MockSubscriber{bad: true}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -294,7 +301,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{countData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -309,7 +316,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{countData: countDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -324,7 +331,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{countData: countDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 1, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 1, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -335,7 +342,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{sessionData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -350,7 +357,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{sessionData: sessionDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -365,7 +372,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{sessionData: sessionDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 1, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 1, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -380,7 +387,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &MockSubscriber{sessionData: sessionDataBytes}
 		subscriber.Subscribe(255)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 1, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 1, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -389,6 +396,9 @@ func TestReceiveMessage(t *testing.T) {
 }
 
 func TestPingRedis(t *testing.T) {
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
 	t.Run("top sessions failure", func(t *testing.T) {
 		redisTopSessions, err := miniredis.Run()
 		assert.NoError(t, err)
@@ -402,7 +412,7 @@ func TestPingRedis(t *testing.T) {
 		redisSessionSlices, err := miniredis.Run()
 		assert.NoError(t, err)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -426,7 +436,7 @@ func TestPingRedis(t *testing.T) {
 		redisSessionSlices, err := miniredis.Run()
 		assert.NoError(t, err)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -450,7 +460,7 @@ func TestPingRedis(t *testing.T) {
 		redisSessionSlices, err := miniredis.Run()
 		assert.NoError(t, err)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -474,7 +484,7 @@ func TestPingRedis(t *testing.T) {
 		redisSessionSlices, err := miniredis.Run()
 		assert.NoError(t, err)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -498,7 +508,7 @@ func TestPingRedis(t *testing.T) {
 		redisSessionSlices, err := miniredis.Run()
 		assert.NoError(t, err)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), 0, 0, &metrics.EmptyPortalCruncherMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), false, "", "", "", "", 90, 0, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -508,6 +518,7 @@ func TestPingRedis(t *testing.T) {
 }
 
 func TestDirectSession(t *testing.T) {
+	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
@@ -529,11 +540,11 @@ func TestDirectSession(t *testing.T) {
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), false, "", "", "", "", 90, 4, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1)
+	err = portalCruncher.Start(ctx, 1, 1, 0)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -598,6 +609,7 @@ func TestDirectSession(t *testing.T) {
 }
 
 func TestNextSession(t *testing.T) {
+	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
@@ -619,11 +631,11 @@ func TestNextSession(t *testing.T) {
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), false, "", "", "", "", 90, 4, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1)
+	err = portalCruncher.Start(ctx, 1, 1, 0)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -688,6 +700,7 @@ func TestNextSession(t *testing.T) {
 }
 
 func TestNextSessionLargeCustomer(t *testing.T) {
+	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
@@ -709,11 +722,11 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), false, "", "", "", "", 90, 4, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1)
+	err = portalCruncher.Start(ctx, 1, 1, 0)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -744,6 +757,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 }
 
 func TestDirectToNextLargeCustomer(t *testing.T) {
+	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
@@ -795,11 +809,11 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), false, "", "", "", "", 90, 4, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1)
+	err = portalCruncher.Start(ctx, 1, 1, 0)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
@@ -864,6 +878,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 }
 
 func TestNextToDirectLargeCustomer(t *testing.T) {
+	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
 
@@ -915,11 +930,11 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), 4, 0, &metrics.EmptyPortalCruncherMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), false, "", "", "", "", 90, 4, 0, logger, &metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1)
+	err = portalCruncher.Start(ctx, 1, 1, 0)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
