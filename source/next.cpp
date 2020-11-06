@@ -8871,6 +8871,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
+        serialize_bool( stream, client_ping_timed_out );
 
         bool has_tag = Stream::IsWriting && tag != 0;
         bool has_flags = Stream::IsWriting && flags != 0;
@@ -8883,7 +8884,6 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
-        serialize_bool( stream, client_ping_timed_out );
 
         if ( has_tag )
         {
