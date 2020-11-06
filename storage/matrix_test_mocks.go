@@ -35,10 +35,10 @@ var _ MatrixStore = &MatrixStoreMock{}
 //             DeleteMatrixSvcFunc: func(id uint64) error {
 // 	               panic("mock out the DeleteMatrixSvc method")
 //             },
-//             DeleteOptimizerMatrixFunc: func(id uint64) error {
+//             DeleteOptimizerMatrixFunc: func(id uint64, matrixType string) error {
 // 	               panic("mock out the DeleteOptimizerMatrix method")
 //             },
-//             GetLiveMatrixFunc: func() ([]byte, error) {
+//             GetLiveMatrixFunc: func(matrixType string) ([]byte, error) {
 // 	               panic("mock out the GetLiveMatrix method")
 //             },
 //             GetMatrixSvcMasterFunc: func() (uint64, error) {
@@ -53,7 +53,7 @@ var _ MatrixStore = &MatrixStoreMock{}
 //             GetOptimizerMatricesFunc: func() ([]Matrix, error) {
 // 	               panic("mock out the GetOptimizerMatrices method")
 //             },
-//             UpdateLiveMatrixFunc: func(matrixData []byte) error {
+//             UpdateLiveMatrixFunc: func(matrixData []byte, matrixType string) error {
 // 	               panic("mock out the UpdateLiveMatrix method")
 //             },
 //             UpdateMatrixSvcFunc: func(matrixSvcData MatrixSvcData) error {
@@ -79,10 +79,10 @@ type MatrixStoreMock struct {
 	DeleteMatrixSvcFunc func(id uint64) error
 
 	// DeleteOptimizerMatrixFunc mocks the DeleteOptimizerMatrix method.
-	DeleteOptimizerMatrixFunc func(id uint64) error
+	DeleteOptimizerMatrixFunc func(id uint64, matrixType string) error
 
 	// GetLiveMatrixFunc mocks the GetLiveMatrix method.
-	GetLiveMatrixFunc func() ([]byte, error)
+	GetLiveMatrixFunc func(matrixType string) ([]byte, error)
 
 	// GetMatrixSvcMasterFunc mocks the GetMatrixSvcMaster method.
 	GetMatrixSvcMasterFunc func() (uint64, error)
@@ -97,7 +97,7 @@ type MatrixStoreMock struct {
 	GetOptimizerMatricesFunc func() ([]Matrix, error)
 
 	// UpdateLiveMatrixFunc mocks the UpdateLiveMatrix method.
-	UpdateLiveMatrixFunc func(matrixData []byte) error
+	UpdateLiveMatrixFunc func(matrixData []byte, matrixType string) error
 
 	// UpdateMatrixSvcFunc mocks the UpdateMatrixSvc method.
 	UpdateMatrixSvcFunc func(matrixSvcData MatrixSvcData) error
@@ -122,9 +122,13 @@ type MatrixStoreMock struct {
 		DeleteOptimizerMatrix []struct {
 			// ID is the id argument value.
 			ID uint64
+			// MatrixType is the matrixType argument value.
+			MatrixType string
 		}
 		// GetLiveMatrix holds details about calls to the GetLiveMatrix method.
 		GetLiveMatrix []struct {
+			// MatrixType is the matrixType argument value.
+			MatrixType string
 		}
 		// GetMatrixSvcMaster holds details about calls to the GetMatrixSvcMaster method.
 		GetMatrixSvcMaster []struct {
@@ -142,6 +146,8 @@ type MatrixStoreMock struct {
 		UpdateLiveMatrix []struct {
 			// MatrixData is the matrixData argument value.
 			MatrixData []byte
+			// MatrixType is the matrixType argument value.
+			MatrixType string
 		}
 		// UpdateMatrixSvc holds details about calls to the UpdateMatrixSvc method.
 		UpdateMatrixSvc []struct {
@@ -198,29 +204,33 @@ func (mock *MatrixStoreMock) DeleteMatrixSvcCalls() []struct {
 }
 
 // DeleteOptimizerMatrix calls DeleteOptimizerMatrixFunc.
-func (mock *MatrixStoreMock) DeleteOptimizerMatrix(id uint64) error {
+func (mock *MatrixStoreMock) DeleteOptimizerMatrix(id uint64, matrixType string) error {
 	if mock.DeleteOptimizerMatrixFunc == nil {
 		panic("MatrixStoreMock.DeleteOptimizerMatrixFunc: method is nil but MatrixStore.DeleteOptimizerMatrix was just called")
 	}
 	callInfo := struct {
-		ID uint64
+		ID         uint64
+		MatrixType string
 	}{
-		ID: id,
+		ID:         id,
+		MatrixType: matrixType,
 	}
 	lockMatrixStoreMockDeleteOptimizerMatrix.Lock()
 	mock.calls.DeleteOptimizerMatrix = append(mock.calls.DeleteOptimizerMatrix, callInfo)
 	lockMatrixStoreMockDeleteOptimizerMatrix.Unlock()
-	return mock.DeleteOptimizerMatrixFunc(id)
+	return mock.DeleteOptimizerMatrixFunc(id, matrixType)
 }
 
 // DeleteOptimizerMatrixCalls gets all the calls that were made to DeleteOptimizerMatrix.
 // Check the length with:
 //     len(mockedMatrixStore.DeleteOptimizerMatrixCalls())
 func (mock *MatrixStoreMock) DeleteOptimizerMatrixCalls() []struct {
-	ID uint64
+	ID         uint64
+	MatrixType string
 } {
 	var calls []struct {
-		ID uint64
+		ID         uint64
+		MatrixType string
 	}
 	lockMatrixStoreMockDeleteOptimizerMatrix.RLock()
 	calls = mock.calls.DeleteOptimizerMatrix
@@ -229,24 +239,29 @@ func (mock *MatrixStoreMock) DeleteOptimizerMatrixCalls() []struct {
 }
 
 // GetLiveMatrix calls GetLiveMatrixFunc.
-func (mock *MatrixStoreMock) GetLiveMatrix() ([]byte, error) {
+func (mock *MatrixStoreMock) GetLiveMatrix(matrixType string) ([]byte, error) {
 	if mock.GetLiveMatrixFunc == nil {
 		panic("MatrixStoreMock.GetLiveMatrixFunc: method is nil but MatrixStore.GetLiveMatrix was just called")
 	}
 	callInfo := struct {
-	}{}
+		MatrixType string
+	}{
+		MatrixType: matrixType,
+	}
 	lockMatrixStoreMockGetLiveMatrix.Lock()
 	mock.calls.GetLiveMatrix = append(mock.calls.GetLiveMatrix, callInfo)
 	lockMatrixStoreMockGetLiveMatrix.Unlock()
-	return mock.GetLiveMatrixFunc()
+	return mock.GetLiveMatrixFunc(matrixType)
 }
 
 // GetLiveMatrixCalls gets all the calls that were made to GetLiveMatrix.
 // Check the length with:
 //     len(mockedMatrixStore.GetLiveMatrixCalls())
 func (mock *MatrixStoreMock) GetLiveMatrixCalls() []struct {
+	MatrixType string
 } {
 	var calls []struct {
+		MatrixType string
 	}
 	lockMatrixStoreMockGetLiveMatrix.RLock()
 	calls = mock.calls.GetLiveMatrix
@@ -359,19 +374,21 @@ func (mock *MatrixStoreMock) GetOptimizerMatricesCalls() []struct {
 }
 
 // UpdateLiveMatrix calls UpdateLiveMatrixFunc.
-func (mock *MatrixStoreMock) UpdateLiveMatrix(matrixData []byte) error {
+func (mock *MatrixStoreMock) UpdateLiveMatrix(matrixData []byte, matrixType string) error {
 	if mock.UpdateLiveMatrixFunc == nil {
 		panic("MatrixStoreMock.UpdateLiveMatrixFunc: method is nil but MatrixStore.UpdateLiveMatrix was just called")
 	}
 	callInfo := struct {
 		MatrixData []byte
+		MatrixType string
 	}{
 		MatrixData: matrixData,
+		MatrixType: matrixType,
 	}
 	lockMatrixStoreMockUpdateLiveMatrix.Lock()
 	mock.calls.UpdateLiveMatrix = append(mock.calls.UpdateLiveMatrix, callInfo)
 	lockMatrixStoreMockUpdateLiveMatrix.Unlock()
-	return mock.UpdateLiveMatrixFunc(matrixData)
+	return mock.UpdateLiveMatrixFunc(matrixData, matrixType)
 }
 
 // UpdateLiveMatrixCalls gets all the calls that were made to UpdateLiveMatrix.
@@ -379,9 +396,11 @@ func (mock *MatrixStoreMock) UpdateLiveMatrix(matrixData []byte) error {
 //     len(mockedMatrixStore.UpdateLiveMatrixCalls())
 func (mock *MatrixStoreMock) UpdateLiveMatrixCalls() []struct {
 	MatrixData []byte
+	MatrixType string
 } {
 	var calls []struct {
 		MatrixData []byte
+		MatrixType string
 	}
 	lockMatrixStoreMockUpdateLiveMatrix.RLock()
 	calls = mock.calls.UpdateLiveMatrix

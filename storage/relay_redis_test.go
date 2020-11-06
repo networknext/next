@@ -2,6 +2,7 @@ package storage
 
 import(
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import(
 func relayRedisTestHelperRedisStore(t *testing.T) (*RedisRelayStore, *miniredis.Miniredis){
 	rSvr, err := miniredis.Run()
 	assert.Nil(t, err)
-	store, err := NewRedisRelayStore(rSvr.Addr(),10,10,5)
+	store, err := NewRedisRelayStore(rSvr.Addr(),10*time.Millisecond,10*time.Millisecond,5*time.Second)
 	assert.Nil(t, err)
 	return store, rSvr
 }
@@ -18,7 +19,7 @@ func relayRedisTestHelperRedisStore(t *testing.T) (*RedisRelayStore, *miniredis.
 func TestRedisRelayStore(t *testing.T) {
 	rs, ms := relayRedisTestHelperRedisStore(t)
 	assert.NotNil(t, rs.conn)
-	assert.Equal(t,int64(5), rs.relayTimeout)
+	assert.Equal(t,5*time.Second, rs.relayTimeout)
 
 	rs.conn.Close()
 	ms.Close()

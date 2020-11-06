@@ -19,9 +19,12 @@ func testMatrixSvcData() []storage.MatrixSvcData {
 
 func testOptimizerMatrices() []storage.Matrix {
 	return []storage.Matrix{
-		{1, time.Now().Add(time.Duration(-50) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), []byte("optimizer1")},
-		{2, time.Now().Add(time.Duration(-20) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), []byte("optimizer2")},
-		{3, time.Now().Add(time.Duration(-40) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), []byte("optimizer3")},
+		{1, time.Now().Add(time.Duration(-50) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.NormalMatrixType, []byte("optimizer1")},
+		{1, time.Now().Add(time.Duration(-49) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.ValveMatrixType, []byte("optimizer1Valve")},
+		{2, time.Now().Add(time.Duration(-20) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.NormalMatrixType,[]byte("optimizer2")},
+		{2, time.Now().Add(time.Duration(-25) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.ValveMatrixType, []byte("optimizer2Valve")},
+		{3, time.Now().Add(time.Duration(-40) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.NormalMatrixType,[]byte("optimizer3")},
+		{3, time.Now().Add(time.Duration(-45) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.ValveMatrixType, []byte("optimizer3Valve")},
 	}
 }
 
@@ -146,7 +149,7 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_OptimizerMasterCurrent(t *testing.
 		UpdateOptimizerMasterFunc: func(id uint64) error {
 			return fmt.Errorf("should not be called")
 		},
-		UpdateLiveMatrixFunc: func(matrixData []byte) error {
+		UpdateLiveMatrixFunc: func(matrixData []byte, matrixType string) error {
 			if string(matrixData) != "optimizer3"{
 				return fmt.Errorf("not the correct matrix: %s", string(matrixData))
 			}
@@ -177,7 +180,7 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_ChooseOptimizerMaster(t *testing.T
 			}
 			return nil
 		},
-		UpdateLiveMatrixFunc: func(matrixData []byte) error {
+		UpdateLiveMatrixFunc: func(matrixData []byte, matrixType string) error {
 			if string(matrixData) != "optimizer2"{
 				return fmt.Errorf("not the correct matrix: %s", string(matrixData))
 			}
@@ -250,7 +253,7 @@ func TestRouteMatrixSvc_CleanUpDB(t *testing.T) {
 			}
 			return nil
 		},
-		DeleteOptimizerMatrixFunc: func(id uint64) (e error){
+		DeleteOptimizerMatrixFunc: func(id uint64, matrixType string) (e error){
 			if id == 2{
 				return fmt.Errorf("should not have been called for optimizer id %v", id)
 			}

@@ -25,13 +25,13 @@ var _ RelayStore = &RelayStoreMock{}
 //
 //         // make and configure a mocked RelayStore
 //         mockedRelayStore := &RelayStoreMock{
-//             DeleteFunc: func(relayID string) error {
+//             DeleteFunc: func(relayID uint64) error {
 // 	               panic("mock out the Delete method")
 //             },
-//             ExpireResetFunc: func(relayID string) error {
+//             ExpireResetFunc: func(relayID uint64) error {
 // 	               panic("mock out the ExpireReset method")
 //             },
-//             GetFunc: func(relayID string) (*RelayStoreData, error) {
+//             GetFunc: func(relayID uint64) (*RelayStoreData, error) {
 // 	               panic("mock out the Get method")
 //             },
 //             GetAllFunc: func() ([]*RelayStoreData, error) {
@@ -48,13 +48,13 @@ var _ RelayStore = &RelayStoreMock{}
 //     }
 type RelayStoreMock struct {
 	// DeleteFunc mocks the Delete method.
-	DeleteFunc func(relayID string) error
+	DeleteFunc func(relayID uint64) error
 
 	// ExpireResetFunc mocks the ExpireReset method.
-	ExpireResetFunc func(relayID string) error
+	ExpireResetFunc func(relayID uint64) error
 
 	// GetFunc mocks the Get method.
-	GetFunc func(relayID string) (*RelayStoreData, error)
+	GetFunc func(relayID uint64) (*RelayStoreData, error)
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func() ([]*RelayStoreData, error)
@@ -67,17 +67,17 @@ type RelayStoreMock struct {
 		// Delete holds details about calls to the Delete method.
 		Delete []struct {
 			// RelayID is the relayID argument value.
-			RelayID string
+			RelayID uint64
 		}
 		// ExpireReset holds details about calls to the ExpireReset method.
 		ExpireReset []struct {
 			// RelayID is the relayID argument value.
-			RelayID string
+			RelayID uint64
 		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
 			// RelayID is the relayID argument value.
-			RelayID string
+			RelayID uint64
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -91,12 +91,12 @@ type RelayStoreMock struct {
 }
 
 // Delete calls DeleteFunc.
-func (mock *RelayStoreMock) Delete(relayID string) error {
+func (mock *RelayStoreMock) Delete(relayID uint64) error {
 	if mock.DeleteFunc == nil {
 		panic("RelayStoreMock.DeleteFunc: method is nil but RelayStore.Delete was just called")
 	}
 	callInfo := struct {
-		RelayID string
+		RelayID uint64
 	}{
 		RelayID: relayID,
 	}
@@ -110,10 +110,10 @@ func (mock *RelayStoreMock) Delete(relayID string) error {
 // Check the length with:
 //     len(mockedRelayStore.DeleteCalls())
 func (mock *RelayStoreMock) DeleteCalls() []struct {
-	RelayID string
+	RelayID uint64
 } {
 	var calls []struct {
-		RelayID string
+		RelayID uint64
 	}
 	lockRelayStoreMockDelete.RLock()
 	calls = mock.calls.Delete
@@ -122,12 +122,12 @@ func (mock *RelayStoreMock) DeleteCalls() []struct {
 }
 
 // ExpireReset calls ExpireResetFunc.
-func (mock *RelayStoreMock) ExpireReset(relayID string) error {
+func (mock *RelayStoreMock) ExpireReset(relayID uint64) error {
 	if mock.ExpireResetFunc == nil {
 		panic("RelayStoreMock.ExpireResetFunc: method is nil but RelayStore.ExpireReset was just called")
 	}
 	callInfo := struct {
-		RelayID string
+		RelayID uint64
 	}{
 		RelayID: relayID,
 	}
@@ -141,10 +141,10 @@ func (mock *RelayStoreMock) ExpireReset(relayID string) error {
 // Check the length with:
 //     len(mockedRelayStore.ExpireResetCalls())
 func (mock *RelayStoreMock) ExpireResetCalls() []struct {
-	RelayID string
+	RelayID uint64
 } {
 	var calls []struct {
-		RelayID string
+		RelayID uint64
 	}
 	lockRelayStoreMockExpireReset.RLock()
 	calls = mock.calls.ExpireReset
@@ -153,12 +153,12 @@ func (mock *RelayStoreMock) ExpireResetCalls() []struct {
 }
 
 // Get calls GetFunc.
-func (mock *RelayStoreMock) Get(relayID string) (*RelayStoreData, error) {
+func (mock *RelayStoreMock) Get(relayID uint64) (*RelayStoreData, error) {
 	if mock.GetFunc == nil {
 		panic("RelayStoreMock.GetFunc: method is nil but RelayStore.Get was just called")
 	}
 	callInfo := struct {
-		RelayID string
+		RelayID uint64
 	}{
 		RelayID: relayID,
 	}
@@ -172,10 +172,10 @@ func (mock *RelayStoreMock) Get(relayID string) (*RelayStoreData, error) {
 // Check the length with:
 //     len(mockedRelayStore.GetCalls())
 func (mock *RelayStoreMock) GetCalls() []struct {
-	RelayID string
+	RelayID uint64
 } {
 	var calls []struct {
-		RelayID string
+		RelayID uint64
 	}
 	lockRelayStoreMockGet.RLock()
 	calls = mock.calls.Get

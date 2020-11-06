@@ -47,7 +47,7 @@ func (r *RedisRelayStore) Set(relayData RelayStoreData) error{
 }
 
 func (r *RedisRelayStore) ExpireReset(relayID uint64) error {
-	code, err := r.conn.Do("EXPIRE", r.key(relayID), r.relayTimeout)
+	code, err := r.conn.Do("EXPIRE", r.key(relayID), r.relayTimeout.Seconds())
 	if code != int64(1){
 		return fmt.Errorf("expire not set code %v", code)
 	}

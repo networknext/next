@@ -136,8 +136,8 @@ func (r *RouteMatrixSvc) CleanUpDB() error{
 	}
 
 	for _, m := range opMatrices {
-		if currentTime.Sub(m.CreatedAt) > r.optimizerTimeVariance  {
-			err := r.store.DeleteOptimizerMatrix(m.OptimizerID)
+		if currentTime.Sub(m.CreatedAt) > r.optimizerTimeVariance {
+			err := r.store.DeleteOptimizerMatrix(m.OptimizerID, m.Type)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func (r *RouteMatrixSvc) CleanUpDB() error{
 func (r *RouteMatrixSvc) updateLiveMatrix(matrices []storage.Matrix, id uint64) error {
 	for _, m := range matrices {
 		if m.OptimizerID == id {
-			return r.store.UpdateLiveMatrix(m.Data)
+			return r.store.UpdateLiveMatrix(m.Data, m.Type)
 		}
 	}
 	return fmt.Errorf("unable to find master matrix to update")
@@ -209,7 +209,7 @@ func chooseMatrixSvcMaster(matrices []storage.MatrixSvcData, timeVariance time.D
 
 func chooseOptimizerMaster(matrices []storage.Matrix, timeVariance time.Duration) uint64 {
 	currentTime := time.Now().UTC()
-	masterOp := storage.NewMatrix(0, currentTime, currentTime, []byte{})
+	masterOp := storage.NewMatrix(0, currentTime, currentTime,"", []byte{})
 	for _, m := range matrices {
 		if currentTime.Sub(m.CreatedAt) > timeVariance {
 			continue

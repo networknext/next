@@ -34,7 +34,7 @@ func (rc *RelayCache) SetAll(relayArr []*RelayStoreData) error {
 	return nil
 }
 
-func (rc *RelayCache) SetAllWithAddRemove(relayArr []*RelayStoreData) ([]*RelayStoreData,[]uint64, error) {
+func (rc *RelayCache) SetAllWithAddRemove(relayArr []*RelayStoreData) ([]*RelayStoreData,[]string, error) {
 	rc.mutex.Lock()
 	defer rc.mutex.Unlock()
 
@@ -52,9 +52,9 @@ func (rc *RelayCache) SetAllWithAddRemove(relayArr []*RelayStoreData) ([]*RelayS
 		}
 	}
 
-	var removeArr []uint64
+	var removeArr []string
 	for _, relay := range rc.mapStore{
-		removeArr = append(removeArr,relay.ID)
+		removeArr = append(removeArr,relay.Address.String())
 	}
 
 	rc.mapStore = newMap

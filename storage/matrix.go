@@ -9,13 +9,13 @@ import (
 //go:generate moq -out matrix_test_mocks.go . MatrixStore
 type MatrixStore interface{
 	//Live Matrix for server backend
-	GetLiveMatrix() ([]byte, error)
-	UpdateLiveMatrix(matrixData []byte) error
+	GetLiveMatrix(matrixType string) ([]byte, error)
+	UpdateLiveMatrix(matrixData []byte, matrixType string) error
 
 	//optimizer matrices
 	GetOptimizerMatrices() ([]Matrix, error)
 	UpdateOptimizerMatrix(matrix Matrix) error
-	DeleteOptimizerMatrix(id uint64) error
+	DeleteOptimizerMatrix(id uint64, matrixType string) error
 
 	//matrix svc data
 	GetMatrixSvcs() ([]MatrixSvcData, error)
@@ -35,6 +35,7 @@ type Matrix struct{
 	OptimizerID uint64           	`json:"optimizer_id"`
 	OptimizerCreatedAt time.Time 	`json:"optimizer_created_at"`
 	CreatedAt time.Time				`json:"created_at"`
+	Type string						`json:"type"`
 	Data []byte						`json:"data"`
 }
 
@@ -42,11 +43,12 @@ func wrap(pre, err, post string) error{
 	return fmt.Errorf("%s%s%s",pre,err,post)
 }
 
-func NewMatrix(optimizerID uint64, optimizerCreated, createdAt time.Time, data[]byte) Matrix{
+func NewMatrix(optimizerID uint64, optimizerCreated, createdAt time.Time,matrixType string, data[]byte) Matrix{
 	m := new(Matrix)
 	m.OptimizerID = optimizerID
 	m.OptimizerCreatedAt = optimizerCreated
 	m.CreatedAt = createdAt
+	m.Type = matrixType
 	m.Data = data
 	return *m
 }

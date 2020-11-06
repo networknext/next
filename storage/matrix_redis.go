@@ -24,20 +24,21 @@ const(
 	svcMaster = "ServiceMaster"
 	matrixMaster = "LiveMatrix"
 	optimizerMaster = "OptimizerMaster"
-
+	NormalMatrixType = "Normal"
+	ValveMatrixType = "Valve"
 )
 
 
 type RedisMatrixStore struct{
 	conn redis.Conn
-	matrixTimeout int64
+	matrixTimeout time.Duration
 }
 
-func NewRedisMatrixStore(addr string, readTimeout, writeTimeout, matrixExpire int64) (*RedisMatrixStore, error) {
+func NewRedisMatrixStore(addr string, readTimeout, writeTimeout, matrixExpire time.Duration) (*RedisMatrixStore, error) {
 	r := new(RedisMatrixStore)
 	conn, err := redis.Dial("tcp",addr,
-		redis.DialReadTimeout(time.Duration(readTimeout)*time.Millisecond),
-		redis.DialWriteTimeout(time.Duration(writeTimeout)*time.Millisecond))
+		redis.DialReadTimeout(readTimeout),
+		redis.DialWriteTimeout(writeTimeout))
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +52,9 @@ func (r *RedisMatrixStore) Close() error{
 	return r.conn.Close()
 }
 
-func (r *RedisMatrixStore)GetLiveMatrix() ([]byte, error){
-	data, err := redis.Bytes(r.conn.Do(get, matrixMaster))
+func (r *RedisMatrixStore)GetLiveMatrix(matrixType string) ([]byte, error){
+
+	data, err := redis.Bytes(r.conn.Do(get, matrixMaster+matrixType))
 	if err == redis.ErrNil{
 		return []byte{}, fmt.Errorf("matrix not found")
 	}
@@ -63,8 +65,8 @@ func (r *RedisMatrixStore)GetLiveMatrix() ([]byte, error){
 	return data, nil
 }
 
-func (r *RedisMatrixStore)UpdateLiveMatrix(matrixData []byte) error{
-	_, err := r.conn.Do("SET", matrixMaster, matrixData, "EX", r.matrixTimeout)
+func (r *RedisMatrixStore)UpdateLiveMatrix(matrixData []byte, matrixType string) error{
+	_, err := r.conn.Do("SET", matrixMaster+matrixType, matrixData, "PX", r.matrixTimeout.Milliseconds())
 	return err
 }
 
@@ -95,12 +97,12 @@ func (r *RedisMatrixStore)UpdateOptimizerMatrix(matrix Matrix) error{
 		return err
 	}
 
-	_, err = r.conn.Do(hSet, optimizer, matrix.OptimizerID, jsonMatrix)
+	_, err = r.conn.Do(hSet, optimizer, string(matrix.OptimizerID)+matrix.Type, jsonMatrix)
 	return err
 }
 
-func (r *RedisMatrixStore)DeleteOptimizerMatrix(id uint64) error {
-	_, err := r.conn.Do(hDel, optimizer, id)
+func (r *RedisMatrixStore)DeleteOptimizerMatrix(id uint64, matrixType string) error {
+	_, err := r.conn.Do(hDel, optimizer, string(id)+matrixType)
 	return err
 }
 
@@ -131,7 +133,7 @@ func (r *RedisMatrixStore)UpdateMatrixSvc(matrixSvcData MatrixSvcData) error{
 		return err
 	}
 
-	_, err = r.conn.Do(hSet, matrixSvc, matrixSvcData.ID, jsonMatrixSvcData, )
+	_, err = r.conn.Do(hSet, matrixSvc, matrixSvcData.ID, jsonMatrixSvcData )
 	return err
 }
 

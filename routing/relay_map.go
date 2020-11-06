@@ -149,7 +149,7 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
-	return relayMap.relays[relayAddress]
+return relayMap.relays[relayAddress]
 }
 
 func (relayMap *RelayMap) GetAllRelayData() []RelayData {

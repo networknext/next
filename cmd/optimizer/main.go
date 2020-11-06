@@ -24,11 +24,8 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/transport"
 
-
-
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 )
 
