@@ -484,7 +484,6 @@ func SetupBigtable(ctx context.Context,
 		return nil, nil, err
 	}
 
-	// Verify if the table needed exists
 	if !tableExists {
 		// Create a table with the given name and column families
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
@@ -514,8 +513,8 @@ func SetupBigtable(ctx context.Context,
 
 func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {
 	for j := range btPortalDataBuffer {
-		meta := btPortalDataBuffer[j].Meta
-		slice := btPortalDataBuffer[j].Slice
+		meta := &btPortalDataBuffer[j].Meta
+		slice := &btPortalDataBuffer[j].Slice
 
 		// This seems redundant, try to figure out a better prefix to limit the number of keys
 		// Key for session ID

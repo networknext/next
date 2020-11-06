@@ -21,6 +21,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func checkBigtableEmulation(t *testing.T) {
+	bigtableEmulatorHost := os.Getenv("BIGTABLE_EMULATOR_HOST")
+	if bigtableEmulatorHost == "" {
+		t.Skip("Bigtable emulator not set up, skipping bigtable test")
+	}
+}
+
 func TestBuyersList(t *testing.T) {
 	t.Parallel()
 	var storer = storage.InMemory{}
@@ -89,6 +96,8 @@ func TestBuyersList(t *testing.T) {
 
 func TestUserSessions(t *testing.T) {
 	t.Parallel()
+
+	checkBigtableEmulation(t)
 
 	var storer = storage.InMemory{}
 
