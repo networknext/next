@@ -222,7 +222,7 @@ type Relay struct {
 	SignedID int64 `json:"signed_id"` // TODO: chopping block
 
 	// SQL id (PK)
-	RelayID int64
+	DatabaseID int64
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -720,32 +720,32 @@ func RelayAddrs(relays []Relay) string {
 func (r *Relay) String() string {
 	relay := "\nrouting.Relay:\n"
 
-	relay += "\tID: " + fmt.Sprintf("%d", r.ID) + "\n"
-	relay += "\tName: " + r.Name + "\n"
-	relay += "\tAddr: " + r.Addr.String() + "\n"
-	relay += "\tPublicKey: " + string(r.PublicKey) + "\n"
-	relay += "\tSeller: " + fmt.Sprintf("%d", r.Seller.SellerID) + "\n"
-	relay += "\tDatacenter: " + fmt.Sprintf("%s", r.Datacenter.String()) + "\n"
-	relay += "\tNICSpeedMbps: " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
+	relay += "\tID                 : " + fmt.Sprintf("%d", r.ID) + "\n"
+	relay += "\tName               : " + r.Name + "\n"
+	relay += "\tAddr               : " + r.Addr.String() + "\n"
+	relay += "\tPublicKey          : " + string(r.PublicKey) + "\n"
+	relay += "\tSeller             : " + fmt.Sprintf("%d", r.Seller.DatabaseID) + "\n"
+	relay += "\tDatacenter         : " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
+	relay += "\tNICSpeedMbps       : " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
 	relay += "\tIncludedBandwidthGB: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"
-	relay += "\tLastUpdateTime: " + r.LastUpdateTime.String() + "\n"
-	relay += "\tState: " + fmt.Sprintf("%v", r.State) + "\n"
-	relay += "\tManagementAddr: " + r.ManagementAddr + "\n"
-	relay += "\tSSHUser: " + r.SSHUser + "\n"
-	relay += "\tSSHPort: " + fmt.Sprintf("%d", r.SSHPort) + "\n"
+	relay += "\tLastUpdateTime     : " + r.LastUpdateTime.String() + "\n"
+	relay += "\tState              : " + fmt.Sprintf("%v", r.State) + "\n"
+	relay += "\tManagementAddr     : " + r.ManagementAddr + "\n"
+	relay += "\tSSHUser            : " + r.SSHUser + "\n"
+	relay += "\tSSHPort            : " + fmt.Sprintf("%d", r.SSHPort) + "\n"
 	// TrafficStats TrafficStats `json:"traffic_stats"`
-	relay += "\tMaxSessions: " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
-	relay += "\tCPUUsage: " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
-	relay += "\tMemUsage: " + fmt.Sprintf("%f", r.MemUsage) + "\n"
-	relay += "\tUpdateKey: " + string(r.UpdateKey) + "\n"
-	relay += "\tMRC: " + fmt.Sprintf("%v", r.MRC) + "\n"
-	relay += "\tOverage: " + fmt.Sprintf("%v", r.Overage) + "\n"
-	relay += "\tBWRule: " + fmt.Sprintf("%v", r.BWRule) + "\n"
-	relay += "\tContractTerm: " + fmt.Sprintf("%d", r.ContractTerm) + "\n"
-	relay += "\tStartDate: " + r.StartDate.String() + "\n"
-	relay += "\tEndDate: " + r.EndDate.String() + "\n"
-	relay += "\tType: " + fmt.Sprintf("%v", r.Type) + "\n"
-	relay += "\tRelayID: " + fmt.Sprintf("%d", r.RelayID) + "\n"
+	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
+	relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
+	relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
+	relay += "\tUpdateKey          : " + string(r.UpdateKey) + "\n"
+	relay += "\tMRC                : " + fmt.Sprintf("%v", r.MRC) + "\n"
+	relay += "\tOverage            : " + fmt.Sprintf("%v", r.Overage) + "\n"
+	relay += "\tBWRule             : " + fmt.Sprintf("%v", r.BWRule) + "\n"
+	relay += "\tContractTerm       : " + fmt.Sprintf("%d", r.ContractTerm) + "\n"
+	relay += "\tStartDate          : " + r.StartDate.String() + "\n"
+	relay += "\tEndDate            : " + r.EndDate.String() + "\n"
+	relay += "\tType               : " + fmt.Sprintf("%v", r.Type) + "\n"
+	relay += "\tDatabaseID         : " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
 
 	return relay
 }

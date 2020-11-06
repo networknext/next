@@ -109,6 +109,7 @@ type sqlCustomer struct {
 	AutomaticSignInDomains string
 	Active                 bool
 	CustomerCode           string
+	DatabaseID             int64
 }
 
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
@@ -193,7 +194,7 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 		return err
 	}
 
-	result, err := stmt.Exec(customer.CustomerID)
+	result, err := stmt.Exec(customer.DatabaseID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing customer", "err", err)
@@ -245,7 +246,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, c.CustomerID)
+	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, c.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -504,7 +505,7 @@ type sqlSeller struct {
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
 	CustomerID                int64
-	SellerID                  int64
+	DatabaseID                int64
 }
 
 // The seller_id is required by the schema. The client interface must already have a
@@ -590,7 +591,7 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 		return err
 	}
 
-	result, err := stmt.Exec(seller.SellerID)
+	result, err := stmt.Exec(seller.DatabaseID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing seller", "err", err)
@@ -640,7 +641,7 @@ func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
 		return err
 	}
 
-	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.IngressPriceNibblinsPerGB, seller.SellerID)
+	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.IngressPriceNibblinsPerGB, seller.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
 		return err
@@ -745,7 +746,7 @@ type sqlRelay struct {
 	StartDate          time.Time
 	EndDate            time.Time
 	MachineType        int64
-	RelayID            int64
+	DatabaseID         int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -774,7 +775,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		UpdateKey:          r.UpdateKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
-		DatacenterID:       r.Datacenter.DatacenterID,
+		DatacenterID:       r.Datacenter.DatabaseID,
 		ManagementIP:       r.ManagementAddr,
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
@@ -870,7 +871,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	result, err := stmt.Exec(relay.RelayID)
+	result, err := stmt.Exec(relay.DatabaseID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing relay", "err", err)
@@ -922,7 +923,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		UpdateKey:          r.UpdateKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
-		DatacenterID:       r.Datacenter.DatacenterID,
+		DatacenterID:       r.Datacenter.DatabaseID,
 		ManagementIP:       r.ManagementAddr,
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
@@ -972,7 +973,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.DatacenterID,
 		relay.MachineType,
 		relay.State,
-		r.RelayID,
+		r.DatabaseID,
 	)
 
 	if err != nil {
@@ -1052,7 +1053,7 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	result, err := stmt.Exec(datacenter.DatacenterID)
+	result, err := stmt.Exec(datacenter.DatabaseID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter", "err", err)
@@ -1122,7 +1123,7 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 		dc.SupplierName,
 		dc.StreetAddress,
 		dc.SellerID,
-		d.DatacenterID,
+		d.DatabaseID,
 	)
 
 	if err != nil {
@@ -1195,7 +1196,7 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	result, err := stmt.Exec(dcMap.Alias,
 		buyer.DatabaseID,
-		datacenter.DatacenterID,
+		datacenter.DatabaseID,
 	)
 
 	if err != nil {
@@ -1263,7 +1264,7 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.DatabaseID, datacenter.DatacenterID)
+	result, err := stmt.Exec(buyer.DatabaseID, datacenter.DatabaseID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
@@ -1608,6 +1609,6 @@ func GetCustomerID(ctx context.Context, db *SQL, companyCode string) (int64, err
 		return -1, &DoesNotExistError{resourceType: "Customer", resourceRef: fmt.Sprintf("%s", companyCode)}
 	}
 
-	sqlID := customer.CustomerID
+	sqlID := customer.DatabaseID
 	return sqlID, nil
 }

@@ -291,7 +291,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 			SupplierName:  dc.SupplierName,
 			StreetAddress: dc.StreetAddress,
 			SellerID:      dc.SellerID,
-			DatacenterID:  dc.ID,
+			DatabaseID:    dc.ID,
 		}
 
 		datacenters[did] = d
@@ -341,7 +341,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&relay.RelayID,
+		err = rows.Scan(&relay.DatabaseID,
 			&relay.Name,
 			&relay.ContractTerm,
 			&relay.EndDate,
@@ -400,7 +400,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 		datacenter := db.datacenters[db.datacenterIDs[relay.DatacenterID]]
 
-		relayIDs[relay.RelayID] = rid
+		relayIDs[relay.DatabaseID] = rid
 
 		r := routing.Relay{
 			ID:                  rid,
@@ -423,7 +423,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			StartDate:           relay.StartDate,
 			EndDate:             relay.EndDate,
 			Type:                machineType,
-			RelayID:             relay.RelayID,
+			DatabaseID:          relay.DatabaseID,
 		}
 		relays[rid] = r
 
@@ -549,7 +549,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&seller.SellerID,
+		err = rows.Scan(&seller.DatabaseID,
 			&seller.ShortName,
 			&seller.EgressPriceNibblinsPerGB,
 			&seller.IngressPriceNibblinsPerGB,
@@ -561,14 +561,14 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 		}
 
 		// seller name is defined by the parent customer
-		sellerIDs[seller.SellerID] = db.customerIDs[seller.CustomerID]
+		sellerIDs[seller.DatabaseID] = db.customerIDs[seller.CustomerID]
 
 		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
 			ID:                        db.customerIDs[seller.CustomerID],
 			ShortName:                 seller.ShortName,
 			IngressPriceNibblinsPerGB: routing.Nibblin(seller.IngressPriceNibblinsPerGB),
 			EgressPriceNibblinsPerGB:  routing.Nibblin(seller.EgressPriceNibblinsPerGB),
-			SellerID:                  seller.SellerID,
+			DatabaseID:                seller.DatabaseID,
 			CustomerID:                seller.CustomerID,
 		}
 
@@ -667,7 +667,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 			Name:                   customer.Name,
 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
 			Active:                 customer.Active,
-			CustomerID:             customer.ID,
+			DatabaseID:             customer.ID,
 		}
 
 		customers[customer.CustomerCode] = c

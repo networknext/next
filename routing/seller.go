@@ -12,7 +12,7 @@ type Seller struct {
 	ShortName                 string // WIP: independent but unqique within sellers - same as ID?
 	IngressPriceNibblinsPerGB Nibblin
 	EgressPriceNibblinsPerGB  Nibblin
-	SellerID                  int64 // seller_id db PK
+	DatabaseID                int64 // seller_id db PK
 	CustomerID                int64 // customer_id FK
 }
 
@@ -25,7 +25,7 @@ func (s *Seller) String() string {
 	seller += "\tShortName                : '" + s.ShortName + "'\n"
 	seller += "\tIngressPriceNibblinsPerGB: " + fmt.Sprintf("%v", s.IngressPriceNibblinsPerGB) + "\n"
 	seller += "\tEgressPriceNibblinsPerGB : " + fmt.Sprintf("%v", s.EgressPriceNibblinsPerGB) + "\n"
-	seller += "\tSellerID                 : " + fmt.Sprintf("%d", s.SellerID) + "\n"
+	seller += "\tDatabaseID               : " + fmt.Sprintf("%d", s.DatabaseID) + "\n"
 	seller += "\tCustomerID               : " + fmt.Sprintf("%d", s.CustomerID) + "\n"
 
 	return seller

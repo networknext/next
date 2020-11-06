@@ -36,7 +36,7 @@ func (b *Buyer) String() string {
 	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
 	buyer += "\tRouteShader   : TBD\n"
 	buyer += "\tInternalConfig: TBD\n"
-	buyer += "\tBuyerID       : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
+	buyer += "\tDatabaseID    : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
 	buyer += "\tCustomerID    : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
 
 	return buyer

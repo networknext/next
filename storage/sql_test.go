@@ -87,7 +87,7 @@ func TestInsertSQL(t *testing.T) {
 			ShortName:                 customerShortname,
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
-			CustomerID:                outerCustomer.CustomerID,
+			CustomerID:                outerCustomer.DatabaseID,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -114,7 +114,7 @@ func TestInsertSQL(t *testing.T) {
 			},
 			StreetAddress: "Somewhere, USA",
 			SupplierName:  "supplier.local.name",
-			SellerID:      outerSeller.SellerID,
+			SellerID:      outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -145,7 +145,7 @@ func TestInsertSQL(t *testing.T) {
 			Live:       true,
 			Debug:      true,
 			PublicKey:  publicKey,
-			CustomerID: outerCustomer.CustomerID,
+			CustomerID: outerCustomer.DatabaseID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -224,7 +224,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
 		assert.Equal(t, relay.UpdateKey, checkRelay.UpdateKey)
-		assert.Equal(t, relay.Datacenter.DatacenterID, checkRelay.Datacenter.DatacenterID)
+		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
 		assert.Equal(t, relay.BWRule, checkRelay.BWRule)
@@ -296,7 +296,7 @@ func TestDeleteSQL(t *testing.T) {
 			Live:       true,
 			Debug:      false,
 			PublicKey:  publicKey,
-			CustomerID: outerCustomer.CustomerID,
+			CustomerID: outerCustomer.DatabaseID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -309,7 +309,7 @@ func TestDeleteSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
-			CustomerID:                outerCustomer.CustomerID,
+			CustomerID:                outerCustomer.DatabaseID,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -327,7 +327,7 @@ func TestDeleteSQL(t *testing.T) {
 				Longitude: 120.5,
 			},
 			StreetAddress: "Somewhere, USA",
-			SellerID:      outerSeller.SellerID,
+			SellerID:      outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -508,7 +508,7 @@ func TestUpdateSQL(t *testing.T) {
 			Live:       true,
 			Debug:      true,
 			PublicKey:  publicKey,
-			CustomerID: customerWithID.CustomerID,
+			CustomerID: customerWithID.DatabaseID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -537,7 +537,7 @@ func TestUpdateSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
-			CustomerID:                customerWithID.CustomerID,
+			CustomerID:                customerWithID.DatabaseID,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -571,7 +571,7 @@ func TestUpdateSQL(t *testing.T) {
 			},
 			StreetAddress: "Somewhere, USA",
 			SupplierName:  "supplier.local.name",
-			SellerID:      sellerWithID.SellerID,
+			SellerID:      sellerWithID.DatabaseID,
 		}
 
 		// fmt.Printf("SetDatacenter test - datacenter: %s\n", datacenter.String())

@@ -21,7 +21,7 @@ type Datacenter struct {
 	SupplierName  string
 	StreetAddress string
 	SellerID      int64 // sql FK
-	DatacenterID  int64 // sql PK
+	DatabaseID    int64 // sql PK
 }
 
 func (d *Datacenter) String() string {
@@ -35,7 +35,7 @@ func (d *Datacenter) String() string {
 	datacenter += "\tSupplierName : " + d.SupplierName + "\n"
 	datacenter += "\tStreetAddress: " + d.StreetAddress + "\n"
 	datacenter += "\tSellerID     : " + fmt.Sprintf("%d", d.SellerID) + "\n"
-	datacenter += "\tDatacenterID : " + fmt.Sprintf("%d", d.DatacenterID) + "\n"
+	datacenter += "\tDatabaseID   : " + fmt.Sprintf("%d", d.DatabaseID) + "\n"
 
 	return datacenter
 }
