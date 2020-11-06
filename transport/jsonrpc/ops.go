@@ -271,74 +271,6 @@ type routingRuleSettings struct {
 	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
-func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
-	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
-	if err != nil {
-		err = fmt.Errorf("RoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	buyer, err := s.Storage.Buyer(buyerID)
-	if err != nil {
-		return err
-	}
-
-	reply.RoutingRuleSettings = []routingRuleSettings{
-		{
-			EnvelopeKbpsUp:               buyer.RoutingRulesSettings.EnvelopeKbpsUp,
-			EnvelopeKbpsDown:             buyer.RoutingRulesSettings.EnvelopeKbpsDown,
-			Mode:                         buyer.RoutingRulesSettings.Mode,
-			MaxNibblinsPerGB:             buyer.RoutingRulesSettings.MaxNibblinsPerGB,
-			RTTEpsilon:                   buyer.RoutingRulesSettings.RTTEpsilon,
-			RTTThreshold:                 buyer.RoutingRulesSettings.RTTThreshold,
-			RTTHysteresis:                buyer.RoutingRulesSettings.RTTHysteresis,
-			RTTVeto:                      buyer.RoutingRulesSettings.RTTVeto,
-			EnableYouOnlyLiveOnce:        buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
-			EnablePacketLossSafety:       buyer.RoutingRulesSettings.EnablePacketLossSafety,
-			EnableMultipathForPacketLoss: buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
-			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
-			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
-			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
-			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
-			TryBeforeYouBuyMaxSlices:     buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices,
-			SelectionPercentage:          buyer.RoutingRulesSettings.SelectionPercentage,
-		},
-	}
-
-	return nil
-}
-
-type SetRoutingRulesSettingsArgs struct {
-	BuyerID              string
-	RoutingRulesSettings routing.RoutingRulesSettings
-}
-
-func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRoutingRulesSettingsReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelFunc()
-
-	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
-	if err != nil {
-		err = fmt.Errorf("SetRoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	buyer, err := s.Storage.Buyer(buyerID)
-	if err != nil {
-		err = fmt.Errorf("SetRoutingRulesSettings() Storage.Buyer error: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	buyer.RoutingRulesSettings = args.RoutingRulesSettings
-
-	return s.Storage.SetBuyer(ctx, buyer)
-}
-
-type SetRoutingRulesSettingsReply struct{}
-
 type SellersArgs struct{}
 
 type SellersReply struct {
@@ -952,7 +884,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 			s.Logger.Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
 			s.Logger.Log("err", err)
@@ -969,7 +901,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
-			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      company.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 		}
