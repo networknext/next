@@ -82,6 +82,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
+		return 1
+	}
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -99,6 +105,8 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceivedMessageCount.Value()))
+				fmt.Printf("%d bigtable failed meta writes\n", int(btMetrics.WriteMetaFailureCount.Value()))
+				fmt.Printf("%d bigtable failed slice writes\n", int(btMetrics.WriteSliceFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -215,7 +223,8 @@ func mainReturnWithCode() int {
 															btMaxAgeDays,
 															messageChanSize,
 															logger,
-															portalCruncherMetrics)
+															portalCruncherMetrics,
+															btMetrics)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

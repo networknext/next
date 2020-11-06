@@ -47,6 +47,7 @@ func (e *ErrUnmarshalMessage) Error() string {
 type PortalCruncher struct {
 	subscriber pubsub.Subscriber
 	metrics    *metrics.PortalCruncherMetrics
+	btMetrics  *metrics.BigTableMetrics
 
 	redisCountMessageChan chan *transport.SessionCountData
 	redisDataMessageChan  chan *transport.SessionPortalData
@@ -78,6 +79,7 @@ func NewPortalCruncher(
 	chanBufferSize int,
 	logger log.Logger,
 	metrics *metrics.PortalCruncherMetrics,
+	btMetrics *metrics.BigTableMetrics,
 ) (*PortalCruncher, error) {
 	topSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
 	if err != nil {
@@ -112,6 +114,7 @@ func NewPortalCruncher(
 	return &PortalCruncher{
 		subscriber:            subscriber,
 		metrics:               metrics,
+		btMetrics:             btMetrics,
 		redisCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
 		redisDataMessageChan:  make(chan *transport.SessionPortalData, chanBufferSize),
 		btDataMessageChan:     make(chan *transport.SessionPortalData, chanBufferSize),
@@ -532,13 +535,17 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 
 		// Insert session meta data into Bigtable
 		if err := cruncher.btClient.InsertSessionMetaData(ctx, cruncher.btCfNames, metaBinary, metaRowKeys); err != nil {
+			cruncher.btMetrics.WriteMetaFailureCount.Add(1)
 			return err
 		}
+		cruncher.btMetrics.WriteMetaSuccessCount.Add(1)
 
 		// Insert session slice data into Bigtable
 		if err := cruncher.btClient.InsertSessionSliceData(ctx, cruncher.btCfNames, sliceBinary, sliceRowKeys); err != nil {
+			cruncher.btMetrics.WriteSliceFailureCount.Add(1)
 			return err
 		}
+		cruncher.btMetrics.WriteSliceSuccessCount.Add(1)
 	}
 
 	btPortalDataBuffer = btPortalDataBuffer[:0]

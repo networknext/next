@@ -14,6 +14,7 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -237,6 +238,7 @@ func TestUserSessions(t *testing.T) {
 	svc := jsonrpc.BuyersService{
 		Storage:                &storer,
 		BigTable:               btClient,
+		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
@@ -810,6 +812,7 @@ func TestSessionDetails(t *testing.T) {
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		BigTable:               btClient,
+		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
