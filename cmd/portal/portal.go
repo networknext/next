@@ -26,7 +26,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	
+
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -206,7 +206,7 @@ func main() {
 	}
 
 	if env == "local" {
-		if err = storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
+		if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
