@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
@@ -504,4 +505,8 @@ func (m *InMemory) CheckSequenceNumber(ctx context.Context) (bool, int64, error)
 
 func (m *InMemory) IncrementSequenceNumber(ctx context.Context) error {
 	return fmt.Errorf("IncrementSequenceNumber not implemented in InMemory")
+}
+
+func (m *InMemory) SyncLoop(ctx context.Context, c <-chan time.Time) {
+	// no-op - fulfilling Storer interface
 }

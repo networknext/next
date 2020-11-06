@@ -2,11 +2,8 @@ package storage
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strconv"
+	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
 )
 
@@ -125,72 +122,7 @@ type Storer interface {
 
 	// IncrementSequenceNumber is used by all methods that make changes to the db
 	IncrementSequenceNumber(ctx context.Context) error
-}
 
-// NewStorage returns a pointer to the storage solution specified for the provide environment. The
-// database targets are currently gcp/Firestore but will move to gcp/PostgreSQL
-//
-//	 prod: production database
-//    dev: development database
-//  local: local PostgreSQL install
-//  local: local SQLite file
-//
-// dev and prod connections to Cloud SQL will be made by proxy and are project-specific:
-// https://cloud.google.com/sql/docs/postgres/connect-compute-engine#gce-connect-proxy
-//
-// Environment Variables:
-// 	ENV=local|dev|prod|staging
-//		required
-//	GOOGLE_PROJECT_ID=network-next-v3-dev
-//		required for dev and prod services
-//	PGSQL=true|false
-//		for local usage
-//			true: overrides the default (SQLite)
-//         false: local testing/happy path will use SQLite
-// 	CGO_ENABLED=1
-//		required for the cgo go-sqlite3 package
-//	DB_SYNC_INTERVAL
-func NewSQLStorage(ctx context.Context, logger log.Logger) (Storer, error) {
-
-	var db, storage Storer
-
-	// gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		err := fmt.Errorf("ENV var not set")
-		return nil, err
-	}
-
-	if env == "local" {
-		pgsqlStr, ok := os.LookupEnv("PGSQL")
-		if !ok {
-			err := fmt.Errorf("ENV var not set")
-			return nil, err
-		}
-
-		pgsql, err := strconv.ParseBool(pgsqlStr)
-		if err != nil {
-			err := fmt.Errorf("NewStorage() error decoding PGSQL (%s): %w", pgsqlStr, err)
-			return nil, err
-		}
-		if pgsql {
-			fmt.Println("Creating PostgreSQL Storer.")
-			db, err = NewPostgreSQL(ctx, logger)
-			if err != nil {
-				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
-				return nil, err
-			}
-		} else {
-			fmt.Println("Creating SQLite3 Storer.")
-			db, err = NewSQLite3(ctx, logger)
-			if err != nil {
-				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)
-				return nil, err
-			}
-		}
-
-		storage = db
-	}
-
-	return storage, nil
+	// SyncLoop sets up the ticker for database syncs
+	SyncLoop(ctx context.Context, c <-chan time.Time)
 }

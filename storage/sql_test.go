@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ import (
 // TODO: sort environment in/from Makefile
 func SetupEnv() {
 	os.Setenv("ENV", "local")
-	os.Setenv("PGSQL", "false")
+	os.Setenv("FEATURE_POSTGRESQL", "false")
 	os.Setenv("DB_SYNC_INTERVAL", "10s")
 }
 
@@ -34,7 +34,12 @@ func TestInsertSQL(t *testing.T) {
 
 	// NewSQLStorage syncs the local sync number from the remote and
 	// runs all the sync*() methods
-	db, err := storage.NewSQLStorage(ctx, logger)
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
@@ -258,7 +263,12 @@ func TestDeleteSQL(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	db, err := storage.NewSQLStorage(ctx, logger)
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
@@ -450,7 +460,12 @@ func TestUpdateSQL(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	db, err := storage.NewSQLStorage(ctx, logger)
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
