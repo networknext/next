@@ -318,7 +318,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		if newSession {
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionID = packet.SessionID
-			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+			sessionData.SliceNumber = packet.SliceNumber + 1
 			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 			sessionData.RouteState.UserID = packet.UserHash
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
@@ -341,13 +341,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			if sessionData.SliceNumber != uint32(packet.SliceNumber) {
+			if sessionData.SliceNumber != packet.SliceNumber {
 				level.Error(logger).Log("err", "bad sequence number in session data")
 				metrics.BadSliceNumber.Add(1)
 				return
 			}
 
-			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+			sessionData.SliceNumber = packet.SliceNumber + 1
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 		}
 
@@ -359,8 +359,36 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		if packet.FallbackToDirect {
 			if !sessionData.FellBackToDirect {
-				metrics.FallbackToDirect.Add(1)
 				sessionData.FellBackToDirect = true
+
+				switch packet.Flags {
+				case FallbackFlagsBadRouteToken:
+					metrics.FallbackToDirectBadRouteToken.Add(1)
+				case FallbackFlagsNoNextRouteToContinue:
+					metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
+				case FallbackFlagsPreviousUpdateStillPending:
+					metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
+				case FallbackFlagsBadContinueToken:
+					metrics.FallbackToDirectBadContinueToken.Add(1)
+				case FallbackFlagsRouteExpired:
+					metrics.FallbackToDirectRouteExpired.Add(1)
+				case FallbackFlagsRouteRequestTimedOut:
+					metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
+				case FallbackFlagsContinueRequestTimedOut:
+					metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
+				case FallbackFlagsClientTimedOut:
+					metrics.FallbackToDirectClientTimedOut.Add(1)
+				case FallbackFlagsUpgradeResponseTimedOut:
+					metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
+				case FallbackFlagsRouteUpdateTimedOut:
+					metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
+				case FallbackFlagsDirectPongTimedOut:
+					metrics.FallbackToDirectDirectPongTimedOut.Add(1)
+				case FallbackFlagsNextPongTimedOut:
+					metrics.FallbackToDirectNextPongTimedOut.Add(1)
+				default:
+					metrics.FallbackToDirectUnknownReason.Add(1)
+				}
 			}
 			return
 		}
