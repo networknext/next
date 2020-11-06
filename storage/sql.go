@@ -1599,16 +1599,3 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 
 	return coreIC, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%x", buyerID)}
 }
-
-// utility functions for unit testing - methods not defined by the interface
-// are not available in testing
-func GetCustomerID(ctx context.Context, db *SQL, companyCode string) (int64, error) {
-
-	customer, ok := db.customers[companyCode]
-	if !ok {
-		return -1, &DoesNotExistError{resourceType: "Customer", resourceRef: fmt.Sprintf("%s", companyCode)}
-	}
-
-	sqlID := customer.DatabaseID
-	return sqlID, nil
-}

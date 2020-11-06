@@ -130,6 +130,11 @@ func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 		customers:          make(map[string]routing.Customer),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
+		datacenterIDs:      make(map[int64]uint64),
+		relayIDs:           make(map[int64]uint64),
+		customerIDs:        make(map[int64]string),
+		buyerIDs:           make(map[int64]uint64),
+		sellerIDs:          make(map[int64]string),
 		SyncSequenceNumber: -1,
 	}
 
