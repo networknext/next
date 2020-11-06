@@ -452,7 +452,7 @@ type sqlBuyer struct {
 	PublicKey      []byte
 	ShortName      string
 	CompanyCode    string // should not be needed
-	BuyerID        int64  // sql PK
+	DatabaseID     int64  // sql PK
 	CustomerID     int64  // sql PK
 }
 
@@ -476,7 +476,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(
-			&buyer.BuyerID,
+			&buyer.DatabaseID,
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
@@ -490,14 +490,14 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyer.ID = binary.LittleEndian.Uint64(buyer.PublicKey[:8])
 
-		buyerIDs[buyer.BuyerID] = buyer.ID
+		buyerIDs[buyer.DatabaseID] = buyer.ID
 
-		rs, err := db.GetRouteShaderForBuyerID(ctx, buyer.BuyerID)
+		rs, err := db.GetRouteShaderForBuyerID(ctx, buyer.DatabaseID)
 		if err != nil {
 			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
 
-		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.BuyerID)
+		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.DatabaseID)
 		if err != nil {
 			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
@@ -511,7 +511,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			RouteShader:    rs,
 			InternalConfig: ic,
 			CustomerID:     buyer.CustomerID,
-			BuyerID:        buyer.BuyerID,
+			DatabaseID:     buyer.DatabaseID,
 		}
 
 		buyers[buyer.ID] = b

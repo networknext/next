@@ -20,7 +20,7 @@ type Buyer struct {
 	PublicKey      []byte
 	RouteShader    core.RouteShader
 	InternalConfig core.InternalConfig
-	BuyerID        int64 // sql PK
+	DatabaseID     int64 // sql PK
 	CustomerID     int64 // sql FK
 }
 
@@ -36,7 +36,7 @@ func (b *Buyer) String() string {
 	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
 	buyer += "\tRouteShader   : TBD\n"
 	buyer += "\tInternalConfig: TBD\n"
-	buyer += "\tBuyerID       : " + fmt.Sprintf("%d", b.BuyerID) + "\n"
+	buyer += "\tBuyerID       : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
 	buyer += "\tCustomerID    : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
 
 	return buyer

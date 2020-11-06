@@ -396,7 +396,7 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.BuyerID)
+	result, err := stmt.Exec(buyer.DatabaseID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing buyer", "err", err)
@@ -446,7 +446,7 @@ func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(b.Live, b.Debug, b.PublicKey, b.BuyerID)
+	result, err := stmt.Exec(b.Live, b.Debug, b.PublicKey, b.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
 		return err
@@ -1194,7 +1194,7 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	}
 
 	result, err := stmt.Exec(dcMap.Alias,
-		buyer.BuyerID,
+		buyer.DatabaseID,
 		datacenter.DatacenterID,
 	)
 
@@ -1263,7 +1263,7 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.BuyerID, datacenter.DatacenterID)
+	result, err := stmt.Exec(buyer.DatabaseID, datacenter.DatacenterID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
