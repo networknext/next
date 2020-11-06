@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
@@ -374,7 +375,7 @@ func (m *InMemory) SetRelayMetadata(ctx context.Context, relay routing.Relay) er
 func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	for _, dc := range m.localDatacenterMaps {
-		if dc.BuyerID == dcMap.BuyerID && dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+		if dc.BuyerID == dcMap.BuyerID && dc.Alias == dcMap.Alias && dc.DatacenterID == dcMap.DatacenterID {
 			return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
 		}
 	}
@@ -389,7 +390,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.Datac
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -400,8 +401,8 @@ func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.Datac
 func (m *InMemory) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
-		if dc.Datacenter == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+		if dc.DatacenterID == dcID || dcID == 0 {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -413,7 +414,7 @@ func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datace
 
 	idx := -1
 	for i, dcm := range m.localDatacenterMaps {
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.DatacenterID == dcm.DatacenterID {
 			idx = i
 		}
 	}
@@ -494,4 +495,18 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 	}
 
 	return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenter.ID}
+}
+
+func (m *InMemory) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
+
+	err := fmt.Errorf("SetSequenceNumber not implemented in InMemory")
+	return false, -1, err
+}
+
+func (m *InMemory) IncrementSequenceNumber(ctx context.Context) error {
+	return fmt.Errorf("IncrementSequenceNumber not implemented in InMemory")
+}
+
+func (m *InMemory) SyncLoop(ctx context.Context, c <-chan time.Time) {
+	// no-op - fulfilling Storer interface
 }
