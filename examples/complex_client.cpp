@@ -290,6 +290,11 @@ int main()
 
         accumulator += delta_time;
 
+        if ( next_time() > 60.0 )
+        {
+            next_client_report_session( client );
+        }
+
         if ( accumulator > 10.0 )
         {
             accumulator = 0.0;

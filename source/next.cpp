@@ -59,6 +59,7 @@
 #define NEXT_UPGRADE_TIMEOUT                                          5.0
 #define NEXT_CLIENT_SESSION_TIMEOUT                                   5.0
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
+#define NEXT_SERVER_PING_TIMEOUT                                      5.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
@@ -8796,6 +8797,7 @@ struct NextBackendSessionUpdatePacket
     bool fallback_to_direct;
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
+    bool client_ping_timed_out;
     uint64_t tag;
     uint64_t flags;
     uint64_t user_flags;
@@ -8881,6 +8883,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
+        serialize_bool( stream, client_ping_timed_out );
 
         if ( has_tag )
         {
@@ -9133,6 +9136,12 @@ struct next_session_entry_t
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
 
     NEXT_DECLARE_SENTINEL(25)
+
+    bool client_ping_timed_out;
+    double last_client_direct_ping;
+    double last_client_next_ping;
+
+    NEXT_DECLARE_SENTINEL(26)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9165,6 +9174,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
+    NEXT_INITIALIZE_SENTINEL( entry, 26 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9197,6 +9207,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
+    NEXT_VERIFY_SENTINEL( entry, 26 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -9366,6 +9377,11 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
 
     entry->special_send_sequence = 1;
     entry->internal_send_sequence = 1;
+
+    const double current_time = next_time();
+
+    entry->last_client_direct_ping = current_time;
+    entry->last_client_next_ping = current_time;
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token )
@@ -10501,6 +10517,14 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
      
         next_session_entry_t * entry = &server->session_manager->entries[index];
 
+        if ( !entry->client_ping_timed_out && 
+             entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time && 
+             entry->last_client_next_ping + NEXT_SERVER_PING_TIMEOUT <= current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server client ping timed out for session %" PRIx64, entry->session_id );
+            entry->client_ping_timed_out = true;
+        }
+
         if ( entry->last_client_stats_update + NEXT_SERVER_SESSION_TIMEOUT <= current_time )
         {
             next_server_notify_session_timed_out_t * notify = (next_server_notify_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_session_timed_out_t ) );
@@ -11183,6 +11207,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
+        entry->last_client_next_ping = next_time();
+
         uint64_t send_sequence = entry->special_send_sequence++;
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
@@ -11226,6 +11252,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         NextDirectPingPacket packet;
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
+
+        session->last_client_direct_ping = next_time();
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
