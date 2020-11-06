@@ -9,7 +9,7 @@ global_job_config:
     - name: sdk4-repo-access
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator libzmq3-dev
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator google-cloud-sdk-bigtable-emulator libzmq3-dev
       - checkout
       - sem-version go 1.13
       - make clean
@@ -29,6 +29,8 @@ blocks:
           value: "127.0.0.1:11000"
         - name: PUBSUB_EMULATOR_HOST
           value: "127.0.0.1:12000"
+        - name: BIGTABLE_EMULATOR_HOST
+          value: "127.0.0.1:8086"
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml
