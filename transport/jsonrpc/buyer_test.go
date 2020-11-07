@@ -161,8 +161,9 @@ func TestUserSessions(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "network-next-portal-big-table-0", logger)
 	assert.NoError(t, err)
+	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 	assert.NoError(t, err)
 	if !btTableExists {
@@ -178,8 +179,10 @@ func TestUserSessions(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "", "", logger)
+	btClient, err := storage.NewBigTable(ctx, "", "network-next-portal-big-table-0", logger)
 	assert.Nil(t, err)
+	assert.NotNil(t, btClient)
+
 	defer func() {
 		err := btClient.Close()
 		assert.NoError(t, err)
@@ -780,6 +783,7 @@ func TestSessionDetails(t *testing.T) {
 	// Check if table exists and create it if needed
 	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "network-next-portal-big-table-0", logger)
 	assert.NoError(t, err)
+	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 	assert.NoError(t, err)
 	if !btTableExists {
@@ -797,6 +801,8 @@ func TestSessionDetails(t *testing.T) {
 
 	btClient, err := storage.NewBigTable(ctx, "", "network-next-portal-big-table-0", logger)
 	assert.Nil(t, err)
+	assert.NotNil(t, btClient)
+
 	defer func() {
 		err := btClient.Close()
 		assert.NoError(t, err)
