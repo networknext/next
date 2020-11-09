@@ -10521,7 +10521,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
              entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time && 
              entry->last_client_next_ping + NEXT_SERVER_PING_TIMEOUT <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server client ping timed out for session %" PRIx64, entry->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server client ping timed out for session %" PRIx64, entry->session_id );
             entry->client_ping_timed_out = true;
         }
 
@@ -10545,7 +10545,13 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
         if ( entry->has_current_route && entry->current_route_expire_time <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server network next route expired for session %" PRIx64, entry->session_id );
+            // IMPORTANT: Only print this out as an error if it occurs *before* the client ping times out
+            // otherwise we get red herring errors on regular client disconnect from server that make it
+            // look like something is wrong when everything is fine...
+            if ( !entry->client_ping_timed_out )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server network next route expired for session %" PRIx64, entry->session_id );
+            }
             
             entry->has_current_route = false;
             entry->has_previous_route = false;
@@ -11215,7 +11221,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, packet_data ) != NEXT_OK )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write pong packet header" );
             return;
         }
 

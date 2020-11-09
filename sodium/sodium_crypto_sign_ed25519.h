@@ -40,8 +40,7 @@ int crypto_sign_ed25519(unsigned char *sm, unsigned long long *smlen_p,
 
 int crypto_sign_ed25519_open(unsigned char *m, unsigned long long *mlen_p,
                              const unsigned char *sm, unsigned long long smlen,
-                             const unsigned char *pk)
-            __attribute__ ((warn_unused_result)) __attribute__ ((nonnull(3, 5)));
+                             const unsigned char *pk);
 
 int crypto_sign_ed25519_detached(unsigned char *sig,
                                  unsigned long long *siglen_p,
@@ -89,8 +88,7 @@ int crypto_sign_ed25519ph_update(crypto_sign_ed25519ph_state *state,
 int crypto_sign_ed25519ph_final_create(crypto_sign_ed25519ph_state *state,
                                        unsigned char *sig,
                                        unsigned long long *siglen_p,
-                                       const unsigned char *sk)
-            __attribute__ ((nonnull));
+                                       const unsigned char *sk);
 
 int crypto_sign_ed25519ph_final_verify(crypto_sign_ed25519ph_state *state,
                                        const unsigned char *sig,
