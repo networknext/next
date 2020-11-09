@@ -46,7 +46,7 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 	return nil
 }
 
-func writeSessionResponse(w io.Writer, logger log.Logger, response *SessionResponsePacket, sessionData *SessionData) error {
+func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
 		return err
@@ -58,8 +58,6 @@ func writeSessionResponse(w io.Writer, logger log.Logger, response *SessionRespo
 
 	response.SessionDataBytes = int32(len(sessionDataBuffer))
 	copy(response.SessionData[:], sessionDataBuffer)
-
-	level.Debug(logger).Log("response", fmt.Sprintf("%#v", response))
 
 	responsePacketData, err := MarshalPacket(response)
 	if err != nil {
@@ -266,7 +264,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		var packet SessionUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read session update packet", "err", err)
-			level.Debug(logger).Log("packet", fmt.Sprintf("%#v", packet))
 			metrics.ReadPacketFailure.Add(1)
 			return
 		}
@@ -300,7 +297,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
-			if err := writeSessionResponse(w, logger, &response, &sessionData); err != nil {
+			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
 				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
 				metrics.WriteResponseFailure.Add(1)
 				return
