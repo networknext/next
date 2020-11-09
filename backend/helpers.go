@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	
+
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
@@ -38,7 +38,7 @@ func GetGCPProjectID() string {
 // If a gcp project ID is specified, it will return a StackDriver logger.
 func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (log.Logger, error) {
 	logger := log.NewLogfmtLogger(os.Stdout)
-	{
+	defer func() {
 		backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", "none")
 		switch backendLogLevel {
 		case "none":
@@ -56,7 +56,7 @@ func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (lo
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
+	}()
 
 	if gcpProjectID != "" {
 		enableSDLogging, err := envvar.GetBool("ENABLE_STACKDRIVER_LOGGING", false)
