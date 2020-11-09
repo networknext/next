@@ -224,12 +224,12 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
-ifndef ENABLE_BIGTABLE
-export ENABLE_BIGTABLE = false
+ifndef FEATURE_BIGTABLE
+export FEATURE_BIGTABLE = false
 endif
 
-ifndef GOOGLE_BIGTABLE_TABLE_NAME
-export GOOGLE_BIGTABLE_TABLE_NAME = "BTTest"
+ifndef BIGTABLE_TABLE_NAME
+export BIGTABLE_TABLE_NAME = "BTTest"
 endif
 
 .PHONY: help

@@ -184,26 +184,26 @@ func mainReturnWithCode() int {
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
 	// Determine if should insert into Bigtable
-	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE", false)
+	useBigtable, err := envvar.GetBool("FEATURE_BIGTABLE", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	// Get Bigtable instance ID
-	btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
 	// Get the table name
-	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 	// Get the column family name
-	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
 	// Get the max number of days the data should be kept in Bigtable
-	btMaxAgeDays, err := envvar.GetInt("GOOGLE_BIGTABLE_MAX_AGE_DAYS", 90)
+	btMaxAgeDays, err := envvar.GetInt("BIGTABLE_MAX_AGE_DAYS", 90)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	btGoroutineCount, err := envvar.GetInt("CRUNCHER_BIGTABLE_GOROUTINE_COUNT", 1)
+	btGoroutineCount, err := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

@@ -139,7 +139,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
 
 	// Fetch historic sessions by user hash if there are any
 	rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
@@ -446,7 +446,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	var err error
 	var historic bool = false
 
-	btCfName := envvar.Get("GOOGLE_BIGTABLE_CF_NAME", "")
+	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
 
 	if args.SessionID == "" {
 		err = fmt.Errorf("SessionDetails() session ID is required")

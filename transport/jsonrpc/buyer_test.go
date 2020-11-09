@@ -145,19 +145,19 @@ func TestUserSessions(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	btTableName, btTableEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
 	if !btTableEnvVarOK {
 		btTableName = "Test"
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", btTableName)
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", btTableName)
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 	}
 
 	// Get the column family name
-	btCfName, btCfNameEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_CF_NAME")
+	btCfName, btCfNameEnvVarOK := os.LookupEnv("BIGTABLE_CF_NAME")
 	if !btCfNameEnvVarOK {
 		btCfName = "TestCfName"
-		os.Setenv("GOOGLE_BIGTABLE_CF_NAME", btCfName)
-		defer os.Unsetenv("GOOGLE_BIGTABLE_CF_NAME")
+		os.Setenv("BIGTABLE_CF_NAME", btCfName)
+		defer os.Unsetenv("BIGTABLE_CF_NAME")
 	}
 
 	// Check if table exists and create it if needed
@@ -765,19 +765,19 @@ func TestSessionDetails(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	// Setup Bigtable
-	btTableName, btTableEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
 	if !btTableEnvVarOK {
 		btTableName = "Test"
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", btTableName)
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", btTableName)
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 	}
 
 	// Get the column family name
-	btCfName, btCfNameEnvVarOK := os.LookupEnv("GOOGLE_BIGTABLE_CF_NAME")
+	btCfName, btCfNameEnvVarOK := os.LookupEnv("BIGTABLE_CF_NAME")
 	if !btCfNameEnvVarOK {
 		btCfName = "TestCfName"
-		os.Setenv("GOOGLE_BIGTABLE_CF_NAME", btCfName)
-		defer os.Unsetenv("GOOGLE_BIGTABLE_CF_NAME")
+		os.Setenv("BIGTABLE_CF_NAME", btCfName)
+		defer os.Unsetenv("BIGTABLE_CF_NAME")
 	}
 
 	// Check if table exists and create it if needed

@@ -209,7 +209,7 @@ func main() {
 		level.Info(logger).Log("msg", "Detected bigtable emulator")
 	}
 
-	useBigtable, err := envvar.GetBool("ENABLE_BIGTABLE", false)
+	useBigtable, err := envvar.GetBool("FEATURE_BIGTABLE", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
@@ -219,10 +219,10 @@ func main() {
 
 	if useBigtable && (gcpOK || btEmulatorOK) {
 		// Get Bigtable instance ID
-		btInstanceID := envvar.Get("GOOGLE_BIGTABLE_INSTANCE_ID", "")
+		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
 
 		// Get the table name
-		btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+		btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 
 		// Create a bigtable admin for setup
 		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
@@ -239,7 +239,7 @@ func main() {
 		}
 
 		if !tableExists {
-			level.Error(logger).Log("envvar", "GOOGLE_BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance")
+			level.Error(logger).Log("envvar", "BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance")
 			os.Exit(1)
 		}
 

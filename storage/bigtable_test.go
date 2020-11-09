@@ -177,19 +177,19 @@ func TestBigTable(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	t.Run("New Bigtable No Table", func(t *testing.T) {
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("New Bigtable No Table With Opts", func(t *testing.T) {
 			opts := option.WithoutAuthentication()
 			btClient, err := storage.NewBigTable(ctx, "", "", logger, opts)
-			assert.EqualError(t, err, "NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
+			assert.EqualError(t, err, "NewBigTable() BIGTABLE_TABLE_NAME is not defined")
 			assert.Nil(t, btClient)
 		})
 
 		t.Run("New Bigtable No Table Without Opts", func(t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
-			assert.EqualError(t, err, "NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
+			assert.EqualError(t, err, "NewBigTable() BIGTABLE_TABLE_NAME is not defined")
 			assert.Nil(t, btClient)
 		})
 	})
@@ -212,8 +212,8 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("New Bigtable With Table With Opts", func(t *testing.T) {
 			opts := option.WithoutAuthentication()
@@ -253,8 +253,8 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Get Table That Exists", func(t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -305,8 +305,8 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Insert Valid Meta Row Into Table", func(t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -428,8 +428,8 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Insert Valid Session Meta Data Into Table", func(t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -509,7 +509,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Insert Session Meta Data Into Nonexistent Table", func(t *testing.T) {
-		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		tblName, exists := os.LookupEnv("BIGTABLE_TABLE_NAME")
 		if exists {
 			// Delete the table that exists
 			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
@@ -522,8 +522,8 @@ func TestBigTable(t *testing.T) {
 			err = btAdmin.Close()
 			assert.NoError(t, err)
 		} else {
-			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+			os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
 		btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -545,7 +545,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Insert Session Slice Data Into Nonexistent Table", func(t *testing.T) {
-		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		tblName, exists := os.LookupEnv("BIGTABLE_TABLE_NAME")
 		if exists {
 			// Delete the table that exists
 			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
@@ -558,8 +558,8 @@ func TestBigTable(t *testing.T) {
 			err = btAdmin.Close()
 			assert.NoError(t, err)
 		} else {
-			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+			os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
 		btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -598,8 +598,8 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Get Meta Rows With Prefix With Opts Success", func(t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -701,7 +701,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Get Rows With Prefix From Nonexistent Table", func(t *testing.T) {
-		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		tblName, exists := os.LookupEnv("BIGTABLE_TABLE_NAME")
 		if tblName == "" {
 			tblName = "Test"
 		}
@@ -717,8 +717,8 @@ func TestBigTable(t *testing.T) {
 			err = btAdmin.Close()
 			assert.NoError(t, err)
 		} else {
-			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", tblName)
-			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+			os.Setenv("BIGTABLE_TABLE_NAME", tblName)
+			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
 		btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -755,8 +755,8 @@ func TestBigTable(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", "Test")
-		defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+		os.Setenv("BIGTABLE_TABLE_NAME", "Test")
+		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Get Meta Row With Rowkey With Opts Success", func(t *testing.T) {
 			btClient, err := storage.NewBigTable(ctx, "", "", logger)
@@ -855,7 +855,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Get Rows With Rowkey From Nonexistent Table", func(t *testing.T) {
-		tblName, exists := os.LookupEnv("GOOGLE_BIGTABLE_TABLE_NAME")
+		tblName, exists := os.LookupEnv("BIGTABLE_TABLE_NAME")
 		if tblName == "" {
 			tblName = "Test"
 		}
@@ -872,8 +872,8 @@ func TestBigTable(t *testing.T) {
 			err = btAdmin.Close()
 			assert.NoError(t, err)
 		} else {
-			os.Setenv("GOOGLE_BIGTABLE_TABLE_NAME", tblName)
-			defer os.Unsetenv("GOOGLE_BIGTABLE_TABLE_NAME")
+			os.Setenv("BIGTABLE_TABLE_NAME", tblName)
+			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
 		btClient, err := storage.NewBigTable(ctx, "", "", logger)

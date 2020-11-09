@@ -317,10 +317,10 @@ func TestNewPortalCruncher(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -329,9 +329,9 @@ func TestNewPortalCruncher(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -401,10 +401,10 @@ func TestReceiveMessage(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -413,9 +413,9 @@ func TestReceiveMessage(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -543,10 +543,10 @@ func TestPingRedis(t *testing.T) {
 		var useBigtable bool
 		{
 			var bigtableEnabled bool
-			if os.Getenv("ENABLE_BIGTABLE") == "" {
+			if os.Getenv("FEATURE_BIGTABLE") == "" {
 				bigtableEnabled = false
 			} else {
-				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 				assert.NoError(t, err)
 			}
 			bigtableEmulation := checkBigtableEmulation()
@@ -555,9 +555,9 @@ func TestPingRedis(t *testing.T) {
 		}
 
 		gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-		btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-		btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-		btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+		btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+		btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
 
@@ -588,10 +588,10 @@ func TestPingRedis(t *testing.T) {
 		var useBigtable bool
 		{
 			var bigtableEnabled bool
-			if os.Getenv("ENABLE_BIGTABLE") == "" {
+			if os.Getenv("FEATURE_BIGTABLE") == "" {
 				bigtableEnabled = false
 			} else {
-				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 				assert.NoError(t, err)
 			}
 			bigtableEmulation := checkBigtableEmulation()
@@ -600,9 +600,9 @@ func TestPingRedis(t *testing.T) {
 		}
 
 		gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-		btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-		btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-		btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+		btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+		btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
 
@@ -636,10 +636,10 @@ func TestPingRedis(t *testing.T) {
 		var useBigtable bool
 		{
 			var bigtableEnabled bool
-			if os.Getenv("ENABLE_BIGTABLE") == "" {
+			if os.Getenv("FEATURE_BIGTABLE") == "" {
 				bigtableEnabled = false
 			} else {
-				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 				assert.NoError(t, err)
 			}
 			bigtableEmulation := checkBigtableEmulation()
@@ -648,9 +648,9 @@ func TestPingRedis(t *testing.T) {
 		}
 
 		gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-		btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-		btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-		btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+		btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+		btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
 
@@ -684,10 +684,10 @@ func TestPingRedis(t *testing.T) {
 		var useBigtable bool
 		{
 			var bigtableEnabled bool
-			if os.Getenv("ENABLE_BIGTABLE") == "" {
+			if os.Getenv("FEATURE_BIGTABLE") == "" {
 				bigtableEnabled = false
 			} else {
-				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 				assert.NoError(t, err)
 			}
 			bigtableEmulation := checkBigtableEmulation()
@@ -696,9 +696,9 @@ func TestPingRedis(t *testing.T) {
 		}
 
 		gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-		btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-		btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-		btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+		btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+		btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
 
@@ -732,10 +732,10 @@ func TestPingRedis(t *testing.T) {
 		var useBigtable bool
 		{
 			var bigtableEnabled bool
-			if os.Getenv("ENABLE_BIGTABLE") == "" {
+			if os.Getenv("FEATURE_BIGTABLE") == "" {
 				bigtableEnabled = false
 			} else {
-				bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+				bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 				assert.NoError(t, err)
 			}
 			bigtableEmulation := checkBigtableEmulation()
@@ -744,9 +744,9 @@ func TestPingRedis(t *testing.T) {
 		}
 
 		gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-		btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-		btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-		btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+		btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+		btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
 
@@ -788,10 +788,10 @@ func TestDirectSession(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -800,9 +800,9 @@ func TestDirectSession(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -900,10 +900,10 @@ func TestNextSession(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -912,9 +912,9 @@ func TestNextSession(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -1012,10 +1012,10 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -1024,9 +1024,9 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -1120,10 +1120,10 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -1132,9 +1132,9 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -1262,10 +1262,10 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -1274,9 +1274,9 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 
@@ -1382,10 +1382,10 @@ func TestNoReinsertion(t *testing.T) {
 	var useBigtable bool
 	{
 		var bigtableEnabled bool
-		if os.Getenv("ENABLE_BIGTABLE") == "" {
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
 			bigtableEnabled = false
 		} else {
-			bigtableEnabled, err = strconv.ParseBool(os.Getenv("ENABLE_BIGTABLE"))
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
 			assert.NoError(t, err)
 		}
 		bigtableEmulation := checkBigtableEmulation()
@@ -1394,9 +1394,9 @@ func TestNoReinsertion(t *testing.T) {
 	}
 
 	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	btInstanceID := os.Getenv("GOOGLE_BIGTABLE_INSTANCE_ID")
-	btTableName := os.Getenv("GOOGLE_BIGTABLE_TABLE_NAME")
-	btCfName := os.Getenv("GOOGLE_BIGTABLE_CF_NAME")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 	btMaxAgeDays := 1
 

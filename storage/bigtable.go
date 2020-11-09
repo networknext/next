@@ -39,10 +39,10 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, lo
 	if err != nil {
 		return nil, err
 	}
-	btTableName := envvar.Get("GOOGLE_BIGTABLE_TABLE_NAME", "")
+	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 
 	if btTableName == "" {
-		err := fmt.Errorf("NewBigTable() GOOGLE_BIGTABLE_TABLE_NAME is not defined")
+		err := fmt.Errorf("NewBigTable() BIGTABLE_TABLE_NAME is not defined")
 		level.Error(logger).Log("err", err)
 		return nil, err
 	}
