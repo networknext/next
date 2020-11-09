@@ -70,12 +70,6 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		}
 	}
 
-	// _, err = db.Client.Exec("pragma foreign_keys = on;")
-	// if err != nil {
-	// 	err = fmt.Errorf("NewSQLite3() error executing pragma line: %v\n", err)
-	// 	return nil, err
-	// }
-
 	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
@@ -95,7 +89,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 // NewPostgreSQL returns an PostgreSQL backed database pointer
 func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 
-	// move sensitive stuff to env w/ GCP vars
+	// TODO: move sensitive stuff to env w/ GCP vars
 	const (
 		host     = "localhost"
 		port     = 5432

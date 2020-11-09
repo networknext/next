@@ -165,7 +165,12 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 16. Install the Pub/Sub emulator
 	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
-17. Run tests to confirm everything is working properly
+17. Install SQLite3
+	`sudo apt install sqlite3`  
+
+	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing. 
+
+18. Run tests to confirm everything is working properly
 	`make test`
 	`make test-func-parallel`
 
