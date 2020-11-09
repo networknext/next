@@ -59,6 +59,7 @@ export default class SettingsWorkspace extends Vue {
 
   constructor () {
     super()
+    // TODO: This probably shouldn't be necessary?
     this.featureTypes = FeatureTypes
   }
 }

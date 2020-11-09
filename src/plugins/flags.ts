@@ -33,12 +33,13 @@ export class FeatureFlagService {
   }
 
   private isEnabled (name: string): boolean {
+    let value = false
     this.flags.forEach((flag: any) => {
       if (flag.name === name) {
-        return flag.value.toLowerCase() === 'true' || false
+        value = flag.value.toLowerCase() === 'true' || false
       }
     })
-    return false
+    return value
   }
 }
 

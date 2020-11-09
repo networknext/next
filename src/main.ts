@@ -43,7 +43,7 @@ Vue.use(FlagPlugin, {
   flags: [
     {
       name: 'FEATURE_EXPLORE',
-      description: 'Integrate looker into the portal under a new navigation tab called "Explore"',
+      description: 'Integrate Looker into the portal under a new navigation tab called "Explore"',
       value: false
     },
     {

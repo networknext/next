@@ -61,7 +61,7 @@
           v-bind:class="{
             active: $store.getters.currentPage == 'explore'
           }"
-          v-if="$flagService.isEnabled(featureTypes.EXPLORE) && !$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
+          v-if="$flagService.isEnabled(featureTypes.EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
         >Explore</router-link>
       </li>
       <li class="nav-item text-nowrap">
@@ -149,6 +149,7 @@ export default class NavBar extends Vue {
     super()
     this.portalVersion = ''
     this.companyCode = ''
+    // TODO: This probably shouldn't be necessary?
     this.featureTypes = FeatureTypes
   }
 
