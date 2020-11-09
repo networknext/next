@@ -174,6 +174,10 @@ export class JSONRPCService {
   public resendVerificationEmail (args: any): Promise<any> {
     return this.call('AuthService.ResendVerificationEmail', args)
   }
+
+  public fetchFeatureFlags (): Promise<any> {
+    return this.call('AuthService.AllFeatureFlags', {})
+  }
 }
 
 export const JSONRPCPlugin = {

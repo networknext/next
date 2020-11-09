@@ -30,7 +30,7 @@
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Configuration</router-link>
           </li>
-          <li class="nav-item" v-if="$store.getters.isABTester && false"><!-- Disabled -->
+          <li class="nav-item" v-if="$flagService.isEnabled(featureTypes.ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/route-shader" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
           </li>
         </ul>
@@ -42,6 +42,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { FeatureTypes } from '../components/types/FeatureTypes'
 
 /**
  * This component holds the workspace elements related to the settings page in the Portal
@@ -54,6 +55,12 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class SettingsWorkspace extends Vue {
   // Empty for now
+  private featureTypes: any
+
+  constructor () {
+    super()
+    this.featureTypes = FeatureTypes
+  }
 }
 </script>
 

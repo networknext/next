@@ -47,10 +47,24 @@ declare module '*.vue' {
     ): void
   }
 
+  export interface VueFlagService {
+    fetchEnvVarFeatureFlags (): Promise<any>;
+    fetchAllRemoteFeatureFlags (): void;
+    isEnabled (name: string): boolean;
+  }
+
+  export class VueFlagServicePlugin {
+    static install(
+      Vue: typeof _Vue,
+      options: any,
+    ): void
+  }
+
   module 'vue/types/vue' {
     interface Vue {
       $apiService: VueJSONRPCService;
       $authService: VueAuthService;
+      $flagService: VueFlagService;
     }
   }
 }
