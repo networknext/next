@@ -7,3 +7,9 @@ export enum FeatureTypes {
   IMPERSONATION = 'FEATURE_IMPERSONATION',
   INTERCOM = 'FEATURE_INTERCOM'
 }
+
+export interface Flag {
+  name: FeatureTypes;
+  description: string;
+  value: boolean;
+}
