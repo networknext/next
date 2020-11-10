@@ -10383,7 +10383,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
         next_session_entry_t * entry = &server->session_manager->entries[i];
 
-        if ( entry->update_dirty && && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
+        if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
