@@ -510,3 +510,19 @@ func (m *InMemory) IncrementSequenceNumber(ctx context.Context) error {
 func (m *InMemory) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	// no-op - fulfilling Storer interface
 }
+
+func (m *InMemory) GetFeatureFlags() map[string]bool {
+	return map[string]bool{}
+}
+
+func (m *InMemory) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not impemented in InMemory"))
+}
+
+func (m *InMemory) SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error {
+	return fmt.Errorf(("SetFeatureFlagByName not impemented in InMemory"))
+}
+
+func (m *InMemory) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
+	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in InMemory"))
+}

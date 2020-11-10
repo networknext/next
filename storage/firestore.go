@@ -2342,3 +2342,19 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
 	return err
 }
+
+func (fs *Firestore) GetFeatureFlags() map[string]bool {
+	return map[string]bool{}
+}
+
+func (fs *Firestore) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error {
+	return fmt.Errorf(("SetFeatureFlagByName not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
+	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in Firestore storer"))
+}

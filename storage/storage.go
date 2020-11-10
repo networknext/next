@@ -125,4 +125,18 @@ type Storer interface {
 
 	// SyncLoop sets up the ticker for database syncs
 	SyncLoop(ctx context.Context, c <-chan time.Time)
+
+	// New for ConfigService
+
+	// GetFeatureFlags returns all feature flags currently in the database
+	GetFeatureFlags() map[string]bool
+
+	// GetFeatureFlagByName returns a specific flag or an error if it does not exist
+	GetFeatureFlagByName(flagName string) (map[string]bool, error)
+
+	// SetFeatureFlagByName adds a new feature or updates the value of an existing feature
+	SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error
+
+	// RemoveFeatureFlagByName removes an existing flag from storage
+	RemoveFeatureFlagByName(ctx context.Context, flagName string) error
 }
