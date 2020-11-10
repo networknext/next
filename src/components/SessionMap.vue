@@ -131,7 +131,7 @@ export default class SessionMap extends Vue {
         const aggregation = 'MEAN'
         const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
-        let layers: any = []
+        const layers: Array<any> = []
 
         if (direct.length > 0) {
           const directLayer = new (window as any).deck.ScreenGridLayer({
@@ -146,7 +146,7 @@ export default class SessionMap extends Vue {
             aggregation,
             coordinateSystem: 1
           })
-          layers = layers.push(directLayer)
+          layers.push(directLayer)
         }
 
         // const MAX_SESSIONS = this.sessions.length
