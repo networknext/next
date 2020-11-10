@@ -38,7 +38,7 @@ ips=$(gcloud compute instances list --filter='load-test-server AND status=RUNNIN
 
 for ((r=0 ; r<${num_clients} ; r++)); do
 export NEXT_LOG_LEVEL=1
-export CORES=1
+export CORES=50
 echo $ips | /app/app &
 pid="$!"
 printf "PID ${pid}: Client opened\n"
