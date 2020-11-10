@@ -2491,6 +2491,55 @@ func test_report_session() {
 
 }
 
+/*
+	Test that the backend sees the client ping timeout on the server when the client is stopped.
+*/
+
+func test_client_ping_timed_out() {
+
+	fmt.Printf("test_client_ping_timed_out\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 30.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	relay_1_cmd, _ := relay()
+	relay_2_cmd, _ := relay()
+	relay_3_cmd, _ := relay()
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 60)
+
+	client_cmd.Process.Signal(os.Interrupt)
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	client_cmd.Wait()
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	backendSawClientPingTimedOut := strings.Contains(backend_stdout.String(), "client ping timed out")
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientPingTimedOut == true)
+
+}
+
 type test_function func()
 
 func main() {
@@ -2529,6 +2578,7 @@ func main() {
 		test_direct_stats,
 		test_next_stats,
 		test_report_session,
+		test_client_ping_timed_out,
 	}
   
 	// If there are command line arguments, use reflection to see what tests to run
