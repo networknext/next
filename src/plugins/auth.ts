@@ -2,6 +2,7 @@ import store from '@/store'
 import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { FeatureTypes } from '@/components/types/FeatureTypes'
 
 export class AuthService {
   private clientID: string
@@ -90,15 +91,18 @@ export class AuthService {
           userProfile.auth0ID = authResult.sub
           userProfile.verified = authResult.email_verified
           userProfile.companyCode = companyCode
-          userProfile.newsletterConsent = newsletterConsent;
-          (window as any).Intercom('boot', {
-            app_id: process.env.VUE_APP_INTERCOM_ID,
-            email: email,
-            user_id: userProfile.auth0ID,
-            unsubscribed_from_emails: newsletterConsent,
-            avatar: authResult.picture,
-            company: companyCode
-          })
+          userProfile.newsletterConsent = newsletterConsent
+          // TODO: There should be a better way to access the Vue instance rather than through the router object
+          if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+            (window as any).Intercom('boot', {
+              app_id: process.env.VUE_APP_INTERCOM_ID,
+              email: email,
+              user_id: userProfile.auth0ID,
+              unsubscribed_from_emails: newsletterConsent,
+              avatar: authResult.picture,
+              company: companyCode
+            })
+          }
 
           if (query.includes('signup=true')) {
             store.commit('UPDATE_IS_SIGNUP', true)
@@ -122,9 +126,12 @@ export class AuthService {
       router.push('/')
       return
     }
-    (window as any).Intercom('boot', {
-      app_id: process.env.VUE_APP_INTERCOM_ID
-    })
+    // TODO: There should be a better way to access the Vue instance rather than through the router object
+    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+      (window as any).Intercom('boot', {
+        app_id: process.env.VUE_APP_INTERCOM_ID
+      })
+    }
   }
 }
 

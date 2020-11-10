@@ -3,6 +3,7 @@ import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
+import Explore from '@/components/Explore.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
@@ -14,6 +15,7 @@ import RouteShader from '@/components/RouteShader.vue'
 import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
+import { FeatureTypes } from '@/components/types/FeatureTypes'
 
 Vue.use(VueRouter)
 
@@ -77,13 +79,18 @@ const routes: Array<RouteConfig> = [
         path: 'users',
         name: 'users',
         component: UserManagement
-      }/* ,
+      },
       {
         path: 'route-shader',
         name: 'shader',
         component: RouteShader
-      } */
+      }
     ]
+  },
+  {
+    path: '/explore',
+    name: 'explore',
+    component: Explore
   },
   {
     path: '*',
@@ -102,27 +109,35 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
   // BUG: Re-routes valid users to the map when it should just refresh the page...
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
-    store.commit('UPDATE_CURRENT_PAGE', 'map');
-    (window as any).Intercom('update')
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+      (window as any).Intercom('update')
+    }
     next('/')
     return
   }
   if (to.name === 'settings') {
-    store.commit('UPDATE_CURRENT_PAGE', 'account-settings');
-    (window as any).Intercom('update')
+    store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
+    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+      (window as any).Intercom('update')
+    }
     next('/settings/account')
     return
   }
   // Email is verified
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
-    store.commit('UPDATE_CURRENT_PAGE', 'map');
-    (window as any).Intercom('update')
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+      (window as any).Intercom('update')
+    }
     Vue.prototype.$authService.refreshToken()
     next('/')
     return
   }
-  store.commit('UPDATE_CURRENT_PAGE', to.name);
-  (window as any).Intercom('update')
+  store.commit('UPDATE_CURRENT_PAGE', to.name)
+  if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+    (window as any).Intercom('update')
+  }
   next()
 })
 
