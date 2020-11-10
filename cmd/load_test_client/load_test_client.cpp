@@ -113,7 +113,7 @@ int main()
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
 
-    double wait_time = (rand() % 300) + 300;
+    double wait_time = rand() % 120;
 
     bool initial_connect = false;
 
