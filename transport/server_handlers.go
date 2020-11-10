@@ -297,19 +297,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
-			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
-				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-				metrics.WriteResponseFailure.Add(1)
-				return
-			}
-
-			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
-
 			if sessionData.RouteState.Next {
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
 			} else {
 				metrics.DirectSlices.Add(1)
+			}
+
+			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
+
+			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
+				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
+				return
 			}
 
 			go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
@@ -342,7 +342,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			if sessionData.SliceNumber != packet.SliceNumber {
-				level.Error(logger).Log("err", "bad sequence number in session data")
+				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", sessionData.SliceNumber,
+					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", sessionData.RouteState.Next, "ever_on_next", sessionData.EverOnNext)
 				metrics.BadSliceNumber.Add(1)
 				return
 			}

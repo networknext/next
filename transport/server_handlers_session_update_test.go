@@ -1336,6 +1336,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2088,6 +2089,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2302,6 +2304,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2516,6 +2519,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -3298,6 +3302,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			CommitPending: true,
 			CommitCounter: 2,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
