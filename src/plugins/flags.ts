@@ -20,7 +20,7 @@ export class FeatureFlagService {
       .then((response: any) => {
         const newFlags: Array<any> = response.flags
         this.flags.forEach((flag: any) => {
-          flag.value = newFlags[flag.name].value || false
+          flag.value = newFlags[flag.name] || false
         })
       })
   }
@@ -36,7 +36,16 @@ export class FeatureFlagService {
     let value = false
     this.flags.forEach((flag: any) => {
       if (flag.name === name) {
-        value = flag.value.toLowerCase() === 'true' || false
+        switch (typeof flag.value) {
+          case 'string':
+            value = flag.value.toLowerCase() === 'true' || false
+            break
+          case 'boolean':
+            value = flag.value
+            break
+          default:
+            throw new Error('Unknown flag')
+        }
       }
     })
     return value

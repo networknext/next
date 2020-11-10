@@ -176,7 +176,7 @@ export class JSONRPCService {
   }
 
   public fetchFeatureFlags (): Promise<any> {
-    return this.call('AuthService.AllFeatureFlags', {})
+    return this.call('ConfigService.AllFeatureFlags', {})
   }
 }
 
