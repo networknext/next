@@ -39,10 +39,12 @@ type RelayInitHandlerConfig struct {
 }
 
 type RelayUpdateHandlerConfig struct {
-	RelayMap *routing.RelayMap
-	StatsDB  *routing.StatsDatabase
-	Metrics  *metrics.RelayUpdateMetrics
-	Storer   storage.Storer
+	RelayMap          *routing.RelayMap
+	StatsDB           *routing.StatsDatabase
+	Metrics           *metrics.RelayUpdateMetrics
+	Storer            storage.Storer
+	InternalIPSellers []string
+	EnableInternalIPs bool
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -304,16 +306,32 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 		allRelayData := params.RelayMap.GetAllRelayData()
+
+		shouldTryUseInternalIPs := false
+		if params.EnableInternalIPs {
+			for i := range params.InternalIPSellers {
+				if params.InternalIPSellers[i] == relay.Seller.Name {
+					shouldTryUseInternalIPs = true
+				}
+			}
+		}
+
 		for _, v := range allRelayData {
-			if v.Addr.String() != relayDataReadOnly.Addr.String() {
-				relay, err := params.Storer.Relay(v.ID)
+			if v.ID != relay.ID {
+				otherRelay, err := params.Storer.Relay(v.ID)
 				if err != nil {
 					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
 					continue
 				}
 
-				if relay.State == routing.RelayStateEnabled {
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
+				if otherRelay.State == routing.RelayStateEnabled {
+					var address string
+					if shouldTryUseInternalIPs && relay.Seller.Name == otherRelay.Seller.Name {
+						address = otherRelay.InternalAddr.String()
+					} else {
+						address = v.Addr.String()
+					}
+					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: address})
 				}
 			}
 		}

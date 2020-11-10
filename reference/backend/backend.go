@@ -214,6 +214,7 @@ type NextBackendSessionUpdatePacket struct {
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
+	ClientPingTimedOut				bool
 	Tag                             uint64
 	Flags                           uint32
 	UserFlags                       uint64
@@ -284,6 +285,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	stream.SerializeBool(&packet.ClientPingTimedOut)
 
 	hasTag := stream.IsWriting() && packet.Tag != 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
@@ -2538,6 +2540,10 @@ func main() {
 				if ( sessionData.SliceNumber % 2 ) != 0 {
 					takeNetworkNext = false
 				}
+			}
+
+			if sessionUpdate.ClientPingTimedOut {
+				takeNetworkNext = false
 			}
 
 			if !takeNetworkNext {
