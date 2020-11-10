@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/routing"
 )
 
@@ -61,7 +61,9 @@ const (
 	FallbackFlagsUpgradeResponseTimedOut    = (1 << 8)
 	FallbackFlagsRouteUpdateTimedOut        = (1 << 9)
 	FallbackFlagsDirectPongTimedOut         = (1 << 10)
-	FallbackFlagsCount                      = 11
+	FallbackFlagsNextPongTimedOut           = (1 << 11)
+	FallbackFlagsCount_400                  = 11
+	FallbackFlagsCount_401                  = 12
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
@@ -268,6 +270,7 @@ type SessionUpdatePacket struct {
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
+	ClientPingTimedOut              bool
 	Tag                             uint64
 	Flags                           uint32
 	UserFlags                       uint64
@@ -295,94 +298,130 @@ type SessionUpdatePacket struct {
 }
 
 func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
+	
 	versionMajor := uint32(packet.Version.Major)
 	versionMinor := uint32(packet.Version.Minor)
 	versionPatch := uint32(packet.Version.Patch)
+	
 	stream.SerializeBits(&versionMajor, 8)
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
+	
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	
 	stream.SerializeUint64(&packet.CustomerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.SessionID)
 	stream.SerializeUint32(&packet.SliceNumber)
 	stream.SerializeInteger(&packet.RetryNumber, 0, MaxSessionUpdateRetries)
+	
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
 	}
+	
 	stream.SerializeAddress(&packet.ClientAddress)
+	
 	stream.SerializeAddress(&packet.ServerAddress)
+	
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, crypto.KeySize)
 		packet.ServerRoutePublicKey = make([]byte, crypto.KeySize)
 	}
+	
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
+
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
+	
 	stream.SerializeUint64(&packet.UserHash)
+	
 	stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax)
+	
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
+	
 	stream.SerializeBool(&packet.Next)
 	stream.SerializeBool(&packet.Committed)
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 2) {
+		stream.SerializeBool(&packet.ClientPingTimedOut)
+	}
+	
 	hasTag := stream.IsWriting() && packet.Tag != 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
 	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
+	
 	stream.SerializeBool(&hasTag)
 	stream.SerializeBool(&hasFlags)
 	stream.SerializeBool(&hasUserFlags)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
+	
 	if hasTag {
 		stream.SerializeUint64(&packet.Tag)
 	}
+	
 	if hasFlags {
-		stream.SerializeBits(&packet.Flags, FallbackFlagsCount)
+		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 1) {
+			stream.SerializeBits(&packet.Flags, FallbackFlagsCount_401)
+		} else {
+			stream.SerializeBits(&packet.Flags, FallbackFlagsCount_400)
+		}
 	}
+	
 	if hasUserFlags {
 		stream.SerializeUint64(&packet.UserFlags)
 	}
+	
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
+	
 	if packet.Next {
 		stream.SerializeFloat32(&packet.NextRTT)
 		stream.SerializeFloat32(&packet.NextJitter)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
+	
 	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+	
 	if stream.IsReading() {
 		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
 		packet.NearRelayRTT = make([]float32, packet.NumNearRelays)
 		packet.NearRelayJitter = make([]float32, packet.NumNearRelays)
 		packet.NearRelayPacketLoss = make([]float32, packet.NumNearRelays)
 	}
+	
 	for i := int32(0); i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIDs[i])
 		stream.SerializeFloat32(&packet.NearRelayRTT[i])
 		stream.SerializeFloat32(&packet.NearRelayJitter[i])
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
+	
 	if packet.Next {
 		stream.SerializeUint32(&packet.NextKbpsUp)
 		stream.SerializeUint32(&packet.NextKbpsDown)
 	}
+	
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
+	
 	if hasLostPackets {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
+	
 	if hasOutOfOrderPackets {
 		stream.SerializeUint64(&packet.PacketsOutOfOrderClientToServer)
 		stream.SerializeUint64(&packet.PacketsOutOfOrderServerToClient)
 	}
+	
 	stream.SerializeFloat32(&packet.JitterClientToServer)
 	stream.SerializeFloat32(&packet.JitterServerToClient)
 

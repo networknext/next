@@ -56,7 +56,7 @@ int main()
 
     srand( uint64_t( next_time() * 10000ULL ) );
 
-    next_sleep( (rand() % 1) );
+    next_sleep( (rand() % 120) );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
