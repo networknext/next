@@ -21,6 +21,7 @@ import (
 
 	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
@@ -88,6 +89,17 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Setup feature config for bigtable
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BIGTABLE",
+			Value:       false,
+			Description: "Bigtable integration for historic session data",
+		},
+	})
+	featureConfig = envVarConfig
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -105,6 +117,8 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceivedMessageCount.Value()))
+				fmt.Printf("%d bigtable success meta writes\n", int(btMetrics.WriteMetaSuccessCount.Value()))
+				fmt.Printf("%d bigtable success slice writes\n", int(btMetrics.WriteSliceSuccessCount.Value()))
 				fmt.Printf("%d bigtable failed meta writes\n", int(btMetrics.WriteMetaFailureCount.Value()))
 				fmt.Printf("%d bigtable failed slice writes\n", int(btMetrics.WriteSliceFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
@@ -184,11 +198,7 @@ func mainReturnWithCode() int {
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
 	// Determine if should insert into Bigtable
-	useBigtable, err := envvar.GetBool("FEATURE_BIGTABLE", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+	useBigtable := featureConfig.FeatureEnabled(0)
 
 	// Get Bigtable instance ID
 	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
