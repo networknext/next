@@ -409,6 +409,24 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 	return nil
 }
 
+type AddCustomerArgs struct {
+	Customer routing.Customer
+}
+
+type AddCustomerReply struct{}
+
+func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *AddCustomerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	if err := s.Storage.AddCustomer(ctx, args.Customer); err != nil {
+		err = fmt.Errorf("AddCustomer() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	return nil
+}
+
 type AddSellerArgs struct {
 	Seller routing.Seller
 }
