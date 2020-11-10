@@ -10,6 +10,7 @@ import { JSONRPCPlugin } from './plugins/jsonrpc'
 import { AuthPlugin } from './plugins/auth'
 import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
+import { FeatureTypes, Flag } from './components/types/FeatureTypes'
 
 /**
  * Main file responsible for mounting the App component,
@@ -39,35 +40,36 @@ Vue.use(AuthPlugin, {
 })
 
 Vue.use(JSONRPCPlugin)
+const flags: Array<Flag> = [
+  {
+    name: FeatureTypes.EXPLORE,
+    description: 'Integrate Looker into the portal under a new navigation tab called "Explore"',
+    value: false
+  },
+  {
+    name: FeatureTypes.INTERCOM,
+    description: 'Integrate intercom',
+    value: false
+  },
+  {
+    name: FeatureTypes.ROUTE_SHADER,
+    description: 'Route shader page for users to update their route shader',
+    value: false
+  },
+  {
+    name: FeatureTypes.IMPERSONATION,
+    description: 'Feature to allow admins to impersonate a customer in a read only state',
+    value: false
+  }
+]
 Vue.use(FlagPlugin, {
-  flags: [
-    {
-      name: 'FEATURE_EXPLORE',
-      description: 'Integrate Looker into the portal under a new navigation tab called "Explore"',
-      value: false
-    },
-    {
-      name: 'FEATURE_INTERCOM',
-      description: 'Integrate intercom',
-      value: false
-    },
-    {
-      name: 'FEATURE_ROUTE_SHADER',
-      description: 'Route shader page for users to update their route shader',
-      value: false
-    },
-    {
-      name: 'FEATURE_IMPERSONATE',
-      description: 'Feature to allow admins to impersonate a customer in a read only state',
-      value: false
-    }
-  ],
-  useAPI: process.env.VUE_APP_USE_API_FLAGS
-  // apiService: Vue.prototype.$apiService
+  flags: flags,
+  useAPI: process.env.VUE_APP_USE_API_FLAGS,
+  apiService: Vue.prototype.$apiService
 })
 
-Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
-// Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
+// Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
+Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
 
 new Vue({
   router,
