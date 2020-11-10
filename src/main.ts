@@ -68,8 +68,11 @@ Vue.use(FlagPlugin, {
   apiService: Vue.prototype.$apiService
 })
 
-// Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
-Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
+if (process.env.VUE_APP_USE_API_FLAGS) {
+  Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
+} else {
+  Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
+}
 
 new Vue({
   router,
