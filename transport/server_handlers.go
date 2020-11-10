@@ -315,6 +315,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
 		}()
 
+		if packet.ClientPingTimedOut {
+			metrics.ClientPingTimedOut.Add(1)
+			return
+		}
+
 		if newSession {
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionID = packet.SessionID
