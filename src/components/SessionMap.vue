@@ -112,17 +112,18 @@ export default class SessionMap extends Vue {
         }
 
         const sessions = response.map_points || []
-        let onNN = []
-        let direct = []
+        let onNN: Array<any> = []
+        const direct: Array<any> = []
 
         if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
           onNN = sessions
         } else {
-          onNN = sessions.filter((point: any) => {
-            return (point[2] === true)
-          })
-          direct = sessions.filter((point: any) => {
-            return (point[2] === false)
+          sessions.forEach((session: any) => {
+            if (session[2] === true) {
+              onNN.push(session)
+            } else {
+              direct.push(session)
+            }
           })
         }
 
