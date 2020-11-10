@@ -113,16 +113,16 @@ int main()
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
 
-    double wait_time = rand() % 120;
-
-    bool initial_connect = false;
+    double connect_time = 0;
+    double game_length = 0;
 
     while ( !quit )
     {
-        if ( !initial_connect && next_time() > wait_time )
+        if ( next_time() - connect_time > game_length )
         {
             next_client_open_session( client, server_addrs[rand() % cores].c_str() );
-            initial_connect = true;
+            connect_time = next_time();
+            game_length = (rand() % 300) + 300;
         }
 
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
