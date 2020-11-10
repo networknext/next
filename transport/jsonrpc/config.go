@@ -43,10 +43,3 @@ func (s *ConfigService) FeatureFlagByName(r *http.Request, args *FeatureFlagArgs
 	}
 	return nil
 }
-
-func (s *ConfigService) FeatureFlagsByValue(r *http.Request, args *FeatureFlagArgs, reply *FeatureFlagReply) error {
-	reply.Flags = map[string]bool{
-		"FEATURE_EXPLORE": false,
-	}
-	return nil
-}
