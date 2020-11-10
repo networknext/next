@@ -206,6 +206,78 @@ func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
 	assert.Equal(t, metrics.SessionUpdateMetrics.BuyerNotFound.Value(), 1.0)
 }
 
+func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{})
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+
+	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 2}, // can only be true in 4.0.2 or higher
+		SessionID:            1111,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+		ClientPingTimedOut:   true,
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var badIPLocator badIPLocator
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &badIPLocator
+	}
+
+	var routeMatrix routing.RouteMatrix
+	routeMatrixFunc := func() *routing.RouteMatrix {
+		return &routeMatrix
+	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
+	expectedResponse := transport.SessionResponsePacket{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData{}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+
+	assert.Equal(t, metrics.SessionUpdateMetrics.ClientPingTimedOut.Value(), 1.0)
+}
+
 func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
@@ -1336,6 +1408,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1599,6 +1672,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1858,6 +1932,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2088,6 +2163,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2302,6 +2378,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2516,6 +2593,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -3298,6 +3376,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			CommitPending: true,
 			CommitCounter: 2,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)

@@ -2542,6 +2542,10 @@ func main() {
 				}
 			}
 
+			if sessionUpdate.ClientPingTimedOut {
+				takeNetworkNext = false
+			}
+
 			if !takeNetworkNext {
 
 				// direct route

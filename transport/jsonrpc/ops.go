@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"sort"
@@ -695,6 +696,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	shortDate := time.Now().Format("2006-01-02")
 	shortTime := time.Now().Format("15:04:05")
 	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
+	relay.Addr = net.UDPAddr{} // clear the address to 0 when removed
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
