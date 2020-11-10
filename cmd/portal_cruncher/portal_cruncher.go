@@ -21,6 +21,7 @@ import (
 
 	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
@@ -82,6 +83,23 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
+		return 1
+	}
+
+	// Setup feature config for bigtable
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BIGTABLE",
+			Value:       false,
+			Description: "Bigtable integration for historic session data",
+		},
+	})
+	featureConfig = envVarConfig
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -99,6 +117,10 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceivedMessageCount.Value()))
+				fmt.Printf("%d bigtable success meta writes\n", int(btMetrics.WriteMetaSuccessCount.Value()))
+				fmt.Printf("%d bigtable success slice writes\n", int(btMetrics.WriteSliceSuccessCount.Value()))
+				fmt.Printf("%d bigtable failed meta writes\n", int(btMetrics.WriteMetaFailureCount.Value()))
+				fmt.Printf("%d bigtable failed slice writes\n", int(btMetrics.WriteSliceFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -175,7 +197,44 @@ func mainReturnWithCode() int {
 	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(portalSubscriber, redisHostTopSessions, redisHostSessionMap, redisHostSessionMeta, redisHostSessionSlices, messageChanSize, portalCruncherMetrics)
+	// Determine if should insert into Bigtable
+	useBigtable := featureConfig.FeatureEnabled(0)
+
+	// Get Bigtable instance ID
+	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
+	// Get the table name
+	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
+	// Get the column family name
+	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
+	// Get the max number of days the data should be kept in Bigtable
+	btMaxAgeDays, err := envvar.GetInt("BIGTABLE_MAX_AGE_DAYS", 90)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	btGoroutineCount, err := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
+															portalSubscriber,
+															redisHostTopSessions,
+															redisHostSessionMap,
+															redisHostSessionMeta,
+															redisHostSessionSlices,
+															useBigtable,
+															gcpProjectID,
+															btInstanceID,
+															btTableName,
+															btCfName,
+															btMaxAgeDays,
+															messageChanSize,
+															logger,
+															portalCruncherMetrics,
+															btMetrics)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -188,7 +247,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := portalCruncher.Start(ctx, redisGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount); err != nil {
+		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return
