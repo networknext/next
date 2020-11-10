@@ -1600,6 +1600,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1859,6 +1860,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 			ReduceLatency: true,
 			Committed:     true,
 		},
+		EverOnNext: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
