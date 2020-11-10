@@ -28,6 +28,6 @@ func TestFlagList(t *testing.T) {
 		err := svc.AllFeatureFlags(req, &jsonrpc.FeatureFlagArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 0, len(reply.Flags))
+		assert.Equal(t, 1, len(reply.Flags))
 	})
 }
