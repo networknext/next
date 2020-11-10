@@ -11,14 +11,14 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
-	RelayAddresses     []net.UDPAddr
+	RelayAddresses     []net.UDPAddr // external IPs only
 	RelayNames         []string
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
