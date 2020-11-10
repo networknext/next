@@ -394,6 +394,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
+		if packet.ClientPingTimedOut {
+			metrics.ClientPingTimedOut.Add(1)
+			return
+		}
+
 		datacenter, err = storer.Datacenter(packet.DatacenterID)
 		if err != nil {
 			aliasFound := false
