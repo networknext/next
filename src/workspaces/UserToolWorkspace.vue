@@ -22,14 +22,14 @@
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchUserSessions()">
       <div class="form-group">
-        <label for="user-hash-input">
-            User Hash
+        <label for="user-id-input">
+            User ID
         </label>
         <div class="row">
           <div class="col">
             <input class="form-control"
                     type="text"
-                    placeholder="Enter a User Id to view their sessions"
+                    placeholder="Enter a User ID to view their sessions"
                     v-model="searchID"
             >
           </div>
@@ -79,7 +79,7 @@ export default class UserToolWorkspace extends Vue {
     super()
     this.alertType = ''
     this.searchID = ''
-    this.message = 'Please enter a User Id to view their sessions.'
+    this.message = 'Please enter a User ID to view their sessions.'
     this.alertType = AlertTypes.INFO
   }
 
@@ -94,7 +94,7 @@ export default class UserToolWorkspace extends Vue {
       return
     }
     if (this.searchID === '' && this.$route.path === '/user-tool') {
-      this.message = 'Please enter a User Id to view their sessions.'
+      this.message = 'Please enter a User ID to view their sessions.'
       this.alertType = AlertTypes.INFO
       return
     }

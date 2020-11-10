@@ -41,19 +41,19 @@ describe('UserToolWorkspace.vue', () => {
     expect(wrapper.find('.h2').text()).toBe('User Tool')
 
     // Check label
-    expect(wrapper.find('label').text()).toBe('User Hash')
+    expect(wrapper.find('label').text()).toBe('User ID')
 
     // Check for an input
     expect(wrapper.find('input').exists()).toBe(true)
 
     // Check input placeholder
-    expect(wrapper.find('input').attributes('placeholder')).toBe('Enter a User Id to view their sessions')
+    expect(wrapper.find('input').attributes('placeholder')).toBe('Enter a User ID to view their sessions')
 
     // Check button
     expect(wrapper.find('button').text()).toBe('View Sessions')
 
     // Check for an info alert
-    expect(wrapper.find('.alert').text()).toBe('Please enter a User Id to view their sessions.')
+    expect(wrapper.find('.alert').text()).toBe('Please enter a User ID to view their sessions.')
     wrapper.destroy()
   })
 })
