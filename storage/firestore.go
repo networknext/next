@@ -1298,6 +1298,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
 				"name":            r.Name,
+				"publicAddress":   r.Addr.String(),
 				"state":           r.State,
 				"lastUpdateTime":  r.LastUpdateTime,
 				"stateUpdateTime": time.Now(),
