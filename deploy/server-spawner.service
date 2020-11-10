@@ -3,6 +3,6 @@ Description=Network Next Server Load Test
 After=network.target
 
 [Service]
-ExecStart=/app/server-spawner.sh -n 1 -s 10.128.0.75
+ExecStart=/app/server-spawner.sh -n 50 -s 10.128.0.75
 Restart=always
 RestartSec=3
