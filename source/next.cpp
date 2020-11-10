@@ -10521,7 +10521,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
              entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time && 
              entry->last_client_next_ping + NEXT_SERVER_PING_TIMEOUT <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server client timed out for session %" PRIx64, entry->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server client ping timed out for session %" PRIx64, entry->session_id );
             entry->client_ping_timed_out = true;
         }
 
@@ -11820,6 +11820,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
             packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
+            packet.client_ping_timed_out = session->client_ping_timed_out;
             packet.connection_type = session->stats_connection_type;
             packet.next_kbps_up = session->stats_next_kbps_up;
             packet.next_kbps_down = session->stats_next_kbps_down;
