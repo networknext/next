@@ -205,9 +205,10 @@ export default class NavBar extends Vue {
           if (json.error) {
             throw new Error(json.error)
           }
-          this.portalVersion = `Git Hash: ${json.sha} - Commit: ${
-            json.commit_message || 'none'
-          }`
+          this.portalVersion = `Git Hash: ${json.sha}`
+          if (json.commit_message) {
+            this.portalVersion = `${this.portalVersion} - Commit: ${json.commit_message}`
+          }
         })
       }).catch((error: Error) => {
         console.log('Something went wrong fetching the software version')
