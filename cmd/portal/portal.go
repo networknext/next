@@ -27,6 +27,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
@@ -199,6 +200,17 @@ func main() {
 		}
 	}
 
+	// Setup feature config for bigtable
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BIGTABLE",
+			Value:       false,
+			Description: "Bigtable integration for historic session data",
+		},
+	})
+	featureConfig = envVarConfig
+
 	// Setup Bigtable
 
 	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
@@ -209,15 +221,11 @@ func main() {
 		level.Info(logger).Log("msg", "Detected bigtable emulator")
 	}
 
-	useBigtable, err := envvar.GetBool("FEATURE_BIGTABLE", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-
+	useBigtable := featureConfig.FeatureEnabled(0) && (gcpOK || btEmulatorOK)
+	
 	var btClient *storage.BigTable
 
-	if useBigtable && (gcpOK || btEmulatorOK) {
+	if useBigtable {
 		// Get Bigtable instance ID
 		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
 
@@ -355,6 +363,7 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
+		UseBigtable:			useBigtable,
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
 		Logger:                 logger,

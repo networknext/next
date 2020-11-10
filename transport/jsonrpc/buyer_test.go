@@ -240,6 +240,7 @@ func TestUserSessions(t *testing.T) {
 
 	svc := jsonrpc.BuyersService{
 		Storage:                &storer,
+		UseBigtable:			true,
 		BigTable:               btClient,
 		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMap:    redisPool,
@@ -817,6 +818,7 @@ func TestSessionDetails(t *testing.T) {
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
+		UseBigtable:			true,
 		BigTable:               btClient,
 		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMeta:   redisPool,
