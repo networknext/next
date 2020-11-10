@@ -15,7 +15,7 @@ import RouteShader from '@/components/RouteShader.vue'
 import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
-import { FeatureTypes } from '@/components/types/FeatureTypes'
+import { FeatureEnums } from '@/components/types/FeatureTypes'
 
 Vue.use(VueRouter)
 
@@ -110,7 +110,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // BUG: Re-routes valid users to the map when it should just refresh the page...
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
-    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+    if (router.app.$flagService.isEnabled(FeatureEnums.INTERCOM)) {
       (window as any).Intercom('update')
     }
     next('/')
@@ -118,7 +118,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
   if (to.name === 'settings') {
     store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
-    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+    if (router.app.$flagService.isEnabled(FeatureEnums.INTERCOM)) {
       (window as any).Intercom('update')
     }
     next('/settings/account')
@@ -127,7 +127,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // Email is verified
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
-    if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+    if (router.app.$flagService.isEnabled(FeatureEnums.INTERCOM)) {
       (window as any).Intercom('update')
     }
     Vue.prototype.$authService.refreshToken()
@@ -135,7 +135,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     return
   }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
-  if (router.app.$flagService.isEnabled(FeatureTypes.INTERCOM)) {
+  if (router.app.$flagService.isEnabled(FeatureEnums.INTERCOM)) {
     (window as any).Intercom('update')
   }
   next()

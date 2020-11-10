@@ -1,7 +1,7 @@
 // Enum to describe different alert types
 // Alert types must be a bootstrap 4 valid alert type
 
-export enum FeatureTypes {
+export enum FeatureEnums {
   EXPLORE = 'FEATURE_EXPLORE',
   ROUTE_SHADER = 'FEATURE_ROUTE_SHADER',
   IMPERSONATION = 'FEATURE_IMPERSONATION',
@@ -9,7 +9,7 @@ export enum FeatureTypes {
 }
 
 export interface Flag {
-  name: FeatureTypes;
+  name: FeatureEnums;
   description: string;
   value: boolean;
 }

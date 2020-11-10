@@ -121,7 +121,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { UserProfile } from './types/AuthTypes'
-import { FeatureTypes } from './types/FeatureTypes'
+import { FeatureEnums } from './types/FeatureTypes'
 
 /**
  * This component opens up the main Vue router handlers to user interaction in the form of a navigation bar
@@ -143,14 +143,14 @@ export default class NavBar extends Vue {
   private companyCode: string
   private portalVersion: string
   private unwatch: any
-  private featureTypes: any
+  private featureEnum: any
 
   constructor () {
     super()
     this.portalVersion = ''
     this.companyCode = ''
     // TODO: This probably shouldn't be necessary?
-    this.featureTypes = FeatureTypes
+    this.featureEnum = FeatureEnums
   }
 
   private created () {
