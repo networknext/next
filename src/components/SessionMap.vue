@@ -111,7 +111,7 @@ export default class SessionMap extends Vue {
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
-        const sessions = response.map_points
+        const sessions = response.map_points || []
         let onNN = []
         let direct = []
 
