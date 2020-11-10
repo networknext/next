@@ -3,7 +3,7 @@ package routing_test
 import (
 	"testing"
 
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -282,10 +282,10 @@ func TestStatsDatabase(t *testing.T) {
 			for _, r := range allRelayData {
 				if i == 0 {
 					r.Datacenter.ID = 0
-					relayMap.AddRelayDataEntry(r.Addr.String(), r)
+					relayMap.AddRelayDataEntry(r.Addr.String(), &r)
 				} else {
 					r.Datacenter.ID = uint64(i)
-					relayMap.AddRelayDataEntry(r.Addr.String(), r)
+					relayMap.AddRelayDataEntry(r.Addr.String(), &r)
 				}
 				i++
 			}

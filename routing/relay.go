@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -104,8 +104,9 @@ type Relay struct {
 	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 
-	Addr      net.UDPAddr `json:"addr"`
-	PublicKey []byte      `json:"public_key"`
+	Addr         net.UDPAddr `json:"addr"`
+	InternalAddr net.UDPAddr `json:"internal_addr"`
+	PublicKey    []byte      `json:"public_key"`
 
 	Seller     Seller     `json:"seller"`
 	Datacenter Datacenter `json:"datacenter"`

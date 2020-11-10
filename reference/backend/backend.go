@@ -19,6 +19,7 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
+	"os"
 	"net"
 	"net/http"
 	"runtime/debug"
@@ -71,7 +72,8 @@ const NEXT_FLAGS_CLIENT_TIMED_OUT = uint32(1 << 7)
 const NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT = uint32(1 << 8)
 const NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT = uint32(1 << 9)
 const NEXT_FLAGS_DIRECT_PONG_TIMED_OUT = uint32(1<<10)
-const NEXT_FLAGS_COUNT = 11
+const NEXT_FLAGS_NEXT_PONG_TIMED_OUT = uint32(1<<11)
+const NEXT_FLAGS_COUNT = 12
 
 const NEXT_RELAY_INIT_REQUEST_MAGIC = uint32(0x9083708f)
 const NEXT_RELAY_INIT_REQUEST_VERSION = 0
@@ -212,6 +214,7 @@ type NextBackendSessionUpdatePacket struct {
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
+	ClientPingTimedOut				bool
 	Tag                             uint64
 	Flags                           uint32
 	UserFlags                       uint64
@@ -282,6 +285,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	stream.SerializeBool(&packet.ClientPingTimedOut)
 
 	hasTag := stream.IsWriting() && packet.Tag != 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
@@ -2390,6 +2394,16 @@ func main() {
 
 	fmt.Printf("\nreference backend (sdk4)\n\n")
 
+	multipath := false
+	if os.Getenv("BACKEND_MULTIPATH") == "1" {
+		multipath = true
+	}
+
+	on_off := false
+	if os.Getenv("BACKEND_ON_OFF") == "1" {
+		on_off = true
+	}
+
 	for {
 
 		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
@@ -2520,7 +2534,17 @@ func main() {
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
-			takeNetworkNext := len(nearRelayIds) > 0
+			takeNetworkNext := len(nearRelayIds) > 0 && !sessionUpdate.FallbackToDirect
+
+			if on_off {
+				if ( sessionData.SliceNumber % 2 ) != 0 {
+					takeNetworkNext = false
+				}
+			}
+
+			if sessionUpdate.ClientPingTimedOut {
+				takeNetworkNext = false
+			}
 
 			if !takeNetworkNext {
 
@@ -2536,6 +2560,8 @@ func main() {
 					NumTokens:          0,
 					Tokens:             nil,
 				}
+
+				sessionData.Route = nil
 
 			} else {
 
@@ -2617,7 +2643,7 @@ func main() {
 					RouteType:          routeType,
 					NumTokens:          int32(numNodes),
 					Tokens:             tokens,
-					Multipath:          false,
+					Multipath:          multipath,
 					Committed:          true,
 				}
 
