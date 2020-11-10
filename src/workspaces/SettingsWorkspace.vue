@@ -42,7 +42,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { FeatureEnums } from '../components/types/FeatureTypes'
+import { FeatureEnum } from '../components/types/FeatureTypes'
 
 /**
  * This component holds the workspace elements related to the settings page in the Portal
@@ -60,7 +60,7 @@ export default class SettingsWorkspace extends Vue {
   constructor () {
     super()
     // TODO: This probably shouldn't be necessary?
-    this.featureEnums = FeatureEnums
+    this.featureEnums = FeatureEnum
   }
 }
 </script>

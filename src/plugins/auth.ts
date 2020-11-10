@@ -2,7 +2,7 @@ import store from '@/store'
 import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
-import { FeatureEnums } from '@/components/types/FeatureTypes'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 export class AuthService {
   private clientID: string
@@ -93,7 +93,7 @@ export class AuthService {
           userProfile.companyCode = companyCode
           userProfile.newsletterConsent = newsletterConsent
           // TODO: There should be a better way to access the Vue instance rather than through the router object
-          if (router.app.$flagService.isEnabled(FeatureEnums.INTERCOM)) {
+          if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
             (window as any).Intercom('boot', {
               app_id: process.env.VUE_APP_INTERCOM_ID,
               email: email,
@@ -127,7 +127,7 @@ export class AuthService {
       return
     }
     // TODO: There should be a better way to access the Vue instance rather than through the router object
-    if (router.app.$flagService.isEnabled(FeatureEnums.INTERCOM)) {
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
         app_id: process.env.VUE_APP_INTERCOM_ID
       })
