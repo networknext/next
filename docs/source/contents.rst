@@ -3,7 +3,6 @@
 .. toctree::
    :maxdepth: 1
 
-   why_network_next
    how_it_works
    getting_started
    building_the_sdk

@@ -2,7 +2,7 @@
 Building the SDK
 ================
 
-Official binaries for Windows and consoles are in the "lib" directory. 
+Official binaries are included the "lib" directory.
 
 To build the example programs, see the instructions below:
 
