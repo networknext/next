@@ -32,7 +32,7 @@ Go back to the portal and copy your public key into the game settings page to as
 
 .. image:: images/game_settings_public_key.png
 
-Now set the public key in your client.
+Set the public key in your client.
 
 For example, in *upgraded_client.cpp* example, replace the test customer public key with your own:
 
@@ -40,7 +40,7 @@ For example, in *upgraded_client.cpp* example, replace the test customer public 
 
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-Next, set private key in your server.
+Set the private key in your server.
 
 For example, you can change the code in the *upgraded_server.cpp* example:
 
