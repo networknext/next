@@ -6,9 +6,13 @@ Sign up and create an account on at https://portal.networknext.com by clicking "
 
 Once you've signed up, a "Downloads" page will show up. Here you can download the latest SDK.
 
-Inside the SDK zip file, there is a keygen tool under the "keygen" directory.
+Download the SDK and unzip it. 
 
-Run the keygen to generate a keypair for your company. You'll see something like this:
+There is a keygen tool under the "keygen" directory.
+
+Run the keygen to generate a keypair for your company. 
+
+You'll see something like this:
 
 .. code-block:: console
 
@@ -24,11 +28,11 @@ Run the keygen to generate a keypair for your company. You'll see something like
 
 	IMPORTANT: Save your private key in a secure place and don't share it with anybody, not even us!
 
-Next, go back to the portal and copy your public key into the game settings page to associate the keypair with your account:
+Go back to the portal and copy your public key into the game settings page to associate the keypair with your account:
 
 .. image:: images/game_settings_public_key.png
 
-Now set the public key on the client. 
+Now set the public key in your client.
 
 For example, in *upgraded_client.cpp* example, replace the test customer public key with your own:
 
@@ -36,9 +40,9 @@ For example, in *upgraded_client.cpp* example, replace the test customer public 
 
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-Set the customer private key on the server.
+Next, set private key in your server.
 
-You can change the code in the *upgraded_server.cpp* example:
+For example, you can change the code in the *upgraded_server.cpp* example:
 
 .. code-block:: c++
 
@@ -50,7 +54,9 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-Now that you have the customer private and public key setup, you should now be able to run the upgraded client and server example and see your session in the portal.
+Now that you have the customer private and public key setup, you should now be able to run the upgraded client and server and see the session show up in the portal. 
+
+IMPORTANT: Make sure to run the server on a public IP address because it will not work if you are behind NAT.
 
 Congratulations, Network Next is now ready to use! :)
 
