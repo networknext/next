@@ -2,7 +2,7 @@
 Getting Started
 ===============
 
-Sign up and create an account on at https://portal.networknext.com by clicking "Get Access".
+Sign up and create an account at https://portal.networknext.com by clicking "Get Access".
 
 Once you've signed up, a "Downloads" page will show up. Here you can download the latest SDK.
 
