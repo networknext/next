@@ -170,7 +170,7 @@
     <ClCompile Include="..\..\..\sodium\sodium_runtime.c" />
     <ClCompile Include="..\..\..\sodium\sodium_salsa20-ref.c" />
     <ClCompile Include="..\..\..\sodium\sodium_salsa20-xmm6.c" />
-    <ClCompile Include="..\..\..\sodium\sodium_salsa20-xmm6.S" />
+    <ClCompile Include="..\..\..\sodium\sodium_salsa20-xmm6_asm.S" />
     <ClCompile Include="..\..\..\sodium\sodium_sandy2x.S" />
     <ClCompile Include="..\..\..\sodium\sodium_sandy2x_consts.S" />
     <ClCompile Include="..\..\..\sodium\sodium_sandy2x_curve25519.c" />
