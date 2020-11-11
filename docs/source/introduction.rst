@@ -3,7 +3,9 @@ Introduction
 
 .. raw:: html
 
-   <iframe width="560" height="315" src="https://www.youtube.com/embed/jo1qffymv3E?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+   <div margin-bottom: 2em;>
+   <iframe width="100%" src="https://www.youtube.com/embed/jo1qffymv3E?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+   </div>
    
 Sick and tired of players getting bad network performance when they play your game? 
 
