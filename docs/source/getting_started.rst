@@ -2,15 +2,13 @@
 Getting Started
 ===============
 
-To use Network Next, you need a customer private and public key.
+Sign up and create an account on at https://portal.networknext.com by clicking "Get Access".
 
-You can generate this keypair with the keygen tool in the "keygen" directory of the SDK.
+Once you've signed up, a "Downloads" page will show up. Here you can download the latest SDK.
 
-- **keygen.exe** -- windows
-- **keygen_mac** -- mac
-- **keygen_linux** -- linux
+Inside the SDK zip file, there is a keygen tool under the "keygen" directory.
 
-When you run the keygen, you should see something like this:
+Run the keygen to generate a keypair for your company. You'll see something like this:
 
 .. code-block:: console
 
@@ -26,7 +24,7 @@ When you run the keygen, you should see something like this:
 
 	IMPORTANT: Save your private key in a secure place and don't share it with anybody, not even us!
 
-Next, go into the Network Next portal and copy your public key into the game settings page to associate the keypair with your account:
+Next, go back to the portal and copy your public key into the game settings page to associate the keypair with your account:
 
 .. image:: images/game_settings_public_key.png
 
@@ -54,7 +52,7 @@ Or pass it in with an environment variable:
 
 Now that you have the customer private and public key setup, you should now be able to run the upgraded client and server example and see your session in the portal.
 
-Congratulations, Network Next is ready to use :)
+Congratulations, Network Next is now ready to use! :)
 
 Welcome to Network Next, we look forward to working with you!
 
