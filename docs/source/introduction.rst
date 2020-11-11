@@ -14,5 +14,5 @@ Network Next. Relax and leave the networking to us :)
 .. raw:: html
 
    <div margin-bottom: 2em;>
-   <iframe width="100%" src="https://www.youtube.com/embed/jo1qffymv3E?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+   <iframe width="100%" height=0 src="https://www.youtube.com/embed/jo1qffymv3E?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
    </div>
