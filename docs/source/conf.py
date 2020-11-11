@@ -22,7 +22,7 @@ copyright = '2020, Network Next, Inc.'
 author = 'Team Network Next'
 
 # The full version, including alpha/beta/rc tags
-release = '3.4.5'
+release = '4.0.2'
 
 
 # -- General configuration ---------------------------------------------------
