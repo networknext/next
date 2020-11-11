@@ -11,4 +11,4 @@ We can help!
 
 All you have to do is integrate our SDK and we'll fix network performance issues before anybody notices.
 
-Network Next. Relax and leave network the monitoring to us.
+Network Next. Relax and leave network the monitoring to us :)
