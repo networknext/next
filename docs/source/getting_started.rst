@@ -69,6 +69,6 @@ Now you should now be able to run the upgraded client and server and see the ses
 
 Make sure to run the server on a public IP address because it will not work if you are behind NAT.
 
-Welcome to Network Next, we look forward to working with you!
+Welcome to Network Next!
 
-- *Glenn Fiedler, CEO, Network Next.*
+Read on for more details about building the SDK and example programs...
