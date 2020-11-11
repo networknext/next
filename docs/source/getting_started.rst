@@ -2,7 +2,8 @@
 Getting Started
 ===============
 
-# Sign up and download the SDK
+Sign up and download the SDK
+----------------------------
 
 Sign up and create an account at https://portal.networknext.com by clicking "Get Access".
 
@@ -10,7 +11,8 @@ Once you've signed up, a "Downloads" page will show up. Here you can download th
 
 Download the SDK and unzip it. 
 
-# Run the keygen
+Run the keygen
+--------------
 
 There is a keygen tool under the "keygen" directory.
 
@@ -36,7 +38,8 @@ Go back to the portal and copy your public key into the game settings page to as
 
 .. image:: images/game_settings_public_key.png
 
-# Set the public key in your client
+Set the public key on your client
+---------------------------------
 
 For example, in *upgraded_client.cpp* example, replace the test customer public key with your own:
 
@@ -44,7 +47,8 @@ For example, in *upgraded_client.cpp* example, replace the test customer public 
 
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-# Set the private key in your server
+Set the private key on your server
+----------------------------------
 
 For example, you can change the code in the *upgraded_server.cpp* example:
 
@@ -58,11 +62,12 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-# Connect your client and server
+Run your client and server
+--------------------------
 
-Now that you have the customer private and public key setup, you should now be able to run the upgraded client and server and see the session show up in the portal. 
+Now you should now be able to run the upgraded client and server and see the session show up in the portal. 
 
-IMPORTANT: Make sure to run the server on a public IP address because it will not work if you are behind NAT.
+Make sure to run the server on a public IP address because it will not work if you are behind NAT.
 
 Congratulations, Network Next is now ready to use! :)
 
