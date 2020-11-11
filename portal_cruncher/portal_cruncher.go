@@ -451,7 +451,7 @@ func SetupBigtable(ctx context.Context,
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
 		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected Bigtable emulator")
+		level.Info(logger).Log("msg", "Detected Bigtable emulator host")
 	}
 
 	if gcpProjectID == "" && !btEmulatorOK {

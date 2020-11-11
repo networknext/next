@@ -218,7 +218,7 @@ func main() {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
 		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected bigtable emulator")
+		level.Info(logger).Log("msg", "Detected bigtable emulator host")
 	}
 
 	useBigtable := featureConfig.FeatureEnabled(0) && (gcpOK || btEmulatorOK)
@@ -247,8 +247,9 @@ func main() {
 		}
 
 		if !tableExists {
-			level.Error(logger).Log("envvar", "BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance")
-			os.Exit(1)
+			level.Info(logger).Log("envvar", "BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance. Creating empty table to run portal.")
+			btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
+			btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
 		}
 
 		// Close the admin client

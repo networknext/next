@@ -224,8 +224,13 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
+# Bigtable emulator must be running before testing bigtable in happy path
 ifndef FEATURE_BIGTABLE
 export FEATURE_BIGTABLE = false
+endif
+
+ifndef BIGTABLE_EMULATOR_HOST
+export BIGTABLE_EMULATOR_HOST = localhost:8086
 endif
 
 ifndef BIGTABLE_TABLE_NAME
