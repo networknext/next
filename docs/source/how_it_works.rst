@@ -13,6 +13,6 @@ You enable monitoring and acceleration for a player by *upgrading* that player's
 One monitoring is enabled for a player, the SDK does the following logic every 10 seconds:
 
 1. Look for a Network Next route with lower latency or packet loss
-2. If we find one, we steer that player's traffic across the network next route instead of the default path across the internet.
-3. If the public internet is already good enough, or we can't find a route that's significantly better, just send packets across the public internet.
-4. If for any reason, the SDK cannot communicate with the Network Next backend, falls back to sending packets across the public internet.
+2. If we find one, steer that player's traffic across the network next route instead of the default path across the internet.
+3. If the public internet is already good enough, or we can't find a route that's significantly better, send packets across the public internet.
+4. If for any reason, the SDK cannot communicate with the Network Next backend, send packets across the public internet.
