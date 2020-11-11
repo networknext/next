@@ -7,5 +7,5 @@ Welcome to Network Next!
         <iframe src="https://www.youtube.com/embed/jo1qffymv3E" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
     </div>
 
-Read more...
-------------
+Read more
+---------
