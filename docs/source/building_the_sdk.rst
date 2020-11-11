@@ -17,9 +17,7 @@ Generate a visual studio solution by running premake at the root directory of th
 
     $ premake5 vs2017
 
-Open the generated solution file and build all.
-
-Native Visual Studio solutions are also available in the "build" and "testbed" directories.
+Open the generated solution file under the "visualstudio" directory and build all.
 
 Mac
 ---
