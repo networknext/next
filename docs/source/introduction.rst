@@ -9,7 +9,7 @@ Introduction
 
 Sick and tired of players getting bad network performance when they play your game? 
 
-Getting random network problems once a month that you can't do anything about?
+Random network problems once a month that you can't do anything about?
 
 We can help!
 
