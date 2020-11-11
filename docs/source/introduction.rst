@@ -1,12 +1,8 @@
 Introduction
 ------------
 
-Sick and tired of players getting bad network performance when they play your game? 
+.. raw:: html
 
-Random network problems once a month you can't do anything about?
-
-We can help!
-
-All you have to do is integrate our SDK in your game and we'll fix network performance issues before anyone notices.
-
-Network Next. Relax and leave the networking to us :)
+    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+        <iframe src="https://www.youtube.com/embed/jo1qffymv3E" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+    </div>
