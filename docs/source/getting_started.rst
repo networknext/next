@@ -65,8 +65,8 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-6. Build and run your client and server!
-----------------------------------------
+6. Build and run your client and server
+---------------------------------------
 
 Now you should now be able to run the upgraded client and server and see the session show up in the portal. 
 
