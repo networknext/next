@@ -4,7 +4,7 @@ Introduction
 .. raw:: html
 
     <div style="position: relative; overflow: hidden; max-width: 100%; height: auto;">
-        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/jo1qffymv3E?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <iframe width="100%" height: auto; src="https://www.youtube.com/embed/jo1qffymv3E?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
 Sick and tired of players getting bad network performance when they play your game? 
