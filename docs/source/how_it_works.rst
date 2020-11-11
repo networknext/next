@@ -10,14 +10,10 @@ These components integrate with your game and replace how you send and receive p
 
 You enable monitoring and acceleration for a player by *upgrading* that player's session on your server.
 
-The SDK then measures network performance between your client and server and communicates this up to the network next backend.
+Once a session is upgraded, the SDK looks for a Network Next route with lower latency or packet loss every 10 seconds.
 
-Every 10 seconds the SDK looks for a Network Next route with lower packet loss or latency than the public internet for your player.
+If we find one, we steer that player's traffic across our network of networks instead of the default path across the internet.
 
-When we find one, we steer that player's traffic across our network of private networks, reducing the amount of latency and packet loss they experience while playing your game.
+If the public internet is already good enough, or we can't find a route that's significantly better, the SDK keeps sending packets across the public internet.
 
-When the public internet is already good enough, or we can't find a route that's significantly better, the SDK keeps sending packets across the public internet.
-
-If for any reason, the SDK cannot communicate with the Network Next backend, it falls back to sending packets across the public internet.
-
-So no matter what happens, *your players can always play your game*.
+If for any reason, the SDK cannot communicate with the Network Next backend, it falls back direct and just sends packets across the public internet.
