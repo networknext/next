@@ -7,6 +7,6 @@ Random network problems once a month you can't do anything about?
 
 We can help!
 
-All you have to do is integrate our SDK and we'll fix network performance issues before anyone notices.
+All you have to do is integrate our SDK in your game and we'll fix network performance issues before anyone notices.
 
 Network Next. Relax and leave the networking to us :)
