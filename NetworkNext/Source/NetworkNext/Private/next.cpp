@@ -59,6 +59,7 @@
 #define NEXT_UPGRADE_TIMEOUT                                          5.0
 #define NEXT_CLIENT_SESSION_TIMEOUT                                   5.0
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
+#define NEXT_SERVER_PING_TIMEOUT                                      5.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
@@ -331,8 +332,6 @@ uint16_t next_htons( uint16_t in )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
 #include "next_xboxone.h"
 #endif
-
-NEXT_PACK_PUSH()
 
 extern int next_platform_init();
 
@@ -1225,6 +1224,7 @@ namespace next
         BitWriter( void * data, int bytes ) : m_data( (uint32_t*) data ), m_numWords( bytes / 4 )
         {
             next_assert( data );
+            next_assert( ( size_t(data) % 4 ) == 0 );
             next_assert( ( bytes % 4 ) == 0 );
             m_numBits = m_numWords * 32;
             m_bitsWritten = 0;
@@ -1440,6 +1440,7 @@ namespace next
     #endif // #ifndef NDEBUG
         {
             next_assert( data );
+            next_assert( ( size_t(data) % 4 ) == 0 );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
             m_scratch = 0;
@@ -3444,7 +3445,12 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
 
+    next::ReadStream stream( packet_data, packet_bytes );
+
     uint8_t packet_id = packet_data[0];
+
+    uint8_t dummy[256];
+    serialize_bytes( stream, dummy, 1 );
 
     if ( signed_packet && signed_packet[packet_id] )
     {
@@ -3503,9 +3509,8 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         next_assert( decrypted_bytes == uint64_t(message_length) - NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES );
 
-        packet_data += 1 + 8;
-        packet_bytes -= 1 + 8;
-
+        serialize_bytes( stream, dummy, 8 );
+    
         uint64_t clean_sequence = next_clean_sequence( *sequence );
 
         if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
@@ -3514,13 +3519,6 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
             return NEXT_ERROR;
         }
     }
-    else
-    {
-        packet_data += 1;
-        packet_bytes -= 1;
-    }
-
-    next::ReadStream stream( packet_data, packet_bytes );
 
     switch ( packet_id )
     {
@@ -4495,6 +4493,8 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     next_assert( socket );
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
     double current_time = next_time();
 
@@ -5564,7 +5564,7 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_OPEN_SESSION            0
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
-#define NEXT_CLIENT_COMMAND_FLAG_SESSION            3
+#define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
 #define NEXT_CLIENT_COMMAND_USER_FLAGS              4
 
 struct next_client_command_t
@@ -5587,7 +5587,7 @@ struct next_client_command_destroy_t : public next_client_command_t
     // ...
 };
 
-struct next_client_command_flag_session_t : public next_client_command_t
+struct next_client_command_report_session_t : public next_client_command_t
 {
     // ...
 };
@@ -6714,6 +6714,8 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
     next_address_t from;
     
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
@@ -6865,7 +6867,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             }
             break;
 
-            case NEXT_CLIENT_COMMAND_FLAG_SESSION:
+            case NEXT_CLIENT_COMMAND_REPORT_SESSION:
             {
                 if ( client->session_id != 0 && !client->reported )
                 {
@@ -7161,6 +7163,8 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         sequence |= (1ULL<<62);
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+        next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
         if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, private_key, packet_data ) != NEXT_OK )
         {
@@ -7817,19 +7821,19 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     client->internal->packets_sent++;
 }
 
-void next_client_flag_session( next_client_t * client )
+void next_client_report_session( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
-    next_client_command_flag_session_t * command = (next_client_command_flag_session_t*) next_malloc( client->context, sizeof( next_client_command_flag_session_t ) );
+    next_client_command_report_session_t * command = (next_client_command_report_session_t*) next_malloc( client->context, sizeof( next_client_command_report_session_t ) );
 
     if ( !command )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "flag session failed. could not create flag session command" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "report session failed. could not create report session command" );
         return;
     }
 
-    command->type = NEXT_CLIENT_COMMAND_FLAG_SESSION;
+    command->type = NEXT_CLIENT_COMMAND_REPORT_SESSION;
     {    
         next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
@@ -8793,6 +8797,7 @@ struct NextBackendSessionUpdatePacket
     bool fallback_to_direct;
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
+    bool client_ping_timed_out;
     uint64_t tag;
     uint64_t flags;
     uint64_t user_flags;
@@ -8866,6 +8871,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
+        serialize_bool( stream, client_ping_timed_out );
 
         bool has_tag = Stream::IsWriting && tag != 0;
         bool has_flags = Stream::IsWriting && flags != 0;
@@ -9130,6 +9136,12 @@ struct next_session_entry_t
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
 
     NEXT_DECLARE_SENTINEL(25)
+
+    bool client_ping_timed_out;
+    double last_client_direct_ping;
+    double last_client_next_ping;
+
+    NEXT_DECLARE_SENTINEL(26)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9162,6 +9174,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
+    NEXT_INITIALIZE_SENTINEL( entry, 26 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9194,6 +9207,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
+    NEXT_VERIFY_SENTINEL( entry, 26 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -9363,6 +9377,11 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
 
     entry->special_send_sequence = 1;
     entry->internal_send_sequence = 1;
+
+    const double current_time = next_time();
+
+    entry->last_client_direct_ping = current_time;
+    entry->last_client_next_ping = current_time;
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token )
@@ -9672,6 +9691,11 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
     uint8_t packet_id = packet_data[0];
 
+    next::ReadStream stream( packet_data, packet_bytes );
+
+    uint8_t dummy[256];
+    serialize_bytes( stream, dummy, 1 );
+
     if ( packet_bytes < NEXT_PACKET_HASH_BYTES + 1 )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet is too small to be valid" );
@@ -9684,14 +9708,16 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         return NEXT_ERROR;
     }
 
-    packet_bytes -= NEXT_PACKET_HASH_BYTES + 1;
-    packet_data += NEXT_PACKET_HASH_BYTES + 1;
+    serialize_bytes( stream, dummy, NEXT_PACKET_HASH_BYTES );
+
+    const uint8_t * signed_packet_data = packet_data + NEXT_PACKET_HASH_BYTES + 1;
+    const int signed_packet_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + 1 );
 
     if ( signed_packet && signed_packet[packet_id] )
     {
         next_assert( sign_public_key );
 
-        if ( packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
+        if ( signed_packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
             return NEXT_ERROR;
@@ -9699,15 +9725,13 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
         next_crypto_sign_state_t state;
         next_crypto_sign_init( &state );
-        next_crypto_sign_update( &state, packet_data, size_t(packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
-        if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
+        next_crypto_sign_update( &state, signed_packet_data, size_t(signed_packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
+        if ( next_crypto_sign_final_verify( &state, signed_packet_data + signed_packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
             return NEXT_ERROR;
         }
     }
-
-    next::ReadStream stream( packet_data, packet_bytes );
 
     switch ( packet_id )
     {
@@ -10359,7 +10383,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
         next_session_entry_t * entry = &server->session_manager->entries[i];
 
-        if ( entry->update_dirty && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
+        if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
@@ -10493,6 +10517,14 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
      
         next_session_entry_t * entry = &server->session_manager->entries[index];
 
+        if ( !entry->client_ping_timed_out && 
+             entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time && 
+             entry->last_client_next_ping + NEXT_SERVER_PING_TIMEOUT <= current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server client ping timed out for session %" PRIx64, entry->session_id );
+            entry->client_ping_timed_out = true;
+        }
+
         if ( entry->last_client_stats_update + NEXT_SERVER_SESSION_TIMEOUT <= current_time )
         {
             next_server_notify_session_timed_out_t * notify = (next_server_notify_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_session_timed_out_t ) );
@@ -10513,7 +10545,13 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
         if ( entry->has_current_route && entry->current_route_expire_time <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server network next route expired for session %" PRIx64, entry->session_id );
+            // IMPORTANT: Only print this out as an error if it occurs *before* the client ping times out
+            // otherwise we get red herring errors on regular client disconnect from server that make it
+            // look like something is wrong when everything is fine...
+            if ( !entry->client_ping_timed_out )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server network next route expired for session %" PRIx64, entry->session_id );
+            }
             
             entry->has_current_route = false;
             entry->has_previous_route = false;
@@ -11175,13 +11213,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
+        entry->last_client_next_ping = next_time();
+
         uint64_t send_sequence = entry->special_send_sequence++;
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
         if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, packet_data ) != NEXT_OK )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write pong packet header" );
             return;
         }
 
@@ -11218,6 +11258,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         NextDirectPingPacket packet;
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
+
+        session->last_client_direct_ping = next_time();
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
@@ -11364,6 +11406,8 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     next_server_internal_verify_sentinels( server );
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
     next_address_t from;
     
@@ -11644,6 +11688,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
 	uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 	
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
 	if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
@@ -11774,6 +11820,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
             packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
+            packet.client_ping_timed_out = session->client_ping_timed_out;
             packet.connection_type = session->stats_connection_type;
             packet.next_kbps_up = session->stats_next_kbps_up;
             packet.next_kbps_down = session->stats_next_kbps_down;
@@ -12857,6 +12904,7 @@ static void test_stream()
     memset( buffer + bytesWritten, 0, size_t(BufferSize) - bytesWritten );
 
     TestObject readObject;
+
     ReadStream readStream( buffer, bytesWritten );
     readStream.SetContext( &context );
     readObject.Serialize( readStream );
@@ -15400,5 +15448,3 @@ void next_test()
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-
-NEXT_PACK_POP()

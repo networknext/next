@@ -120,18 +120,6 @@
 #define NEXT_PLATFORM_HAS_IPV6 1
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
 
-#if defined( _MSC_VER )
-#define NEXT_PACK_PUSH() __pragma( pack( push, 8 ) )
-#define NEXT_PACK_POP() __pragma( pack( pop ) )
-#elif defined( __llvm__ ) || defined( __clang__ ) || defined( __GNUC__ )
-#define NEXT_PACK_PUSH() _Pragma( "pack( push, 8 )" )
-#define NEXT_PACK_POP() _Pragma( "pack( pop )" )
-#else
-#error unsupported compiler
-#endif
-
-NEXT_PACK_PUSH()
-
 // -----------------------------------------
 
 struct next_config_t
@@ -327,7 +315,5 @@ struct next_mutex_helper_t
 NEXT_EXPORT_FUNC void next_test();
 
 // -----------------------------------------
-
-NEXT_PACK_POP()
 
 #endif // #ifndef NEXT_H

@@ -30,8 +30,6 @@
 #include <random>
 #include <sodium.h>
 
-NEXT_PACK_PUSH()
-
 extern void * next_malloc( void * context, size_t bytes );
 
 extern void next_free( void * context, void * p );
@@ -532,8 +530,6 @@ int next_platform_id()
 {
     return NEXT_PLATFORM_SWITCH;
 }
-
-NEXT_PACK_POP()
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_SWITCH
 
