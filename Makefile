@@ -457,16 +457,12 @@ deploy-portal-crunchers-staging:
 deploy-relay-backend-prod:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
 
-.PHONY: deploy-portal-cruncher-prod
-deploy-portal-cruncher-prod:
+.PHONY: deploy-portal-crunchers-prod
+deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-5 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-6 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-7 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-8 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
