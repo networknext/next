@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"sort"
@@ -409,6 +410,24 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 	return nil
 }
 
+type AddCustomerArgs struct {
+	Customer routing.Customer
+}
+
+type AddCustomerReply struct{}
+
+func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *AddCustomerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	if err := s.Storage.AddCustomer(ctx, args.Customer); err != nil {
+		err = fmt.Errorf("AddCustomer() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	return nil
+}
+
 type AddSellerArgs struct {
 	Seller routing.Seller
 }
@@ -677,6 +696,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	shortDate := time.Now().Format("2006-01-02")
 	shortTime := time.Now().Format("15:04:05")
 	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
+	relay.Addr = net.UDPAddr{} // clear the address to 0 when removed
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
