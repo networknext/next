@@ -993,6 +993,7 @@ type InternalConfig struct {
 	TryBeforeYouBuy            bool
 	ForceNext                  bool
 	LargeCustomer              bool
+	Uncommitted                bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1006,12 +1007,13 @@ func NewInternalConfig() InternalConfig {
 		TryBeforeYouBuy:            false,
 		ForceNext:                  false,
 		LargeCustomer:              false,
+		Uncommitted:                false,
 	}
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, internal *InternalConfig) bool {
 
-	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B || internal.Uncommitted {
 		return true
 	}
 
@@ -1045,7 +1047,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, internal) {
 		return false
 	}
 
@@ -1121,7 +1123,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, internal) {
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0

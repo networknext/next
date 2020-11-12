@@ -1928,46 +1928,51 @@ func TestEarlyOutDirect(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
+	internal := NewInternalConfig()
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeState = RouteState{Veto: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeState = RouteState{Banned: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeState = RouteState{Disabled: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeState = RouteState{NotSelected: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeState = RouteState{B: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeShader = NewRouteShader()
 	routeShader.DisableNetworkNext = true
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = NewRouteShader()
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 0
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 	assert.True(t, routeState.ABTest)
 	assert.True(t, routeState.A)
 	assert.False(t, routeState.B)
@@ -1976,7 +1981,8 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 1
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 	assert.True(t, routeState.ABTest)
 	assert.False(t, routeState.A)
 	assert.True(t, routeState.B)
@@ -1984,14 +1990,22 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader = NewRouteShader()
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 
 	routeShader = NewRouteShader()
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
 	routeState.UserID = 1000
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	internal = NewInternalConfig()
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 	assert.True(t, routeState.Banned)
+
+	routeShader = NewRouteShader()
+	routeState = RouteState{}
+	internal = NewInternalConfig()
+	internal.Uncommitted = true
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 }
 
 func TestGetBestRoute_Initial_Simple(t *testing.T) {
