@@ -1011,9 +1011,9 @@ func NewInternalConfig() InternalConfig {
 	}
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, internal *InternalConfig) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
-	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B || internal.Uncommitted {
+	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
 		return true
 	}
 
@@ -1047,7 +1047,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, internal *
 
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
 
-	if EarlyOutDirect(routeShader, routeState, internal) {
+	if EarlyOutDirect(routeShader, routeState) {
 		return false
 	}
 
@@ -1123,7 +1123,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
 
-	if EarlyOutDirect(routeShader, routeState, internal) {
+	if EarlyOutDirect(routeShader, routeState) {
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
@@ -1219,6 +1219,14 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *
 }
 
 func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {
+	// if the config is set to be uncommitted, always set committed = false
+	if internal.Uncommitted {
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
 	// always commit to a route if the TryBeforeYouBuy flag isn't set
 	if !internal.TryBeforeYouBuy {
 		routeState.Committed = true

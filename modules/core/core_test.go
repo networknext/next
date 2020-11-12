@@ -1928,51 +1928,46 @@ func TestEarlyOutDirect(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	internal := NewInternalConfig()
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeState = RouteState{Veto: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeState = RouteState{Banned: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeState = RouteState{Disabled: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeState = RouteState{NotSelected: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeState = RouteState{B: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeShader = NewRouteShader()
 	routeShader.DisableNetworkNext = true
 	routeState = RouteState{}
-	internal = NewInternalConfig()
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = NewRouteShader()
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
-	internal = NewInternalConfig()
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
-	internal = NewInternalConfig()
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 0
-	internal = NewInternalConfig()
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.ABTest)
 	assert.True(t, routeState.A)
 	assert.False(t, routeState.B)
@@ -1981,8 +1976,7 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 1
-	internal = NewInternalConfig()
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.ABTest)
 	assert.False(t, routeState.A)
 	assert.True(t, routeState.B)
@@ -1990,22 +1984,14 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader = NewRouteShader()
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
-	internal = NewInternalConfig()
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeShader = NewRouteShader()
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
 	routeState.UserID = 1000
-	internal = NewInternalConfig()
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.Banned)
-
-	routeShader = NewRouteShader()
-	routeState = RouteState{}
-	internal = NewInternalConfig()
-	internal.Uncommitted = true
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &internal))
 }
 
 func TestGetBestRoute_Initial_Simple(t *testing.T) {
@@ -4233,7 +4219,64 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 
 // -----------------------------------------------------------------------------
 
-func TakeNetworkNext_TryBeforeYouBuy_NewRoute(t *testing.T) {
+func TestTakeNetworkNext_TryBeforeYouBuy_Uncommitted(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+	env.AddRelay("a", "10.0.0.3")
+
+	env.SetCost("losangeles", "a", 1)
+	env.SetCost("a", "chicago", 1)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(30)
+
+	directPacketLoss := float32(0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+	routeState := RouteState{}
+	multipathVetoUsers := map[uint64]bool{}
+	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = true
+	internal.Uncommitted = true
+
+	routeState.UserID = 100
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReduceLatency = true
+
+	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(12), routeCost)
+	assert.Equal(t, int32(3), routeNumRelays)
+}
+
+func TestTakeNetworkNext_TryBeforeYouBuy_NewRoute(t *testing.T) {
 
 	t.Parallel()
 
