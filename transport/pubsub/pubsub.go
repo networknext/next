@@ -11,6 +11,10 @@ func (topic Topic) String() string {
 	return fmt.Sprintf("%d", topic)
 }
 
+const(
+	RelayUpdateTopic = 3
+)
+
 type Publisher interface {
 	Publish(ctx context.Context, topic Topic, message []byte) (int, error)
 }

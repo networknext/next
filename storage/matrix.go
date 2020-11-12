@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 )
+const(
+MatrixTypeNormal = "Normal"
+MatrixTypeValve  = "Valve"
+)
 
 //go:generate moq -out matrix_test_mocks.go . MatrixStore
 type MatrixStore interface{

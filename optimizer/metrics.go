@@ -1,4 +1,4 @@
-package main
+package optimizer
 
 import (
 	"context"
@@ -6,14 +6,14 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 )
 type Metrics struct{
-	costMatrixMetrics *metrics.CostMatrixMetrics
-	optimizeMetrics *metrics.OptimizeMetrics
-	relayBackendMetrics *metrics.RelayBackendMetrics
+	CostMatrixMetrics *metrics.CostMatrixMetrics
+	OptimizeMetrics *metrics.OptimizeMetrics
+	RelayBackendMetrics *metrics.RelayBackendMetrics
 	RelayInitMetrics *metrics.RelayInitMetrics
 	RelayUpdateMetrics *metrics.RelayUpdateMetrics
-	valveCostMatrixMetrics *metrics.CostMatrixMetrics
-	valveOptimizeMetrics    *metrics.OptimizeMetrics
-	valveRouteMatrixMetrics *metrics.RouteMatrixMetrics
+	ValveCostMatrixMetrics *metrics.CostMatrixMetrics
+	ValveOptimizeMetrics    *metrics.OptimizeMetrics
+	ValveRouteMatrixMetrics *metrics.RouteMatrixMetrics
 }
 
 func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error, string){
@@ -22,19 +22,19 @@ func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, 
 	if err != nil {
 		return nil, err, "failed to create cost matrix metrics"
 	}
-	m.costMatrixMetrics = costMatrixMetrics
+	m.CostMatrixMetrics = costMatrixMetrics
 
 	optimizeMetrics, err := metrics.NewOptimizeMetrics(ctx, metricsHandler)
 	if err != nil {
 		return nil, err, "failed to create optimize metrics"
 	}
-	m.optimizeMetrics = optimizeMetrics
+	m.OptimizeMetrics = optimizeMetrics
 
 	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
 	if err != nil {
 		return nil, err, "failed to create relay backend metrics"
 	}
-	m.relayBackendMetrics = relayBackendMetrics
+	m.RelayBackendMetrics = relayBackendMetrics
 
 	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -52,19 +52,19 @@ func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, 
 	if err != nil {
 		return nil, err, "failed to create valve cost matrix metrics"
 	}
-	m.valveCostMatrixMetrics = valveCostMatrixMetrics
+	m.ValveCostMatrixMetrics = valveCostMatrixMetrics
 
 	valveOptimizeMetrics, err := metrics.NewValveOptimizeMetrics(ctx, metricsHandler)
 	if err != nil {
 		return nil, err, "failed to create valve optimize metrics"
 	}
-	m.valveOptimizeMetrics = valveOptimizeMetrics
+	m.ValveOptimizeMetrics = valveOptimizeMetrics
 
 	valveRouteMatrixMetrics, err := metrics.NewValveRouteMatrixMetrics(ctx, metricsHandler)
 	if err != nil {
 		return nil, err, "failed to create valve route matrix metrics"
 	}
-	m.valveRouteMatrixMetrics = valveRouteMatrixMetrics
+	m.ValveRouteMatrixMetrics = valveRouteMatrixMetrics
 
 	return m,nil,""
 }

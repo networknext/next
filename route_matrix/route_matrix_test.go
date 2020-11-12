@@ -19,12 +19,12 @@ func testMatrixSvcData() []storage.MatrixSvcData {
 
 func testOptimizerMatrices() []storage.Matrix {
 	return []storage.Matrix{
-		{1, time.Now().Add(time.Duration(-50) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.NormalMatrixType, []byte("optimizer1")},
-		{1, time.Now().Add(time.Duration(-49) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.ValveMatrixType, []byte("optimizer1Valve")},
-		{2, time.Now().Add(time.Duration(-20) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.NormalMatrixType,[]byte("optimizer2")},
-		{2, time.Now().Add(time.Duration(-25) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.ValveMatrixType, []byte("optimizer2Valve")},
-		{3, time.Now().Add(time.Duration(-40) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.NormalMatrixType,[]byte("optimizer3")},
-		{3, time.Now().Add(time.Duration(-45) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.ValveMatrixType, []byte("optimizer3Valve")},
+		{1, time.Now().Add(time.Duration(-50) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.MatrixTypeNormal, []byte("optimizer1")},
+		{1, time.Now().Add(time.Duration(-49) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.MatrixTypeValve, []byte("optimizer1Valve")},
+		{2, time.Now().Add(time.Duration(-20) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.MatrixTypeNormal,[]byte("optimizer2")},
+		{2, time.Now().Add(time.Duration(-25) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.MatrixTypeValve, []byte("optimizer2Valve")},
+		{3, time.Now().Add(time.Duration(-40) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.MatrixTypeNormal,[]byte("optimizer3")},
+		{3, time.Now().Add(time.Duration(-45) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.MatrixTypeValve, []byte("optimizer3Valve")},
 	}
 }
 

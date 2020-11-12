@@ -19,26 +19,26 @@ func (ts *matrixTestSuite) RunAll(t *testing.T, store MatrixStore){
 
 func (ts *matrixTestSuite)TestLiveMatrix(t *testing.T, store MatrixStore){
 	testLiveMatrix := []byte("test live matrix")
-	_, err := store.GetLiveMatrix(NormalMatrixType)
+	_, err := store.GetLiveMatrix(MatrixTypeNormal)
 	assert.NotNil(t, err)
 	assert.Equal(t, "matrix not found", err.Error())
 	
-	err = store.UpdateLiveMatrix(testLiveMatrix, NormalMatrixType)
+	err = store.UpdateLiveMatrix(testLiveMatrix, MatrixTypeNormal)
 	assert.Nil(t, err)
 
 	testValveMatrix := []byte("test valve matrix")
-	_, err = store.GetLiveMatrix(ValveMatrixType)
+	_, err = store.GetLiveMatrix(MatrixTypeValve)
 	assert.NotNil(t, err)
 	assert.Equal(t, "matrix not found", err.Error())
 
-	err = store.UpdateLiveMatrix(testValveMatrix, ValveMatrixType)
+	err = store.UpdateLiveMatrix(testValveMatrix, MatrixTypeValve)
 	assert.Nil(t, err)
 
-	matrix, err := store.GetLiveMatrix(NormalMatrixType)
+	matrix, err := store.GetLiveMatrix(MatrixTypeNormal)
 	assert.Nil(t, err)
 	assert.Equal(t,string(testLiveMatrix), string(matrix))
 
-	matrix, err = store.GetLiveMatrix(ValveMatrixType)
+	matrix, err = store.GetLiveMatrix(MatrixTypeValve)
 	assert.Nil(t, err)
 	assert.Equal(t,string(testValveMatrix), string(matrix))
 }
@@ -66,7 +66,7 @@ func (ts *matrixTestSuite)TestOptimizerMatrices(t *testing.T, store MatrixStore)
 		assert.True(t, found)
 	}
 
-	err = store.DeleteOptimizerMatrix(matrices[0].OptimizerID, NormalMatrixType)
+	err = store.DeleteOptimizerMatrix(matrices[0].OptimizerID, MatrixTypeNormal)
 	assert.Nil(t, err)
 
 	storeMatrices, err = store.GetOptimizerMatrices()
@@ -151,8 +151,8 @@ func (ts *matrixTestSuite)testMatrixSvcData() []MatrixSvcData {
 
 func (ts *matrixTestSuite)testOptimizerMatricesData() []Matrix {
 	return []Matrix{
-		{1, time.Now().Add(-50 * time.Second), time.Now().Add(-5 * time.Second),NormalMatrixType, []byte("optimizer1")},
-		{2, time.Now().Add(-20 * time.Second), time.Now().Add(-1 * time.Second),NormalMatrixType, []byte("optimizer2")},
-		{3, time.Now().Add(-40 * time.Second), time.Now().Add(-3 * time.Second),NormalMatrixType, []byte("optimizer3")},
+		{1, time.Now().Add(-50 * time.Second), time.Now().Add(-5 * time.Second), MatrixTypeNormal, []byte("optimizer1")},
+		{2, time.Now().Add(-20 * time.Second), time.Now().Add(-1 * time.Second), MatrixTypeNormal, []byte("optimizer2")},
+		{3, time.Now().Add(-40 * time.Second), time.Now().Add(-3 * time.Second), MatrixTypeNormal, []byte("optimizer3")},
 	}
 }

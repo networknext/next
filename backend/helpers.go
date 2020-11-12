@@ -39,7 +39,7 @@ func GetGCPProjectID() string {
 func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (log.Logger, error) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 	{
-		backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", "none")
+		backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", level.ErrorValue().String())
 		switch backendLogLevel {
 		case "none":
 			logger = level.NewFilter(logger, level.AllowNone())

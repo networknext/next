@@ -24,8 +24,7 @@ const(
 	svcMaster = "ServiceMaster"
 	matrixMaster = "LiveMatrix"
 	optimizerMaster = "OptimizerMaster"
-	NormalMatrixType = "Normal"
-	ValveMatrixType = "Valve"
+
 )
 
 

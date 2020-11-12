@@ -1,4 +1,4 @@
-package main
+package relay_gateway
 
 import (
 	"context"

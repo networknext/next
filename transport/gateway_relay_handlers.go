@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
@@ -23,7 +24,7 @@ type GatewayHandlerConfig struct {
 	InitMetrics      *metrics.RelayInitMetrics
 	UpdateMetrics	 *metrics.RelayUpdateMetrics
 	RouterPrivateKey []byte
-	Publisher        pubsub.Publisher
+	Publishers        []pubsub.Publisher
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -114,8 +115,10 @@ func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig
 		}
 
 		relayData := storage.NewRelayStoreData(id, relayInitRequest.RelayVersion, relayInitRequest.Address)
-		params.RelayStore.Set(*relayData)
-
+		err = params.RelayStore.Set(*relayData)
+		if err != nil{
+			fmt.Printf("redis error %s \n", err.Error())
+		}
 
 		level.Debug(localLogger).Log("msg", "relay initialized")
 
@@ -249,7 +252,9 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		}
 
 		var topic pubsub.Topic = 1
-		params.Publisher.Publish(context.Background(),topic, body)
+		for _, pub := range params.Publishers {
+			pub.Publish(context.Background(), topic, body)
+		}
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 		allRelayData, err := params.RelayCache.GetAll()
@@ -262,7 +267,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 				}
 
 				if relay.State == routing.RelayStateEnabled {
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
+					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Address.String()})
 				}
 			}
 		}

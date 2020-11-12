@@ -1,4 +1,4 @@
-package main
+package relay_gateway
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 )
 
 type Config struct{
+	PublisherSendBuffer int
+	PublishToHosts string
 	RouterPrivateKey []byte
 	RelayCacheUpdate time.Duration
 	RelayStoreAddress string
@@ -31,9 +33,6 @@ func NewConfig() (*Config, error){
 	cfg.RelayCacheUpdate = relayCacheUpdate
 
 	relayStoreAddress := envvar.Get("RELAY_STORE_ADDRESS", "127.0.0.1:6379")
-	if err != nil {
-		return nil, err
-	}
 	cfg.RelayStoreAddress = relayStoreAddress
 
 
@@ -54,6 +53,15 @@ func NewConfig() (*Config, error){
 		return nil, err
 	}
 	cfg.RelayStoreRelayTimeout = relayStoreRelayTimeout
+
+	publishToHosts := envvar.Get("PUBLISH_TO_HOSTS", "tcp:127.0.0.1:5555")
+	cfg.PublishToHosts = publishToHosts
+
+	publisherSendBuffer, err := envvar.GetInt( "pUBLISHER_SEND_Buffer", 100000)
+	if err != nil {
+		return nil, err
+	}
+	cfg.PublisherSendBuffer = publisherSendBuffer
 
 	return cfg, nil
 }
