@@ -168,8 +168,8 @@ ifndef GOOGLE_FIRESTORE_SYNC_INTERVAL
 export GOOGLE_FIRESTORE_SYNC_INTERVAL = 10s
 endif
 
-ifndef PORTAL_CRUNCHER_HOST
-export PORTAL_CRUNCHER_HOST = tcp://127.0.0.1:5555
+ifndef PORTAL_CRUNCHER_HOSTS
+export PORTAL_CRUNCHER_HOSTS = tcp://127.0.0.1:5555,tcp://127.0.0.1:5556
 endif
 
 ifndef ALLOWED_ORIGINS
@@ -328,14 +328,6 @@ dev-portal: build-portal-local ## runs a local portal
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
 
-.PHONY: dev-relay-gateway
-dev-relay-gateway: build-relay-gateway ## runs a local relay backend
-	@PORT=30000 ./dist/relay_gateway
-
-.PHONY: dev-optimizer
-dev-optimizer: build-optimizer ## runs a local relay backend
-	@PORT=30005 ./dist/optimizer
-
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
@@ -352,9 +344,13 @@ dev-billing: build-billing ## runs a local billing service
 dev-analytics: build-analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
 
-.PHONY: dev-portal-cruncher
-dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
+.PHONY: dev-portal-cruncher-1
+dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+
+.PHONY: dev-portal-cruncher-2
+dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
+	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army
@@ -429,18 +425,6 @@ build-relay-backend:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
-.PHONY: build-relay-gateway
-build-relay-gateway:
-	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
-	@printf "done\n"
-
-.PHONY: build-optimizer
-build-optimizer:
-	@printf "Building Optimizer... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
-	@printf "done\n"
-
 .PHONY: build-server-backend
 build-server-backend:
 	@printf "Building server backend... "
@@ -457,26 +441,32 @@ build-billing:
 deploy-relay-backend-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
 
-
-.PHONY: deploy-portal-cruncher-dev
-deploy-portal-cruncher-dev:
+.PHONY: deploy-portal-crunchers-dev
+deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
 
-.PHONY: deploy-portal-cruncher-staging
-deploy-portal-cruncher-staging:
+.PHONY: deploy-portal-crunchers-staging
+deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-2 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
 
-.PHONY: deploy-portal-cruncher-prod
-deploy-portal-cruncher-prod:
-	./deploy/deploy.sh -e prod -c mig-07q1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+.PHONY: deploy-portal-crunchers-prod
+deploy-portal-crunchers-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
@@ -489,18 +479,6 @@ deploy-ghost-army-staging:
 .PHONY: deploy-ghost-army-prod
 deploy-ghost-army-prod:
 	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
-
-.PHONY: deploy-relay-gateway-dev
-deploy-relay-gateway-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-gateway -n relay_gateway -b gs://development_artifacts
-
-.PHONY: deploy-relay-gateway-staging
-deploy-relay-gateway-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-gateway -n relay_gateway -b gs://staging_artifacts
-
-.PHONY: deploy-relay-gateway-prod
-deploy-relay-gateway-prod:
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-gateway -n relay_gateway -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server

@@ -38,25 +38,6 @@ func GetGCPProjectID() string {
 // If a gcp project ID is specified, it will return a StackDriver logger.
 func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (log.Logger, error) {
 	logger := log.NewLogfmtLogger(os.Stdout)
-	{
-		backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", level.ErrorValue().String())
-		switch backendLogLevel {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
 
 	if gcpProjectID != "" {
 		enableSDLogging, err := envvar.GetBool("ENABLE_STACKDRIVER_LOGGING", false)
@@ -73,6 +54,24 @@ func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (lo
 			logger = logging.NewStackdriverLogger(loggingClient, serviceName)
 		}
 	}
+
+	backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", "none")
+	switch backendLogLevel {
+	case "none":
+		logger = level.NewFilter(logger, level.AllowNone())
+	case level.ErrorValue().String():
+		logger = level.NewFilter(logger, level.AllowError())
+	case level.WarnValue().String():
+		logger = level.NewFilter(logger, level.AllowWarn())
+	case level.InfoValue().String():
+		logger = level.NewFilter(logger, level.AllowInfo())
+	case level.DebugValue().String():
+		logger = level.NewFilter(logger, level.AllowDebug())
+	default:
+		logger = level.NewFilter(logger, level.AllowWarn())
+	}
+
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
 	return logger, nil
 }

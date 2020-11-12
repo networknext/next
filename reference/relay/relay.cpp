@@ -4839,6 +4839,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = token.session_id ^ token.session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             if ( relay->sessions->find(hash) == relay->sessions->end() )
             {
                 relay_session_t * session = (relay_session_t*) malloc( sizeof( relay_session_t ) );
@@ -4858,6 +4859,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay->sessions->insert( std::make_pair(hash, session) );
                 printf( "session created: %" PRIx64 ".%d\n", token.session_id, token.session_version );
             }
+            relay_platform_mutex_release( relay->mutex );
 
             packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
 
@@ -4885,7 +4887,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = session_id ^ session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
+
             if ( !session )
             {
                 relay_printf( "ignored route response packet. could not find session" );
@@ -4895,6 +4900,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored route response packet. expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -4942,7 +4950,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = token.session_id ^ token.session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
+
             if ( !session )
             {
                 relay_printf( "ignored continue request. could not find session" );
@@ -4952,6 +4963,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored continue request. session expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -4988,7 +5002,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = session_id ^ session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
             if ( !session )
             {
                 relay_printf( "ignored continue response packet. could not find session" );
@@ -4998,6 +5014,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored continue response packet. session expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -5047,7 +5066,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = session_id ^ session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
             if ( !session )
             {
                 relay_printf( "ignored client to server packet. could not find session" );
@@ -5057,6 +5078,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored client to server packet. session expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -5106,7 +5130,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = session_id ^ session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
             if ( !session )
             {
                 relay_printf( "ignored server to client packet. could not find session" );
@@ -5116,6 +5142,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored server to client packet. session expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -5159,7 +5188,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = session_id ^ session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
             if ( !session )
             {
                 relay_printf( "ignored session ping packet. session does not exist" );
@@ -5169,6 +5200,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored session ping packet. session expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -5212,7 +5246,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             uint64_t hash = session_id ^ session_version;
 
+            relay_platform_mutex_acquire( relay->mutex );
             relay_session_t * session = (*(relay->sessions))[hash];
+            relay_platform_mutex_release( relay->mutex );
             if ( !session )
             {
                 relay_printf( "ignored session pong packet. session does not exist" );
@@ -5222,6 +5258,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 relay_printf( "ignored session pong packet. session expired" );
+                relay_platform_mutex_acquire( relay->mutex );
+                relay->sessions->erase(hash);
+                relay_platform_mutex_release( relay->mutex );
                 continue;
             }
 
@@ -5571,6 +5610,17 @@ int main( int argc, const char ** argv )
                 break;
             }
         }
+
+        relay_platform_mutex_acquire( relay.mutex );
+        auto iter = relay.sessions->begin();
+        while (iter != relay.sessions->end()) {
+            if (iter->second && iter->second->expire_timestamp < relay_timestamp( &relay )) {
+                iter = relay.sessions->erase(iter);
+            } else {
+                iter++;
+            }
+        }
+        relay_platform_mutex_release( relay.mutex );
 
         relay_platform_sleep( 1.0 );
     }

@@ -268,13 +268,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
-		buyer, err := storer.Buyer(packet.CustomerID)
-		if err != nil {
-			level.Error(logger).Log("msg", "buyer not found", "err", err)
-			metrics.BuyerNotFound.Add(1)
-			return
-		}
-
 		newSession := packet.SliceNumber == 0
 
 		var sessionData SessionData
@@ -282,6 +275,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
 		nearRelays := []routing.NearRelayData{}
+		buyer := routing.Buyer{}
 		datacenter := routing.UnknownDatacenter
 
 		response := SessionResponsePacket{
@@ -297,14 +291,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
-			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
-				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-				metrics.WriteResponseFailure.Add(1)
-				return
-			}
-
-			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
-
 			if sessionData.RouteState.Next {
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
@@ -312,56 +298,26 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.DirectSlices.Add(1)
 			}
 
+			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
+
+			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
+				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
+				return
+			}
+
 			go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
 		}()
 
-		if newSession {
-			sessionData.Version = SessionDataVersion
-			sessionData.SessionID = packet.SessionID
-			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
-			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
-			sessionData.RouteState.UserID = packet.UserHash
-			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
-
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
-				metrics.ClientLocateFailure.Add(1)
-				return
-			}
-		} else {
-			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
-				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
-				metrics.ReadSessionDataFailure.Add(1)
-				return
-			}
-
-			if sessionData.SessionID != packet.SessionID {
-				level.Error(logger).Log("err", "bad session ID in session data")
-				metrics.BadSessionID.Add(1)
-				return
-			}
-
-			if sessionData.SliceNumber != uint32(packet.SliceNumber) {
-				level.Error(logger).Log("err", "bad sequence number in session data")
-				metrics.BadSliceNumber.Add(1)
-				return
-			}
-
-			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
-			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
-		}
-
-		// Don't accelerate any sessions if the buyer is not yet live
-		if !buyer.Live {
-			metrics.BuyerNotLive.Add(1)
+		if packet.ClientPingTimedOut {
+			metrics.ClientPingTimedOut.Add(1)
 			return
 		}
 
-		if packet.FallbackToDirect {
-			if !sessionData.FellBackToDirect {
-				metrics.FallbackToDirect.Add(1)
-				sessionData.FellBackToDirect = true
-			}
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(logger).Log("msg", "buyer not found", "err", err)
+			metrics.BuyerNotFound.Add(1)
 			return
 		}
 
@@ -390,6 +346,85 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.DatacenterNotFound.Add(1)
 				return
 			}
+		}
+
+		if newSession {
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionID = packet.SessionID
+			sessionData.SliceNumber = packet.SliceNumber + 1
+			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+			sessionData.RouteState.UserID = packet.UserHash
+			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
+
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
+				metrics.ClientLocateFailure.Add(1)
+				return
+			}
+		} else {
+			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
+				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
+				metrics.ReadSessionDataFailure.Add(1)
+				return
+			}
+
+			if sessionData.SessionID != packet.SessionID {
+				level.Error(logger).Log("err", "bad session ID in session data")
+				metrics.BadSessionID.Add(1)
+				return
+			}
+
+			if sessionData.SliceNumber != packet.SliceNumber {
+				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", sessionData.SliceNumber,
+					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", sessionData.RouteState.Next, "ever_on_next", sessionData.EverOnNext)
+				metrics.BadSliceNumber.Add(1)
+				return
+			}
+
+			sessionData.SliceNumber = packet.SliceNumber + 1
+			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+		}
+
+		// Don't accelerate any sessions if the buyer is not yet live
+		if !buyer.Live {
+			metrics.BuyerNotLive.Add(1)
+			return
+		}
+
+		if packet.FallbackToDirect {
+			if !sessionData.FellBackToDirect {
+				sessionData.FellBackToDirect = true
+
+				switch packet.Flags {
+				case FallbackFlagsBadRouteToken:
+					metrics.FallbackToDirectBadRouteToken.Add(1)
+				case FallbackFlagsNoNextRouteToContinue:
+					metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
+				case FallbackFlagsPreviousUpdateStillPending:
+					metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
+				case FallbackFlagsBadContinueToken:
+					metrics.FallbackToDirectBadContinueToken.Add(1)
+				case FallbackFlagsRouteExpired:
+					metrics.FallbackToDirectRouteExpired.Add(1)
+				case FallbackFlagsRouteRequestTimedOut:
+					metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
+				case FallbackFlagsContinueRequestTimedOut:
+					metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
+				case FallbackFlagsClientTimedOut:
+					metrics.FallbackToDirectClientTimedOut.Add(1)
+				case FallbackFlagsUpgradeResponseTimedOut:
+					metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
+				case FallbackFlagsRouteUpdateTimedOut:
+					metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
+				case FallbackFlagsDirectPongTimedOut:
+					metrics.FallbackToDirectDirectPongTimedOut.Add(1)
+				case FallbackFlagsNextPongTimedOut:
+					metrics.FallbackToDirectNextPongTimedOut.Add(1)
+				default:
+					metrics.FallbackToDirectUnknownReason.Add(1)
+				}
+			}
+			return
 		}
 
 		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, maxNearRelays)
