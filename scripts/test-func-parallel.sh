@@ -51,7 +51,7 @@ for test in "${tests[@]}"; do
 done
 
 exitCode="0"
-processes="$(ps --ppid $$ | grep 'docker' | awk '{print $1}')"
+processes="$(pgrep -P $$)"
 
 while read process; do
     wait $process
