@@ -1,3 +1,4 @@
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { JSONRPCService } from './jsonrpc'
 
 export class FeatureFlagService {
@@ -32,7 +33,7 @@ export class FeatureFlagService {
     })
   }
 
-  private isEnabled (name: string): boolean {
+  private isEnabled (name: FeatureEnum): boolean {
     let value = false
     this.flags.forEach((flag: any) => {
       if (flag.name === name) {

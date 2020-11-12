@@ -10,6 +10,7 @@ import { JSONRPCPlugin } from './plugins/jsonrpc'
 import { AuthPlugin } from './plugins/auth'
 import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
+import { FeatureEnum, Flag } from './components/types/FeatureTypes'
 
 /**
  * Main file responsible for mounting the App component,
@@ -39,35 +40,41 @@ Vue.use(AuthPlugin, {
 })
 
 Vue.use(JSONRPCPlugin)
+const flags: Array<Flag> = [
+  {
+    name: FeatureEnum.FEATURE_EXPLORE,
+    description: 'Integrate Looker into the portal under a new navigation tab called "Explore"',
+    value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_INTERCOM,
+    description: 'Integrate intercom',
+    value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_ROUTE_SHADER,
+    description: 'Route shader page for users to update their route shader',
+    value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_IMPERSONATION,
+    description: 'Feature to allow admins to impersonate a customer in a read only state',
+    value: false
+  }
+]
+
+const useAPI = process.env.VUE_APP_USE_API_FLAGS === 'true'
 Vue.use(FlagPlugin, {
-  flags: [
-    {
-      name: 'FEATURE_EXPLORE',
-      description: 'Integrate Looker into the portal under a new navigation tab called "Explore"',
-      value: false
-    },
-    {
-      name: 'FEATURE_INTERCOM',
-      description: 'Integrate intercom',
-      value: false
-    },
-    {
-      name: 'FEATURE_ROUTE_SHADER',
-      description: 'Route shader page for users to update their route shader',
-      value: false
-    },
-    {
-      name: 'FEATURE_IMPERSONATE',
-      description: 'Feature to allow admins to impersonate a customer in a read only state',
-      value: false
-    }
-  ],
-  useAPI: process.env.VUE_APP_USE_API_FLAGS
-  // apiService: Vue.prototype.$apiService
+  flags: flags,
+  useAPI: useAPI,
+  apiService: Vue.prototype.$apiService
 })
 
-Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
-// Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
+if (useAPI) {
+  Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
+} else {
+  Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
+}
 
 new Vue({
   router,

@@ -61,7 +61,7 @@
           v-bind:class="{
             active: $store.getters.currentPage == 'explore'
           }"
-          v-if="$flagService.isEnabled(featureTypes.EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
+          v-if="$flagService.isEnabled(featureEnums.EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
         >Explore</router-link>
       </li>
       <li class="nav-item text-nowrap">
@@ -87,7 +87,7 @@
         <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
       </li>
     </ul>
-    <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(featureTypes.IMPERSONATION) && $store.getters.isAdmin"><!-- DISABLED -->
+    <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(featureEnums.IMPERSONATION) && $store.getters.isAdmin">
       <li class="nav-item text-nowrap">
         <select v-on:change="impersonate($event.target.value)">
           <option :value="''">Impersonate</option>
@@ -121,7 +121,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { UserProfile } from './types/AuthTypes'
-import { FeatureTypes } from './types/FeatureTypes'
+import { FeatureEnum } from './types/FeatureTypes'
 
 /**
  * This component opens up the main Vue router handlers to user interaction in the form of a navigation bar
@@ -143,14 +143,14 @@ export default class NavBar extends Vue {
   private companyCode: string
   private portalVersion: string
   private unwatch: any
-  private featureTypes: any
+  private featureEnums: any
 
   constructor () {
     super()
     this.portalVersion = ''
     this.companyCode = ''
     // TODO: This probably shouldn't be necessary?
-    this.featureTypes = FeatureTypes
+    this.featureEnums = FeatureEnum
   }
 
   private created () {

@@ -30,7 +30,7 @@
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Configuration</router-link>
           </li>
-          <li class="nav-item" v-if="$flagService.isEnabled(featureTypes.ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
+          <li class="nav-item" v-if="$flagService.isEnabled(featureEnums.ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/route-shader" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
           </li>
         </ul>
@@ -42,7 +42,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { FeatureTypes } from '../components/types/FeatureTypes'
+import { FeatureEnum } from '../components/types/FeatureTypes'
 
 /**
  * This component holds the workspace elements related to the settings page in the Portal
@@ -55,12 +55,12 @@ import { FeatureTypes } from '../components/types/FeatureTypes'
 @Component
 export default class SettingsWorkspace extends Vue {
   // Empty for now
-  private featureTypes: any
+  private featureEnums: any
 
   constructor () {
     super()
     // TODO: This probably shouldn't be necessary?
-    this.featureTypes = FeatureTypes
+    this.featureEnums = FeatureEnum
   }
 }
 </script>
