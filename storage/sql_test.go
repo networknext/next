@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -47,6 +48,10 @@ func TestInsertSQL(t *testing.T) {
 	var outerBuyer routing.Buyer
 	var outerSeller routing.Seller
 	var outerDatacenter routing.Datacenter
+
+	currentLocation, err := os.Getwd()
+	assert.NoError(t, err)
+	fmt.Printf("Current disk location: %s\n", currentLocation)
 
 	// NewSQLStorage() Sync() above sets up seq number
 	t.Run("Do Not Sync", func(t *testing.T) {

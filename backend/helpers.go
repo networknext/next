@@ -144,6 +144,8 @@ func InitStackDriverProfiler(gcpProjectID string, serviceName string, env string
 func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env string) (storage.Storer, error) {
 
 	postgresOK := envvar.Exists("FEATURE_POSTGRESQL")
+
+	fmt.Printf("GetStorer() postgresOK: %v\n", postgresOK)
 	if postgresOK {
 		// returns a pointer to the storage solution specified for the provide environment. The
 		// database targets are currently gcp/Firestore but will move to gcp/PostgreSQL
@@ -203,6 +205,16 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			ticker := time.NewTicker(dbSyncInterval)
 			db.SyncLoop(ctx, ticker.C)
 		}()
+
+		// if env == "local" {
+		// 	if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
+		// 		return db, errors.New("NEXT_CUSTOMER_PUBLIC_KEY not set")
+		// 	}
+
+		// 	// Create dummy buyer and datacenter for local testing
+		// 	storage.SeedSQLStorage(ctx, db)
+		// }
+
 		return db, nil
 	}
 

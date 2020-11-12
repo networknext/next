@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,6 +25,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -106,20 +105,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	var relayPublicKey []byte
-	var customerID uint64
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
+	// // var relayPublicKey []byte
+	// // var customerID uint64
+	// var customerPublicKey []byte
+	// {
+	// 	if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+	// 		relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+	// 	}
 
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-			customerPublicKey = customerPublicKey[8:]
-		}
-	}
+	// 	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+	// 		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+	// 		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+	// 		customerPublicKey = customerPublicKey[8:]
+	// 	}
+	// }
 
 	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
@@ -162,16 +161,29 @@ func main() {
 
 	// hardcoded dependency on InMemory will have to stay until we
 	// move to NewSQL()
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-	fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	// var db storage.Storer = &storage.InMemory{
+	// 	LocalMode: true,
+	// }
+	// fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+	// if err != nil {
+	// 	level.Error(logger).Log("err", err)
+	// 	os.Exit(1)
+	// }
+	// if fs != nil {
+	// 	db = fs
+	// }
+
+	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
-	if fs != nil {
-		db = fs
+
+	switch db.(type) {
+	case *storage.SQL:
+		if env == "local" {
+			err = storage.SeedSQLStorage(ctx, db)
+		}
 	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
@@ -205,12 +217,12 @@ func main() {
 		}
 	}
 
-	if env == "local" {
-		if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-	}
+	// if env == "local" {
+	// 	if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
+	// 		level.Error(logger).Log("err", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
 	// is commented out in the ops service.
 

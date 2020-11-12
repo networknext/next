@@ -20,6 +20,7 @@ func SeedStorage(
 	customerID uint64,
 	customerPublicKey []byte,
 ) error {
+	fmt.Println("SeedStorage()")
 	routeShader := core.NewRouteShader()
 	internalConfig := core.NewInternalConfig()
 	internalConfig.ForceNext = true
@@ -27,10 +28,18 @@ func SeedStorage(
 	shouldFill := false
 	switch db := db.(type) {
 	case *Firestore:
+		fmt.Println("SeedStorage() case *Firestore")
 		_, _, err := db.CheckSequenceNumber(ctx)
 		if err != nil {
 			return fmt.Errorf("CheckSequenceNumber() err: %w", err)
 		}
+	case *SQL:
+		fmt.Println("SeedStorage() case *SQL")
+		_, _, err := db.CheckSequenceNumber(ctx)
+		if err != nil {
+			return fmt.Errorf("CheckSequenceNumber() err: %w", err)
+		}
+		shouldFill = true
 	default:
 		shouldFill = true
 	}

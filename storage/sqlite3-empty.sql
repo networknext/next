@@ -75,6 +75,7 @@ create table rs_internal_configs (
   rtt_veto_packetloss integer not null,
   try_before_you_buy boolean not null,
   force_next boolean not null,
+  large_customer boolean not null,
   buyer_id integer not null,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
@@ -140,7 +141,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/11/05 15:08:58
+-- File generation: 2020/11/12 12:55:14
 
 -- machine_types
 insert into machine_types values (0, 'none');

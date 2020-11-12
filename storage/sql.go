@@ -324,6 +324,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	buyer := sqlBuyer{
 		ID:             b.ID,
+		CompanyCode:    b.ShortName,
 		ShortName:      b.ShortName,
 		IsLiveCustomer: b.Live,
 		Debug:          b.Debug,
@@ -1481,7 +1482,7 @@ func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (cor
 
 	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetRouteShaderForBuyerID() QueryContext returned an error", "err", err)
 		return core.RouteShader{}, err
 	}
 	defer rows.Close()
@@ -1556,7 +1557,7 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 
 	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetInternalConfigForBuyerID() QueryContext returned an error", "err", err)
 		return core.InternalConfig{}, err
 	}
 	defer rows.Close()
@@ -1598,4 +1599,26 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 	}
 
 	return coreIC, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%x", buyerID)}
+}
+
+type featureFlag struct {
+	Name        string
+	Description string
+	Enabled     bool
+}
+
+func (db *SQL) GetFeatureFlags() map[string]bool {
+	return map[string]bool{}
+}
+
+func (db *SQL) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not yet impemented in SQL storer"))
+}
+
+func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error {
+	return fmt.Errorf(("SetFeatureFlagByName not yet impemented in SQL storer"))
+}
+
+func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
+	return fmt.Errorf(("RemoveFeatureFlagByName not yet impemented in SQL storer"))
 }

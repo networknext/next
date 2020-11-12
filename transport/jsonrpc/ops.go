@@ -185,21 +185,24 @@ type BuyersReply struct {
 type buyer struct {
 	CompanyName string `json:"company_name"`
 	CompanyCode string `json:"company_code"`
+	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
-		company, err := s.Storage.Customer(b.CompanyCode)
+		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() failed to find company: %v", err)
+			err = fmt.Errorf("Buyers() could not find Customer %s: %v", b.CompanyCode, err)
 			s.Logger.Log("err", err)
 			return err
 		}
+		fmt.Printf("customer name: %s\n", c.Name)
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
-			CompanyName: company.Name,
-			CompanyCode: company.Code,
+			CompanyName: c.Name,
+			CompanyCode: b.CompanyCode,
+			ShortName:   b.ShortName,
 		})
 	}
 
@@ -285,12 +288,19 @@ type seller struct {
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
-	for _, s := range s.Storage.Sellers() {
+	for _, localSeller := range s.Storage.Sellers() {
+		c, err := s.Storage.Customer(localSeller.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		fmt.Printf("customer name: %s\n", c.Name)
 		reply.Sellers = append(reply.Sellers, seller{
-			ID:                   s.ID,
-			Name:                 s.Name,
-			IngressPriceNibblins: s.IngressPriceNibblinsPerGB,
-			EgressPriceNibblins:  s.EgressPriceNibblinsPerGB,
+			ID:                   localSeller.ID,
+			Name:                 c.Name,
+			IngressPriceNibblins: localSeller.IngressPriceNibblinsPerGB,
+			EgressPriceNibblins:  localSeller.EgressPriceNibblinsPerGB,
 		})
 	}
 

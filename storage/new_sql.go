@@ -25,6 +25,8 @@ import (
 // only used for unit testing.
 func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
+	fmt.Println("Creating SQLite3 Storer.")
+
 	// remove the old db file if it exists (SQLite3 save one by default when
 	// exiting)
 	if _, err := os.Stat("network_next.db"); err == nil || os.IsExist(err) {
@@ -35,7 +37,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		}
 	}
 
-	sqlite3, err := sql.Open("sqlite3", "file:network_next.db?_foreign_keys=on")
+	sqlite3, err := sql.Open("sqlite3", "file:network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 		return nil, err
@@ -53,11 +55,16 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		SyncSequenceNumber: -1,
 	}
 
+	pwd, _ := os.Getwd()
+	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 	// populate the db with some data from dev
-	file, err := ioutil.ReadFile("sqlite3-empty.sql")
+	file, err := ioutil.ReadFile("storage/sqlite3-empty.sql") // happy path
 	if err != nil {
-		err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
-		return nil, err
+		file, err = ioutil.ReadFile("sqlite3-empty.sql") // unit test
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
+			return nil, err
+		}
 	}
 
 	requests := strings.Split(string(file), ";")
@@ -88,6 +95,8 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 // NewPostgreSQL returns an PostgreSQL backed database pointer
 func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
+
+	fmt.Println("Creating PostgreSQL Storer.")
 
 	// TODO: move sensitive stuff to env w/ GCP vars
 	const (
@@ -490,17 +499,18 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		rs, err := db.GetRouteShaderForBuyerID(ctx, buyer.DatabaseID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			// level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
 
 		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.DatabaseID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			// level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
 
 		b := routing.Buyer{
 			ID:             buyer.ID,
 			ShortName:      buyer.ShortName,
+			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
 			PublicKey:      buyer.PublicKey,
@@ -562,6 +572,8 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
 			ID:                        db.customerIDs[seller.CustomerID],
 			ShortName:                 seller.ShortName,
+			CompanyCode:               db.customers[db.customerIDs[seller.CustomerID]].Code,
+			Name:                      db.customers[db.customerIDs[seller.CustomerID]].Name,
 			IngressPriceNibblinsPerGB: routing.Nibblin(seller.IngressPriceNibblinsPerGB),
 			EgressPriceNibblinsPerGB:  routing.Nibblin(seller.EgressPriceNibblinsPerGB),
 			DatabaseID:                seller.DatabaseID,
