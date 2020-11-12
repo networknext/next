@@ -993,6 +993,7 @@ type InternalConfig struct {
 	TryBeforeYouBuy            bool
 	ForceNext                  bool
 	LargeCustomer              bool
+	Uncommitted                bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1006,6 +1007,7 @@ func NewInternalConfig() InternalConfig {
 		TryBeforeYouBuy:            false,
 		ForceNext:                  false,
 		LargeCustomer:              false,
+		Uncommitted:                false,
 	}
 }
 
@@ -1217,6 +1219,14 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *
 }
 
 func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {
+	// if the config is set to be uncommitted, always set committed = false
+	if internal.Uncommitted {
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
 	// always commit to a route if the TryBeforeYouBuy flag isn't set
 	if !internal.TryBeforeYouBuy {
 		routeState.Committed = true
