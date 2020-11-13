@@ -19,12 +19,13 @@ func NewEnvVarConfig(defaultFeatures []Feature) *EnvVarConfig {
 	}
 }
 
-func (e *EnvVarConfig) FeatureEnabled(enum int) bool {
-	if enum > len(e.Features) {
-		return false
+func (e *EnvVarConfig) FeatureEnabled(enum FeatureEnum) bool {
+	for _, f := range e.Features {
+		if enum.ToString() == f.Name {
+			return f.Value
+		}
 	}
-	feature := e.Features[enum]
-	return feature.Value
+	return false
 }
 
 func (e *EnvVarConfig) AllFeatures() []Feature {

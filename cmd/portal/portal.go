@@ -26,7 +26,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	
+
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -291,6 +291,11 @@ func main() {
 		Storage:                db,
 	}
 
+	configService := jsonrpc.ConfigService{
+		Logger:  logger,
+		Storage: db,
+	}
+
 	go func() {
 		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
 		syncInterval, err := time.ParseDuration(genmapinterval)
@@ -409,6 +414,7 @@ func main() {
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
+		s.RegisterService(&configService, "")
 		s.RegisterService(&jsonrpc.AuthService{
 			MailChimpManager: transport.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
