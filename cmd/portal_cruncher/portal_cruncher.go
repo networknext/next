@@ -199,13 +199,8 @@ func mainReturnWithCode() int {
 	{
 		go func() {
 			router := mux.NewRouter()
-<<<<<<< HEAD
 			router.HandleFunc("/health", transport.HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
-=======
-			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false))
->>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
 
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
