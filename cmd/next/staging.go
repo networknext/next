@@ -52,8 +52,13 @@ func waitForMIGStable(mig string) error {
 	return nil
 }
 
-func startInstances(instances string) error {
-	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances start --project=network-next-v3-staging --zone=us-central1-a", instances))
+func startInstances(instances string, wait bool) error {
+	var asyncFlag string
+	if !wait {
+		asyncFlag = "--async"
+	}
+
+	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances start --project=network-next-v3-staging %s --zone=us-central1-a", instances, asyncFlag))
 	if !success {
 		return fmt.Errorf("could not start instances: %s", output)
 	}
@@ -61,8 +66,13 @@ func startInstances(instances string) error {
 	return nil
 }
 
-func stopInstances(instances string) error {
-	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances stop --project=network-next-v3-staging --zone=us-central1-a", instances))
+func stopInstances(instances string, wait bool) error {
+	var asyncFlag string
+	if !wait {
+		asyncFlag = "--async"
+	}
+
+	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances stop --project=network-next-v3-staging %s --zone=us-central1-a", instances, asyncFlag))
 	if !success {
 		return fmt.Errorf("could not stop instances: %s", output)
 	}
@@ -117,7 +127,7 @@ func startStaging(serverBackendCount int, clientCount int) error {
 	}
 
 	fmt.Println("starting relay backend and relays...")
-	if err := startInstances(relays); err != nil {
+	if err := startInstances(relays, false); err != nil {
 		return err
 	}
 
@@ -127,7 +137,7 @@ func startStaging(serverBackendCount int, clientCount int) error {
 	}
 
 	fmt.Println("starting portal crunchers...")
-	if err := startInstances(portalCrunchers); err != nil {
+	if err := startInstances(portalCrunchers, false); err != nil {
 		return err
 	}
 
@@ -146,7 +156,7 @@ func startStaging(serverBackendCount int, clientCount int) error {
 		return err
 	}
 
-	if err := resizeStaging(serverBackendCount, clientCount, false); err != nil {
+	if err := resizeStaging(serverBackendCount, clientCount); err != nil {
 		return err
 	}
 
@@ -154,7 +164,7 @@ func startStaging(serverBackendCount int, clientCount int) error {
 	return nil
 }
 
-func resizeStaging(serverBackendCount int, clientCount int, stopFirst bool) error {
+func resizeStaging(serverBackendCount int, clientCount int) error {
 	// Scale down the number of servers based on how many run on a single VM and enforce a proportion of 200 clients per server
 	serverCount := int(math.Ceil(float64(clientCount / 200 / ServersPerVM)))
 	if serverCount == 0 && clientCount > 0 {
@@ -177,18 +187,18 @@ func resizeStaging(serverBackendCount int, clientCount int, stopFirst bool) erro
 	// Scale down the number of clients based on how many run on a single VM
 	clientCount = clientCount / ClientsPerVM
 
-	if stopFirst {
-		fmt.Println("stopping clients...")
-		for i := 1; i <= clientMIGCount; i++ {
-			if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", i), 0); err != nil {
-				return err
-			}
-		}
-
-		fmt.Println("stopping servers...")
-		if err := resizeMIG("load-test-server-mig", 0); err != nil {
+	// We need to stop the servers and clients first so that a change to the server backend mig
+	// will keep the servers and clients evenly distributed
+	fmt.Println("stopping clients...")
+	for i := 1; i <= clientMIGCount; i++ {
+		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", i), 0); err != nil {
 			return err
 		}
+	}
+
+	fmt.Println("stopping servers...")
+	if err := resizeMIG("load-test-server-mig", 0); err != nil {
+		return err
 	}
 
 	fmt.Printf("resizing to %d server backends...\n", serverBackendCount)
@@ -196,11 +206,9 @@ func resizeStaging(serverBackendCount int, clientCount int, stopFirst bool) erro
 		return err
 	}
 
-	if stopFirst {
-		// Wait for the server backend mig to stabilize so that the created servers and clients will connect evenly
-		if err := waitForMIGStable("server-backend4-mig"); err != nil {
-			return err
-		}
+	// Wait for the server backend mig to stabilize so that the created servers and clients will connect evenly
+	if err := waitForMIGStable("server-backend4-mig"); err != nil {
+		return err
 	}
 
 	fmt.Printf("resizing to %d servers (%d instances)...\n", serverCount*ServersPerVM, serverCount)
@@ -208,11 +216,9 @@ func resizeStaging(serverBackendCount int, clientCount int, stopFirst bool) erro
 		return err
 	}
 
-	if stopFirst {
-		// Wait for the load test server mig to stabilize so that the created clients will connect evenly
-		if err := waitForMIGStable("load-test-server-mig"); err != nil {
-			return err
-		}
+	// Wait for the load test server mig to stabilize so that the created clients will connect evenly
+	if err := waitForMIGStable("load-test-server-mig"); err != nil {
+		return err
 	}
 
 	fmt.Printf("resizing to %d clients (%d instances)...\n", clientCount*ClientsPerVM, clientCount)
@@ -294,7 +300,7 @@ func stopStaging() error {
 	}
 
 	fmt.Println("stopping portal crunchers...")
-	if err := stopInstances(portalCrunchers); err != nil {
+	if err := stopInstances(portalCrunchers, false); err != nil {
 		return err
 	}
 
@@ -304,7 +310,7 @@ func stopStaging() error {
 	}
 
 	fmt.Println("stopping relay backend and relays...")
-	if err := stopInstances(relays); err != nil {
+	if err := stopInstances(relays, false); err != nil {
 		return err
 	}
 
