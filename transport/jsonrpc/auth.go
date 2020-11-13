@@ -16,9 +16,12 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 <<<<<<< HEAD
+<<<<<<< HEAD
 	"github.com/networknext/backend/transport"
 =======
 >>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
+=======
+>>>>>>> 0d4857fcc2788b6e03bcfcea42ccdec97d180f32
 	"github.com/networknext/backend/transport/middleware"
 	"gopkg.in/auth0.v4/management"
 )

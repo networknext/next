@@ -440,9 +440,12 @@ func main() {
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
 		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS))
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
 =======
 >>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
+=======
+>>>>>>> 0d4857fcc2788b6e03bcfcea42ccdec97d180f32
 
 		level.Info(logger).Log("addr", ":"+port)
 
