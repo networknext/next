@@ -11,10 +11,25 @@ func TestConfigInterface(t *testing.T) {
 	t.Run("NewConfig", func(t *testing.T) {
 		var featureConfig config.Config
 
-		envVarConfig := config.NewEnvVarConfig(map[config.FeatureEnum]bool{
-			config.FEATURE_BIGTABLE:          false,
-			config.FEATURE_NEW_RELAY_BACKEND: false,
-			config.FEATURE_POSTGRES:          false,
+		envVarConfig := config.NewEnvVarConfig([]config.Feature{
+			{
+				Name:        "ENABLE_BIGTABLE",
+				Enum:        config.FEATURE_BIGTABLE,
+				Value:       false,
+				Description: "Bigtable integration for historic session data",
+			},
+			{
+				Name:        "FEATURE_NEW_RELAY_BACKEND",
+				Enum:        config.FEATURE_NEW_RELAY_BACKEND,
+				Value:       false,
+				Description: "New relay backend architectural changes",
+			},
+			{
+				Name:        "PGSQL",
+				Enum:        config.FEATURE_POSTGRES,
+				Value:       false,
+				Description: "Postgres implementation to replace Firestore",
+			},
 		})
 
 		featureConfig = envVarConfig
@@ -23,6 +38,11 @@ func TestConfigInterface(t *testing.T) {
 		assert.Equal(t, len(featureConfig.AllFeatures()), 3)
 		assert.Equal(t, len(featureConfig.AllDisabledFeatures()), 3)
 		assert.Equal(t, len(featureConfig.AllEnabledFeatures()), 0)
-		assert.Equal(t, featureConfig.AllFeatures()[config.FEATURE_BIGTABLE], false)
+		assert.Equal(t, featureConfig.AllFeatures()[0].Name, "ENABLE_BIGTABLE")
+		assert.Equal(t, featureConfig.AllFeatures()[0].Enum, config.FEATURE_BIGTABLE)
+		assert.Equal(t, featureConfig.AllFeatures()[0].Value, false)
+		assert.Equal(t, featureConfig.AllFeatures()[0].Description, "Bigtable integration for historic session data")
+		assert.Equal(t, featureConfig.AllFeatures()[0].Value, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
+		assert.False(t, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
 	})
 }

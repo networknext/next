@@ -1,20 +1,25 @@
 package config
 
-type FeatureEnum string
+type FeatureEnum int
 
 const (
-	FEATURE_BIGTABLE          FeatureEnum = "FEATURE_BIGTABLE"
-	FEATURE_NEW_RELAY_BACKEND FeatureEnum = "FEATURE_NEW_RELAY_BACKEND"
-	FEATURE_POSTGRES          FeatureEnum = "FEATURE_POSTGRES"
+	FEATURE_BIGTABLE          FeatureEnum = 0
+	FEATURE_NEW_RELAY_BACKEND FeatureEnum = 1
+	FEATURE_POSTGRES          FeatureEnum = 2
 )
+
+const NumFeatures = 3
+
+type Feature struct {
+	Name        string
+	Enum        FeatureEnum
+	Value       bool
+	Description string
+}
 
 type Config interface {
 	FeatureEnabled(enum FeatureEnum) bool
-	AllFeatures() map[FeatureEnum]bool
-	AllEnabledFeatures() map[FeatureEnum]bool
-	AllDisabledFeatures() map[FeatureEnum]bool
-}
-
-func (e FeatureEnum) ToString() string {
-	return string(e)
+	AllFeatures() []Feature
+	AllEnabledFeatures() []Feature
+	AllDisabledFeatures() []Feature
 }
