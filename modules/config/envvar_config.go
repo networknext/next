@@ -30,6 +30,15 @@ func (e *EnvVarConfig) AllFeatures() []Feature {
 	return e.Features
 }
 
+func (e *EnvVarConfig) FeatureByName(name string) Feature {
+	for _, f := range e.Features {
+		if f.Name == name {
+			return f
+		}
+	}
+	return Feature{}
+}
+
 func (e *EnvVarConfig) AllEnabledFeatures() []Feature {
 	features := make([]Feature, 0)
 	for _, f := range e.Features {
