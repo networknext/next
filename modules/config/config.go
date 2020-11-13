@@ -8,18 +8,11 @@ const (
 	FEATURE_POSTGRES          FeatureEnum = "FEATURE_POSTGRES"
 )
 
-type Feature struct {
-	Name        string
-	Value       bool
-	Description string
-}
-
 type Config interface {
 	FeatureEnabled(enum FeatureEnum) bool
-	AllFeatures() []Feature
-	FeatureByName(name string) Feature
-	AllEnabledFeatures() []Feature
-	AllDisabledFeatures() []Feature
+	AllFeatures() map[FeatureEnum]bool
+	AllEnabledFeatures() map[FeatureEnum]bool
+	AllDisabledFeatures() map[FeatureEnum]bool
 }
 
 func (e FeatureEnum) ToString() string {

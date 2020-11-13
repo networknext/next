@@ -3,15 +3,14 @@ package config
 import "github.com/networknext/backend/modules/envvar"
 
 type EnvVarConfig struct {
-	Features []Feature
+	Features map[FeatureEnum]bool
 }
 
-func NewEnvVarConfig(defaultFeatures []Feature) *EnvVarConfig {
-	features := make([]Feature, 0)
-	for _, f := range defaultFeatures {
-		value, _ := envvar.GetBool(f.Name, false)
-		f.Value = value
-		features = append(features, f)
+func NewEnvVarConfig(defaultFeatures map[FeatureEnum]bool) *EnvVarConfig {
+	features := defaultFeatures
+	for key, value := range defaultFeatures {
+		newValue, _ := envvar.GetBool(key.ToString(), value)
+		features[key] = newValue
 	}
 
 	return &EnvVarConfig{
@@ -20,42 +19,28 @@ func NewEnvVarConfig(defaultFeatures []Feature) *EnvVarConfig {
 }
 
 func (e *EnvVarConfig) FeatureEnabled(enum FeatureEnum) bool {
-	for _, f := range e.Features {
-		if enum.ToString() == f.Name {
-			return f.Value
-		}
-	}
-	return false
+	return e.Features[enum]
 }
 
-func (e *EnvVarConfig) AllFeatures() []Feature {
+func (e *EnvVarConfig) AllFeatures() map[FeatureEnum]bool {
 	return e.Features
 }
 
-func (e *EnvVarConfig) FeatureByName(name string) Feature {
-	for _, f := range e.Features {
-		if f.Name == name {
-			return f
-		}
-	}
-	return Feature{}
-}
-
-func (e *EnvVarConfig) AllEnabledFeatures() []Feature {
-	features := make([]Feature, 0)
-	for _, f := range e.Features {
-		if f.Value == true {
-			features = append(features, f)
+func (e *EnvVarConfig) AllEnabledFeatures() map[FeatureEnum]bool {
+	features := make(map[FeatureEnum]bool, 0)
+	for key, value := range e.Features {
+		if value == true {
+			features[key] = value
 		}
 	}
 	return features
 }
 
-func (e *EnvVarConfig) AllDisabledFeatures() []Feature {
-	features := make([]Feature, 0)
-	for _, f := range e.Features {
-		if f.Value == false {
-			features = append(features, f)
+func (e *EnvVarConfig) AllDisabledFeatures() map[FeatureEnum]bool {
+	features := make(map[FeatureEnum]bool, 0)
+	for key, value := range e.Features {
+		if value == false {
+			features[key] = value
 		}
 	}
 	return features
