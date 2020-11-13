@@ -12507,6 +12507,46 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
 
+bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
+{
+    next_assert( server );
+    next_assert( address );
+    next_assert( stats );
+
+    next_platform_mutex_guard( &server->internal->session_mutex );
+
+    next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
+    if ( !entry )
+        return false;
+
+    stats->session_id = entry->session_id; 
+    stats->user_hash = entry->user_hash;
+    stats->platform_id = entry->stats_platform_id;
+    stats->connection_type = entry->stats_connection_type;
+    stats->next = entry->stats_next;
+    stats->committed = entry->stats_committed;
+    stats->multipath = entry->stats_multipath;
+    stats->reported = entry->stats_reported;
+    stats->fallback_to_direct = entry->stats_fallback_to_direct;
+    stats->direct_rtt = entry->stats_direct_rtt;
+    stats->direct_jitter = entry->stats_direct_jitter;
+    stats->direct_packet_loss = entry->stats_direct_packet_loss;    
+    stats->next_rtt = entry->stats_next_rtt;
+    stats->next_jitter = entry->stats_next_jitter;
+    stats->next_packet_loss = entry->stats_next_packet_loss;    
+    stats->next_kbps_up = entry->stats_next_kbps_up;
+    stats->next_kbps_down = entry->stats_next_kbps_down;
+    stats->packets_sent_client_to_server = entry->stats_packets_sent_client_to_server;
+    stats->packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+    stats->packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
+    stats->packets_lost_server_to_client = entry->stats_packets_lost_server_to_client;
+    stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
+    stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
+    stats->user_flags = entry->stats_user_flags;
+
+    return true;
+}
+
 // ---------------------------------------------------------------
 
 int next_mutex_create( next_mutex_t * mutex )
