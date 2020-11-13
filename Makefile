@@ -226,15 +226,19 @@ endif
 
 # Bigtable emulator must be running before testing bigtable in happy path
 ifndef FEATURE_BIGTABLE
-export FEATURE_BIGTABLE = false
+export FEATURE_BIGTABLE = true
 endif
 
 ifndef BIGTABLE_EMULATOR_HOST
 export BIGTABLE_EMULATOR_HOST = localhost:8086
 endif
 
+ifndef BIGTABLE_CF_NAME
+export BIGTABLE_CF_NAME = portal-session-history
+endif
+
 ifndef BIGTABLE_TABLE_NAME
-export BIGTABLE_TABLE_NAME = "BTTest"
+export BIGTABLE_TABLE_NAME = BTTest
 endif
 
 .PHONY: help

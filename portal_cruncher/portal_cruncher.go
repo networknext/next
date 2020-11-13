@@ -6,6 +6,10 @@ import (
 	"os"
 	"sync"
 	"time"
+	"bufio"
+	"bytes"
+	"io"
+	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -451,7 +455,7 @@ func SetupBigtable(ctx context.Context,
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
 		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected Bigtable emulator host")
+		level.Info(logger).Log("msg", "Detected Bigtable emulator host.", "Table Name", btTableName, "Project ID", gcpProjectID, "btInstanceID", btInstanceID)
 	}
 
 	if gcpProjectID == "" && !btEmulatorOK {
@@ -497,7 +501,101 @@ func SetupBigtable(ctx context.Context,
 		return nil, nil, err
 	}
 
+	if btEmulatorOK {
+		err = InsertHistoricalDataIntoBigtable(ctx, btClient, btCfNames, "../testdata/bigtable_historical.txt")
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	return btClient, btCfNames, nil
+}
+
+func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []string, historicalPath string) error {
+	// Load in text file
+	var (
+		file *os.File
+		part []byte
+		prefix bool
+		err error
+	)
+	if file, err = os.Open(historicalPath); err != nil {
+		return err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	buffer := bytes.NewBuffer(make([]byte, 0))
+	var lines []string
+	for {
+		if part, prefix, err = reader.ReadLine(); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		buffer.Write(part)
+		if !prefix {
+			lines = append(lines, buffer.String())
+			buffer.Reset()
+		}
+	}
+
+	rowKey := ""
+	cfMap := make(map[string]string)
+	colName := ""
+	for _, line := range lines {
+		// Remove white space from line
+		line = strings.TrimSpace(line)
+
+		// Moving onto next row key
+		if strings.Contains(line, "----------------------------------------") {
+			rowKey = ""
+			cfMap = make(map[string]string)
+			colName = ""
+			continue
+		}
+
+		if rowKey == "" {
+			// Found a new row key
+			rowKey = strings.TrimSpace(line)
+		} else if strings.Contains(line, btCfNames[0]) {
+			// Set the map of column name to the column family name
+			line = strings.TrimSpace(line)
+			words := strings.Split(line, " ")
+			colName = strings.Split(words[0], ":")[1]
+			cfMap[colName] = btCfNames[0]
+		} else if colName != "" {
+			// Get the data for the column name
+			rawData := strings.TrimSpace(line)
+			rawData = rawData[1 : len(rawData) - 1]
+			// fmt.Println(strings.Contains(rawData, `\\`))
+			// rawData = strings.ReplaceAll(rawData, `\\`, `\`)
+			// fmt.Println(rawData)
+			data := []byte(rawData)
+			// if colName == "meta" {
+			// 	var sessionData transport.SessionMeta
+			// 	if err = sessionData.UnmarshalBinary(data); err != nil {
+			// 		return err
+			// 	}
+			// 	data, err = sessionData.MarshalBinary()
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// }
+			// fmt.Println(string(data))
+			dataMap := make(map[string][]byte)
+			dataMap[colName] = data
+
+			// Insert into bigtable
+			err := btClient.InsertRowInTable(ctx, []string{rowKey}, dataMap, cfMap)
+			if err != nil {
+				return err
+			}
+		}
+		
+	}
+	return nil
 }
 
 func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {

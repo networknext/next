@@ -201,7 +201,7 @@ func mainReturnWithCode() int {
 	useBigtable := featureConfig.FeatureEnabled(0)
 
 	// Get Bigtable instance ID
-	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
+	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
 	// Get the table name
 	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 	// Get the column family name

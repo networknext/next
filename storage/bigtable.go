@@ -153,7 +153,7 @@ func (bt *BigTable) GetTable(btTableName string) *bigtable.Table {
 }
 
 // Inserts a row into a table given a slice of row keys,
-// a map of the column name to the data stored in thaat cell,
+// a map of the column name to the data stored in that cell,
 // and a map of the column name to the column family
 func (bt *BigTable) InsertRowInTable(ctx context.Context, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
 
