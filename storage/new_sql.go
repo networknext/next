@@ -329,7 +329,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select relays.id, display_name, relays.contract_term, relays.end_date, "))
+	sql.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sql.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
 	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
@@ -646,7 +646,14 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	customers := make(map[string]routing.Customer)
 	customerIDs := make(map[int64]string)
 
-	sql.Write([]byte("select id, active, automatic_signin_domain, "))
+	// sql.Write([]byte("select customers.id, customers.active, customers.debug, "))
+	// sql.Write([]byte("customers.automatic_signin_domain, customers.customer_name, "))
+	// sql.Write([]byte("customers.customer_code, buyers.id as buyer_id, "))
+	// sql.Write([]byte("sellers.id as seller_id from customers "))
+	// sql.Write([]byte("left join buyers on customers.id = buyers.customer_id "))
+	// sql.Write([]byte("left join sellers on customers.id = sellers.customer_id"))
+
+	sql.Write([]byte("select id, active, debug, automatic_signin_domain, "))
 	sql.Write([]byte("customer_name, customer_code from customers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -659,12 +666,14 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	for rows.Next() {
 		err = rows.Scan(&customer.ID,
 			&customer.Active,
+			&customer.Debug,
 			&customer.AutomaticSignInDomains,
 			&customer.Name,
 			&customer.CustomerCode,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			fmt.Printf("error parsing returned row: %v\n", err)
 			return err
 		}
 

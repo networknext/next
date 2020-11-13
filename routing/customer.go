@@ -16,8 +16,6 @@ type Customer struct {
 	BuyerRef               *firestore.DocumentRef // TODO: chopping block
 	SellerRef              *firestore.DocumentRef // TODO: chopping block
 	DatabaseID             int64                  // customer_id - sql PK
-	// BuyerID                uint64 // binary.LittleEndian.Uint64(publicKey[:8]),
-	// SellerID               string // ID: name
 }
 
 func (c *Customer) String() string {

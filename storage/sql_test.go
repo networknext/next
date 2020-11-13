@@ -3,7 +3,6 @@ package storage_test
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -49,9 +48,9 @@ func TestInsertSQL(t *testing.T) {
 	var outerSeller routing.Seller
 	var outerDatacenter routing.Datacenter
 
-	currentLocation, err := os.Getwd()
-	assert.NoError(t, err)
-	fmt.Printf("Current disk location: %s\n", currentLocation)
+	// currentLocation, err := os.Getwd()
+	// assert.NoError(t, err)
+	// fmt.Printf("Current disk location: %s\n", currentLocation)
 
 	// NewSQLStorage() Sync() above sets up seq number
 	t.Run("Do Not Sync", func(t *testing.T) {
@@ -81,9 +80,7 @@ func TestInsertSQL(t *testing.T) {
 		err = db.AddCustomer(ctx, customer)
 		assert.NoError(t, err)
 
-		_, err := db.Customer("Compcode")
-		assert.NoError(t, err)
-		outerCustomer, err = db.Customer("Compcode")
+		outerCustomer, err = db.Customer(customerShortname)
 		assert.NoError(t, err)
 		assert.Equal(t, customer.Active, outerCustomer.Active)
 		assert.Equal(t, customer.Code, outerCustomer.Code)
@@ -95,6 +92,7 @@ func TestInsertSQL(t *testing.T) {
 		seller := routing.Seller{
 			ID:                        customerShortname,
 			ShortName:                 customerShortname,
+			CompanyCode:               customerShortname,
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                outerCustomer.DatabaseID,
@@ -150,12 +148,13 @@ func TestInsertSQL(t *testing.T) {
 		internalID := binary.LittleEndian.Uint64(publicKey[:8])
 
 		buyer := routing.Buyer{
-			ID:         internalID,
-			ShortName:  outerCustomer.Code,
-			Live:       true,
-			Debug:      true,
-			PublicKey:  publicKey,
-			CustomerID: outerCustomer.DatabaseID,
+			// ID:          internalID,
+			ShortName:   outerCustomer.Code,
+			CompanyCode: outerCustomer.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+			// CustomerID:  outerCustomer.DatabaseID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -164,13 +163,13 @@ func TestInsertSQL(t *testing.T) {
 		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
+		assert.Equal(t, internalID, outerBuyer.ID)
 		assert.Equal(t, buyer.Live, outerBuyer.Live)
 		assert.Equal(t, buyer.Debug, outerBuyer.Debug)
 		assert.Equal(t, publicKey, outerBuyer.PublicKey)
-		assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
+		// assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
 		assert.Equal(t, buyer.ShortName, outerBuyer.ShortName)
-		// Currently not covered by storer
-		// assert.Equal(t, buyer.CompanyCode, outerBuyer.CompanyCode)
+		assert.Equal(t, buyer.CompanyCode, outerBuyer.CompanyCode)
 	})
 
 	t.Run("AddRelay", func(t *testing.T) {
@@ -285,9 +284,10 @@ func TestDeleteSQL(t *testing.T) {
 
 	t.Run("ExerciseFKs", func(t *testing.T) {
 
+		customerCode := "Compcode"
 		customer := routing.Customer{
 			Active:                 true,
-			Code:                   "Compcode",
+			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
 		}
@@ -295,7 +295,7 @@ func TestDeleteSQL(t *testing.T) {
 		err = db.AddCustomer(ctx, customer)
 		assert.NoError(t, err)
 
-		outerCustomer, err = db.Customer("Compcode")
+		outerCustomer, err = db.Customer(customerCode)
 		assert.NoError(t, err)
 
 		publicKey := make([]byte, crypto.KeySize)
@@ -305,11 +305,13 @@ func TestDeleteSQL(t *testing.T) {
 		internalID := binary.LittleEndian.Uint64(publicKey[:8])
 
 		buyer := routing.Buyer{
-			ID:         internalID,
-			Live:       true,
-			Debug:      false,
-			PublicKey:  publicKey,
-			CustomerID: outerCustomer.DatabaseID,
+			// ID:          internalID,
+			ShortName:   outerCustomer.Code,
+			CompanyCode: outerCustomer.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+			// CustomerID:  outerCustomer.DatabaseID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -323,6 +325,7 @@ func TestDeleteSQL(t *testing.T) {
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                outerCustomer.DatabaseID,
+			CompanyCode:               outerCustomer.Code,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -522,11 +525,13 @@ func TestUpdateSQL(t *testing.T) {
 		internalID := binary.LittleEndian.Uint64(publicKey[:8])
 
 		buyer := routing.Buyer{
-			ID:         internalID,
-			Live:       true,
-			Debug:      true,
-			PublicKey:  publicKey,
-			CustomerID: customerWithID.DatabaseID,
+			// ID:          internalID,
+			ShortName:   customerWithID.Code,
+			CompanyCode: customerWithID.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+			// CustomerID:  customerWithID.DatabaseID,
 		}
 
 		err = db.AddBuyer(ctx, buyer)
@@ -556,6 +561,7 @@ func TestUpdateSQL(t *testing.T) {
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                customerWithID.DatabaseID,
+			CompanyCode:               customerWithID.Code,
 		}
 
 		err = db.AddSeller(ctx, seller)

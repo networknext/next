@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -1425,10 +1426,14 @@ func main() {
 						ShortHelp:  "Displays an example buyer for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
+							_, err := rand.Read(examplePublicKey)
+							if err != nil {
+								return fmt.Errorf("Error generating random buyer public key: %v", err)
+							}
 							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
 
 							example := buyer{
-								CompanyCode: "psyonix",
+								CompanyCode: "microzon",
 								Live:        true,
 								PublicKey:   examplePublicKeyString,
 							}

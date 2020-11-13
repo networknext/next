@@ -325,13 +325,26 @@ type customer struct {
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
-	var buyerID string
 
 	customers := s.Storage.Customers()
 
 	for _, c := range customers {
-		buyer, _ := s.Storage.BuyerWithCompanyCode(c.Code)
-		seller, _ := s.Storage.SellerWithCompanyCode(c.Code)
+
+		buyerID := ""
+
+		// TODO both of these support functions should be check by FK
+		buyer, err := s.Storage.BuyerWithCompanyCode(c.Code)
+		if err != nil {
+			err = fmt.Errorf("BuyerWithCompanyCode() error: %w", err)
+			s.Logger.Log("err", err)
+		}
+
+		seller, err := s.Storage.SellerWithCompanyCode(c.Code)
+		if err != nil {
+			err = fmt.Errorf("SellerWithCompanyCode() error: %w", err)
+			s.Logger.Log("err", err)
+		}
+
 		if buyer.ID == 0 {
 			buyerID = ""
 		} else {

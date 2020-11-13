@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/binary"
 	"fmt"
 	"sort"
 	"strconv"
@@ -108,8 +109,11 @@ type sqlCustomer struct {
 	Name                   string
 	AutomaticSignInDomains string
 	Active                 bool
+	Debug                  bool
 	CustomerCode           string
 	DatabaseID             int64
+	BuyerID                sql.NullInt64 // loaded during syncCustomers()
+	SellerID               sql.NullInt64 // loaded during syncCustomers()
 }
 
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
@@ -322,14 +326,21 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
+	c, err := db.Customer(b.CompanyCode)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
+	}
+
+	internalID := binary.LittleEndian.Uint64(b.PublicKey[:8])
+
 	buyer := sqlBuyer{
-		ID:             b.ID,
-		CompanyCode:    b.ShortName,
-		ShortName:      b.ShortName,
+		ID:             internalID,
+		CompanyCode:    b.CompanyCode,
+		ShortName:      b.CompanyCode,
 		IsLiveCustomer: b.Live,
 		Debug:          b.Debug,
 		PublicKey:      b.PublicKey,
-		CustomerID:     b.CustomerID,
+		CustomerID:     c.DatabaseID,
 	}
 
 	// Add the buyer in remote storage
@@ -368,6 +379,10 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	db.syncBuyers(ctx)
+
+	db.customerMutex.Lock()
+	db.customers[c.Code] = c
+	db.customerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -522,12 +537,17 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
 	}
 
+	c, err := db.Customer(s.CompanyCode)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: s.CompanyCode}
+	}
+
 	newSellerData := sqlSeller{
 		ID:                        s.ID,
 		ShortName:                 s.ShortName,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
-		CustomerID:                s.CustomerID,
+		CustomerID:                c.DatabaseID,
 	}
 
 	// Add the seller in remote storage
@@ -562,6 +582,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	// Must re-sync to get the relevant SQL IDs
 	db.syncSellers(ctx)
+
+	db.syncCustomers(ctx) // pick up new seller ID
 
 	db.IncrementSequenceNumber(ctx)
 
