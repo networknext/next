@@ -200,7 +200,7 @@ func mainReturnWithCode() int {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", transport.HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false))
 
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
