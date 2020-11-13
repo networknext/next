@@ -485,6 +485,15 @@ func main() {
 	var relayBWSort bool
 	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
+	// Define a flag set for configuring the staging environmen
+	stagingfs := flag.NewFlagSet("staging paramters", flag.ExitOnError)
+
+	var serverBackendCount int
+	stagingfs.IntVar(&serverBackendCount, "server-backend-count", 4, "number of server backends to create (default: 4)")
+
+	var clientCount int
+	stagingfs.IntVar(&clientCount, "client-count", 100000, "number of clients to load test with (default: 100,000)")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -622,6 +631,7 @@ func main() {
 			return nil
 		},
 	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -2090,6 +2100,54 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var stagingCommand = &ffcli.Command{
+		Name:       "staging",
+		ShortUsage: "next staging <subcommand>",
+		ShortHelp:  "Interact with the staging environment",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "start",
+				ShortUsage: "next staging start",
+				ShortHelp:  "Start up the staging environment with the given flags",
+				FlagSet:    stagingfs,
+				Exec: func(ctx context.Context, args []string) error {
+					if err := startStaging(serverBackendCount, clientCount); err != nil {
+						handleJSONRPCError(env, err)
+					}
+
+					return nil
+				},
+			},
+			{
+				Name:       "stop",
+				ShortUsage: "next staging stop",
+				ShortHelp:  "Shuts down the staging environment",
+				Exec: func(ctx context.Context, args []string) error {
+					if err := stopStaging(); err != nil {
+						handleJSONRPCError(env, err)
+					}
+					return nil
+				},
+			},
+			{
+				Name:       "resize",
+				ShortUsage: "next staging resize",
+				ShortHelp:  "Resizes the staging environment with the given flags",
+				FlagSet:    stagingfs,
+				Exec: func(ctx context.Context, args []string) error {
+					if err := resizeStaging(serverBackendCount, clientCount, true); err != nil {
+						handleJSONRPCError(env, err)
+					}
+
+					return nil
+				},
+			},
+		},
+	}
+
 	var commands = []*ffcli.Command{
 		authCommand,
 		selectCommand,
@@ -2115,6 +2173,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		analyzeCommand,
 		debugCommand,
 		viewCommand,
+		stagingCommand,
 	}
 
 	root := &ffcli.Command{
