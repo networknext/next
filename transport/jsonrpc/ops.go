@@ -332,24 +332,15 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 
 		buyerID := ""
 
-		// TODO both of these support functions should be check by FK
-		buyer, err := s.Storage.BuyerWithCompanyCode(c.Code)
-		if err != nil {
-			err = fmt.Errorf("BuyerWithCompanyCode() error: %w", err)
-			s.Logger.Log("err", err)
-		}
+		// TODO both of these support functions should be
+		// removed or modified to check by FK
+		buyer, _ := s.Storage.BuyerWithCompanyCode(c.Code)
+		seller, _ := s.Storage.SellerWithCompanyCode(c.Code)
 
-		seller, err := s.Storage.SellerWithCompanyCode(c.Code)
-		if err != nil {
-			err = fmt.Errorf("SellerWithCompanyCode() error: %w", err)
-			s.Logger.Log("err", err)
-		}
-
-		if buyer.ID == 0 {
-			buyerID = ""
-		} else {
+		if buyer.ID != 0 {
 			buyerID = fmt.Sprintf("%x", buyer.ID)
 		}
+
 		reply.Customers = append(reply.Customers, customer{
 			Name:     c.Name,
 			Code:     c.Code,

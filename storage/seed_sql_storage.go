@@ -30,6 +30,7 @@ func SeedSQLStorage(
 	internalConfig.ForceNext = true
 
 	// Add customers
+	// fmt.Println("Adding customers")
 	if err := db.AddCustomer(ctx, routing.Customer{
 		Name:                   "Network Next",
 		Code:                   "next",
@@ -69,6 +70,7 @@ func SeedSQLStorage(
 	}
 
 	// Add buyers
+	// fmt.Println("Adding buyers")
 	publicKey := make([]byte, crypto.KeySize)
 	_, err = rand.Read(publicKey)
 	if err != nil {
@@ -119,9 +121,11 @@ func SeedSQLStorage(
 		return fmt.Errorf("Error getting local buyer: %v", err)
 	}
 
+	// fmt.Println("Adding sellers")
 	localSeller := routing.Seller{
 		ID:                        localCust.Code,
 		ShortName:                 "local",
+		CompanyCode:               "local",
 		Name:                      localCust.Name,
 		IngressPriceNibblinsPerGB: 0.1 * 1e11,
 		EgressPriceNibblinsPerGB:  0.2 * 1e11,
@@ -131,6 +135,7 @@ func SeedSQLStorage(
 	ghostSeller := routing.Seller{
 		ID:                        ghostCust.Code,
 		ShortName:                 "ghost",
+		CompanyCode:               "ghost-army",
 		Name:                      ghostCust.Name,
 		IngressPriceNibblinsPerGB: 0.3 * 1e11,
 		EgressPriceNibblinsPerGB:  0.4 * 1e11,
@@ -138,10 +143,12 @@ func SeedSQLStorage(
 	}
 
 	if err := db.AddSeller(ctx, localSeller); err != nil {
+		fmt.Printf("AddSeller() err adding localSeller: %v", err)
 		return fmt.Errorf("AddSeller() err adding localSeller: %w", err)
 	}
 
 	if err := db.AddSeller(ctx, ghostSeller); err != nil {
+		fmt.Printf("AddSeller() err adding ghostSeller: %v", err)
 		return fmt.Errorf("AddSeller() err adding ghostSeller: %w", err)
 	}
 
@@ -155,6 +162,7 @@ func SeedSQLStorage(
 		return fmt.Errorf("Error getting ghost seller: %v", err)
 	}
 
+	// fmt.Println("Adding datacenters")
 	localDCID := crypto.HashID("local.locale.name")
 	localDatacenter := routing.Datacenter{
 		ID:      localDCID,
@@ -200,6 +208,7 @@ func SeedSQLStorage(
 	}
 
 	// add datacenter maps
+	// fmt.Println("Adding datacenter_maps")
 	localDcMap := routing.DatacenterMap{
 		Alias:        "local.map",
 		BuyerID:      localBuyer.ID,
@@ -222,6 +231,7 @@ func SeedSQLStorage(
 		return fmt.Errorf("Error creating local datacenter map: %v", err)
 	}
 
+	// fmt.Println("Adding relays")
 	// Add the number of relays provided by LOCAL_RELAYS for each datacenter
 	numRelays := uint64(10)
 	if val, ok := os.LookupEnv("LOCAL_RELAYS"); ok {
