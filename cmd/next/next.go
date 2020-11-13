@@ -2138,7 +2138,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortHelp:  "Resizes the staging environment with the given flags",
 				FlagSet:    stagingfs,
 				Exec: func(ctx context.Context, args []string) error {
-					if err := resizeStaging(serverBackendCount, clientCount, true); err != nil {
+					if err := resizeStaging(serverBackendCount, clientCount); err != nil {
 						handleJSONRPCError(env, err)
 					}
 
