@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -16,8 +15,14 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+<<<<<<< HEAD
+<<<<<<< HEAD
 	"github.com/networknext/backend/transport"
-	"github.com/rs/cors"
+=======
+>>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
+=======
+>>>>>>> 0d4857fcc2788b6e03bcfcea42ccdec97d180f32
+	"github.com/networknext/backend/transport/middleware"
 	"gopkg.in/auth0.v4/management"
 )
 
@@ -1126,17 +1131,7 @@ func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Han
 		CredentialsOptional: true,
 	})
 
-	if !allowCORS {
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-		return cors.New(cors.Options{
-			AllowedOrigins:   strings.Split(allowedOrigins, ","),
-			AllowCredentials: true,
-			AllowedHeaders:   []string{"Authorization", "Content-Type"},
-			AllowedMethods:   []string{"POST", "GET", "OPTION"},
-		}).Handler(mw.Handler(next))
-	} else {
-		return mw.Handler(next)
-	}
+	return middleware.CORSControlHandler(allowCORS, mw.Handler(next))
 }
 
 func getPemCert(token *jwt.Token) (string, error) {
