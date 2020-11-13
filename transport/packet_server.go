@@ -64,6 +64,8 @@ const (
 	FallbackFlagsNextPongTimedOut           = (1 << 11)
 	FallbackFlagsCount_400                  = 11
 	FallbackFlagsCount_401                  = 12
+
+	MaxTags = 8
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
@@ -271,7 +273,8 @@ type SessionUpdatePacket struct {
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
 	ClientPingTimedOut              bool
-	Tag                             uint64
+	NumTags                         int32
+	Tags                            [MaxTags]uint64
 	Flags                           uint32
 	UserFlags                       uint64
 	DirectRTT                       float32
@@ -350,24 +353,37 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&packet.ClientPingTimedOut)
 	}
 	
-	hasTag := stream.IsWriting() && packet.Tag != 0
+	hasTags := stream.IsWriting() && packet.NumTags > 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
 	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 	
-	stream.SerializeBool(&hasTag)
+	stream.SerializeBool(&hasTags)
 	stream.SerializeBool(&hasFlags)
 	stream.SerializeBool(&hasUserFlags)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 	
-	if hasTag {
-		stream.SerializeUint64(&packet.Tag)
+	if hasTags {
+		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 3) {
+			// multiple tags (SDK 4.0.3 and above)
+			stream.SerializeInteger(&packet.NumTags, 0, MaxTags)
+			for i := 0; i < int(packet.NumTags); i++ {
+				stream.SerializeUint64(&packet.Tags[i])
+			}
+		} else {
+			// single tag (< SDK 4.0.3)
+			stream.SerializeUint64(&packet.Tags[0])
+			if stream.IsWriting() {
+				packet.NumTags = 1
+			}
+		}
 	}
 	
 	if hasFlags {
 		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 1) {
+			// flag added in SDK 4.0.1 for fallback to new direct reason
 			stream.SerializeBits(&packet.Flags, FallbackFlagsCount_401)
 		} else {
 			stream.SerializeBits(&packet.Flags, FallbackFlagsCount_400)

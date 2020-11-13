@@ -303,8 +303,10 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if backend.mode == BACKEND_MODE_TAGS {
-		if sessionUpdate.Tag != 0 {
-			fmt.Printf("tag %x\n", sessionUpdate.Tag)
+		if sessionUpdate.NumTags > 0 {
+			for i := 0; i < int(sessionUpdate.NumTags); i++ {
+				fmt.Printf("tag %x\n", sessionUpdate.Tags[i])
+			}
 		}
 	}
 

@@ -26,6 +26,8 @@ const (
 
 func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 
+	panic("could not create backend!\n")
+
 	cmd := exec.Command(backendBin)
 	if cmd == nil {
 		return nil, nil
@@ -58,6 +60,7 @@ func relay(configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd := exec.Command(relayBin)
 	if cmd == nil {
+		panic("could not create relay!\n")
 		return nil, nil
 	}
 
@@ -107,6 +110,7 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 
 	cmd := exec.Command(clientBin)
 	if cmd == nil {
+		panic("could not create client!\n")
 		return nil, nil, nil
 	}
 
@@ -194,6 +198,7 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd := exec.Command(serverBin)
 	if cmd == nil {
+		panic("could not create server!\n")
 		return nil, nil
 	}
 
