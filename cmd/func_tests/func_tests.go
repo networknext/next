@@ -26,10 +26,9 @@ const (
 
 func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 
-	panic("could not create backend!\n")
-
 	cmd := exec.Command(backendBin)
 	if cmd == nil {
+		panic("could not create backend!\n")
 		return nil, nil
 	}
 
