@@ -31,15 +31,9 @@ type FeatureFlagReply struct {
 // These are just stubbed out for the time being until postgres is implemented
 
 func (s *ConfigService) AllFeatureFlags(r *http.Request, args *FeatureFlagArgs, reply *FeatureFlagReply) error {
-	reply.Flags = map[string]bool{
-		"FEATURE_EXPLORE": false,
-	}
 	return nil
 }
 
 func (s *ConfigService) FeatureFlagByName(r *http.Request, args *FeatureFlagArgs, reply *FeatureFlagReply) error {
-	reply.Flags = map[string]bool{
-		"FEATURE_EXPLORE": false,
-	}
 	return nil
 }
