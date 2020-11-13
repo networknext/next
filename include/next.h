@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "4.0.2"
+#define NEXT_VERSION_FULL                                   "4.0.3"
 #define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                    2
+#define NEXT_VERSION_PATCH_INT                                    3
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                  255
@@ -78,6 +78,8 @@
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_MAX                                         7
+
+#define NEXT_MAX_TAGS                                             8
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -262,6 +264,7 @@ NEXT_EXPORT_FUNC const next_address_t * next_client_server_address( next_client_
 
 struct next_server_stats_t
 {
+    next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
     int platform_id;
@@ -310,6 +313,8 @@ NEXT_EXPORT_FUNC void next_server_update( next_server_t * server );
 NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id );
 
 NEXT_EXPORT_FUNC void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
+
+NEXT_EXPORT_FUNC void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags );
 
 NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 

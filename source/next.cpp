@@ -8097,7 +8097,8 @@ struct next_pending_session_entry_t
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
-    uint64_t tag;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
     double upgrade_time;
     double last_packet_send_time;
     uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
@@ -8798,7 +8799,8 @@ struct NextBackendSessionUpdatePacket
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
     bool client_ping_timed_out;
-    uint64_t tag;
+    int num_tags;
+    uint64_t tags[NEXT_MAX_TAGS];
     uint64_t flags;
     uint64_t user_flags;
     float direct_rtt;
@@ -8873,7 +8875,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
 
-        bool has_tag = Stream::IsWriting && tag != 0;
+        bool has_tag = Stream::IsWriting && num_tags > 0;
         bool has_flags = Stream::IsWriting && flags != 0;
         bool has_user_flags = Stream::IsWriting && user_flags != 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
@@ -8887,7 +8889,11 @@ struct NextBackendSessionUpdatePacket
 
         if ( has_tag )
         {
-            serialize_uint64( stream, tag );
+            serialize_int( stream, num_tags, 0, NEXT_MAX_TAGS );
+            for ( int i = 0; i < num_tags; ++i )
+            {
+                serialize_uint64( stream, tags[i] );
+            }
         }
 
         if ( has_flags )
@@ -8962,7 +8968,8 @@ struct next_session_entry_t
     uint64_t internal_send_sequence;
     uint64_t stats_sequence;
     uint64_t user_hash;
-    uint64_t tag;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
     uint8_t client_open_session_sequence;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -9803,7 +9810,8 @@ struct next_server_command_upgrade_session_t : public next_server_command_t
 struct next_server_command_tag_session_t : public next_server_command_t
 {
     next_address_t address;
-    uint64_t tag;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
 };
 
 struct next_server_command_destroy_t : public next_server_command_t
@@ -9847,7 +9855,6 @@ struct next_server_notify_session_upgraded_t : public next_server_notify_t
 {
     next_address_t address;
     uint64_t session_id;
-    uint64_t tag;
 };
 
 struct next_server_notify_session_timed_out_t : public next_server_notify_t
@@ -10938,7 +10945,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->client_route_public_key, packet.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             entry->last_client_stats_update = next_time();
             entry->user_hash = pending_entry->user_hash;
-            entry->tag = pending_entry->tag;
             entry->client_open_session_sequence = packet.client_open_session_sequence;
             entry->stats_platform_id = packet.platform_id;
             entry->stats_connection_type = packet.connection_type;
@@ -10950,7 +10956,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->type = NEXT_SERVER_NOTIFY_SESSION_UPGRADED;
             notify->address = entry->address;
             notify->session_id = entry->session_id;
-            notify->tag = entry->tag;
             {
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );            
@@ -11485,7 +11490,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     entry->user_hash = user_hash;
 }
 
-void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, uint64_t tag )
+void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, const uint64_t * tags, int num_tags )
 {
     next_assert( server );
     next_assert( address );
@@ -11498,21 +11503,47 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %x (internal)", pending_entry->session_id, tag );
-        pending_entry->tag = tag;
+        if ( num_tags > 0 )
+        {
+            for ( int i = 0; i < num_tags; ++i )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %x (internal)", pending_entry->session_id, tags[i] );
+                pending_entry->tags[i] = tags[i];
+            }
+            pending_entry->num_tags = num_tags;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server clears tags on pending session entry %" PRIx64 " (internal)", pending_entry->session_id );
+            memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
+            pending_entry->num_tags = 0;
+        }
         return;
     }
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
     if ( entry )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %x (internal)", entry->session_id, tag );
-        entry->tag = tag;
+        if ( num_tags > 0 )
+        {
+            for ( int i = 0; i < num_tags; ++i )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %x (internal)", entry->session_id, tags[i] );
+                entry->tags[i] = tags[i];
+            }
+            entry->num_tags = num_tags;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server clears tags on session entry %" PRIx64 " (internal)", entry->session_id );
+            memset( entry->tags, 0, sizeof(entry->tags) );
+            entry->num_tags = 0;
+        }
         return;
     }
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s. please call next_upgrade_session before next_tag_session", next_address_to_string( address, buffer ) );    
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s. please call next_upgrade_session before you tag a session", next_address_to_string( address, buffer ) );    
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
@@ -11544,7 +11575,7 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             case NEXT_SERVER_COMMAND_TAG_SESSION:
             {
                 next_server_command_tag_session_t * tag_session = (next_server_command_tag_session_t*) command;
-                next_server_internal_tag_session( server, &tag_session->address, tag_session->tag );
+                next_server_internal_tag_session( server, &tag_session->address, tag_session->tags, tag_session->num_tags );
             }
             break;
 
@@ -11814,7 +11845,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.slice_number = session->update_sequence++;
             packet.platform_id = session->stats_platform_id;
             packet.user_hash = session->user_hash;
-            packet.tag = session->tag;
+            packet.num_tags = session->num_tags;
+            for ( int i = 0; i < session->num_tags; ++i )
+            {
+                packet.tags[i] = session->tags[i];
+            }
             packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
@@ -12274,10 +12309,27 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
 void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag )
 {
+    if ( tag[0] != '\0' )
+    {
+        // one tag
+        const char ** tags = &tag;
+        next_server_tag_session_multiple( server, address, tags, 1 );
+    }
+    else
+    {
+        // clear tags
+        next_server_tag_session_multiple( server, address, NULL, 0 );
+    }
+}
+
+void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags )
+{
     next_server_verify_sentinels( server );
 
     next_assert( server->internal );
-    
+    next_assert( num_tags >= 0 );
+    next_assert( num_tags <= NEXT_MAX_TAGS );
+
     // don't tag sessions in direct only mode
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
@@ -12301,17 +12353,22 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
         return;
     }
 
-    uint64_t tag_id = next_tag_id( tag );
-    
-    if ( tag_id != 0 )
-    {
-        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged %s as '%s' [%" PRIx64 "]", next_address_to_string( address, address_string ), tag, tag_id );
-    }
-
     command->type = NEXT_SERVER_COMMAND_TAG_SESSION;
     command->address = *address;
-    command->tag = tag_id;
+    memset( command->tags, 0, sizeof(command->tags) );
+    for ( int i = 0; i < num_tags; ++i )
+    {
+        uint64_t tag_id = next_tag_id( tags[i] );
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged %s as '%s' [%" PRIx64 "]", next_address_to_string( address, address_string ), tags[i], tag_id );
+        command->tags[i] = next_tag_id( tags[i] );
+    }
+    command->num_tags = num_tags;
+    if ( num_tags == 0 )
+    {
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_INFO, "server cleared tags for %s", next_address_to_string( address, address_string ) );
+    }
 
     {    
         next_platform_mutex_guard( &server->internal->command_mutex );
@@ -12519,6 +12576,7 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     if ( !entry )
         return false;
 
+    stats->address = *address;
     stats->session_id = entry->session_id; 
     stats->user_hash = entry->user_hash;
     stats->platform_id = entry->stats_platform_id;
@@ -14600,7 +14658,9 @@ static void test_backend_packets()
         in.session_id = 1234342431431LL;
         in.user_hash = 11111111;
         in.platform_id = 3;
-        in.tag = 0x1231314141;
+        in.num_tags = 2;
+        in.tags[0] = 0x1231314141;
+        in.tags[1] = 0x3344556677;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT;
         in.reported = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
@@ -14645,7 +14705,11 @@ static void test_backend_packets()
         next_check( in.session_id == out.session_id );
         next_check( in.user_hash == out.user_hash );
         next_check( in.platform_id == out.platform_id );
-        next_check( in.tag == out.tag );
+        next_check( in.num_tags == out.num_tags );
+        for ( int i = 0; i < in.num_tags; ++i )
+        {
+            next_check( in.tags[i] == out.tags[i] );
+        }
         next_check( in.flags == out.flags );
         next_check( in.reported == out.reported );
         next_check( in.connection_type == out.connection_type );
