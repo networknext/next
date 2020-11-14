@@ -951,7 +951,7 @@ func NewRouteShader() RouteShader {
 		Multipath:                 false,
 		ProMode:                   false,
 		AcceptableLatency:         0,
-		LatencyThreshold:          5,
+		LatencyThreshold:          10,
 		AcceptablePacketLoss:      1.0,
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
@@ -998,9 +998,9 @@ type InternalConfig struct {
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
 		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         10,
-		RTTVeto_Default:            -5,
-		RTTVeto_PacketLoss:         -10,
+		MaxLatencyTradeOff:         20,
+		RTTVeto_Default:            -10,
+		RTTVeto_PacketLoss:         -20,
 		RTTVeto_Multipath:          -20,
 		MultipathOverloadThreshold: 500,
 		TryBeforeYouBuy:            false,
