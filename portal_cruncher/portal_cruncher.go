@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"io"
 	"strings"
+	"strconv"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -502,15 +503,23 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	if btEmulatorOK {
-		err = InsertHistoricalDataIntoBigtable(ctx, btClient, btCfNames, "../testdata/bigtable_historical.txt")
-		if err != nil {
-			return nil, nil, err
+		if historicalPath, ok := os.LookupEnv("BIGTABLE_HISTORICAL_TXT"); ok {
+			// Insert historical data into bigtable during local testing
+			level.Info(logger).Log("msg", "Inserting historical data into bigtable.")
+			err = InsertHistoricalDataIntoBigtable(ctx, btClient, btCfNames, historicalPath)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			level.Info(logger).Log("msg", "Could not locate BIGTABLE_HISTORICAL_TXT. Skipping over loading historical data into bigtable.")
 		}
 	}
 
 	return btClient, btCfNames, nil
 }
 
+// Loads historical data into bigtable
+// Only should be used during local testing
 func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []string, historicalPath string) error {
 	// Load in text file
 	var (
@@ -520,7 +529,7 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 		err error
 	)
 	if file, err = os.Open(historicalPath); err != nil {
-		return err
+		return fmt.Errorf("InsertHistoricalDataIntoBigtable() open file path %s: %v", historicalPath, err)
 	}
 	defer file.Close()
 
@@ -532,7 +541,7 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 			if err == io.EOF {
 				break
 			}
-			return err
+			return fmt.Errorf("InsertHistoricalDataIntoBigtable() failed to read lines from %s: %v", historicalPath, err)
 		}
 		buffer.Write(part)
 		if !prefix {
@@ -541,9 +550,9 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 		}
 	}
 
-	rowKey := ""
-	cfMap := make(map[string]string)
-	colName := ""
+	var rowKey string
+	var cfMap map[string]string
+	var colName string
 	for _, line := range lines {
 		// Remove white space from line
 		line = strings.TrimSpace(line)
@@ -567,23 +576,27 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 			cfMap[colName] = btCfNames[0]
 		} else if colName != "" {
 			// Get the data for the column name
+			
+			// Clean up raw data string
 			rawData := strings.TrimSpace(line)
 			rawData = rawData[1 : len(rawData) - 1]
-			// fmt.Println(strings.Contains(rawData, `\\`))
-			// rawData = strings.ReplaceAll(rawData, `\\`, `\`)
-			// fmt.Println(rawData)
-			data := []byte(rawData)
-			// if colName == "meta" {
-			// 	var sessionData transport.SessionMeta
-			// 	if err = sessionData.UnmarshalBinary(data); err != nil {
-			// 		return err
-			// 	}
-			// 	data, err = sessionData.MarshalBinary()
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// }
-			// fmt.Println(string(data))
+			strData := strings.Split(rawData, " ")
+
+			// Fill a byte slice with the bytes from the raw data
+			var data []byte
+			var singleByte byte
+			for _, b := range(strData) {
+				if b != " " {
+					bInt, err := strconv.Atoi(b)
+					if err != nil {
+						return fmt.Errorf("InsertHistoricalDataIntoBigtable() could not convert %s to int: %v", b, err)
+					}
+					singleByte = (byte)(bInt)
+					data = append(data, singleByte)
+				}
+			}
+
+			// Create data map of column name to data
 			dataMap := make(map[string][]byte)
 			dataMap[colName] = data
 
@@ -593,8 +606,8 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 				return err
 			}
 		}
-		
 	}
+
 	return nil
 }
 

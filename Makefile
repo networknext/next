@@ -226,11 +226,7 @@ endif
 
 # Bigtable emulator must be running before testing bigtable in happy path
 ifndef FEATURE_BIGTABLE
-export FEATURE_BIGTABLE = true
-endif
-
-ifndef BIGTABLE_EMULATOR_HOST
-export BIGTABLE_EMULATOR_HOST = localhost:8086
+export FEATURE_BIGTABLE = false
 endif
 
 ifndef BIGTABLE_CF_NAME
@@ -239,6 +235,10 @@ endif
 
 ifndef BIGTABLE_TABLE_NAME
 export BIGTABLE_TABLE_NAME = BTTest
+endif
+
+ifndef BIGTABLE_HISTORICAL_TXT
+export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
 endif
 
 .PHONY: help
