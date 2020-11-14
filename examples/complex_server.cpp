@@ -245,7 +245,9 @@ void server_packet_received( next_server_t * server, void * _context, const next
 
         if ( session_id != 0 )
         {
-            next_server_tag_session( server, from, "pro" );
+            const char * tags[] = { "pro", "streamer" };
+            const int num_tags = 2;
+            next_server_tag_session_multiple( server, from, tags, num_tags );
         }
     }
     else
