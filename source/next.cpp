@@ -8875,19 +8875,19 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
 
-        bool has_tag = Stream::IsWriting && num_tags > 0;
+        bool has_tags = Stream::IsWriting && num_tags > 0;
         bool has_flags = Stream::IsWriting && flags != 0;
         bool has_user_flags = Stream::IsWriting && user_flags != 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
-        serialize_bool( stream, has_tag );
+        serialize_bool( stream, has_tags );
         serialize_bool( stream, has_flags );
         serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
 
-        if ( has_tag )
+        if ( has_tags )
         {
             serialize_int( stream, num_tags, 0, NEXT_MAX_TAGS );
             for ( int i = 0; i < num_tags; ++i )
@@ -9391,13 +9391,14 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     entry->last_client_next_ping = current_time;
 }
 
-next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token )
+next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token, const uint64_t * tags, int num_tags )
 {
     next_session_manager_verify_sentinels( session_manager );
 
     next_assert( session_id != 0 );
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
+    next_assert( tags );
 
     // first scan existing entries and see if we can insert there
 
@@ -9413,6 +9414,11 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
             next_clear_session_entry( entry, address, session_id );
             memcpy( entry->ephemeral_private_key, ephemeral_private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
             memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+            entry->num_tags = num_tags;
+            for ( int j = 0; j < num_tags; ++j )
+            {
+                entry->tags[j] = tags[j];
+            }
             if ( i > session_manager->max_entry_index )
             {
                 session_manager->max_entry_index = i;
@@ -9434,6 +9440,11 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
     next_clear_session_entry( entry, address, session_id );
     memcpy( entry->ephemeral_private_key, ephemeral_private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+    entry->num_tags = num_tags;
+    for ( int j = 0; j < num_tags; ++j )
+    {
+        entry->tags[j] = tags[j];
+    }
 
     next_session_manager_verify_sentinels( session_manager );
 
@@ -10931,7 +10942,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // add to established sessions
 
             next_platform_mutex_acquire( &server->session_mutex );
-            next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token );
+            next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token, pending_entry->tags, pending_entry->num_tags );
             next_platform_mutex_release( &server->session_mutex );
             if ( entry == NULL )
             {
@@ -11505,9 +11516,10 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     {
         if ( num_tags > 0 )
         {
+            memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
             for ( int i = 0; i < num_tags; ++i )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %x (internal)", pending_entry->session_id, tags[i] );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %" PRIx64 " (internal)", pending_entry->session_id, tags[i] );
                 pending_entry->tags[i] = tags[i];
             }
             pending_entry->num_tags = num_tags;
@@ -11526,9 +11538,10 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     {
         if ( num_tags > 0 )
         {
+            memset( entry->tags, 0, sizeof(entry->tags) );
             for ( int i = 0; i < num_tags; ++i )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %x (internal)", entry->session_id, tags[i] );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %" PRIx64 " (internal)", entry->session_id, tags[i] );
                 entry->tags[i] = tags[i];
             }
             entry->num_tags = num_tags;
@@ -12598,9 +12611,13 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     stats->packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
     stats->packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
     stats->packets_lost_server_to_client = entry->stats_packets_lost_server_to_client;
+    stats->packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
+    stats->packets_out_of_order_server_to_client = entry->stats_packets_out_of_order_server_to_client;
     stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
     stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
     stats->user_flags = entry->stats_user_flags;
+    stats->num_tags = entry->num_tags;
+    memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
     return true;
 }
@@ -14487,7 +14504,7 @@ static void test_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
+        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NULL, 0 );
         next_check( entry );
         next_check( entry->session_id == uint64_t(i) + 1000 );
         next_check( next_address_equal( &address, &entry->address ) == 1 );

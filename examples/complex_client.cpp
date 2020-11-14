@@ -99,6 +99,7 @@ struct ClientContext
 {
     Allocator * allocator;
     uint32_t client_data;
+    double last_packet_receive_time;
 };
 
 void * malloc_function( void * _context, size_t bytes )
@@ -188,17 +189,15 @@ void generate_packet( uint8_t * packet_data, int & packet_bytes )
         packet_data[i] = (uint8_t) ( start + i ) % 256;
 }
 
-void verify_packet( const uint8_t * packet_data, int packet_bytes )
+bool verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
     {
         if ( packet_data[i] != (uint8_t) ( ( start + i ) % 256 ) )
-        {
-            printf( "%d: %d != %d (%d)\n", i, packet_data[i], ( start + i ) % 256, packet_bytes );
-        }
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+            return false;
     }
+    return true;
 }
 
 void client_packet_received( next_client_t * client, void * _context, const uint8_t * packet_data, int packet_bytes )
@@ -207,20 +206,164 @@ void client_packet_received( next_client_t * client, void * _context, const uint
 
     ClientContext * context = (ClientContext*) _context;
 
-	(void) context;
-
     next_assert( context );
     next_assert( context->allocator != NULL );
     next_assert( context->client_data == 0x12345 );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
-
-    verify_packet( packet_data, packet_bytes );
+    if ( verify_packet( packet_data, packet_bytes ) )
+    {
+        context->last_packet_receive_time = next_time();
+    }
 }
 
 #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
 #define strncpy_s strncpy
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+
+void print_client_stats( next_client_t * client )
+{
+    bool show_detailed_stats = true;
+
+    if ( !show_detailed_stats )
+        return;
+
+    printf( "================================================================\n" );
+    
+    const next_client_stats_t * stats = next_client_stats( client );
+
+    const char * platform = "unknown";
+
+    switch ( stats->platform_id )
+    {
+        case NEXT_PLATFORM_WINDOWS:
+            platform = "windows";
+            break;
+
+        case NEXT_PLATFORM_MAC:
+            platform = "mac";
+            break;
+
+        case NEXT_PLATFORM_LINUX:
+            platform = "linux";
+            break;
+
+        case NEXT_PLATFORM_SWITCH:
+            platform = "nintendo switch";
+            break;
+
+        case NEXT_PLATFORM_PS4:
+            platform = "ps4";
+            break;
+
+        case NEXT_PLATFORM_IOS:
+            platform = "ios";
+            break;
+
+        case NEXT_PLATFORM_XBOX_ONE:
+            platform = "xbox one";
+            break;
+
+        default:
+            break;
+    }
+
+    const char * state_string = "???";
+
+    const int state = next_client_state( client );
+    
+    switch ( state )
+    {
+        case NEXT_CLIENT_STATE_CLOSED:
+            state_string = "closed";
+            break;
+
+        case NEXT_CLIENT_STATE_OPEN:
+            state_string = "open";
+            break;
+
+        case NEXT_CLIENT_STATE_ERROR:
+            state_string = "error";
+            break;
+
+        default:
+            break;
+    }
+
+    printf( "state = %s (%d)\n", state_string, state );
+
+    printf( "session_id = %" PRIx64 "\n", next_client_session_id( client ) );
+
+    printf( "platform_id = %s (%d)\n", platform, (int) stats->platform_id );
+
+    const char * connection = "unknown";
+    
+    switch ( stats->connection_type )
+    {
+        case NEXT_CONNECTION_TYPE_WIRED:
+            connection = "wired";
+            break;
+
+        case NEXT_CONNECTION_TYPE_WIFI:
+            connection = "wifi";
+            break;
+
+        case NEXT_CONNECTION_TYPE_CELLULAR:
+            connection = "cellular";
+            break;
+
+        default:
+            break;
+    }
+
+    printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
+
+    if ( !stats->fallback_to_direct )
+    {
+        printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
+        printf( "committed = %s\n", stats->committed ? "true" : "false" );
+        printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
+        printf( "reported = %s\n", stats->reported ? "true" : "false" );
+    }
+
+    printf( "fallback_to_direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
+
+    printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
+    printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
+    printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
+
+    if ( stats->next )
+    {
+        printf( "next_rtt = %.2fms\n", stats->next_rtt );
+        printf( "next_jitter = %.2fms\n", stats->next_jitter );
+        printf( "next_packet_loss = %.1f%%\n", stats->next_packet_loss );
+        printf( "next_bandwidth_up = %.1fkbps\n", stats->next_kbps_up );
+        printf( "next_bandwidth_down = %.1fkbps\n", stats->next_kbps_down );
+    }
+
+    if ( stats->upgraded && !stats->fallback_to_direct )
+    {
+        printf( "packets_sent_client_to_server = %" PRId64 "\n", stats->packets_sent_client_to_server );
+        printf( "packets_sent_server_to_client = %" PRId64 "\n", stats->packets_sent_server_to_client );
+        printf( "packets_lost_client_to_server = %" PRId64 "\n", stats->packets_lost_client_to_server );
+        printf( "packets_lost_server_to_client = %" PRId64 "\n", stats->packets_lost_server_to_client );
+        printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
+        printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
+        printf( "jitter_client_to_server = %f\n", stats->jitter_client_to_server );
+        printf( "jitter_server_to_client = %f\n", stats->jitter_server_to_client );
+    }
+
+    printf( "================================================================\n" );
+}
+
+void update_client_timeout( ClientContext * context )
+{
+    next_assert( context );
+    if ( context->last_packet_receive_time + 5.0 < next_time() )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "client connection timed out" );
+        quit = true;
+    }
+}
 
 int main()
 {
@@ -248,9 +391,11 @@ int main()
     }
 
     Allocator client_allocator;
+    
     ClientContext client_context;
     client_context.allocator = &client_allocator;
     client_context.client_data = 0x12345;
+    client_context.last_packet_receive_time = next_time();
 
     next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received, NULL );
     if ( client == NULL )
@@ -266,6 +411,8 @@ int main()
     next_client_open_session( client, server_address );
 
     double accumulator = 0.0;
+
+    bool reported = false;
 
     const double delta_time = 0.25;
 
@@ -286,151 +433,30 @@ int main()
         generate_packet( packet_data, packet_bytes );
         next_client_send_packet( client, packet_data, packet_bytes );
         
-        next_sleep( delta_time );
+        if ( next_time() > 60.0 && !reported )
+        {
+            next_client_report_session( client );
+            reported = true;
+        }
 
         accumulator += delta_time;
 
-        if ( next_time() > 60.0 )
-        {
-            next_client_report_session( client );
-        }
-
         if ( accumulator > 10.0 )
         {
+            print_client_stats( client );
             accumulator = 0.0;
-
-            printf( "================================================================\n" );
-            
-            const next_client_stats_t * stats = next_client_stats( client );
-
-            const char * platform = "unknown";
-
-            switch ( stats->platform_id )
-            {
-                case NEXT_PLATFORM_WINDOWS:
-                    platform = "windows";
-                    break;
-
-                case NEXT_PLATFORM_MAC:
-                    platform = "mac";
-                    break;
-
-                case NEXT_PLATFORM_LINUX:
-                    platform = "linux";
-                    break;
-
-                case NEXT_PLATFORM_SWITCH:
-                    platform = "nintendo switch";
-                    break;
-
-                case NEXT_PLATFORM_PS4:
-                    platform = "ps4";
-                    break;
-
-                case NEXT_PLATFORM_IOS:
-                    platform = "ios";
-                    break;
-
-                case NEXT_PLATFORM_XBOX_ONE:
-                    platform = "xbox one";
-                    break;
-
-                default:
-                    break;
-            }
-
-            const char * state_string = "???";
-
-            const int state = next_client_state( client );
-            
-            switch ( state )
-            {
-                case NEXT_CLIENT_STATE_CLOSED:
-                    state_string = "closed";
-                    break;
-
-                case NEXT_CLIENT_STATE_OPEN:
-                    state_string = "open";
-                    break;
-
-                case NEXT_CLIENT_STATE_ERROR:
-                    state_string = "error";
-                    break;
-
-                default:
-                    break;
-            }
-
-            printf( "state = %s (%d)\n", state_string, state );
-
-            printf( "session_id = %" PRIx64 "\n", next_client_session_id( client ) );
-
-            printf( "platform_id = %s (%d)\n", platform, (int) stats->platform_id );
-
-            const char * connection = "unknown";
-            
-            switch ( stats->connection_type )
-            {
-                case NEXT_CONNECTION_TYPE_WIRED:
-                    connection = "wired";
-                    break;
-
-                case NEXT_CONNECTION_TYPE_WIFI:
-                    connection = "wifi";
-                    break;
-
-                case NEXT_CONNECTION_TYPE_CELLULAR:
-                    connection = "cellular";
-                    break;
-
-                default:
-                    break;
-            }
-
-            printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
-
-            if ( !stats->fallback_to_direct )
-            {
-                printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
-                printf( "committed = %s\n", stats->committed ? "true" : "false" );
-                printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
-                printf( "reported = %s\n", stats->reported ? "true" : "false" );
-            }
-
-            printf( "fallback_to_direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
-
-            printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
-            printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
-            printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
-
-            if ( stats->next )
-            {
-                printf( "next_rtt = %.2fms\n", stats->next_rtt );
-                printf( "next_jitter = %.2fms\n", stats->next_jitter );
-                printf( "next_packet_loss = %.1f%%\n", stats->next_packet_loss );
-                printf( "next_bandwidth_up = %.1fkbps\n", stats->next_kbps_up );
-                printf( "next_bandwidth_down = %.1fkbps\n", stats->next_kbps_down );
-            }
-
-            if ( stats->upgraded && !stats->fallback_to_direct )
-            {
-                printf( "packets_sent_client_to_server = %" PRId64 "\n", stats->packets_sent_client_to_server );
-                printf( "packets_sent_server_to_client = %" PRId64 "\n", stats->packets_sent_server_to_client );
-                printf( "packets_lost_client_to_server = %" PRId64 "\n", stats->packets_lost_client_to_server );
-                printf( "packets_lost_server_to_client = %" PRId64 "\n", stats->packets_lost_server_to_client );
-                printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
-                printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
-                printf( "jitter_client_to_server = %f\n", stats->jitter_client_to_server );
-                printf( "jitter_server_to_client = %f\n", stats->jitter_server_to_client );
-            }
-
-            printf( "================================================================\n" );
         }
+
+        update_client_timeout( &client_context );
+
+        next_sleep( delta_time );
     }
 
     next_client_destroy( client );
     
     next_term();
-    
+
+    printf( "\n" );
+
     return 0;
 }

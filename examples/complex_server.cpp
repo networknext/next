@@ -97,10 +97,20 @@ struct Context
     Allocator * allocator;
 };
 
+struct ClientData
+{
+    uint64_t session_id;
+    next_address_t address;
+    double last_packet_receive_time;
+};
+
+typedef std::map<next_address_t, ClientData> ClientMap;
+
 struct ServerContext
 {
     Allocator * allocator;
     uint32_t server_data;
+    ClientMap client_map;
 };
 
 void * malloc_function( void * _context, size_t bytes )
@@ -182,11 +192,30 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
+bool operator < ( const next_address_t & a, const next_address_t & b) 
+{
+    next_assert( a.type == NEXT_ADDRESS_IPV4 );
+    next_assert( b.type == NEXT_ADDRESS_IPV4 );
+    uint64_t scalar_a = 0;
+    scalar_a |= uint64_t(a.data.ipv4[0]);
+    scalar_a |= uint64_t(a.data.ipv4[1]) << 8;
+    scalar_a |= uint64_t(a.data.ipv4[2]) << 16;
+    scalar_a |= uint64_t(a.data.ipv4[3]) << 24;
+    scalar_a <<= 32;
+    scalar_a |= uint64_t(a.port);
+    uint64_t scalar_b = 0;
+    scalar_b |= uint64_t(b.data.ipv4[0]);
+    scalar_b |= uint64_t(b.data.ipv4[1]) << 8;
+    scalar_b |= uint64_t(b.data.ipv4[2]) << 16;
+    scalar_b |= uint64_t(b.data.ipv4[3]) << 24;
+    scalar_b <<= 32;
+    scalar_b |= uint64_t(b.port);
+    return scalar_a < scalar_b;
+}
+
 void server_packet_received( next_server_t * server, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     ServerContext * context = (ServerContext*) _context;
-
-    (void) context;
 
     next_assert( context );
     next_assert( context->allocator != NULL );
@@ -196,20 +225,204 @@ void server_packet_received( next_server_t * server, void * _context, const next
     
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client %s (%d bytes)", next_address_to_string( from, address_buffer ), packet_bytes );
+    ClientMap::iterator itor = context->client_map.find(*from);
 
-    if ( !next_server_session_upgraded( server, from ) )
+    ClientData client_data;
+
+    if ( itor == context->client_map.end() )
     {
-        if ( next_server_upgrade_session( server, from, NULL ) )
+        const char * user_id = "user id can be any id that is unique across all users. we hash it before sending up to our backend";
+
+        uint64_t session_id = next_server_upgrade_session( server, from, user_id );
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "client connected: %s [%" PRIx64 "]", next_address_to_string( from, address_buffer ), session_id );
+
+        client_data.address = *from;
+        client_data.session_id = session_id;
+        client_data.last_packet_receive_time = next_time();
+
+        context->client_map[*from] = client_data;
+
+        if ( session_id != 0 )
         {
             next_server_tag_session( server, from, "pro" );
         }
+    }
+    else
+    {
+        itor->second.last_packet_receive_time = next_time();
     }
 }
 
 #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
 #define strncpy_s strncpy
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+
+void update_client_timeouts( ServerContext * context )
+{
+    next_assert( context );
+    ClientMap::iterator itor = context->client_map.begin();
+    const double current_time = next_time();
+    while ( itor != context->client_map.end() ) 
+    {
+        if ( itor->second.last_packet_receive_time + 5.0 < current_time )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_INFO, "client disconnected: %s [%" PRIx64 "]", next_address_to_string( &itor->second.address, address_buffer ), itor->second.session_id );
+            itor = context->client_map.erase( itor );
+        } 
+        else 
+        {
+            itor++;
+        }
+    }
+}
+
+void print_server_stats( next_server_t * server, ServerContext * context )
+{
+    next_assert( server );
+    next_assert( context );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "%d connected clients", (int) context->client_map.size() );
+
+    bool show_detailed_stats = true;
+
+    if ( !show_detailed_stats )
+        return;
+
+    for ( ClientMap::iterator itor = context->client_map.begin(); itor != context->client_map.end(); ++itor ) 
+    {
+        next_server_stats_t stats;
+        if ( !next_server_stats( server, &itor->second.address, &stats ) )
+            continue;
+
+        printf( "================================================================\n" );
+        
+        char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        printf( "address = %s\n", next_address_to_string( &itor->second.address, address_buffer ) );
+
+        const char * platform = "unknown";
+
+        switch ( stats.platform_id )
+        {
+            case NEXT_PLATFORM_WINDOWS:
+                platform = "windows";
+                break;
+
+            case NEXT_PLATFORM_MAC:
+                platform = "mac";
+                break;
+
+            case NEXT_PLATFORM_LINUX:
+                platform = "linux";
+                break;
+
+            case NEXT_PLATFORM_SWITCH:
+                platform = "nintendo switch";
+                break;
+
+            case NEXT_PLATFORM_PS4:
+                platform = "ps4";
+                break;
+
+            case NEXT_PLATFORM_IOS:
+                platform = "ios";
+                break;
+
+            case NEXT_PLATFORM_XBOX_ONE:
+                platform = "xbox one";
+                break;
+
+            default:
+                break;
+        }
+
+        printf( "session_id = %" PRIx64 "\n", stats.session_id );
+
+        printf( "platform_id = %s (%d)\n", platform, (int) stats.platform_id );
+
+        const char * connection = "unknown";
+        
+        switch ( stats.connection_type )
+        {
+            case NEXT_CONNECTION_TYPE_WIRED:
+                connection = "wired";
+                break;
+
+            case NEXT_CONNECTION_TYPE_WIFI:
+                connection = "wifi";
+                break;
+
+            case NEXT_CONNECTION_TYPE_CELLULAR:
+                connection = "cellular";
+                break;
+
+            default:
+                break;
+        }
+
+        printf( "connection_type = %s (%d)\n", connection, stats.connection_type );
+
+        if ( !stats.fallback_to_direct )
+        {
+            printf( "committed = %s\n", stats.committed ? "true" : "false" );
+            printf( "multipath = %s\n", stats.multipath ? "true" : "false" );
+            printf( "reported = %s\n", stats.reported ? "true" : "false" );
+        }
+
+        printf( "fallback_to_direct = %s\n", stats.fallback_to_direct ? "true" : "false" );
+
+        printf( "direct_rtt = %.2fms\n", stats.direct_rtt );
+        printf( "direct_jitter = %.2fms\n", stats.direct_jitter );
+        printf( "direct_packet_loss = %.1f%%\n", stats.direct_packet_loss );
+
+        if ( stats.next )
+        {
+            printf( "next_rtt = %.2fms\n", stats.next_rtt );
+            printf( "next_jitter = %.2fms\n", stats.next_jitter );
+            printf( "next_packet_loss = %.1f%%\n", stats.next_packet_loss );
+            printf( "next_bandwidth_up = %.1fkbps\n", stats.next_kbps_up );
+            printf( "next_bandwidth_down = %.1fkbps\n", stats.next_kbps_down );
+        }
+
+        if ( !stats.fallback_to_direct )
+        {
+            printf( "packets_sent_client_to_server = %" PRId64 "\n", stats.packets_sent_client_to_server );
+            printf( "packets_sent_server_to_client = %" PRId64 "\n", stats.packets_sent_server_to_client );
+            printf( "packets_lost_client_to_server = %" PRId64 "\n", stats.packets_lost_client_to_server );
+            printf( "packets_lost_server_to_client = %" PRId64 "\n", stats.packets_lost_server_to_client );
+            printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats.packets_out_of_order_client_to_server );
+            printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats.packets_out_of_order_server_to_client );
+            printf( "jitter_client_to_server = %f\n", stats.jitter_client_to_server );
+            printf( "jitter_server_to_client = %f\n", stats.jitter_server_to_client );
+        }
+
+        printf( "user flags = %" PRId64 "\n", stats.user_flags );
+
+        if ( stats.num_tags > 0 )
+        {
+            printf( "tags = [" );
+            for ( int i = 0; i < stats.num_tags; ++i )
+            {
+                if ( i != stats.num_tags - 1 )
+                {
+                    printf( "%" PRIx64 ",", stats.tags[i] );
+                }
+                else
+                {
+                    printf( "%" PRIx64, stats.tags[i] );
+                }
+            }
+            printf( "]\n" );
+        }
+        else
+        {
+            printf( "tags = [] (0/%d)\n", NEXT_MAX_TAGS );
+        }
+        
+        printf( "================================================================\n" );
+    }
+}
 
 int main()
 {
@@ -238,6 +451,7 @@ int main()
     }
 
     Allocator server_allocator;
+
     ServerContext server_context;
     server_context.allocator = &server_allocator;
     server_context.server_data = 0x12345678;
@@ -253,16 +467,32 @@ int main()
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server port is %d", server_port );
 
+    double accumulator = 0.0;
+
+    const double delta_time = 0.25;
+
     while ( !quit )
     {
         next_server_update( server );
 
-        next_sleep( 1.0 / 60.0 );
+        update_client_timeouts( &server_context );
+
+        accumulator += delta_time;
+
+        if ( accumulator > 10.0 )
+        {
+            print_server_stats( server, &server_context );
+            accumulator = 0.0;
+        }
+
+        next_sleep( delta_time );
     }
     
     next_server_destroy( server );
     
     next_term();
+
+    printf( "\n" );
 
     return 0;
 }

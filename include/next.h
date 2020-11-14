@@ -291,6 +291,8 @@ struct next_server_stats_t
     float jitter_client_to_server;
     float jitter_server_to_client;
     uint64_t user_flags;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
