@@ -123,10 +123,7 @@ func OptimizeThread() {
 			}
 		}
 
-		routeEntries := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenterIDs)
-		if len(routeEntries) == 0 {
-			fmt.Printf("error optimizing route matrix:\n")
-		}
+		core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenterIDs)
 
 		backend.mutex.Unlock()
 
