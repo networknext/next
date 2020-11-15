@@ -304,6 +304,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			for i := 0; i < int(sessionUpdate.NumTags); i++ {
 				fmt.Printf("tag %x\n", sessionUpdate.Tags[i])
 			}
+		} else {
+			fmt.Printf("tag cleared\n")
 		}
 	}
 

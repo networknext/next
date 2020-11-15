@@ -40,6 +40,11 @@ void interrupt_handler( int signal )
 bool no_upgrade = false;
 int upgrade_count = 0;
 int num_upgrades = 0;
+bool tags_multi = false;
+bool tags_change = false;
+bool tags_changed = false;
+bool tags_clear = false;
+bool tags_cleared = false;
 
 extern bool next_packet_loss;
 
@@ -80,7 +85,16 @@ void server_packet_received( next_server_t * server, void * context, const next_
         {
             next_server_upgrade_session( server, from, 0 );
 
-            next_server_tag_session( server, from, "test" );
+            if ( tags_multi )
+            {
+                const char * tags[] = {"pro", "streamer"};
+                const int num_tags = 2;
+                next_server_tag_session_multiple( server, from, tags, num_tags );
+            }
+            else
+            {
+                next_server_tag_session( server, from, "test" );
+            }
 
             num_upgrades++;
 
@@ -92,6 +106,22 @@ void server_packet_received( next_server_t * server, void * context, const next_
             }
             client_map.insert( std::make_pair( address_string, client_id ) );
         }
+    }
+
+    if ( tags_change && !tags_changed && next_time() >= 30 )
+    {
+        const char * tags[] = {"a", "b", "c"};
+        const int num_tags = 3;
+        next_server_tag_session_multiple( server, from, tags, num_tags );
+        tags_changed = true;
+    }
+
+    if ( tags_clear && !tags_cleared && next_time() >= 45 )
+    {
+        const char ** tags = NULL;
+        const int num_tags = 0;
+        next_server_tag_session_multiple( server, from, tags, num_tags );
+        tags_cleared = true;
     }
 }
 
@@ -152,6 +182,24 @@ int main()
     if ( restart_time_env )
     {
         restart_time = atof( restart_time_env );
+    }
+
+    const char * server_tags_multi_env = getenv( "SERVER_TAGS_MULTI" );
+    if ( server_tags_multi_env )
+    {
+        tags_multi = true;
+    }
+
+    const char * server_tags_change_env = getenv( "SERVER_TAGS_CHANGE" );
+    if ( server_tags_change_env )
+    {
+        tags_change = true;
+    }
+
+    const char * server_tags_clear_env = getenv( "SERVER_TAGS_CLEAR" );
+    if ( server_tags_clear_env )
+    {
+        tags_clear = true;
     }
 
     bool restarted = false;
