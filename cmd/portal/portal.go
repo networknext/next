@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -26,7 +27,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	
+
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -426,11 +427,13 @@ func main() {
 			allowCORS = ok
 		}
 
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS, strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
 
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 
