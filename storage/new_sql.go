@@ -192,8 +192,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	db.SyncSequenceNumber = value
 	db.sequenceNumberMutex.Unlock()
 
-	var outerErr error
-
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
 	// 	1 Customers
@@ -204,30 +202,30 @@ func (db *SQL) Sync(ctx context.Context) error {
 	//	6 Relays
 
 	if err := db.syncCustomers(ctx); err != nil {
-		outerErr = fmt.Errorf("failed to sync customers: %v", err)
+		return fmt.Errorf("failed to sync customers: %v", err)
 	}
 
 	if err := db.syncBuyers(ctx); err != nil {
-		outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+		return fmt.Errorf("failed to sync buyers: %v", err)
 	}
 
 	if err := db.syncSellers(ctx); err != nil {
-		outerErr = fmt.Errorf("failed to sync sellers: %v", err)
+		return fmt.Errorf("failed to sync sellers: %v", err)
 	}
 
 	if err := db.syncDatacenters(ctx); err != nil {
-		outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
+		return fmt.Errorf("failed to sync datacenters: %v", err)
 	}
 
 	if err := db.syncDatacenterMaps(ctx); err != nil {
-		outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
+		return fmt.Errorf("failed to sync datacenterMaps: %v", err)
 	}
 
 	if err := db.syncRelays(ctx); err != nil {
-		outerErr = fmt.Errorf("failed to sync relays: %v", err)
+		return fmt.Errorf("failed to sync relays: %v", err)
 	}
 
-	return outerErr
+	return nil
 }
 
 func (db *SQL) syncDatacenters(ctx context.Context) error {
