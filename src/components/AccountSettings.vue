@@ -27,7 +27,7 @@
         </label>
         <input type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
         <small class="form-text text-muted">
-          This is the unique string associated to your company account and to be used in your company subdomain. Examples: my-company, mycompany, my-company
+          This is the unique string associated to your company account and to be used in your company subdomain. Examples: mycompany, my-company, my-company-name
         </small>
         <small v-for="(error, index) in companyCodeErrors" :key="index" class="text-danger">
           {{ error }}
