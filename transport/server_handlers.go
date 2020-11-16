@@ -329,7 +329,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			for _, dcMap := range datacenterAliases {
 				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
 					if err != nil {
 						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
 						return
