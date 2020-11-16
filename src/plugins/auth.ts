@@ -95,6 +95,7 @@ export class AuthService {
           // TODO: There should be a better way to access the Vue instance rather than through the router object
           if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
             (window as any).Intercom('boot', {
+              api_base: process.env.VUE_APP_INTERCOM_BASE_API,
               app_id: process.env.VUE_APP_INTERCOM_ID,
               email: email,
               user_id: userProfile.auth0ID,
@@ -129,6 +130,7 @@ export class AuthService {
     // TODO: There should be a better way to access the Vue instance rather than through the router object
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
+        api_base: process.env.VUE_APP_INTERCOM_BASE_API,
         app_id: process.env.VUE_APP_INTERCOM_ID
       })
     }
