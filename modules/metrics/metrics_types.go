@@ -289,6 +289,124 @@ var EmptyPortalCruncherMetrics = PortalCruncherMetrics{
 	ReceivedMessageCount: &EmptyCounter{},
 }
 
+type BigTableMetrics struct {
+	WriteMetaSuccessCount  Counter
+	WriteSliceSuccessCount Counter
+	WriteMetaFailureCount  Counter
+	WriteSliceFailureCount Counter
+	ReadMetaSuccessCount   Counter
+	ReadSliceSuccessCount  Counter
+	ReadMetaFailureCount   Counter
+	ReadSliceFailureCount  Counter
+}
+
+var EmptyBigTableMetrics = BigTableMetrics{
+	WriteMetaSuccessCount:  &EmptyCounter{},
+	WriteSliceSuccessCount: &EmptyCounter{},
+	WriteMetaFailureCount:  &EmptyCounter{},
+	WriteSliceFailureCount: &EmptyCounter{},
+	ReadMetaSuccessCount:   &EmptyCounter{},
+	ReadSliceSuccessCount:  &EmptyCounter{},
+	ReadMetaFailureCount:   &EmptyCounter{},
+	ReadSliceFailureCount:  &EmptyCounter{},
+}
+
+func NewBigTableMetrics(ctx context.Context, metricsHandler Handler) (*BigTableMetrics, error) {
+	var err error
+
+	bigtableMetrics := BigTableMetrics{}
+
+	bigtableMetrics.WriteMetaSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Meta Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.meta.success.count",
+		Unit:        "writes",
+		Description: "The number of successful meta writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.WriteSliceSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Slice Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.slice.success.count",
+		Unit:        "writes",
+		Description: "The number of successful slice writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.WriteMetaFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Meta Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.meta.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed meta writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.WriteSliceFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Slice Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.slice.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed slice writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadMetaSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Meta Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.meta.success.count",
+		Unit:        "writes",
+		Description: "The number of successful meta reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadSliceSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Slice Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.slice.success.count",
+		Unit:        "writes",
+		Description: "The number of successful slice reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadMetaFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Meta Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.meta.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed meta reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadSliceFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Slice Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.slice.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed slice reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &bigtableMetrics, nil
+}
+
 func NewPortalCruncherMetrics(ctx context.Context, metricsHandler Handler) (*PortalCruncherMetrics, error) {
 	var err error
 
