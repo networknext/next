@@ -195,7 +195,7 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(6)
+	wg.Add(1)
 
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
@@ -209,42 +209,34 @@ func (db *SQL) Sync(ctx context.Context) error {
 	go func() {
 		if err := db.syncCustomers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync customers: %v", err)
+			return
 		}
-		wg.Done()
-	}()
 
-	go func() {
 		if err := db.syncBuyers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+			return
 		}
-		wg.Done()
-	}()
 
-	go func() {
 		if err := db.syncSellers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
+			return
 		}
-		wg.Done()
-	}()
 
-	go func() {
 		if err := db.syncDatacenters(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
+			return
 		}
-		wg.Done()
-	}()
 
-	go func() {
 		if err := db.syncDatacenterMaps(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
+			return
 		}
-		wg.Done()
-	}()
 
-	go func() {
 		if err := db.syncRelays(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync relays: %v", err)
+			return
 		}
+
 		wg.Done()
 	}()
 
