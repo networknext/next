@@ -60,7 +60,7 @@ func opsRelays(
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
-		"Name", "Address", "MRC", "Overage", "BW Rule",
+		"Name", "MRC", "Overage", "BW Rule",
 		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed"})
 
 	for _, relay := range reply.Relays {
@@ -98,11 +98,11 @@ func opsRelays(
 			continue
 		}
 
-		mrc := "n/a"
+		mrc := ""
 		if relay.MRC > 0 {
 			mrc = fmt.Sprintf("%.2f", relay.MRC.ToCents()/100)
 		}
-		overage := "n/a"
+		overage := ""
 		if relay.Overage > 0 {
 			overage = fmt.Sprintf("%.5f", relay.Overage.ToCents()/100)
 		}
@@ -110,7 +110,7 @@ func opsRelays(
 		var bwRule string
 		switch relay.BWRule {
 		case routing.BWRuleNone:
-			bwRule = "n/a"
+			bwRule = ""
 		case routing.BWRuleFlat:
 			bwRule = "flat"
 		case routing.BWRuleBurst:
@@ -118,44 +118,44 @@ func opsRelays(
 		case routing.BWRulePool:
 			bwRule = "pool"
 		default:
-			bwRule = "n/a"
+			bwRule = ""
 		}
 
 		var machineType string
 		switch relay.Type {
 		case routing.NoneSpecified:
-			machineType = "n/a"
+			machineType = ""
 		case routing.BareMetal:
 			machineType = "bare metal"
 		case routing.VirtualMachine:
 			machineType = "virtual machine"
 		default:
-			machineType = "n/a"
+			machineType = ""
 		}
 
-		contractTerm := "n/a"
+		contractTerm := ""
 		if relay.ContractTerm != 0 {
 			contractTerm = fmt.Sprintf("%d", relay.ContractTerm)
 		}
 
-		startDate := "n/a"
+		startDate := ""
 		if !relay.StartDate.IsZero() {
 			startDate = relay.StartDate.Format("January 2, 2006")
 		}
 
-		endDate := "n/a"
+		endDate := ""
 		if !relay.EndDate.IsZero() {
 			endDate = relay.EndDate.Format("January 2, 2006")
 		}
 
 		bandwidth := strconv.FormatInt(int64(relay.IncludedBandwidthGB), 10)
 		if bandwidth == "0" {
-			bandwidth = "n/a"
+			bandwidth = ""
 		}
 
 		nicSpeed := strconv.FormatInt(int64(relay.NICSpeedMbps), 10)
 		if nicSpeed == "0" {
-			nicSpeed = "n/a"
+			nicSpeed = ""
 		}
 
 		// return csv file
