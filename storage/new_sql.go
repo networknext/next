@@ -203,38 +203,29 @@ func (db *SQL) Sync(ctx context.Context) error {
 	// 	5 DatacenterMaps
 	//	6 Relays
 
-	go func() {
-		if err := db.syncCustomers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync customers: %v", err)
-			return
-		}
+	if err := db.syncCustomers(ctx); err != nil {
+		outerErr = fmt.Errorf("failed to sync customers: %v", err)
+	}
 
-		if err := db.syncBuyers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
-			return
-		}
+	if err := db.syncBuyers(ctx); err != nil {
+		outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+	}
 
-		if err := db.syncSellers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
-			return
-		}
+	if err := db.syncSellers(ctx); err != nil {
+		outerErr = fmt.Errorf("failed to sync sellers: %v", err)
+	}
 
-		if err := db.syncDatacenters(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
-			return
-		}
+	if err := db.syncDatacenters(ctx); err != nil {
+		outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
+	}
 
-		if err := db.syncDatacenterMaps(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
-			return
-		}
+	if err := db.syncDatacenterMaps(ctx); err != nil {
+		outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
+	}
 
-		if err := db.syncRelays(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync relays: %v", err)
-			return
-		}
-
-	}()
+	if err := db.syncRelays(ctx); err != nil {
+		outerErr = fmt.Errorf("failed to sync relays: %v", err)
+	}
 
 	return outerErr
 }
