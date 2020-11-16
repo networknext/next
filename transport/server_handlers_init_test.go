@@ -107,9 +107,9 @@ func TestServerInitHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{
-		BuyerID:    123,
-		Datacenter: crypto.HashID("datacenter.name"),
-		Alias:      "datacenter.alias",
+		BuyerID:      123,
+		DatacenterID: crypto.HashID("datacenter.name"),
+		Alias:        "datacenter.alias",
 	})
 	assert.NoError(t, err)
 
@@ -250,9 +250,9 @@ func TestServerInitHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{
-		BuyerID:    123,
-		Datacenter: crypto.HashID("datacenter.name"),
-		Alias:      "datacenter.alias",
+		BuyerID:      123,
+		DatacenterID: crypto.HashID("datacenter.name"),
+		Alias:        "datacenter.alias",
 	})
 	assert.NoError(t, err)
 
