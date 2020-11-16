@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"sort"
 	"strconv"
 	"sync"
@@ -167,64 +166,22 @@ func (e *FirestoreError) Error() string {
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
 
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		err := fmt.Errorf("ENV var not set")
+	client, err := firestore.NewClient(ctx, gcpProjectID)
+	if err != nil {
 		return nil, err
-	} else {
-		fmt.Printf("env is set to %s\n", env)
 	}
 
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		fmt.Printf("using firestore emulator\n")
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	gcpOK := gcpProjectID != ""
-
-	if gcpOK || emulatorOK {
-
-		// Firestore
-		fmt.Printf("initializing firestore\n")
-
-		// Create a Firestore Storer
-		client, err := firestore.NewClient(ctx, gcpProjectID)
-		if err != nil {
-			return nil, err
-		}
-
-		fs := &Firestore{
-			Client:             client,
-			Logger:             logger,
-			datacenters:        make(map[uint64]routing.Datacenter),
-			datacenterMaps:     make(map[uint64]routing.DatacenterMap),
-			relays:             make(map[uint64]routing.Relay),
-			customers:          make(map[string]routing.Customer),
-			buyers:             make(map[uint64]routing.Buyer),
-			sellers:            make(map[string]routing.Seller),
-			syncSequenceNumber: -1,
-		}
-
-		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-		syncInterval, err := time.ParseDuration(fssyncinterval)
-		if err != nil {
-			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-			os.Exit(1)
-		}
-		// Start a goroutine to sync from Firestore
-		go func() {
-
-			ticker := time.NewTicker(syncInterval)
-			fs.SyncLoop(ctx, ticker.C)
-		}()
-
-		return fs, nil
-	}
-
-	return nil, nil
-
+	return &Firestore{
+		Client:             client,
+		Logger:             logger,
+		datacenters:        make(map[uint64]routing.Datacenter),
+		datacenterMaps:     make(map[uint64]routing.DatacenterMap),
+		relays:             make(map[uint64]routing.Relay),
+		customers:          make(map[string]routing.Customer),
+		buyers:             make(map[uint64]routing.Buyer),
+		sellers:            make(map[string]routing.Seller),
+		syncSequenceNumber: -1,
+	}, nil
 }
 
 // SetSequenceNumber is required for testing with the Firestore emulator
