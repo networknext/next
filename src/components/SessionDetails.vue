@@ -472,8 +472,6 @@ export default class SessionDetails extends Vue {
 
     const bandwidthChartElement: HTMLElement | null = document.getElementById('bandwidth-chart-1')
 
-    let lastEntryNN = false
-    let countNN = 0
     let directOnly = true
 
     this.slices.map((slice: any) => {
@@ -484,25 +482,14 @@ export default class SessionDetails extends Vue {
         directOnly = false
       }
 
-      let nextRTT = parseFloat(slice.next.rtt)
+      const nextRTT = parseFloat(slice.next.rtt)
       const directRTT = parseFloat(slice.direct.rtt)
 
-      let nextJitter = parseFloat(slice.next.jitter)
+      const nextJitter = parseFloat(slice.next.jitter)
       const directJitter = parseFloat(slice.direct.jitter)
 
-      let nextPL = parseFloat(slice.next.packet_loss)
+      const nextPL = parseFloat(slice.next.packet_loss)
       const directPL = parseFloat(slice.direct.packet_loss)
-
-      if (lastEntryNN && !onNN) {
-        countNN = 0
-      }
-
-      if (onNN && countNN < 3) {
-        nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
-        nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
-        nextPL = 0
-        countNN++
-      }
 
       // Latency
       let next = (slice.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
@@ -529,8 +516,6 @@ export default class SessionDetails extends Vue {
       bandwidthData[0].push(timestamp)
       bandwidthData[1].push(slice.envelope.up)
       bandwidthData[2].push(slice.envelope.down)
-
-      lastEntryNN = onNN
     })
 
     if (directOnly) {
