@@ -2836,6 +2836,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 	multipathVetoUsers := map[uint64]bool{}
 	internal := NewInternalConfig()
 
+	routeShader.AcceptableLatency = 100
 	routeState.UserID = 100
 
 	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
@@ -2887,6 +2888,7 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 	multipathVetoUsers := map[uint64]bool{}
 	internal := NewInternalConfig()
 
+	routeShader.AcceptableLatency = 25
 	routeState.UserID = 100
 
 	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
@@ -3096,6 +3098,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 
 	routeShader.Multipath = true
 
+	routeShader.AcceptableLatency = 25
 	routeState.UserID = 100
 
 	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
@@ -3278,6 +3281,7 @@ func TestTakeNetworkNext_ProMode(t *testing.T) {
 	expectedRouteState.ProMode = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.Committed = true
+	expectedRouteState.ReduceLatency = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }

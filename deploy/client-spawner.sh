@@ -34,10 +34,10 @@ done
 
 trap "kill 0" EXIT
 
-ips=$(gcloud compute instances list --filter='load-test-server-staging AND status=RUNNING' --format='get(networkInterfaces[0].networkIP)')
+ips=$(gcloud compute instances list --filter='load-test-server AND status=RUNNING' --format='get(networkInterfaces[0].networkIP)')
 
 for ((r=0 ; r<${num_clients} ; r++)); do
-export NEXT_LOG_LEVEL=0
+export NEXT_LOG_LEVEL=1
 export CORES=50
 echo $ips | /app/app &
 pid="$!"

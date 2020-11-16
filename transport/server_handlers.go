@@ -268,13 +268,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
-		buyer, err := storer.Buyer(packet.CustomerID)
-		if err != nil {
-			level.Error(logger).Log("msg", "buyer not found", "err", err)
-			metrics.BuyerNotFound.Add(1)
-			return
-		}
-
 		newSession := packet.SliceNumber == 0
 
 		var sessionData SessionData
@@ -282,6 +275,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
 		nearRelays := []routing.NearRelayData{}
+		buyer := routing.Buyer{}
 		datacenter := routing.UnknownDatacenter
 
 		response := SessionResponsePacket{
@@ -297,14 +291,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
-			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
-				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-				metrics.WriteResponseFailure.Add(1)
-				return
-			}
-
-			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
-
 			if sessionData.RouteState.Next {
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
@@ -312,8 +298,55 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.DirectSlices.Add(1)
 			}
 
+			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
+
+			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
+				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
+				return
+			}
+
 			go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
 		}()
+
+		if packet.ClientPingTimedOut {
+			metrics.ClientPingTimedOut.Add(1)
+			return
+		}
+
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(logger).Log("msg", "buyer not found", "err", err)
+			metrics.BuyerNotFound.Add(1)
+			return
+		}
+
+		datacenter, err = storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			aliasFound := false
+
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
+			for _, dcMap := range datacenterAliases {
+				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					if err != nil {
+						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
+						return
+					}
+
+					datacenter.AliasName = dcMap.Alias
+					aliasFound = true
+					break
+				}
+			}
+
+			if !aliasFound {
+				level.Error(logger).Log("msg", "datacenter not found", "err", err)
+				metrics.DatacenterNotFound.Add(1)
+				return
+			}
+		}
 
 		if newSession {
 			sessionData.Version = SessionDataVersion
@@ -342,7 +375,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			if sessionData.SliceNumber != packet.SliceNumber {
-				level.Error(logger).Log("err", "bad sequence number in session data")
+				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", sessionData.SliceNumber,
+					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", sessionData.RouteState.Next, "ever_on_next", sessionData.EverOnNext)
 				metrics.BadSliceNumber.Add(1)
 				return
 			}
@@ -391,33 +425,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				}
 			}
 			return
-		}
-
-		datacenter, err = storer.Datacenter(packet.DatacenterID)
-		if err != nil {
-			aliasFound := false
-
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					aliasFound = true
-					break
-				}
-			}
-
-			if !aliasFound {
-				level.Error(logger).Log("msg", "datacenter not found", "err", err)
-				metrics.DatacenterNotFound.Add(1)
-				return
-			}
 		}
 
 		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, maxNearRelays)
