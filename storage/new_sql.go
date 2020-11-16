@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -194,8 +193,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 	db.sequenceNumberMutex.Unlock()
 
 	var outerErr error
-	var wg sync.WaitGroup
-	wg.Add(1)
 
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
@@ -237,10 +234,7 @@ func (db *SQL) Sync(ctx context.Context) error {
 			return
 		}
 
-		wg.Done()
 	}()
-
-	wg.Wait()
 
 	return outerErr
 }
