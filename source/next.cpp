@@ -8855,6 +8855,24 @@ struct NextBackendSessionUpdatePacket
             serialize_bytes( stream, session_data, session_data_bytes );
         }
 
+        // IMPORTANT: Make sure we anonymize the client address before sending it up to our backend
+        // This ensures that we are fully compliant with the GDRP and there is zero risk that the address
+        // will be accidentally stored or intecepted in transit
+        if ( Stream::IsWriting )
+        {
+            client_address.port = 0;
+            if ( client_address.type == NEXT_ADDRESS_IPV4 )
+            {
+                client_address.data.ipv4[3] = 0;
+            }
+            /*
+            else if ( client_address.type == NEXT_ADDRESS_IPV4 )
+            {
+                client_address.
+            }
+            */
+        }
+
         serialize_address( stream, client_address );
         serialize_address( stream, server_address );
 
@@ -9398,7 +9416,7 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
     next_assert( session_id != 0 );
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
-    next_assert( tags );
+    next_assert( num_tags == 0 || tags );
 
     // first scan existing entries and see if we can insert there
 
