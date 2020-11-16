@@ -32,9 +32,6 @@ int main()
         printf( "error: failed to initialize network next\n" );
     }
 
-    next_address_t address;
-    next_address_parse( &address, "1.2.3.4:5" );
-
     printf( "Running SDK tests:\n\n" );
 
     next_test();

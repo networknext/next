@@ -191,6 +191,8 @@ NEXT_EXPORT_FUNC const char * next_address_to_string( const next_address_t * add
 
 NEXT_EXPORT_FUNC bool next_address_equal( const next_address_t * a, const next_address_t * b );
 
+NEXT_EXPORT_FUNC void next_address_anonymize( next_address_t * address );
+
 // -----------------------------------------
 
 struct next_client_stats_t

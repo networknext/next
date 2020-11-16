@@ -8088,6 +8088,23 @@ bool next_address_equal( const next_address_t * a, const next_address_t * b )
     return true;
 }
 
+void next_address_anonymize( next_address_t * address )
+{
+    next_assert( address );
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        address->data.ipv4[3] = 0;
+    }
+    else
+    {
+        address->data.ipv6[4] = 0;
+        address->data.ipv6[5] = 0;
+        address->data.ipv6[6] = 0;
+        address->data.ipv6[7] = 0;
+    }
+    address->port = 0;
+}
+
 // ---------------------------------------------------------------
 
 struct next_pending_session_entry_t
@@ -8855,22 +8872,12 @@ struct NextBackendSessionUpdatePacket
             serialize_bytes( stream, session_data, session_data_bytes );
         }
 
-        // IMPORTANT: Make sure we anonymize the client address before sending it up to our backend
-        // This ensures that we are fully compliant with the GDRP and there is zero risk that the address
-        // will be accidentally stored or intecepted in transit
+        // IMPORTANT: Anonymize the client address before sending it up to our backend
+        // This ensures that we are fully compliant with the GDRP and there is zero risk
+        // the address will be accidentally stored or intecepted in transit
         if ( Stream::IsWriting )
         {
-            client_address.port = 0;
-            if ( client_address.type == NEXT_ADDRESS_IPV4 )
-            {
-                client_address.data.ipv4[3] = 0;
-            }
-            /*
-            else if ( client_address.type == NEXT_ADDRESS_IPV4 )
-            {
-                client_address.
-            }
-            */
+            next_address_anonymize( &client_address );
         }
 
         serialize_address( stream, client_address );
@@ -15524,6 +15531,62 @@ static void test_wake_up()
     next_check( server_woke_up );
 }
 
+void test_anonymize_address_ipv4()
+{
+    next_address_t address;
+    next_address_parse( &address, "1.2.3.4:5" );
+
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    next_check( address.data.ipv4[0] == 1 );    
+    next_check( address.data.ipv4[1] == 2 );    
+    next_check( address.data.ipv4[2] == 3 );    
+    next_check( address.data.ipv4[3] == 4 );    
+    next_check( address.port == 5 );
+
+    next_address_anonymize( &address );
+
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    next_check( address.data.ipv4[0] == 1 );    
+    next_check( address.data.ipv4[1] == 2 );    
+    next_check( address.data.ipv4[2] == 3 );    
+    next_check( address.data.ipv4[3] == 0 );    
+    next_check( address.port == 0 );
+}
+
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+
+void test_anonymize_address_ipv6()
+{
+    next_address_t address;
+    next_address_parse( &address, "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:40000" );
+
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    next_check( address.data.ipv6[0] == 0x2001 );
+    next_check( address.data.ipv6[1] == 0x0db8 );
+    next_check( address.data.ipv6[2] == 0x85a3 );
+    next_check( address.data.ipv6[3] == 0x0000 );
+    next_check( address.data.ipv6[4] == 0x0000 );
+    next_check( address.data.ipv6[5] == 0x8a2e );
+    next_check( address.data.ipv6[6] == 0x0370 );
+    next_check( address.data.ipv6[7] == 0x7334 );
+    next_check( address.port == 40000 );
+
+    next_address_anonymize( &address );
+
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    next_check( address.data.ipv6[0] == 0x2001 );
+    next_check( address.data.ipv6[1] == 0x0db8 );
+    next_check( address.data.ipv6[2] == 0x85a3 );
+    next_check( address.data.ipv6[3] == 0x0000 );
+    next_check( address.data.ipv6[4] == 0x0000 );
+    next_check( address.data.ipv6[5] == 0x0000 );
+    next_check( address.data.ipv6[6] == 0x0000 );
+    next_check( address.data.ipv6[7] == 0x0000 );
+    next_check( address.port == 0 );
+}
+
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -15582,6 +15645,10 @@ void next_test()
     RUN_TEST( test_out_of_order_tracker );
     RUN_TEST( test_jitter_tracker );
     RUN_TEST( test_wake_up );
+    RUN_TEST( test_anonymize_address_ipv4 );
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+    RUN_TEST( test_anonymize_address_ipv6 );
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 }
 
 #ifdef _MSC_VER
