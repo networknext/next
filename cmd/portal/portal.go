@@ -227,7 +227,7 @@ func main() {
 
 	if useBigtable {
 		// Get Bigtable instance ID
-		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "")
+		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
 
 		// Get the table name
 		btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
