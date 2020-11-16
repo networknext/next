@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/envvar"
 
 	"cloud.google.com/go/bigtable"
 	"google.golang.org/api/option"
@@ -34,15 +33,14 @@ func (e *BigTableError) Error() string {
 
 // Creates a new Bigtable object
 // Mainly used for opening tables in the instance
-func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, logger log.Logger, opts ...option.ClientOption) (*BigTable, error) {
+func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, btTableName string, logger log.Logger, opts ...option.ClientOption) (*BigTable, error) {
 	client, err := bigtable.NewClient(ctx, gcpProjectID, instanceID, opts...)
 	if err != nil {
 		return nil, err
 	}
-	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 
 	if btTableName == "" {
-		err := fmt.Errorf("NewBigTable() BIGTABLE_TABLE_NAME is not defined")
+		err := fmt.Errorf("NewBigTable() table name is empty or not defined")
 		level.Error(logger).Log("err", err)
 		return nil, err
 	}

@@ -224,13 +224,16 @@ func main() {
 	useBigtable := featureConfig.FeatureEnabled(0) && (gcpOK || btEmulatorOK)
 	
 	var btClient *storage.BigTable
-
+	var btCfName string
 	if useBigtable {
 		// Get Bigtable instance ID
 		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
 
 		// Get the table name
 		btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
+
+		// Get the column family
+		btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
 
 		// Create a bigtable admin for setup
 		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
@@ -248,7 +251,6 @@ func main() {
 
 		if !tableExists {
 			level.Info(logger).Log("envvar", "BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance. Creating empty table to run portal.")
-			btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
 			btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
 		}
 
@@ -259,7 +261,7 @@ func main() {
 		}
 
 		// Create a standard client for writing to the table
-		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName, logger)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -365,6 +367,7 @@ func main() {
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:			useBigtable,
+		BigTableCfName:			btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
 		Logger:                 logger,

@@ -21,7 +21,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -47,6 +46,7 @@ type BuyersService struct {
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
 	UseBigtable		bool
+	BigTableCfName	string
 	BigTable  		*storage.BigTable
 	BigTableMetrics *metrics.BigTableMetrics
 
@@ -141,8 +141,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if s.UseBigtable {
-		btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
-
 		// Fetch historic sessions by user hash if there are any
 		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
@@ -168,14 +166,14 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		var sessionMeta transport.SessionMeta
 		if len(rowsByHash) > 0 {
 			for _, row := range rowsByHash {
-				sessionMeta.UnmarshalBinary(row[btCfName][0].Value)
+				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}
 			}
 		} else if len(rowsByID) > 0 {
 			for _, row := range rowsByID {
-				sessionMeta.UnmarshalBinary(row[btCfName][0].Value)
+				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}
@@ -449,8 +447,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	var err error
 	var historic bool = false
 
-	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
-
 	if args.SessionID == "" {
 		err = fmt.Errorf("SessionDetails() session ID is required")
 		level.Error(s.Logger).Log("err", err)
@@ -546,7 +542,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 
 		for _, row := range sliceRows {
-			slice.UnmarshalBinary(row[btCfName][0].Value)
+			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
 			reply.Slices = append(reply.Slices, slice)
 		}
 	}

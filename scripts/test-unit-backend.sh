@@ -33,11 +33,18 @@ if [[ ! -z "$BIGTABLE_EMULATOR_HOST" ]]; then
     setsid gcloud beta emulators bigtable start --host-port $BIGTABLE_EMULATOR_HOST --no-user-output-enabled &
     bigtableSessionID=$! # Get the session ID of this process so we can close it later
 
-    # Trap kill the process group so all pubsub emulator processes are closed properly
+    # Trap kill the process group so all firestore emulator processes are closed properly
     if [ "$firestoreSessionID" -eq "0" ]; then
         trap "kill -- -$bigtableSessionID" EXIT
     else
         trap "kill -- -$firestoreSessionID -$bigtableSessionID" EXIT
+    fi
+
+    # Trap kill the process group so all pubsub emulator processes are closed properly
+    if [ "$pubsubSessionID" -eq "0" ]; then
+        trap "kill -- -$bigtableSessionID" EXIT
+    else
+        trap "kill -- -$pubsubSessionID -$bigtableSessionID" EXIT
     fi
     sleep 3
 fi

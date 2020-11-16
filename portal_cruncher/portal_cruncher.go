@@ -232,7 +232,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 
 				for {
 					select {
-					// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
+					// Buffer up some portal data entries to insert into bigtable
 					case portalData := <-cruncher.btDataMessageChan:
 						btPortalDataBuffer = append(btPortalDataBuffer, portalData)
 
@@ -497,7 +497,7 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	// Create a standard client for writing to the table
-	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, logger)
+	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName, logger)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -505,13 +505,13 @@ func SetupBigtable(ctx context.Context,
 	if btEmulatorOK {
 		if historicalPath, ok := os.LookupEnv("BIGTABLE_HISTORICAL_TXT"); ok {
 			// Insert historical data into bigtable during local testing
-			level.Info(logger).Log("msg", "Inserting historical data into bigtable.")
-			err = InsertHistoricalDataIntoBigtable(ctx, btClient, btCfNames, historicalPath)
+			level.Info(logger).Log("msg", "Seeding bigtable with historical data.")
+			err = SeedBigtable(ctx, btClient, btCfNames, historicalPath)
 			if err != nil {
 				return nil, nil, err
 			}
 		} else {
-			level.Info(logger).Log("msg", "Could not locate BIGTABLE_HISTORICAL_TXT. Skipping over loading historical data into bigtable.")
+			level.Info(logger).Log("msg", "Could not locate BIGTABLE_HISTORICAL_TXT. Skipping over seeding bigtable with historical data")
 		}
 	}
 
@@ -520,7 +520,7 @@ func SetupBigtable(ctx context.Context,
 
 // Loads historical data into bigtable
 // Only should be used during local testing
-func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []string, historicalPath string) error {
+func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []string, historicalPath string) error {
 	// Load in text file
 	var (
 		file *os.File
@@ -529,7 +529,7 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 		err error
 	)
 	if file, err = os.Open(historicalPath); err != nil {
-		return fmt.Errorf("InsertHistoricalDataIntoBigtable() open file path %s: %v", historicalPath, err)
+		return fmt.Errorf("SeedBigtable() open file path %s: %v", historicalPath, err)
 	}
 	defer file.Close()
 
@@ -541,7 +541,7 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 			if err == io.EOF {
 				break
 			}
-			return fmt.Errorf("InsertHistoricalDataIntoBigtable() failed to read lines from %s: %v", historicalPath, err)
+			return fmt.Errorf("SeedBigtable() failed to read lines from %s: %v", historicalPath, err)
 		}
 		buffer.Write(part)
 		if !prefix {
@@ -589,7 +589,7 @@ func InsertHistoricalDataIntoBigtable(ctx context.Context, btClient *storage.Big
 				if b != " " {
 					bInt, err := strconv.Atoi(b)
 					if err != nil {
-						return fmt.Errorf("InsertHistoricalDataIntoBigtable() could not convert %s to int: %v", b, err)
+						return fmt.Errorf("SeedBigtable() could not convert %s to int: %v", b, err)
 					}
 					singleByte = (byte)(bInt)
 					data = append(data, singleByte)

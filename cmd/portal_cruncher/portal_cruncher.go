@@ -20,8 +20,8 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/backend"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
@@ -220,21 +220,21 @@ func mainReturnWithCode() int {
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
-															portalSubscriber,
-															redisHostTopSessions,
-															redisHostSessionMap,
-															redisHostSessionMeta,
-															redisHostSessionSlices,
-															useBigtable,
-															gcpProjectID,
-															btInstanceID,
-															btTableName,
-															btCfName,
-															btMaxAgeDays,
-															messageChanSize,
-															logger,
-															portalCruncherMetrics,
-															btMetrics)
+		portalSubscriber,
+		redisHostTopSessions,
+		redisHostSessionMap,
+		redisHostSessionMeta,
+		redisHostSessionSlices,
+		useBigtable,
+		gcpProjectID,
+		btInstanceID,
+		btTableName,
+		btCfName,
+		btMaxAgeDays,
+		messageChanSize,
+		logger,
+		portalCruncherMetrics,
+		btMetrics)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

@@ -161,7 +161,7 @@ func TestUserSessions(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "network-next-portal-big-table-0", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086", logger)
 	assert.NoError(t, err)
 	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
@@ -179,7 +179,7 @@ func TestUserSessions(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "", "network-next-portal-big-table-0", logger)
+	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, btClient)
 
@@ -241,6 +241,7 @@ func TestUserSessions(t *testing.T) {
 	svc := jsonrpc.BuyersService{
 		Storage:                &storer,
 		UseBigtable:			true,
+		BigTableCfName:			btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMap:    redisPool,
@@ -782,7 +783,7 @@ func TestSessionDetails(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "", "network-next-portal-big-table-0", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086", logger)
 	assert.NoError(t, err)
 	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
@@ -800,7 +801,7 @@ func TestSessionDetails(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "", "network-next-portal-big-table-0", logger)
+	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, btClient)
 
@@ -819,6 +820,7 @@ func TestSessionDetails(t *testing.T) {
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		UseBigtable:			true,
+		BigTableCfName:			btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMeta:   redisPool,
