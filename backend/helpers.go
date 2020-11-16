@@ -205,15 +205,6 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			db.SyncLoop(ctx, ticker.C)
 		}()
 
-		// if env == "local" {
-		// 	if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
-		// 		return db, errors.New("NEXT_CUSTOMER_PUBLIC_KEY not set")
-		// 	}
-
-		// 	// Create dummy buyer and datacenter for local testing
-		// 	storage.SeedSQLStorage(ctx, db)
-		// }
-
 		return db, nil
 	}
 
