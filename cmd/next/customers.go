@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/modood/table"
@@ -34,11 +33,7 @@ func addCustomer(rpcClient jsonrpc.RPCClient, env Environment, c routing.Custome
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(c, "", "\t")
-	if err != nil {
-		handleRunTimeError(fmt.Sprintln("Failed to marshal customer struct"), 1)
-	}
-	fmt.Printf("Customer added: \n%s\n", string(jsonBytes))
+	fmt.Printf("Customer added: %s\n", c.Name)
 
 }
 
