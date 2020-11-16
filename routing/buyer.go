@@ -10,14 +10,34 @@ import (
 )
 
 type Buyer struct {
-	CompanyCode          string
-	ID                   uint64
-	Live                 bool
-	Debug                bool
-	PublicKey            []byte
-	RouteShader          core.RouteShader
-	InternalConfig       core.InternalConfig
-	RoutingRulesSettings RoutingRulesSettings
+	CompanyCode    string // TODO: chopping block - defined by the parent customer
+	ShortName      string // TBD: same as above
+	ID             uint64
+	Live           bool
+	Debug          bool
+	PublicKey      []byte
+	RouteShader    core.RouteShader
+	InternalConfig core.InternalConfig
+	DatabaseID     int64 // sql PK
+	CustomerID     int64 // sql FK
+}
+
+func (b *Buyer) String() string {
+
+	buyer := "\nrouting.Buyer:\n"
+	buyer += "\tID (hex)      : " + fmt.Sprintf("%16x", b.ID) + "\n"
+	buyer += "\tID            : " + fmt.Sprintf("%d", b.ID) + "\n"
+	buyer += "\tShortName     : '" + b.ShortName + "'\n"
+	buyer += "\tCompanyCode   : '" + b.CompanyCode + "'\n"
+	buyer += "\tLive          : " + strconv.FormatBool(b.Live) + "\n"
+	buyer += "\tDebug         : " + strconv.FormatBool(b.Debug) + "\n"
+	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
+	buyer += "\tRouteShader   : TBD\n"
+	buyer += "\tInternalConfig: TBD\n"
+	buyer += "\tDatabaseID    : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
+	buyer += "\tCustomerID    : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
+
+	return buyer
 }
 
 func (b *Buyer) EncodedPublicKey() string {

@@ -150,9 +150,9 @@ func TestBuyersList(t *testing.T) {
 func TestDatacenterMaps(t *testing.T) {
 	var storer = storage.InMemory{}
 	dcMap := routing.DatacenterMap{
-		Alias:      "some.server.alias",
-		BuyerID:    0xbdbebdbf0f7be395,
-		Datacenter: 0x7edb88d7b6fc0713,
+		Alias:        "some.server.alias",
+		BuyerID:      0xbdbebdbf0f7be395,
+		DatacenterID: 0x7edb88d7b6fc0713,
 	}
 
 	buyer := routing.Buyer{
