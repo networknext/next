@@ -705,7 +705,7 @@ func mainReturnWithCode() int {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")

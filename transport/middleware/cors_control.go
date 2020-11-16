@@ -2,17 +2,14 @@ package middleware
 
 import (
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/rs/cors"
 )
 
-func CORSControlHandler(allowCORS bool, next http.Handler) http.Handler {
+func CORSControlHandler(allowCORS bool, allowedOrigins []string, next http.Handler) http.Handler {
 	if !allowCORS {
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 		return cors.New(cors.Options{
-			AllowedOrigins:   strings.Split(allowedOrigins, ","),
+			AllowedOrigins:   allowedOrigins,
 			AllowCredentials: true,
 			AllowedHeaders:   []string{"Authorization", "Content-Type"},
 			AllowedMethods:   []string{"POST", "GET", "OPTION"},
@@ -21,11 +18,10 @@ func CORSControlHandler(allowCORS bool, next http.Handler) http.Handler {
 	return next
 }
 
-func CORSControlHandlerFunc(allowCORS bool, w http.ResponseWriter, r *http.Request) {
+func CORSControlHandlerFunc(allowCORS bool, allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
 	if !allowCORS {
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 		cors.New(cors.Options{
-			AllowedOrigins:   strings.Split(allowedOrigins, ","),
+			AllowedOrigins:   allowedOrigins,
 			AllowCredentials: true,
 			AllowedHeaders:   []string{"Authorization", "Content-Type"},
 			AllowedMethods:   []string{"POST", "GET", "OPTION"},
