@@ -233,8 +233,8 @@ func main() {
 		btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 
 		// Get the column family
-		btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
-
+		btCfName = envvar.Get("BIGTABLE_CF_NAME", "")
+		
 		// Create a bigtable admin for setup
 		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
 		if err != nil {
