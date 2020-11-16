@@ -8,7 +8,7 @@ import (
 
 type Config struct{
 	PublisherSendBuffer int
-	PublishToHosts string
+	PublishToHosts []string
 	RouterPrivateKey []byte
 	RelayCacheUpdate time.Duration
 	RelayStoreAddress string
@@ -36,13 +36,13 @@ func NewConfig() (*Config, error){
 	cfg.RelayStoreAddress = relayStoreAddress
 
 
-	relayStoreReadTimeout, err := envvar.GetDuration( "RELAY_STORE_READ_TIMEOUT", 250 * time.Millisecond)
+	relayStoreReadTimeout, err := envvar.GetDuration( "RELAY_STORE_READ_TIMEOUT", 500 * time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 	cfg.RelayStoreReadTimeout = relayStoreReadTimeout
 
-	relayStoreWriteTimeout, err := envvar.GetDuration( "RELAY_STORE_WRITE_TIMEOUT", 250 * time.Millisecond)
+	relayStoreWriteTimeout, err := envvar.GetDuration( "RELAY_STORE_WRITE_TIMEOUT", 500 * time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
@@ -54,10 +54,10 @@ func NewConfig() (*Config, error){
 	}
 	cfg.RelayStoreRelayTimeout = relayStoreRelayTimeout
 
-	publishToHosts := envvar.Get("PUBLISH_TO_HOSTS", "tcp:127.0.0.1:5555")
+	publishToHosts := envvar.GetList("PUBLISH_TO_HOSTS", []string{"tcp://127.0.0.1:5555"})
 	cfg.PublishToHosts = publishToHosts
 
-	publisherSendBuffer, err := envvar.GetInt( "pUBLISHER_SEND_Buffer", 100000)
+	publisherSendBuffer, err := envvar.GetInt( "PUBLISHER_SEND_BUFFER", 100000)
 	if err != nil {
 		return nil, err
 	}

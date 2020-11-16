@@ -251,9 +251,12 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 			return
 		}
 
-		var topic pubsub.Topic = 1
 		for _, pub := range params.Publishers {
-			pub.Publish(context.Background(), topic, body)
+			fmt.Println("publishing")
+			_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, body)
+			if err!= nil {
+				fmt.Println(err.Error())
+			}
 		}
 
 		relaysToPing := make([]routing.RelayPingData, 0)

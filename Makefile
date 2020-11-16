@@ -328,6 +328,14 @@ dev-portal: build-portal-local ## runs a local portal
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
 
+.PHONY: dev-relay-gateway
+dev-relay-gateway: build-relay-gateway ## runs a local relay backend
+	@PORT=30001 ./dist/relay_gateway
+
+.PHONY: dev-optimizer
+dev-optimizer: build-optimizer ## runs a local relay backend
+	@PORT=30005 ./dist/optimizer
+
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
@@ -425,6 +433,18 @@ build-relay-backend:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
+.PHONY: build-relay-gateway
+build-relay-gateway:
+	@printf "Building relay gateway... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
+	@printf "done\n"
+
+.PHONY: build-optimizer
+build-optimizer:
+	@printf "Building Optimizer... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
+	@printf "done\n"
+
 .PHONY: build-server-backend
 build-server-backend:
 	@printf "Building server backend... "
@@ -460,6 +480,18 @@ deploy-portal-crunchers-staging:
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
+
+.PHONY: deploy-relay-gateway-dev
+deploy-relay-gateway-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-gateway -n relay_gateway -b gs://development_artifacts
+
+.PHONY: deploy-relay-gateway-staging
+deploy-relay-gateway-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-gateway -n relay_gateway -b gs://staging_artifacts
+
+.PHONY: deploy-relay-gateway-prod
+deploy-relay-gateway-prod:
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-gateway -n relay_gateway -b gs://prod_artifacts
 
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:

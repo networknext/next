@@ -31,7 +31,7 @@ func testOptimizerMatrices() []storage.Matrix {
 func TestNew(t *testing.T) {
 	t.Parallel()
 	store := storage.MatrixStoreMock{}
-	svc, err := New(&store, 10, 15)
+	svc, err := New(&store, timeVariance(10), timeVariance(15))
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
 	assert.Equal(t, timeVariance(10), svc.matrixSvcTimeVariance)
@@ -65,7 +65,7 @@ func TestRouteMatrixSvc_UpdateSvcDB(t *testing.T) {
 func TestRouteMatrixSvc_AmMaster(t *testing.T) {
 	t.Parallel()
 	store := storage.MatrixStoreMock{}
-	svc, _ := New(&store, 10, 15)
+	svc, _ := New(&store, timeVariance(10), timeVariance(15))
 	assert.False(t, svc.AmMaster())
 	svc.currentlyMaster = true
 	assert.True(t, svc.AmMaster())
@@ -84,7 +84,7 @@ func TestRouteMatrixSvc_DetermineMaster_NotMaster(t *testing.T) {
 			return fmt.Errorf("should not be called")
 		},
 	}
-	svc, err := New(&store, 4000, 15)
+	svc, err := New(&store, timeVariance(4000), timeVariance(15))
 	assert.Nil(t, err)
 	svc.id = 1
 
@@ -106,7 +106,7 @@ func TestRouteMatrixSvc_DetermineMaster_ChosenMasterNotCurrent(t *testing.T) {
 			return nil
 		},
 	}
-	svc, err := New(&store, 2000, 15)
+	svc, err := New(&store, timeVariance(2000), timeVariance(15))
 	assert.Nil(t, err)
 	svc.id = 2
 	assert.False(t,svc.currentlyMaster)
@@ -128,7 +128,7 @@ func TestRouteMatrixSvc_DetermineMaster_IsCurrentMaster(t *testing.T) {
 			return fmt.Errorf("should not be called")
 		},
 	}
-	svc, err := New(&store, 4000, 15)
+	svc, err := New(&store, timeVariance(4000), timeVariance(15))
 	assert.Nil(t, err)
 	svc.id = 3
 	svc.currentlyMaster = true
@@ -150,14 +150,14 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_OptimizerMasterCurrent(t *testing.
 			return fmt.Errorf("should not be called")
 		},
 		UpdateLiveMatrixFunc: func(matrixData []byte, matrixType string) error {
-			if string(matrixData) != "optimizer3"{
-				return fmt.Errorf("not the correct matrix: %s", string(matrixData))
+			if string(matrixData) == "optimizer3" || string(matrixData) =="optimizer3Valve" {
+				return nil
 			}
-			return nil
+			return fmt.Errorf("not the correct matrix: %s", string(matrixData))
 		},
 	}
 
-	svc, err:= New(&store, 10, 4000)
+	svc, err:= New(&store, timeVariance(10), timeVariance(4000))
 	assert.Nil(t, err)
 	svc.currentMasterOptimizer = 3
 
@@ -181,14 +181,14 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_ChooseOptimizerMaster(t *testing.T
 			return nil
 		},
 		UpdateLiveMatrixFunc: func(matrixData []byte, matrixType string) error {
-			if string(matrixData) != "optimizer2"{
-				return fmt.Errorf("not the correct matrix: %s", string(matrixData))
+			if string(matrixData) == "optimizer2" || string(matrixData) =="optimizer2Valve" {
+				return nil
 			}
-			return nil
+			return fmt.Errorf("not the correct matrix: %s", string(matrixData))
 		},
 	}
 
-	svc, err:= New(&store, 10, 2000)
+	svc, err:= New(&store, timeVariance(10), timeVariance(2000))
 	assert.Nil(t, err)
 	svc.currentMasterOptimizer = 3
 
@@ -261,7 +261,7 @@ func TestRouteMatrixSvc_CleanUpDB(t *testing.T) {
 		},
 	}
 
-	svc, err:= New(&store, 4000, 2000)
+	svc, err:= New(&store, timeVariance(4000), timeVariance(2000))
 	assert.Nil(t, err)
 	
 	err = svc.CleanUpDB()

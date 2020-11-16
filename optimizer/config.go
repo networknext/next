@@ -73,7 +73,7 @@ func GetConfig() (*Config, error){
 
 	subscriberPort := envvar.Get("SUBSCRIBER_PORT", "5555")
 
-	subscriberRecieveBufferSize, err := envvar.GetInt("SUBSCRIBER_RECIEVE_BUFFER_SIZE",100000)
+	subscriberRecieveBufferSize, err := envvar.GetInt("SUBSCRIBER_RECEIVE_BUFFER_SIZE",100000)
 	if err != nil {
 		return nil, err
 	}

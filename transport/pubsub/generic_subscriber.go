@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/pebbe/zmq4"
 	"sync"
-	"syscall"
 )
 
 type GenericSubscriber struct {
@@ -55,43 +54,47 @@ func (sub *GenericSubscriber) Unsubscribe(topic Topic) error {
 	return sub.socket.SetUnsubscribe(string(topic))
 }
 
-func (sub *GenericSubscriber) ReceiveMessage(ctx context.Context) (Topic, <-chan []byte, error) {
+func (sub *GenericSubscriber) ReceiveMessage(ctx context.Context) <-chan MessageInfo {
 	sub.mutex.Lock()
 	defer sub.mutex.Unlock()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return 0, nil, ctx.Err()
-		default:
-			message, err := sub.socket.RecvMessageBytes(zmq4.DONTWAIT)
-			if err != nil {
-				if zmq4.AsErrno(err) == zmq4.AsErrno(syscall.EAGAIN) {
-					continue
-				}
-
-				return 0, nil, err
-			}
-
-			if len(message) <= 1 {
-				return 0, nil, errors.New("message size is 0")
-			}
-
-			if len(message[0]) == 0 {
-				return 0, nil, errors.New("topic size is 0")
-			}
-
-			topic := Topic(message[0][0])
-
-			if _, ok := sub.topics[topic]; !ok {
-				return 0, nil, errors.New("subscriber received message from wrong topic")
-			}
-
-			out := make(chan []byte)
-			out <- message[1]
-			return topic, out, nil
+	receiveChan := make(chan MessageInfo)
+	receiveFunc := func(topic Topic, message []byte, err error) {
+		receiveChan <- MessageInfo{
+			Topic:   topic,
+			Message: message,
+			Err:     err,
 		}
 	}
+
+	message, err := sub.socket.RecvMessageBytes(0)
+	if err != nil {
+		go receiveFunc(0, nil, err)
+		return receiveChan
+	}
+
+	if len(message) <= 1 {
+		go receiveFunc(0, nil, errors.New("message size is 0"))
+		return receiveChan
+	}
+
+	if len(message[0]) == 0 {
+		go receiveFunc(0, nil, errors.New("topic size is 0"))
+		return receiveChan
+	}
+
+
+	topic := Topic(message[0][0])
+
+	if _, ok := sub.topics[topic]; !ok {
+		go receiveFunc( 0, nil, errors.New("subscriber received message from wrong topic"))
+		return receiveChan
+	}
+
+	go receiveFunc(topic, message[1], nil)
+	return receiveChan
+
+
 }
 
 func (sub *GenericSubscriber)Close(){

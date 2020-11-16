@@ -17,7 +17,7 @@ type RouteMatrixSvc struct {
 	optimizerTimeVariance  time.Duration
 }
 
-func New(store storage.MatrixStore, matrixSvcTimeVariance, optimizerTimeVariance int64) (*RouteMatrixSvc, error) {
+func New(store storage.MatrixStore, matrixSvcTimeVariance, optimizerTimeVariance time.Duration) (*RouteMatrixSvc, error) {
 	rand.Seed(time.Now().UnixNano())
 
 	r := new(RouteMatrixSvc)
@@ -25,8 +25,8 @@ func New(store storage.MatrixStore, matrixSvcTimeVariance, optimizerTimeVariance
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.currentlyMaster = false
-	r.matrixSvcTimeVariance = time.Duration(matrixSvcTimeVariance) * time.Millisecond
-	r.optimizerTimeVariance = time.Duration(optimizerTimeVariance) * time.Millisecond
+	r.matrixSvcTimeVariance = matrixSvcTimeVariance
+	r.optimizerTimeVariance = optimizerTimeVariance
 
 	return r, nil
 }
@@ -60,7 +60,7 @@ func (r *RouteMatrixSvc) DetermineMaster() error {
 	}
 
 	masterId, err := r.store.GetMatrixSvcMaster()
-	if err != nil {
+	if err != nil && err.Error() != "matrix svc master not found"{
 		return svcError(err)
 	}
 
@@ -90,7 +90,7 @@ func (r *RouteMatrixSvc) UpdateLiveRouteMatrix() error {
 	}
 
 	masterOptimizerID, err := r.store.GetOptimizerMaster()
-	if err != nil {
+	if err != nil && err.Error() != "optimizer master not found"{
 		return svcError(err)
 	}
 
@@ -105,6 +105,7 @@ func (r *RouteMatrixSvc) UpdateLiveRouteMatrix() error {
 		}
 		r.currentMasterOptimizer = masterOptimizerID
 	}
+
 
 	err = r.updateLiveMatrix(routeMatrices, r.currentMasterOptimizer)
 	if err != nil {
@@ -147,12 +148,20 @@ func (r *RouteMatrixSvc) CleanUpDB() error{
 }
 
 func (r *RouteMatrixSvc) updateLiveMatrix(matrices []storage.Matrix, id uint64) error {
+	found := false
 	for _, m := range matrices {
 		if m.OptimizerID == id {
-			return r.store.UpdateLiveMatrix(m.Data, m.Type)
+			found = true
+			err := r.store.UpdateLiveMatrix(m.Data, m.Type)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	return fmt.Errorf("unable to find master matrix to update")
+	if !found {
+		return fmt.Errorf("unable to find master matrix to update")
+	}
+	return nil
 }
 
 func isMasterMatrixSvcValid(matrices []storage.MatrixSvcData, id uint64, timeVariance time.Duration) bool {
@@ -224,3 +233,6 @@ func chooseOptimizerMaster(matrices []storage.Matrix, timeVariance time.Duration
 	}
 	return masterOp.OptimizerID
 }
+
+
+

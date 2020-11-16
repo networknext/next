@@ -101,7 +101,11 @@ func mainReturnWithCode() int {
 	}
 
 
-	publishers, err := pubsub.NewMultiPublisher([]string{cfg.PublishToHosts}, cfg.PublisherSendBuffer)
+	publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+	fmt.Printf("num publishers %v", len(publishers))
 
 	gateway := &relay_gateway.Gateway{
 		Cfg: cfg,

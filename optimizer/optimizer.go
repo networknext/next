@@ -247,11 +247,11 @@ func (o *Optimizer) initializeRelay(data *storage.RelayStoreData) {
 }
 
 func (o *Optimizer) removeRelay(relayAddress string) {
+	level.Debug(o.Logger).Log("msg", "relay being removed", "id", relayAddress)
 	o.RelayMap.Lock()
 	o.RelayMap.RemoveRelayData(relayAddress)
 	o.RelayMap.Unlock()
 }
-
 
 func (o *Optimizer) UpdateRelay(requestBody []byte) {
 	fmt.Println("update relay called")
@@ -389,6 +389,7 @@ func (o *Optimizer) RelayCacheRunner() error{
 }
 
 func (o *Optimizer) StartSubscriber()error{
+	level.Debug(o.Logger).Log("msg", "subscriber starting")
 
 	sub, err := pubsub.NewGenericSubscriber(o.cfg.subscriberPort, o.cfg.subscriberRecieveBufferSize)
 	defer sub.Close()
@@ -406,16 +407,17 @@ func (o *Optimizer) StartSubscriber()error{
 		if o.shutdown == true{
 			return nil
 		}
-		topic, msgChan, err := sub.ReceiveMessage(context.Background())
-		if err != nil {
+		msgChan := sub.ReceiveMessage(context.Background())
+		msg := <-msgChan
+		level.Debug(o.Logger).Log("msg", "meesage recved")
+		if msg.Err != nil {
 			level.Error(o.Logger).Log("err", err)
 		}
-		if topic != pubsub.RelayUpdateTopic{
+		if msg.Topic != pubsub.RelayUpdateTopic{
 			level.Error(o.Logger).Log("err", "received the wrong topic")
 		}
-		
-		msg := <-msgChan
-		o.UpdateRelay(msg)
+
+		o.UpdateRelay(msg.Message)
 	}
 }
 

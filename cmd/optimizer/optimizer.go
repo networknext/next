@@ -112,8 +112,15 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	matrixStore, err := storage.NewRedisMatrixStore(cfg.RelayStoreAddress, cfg.RelayStoreReadTimeout, cfg.RelayStoreWriteTimeout, 0)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	svc := optimizer.NewBaseOptimizer(cfg)
 	svc.Metrics = metrics
+	svc.MatrixStore = matrixStore
 	svc.RelayMap = relayMap
 	svc.RelayStore = relayStore
 	svc.Store = storer

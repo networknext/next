@@ -3,6 +3,9 @@ package storage
 import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -11,26 +14,40 @@ const (
 )
 
 type RedisRelayStore struct{
-	conn redis.Conn
+	pool *redis.Pool
 	relayTimeout time.Duration
 }
 
 func NewRedisRelayStore(addr string, readTimeout, writeTimeout, relayExpire time.Duration) (*RedisRelayStore, error) {
 	r := new(RedisRelayStore)
-	conn, err := redis.Dial("tcp",addr,
-		redis.DialReadTimeout(readTimeout),
-		redis.DialWriteTimeout(writeTimeout))
-	if err != nil {
-		return nil, err
+	pool := &redis.Pool{
+		MaxIdle:     5,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp",addr,
+				redis.DialReadTimeout(readTimeout),
+				redis.DialWriteTimeout(writeTimeout))
+		},
 	}
-	r.conn = conn
+	r.pool = pool
 	r.relayTimeout = relayExpire
-
+	r.cleanupHook()
 	return r, nil
 }
 
+func (r *RedisRelayStore)cleanupHook() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGKILL)
+	go func() {
+		<-c
+		r.pool.Close()
+	}()
+}
+
 func (r *RedisRelayStore) Close() error {
-	return r.conn.Close()
+	return r.pool.Close()
 }
 
 func (r *RedisRelayStore) Set(relayData RelayStoreData) error{
@@ -39,7 +56,8 @@ func (r *RedisRelayStore) Set(relayData RelayStoreData) error{
 		return err
 	}
 
-	_,err = r.conn.Do("SET",r.key(relayData.ID),data,"EX", r.relayTimeout.Seconds())
+	conn := r.pool.Get()
+	_,err = conn.Do("SET",r.key(relayData.ID),data,"EX", r.relayTimeout.Seconds())
 	if err != nil{
 		return fmt.Errorf("issue with db: %s", err.Error())
 	}
@@ -47,7 +65,8 @@ func (r *RedisRelayStore) Set(relayData RelayStoreData) error{
 }
 
 func (r *RedisRelayStore) ExpireReset(relayID uint64) error {
-	code, err := r.conn.Do("EXPIRE", r.key(relayID), r.relayTimeout.Seconds())
+	conn := r.pool.Get()
+	code, err := conn.Do("EXPIRE", r.key(relayID), r.relayTimeout.Seconds())
 	if code != int64(1){
 		return fmt.Errorf("expire not set code %v", code)
 	}
@@ -58,7 +77,8 @@ func (r *RedisRelayStore) ExpireReset(relayID uint64) error {
 }
 
 func (r *RedisRelayStore) Get(relayID uint64) (*RelayStoreData, error){
-	data, err := redis.Bytes(r.conn.Do("GET",r.key(relayID)))
+	conn := r.pool.Get()
+	data, err := redis.Bytes(conn.Do("GET",r.key(relayID)))
 	if err == redis.ErrNil{
 		return nil, fmt.Errorf("unable to find relay data")
 	}
@@ -70,7 +90,8 @@ func (r *RedisRelayStore) Get(relayID uint64) (*RelayStoreData, error){
 }
 
 func (r *RedisRelayStore) GetAll() ([]*RelayStoreData, error){
-	keys, err := redis.Strings(r.conn.Do("KEYS", redisRelayStorePrefix+"*"))
+	conn := r.pool.Get()
+	keys, err := redis.Strings(conn.Do("KEYS", redisRelayStorePrefix+"*"))
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +101,7 @@ func (r *RedisRelayStore) GetAll() ([]*RelayStoreData, error){
 		args = append(args, k)
 	}
 	
-	dataArr, err := redis.ByteSlices(r.conn.Do("MGET", args...))
+	dataArr, err := redis.ByteSlices(conn.Do("MGET", args...))
 	if err == redis.ErrNil{
 		return nil, fmt.Errorf("unable to get relay data")
 	}
@@ -98,7 +119,8 @@ func (r *RedisRelayStore) GetAll() ([]*RelayStoreData, error){
 }
 
 func (r *RedisRelayStore) Delete(relayID uint64) error{
-	_, err := r.conn.Do("DEL", r.key(relayID))
+	conn := r.pool.Get()
+	_, err := conn.Do("DEL", r.key(relayID))
 	return err
 }
 
