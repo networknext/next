@@ -150,12 +150,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	switch db.(type) {
-	case *storage.SQL:
-		if env == "local" {
-			err = storage.SeedSQLStorage(ctx, db)
-		}
-	}
+	// switch db.(type) {
+	// case *storage.SQL:
+	// 	if env == "local" {
+	// 		err = storage.SeedSQLStorage(ctx, db)
+	// 	}
+	// }
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS

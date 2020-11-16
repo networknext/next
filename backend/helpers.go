@@ -192,10 +192,12 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			}
 		}
 
-		dbSyncInterval, err := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
+		dbSyncInterval, err := envvar.GetDuration("DB_SYNC_INTERVAL", time.Second*10)
 		if err != nil {
 			return nil, err
 		}
+
+		storage.SeedSQLStorage(ctx, db)
 
 		// Start a goroutine to sync from Firestore
 		go func() {
