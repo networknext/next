@@ -504,7 +504,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.DatabaseID)
 		if err != nil {
-			// level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
 
 		b := routing.Buyer{

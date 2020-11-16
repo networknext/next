@@ -105,21 +105,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// // var relayPublicKey []byte
-	// // var customerID uint64
-	// var customerPublicKey []byte
-	// {
-	// 	if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-	// 		relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-	// 	}
-
-	// 	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-	// 		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-	// 		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-	// 		customerPublicKey = customerPublicKey[8:]
-	// 	}
-	// }
-
 	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
@@ -158,20 +143,6 @@ func main() {
 	var jobManager storage.JobManager = manager.Job
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-
-	// hardcoded dependency on InMemory will have to stay until we
-	// move to NewSQL()
-	// var db storage.Storer = &storage.InMemory{
-	// 	LocalMode: true,
-	// }
-	// fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-	// if err != nil {
-	// 	level.Error(logger).Log("err", err)
-	// 	os.Exit(1)
-	// }
-	// if fs != nil {
-	// 	db = fs
-	// }
 
 	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {

@@ -28,18 +28,16 @@ func SeedStorage(
 	shouldFill := false
 	switch db := db.(type) {
 	case *Firestore:
-		fmt.Println("SeedStorage() case *Firestore")
 		_, _, err := db.CheckSequenceNumber(ctx)
 		if err != nil {
-			return fmt.Errorf("CheckSequenceNumber() err: %w", err)
+			if err := db.SetSequenceNumber(ctx, 0); err != nil {
+				return fmt.Errorf("unable to set sequence number: %w", err)
+			}
+			if err := db.IncrementSequenceNumber(ctx); err != nil {
+				return fmt.Errorf("unable to increment sequence number: %w", err)
+			}
+			shouldFill = true
 		}
-	case *SQL:
-		fmt.Println("SeedStorage() case *SQL")
-		_, _, err := db.CheckSequenceNumber(ctx)
-		if err != nil {
-			return fmt.Errorf("CheckSequenceNumber() err: %w", err)
-		}
-		shouldFill = true
 	default:
 		shouldFill = true
 	}

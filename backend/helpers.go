@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -171,8 +170,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		//	DB_SYNC_INTERVAL
 		var db storage.Storer
 
-		pgsqlStr := envvar.Get("FEATURE_POSTGRESQL", "false")
-		pgsql, err := strconv.ParseBool(pgsqlStr)
+		pgsql, err := envvar.GetBool("FEATURE_POSTGRESQL", false)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse FEATURE_POSTGRESQL boolean: %v", err)
 		}
