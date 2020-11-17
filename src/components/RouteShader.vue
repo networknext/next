@@ -98,7 +98,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import _ from 'lodash'
+import { cloneDeep } from 'lodash'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
@@ -126,7 +126,7 @@ export default class RouteShader extends Vue {
 
   constructor () {
     super()
-    this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
     this.message = ''
     this.alertType = ''

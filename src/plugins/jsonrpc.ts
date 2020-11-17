@@ -1,5 +1,5 @@
 import store from '@/store'
-import _ from 'lodash'
+import { cloneDeep } from 'lodash'
 
 export class JSONRPCService {
   private headers: any
@@ -20,7 +20,7 @@ export class JSONRPCService {
   }
 
   private processAuthChange (): void {
-    const userProfile = _.cloneDeep(store.getters.userProfile)
+    const userProfile = cloneDeep(store.getters.userProfile)
     let promises = []
     if (store.getters.registeredToCompany) {
       promises = [

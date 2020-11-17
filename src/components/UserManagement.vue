@@ -158,7 +158,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-import _, { cloneDeep } from 'lodash'
+import { cloneDeep } from 'lodash'
 import { UserProfile } from './types/AuthTypes'
 
 /**
@@ -251,7 +251,7 @@ export default class UserManagement extends Vue {
           user.edit = false
           user.delete = false
         })
-        this.companyUsersReadOnly = _.cloneDeep(this.companyUsers)
+        this.companyUsersReadOnly = cloneDeep(this.companyUsers)
       })
     this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
@@ -345,7 +345,7 @@ export default class UserManagement extends Vue {
   }
 
   private cancel (index: number): void {
-    const defaultUserAccount = _.cloneDeep(this.companyUsersReadOnly[index])
+    const defaultUserAccount = cloneDeep(this.companyUsersReadOnly[index])
     this.companyUsers.splice(index, 1, defaultUserAccount)
   }
 

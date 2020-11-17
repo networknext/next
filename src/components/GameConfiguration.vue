@@ -38,7 +38,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
-import _, { cloneDeep } from 'lodash'
+import { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the game configuration tab

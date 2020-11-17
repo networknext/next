@@ -16,6 +16,7 @@ import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
+import { cloneDeep } from 'lodash'
 
 Vue.use(VueRouter)
 
@@ -131,6 +132,11 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
       (window as any).Intercom('update')
     }
     Vue.prototype.$authService.refreshToken()
+    const userProfile = cloneDeep(router.app.$store.getters.userProfile)
+    if (!userProfile.verified) {
+      userProfile.verified = true
+      store.commit('UPDATE_USER_PROFILE', userProfile)
+    }
     next('/')
     return
   }
