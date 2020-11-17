@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,16 @@ func Get(name string, defaultValue string) string {
 		return defaultValue
 	}
 
+	return value
+}
+
+func GetList(name string, defaultValue []string) []string {
+	valueStrings, ok := os.LookupEnv(name)
+	if !ok {
+		return defaultValue
+	}
+
+	value := strings.Split(valueStrings, ",")
 	return value
 }
 

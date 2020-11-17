@@ -18,7 +18,7 @@ import (
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
-	RelayAddresses     []net.UDPAddr
+	RelayAddresses     []net.UDPAddr // external IPs only
 	RelayNames         []string
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32

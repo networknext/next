@@ -32,6 +32,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const NEXT_MAX_TAGS = 8
+
 const NEXT_MAX_ROUTE_RELAYS = 5
 
 const NEXT_MAX_SESSION_DATA_BYTES = 511
@@ -214,7 +216,9 @@ type NextBackendSessionUpdatePacket struct {
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
-	Tag                             uint64
+	ClientPingTimedOut				bool
+	NumTags                         int32
+	Tags                            [NEXT_MAX_TAGS]uint64
 	Flags                           uint32
 	UserFlags                       uint64
 	DirectRTT                       float32
@@ -284,21 +288,34 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	stream.SerializeBool(&packet.ClientPingTimedOut)
 
-	hasTag := stream.IsWriting() && packet.Tag != 0
+	hasTags := stream.IsWriting() && packet.NumTags > 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
 	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
-	stream.SerializeBool(&hasTag)
+	stream.SerializeBool(&hasTags)
 	stream.SerializeBool(&hasFlags)
 	stream.SerializeBool(&hasUserFlags)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
-	if hasTag {
-		stream.SerializeUint64(&packet.Tag)
+	if hasTags {
+		if ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, 4, 0, 3) {
+			// multiple tags
+			stream.SerializeInteger(&packet.NumTags, 0, NEXT_MAX_TAGS)
+			for i := 0; i < int(packet.NumTags); i++ {
+				stream.SerializeUint64(&packet.Tags[i])
+			}
+		} else {
+			// single tag
+			stream.SerializeUint64(&packet.Tags[0])
+			if stream.IsWriting() {
+				packet.NumTags = 1
+			}
+		}
 	}
 
 	if hasFlags {
@@ -2087,7 +2104,7 @@ func (stream *ReadStream) GetBytesProcessed() int {
 
 // -------------------------------------------------------------------------------------
 
-func ProtocolVersionAtLeast(serverMajor int32, serverMinor int32, serverPatch int32, targetMajor int32, targetMinor int32, targetPatch int32) bool {
+func ProtocolVersionAtLeast(serverMajor uint32, serverMinor uint32, serverPatch uint32, targetMajor uint32, targetMinor uint32, targetPatch uint32) bool {
 	serverVersion := ((serverMajor & 0xFF) << 16) | ((serverMinor & 0xFF) << 8) | (serverPatch & 0xFF)
 	targetVersion := ((targetMajor & 0xFF) << 16) | ((targetMinor & 0xFF) << 8) | (targetPatch & 0xFF)
 	return serverVersion >= targetVersion
@@ -2538,6 +2555,10 @@ func main() {
 				if ( sessionData.SliceNumber % 2 ) != 0 {
 					takeNetworkNext = false
 				}
+			}
+
+			if sessionUpdate.ClientPingTimedOut {
+				takeNetworkNext = false
 			}
 
 			if !takeNetworkNext {

@@ -12,8 +12,8 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
 )
@@ -68,6 +68,7 @@ type seller struct {
 type relay struct {
 	Name               string                 `firestore:"displayName"`
 	Address            string                 `firestore:"publicAddress"`
+	InternalAddress    string                 `firestore:"internalAddress"`
 	PublicKey          []byte                 `firestore:"publicKey"`
 	UpdateKey          []byte                 `firestore:"updateKey"`
 	NICSpeedMbps       int64                  `firestore:"nicSpeedMbps"`
@@ -153,6 +154,7 @@ type internalConfig struct {
 	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
 	ForceNext                  bool  `firestore:"forceNext"`
 	LargeCustomer              bool  `firestore:"largeCustomer"`
+	Uncommitted                bool  `firestore:"uncommitted"`
 }
 
 type FirestoreError struct {
@@ -164,6 +166,7 @@ func (e *FirestoreError) Error() string {
 }
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
+
 	client, err := firestore.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, err
@@ -180,7 +183,6 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 		sellers:            make(map[string]routing.Seller),
 		syncSequenceNumber: -1,
 	}, nil
-
 }
 
 // SetSequenceNumber is required for testing with the Firestore emulator
@@ -525,11 +527,6 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &FirestoreError{err: err}
 	}
 
-	// Add the buyer's routing rules settings to remote storage
-	if err := fs.SetRoutingRulesSettingsForBuyerID(ctx, ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
-		return &FirestoreError{err: err}
-	}
-
 	// Add the buyer's route shader to remote storage
 	if err := fs.SetRouteShaderForBuyerID(ctx, ref.ID, company.Name, b.RouteShader); err != nil {
 		return &FirestoreError{err: err}
@@ -686,11 +683,6 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 				if customer.BuyerRef != nil && customer.BuyerRef.ID == bdoc.Ref.ID {
 					company = customer
 				}
-			}
-
-			// Update the buyer's routing rules settings in firestore
-			if err := fs.SetRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
-				return &FirestoreError{err: err}
 			}
 
 			// Update the buyer's route shader in firestore
@@ -1297,6 +1289,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
 				"name":            r.Name,
+				"publicAddress":   r.Addr.String(),
 				"state":           r.State,
 				"lastUpdateTime":  r.LastUpdateTime,
 				"stateUpdateTime": time.Now(),
@@ -1334,7 +1327,7 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routin
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1347,20 +1340,20 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 	// ToDo: make sure buyer and datacenter exist?
 	bID := dcMap.BuyerID
 
-	dcID := dcMap.Datacenter
+	dcID := dcMap.DatacenterID
 
 	if _, ok := fs.buyers[bID]; !ok {
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
 
 	if _, ok := fs.datacenters[dcID]; !ok {
-		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.Datacenter}
+		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.DatacenterID}
 	}
 
 	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
 	if len(dcMaps) != 0 {
 		for _, dc := range dcMaps {
-			if dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+			if dc.Alias == dcMap.Alias && dc.DatacenterID == dcMap.DatacenterID {
 				return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
 			}
 		}
@@ -1369,7 +1362,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 	var dcMapInt64 datacenterMap
 	dcMapInt64.Alias = dcMap.Alias
 	dcMapInt64.Buyer = fmt.Sprintf("%016x", dcMap.BuyerID)
-	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.Datacenter)
+	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.DatacenterID)
 
 	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMapInt64)
 	if err != nil {
@@ -1378,7 +1371,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	// update local store
 	fs.datacenterMapMutex.Lock()
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 	fs.datacenterMaps[id] = dcMap
 	fs.datacenterMapMutex.Unlock()
 
@@ -1394,8 +1387,8 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.Datacenter == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+		if dc.DatacenterID == dcID || dcID == 0 {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1436,7 +1429,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			return &HexStringConversionError{hexString: dcm.Datacenter}
 		}
 
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.DatacenterID == datacenter {
 			_, err := ref.Delete(ctx)
 			if err != nil {
 				return &FirestoreError{err: err}
@@ -1444,7 +1437,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 			// delete local copy as well
 			fs.datacenterMapMutex.Lock()
-			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 			delete(fs.datacenterMaps, id)
 			fs.datacenterMapMutex.Unlock()
 
@@ -1820,11 +1813,27 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 
 		host, port, err := net.SplitHostPort(r.Address)
 		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to split host and port: %v", err)}
+			return &UnmarshalError{err: fmt.Errorf("failed to split host and port (external): %v", err)}
 		}
 		iport, err := strconv.ParseInt(port, 10, 64)
 		if err != nil {
-			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int: %v", err)}
+			return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (external): %v", err)}
+		}
+
+		var internalAddr net.UDPAddr
+		if r.InternalAddress != "" {
+			internalHost, internalPort, err := net.SplitHostPort(r.InternalAddress)
+			if err != nil {
+				return &UnmarshalError{err: fmt.Errorf("failed to split host and port (internal): %v", err)}
+			}
+			iinternalPort, err := strconv.ParseInt(internalPort, 10, 64)
+			if err != nil {
+				return &UnmarshalError{err: fmt.Errorf("failed to convert port to int (internal): %v", err)}
+			}
+			internalAddr = net.UDPAddr{
+				IP:   net.ParseIP(internalHost),
+				Port: int(iinternalPort),
+			}
 		}
 
 		// Default to the relay public key, but if that isn't in firestore
@@ -1867,6 +1876,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
+			InternalAddr:        internalAddr,
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int32(r.NICSpeedMbps),
 			IncludedBandwidthGB: int32(r.IncludedBandwithGB),
@@ -1978,11 +1988,6 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			continue
 		}
 
-		rrs, err := fs.GetRoutingRulesSettingsForBuyerID(ctx, buyerDoc.Ref.ID)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
-		}
-
 		rs, err := fs.GetRouteShaderForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
@@ -1994,14 +1999,13 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 		}
 
 		buyer := routing.Buyer{
-			ID:                   uint64(b.ID),
-			Live:                 b.Live,
-			Debug:                b.Debug,
-			CompanyCode:          b.CompanyCode,
-			PublicKey:            b.PublicKey,
-			RoutingRulesSettings: rrs,
-			RouteShader:          rs,
-			InternalConfig:       ic,
+			ID:             uint64(b.ID),
+			Live:           b.Live,
+			Debug:          b.Debug,
+			CompanyCode:    b.CompanyCode,
+			PublicKey:      b.PublicKey,
+			RouteShader:    rs,
+			InternalConfig: ic,
 		}
 
 		buyers[buyer.ID] = buyer
@@ -2096,9 +2100,9 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 
 		dcMap.Alias = dcMapInt64.Alias
 		dcMap.BuyerID = buyerID
-		dcMap.Datacenter = datacenterID
+		dcMap.DatacenterID = datacenterID
 
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 
@@ -2176,102 +2180,6 @@ func (fs *Firestore) DeleteInternalConfigForBuyerID(ctx context.Context, firesto
 
 	// Attempt to delete route shader for buyer
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Delete(ctx)
-	return err
-}
-
-func (fs *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, firestoreID string) (routing.RoutingRulesSettings, error) {
-	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
-	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
-	routeShaderID := firestoreID + "_0"
-
-	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
-	rrs := routing.DefaultRoutingRulesSettings
-
-	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
-	rsDoc, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Get(ctx)
-	if err != nil {
-		return rrs, err
-	}
-
-	// Unmarshal into our firestore struct
-	var tempRRS routingRulesSettings
-	err = rsDoc.DataTo(&tempRRS)
-	if err != nil {
-		return rrs, err
-	}
-
-	// If successful, convert into routing.Buyer version and return it
-	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
-	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
-	rrs.Mode = tempRRS.Mode
-	rrs.MaxNibblinsPerGB = routing.Nibblin(tempRRS.MaxPricePerGBNibblins)
-	rrs.AcceptableLatency = tempRRS.AcceptableLatency
-	rrs.RTTEpsilon = tempRRS.RTTEpsilon
-	rrs.RTTThreshold = tempRRS.RTTThreshold
-	rrs.RTTHysteresis = tempRRS.RTTHysteresis
-	rrs.RTTVeto = tempRRS.RTTVeto
-	rrs.EnableYouOnlyLiveOnce = tempRRS.EnableYouOnlyLiveOnce
-	rrs.EnablePacketLossSafety = tempRRS.EnablePacketLossSafety
-	rrs.EnableMultipathForPacketLoss = tempRRS.EnableMultipathForPacketLoss
-	rrs.MultipathPacketLossThreshold = tempRRS.MultipathPacketLossThreshold
-	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
-	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
-	rrs.EnableABTest = tempRRS.EnableABTest
-	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
-	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
-	rrs.SelectionPercentage = tempRRS.SelectionPercentage
-
-	rrs.ExcludedUserHashes = map[uint64]bool{}
-	for userHashString := range tempRRS.ExcludedUserHashes {
-		userHash, err := strconv.ParseUint(userHashString, 16, 64)
-		if err != nil {
-			return rrs, err
-		}
-
-		rrs.ExcludedUserHashes[userHash] = true
-	}
-
-	return rrs, nil
-}
-
-func (fs *Firestore) SetRoutingRulesSettingsForBuyerID(ctx context.Context, firestoreID string, name string, rrs routing.RoutingRulesSettings) error {
-	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
-	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
-	routeShaderID := firestoreID + "_0"
-
-	// Convert the excluded user hashes to strings
-	excludedUserHashes := map[string]bool{}
-	for userHash := range rrs.ExcludedUserHashes {
-		excludedUserHashes[fmt.Sprintf("%016x", userHash)] = true
-	}
-
-	// Convert RoutingRulesSettings struct to firestore map
-	rrsFirestore := map[string]interface{}{
-		"displayName":                  name,
-		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
-		"envelopeKbpsDown":             rrs.EnvelopeKbpsDown,
-		"mode":                         rrs.Mode,
-		"maxPricePerGBNibblins":        int64(rrs.MaxNibblinsPerGB),
-		"acceptableLatency":            rrs.AcceptableLatency,
-		"rttRouteSwitch":               rrs.RTTEpsilon,
-		"rttThreshold":                 rrs.RTTThreshold,
-		"rttHysteresis":                rrs.RTTHysteresis,
-		"rttVeto":                      rrs.RTTVeto,
-		"youOnlyLiveOnce":              rrs.EnableYouOnlyLiveOnce,
-		"packetLossSafety":             rrs.EnablePacketLossSafety,
-		"packetLossMultipath":          rrs.EnableMultipathForPacketLoss,
-		"multipathPacketLossThreshold": rrs.MultipathPacketLossThreshold,
-		"jitterMultipath":              rrs.EnableMultipathForJitter,
-		"rttMultipath":                 rrs.EnableMultipathForRTT,
-		"abTest":                       rrs.EnableABTest,
-		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
-		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
-		"selectionPercentage":          rrs.SelectionPercentage,
-		"excludedUserHashes":           excludedUserHashes,
-	}
-
-	// Attempt to set route shader for buyer
-	_, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Set(ctx, rrsFirestore, firestore.MergeAll)
 	return err
 }
 
@@ -2370,6 +2278,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.TryBeforeYouBuy = tempIC.TryBeforeYouBuy
 	ic.ForceNext = tempIC.ForceNext
 	ic.LargeCustomer = tempIC.LargeCustomer
+	ic.Uncommitted = tempIC.Uncommitted
 
 	return ic, nil
 }
@@ -2388,8 +2297,25 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
 		"forceNext":                  internalConfig.ForceNext,
 		"largeCustomer":              internalConfig.LargeCustomer,
+		"uncommitted":                internalConfig.Uncommitted,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
 	return err
+}
+
+func (fs *Firestore) GetFeatureFlags() map[string]bool {
+	return map[string]bool{}
+}
+
+func (fs *Firestore) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error {
+	return fmt.Errorf(("SetFeatureFlagByName not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
+	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in Firestore storer"))
 }

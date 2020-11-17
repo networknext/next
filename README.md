@@ -165,7 +165,12 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 16. Install the Pub/Sub emulator
 	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
-17. Run tests to confirm everything is working properly
+17. Install SQLite3
+	`sudo apt install sqlite3`  
+
+	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing. 
+
+18. Run tests to confirm everything is working properly
 	`make test`
 	`make test-func-parallel`
 
@@ -292,6 +297,15 @@ or
 `sudo apt install google-cloud-sdk-pubsub-emulator`
 
     Add the environment variable `FIRESTORE_PUBSUB_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
+
+Bigtable:
+Install the gcloud bigtable emulator:
+`gcloud components install beta`
+`gcloud components install bigtable`
+or
+`sudo apt install google-cloud-sdk-bigtable-emulator`
+
+    Add the environment variable `BIGTABLE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8086`).
 
 ## Functional Tests
 

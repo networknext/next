@@ -108,6 +108,13 @@ int main()
         config.disable_network_next = true;
     }
 
+    bool report_session = false;
+    const char * report_session_env = getenv( "CLIENT_REPORT_SESSION" );
+    if ( report_session_env )
+    {
+        report_session = true;
+    }
+
     const char * fake_direct_packet_loss_env = getenv( "CLIENT_FAKE_DIRECT_PACKET_LOSS" );
     if ( fake_direct_packet_loss_env )
     {
@@ -205,6 +212,7 @@ int main()
     double time = 0.0;
     double delta_time = 1.0 / 60.0;
 
+    bool reported = false;
     bool second_connect_completed = false;
 
     // IMPORTANT: Have to wait a bit here or the first packet will get dropped
@@ -246,6 +254,12 @@ int main()
         if ( fallback_to_direct_time >= 0.0 && time > fallback_to_direct_time )
         {
             next_fake_fallback_to_direct = true;
+        }
+
+        if ( report_session && time > 30.0 && !reported )
+        {
+            next_client_report_session( client );
+            reported = true;
         }
 
         next_sleep( delta_time );

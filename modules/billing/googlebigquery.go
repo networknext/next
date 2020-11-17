@@ -75,11 +75,12 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 			}
 
 			bq.buffer = bq.buffer[:0]
-			bq.bufferMutex.Unlock()
 
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
 			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
 		}
+
+		bq.bufferMutex.Unlock()
 	}
 	return nil
 }

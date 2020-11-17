@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 
@@ -133,15 +134,11 @@ func main() {
 
 	ctx := context.Background()
 
-	var portalPublisher pubsub.Publisher
+	portalPublishers := make([]pubsub.Publisher, 0)
 	{
 		fmt.Printf("setting up portal cruncher\n")
 
-		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
-		if !ok {
-			fmt.Println("env var PORTAL_CRUNCHER_HOST must be set")
-			os.Exit(1)
-		}
+		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
 		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
 		if !ok {
@@ -155,16 +152,20 @@ func main() {
 			os.Exit(1)
 		}
 
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, int(postSessionPortalSendBufferSize))
-		if err != nil {
-			fmt.Printf("could not create portal cruncher publisher: %v\n", err)
-			os.Exit(1)
-		}
+		for _, host := range portalCruncherHosts {
+			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, int(postSessionPortalSendBufferSize))
+			if err != nil {
+				fmt.Printf("could not create portal cruncher publisher: %v\n", err)
+				os.Exit(1)
+			}
 
-		portalPublisher = portalCruncherPublisher
+			portalPublishers = append(portalPublishers, portalCruncherPublisher)
+		}
 	}
 
 	go func() {
+		publisherIndex := 0
+
 		for {
 			select {
 			case slice := <-publishChan:
@@ -173,7 +174,9 @@ func main() {
 					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
 					continue
 				}
-				portalPublisher.Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
+
+				portalPublishers[publisherIndex].Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
+				publisherIndex = (publisherIndex + 1) % len(portalPublishers)
 			case <-ctx.Done():
 				return
 			}

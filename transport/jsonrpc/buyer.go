@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"os"
 	"sort"
@@ -14,11 +15,14 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigtable"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -42,10 +46,16 @@ type BuyersService struct {
 	mapPointsBuyerCache        map[string]json.RawMessage
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
+	UseBigtable		bool
+	BigTableCfName	string
+	BigTable  		*storage.BigTable
+	BigTableMetrics *metrics.BigTableMetrics
+
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
 	RedisPoolSessionSlices *redis.Pool
 	RedisPoolSessionMap    *redis.Pool
+	RedisPoolUserSessions  *redis.Pool
 	Storage                storage.Storer
 	Logger                 log.Logger
 }
@@ -87,7 +97,7 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserHash string `json:"user_hash"`
+	UserID string `json:"user_id"`
 }
 
 type UserSessionsReply struct {
@@ -95,92 +105,83 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
-	// var sessionIDs []string
-
-	// userhash := args.UserHash
-	// reply.Sessions = make([]transport.SessionMeta, 0)
-
-	// err := s.Sli.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
-	// if err != nil {
-	// 	err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
-	// 	level.Error(s.Logger).Log("err", err)
-	// 	return err
-	// }
-
-	// if len(sessionIDs) == 0 {
-	// 	hash := fnv.New64a()
-	// 	_, err := hash.Write([]byte(userhash))
-	// 	if err != nil {
-	// 		err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
-	// 		level.Error(s.Logger).Log("err", err)
-	// 		return err
-	// 	}
-	// 	hashedID := fmt.Sprintf("%016x", hash.Sum64())
-
-	// 	err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
-	// 	if err != nil {
-	// 		err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
-	// 		level.Error(s.Logger).Log("err", err)
-	// 		return err
-	// 	}
-	// }
-
-	// if len(sessionIDs) == 0 {
-	// 	return nil
-	// }
-
-	// var getCmds []*redis.StringCmd
-	// {
-	// 	gettx := s.RedisClient.TxPipeline()
-	// 	for _, sessionID := range sessionIDs {
-	// 		getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-meta", sessionID)))
-	// 	}
-	// 	_, err = gettx.Exec()
-	// 	if err != nil && err != redis.Nil {
-	// 		err = fmt.Errorf("UserSessions() redis.Pipeliner error: %v", err)
-	// 		level.Error(s.Logger).Log("err", err)
-	// 		return err
-	// 	}
-	// }
-
-	// sremtx := s.RedisClient.TxPipeline()
-	// {
-	// 	var meta transport.SessionMeta
-	// 	for _, cmd := range getCmds {
-	// 		err = cmd.Scan(&meta)
-	// 		if err != nil {
-	// 			args := cmd.Args()
-	// 			key := args[1].(string)
-	// 			keyparts := strings.Split(key, "-")
-
-	// 			sremtx.SRem(fmt.Sprintf("user-%s-sessions", userhash), keyparts[1])
-	// 			continue
-	// 		}
-
-	// 		if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", meta.BuyerID))) {
-	// 			meta.Anonymise()
-	// 		}
-
-	// 		reply.Sessions = append(reply.Sessions, meta)
-	// 	}
-	// }
-
-	// sremcmds, err := sremtx.Exec()
-	// if err != nil && err != redis.Nil {
-	// 	err = fmt.Errorf("UserSessions() redis.Pipeliner error: %v", err)
-	// 	level.Error(s.Logger).Log("err", err)
-	// 	return err
-	// }
-
-	// level.Info(s.Logger).Log("key", "user-*-sessions", "removed", len(sremcmds))
-
-	// sort.Slice(reply.Sessions, func(i int, j int) bool {
-	// 	return reply.Sessions[i].ID < reply.Sessions[j].ID
-	// })
-
-	// return nil
-
+	if args.UserID == "" {
+		err := fmt.Errorf("UserSessions() user id is required")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
 	reply.Sessions = make([]transport.SessionMeta, 0)
+	sessionIDs := make([]string, 0)
+
+	userID := args.UserID
+
+	// Hash the ID
+	hash := fnv.New64a()
+	_, err := hash.Write([]byte(userID))
+	if err != nil {
+		err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	userHash := fmt.Sprintf("%016x", hash.Sum64())
+
+	// Fetch live sessions if there are any
+	liveSessions, err := s.FetchCurrentTopSessions(r, "")
+	if err != nil {
+		err = fmt.Errorf("UserSessions() failed to fetch live sessions")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	for _, session := range liveSessions {
+		// Check both the ID and the hash just in case the ID is actually a hash from the top sessions table
+		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) {
+			reply.Sessions = append(reply.Sessions, session)
+			sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+		}
+	}
+
+	if s.UseBigtable {
+		// Fetch historic sessions by user hash if there are any
+		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+
+		// Fetch historic sessions by user ID if there are any
+		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+
+		liveIDString := strings.Join(sessionIDs, ",")
+
+		var sessionMeta transport.SessionMeta
+		if len(rowsByHash) > 0 {
+			for _, row := range rowsByHash {
+				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+					reply.Sessions = append(reply.Sessions, sessionMeta)
+				}
+			}
+		} else if len(rowsByID) > 0 {
+			for _, row := range rowsByID {
+				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+					reply.Sessions = append(reply.Sessions, sessionMeta)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -226,27 +227,27 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
-			count, err := redis.Int(redisClient.Receive())
+			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			firstNextCount += count
+			firstNextCount += firstCount
 
-			count, err = redis.Int(redisClient.Receive())
+			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			secondNextCount += count
+			secondNextCount += secondCount
 
 			if buyer.ID == ghostArmyBuyerID {
-				if firstNextCount > secondNextCount {
-					ghostArmyNextCount = firstNextCount
+				if firstCount > secondCount {
+					ghostArmyNextCount = firstCount
 				} else {
-					ghostArmyNextCount = secondNextCount
+					ghostArmyNextCount = secondCount
 				}
 			}
 		}
@@ -261,8 +262,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
-			redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", stringID, minutes-1))
-			redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", stringID, minutes))
+			redisClient.Send("HVALS", fmt.Sprintf("c-%s-%d", stringID, minutes-1))
+			redisClient.Send("HVALS", fmt.Sprintf("c-%s-%d", stringID, minutes))
 		}
 		redisClient.Flush()
 
@@ -274,17 +275,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				return err
 			}
 
-			if len(firstCounts)%2 == 0 {
-				for i := 1; i < len(firstCounts); i += 2 {
-					count, err := strconv.ParseUint(firstCounts[i], 10, 32)
-					if err != nil {
-						err = fmt.Errorf("TotalSessions() failed to parse first session count: %v", err)
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
-
-					firstTotalCount += int(count)
+			for i := 0; i < len(firstCounts); i++ {
+				firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse first session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
 				}
+
+				firstTotalCount += int(firstCount)
 			}
 
 			secondCounts, err := redis.Strings(redisClient.Receive())
@@ -294,17 +293,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				return err
 			}
 
-			if len(secondCounts)%2 == 0 {
-				for i := 1; i < len(secondCounts); i += 2 {
-					count, err := strconv.ParseUint(secondCounts[i], 10, 32)
-					if err != nil {
-						err = fmt.Errorf("TotalSessions() failed to parse second session count: %v", err)
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
-
-					secondTotalCount += int(count)
+			for i := 0; i < len(secondCounts); i++ {
+				secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse second session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
 				}
+
+				secondTotalCount += int(secondCount)
 			}
 
 			if buyer.ID == ghostArmyBuyerID {
@@ -315,13 +312,12 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			}
 		}
 
-		firstDirectCount := firstTotalCount - firstNextCount
-		secondDirectCount := secondTotalCount - secondNextCount
-
-		reply.Direct = firstDirectCount
-		if secondDirectCount > firstDirectCount {
-			reply.Direct = secondDirectCount
+		totalCount := firstTotalCount
+		if secondTotalCount > firstTotalCount {
+			totalCount = secondTotalCount
 		}
+
+		reply.Direct = totalCount - reply.Next
 
 	default:
 		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
@@ -339,8 +335,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
 		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes))
-		redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", buyerID, minutes-1))
-		redisClient.Send("HGETALL", fmt.Sprintf("c-%s-%d", buyerID, minutes))
+		redisClient.Send("HVALS", fmt.Sprintf("c-%s-%d", buyerID, minutes-1))
+		redisClient.Send("HVALS", fmt.Sprintf("c-%s-%d", buyerID, minutes))
 		redisClient.Flush()
 
 		firstNextCount, err := redis.Int(redisClient.Receive())
@@ -372,17 +368,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
-		if len(firstCounts)%2 == 0 {
-			for i := 1; i < len(firstCounts); i += 2 {
-				count, err := strconv.ParseUint(firstCounts[i], 10, 32)
-				if err != nil {
-					err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
-				}
-
-				firstTotalCount += int(count)
+		for i := 0; i < len(firstCounts); i++ {
+			firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
 			}
+
+			firstTotalCount += int(firstCount)
 		}
 
 		secondCounts, err := redis.Strings(redisClient.Receive())
@@ -392,17 +386,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
-		if len(secondCounts)%2 == 0 {
-			for i := 1; i < len(secondCounts); i += 2 {
-				count, err := strconv.ParseUint(secondCounts[i], 10, 32)
-				if err != nil {
-					err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
-				}
-
-				secondTotalCount += int(count)
+		for i := 0; i < len(secondCounts); i++ {
+			secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
 			}
+
+			secondTotalCount += int(secondCount)
 		}
 
 		if buyer.ID == ghostArmyBuyerID {
@@ -412,13 +404,12 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			secondTotalCount += secondNextCount*int(ghostArmyScalar) + secondNextCount
 		}
 
-		firstDirectCount := firstTotalCount - firstNextCount
-		secondDirectCount := secondTotalCount - secondNextCount
-
-		reply.Direct = firstDirectCount
-		if secondDirectCount > firstDirectCount {
-			reply.Direct = secondDirectCount
+		totalCount := firstTotalCount
+		if secondTotalCount > firstNextCount {
+			totalCount = secondTotalCount
 		}
+
+		reply.Direct = totalCount - reply.Next
 	}
 
 	return nil
@@ -434,126 +425,13 @@ type TopSessionsReply struct {
 
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
-	var err error
-	var topSessionsA []string
-	var topSessionsB []string
-
-	reply.Sessions = make([]transport.SessionMeta, 0)
-
-	minutes := time.Now().Unix() / 60
-
-	topSessionsClient := s.RedisPoolTopSessions.Get()
-	defer topSessionsClient.Close()
-
-	// get the top session IDs globally or for a buyer from the sorted set
-	switch args.CompanyCode {
-	case "":
-		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions A: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions B: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-	default:
-		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
-		if err != nil {
-			err = fmt.Errorf("TopSessions() failed getting company with code: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
+	sessions, err := s.FetchCurrentTopSessions(r, args.CompanyCode)
+	if err != nil {
+		err = fmt.Errorf("TopSessions() failed to fetch top sessions: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
 	}
-
-	sessionMetaClient := s.RedisPoolSessionMeta.Get()
-	defer sessionMetaClient.Close()
-
-	sessionIDsRetreivedMap := make(map[string]bool)
-	for _, sessionID := range topSessionsA {
-		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-		sessionIDsRetreivedMap[sessionID] = true
-	}
-	for _, sessionID := range topSessionsB {
-		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-			sessionIDsRetreivedMap[sessionID] = true
-		}
-	}
-	sessionMetaClient.Flush()
-
-	var sessionMetasNext []transport.SessionMeta
-	var sessionMetasDirect []transport.SessionMeta
-	var meta transport.SessionMeta
-	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-		metaString, err := redis.String(sessionMetaClient.Receive())
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		splitMetaStrings := strings.Split(metaString, "|")
-		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
-			err = fmt.Errorf("TopSessions() failed to parse redis string into meta: %v", err)
-			level.Error(s.Logger).Log("err", err, "redisString", metaString)
-			continue
-		}
-
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			meta.Anonymise()
-		}
-
-		// Split the sessions metas into two slices so we can sort them separately.
-		// This is necessary because if we were to force sessions next, then sorting
-		// by improvement won't always put next sessions on top.
-		if meta.OnNetworkNext {
-			sessionMetasNext = append(sessionMetasNext, meta)
-		} else {
-			sessionMetasDirect = append(sessionMetasDirect, meta)
-		}
-	}
-
-	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
-	sort.Slice(sessionMetasNext, func(i, j int) bool {
-		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
-	})
-
-	sort.Slice(sessionMetasDirect, func(i, j int) bool {
-		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
-	})
-
-	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
-
-	if len(sessionMetas) > TopSessionsSize {
-		reply.Sessions = sessionMetas[:TopSessionsSize]
-		return nil
-	}
-
-	reply.Sessions = sessionMetas
+	reply.Sessions = sessions
 	return nil
 }
 
@@ -568,25 +446,53 @@ type SessionDetailsReply struct {
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
 	var err error
+	var historic bool = false
+
+	if args.SessionID == "" {
+		err = fmt.Errorf("SessionDetails() session ID is required")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
 
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
-	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("SessionDetails() failed getting session meta: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
+	// Use bigtable if error from redis or requesting historic information
+	if s.UseBigtable && (err != nil || metaString == "") {
+		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(metaRows) == 0 {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed getting session meta")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		// Set historic to true when bigtable should be used
+		historic = true
+
+		for _, row := range metaRows {
+			reply.Meta.UnmarshalBinary(row[0].Value)
+		}
 	}
 
-	metaStringsSplit := strings.Split(metaString, "|")
-	if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
-		err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
+	if !historic {
+		metaStringsSplit := strings.Split(metaString, "|")
+		if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
+			err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -597,28 +503,49 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.Anonymise()
 	}
 
+	var slice transport.SessionSlice
 	reply.Slices = make([]transport.SessionSlice, 0)
 
-	sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-	defer sessionSlicesClient.Close()
+	if !historic {
+		sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+		defer sessionSlicesClient.Close()
 
-	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
-	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	for i := 0; i < len(slices); i++ {
-		sliceStrings := strings.Split(slices[i], "|")
-		var sessionSlice transport.SessionSlice
-		if err := sessionSlice.ParseRedisString(sliceStrings); err != nil {
-			err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+		slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		reply.Slices = append(reply.Slices, sessionSlice)
+		for i := 0; i < len(slices); i++ {
+			sliceStrings := strings.Split(slices[i], "|")
+			if err := slice.ParseRedisString(sliceStrings); err != nil {
+				err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			reply.Slices = append(reply.Slices, slice)
+		}
+	} else {
+		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		if err != nil {
+			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(sliceRows) == 0 {
+			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed getting session slices")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		for _, row := range sliceRows {
+			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+			reply.Slices = append(reply.Slices, slice)
+		}
 	}
 
 	sort.Slice(reply.Slices, func(i, j int) bool {
@@ -1140,6 +1067,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			ID:          buyerID,
 			Live:        false,
 			PublicKey:   byteKey[8:],
+			RouteShader: core.NewRouteShader(),
 		})
 
 		if err != nil {
@@ -1274,7 +1202,7 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
 			level.Error(s.Logger).Log("err", err)
@@ -1291,7 +1219,7 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
-			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 			SupplierName:   datacenter.SupplierName,
@@ -1360,4 +1288,128 @@ func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
 
 		return companyCode == requestCompanyCode, nil
 	}
+}
+
+func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode string) ([]transport.SessionMeta, error) {
+	var err error
+	var topSessionsA []string
+	var topSessionsB []string
+
+	sessions := make([]transport.SessionMeta, 0)
+
+	minutes := time.Now().Unix() / 60
+
+	topSessionsClient := s.RedisPoolTopSessions.Get()
+	defer topSessionsClient.Close()
+
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch companyCode {
+	case "":
+		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+	default:
+		buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting company with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+		buyerID := fmt.Sprintf("%016x", buyer.ID)
+		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+	}
+
+	sessionMetaClient := s.RedisPoolSessionMeta.Get()
+	defer sessionMetaClient.Close()
+
+	sessionIDsRetreivedMap := make(map[string]bool)
+	for _, sessionID := range topSessionsA {
+		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
+		sessionIDsRetreivedMap[sessionID] = true
+	}
+	for _, sessionID := range topSessionsB {
+		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
+			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
+			sessionIDsRetreivedMap[sessionID] = true
+		}
+	}
+	sessionMetaClient.Flush()
+
+	var sessionMetasNext []transport.SessionMeta
+	var sessionMetasDirect []transport.SessionMeta
+	var meta transport.SessionMeta
+	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
+		metaString, err := redis.String(sessionMetaClient.Receive())
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+
+		splitMetaStrings := strings.Split(metaString, "|")
+		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
+			level.Error(s.Logger).Log("err", err, "redisString", metaString)
+			continue
+		}
+
+		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+			meta.Anonymise()
+		}
+
+		// Split the sessions metas into two slices so we can sort them separately.
+		// This is necessary because if we were to force sessions next, then sorting
+		// by improvement won't always put next sessions on top.
+		if meta.OnNetworkNext {
+			sessionMetasNext = append(sessionMetasNext, meta)
+		} else {
+			sessionMetasDirect = append(sessionMetasDirect, meta)
+		}
+	}
+
+	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
+	sort.Slice(sessionMetasNext, func(i, j int) bool {
+		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
+	})
+
+	sort.Slice(sessionMetasDirect, func(i, j int) bool {
+		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
+	})
+
+	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
+
+	if len(sessionMetas) > TopSessionsSize {
+		sessions = sessionMetas[:TopSessionsSize]
+		return sessions, err
+	}
+
+	sessions = sessionMetas
+	return sessions, err
 }

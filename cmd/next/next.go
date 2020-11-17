@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -323,6 +324,8 @@ type buyer struct {
 
 type seller struct {
 	Name                 string
+	ShortName            string
+	CompanyCode          string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
 }
@@ -1423,10 +1426,14 @@ func main() {
 						ShortHelp:  "Displays an example buyer for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
+							_, err := rand.Read(examplePublicKey)
+							if err != nil {
+								return fmt.Errorf("Error generating random buyer public key: %v", err)
+							}
 							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
 
 							example := buyer{
-								CompanyCode: "psyonix",
+								CompanyCode: "microzon",
 								Live:        true,
 								PublicKey:   examplePublicKeyString,
 							}
@@ -1638,6 +1645,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					// Unmarshal the JSON and create the Seller struct
 					var sellerUSD struct {
 						Name            string
+						ShortName       string
+						CompanyCode     string
 						IngressPriceUSD string
 						EgressPriceUSD  string
 					}
@@ -1659,6 +1668,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					s := seller{
 						Name:                 sellerUSD.Name,
+						ShortName:            sellerUSD.ShortName,
+						CompanyCode:          sellerUSD.ShortName,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
@@ -1667,6 +1678,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					addSeller(rpcClient, env, routing.Seller{
 						ID:                        s.Name,
 						Name:                      s.Name,
+						ShortName:                 s.ShortName,
+						CompanyCode:               s.CompanyCode,
 						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
 						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
 					})
@@ -1680,10 +1693,12 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Exec: func(_ context.Context, args []string) error {
 							example := struct {
 								Name            string
+								ShortName       string
 								IngressPriceUSD string
 								EgressPriceUSD  string
 							}{
-								Name:            "amazon",
+								Name:            "Amazon.com, Inc.",
+								ShortName:       "amazon",
 								IngressPriceUSD: "0.01",
 								EgressPriceUSD:  "0.1",
 							}
@@ -1695,7 +1710,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
-							return nil
+
 							return nil
 						},
 					},
@@ -1732,45 +1747,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "set",
-				ShortUsage: "next shader set <buyer ID> [filepath]",
-				ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers\n"), 0)
-					}
-
-					jsonData := readJSONData("buyers", args[1:])
-
-					// Unmarshal the JSON and create the RoutingRuleSettings struct
-					var rrs routing.RoutingRulesSettings
-					if err := json.Unmarshal(jsonData, &rrs); err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not unmarshal route shader: %v\n", err), 1)
-					}
-
-					// Set the route shader in storage
-					setRoutingRulesSettings(rpcClient, env, args[0], rrs)
-					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next shader set example",
-						ShortHelp:  "Displays an example route shader for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal route shader struct"), 0)
-							}
-
-							fmt.Println("Example JSON schema to set a new route shader:")
-							fmt.Println(string(jsonBytes))
-							return nil
-						},
-					},
-				},
-			},
-			{
 				Name:       "id",
 				ShortUsage: "next shader id <buyer ID>",
 				ShortHelp:  "Retrieve route shader information for the given buyer ID",
@@ -1796,54 +1772,125 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "link",
-				ShortUsage: "next customer link <subcommand>",
-				ShortHelp:  "Edit customer links",
+				Name:       "add",
+				ShortUsage: "next customer add <json file>",
+				ShortHelp:  "Add a new customer to the database",
 				Exec: func(ctx context.Context, args []string) error {
-					return flag.ErrHelp
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("You need to supply json file."), 0)
+					}
+
+					jsonData := readJSONData("customers", args)
+
+					// Unmarshal the JSON and create the Seller struct
+					var customer struct {
+						Code                   string
+						Name                   string
+						AutomaticSignInDomains string
+						Active                 bool
+						Debug                  bool
+					}
+
+					if err := json.Unmarshal(jsonData, &customer); err != nil {
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal customer: %v\n", err), 1)
+					}
+
+					c := routing.Customer{
+						Code:                   customer.Code,
+						Name:                   customer.Name,
+						AutomaticSignInDomains: customer.AutomaticSignInDomains,
+						Active:                 customer.Active,
+						Debug:                  customer.Debug,
+						BuyerRef:               nil,
+						SellerRef:              nil,
+					}
+
+					addCustomer(rpcClient, env, c)
+
+					return nil
 				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "buyer",
-						ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
-						ShortHelp:  "Edit what buyer this customer is linked to",
-						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
+						Name:       "example",
+						ShortUsage: "next customer add example",
+						ShortHelp:  "Displays an example customer for the correct JSON schema",
+						Exec: func(_ context.Context, args []string) error {
+							example := struct {
+								Code                   string
+								Name                   string
+								AutomaticSignInDomains string
+								Active                 bool
+								Debug                  bool
+							}{
+								Code:                   "amazon",
+								Name:                   "Amazon.com, Inc.",
+								AutomaticSignInDomains: "amazon.networknext.com // comma separated list",
+								Active:                 true,
+								Debug:                  false,
 							}
 
-							if len(args) == 1 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a new buyer ID for the customer to link to"), 0)
-							}
-
-							buyerID, err := strconv.ParseUint(args[1], 10, 64)
+							jsonBytes, err := json.MarshalIndent(example, "", "\t")
 							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an unsigned 64-bit integer\n", args[1]), 1)
+								handleRunTimeError(fmt.Sprintln("Failed to marshal customer struct"), 1)
 							}
 
-							customerLink(rpcClient, env, args[0], buyerID, "")
-							return nil
-						},
-					},
-					{
-						Name:       "seller",
-						ShortUsage: "next customer link seller <customer name> <new seller ID>",
-						ShortHelp:  "Edit what seller this customer is linked to",
-						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
-							}
+							fmt.Println("Example JSON schema to add a new customer:")
+							fmt.Println(string(jsonBytes))
 
-							if len(args) == 1 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a new seller ID for the customer to link to"), 0)
-							}
-
-							customerLink(rpcClient, env, args[0], 0, args[1])
 							return nil
 						},
 					},
 				},
 			},
+			// {
+			// 	Name:       "link",
+			// 	ShortUsage: "next customer link <subcommand>",
+			// 	ShortHelp:  "Edit customer links",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		return flag.ErrHelp
+			// 	},
+			// 	Subcommands: []*ffcli.Command{
+			// 		{
+			// 			Name:       "buyer",
+			// 			ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
+			// 			ShortHelp:  "Edit what buyer this customer is linked to",
+			// 			Exec: func(ctx context.Context, args []string) error {
+			// 				if len(args) == 0 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
+			// 				}
+
+			// 				if len(args) == 1 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a new buyer ID for the customer to link to"), 0)
+			// 				}
+
+			// 				buyerID, err := strconv.ParseUint(args[1], 10, 64)
+			// 				if err != nil {
+			// 					handleRunTimeError(fmt.Sprintf("Could not parse %s as an unsigned 64-bit integer\n", args[1]), 1)
+			// 				}
+
+			// 				customerLink(rpcClient, env, args[0], buyerID, "")
+			// 				return nil
+			// 			},
+			// 		},
+			// 		{
+			// 			Name:       "seller",
+			// 			ShortUsage: "next customer link seller <customer name> <new seller ID>",
+			// 			ShortHelp:  "Edit what seller this customer is linked to",
+			// 			Exec: func(ctx context.Context, args []string) error {
+			// 				if len(args) == 0 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
+			// 				}
+
+			// 				if len(args) == 1 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a new seller ID for the customer to link to"), 0)
+			// 				}
+
+			// 				customerLink(rpcClient, env, args[0], 0, args[1])
+			// 				return nil
+			// 			},
+			// 		},
+			// 	},
+			// },
 		},
 	}
 
