@@ -40,7 +40,7 @@ func TestInsertSQL(t *testing.T) {
 	db, err := backend.GetStorer(ctx, logger, "local", env)
 	assert.NoError(t, err)
 
-	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	time.Sleep(2000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
 	var outerCustomer routing.Customer

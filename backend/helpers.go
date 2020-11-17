@@ -192,12 +192,28 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			}
 		}
 
-		dbSyncInterval, err := envvar.GetDuration("DB_SYNC_INTERVAL", time.Second*10)
+		dbSyncInterval, err := envvar.GetDuration("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", time.Second*10)
 		if err != nil {
 			return nil, err
 		}
 
-		storage.SeedSQLStorage(ctx, db)
+		customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return nil, err
+		}
+		customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
+
+		if !envvar.Exists("RELAY_PUBLIC_KEY") {
+			return nil, errors.New("RELAY_PUBLIC_KEY not set")
+		}
+
+		relayPublicKey, err := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
+		if err != nil {
+			return nil, err
+		}
+
+		storage.SeedSQLStorage(ctx, db, relayPublicKey, customerID, customerPublicKey)
 
 		// Start a goroutine to sync from Firestore
 		go func() {

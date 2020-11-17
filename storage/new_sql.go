@@ -76,10 +76,10 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		}
 	}
 
-	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
+	syncIntervalStr := os.Getenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL")
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
-		level.Error(logger).Log("envvar", "DB_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
+		level.Error(logger).Log("envvar", "GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
 		return nil, err
 	}
 
@@ -140,10 +140,10 @@ func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 		SyncSequenceNumber: -1,
 	}
 
-	syncIntervalStr := os.Getenv("DB_SYNC_INTERVAL")
+	syncIntervalStr := os.Getenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL")
 	syncInterval, err := time.ParseDuration(syncIntervalStr)
 	if err != nil {
-		level.Error(logger).Log("envvar", "DB_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
+		level.Error(logger).Log("envvar", "GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
 		return nil, err
 	}
 

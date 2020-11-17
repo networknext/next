@@ -19,6 +19,9 @@ import (
 func SeedSQLStorage(
 	ctx context.Context,
 	db Storer,
+	relayPublicKey []byte,
+	customerID uint64,
+	customerPublicKey []byte,
 ) error {
 	// When using SQLite it is ok to "seed" each version of the storer
 	// and let them sync up later on. When using a local PostgreSQL server
@@ -80,19 +83,12 @@ func SeedSQLStorage(
 
 		// Add buyers
 		// fmt.Println("Adding buyers")
-		publicKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(publicKey)
-		if err != nil {
-			return fmt.Errorf("Error generating buyer public key: %v", err)
-		}
-		internalBuyerIDLocal := binary.LittleEndian.Uint64(publicKey[:8])
-
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:             internalBuyerIDLocal,
+			ID:             customerID,
 			ShortName:      "local",
 			CompanyCode:    localCust.Code,
 			Live:           true,
-			PublicKey:      publicKey,
+			PublicKey:      customerPublicKey,
 			RouteShader:    routeShader,
 			InternalConfig: internalConfig,
 			CustomerID:     localCust.DatabaseID,
@@ -100,7 +96,7 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
 
-		publicKey = make([]byte, crypto.KeySize)
+		publicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(publicKey)
 		if err != nil {
 			return fmt.Errorf("Error generating buyer public key: %v", err)
@@ -120,7 +116,7 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
 
-		localBuyer, err := db.Buyer(internalBuyerIDLocal)
+		localBuyer, err := db.Buyer(customerID)
 		if err != nil {
 			return fmt.Errorf("Error getting local buyer: %v", err)
 		}
@@ -252,13 +248,6 @@ func SeedSQLStorage(
 
 		for i := uint64(0); i < numRelays; i++ {
 			fmt.Printf("\tSeedSQLStorage adding relay %d\n", i)
-			// local
-			publicKey := make([]byte, crypto.KeySize)
-			_, err = rand.Read(publicKey)
-			if err != nil {
-				return fmt.Errorf("Error generating relay public key: %v", err)
-			}
-
 			updateKey := make([]byte, crypto.KeySize)
 			_, err = rand.Read(updateKey)
 			if err != nil {
@@ -276,7 +265,7 @@ func SeedSQLStorage(
 				SSHPort:        22,
 				SSHUser:        "root",
 				MaxSessions:    uint32(1000 + i),
-				PublicKey:      publicKey,
+				PublicKey:      relayPublicKey,
 				UpdateKey:      updateKey,
 				Datacenter:     localDatacenter,
 				MRC:            19700000000000,
