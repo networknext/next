@@ -207,11 +207,11 @@ You should see a dot on your map at your location:
 
 And in the top sessions page you will see your session showing up:
 
-(Example image showing session)
+.. image:: images/sessions.png
 
 You can click on your session id to drill in and see your latency, jitter and packet loss in real-time:
 
-(Image showing session drill in)
+.. image:: images/session_drill_in.png
 
 10. Welcome to Network Next!
 ----------------------------
