@@ -83,18 +83,6 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-Also in *upgraded_server.cpp*, change Network Next backend hostname from "dev.spacecats.net" to "prod.spacecats.net" to switch to the production environment.
-
-.. code-block:: c++
-
-        const char * backend_hostname = "prod.spacecats.net";
-	
-Or pass it in with an environment variable:
-
-.. code-block:: console
-
-	export NEXT_HOSTNAME=prod.spacecats.net
-
 8. Build and run a server
 -------------------------
 
