@@ -123,6 +123,9 @@ type Storer interface {
 	// IncrementSequenceNumber is used by all methods that make changes to the db
 	IncrementSequenceNumber(ctx context.Context) error
 
+	// SetSequenceNumber is used to setup the db for unit testing
+	SetSequenceNumber(ctx context.Context, value int64) error
+
 	// SyncLoop sets up the ticker for database syncs
 	SyncLoop(ctx context.Context, c <-chan time.Time)
 
