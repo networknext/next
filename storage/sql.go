@@ -326,6 +326,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
+	// This check only pertains to the next tool. Stateful clients would already
+	// have the customer id.
 	c, err := db.Customer(b.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
@@ -537,6 +539,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
 	}
 
+	// This check only pertains to the next tool. Stateful clients would already
+	// have the customer id.
 	c, err := db.Customer(s.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: s.CompanyCode}
@@ -1135,7 +1139,7 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddDatacenter SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing SetDatacenter SQL", "err", err)
 		return err
 	}
 
@@ -1182,7 +1186,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.Data
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			dcs[buyerID] = dc
+			dcs[dc.DatacenterID] = dc
 		}
 	}
 
@@ -1425,6 +1429,7 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	if ok {
 		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
 	}
+
 	dc := sqlDatacenter{
 		Name:          datacenter.Name,
 		Enabled:       datacenter.Enabled,

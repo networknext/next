@@ -32,7 +32,6 @@ require (
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/oschwald/geoip2-golang v1.4.0
-	github.com/panjf2000/ants/v2 v2.4.1
 	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rs/cors v1.7.0
