@@ -950,8 +950,8 @@ func NewRouteShader() RouteShader {
 		ReducePacketLoss:          true,
 		Multipath:                 false,
 		ProMode:                   false,
-		AcceptableLatency:         25,
-		LatencyThreshold:          5,
+		AcceptableLatency:         0,
+		LatencyThreshold:          10,
 		AcceptablePacketLoss:      1.0,
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
@@ -993,19 +993,21 @@ type InternalConfig struct {
 	TryBeforeYouBuy            bool
 	ForceNext                  bool
 	LargeCustomer              bool
+	Uncommitted                bool
 }
 
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
 		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         10,
-		RTTVeto_Default:            -5,
+		MaxLatencyTradeOff:         20,
+		RTTVeto_Default:            -10,
 		RTTVeto_PacketLoss:         -20,
 		RTTVeto_Multipath:          -20,
 		MultipathOverloadThreshold: 500,
 		TryBeforeYouBuy:            false,
 		ForceNext:                  false,
 		LargeCustomer:              false,
+		Uncommitted:                false,
 	}
 }
 
@@ -1101,8 +1103,18 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		return false
 	}
 
-	// set up the committed counter if try before you buy is enabled
-	TryBeforeYouBuy(routeState, internal, directLatency, 0, directPacketLoss, 0, true)
+	// default the route to being committed
+	routeState.Committed = true
+	routeState.CommitPending = false
+	routeState.CommitCounter = 0
+
+	// if the config is set to be uncommitted, always set committed = false
+	if internal.Uncommitted {
+		routeState.Committed = false
+	} else if internal.TryBeforeYouBuy {
+		// set up the committed counter
+		TryBeforeYouBuy(routeState, internal, directLatency, 0, directPacketLoss, 0, true)
+	}
 
 	// take network next
 
@@ -1190,9 +1202,21 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// try the route before committing to it
-	if !TryBeforeYouBuy(routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, routeSwitched) {
-		return false, false
+	// if the config is set to be uncommitted, always set committed = false
+	if internal.Uncommitted {
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+	} else if internal.TryBeforeYouBuy {
+		// try the route before committing to it
+		if !TryBeforeYouBuy(routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, routeSwitched) {
+			return false, false
+		}
+	} else {
+		// if the config isn't set to uncommitted or try before you buy, then always commit
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
 	}
 
 	// have still have a route, stay on network next
@@ -1217,14 +1241,6 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *
 }
 
 func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {
-	// always commit to a route if the TryBeforeYouBuy flag isn't set
-	if !internal.TryBeforeYouBuy {
-		routeState.Committed = true
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-		return true
-	}
-
 	// always commit to the route when using multipath
 	if routeState.Multipath {
 		routeState.Committed = true
