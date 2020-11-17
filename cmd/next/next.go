@@ -266,7 +266,7 @@ func readJSONData(entity string, args []string) []byte {
 	} else {
 		// Read the file at the given filepath
 		if len(args) == 0 {
-			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example\n", entity, entity, entity, entity), 0)
+			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\n", entity), 0)
 		}
 
 		data, err = ioutil.ReadFile(args[0])
@@ -623,6 +623,7 @@ func main() {
 			return nil
 		},
 	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -2056,6 +2057,94 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var stagingCommand = &ffcli.Command{
+		Name:       "staging",
+		ShortUsage: "next staging <subcommand>",
+		ShortHelp:  "Interact with the staging environment",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "start",
+				ShortUsage: "next staging start [config file]",
+				ShortHelp:  "Start up the staging environment optionally using the configuration file provided.",
+				Exec: func(ctx context.Context, args []string) error {
+					config := DefaultStagingConfig
+
+					if len(args) > 0 {
+						if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
+							handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
+						}
+					}
+
+					if err := StartStaging(config); err != nil {
+						handleRunTimeError(err.Error(), 1)
+					}
+
+					return nil
+				},
+			},
+			{
+				Name:       "stop",
+				ShortUsage: "next staging stop",
+				ShortHelp:  "Shuts down the staging environment",
+				Exec: func(ctx context.Context, args []string) error {
+					if errs := StopStaging(); errs != nil && len(errs) != 0 {
+						handleRunTimeError(errs[0].Error(), 1)
+					}
+					return nil
+				},
+			},
+
+			{
+				Name:       "example",
+				ShortUsage: "next staging example",
+				ShortHelp:  "Displays an example JSON schema for the staging configuration",
+				Exec: func(ctx context.Context, args []string) error {
+					jsonBytes, err := json.MarshalIndent(DefaultStagingConfig, "", "    ")
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not marshal example JSON: %v", err), 1)
+					}
+
+					fmt.Println(string(jsonBytes))
+					return nil
+				},
+			},
+			// {
+			// 	Name:       "configure",
+			// 	ShortUsage: "next staging configure <config file>",
+			// 	ShortHelp:  "Reconfigures the staging environment with the given configuration file",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		var config StagingConfig
+			// 		if len(args) > 0 {
+			// 			if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
+			// 				handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
+			// 			}
+			// 		}
+
+			// 		if err := configureStaging(config); err != nil {
+			// 			handleRunTimeError(err.Error(), 1)
+			// 		}
+
+			// 		return nil
+			// 	},
+			// },
+			// {
+			// 	Name:       "resize",
+			// 	ShortUsage: "next staging resize",
+			// 	ShortHelp:  "Resizes the staging environment with the given flags",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		if err := resizeStaging(serverBackendCount, clientCount); err != nil {
+			// 			handleJSONRPCError(env, err)
+			// 		}
+
+			// 		return nil
+			// 	},
+			// },
+		},
+	}
+
 	var commands = []*ffcli.Command{
 		authCommand,
 		selectCommand,
@@ -2081,6 +2170,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		analyzeCommand,
 		debugCommand,
 		viewCommand,
+		stagingCommand,
 	}
 
 	root := &ffcli.Command{
