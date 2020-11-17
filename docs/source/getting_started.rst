@@ -49,7 +49,7 @@ For example:
 .. image:: images/settings.png
 
 
-4. Enter your public key in the portal
+5. Enter your public key in the portal
 --------------------------------------
 
 Once your company is setup, you the "Game Configuration" tab is revealed.
@@ -58,7 +58,7 @@ Select it and enter your public key to link the keypair with your account:
 
 .. image:: images/public_key.png
 
-5. Set your public key on the client
+6. Set your public key on the client
 ------------------------------------
 
 The client needs only your public key to associate with your account. It's safe to share your public key outside your company.
@@ -69,7 +69,7 @@ In the *upgraded_client.cpp* example, replace the test customer public key with 
 
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-5. Set your private key on the server
+7. Set your private key on the server
 -------------------------------------
 
 The server needs your private key to associate with your account.
@@ -86,7 +86,7 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-6. Build and run a client and server
+8. Build and run a client and server
 ------------------------------------
 
 Now you should now be able to run the upgraded client and server and see the session show up in the portal. 
@@ -101,7 +101,7 @@ And the client output should look like this:
 
 (Image showing client output)
 
-7. See your session in the portal
+9. See your session in the portal
 ---------------------------------
 
 You should see a dot on your map at your location:
@@ -116,15 +116,9 @@ You can drill in on the session and see your latency, jitter and packet loss ove
 
 (Image showing session drill in)
 
-8. Welcome to Network Next!
----------------------------
+10. Welcome to Network Next!
+----------------------------
 
-Congratulations! Your account is now fully setup.
-
-We look forward to working with you. 
+Congratulations, your account is now fully setup. We look forward to working with you!
 
 Please reach out to support@networknext.com and we'll guide you through the rest of your integration and launch.
-
-cheers
-
-- Glenn Fiedler, Founder and CEO, Network Next
