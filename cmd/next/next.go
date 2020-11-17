@@ -1284,18 +1284,6 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter: %v\n", err), 1)
 					}
 
-					// Build the actual Datacenter struct from the input datacenter struct
-					// did := crypto.HashID(dc.Name)
-					// realDatacenter := datacenter{
-					// 	Name:          dc.Name,
-					// 	Enabled:       dc.Enabled,
-					// 	Latitude:      dc.Latitude,
-					// 	Longitude:     dc.Longitude,
-					// 	SupplierName:  dc.SupplierName,
-					// 	StreetAddress: dc.StreetAddress,
-					// 	SellerID:      dc.SellerID,
-					// }
-
 					// Add the Datacenter to storage
 					addDatacenter(rpcClient, env, dc)
 					return nil
