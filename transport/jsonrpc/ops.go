@@ -374,6 +374,29 @@ func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *
 	return nil
 }
 
+type SellerArg struct {
+	ID string
+}
+
+type SellerReply struct {
+	Seller routing.Seller
+}
+
+func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply) error {
+
+	var seller routing.Seller
+	var err error
+	if seller, err = s.Storage.Seller(arg.ID); err != nil {
+		err = fmt.Errorf("Seller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Seller = seller
+	return nil
+
+}
+
 type AddSellerArgs struct {
 	Seller routing.Seller
 }

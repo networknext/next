@@ -326,6 +326,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
+	// This check only pertains to the next tool. Stateful clients would already
+	// have the customer id.
 	c, err := db.Customer(b.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
@@ -537,6 +539,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
 	}
 
+	// This check only pertains to the next tool. Stateful clients would already
+	// have the customer id.
 	c, err := db.Customer(s.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: s.CompanyCode}
@@ -1135,7 +1139,7 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddDatacenter SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing SetDatacenter SQL", "err", err)
 		return err
 	}
 
@@ -1182,7 +1186,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.Data
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			dcs[buyerID] = dc
+			dcs[dc.DatacenterID] = dc
 		}
 	}
 
@@ -1357,6 +1361,33 @@ func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 	}
 }
 
+// SetSequenceNumber is required for testing with the Firestore emulator
+func (db *SQL) SetSequenceNumber(ctx context.Context, sequenceNumber int64) error {
+	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(sequenceNumber)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+	}
+
+	db.sequenceNumberMutex.Lock()
+	db.SyncSequenceNumber = sequenceNumber
+	db.sequenceNumberMutex.Unlock()
+
+	return nil
+}
+
 // IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
 // increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
 // local and remote numbers are not the same, the data will be sync'd from the database and the local
@@ -1383,17 +1414,24 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 		return err
 	}
 
-	result, err := stmt.Exec(sequenceNumber)
+	_, err = stmt.Exec(sequenceNumber)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
 	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-	}
-	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-	}
+
+	// SQLite3 does not like this check but it is necessary...
+	// TODO: fix/research
+	// result, err := stmt.Exec(sequenceNumber)
+	// if err != nil {
+	// 	level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+	// }
+	// rows, err := result.RowsAffected()
+	// if err != nil {
+	// 	level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+	// }
+	// if rows != 1 {
+	// 	level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+	// }
 
 	return nil
 }
@@ -1425,6 +1463,7 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	if ok {
 		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
 	}
+
 	dc := sqlDatacenter{
 		Name:          datacenter.Name,
 		Enabled:       datacenter.Enabled,
