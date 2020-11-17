@@ -165,9 +165,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		//		for local usage
 		//			true: overrides the default (SQLite)
 		//         false: local testing/happy path will use SQLite
-		// 	CGO_ENABLED=1
-		//		required for the cgo go-sqlite3 package, but not currently used???
-		//	DB_SYNC_INTERVAL
+		//	GOOGLE_CLOUD_SQL_SYNC_INTERVAL
 		var db storage.Storer
 
 		pgsql, err := envvar.GetBool("FEATURE_POSTGRESQL", false)
