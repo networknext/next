@@ -2,23 +2,26 @@
 Getting Started
 ===============
 
-1. Sign up and download the SDK
--------------------------------
+1. Sign up to the portal
+------------------------
 
 Sign up and create an account at https://portal.networknext.com by clicking "Get Access".
 
-Once you've signed up, a "Downloads" page will show up. Here you can download the latest SDK.
+.. image:: images/get_access.png
 
-Download the SDK and unzip it. 
+2. Download the SDK
+-------------------
+
+Once you've signed up you get access to the "Downloads" page. Here you can download the latest SDK.
 
 2. Run the keygen
 -----------------
 
-There is a keygen tool under the "keygen" directory.
+There is a keygen tool under the "keygen" directory in the SDK.
 
-Run the keygen to generate a keypair for your company. 
+Run the keygen program to generate a keypair for your company. 
 
-You'll see something like this:
+When you run it, you'll see something like this:
 
 .. code-block:: console
 
