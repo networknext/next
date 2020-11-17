@@ -131,9 +131,10 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
-    Vue.prototype.$authService.refreshToken()
-    const userProfile = cloneDeep(router.app.$store.getters.userProfile)
-    if (!userProfile.verified) {
+    if (!(navigator.userAgent.indexOf('Safari') !== -1 && navigator.userAgent.indexOf('Chrome') === -1)) {
+      Vue.prototype.$authService.refreshToken()
+    } else {
+      const userProfile = cloneDeep(router.app.$store.getters.userProfile)
       userProfile.verified = true
       store.commit('UPDATE_USER_PROFILE', userProfile)
     }
