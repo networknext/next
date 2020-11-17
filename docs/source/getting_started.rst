@@ -16,16 +16,14 @@ Once you've signed up you get access to the "Downloads" page. Here you can downl
 
 .. image:: images/downloads.png
 
-Download the SDK and unzip it somewhere on your computer.
-
 3. Generate a keypair
 ---------------------
 
 Inside the SDK there is a keygen tool under the "keygen" directory.
 
-Run the appropriate keygen program for your platform to generate a keypair for your company. 
+Run the keygen to generate a keypair for your company.
 
-When you run the keygen, you'll see something like this:
+You'll see something like this:
 
 .. code-block:: console
 
