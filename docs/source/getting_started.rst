@@ -46,8 +46,6 @@ Go back to the portal and copy your public key into the game settings page to as
 
 .. image:: images/game_settings_public_key.png
 
-Store your private key somewhere safe and do not share it with anyone outside your company.
-
 5. Set your public key on the client
 ------------------------------------
 
@@ -74,24 +72,25 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-The server needs your private key to associate with your account. _Please take great care with your private key._
+The server needs your private key to associate with your account. _Please take great care with your private key and do not share it with anyone outside your company._
 
 6. Build and run a client and server
 ------------------------------------
-
-(Link to instructions to build and run)
 
 Now you should now be able to run the upgraded client and server and see the session show up in the portal. 
 
 Make sure to run the server on a public IP address because it will not work if it is behind NAT.
 
-On success the server output should look like this:
+The server output should look like this:
 
 (Image showing server output)
 
 And the client output should look like this:
 
 (Image showing client output)
+
+7. See your sessions on the portal
+----------------------------------
 
 You should see a dot on your map at your location:
 
@@ -101,8 +100,8 @@ And in the top sessions page you will see your session showing up:
 
 (Example image showing session)
 
-You can drill in on the session and see your RTT, Jitter and Packet Loss:
+You can drill in on the session and see your latency, jitter and packet loss over time:
 
 (Image showing session drill in)
 
-Congratulations and welcome to Network Next!
+Congratulations! Your account is now setup and ready to go.
