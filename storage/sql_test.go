@@ -257,9 +257,9 @@ func TestInsertSQL(t *testing.T) {
 
 		checkDCMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
 		assert.Equal(t, 1, len(checkDCMaps))
-		assert.Equal(t, dcMap.Alias, checkDCMaps[outerBuyer.ID].Alias)
-		assert.Equal(t, dcMap.BuyerID, checkDCMaps[outerBuyer.ID].BuyerID)
-		assert.Equal(t, dcMap.DatacenterID, checkDCMaps[outerBuyer.ID].DatacenterID)
+		assert.Equal(t, dcMap.Alias, checkDCMaps[outerDatacenter.ID].Alias)
+		assert.Equal(t, dcMap.BuyerID, checkDCMaps[outerDatacenter.ID].BuyerID)
+		assert.Equal(t, dcMap.DatacenterID, checkDCMaps[outerDatacenter.ID].DatacenterID)
 	})
 }
 
@@ -366,7 +366,7 @@ func TestDeleteSQL(t *testing.T) {
 
 		dcMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
 		assert.Equal(t, 1, len(dcMaps))
-		outerDatacenterMap = dcMaps[outerBuyer.ID]
+		outerDatacenterMap = dcMaps[outerDatacenter.ID]
 
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
