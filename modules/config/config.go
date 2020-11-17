@@ -3,7 +3,7 @@ package config
 const (
 	FEATURE_BIGTABLE          = 0
 	FEATURE_NEW_RELAY_BACKEND = 1
-	FEATURE_POSTGRES          = 2
+	FEATURE_POSTGRESQL        = 2
 )
 
 type Feature struct {
