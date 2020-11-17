@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -334,7 +335,7 @@ func StartStaging(config StagingConfig) error {
 	config.Server.Count = config.Client.Count / ClientsPerServer / ServersPerVM
 	config.Client.Count /= ClientsPerVM
 
-	instanceGroups := createInstanceGroups(config, true)
+	instanceGroups := createInstanceGroups(config)
 
 	for _, instanceGroup := range instanceGroups {
 		serviceConfig := instanceGroup.ServiceConfig()
@@ -375,21 +376,48 @@ func StartStaging(config StagingConfig) error {
 	return nil
 }
 
-func StopStaging() error {
-	instanceGroups := createInstanceGroups(DefaultStagingConfig, false)
+func StopStaging() []error {
+	instanceGroups := createInstanceGroups(DefaultStagingConfig)
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(instanceGroups))
+
+	fmt.Println("stopping staging...")
 
 	for i := len(instanceGroups) - 1; i >= 0; i-- {
-		fmt.Printf("stopping %s...\n", instanceGroups[i].Name())
-		if err := instanceGroups[i].Stop(); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(i int) {
+			if err := instanceGroups[i].Stop(); err != nil {
+				errChan <- err
+			}
+
+			fmt.Printf("stopped %s\n", instanceGroups[i].Name())
+
+			wg.Done()
+		}(i)
+
 	}
 
-	fmt.Println("\nstaging stopped")
+	wg.Wait()
+
+	errs := make([]error, 0)
+	select {
+	case err := <-errChan:
+		errs = append(errs, err)
+	default:
+		if len(errs) == 0 {
+			fmt.Println("\nstaging stopped")
+			return nil
+		}
+
+		fmt.Println()
+		return errs
+	}
+
 	return nil
 }
 
-func createInstanceGroups(config StagingConfig, wait bool) []InstanceGroup {
+func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups := make([]InstanceGroup, 0)
 
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
@@ -398,8 +426,8 @@ func createInstanceGroups(config StagingConfig, wait bool) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", wait, config.ServerBackend))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-server-mig", wait, config.Server))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-server-mig", true, config.Server))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-clients-1", false, config.Client))
 
 	return instanceGroups

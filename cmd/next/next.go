@@ -2124,8 +2124,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortUsage: "next staging stop",
 				ShortHelp:  "Shuts down the staging environment",
 				Exec: func(ctx context.Context, args []string) error {
-					if err := StopStaging(); err != nil {
-						handleRunTimeError(err.Error(), 1)
+					if errs := StopStaging(); errs != nil && len(errs) != 0 {
+						handleRunTimeError(errs[0].Error(), 1)
 					}
 					return nil
 				},
