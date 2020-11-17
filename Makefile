@@ -880,7 +880,7 @@ build-optimizer-artifacts-staging: build-optimizer
 build-optimizer-artifacts-prod: build-optimizer
 	./deploy/build-artifacts.sh -e prod -s optimizer
 
-.PHONY: deploy-optimzer-dev
+.PHONY: deploy-optimizer-dev
 deploy-optimizer-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t optimizer -n optimizer -b gs://development_artifacts
 
