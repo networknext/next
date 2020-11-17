@@ -16,7 +16,6 @@ import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
-import { cloneDeep } from 'lodash'
 
 Vue.use(VueRouter)
 

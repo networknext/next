@@ -15,8 +15,7 @@ export class AuthService {
     this.authClient = new Auth0Client({
       client_id: this.clientID,
       domain: this.domain,
-      cacheLocation: 'localstorage',
-      useRefreshTokens: true
+      cacheLocation: 'localstorage'
     })
     this.processAuthentication()
   }
@@ -104,6 +103,10 @@ export class AuthService {
               avatar: authResult.picture,
               company: companyCode
             })
+          }
+
+          if (query.includes('signup=true')) {
+            store.commit('UPDATE_IS_SIGNUP', true)
           }
 
           store.commit('UPDATE_USER_PROFILE', userProfile)
