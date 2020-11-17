@@ -71,7 +71,7 @@ In the *upgraded_client.cpp* example, replace the test customer public key with 
 
 The server needs your private key to link with your account. It's very important that nobody outside your company knows your private key.
 
-Change the code in the *upgraded_server.cpp* example:
+Change the code in the *upgraded_server.cpp* example so set your private key:
 
 .. code-block:: c++
 
@@ -83,7 +83,7 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-Change the Network Next backend hostname from "dev.spacecats.net" to "prod.spacecats.net" to use the production environment.
+Also in *upgraded_server.cpp*, change Network Next backend hostname from "dev.spacecats.net" to "prod.spacecats.net" to switch to the production environment.
 
 .. code-block: c++
 
@@ -98,13 +98,13 @@ Or pass it in with an environment variable:
 8. Build and run a server
 -------------------------
 
-Follow these instructions to build the SDK and the examples on your platform: building_the_sdk
+Follow [building_the_sdk](these instructions) to build the SDK and the examples on your platform.
 
-Once built, you should now be able to run the upgraded server example so it is linked to your account.
+Once built, the upgraded server example will run linked to your account. 
 
-Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
+IMPORTANT: Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
 
-If everything is working properly, the server output should look like this:
+The server output should look something like this:
 
 .. code-block:: console
 
@@ -141,7 +141,7 @@ Modify the client source code to open a session to your server IP address:
 
 Then build and run the client. 
 
-The client should now connect to your server and print out something like this:
+The client should now connect to your server and look like this:
 
 .. code-block:: c++
 
