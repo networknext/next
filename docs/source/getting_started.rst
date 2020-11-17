@@ -8,6 +8,7 @@ Getting Started
 Sign up and create an account at https://portal.networknext.com by clicking "Get Access".
 
 .. image:: images/get_access.png
+   :class: with-border
 
 2. Download the SDK
 -------------------
