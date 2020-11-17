@@ -71,6 +71,7 @@ type SessionUpdateMetrics struct {
 	BadSessionID                               Counter
 	BadSliceNumber                             Counter
 	BuyerNotLive                               Counter
+	ClientPingTimedOut                         Counter
 	DatacenterNotFound                         Counter
 	NearRelaysLocateFailure                    Counter
 	NoRelaysInDatacenter                       Counter
@@ -105,6 +106,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	BadSessionID:                               &EmptyCounter{},
 	BadSliceNumber:                             &EmptyCounter{},
 	BuyerNotLive:                               &EmptyCounter{},
+	ClientPingTimedOut:                         &EmptyCounter{},
 	DatacenterNotFound:                         &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
 	NoRelaysInDatacenter:                       &EmptyCounter{},
@@ -645,6 +647,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".buyer_not_live",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained a buyer that is not yet paying for acceleration.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ClientPingTimedOut, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Client Ping Timed Out",
+		ServiceName: serviceName,
+		ID:          handlerID + ".client_ping_timed_out",
+		Unit:        "timeouts",
+		Description: "The number of times a " + packetDescription + " contained a client ping timeout reported up from the server.",
 	})
 	if err != nil {
 		return nil, err
