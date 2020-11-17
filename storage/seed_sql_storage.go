@@ -168,8 +168,26 @@ func SeedSQLStorage(
 		}
 
 		// fmt.Println("Adding datacenters")
-		localDCID := crypto.HashID("local.locale.name")
+		// req for happy path
+		localDCID := crypto.HashID("local")
 		localDatacenter := routing.Datacenter{
+			ID:      localDCID,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+			StreetAddress: "Somewhere, USA",
+			SupplierName:  "supplier.local.name",
+			SellerID:      localSeller.DatabaseID,
+		}
+		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
+			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
+		}
+
+		localDCID = crypto.HashID("local.locale.name")
+		localDatacenter = routing.Datacenter{
 			ID:      localDCID,
 			Name:    "local.locale.name",
 			Enabled: true,

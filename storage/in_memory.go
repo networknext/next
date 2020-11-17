@@ -526,3 +526,9 @@ func (m *InMemory) SetFeatureFlagByName(ctx context.Context, flagName string, fl
 func (m *InMemory) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in InMemory"))
 }
+
+func (m *InMemory) SetSequenceNumber(ctx context.Context, value int64) error {
+
+	return nil
+
+}
