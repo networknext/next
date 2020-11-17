@@ -95,12 +95,12 @@ Or pass it in with an environment variable:
 
 	export NEXT_HOSTNAME=prod.spacecats.net
 
-8. Build and run a client and server
-------------------------------------
+8. Build and run a server
+-------------------------
 
 Follow these instructions to build the SDK and the examples on your platform: building_the_sdk
 
-Once built, you should now be able to run the upgraded client and server example and have it linked to your account.
+Once built, you should now be able to run the upgraded server example so it is linked to your account.
 
 Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
 
@@ -132,43 +132,16 @@ If everything is working properly, the server output should look like this:
 	1.085716: info: server received init response from backend
 	1.085754: info: welcome to network next :)
 
+9. Build and run a client
+-------------------------
+
 Modify the client source code to open a session to your server IP address:
 
         const char * server_address = "173.255.241.176:50000";
 
-And rebuild and run the client. 
+Then build and run the client. 
 
-The client should now connect to your server and print out something like the following:
-
-.. code-block:: c++
-
-	glenn@macbook sdk % ./bin/upgraded_client
-
-	CPU features: sse2 ssse3 sse41 avx avx2
-
-	blake2b -> avx2
-	poly1305 -> sse3
-	curve25519 -> avx
-	chacha20 -> avx2
-	salsa20 -> avx2
-
-	0.010058: info: found valid customer public key
-	0.010086: info: client sdk version is 4.0.3
-	0.010204: info: client bound to 0.0.0.0:59617
-	0.010396: info: client increased thread priority
-	0.106846: info: client opened session to 173.255.241.176:50000
-	0.517579: info: client received packet from server (32 bytes)
-	0.517605: info: client upgraded to session a496cc24b0b5e804
-	0.601095: info: client direct route
-	0.768587: info: client received packet from server (32 bytes)
-	1.018871: info: client received packet from server (32 bytes)
-	1.273413: info: client received packet from server (32 bytes)
-	1.526227: info: client received packet from server (32 bytes)
-	1.781426: info: client received packet from server (32 bytes)
-	2.036010: info: client received packet from server (32 bytes)
-	2.288679: info: client received packet from server (32 bytes)
-
-And the client output should look like this:
+The client should now connect to your server and print out something like this:
 
 .. code-block:: c++
 
@@ -198,23 +171,25 @@ And the client output should look like this:
 	2.036010: info: client received packet from server (32 bytes)
 	2.288679: info: client received packet from server (32 bytes)
 
-9. See your session in the portal
+10. See your session in the portal
 ---------------------------------
 
-You should see a dot on your map at your location:
+Go to the portal at https://portal.networknext.com
+
+You should now see a dot on your map at your location:
 
 .. image:: images/map.png
 
-And in the top sessions page you will see your session showing up:
+And in the sessions page you will see your session showing up:
 
 .. image:: images/sessions.png
 
-You can click on your session id to drill in and see your latency, jitter and packet loss in real-time:
+Click on your session id to drill in and see your latency, jitter and packet loss in real-time:
 
 .. image:: images/session_drill_in.png
 
-10. Welcome to Network Next!
-----------------------------
+Welcome to Network Next!
+------------------------
 
 Congratulations, your account is now fully setup. We look forward to working with you!
 
