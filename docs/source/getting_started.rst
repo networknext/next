@@ -86,7 +86,7 @@ Or pass it in with an environment variable:
 8. Build and run a server
 -------------------------
 
-Follow [building_the_sdk](these instructions) to build the SDK examples.
+Follow :doc:`building_the_sdk` to build the example programs.
 
 IMPORTANT: Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
 
