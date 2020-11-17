@@ -85,13 +85,13 @@ Or pass it in with an environment variable:
 
 Also in *upgraded_server.cpp*, change Network Next backend hostname from "dev.spacecats.net" to "prod.spacecats.net" to switch to the production environment.
 
-.. code-block: c++
+.. code-block:: c++
 
         const char * backend_hostname = "prod.spacecats.net";
 	
 Or pass it in with an environment variable:
 
-.. code-block: console
+.. code-block:: console
 
 	export NEXT_HOSTNAME=prod.spacecats.net
 
