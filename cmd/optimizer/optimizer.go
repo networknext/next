@@ -195,7 +195,7 @@ func mainReturnWithCode() int {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage,false, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
 	//todo fix getRouteMatrixFunc??

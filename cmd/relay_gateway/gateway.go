@@ -130,7 +130,7 @@ func mainReturnWithCode() int {
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.HandleFunc("/relay_init", gateway.RelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", gateway.RelayUpdateHandlerFunc()).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
