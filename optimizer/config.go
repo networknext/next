@@ -16,6 +16,9 @@ type Config struct{
 	RelayStoreReadTimeout time.Duration
 	RelayStoreWriteTimeout time.Duration
 	RelayStoreRelayTimeout time.Duration
+	MatrixStoreAddress string
+	MatrixStoreReadTimeout time.Duration
+	MatrixStoreWriteTimeout time.Duration
 	subscriberPort 		string
 	subscriberRecieveBufferSize int
 }
@@ -66,7 +69,22 @@ func GetConfig() (*Config, error){
 		return nil, err
 	}
 
-	relayStoreRelayTimeout, err := envvar.GetDuration( "RELAY_STORE_RELAY_TIMEOUT", 5 * time.Second)
+	relayStoreRelayTimeout, err := envvar.GetDuration( "_STORE_MATRIX_TIMEOUT", 5 * time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	if !envvar.Exists("MATRIX_STORE_ADDRESS") {
+		return nil, fmt.Errorf("MATRIX_STORE_ADDRESS not set")
+	}
+	matrixStoreAddress := envvar.Get("MATRIX_STORE_ADDRESS", "")
+
+	matrixStoreReadTimeout, err := envvar.GetDuration( "MATRIX_STORE_READ_TIMEOUT", 250 * time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	matrixStoreWriteTimeout, err := envvar.GetDuration( "MATRIX_STORE_WRITE_TIMEOUT", 250 * time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +105,9 @@ func GetConfig() (*Config, error){
 		RelayStoreReadTimeout: relayStoreReadTimeout,
 		RelayStoreWriteTimeout: relayStoreWriteTimeout,
 		RelayStoreRelayTimeout: relayStoreRelayTimeout,
+		MatrixStoreAddress: matrixStoreAddress,
+		MatrixStoreReadTimeout: matrixStoreReadTimeout,
+		MatrixStoreWriteTimeout: matrixStoreWriteTimeout,
 		subscriberPort: subscriberPort,
 		subscriberRecieveBufferSize: subscriberRecieveBufferSize,
 	}, nil

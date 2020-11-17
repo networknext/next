@@ -4,13 +4,18 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/transport"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	rm "github.com/networknext/backend/route_matrix"
+	rm "github.com/networknext/backend/route_matrix_selector"
 	"github.com/networknext/backend/storage"
 
 	//logging
@@ -27,7 +32,7 @@ var (
 
 func main() {
 
-	serviceName := "Optimizer"
+	serviceName := "route_matrix_selector"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
@@ -110,7 +115,25 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal
+	fmt.Printf("starting http server\n")
+
+	router := mux.NewRouter()
+	router.HandleFunc("/health", transport.HealthHandlerFunc())
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+	router.Handle("/debug/vars", expvar.Handler())
+
+	go func() {
+		port := envvar.Get("PORT", "30005")
+
+		level.Info(logger).Log("addr", ":"+port)
+
+		err := http.ListenAndServe(":"+port, router)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+		}
+	}()
+
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 

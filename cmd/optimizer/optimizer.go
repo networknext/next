@@ -41,7 +41,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "Optimizer"
+	serviceName := "optimizer"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()

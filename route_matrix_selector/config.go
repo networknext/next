@@ -1,4 +1,4 @@
-package route_matrix
+package route_matrix_selector
 
 import (
 	"github.com/networknext/backend/modules/envvar"
