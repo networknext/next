@@ -222,6 +222,10 @@ func datacenterMapsForBuyer(
 			return
 		}
 
+		for _, dcMap := range reply.DatacenterMaps {
+			fmt.Printf("dcMap: %s\n", dcMap)
+		}
+
 		if signedIDs {
 			var newMaps []localjsonrpc.DatacenterMapsFull
 			for _, dcMap := range reply.DatacenterMaps {
