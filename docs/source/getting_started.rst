@@ -48,7 +48,6 @@ For example:
 
 .. image:: images/settings.png
 
-
 5. Enter your public key in the portal
 --------------------------------------
 
@@ -86,18 +85,30 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
+Also, change the Network Next hostname from "dev.spacecats.net" to "prod.spacecats.net" to use the production environment.
+
+.. code-block: c++
+
+        const char * backend_hostname = "prod.spacecats.net";
+	
+Or pass it in with an environment variable:
+
+	export NEXT_HOSTNAME=prod.spacecats.net
+
 8. Build and run a client and server
 ------------------------------------
 
-Now you should now be able to run the upgraded client and server and see the session show up in the portal. 
+Follow the instructions to build the SDK and the examples on your platform: building_the_sdk
 
-Make sure to run the server on a public IP address because it will not work if it is behind NAT.
+Once built, you should now be able to run the upgraded client and server example and have it linked to your account.
 
-The server output should look like this:
+Make sure to run the server on a public IP address somewhere because it will not work if it is behind NAT.
+
+If everything is working properly, the server output should look something like this:
 
 (Image showing server output)
 
-And the client output should look like this:
+And the client output should look something like this:
 
 (Image showing client output)
 
