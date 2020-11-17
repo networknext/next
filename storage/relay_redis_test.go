@@ -20,7 +20,6 @@ func TestRedisRelayStore(t *testing.T) {
 	rs, ms := relayRedisTestHelperRedisStore(t)
 	assert.NotNil(t, rs.pool)
 	assert.Equal(t,5*time.Second, rs.relayTimeout)
-
 	rs.pool.Close()
 	ms.Close()
 }
@@ -35,13 +34,13 @@ func TestNewRedisRelayStoreClose(t *testing.T) {
 }
 
 func TestRedisRelayStoreSuite(t *testing.T) {
-	rs, ms := relayRedisTestHelperRedisStore(t)
+	rs, _ := relayRedisTestHelperRedisStore(t)
 	assert.NotNil(t, rs.pool)
 
 	ts :=&RelayStoreTestSuite{}
 	ts.RunAll(t,rs)
 
-	err :=rs.Close()
-	assert.Nil(t, err)
-	ms.Close()
+	//err :=rs.Close()
+	//assert.Nil(t, err)
+	//ms.Close()
 }
