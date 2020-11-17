@@ -105,10 +105,6 @@ export class AuthService {
             })
           }
 
-          if (query.includes('signup=true')) {
-            store.commit('UPDATE_IS_SIGNUP', true)
-          }
-
           store.commit('UPDATE_USER_PROFILE', userProfile)
         })
         .catch((error: Error) => {
