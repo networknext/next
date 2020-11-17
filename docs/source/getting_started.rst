@@ -54,7 +54,7 @@ For example:
 
 Once your company is setup, you the "Game Configuration" tab is revealed.
 
-Select it and enter your public key from the keygen to link your keypair with your account:
+Select it and enter your public key to link the keypair with your account:
 
 .. image:: images/public_key.png
 
