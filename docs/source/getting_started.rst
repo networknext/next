@@ -64,7 +64,7 @@ In the *upgraded_client.cpp* example, replace the test customer public key with 
 
 .. code-block:: c++
 
-	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+	const char * customer_public_key = "OGivr2IM0k7oLTQ3lmGXVnZJpxDRPFsZrKxYLn7fQAosTpQAfs464w==";
 
 7. Set your private key on the server
 -------------------------------------
