@@ -109,7 +109,9 @@ You can drill in on the session and see your latency, jitter and packet loss ove
 
 Congratulations! Your account is now fully setup.
 
-We look forward to working with you. Please reach out to support@networknext.com and we'll guide you through your integration with your game.
+We look forward to working with you. 
+
+Please reach out to support@networknext.com and we'll guide you through the rest of your integration and launch.
 
 cheers
 
