@@ -1361,6 +1361,33 @@ func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
 	}
 }
 
+// SetSequenceNumber is required for testing with the Firestore emulator
+func (db *SQL) SetSequenceNumber(ctx context.Context, sequenceNumber int64) error {
+	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(sequenceNumber)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+	}
+
+	db.sequenceNumberMutex.Lock()
+	db.SyncSequenceNumber = sequenceNumber
+	db.sequenceNumberMutex.Unlock()
+
+	return nil
+}
+
 // IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
 // increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
 // local and remote numbers are not the same, the data will be sync'd from the database and the local

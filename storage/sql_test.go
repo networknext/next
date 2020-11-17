@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -51,9 +52,16 @@ func TestInsertSQL(t *testing.T) {
 	// assert.NoError(t, err)
 	// fmt.Printf("Current disk location: %s\n", currentLocation)
 
+	err = db.SetSequenceNumber(ctx, -1)
+	assert.NoError(t, err)
+
+	// err = db.IncrementSequenceNumber(ctx)
+	// assert.NoError(t, err)
+
 	// NewSQLStorage() Sync() above sets up seq number
 	t.Run("Do Not Sync", func(t *testing.T) {
-		sync, _, err := db.CheckSequenceNumber(ctx)
+		sync, seq, err := db.CheckSequenceNumber(ctx)
+		fmt.Printf("--> seq: %d\n", seq)
 		assert.NoError(t, err)
 		assert.Equal(t, false, sync)
 	})
