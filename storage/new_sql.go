@@ -42,6 +42,13 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		return nil, err
 	}
 
+	// db.Ping actually establishes the connection and validates the parameters
+	err = sqlite3.Ping()
+	if err != nil {
+		err = fmt.Errorf("NewSQLite3() error pinging db: %w", err)
+		return nil, err
+	}
+
 	db := &SQL{
 		Client:             sqlite3,
 		Logger:             logger,
@@ -54,8 +61,8 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		SyncSequenceNumber: -1,
 	}
 
-	pwd, _ := os.Getwd()
-	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
+	// pwd, _ := os.Getwd()
+	// fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 	// populate the db with some data from dev
 	file, err := ioutil.ReadFile("storage/sqlite3-empty.sql") // happy path
 	if err != nil {

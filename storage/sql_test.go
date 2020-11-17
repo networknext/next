@@ -40,8 +40,7 @@ func TestInsertSQL(t *testing.T) {
 	db, err := backend.GetStorer(ctx, logger, "local", env)
 	assert.NoError(t, err)
 
-	time.Sleep(2000 * time.Millisecond) // allow time for sync functions to complete
-	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 
 	var outerCustomer routing.Customer
 	var outerBuyer routing.Buyer
@@ -199,14 +198,16 @@ func TestInsertSQL(t *testing.T) {
 			PublicKey:      publicKey,
 			UpdateKey:      updateKey,
 			// Datacenter:     outerDatacenter,
-			MRC:          19700000000000,
-			Overage:      26000000000000,
-			BWRule:       routing.BWRuleBurst,
-			ContractTerm: 12,
-			StartDate:    time.Now(),
-			EndDate:      time.Now(),
-			Type:         routing.BareMetal,
-			State:        routing.RelayStateMaintenance,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			ContractTerm:        12,
+			StartDate:           time.Now(),
+			EndDate:             time.Now(),
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
+			IncludedBandwidthGB: 10000,
+			NICSpeedMbps:        1000,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -240,6 +241,8 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
 		assert.Equal(t, relay.Type, checkRelay.Type)
 		assert.Equal(t, relay.State, checkRelay.State)
+		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
+		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
 	})
 
 	t.Run("AddDatacenterMap", func(t *testing.T) {

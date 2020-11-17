@@ -247,7 +247,7 @@ func SeedSQLStorage(
 		}
 
 		for i := uint64(0); i < numRelays; i++ {
-			fmt.Printf("\tSeedSQLStorage adding relay %d\n", i)
+			// fmt.Printf("\tSeedSQLStorage adding relay %d\n", i)
 			updateKey := make([]byte, crypto.KeySize)
 			_, err = rand.Read(updateKey)
 			if err != nil {
@@ -258,24 +258,26 @@ func SeedSQLStorage(
 			rid := crypto.HashID(addr.String())
 
 			if err := db.AddRelay(ctx, routing.Relay{
-				ID:             rid,
-				Name:           "local.locale." + fmt.Sprintf("%d", i),
-				Addr:           addr,
-				ManagementAddr: "1.2.3.4" + fmt.Sprintf("%d", i),
-				SSHPort:        22,
-				SSHUser:        "root",
-				MaxSessions:    uint32(1000 + i),
-				PublicKey:      relayPublicKey,
-				UpdateKey:      updateKey,
-				Datacenter:     localDatacenter,
-				MRC:            19700000000000,
-				Overage:        26000000000000,
-				BWRule:         routing.BWRuleBurst,
-				ContractTerm:   12,
-				StartDate:      time.Now(),
-				EndDate:        time.Now(),
-				Type:           routing.BareMetal,
-				State:          routing.RelayStateMaintenance,
+				ID:                  rid,
+				Name:                "local.locale." + fmt.Sprintf("%d", i),
+				Addr:                addr,
+				ManagementAddr:      "1.2.3.4" + fmt.Sprintf("%d", i),
+				SSHPort:             22,
+				SSHUser:             "root",
+				MaxSessions:         uint32(1000 + i),
+				PublicKey:           relayPublicKey,
+				UpdateKey:           updateKey,
+				Datacenter:          localDatacenter,
+				MRC:                 19700000000000,
+				Overage:             26000000000000,
+				BWRule:              routing.BWRuleBurst,
+				ContractTerm:        12,
+				StartDate:           time.Now(),
+				EndDate:             time.Now(),
+				Type:                routing.BareMetal,
+				State:               routing.RelayStateMaintenance,
+				IncludedBandwidthGB: 10000,
+				NICSpeedMbps:        1000,
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
@@ -297,24 +299,26 @@ func SeedSQLStorage(
 			rid = crypto.HashID(addr.String())
 
 			if err := db.AddRelay(ctx, routing.Relay{
-				ID:             rid,
-				Name:           "ghost-army.locale.1" + fmt.Sprintf("%d", i),
-				Addr:           addr,
-				ManagementAddr: "4.3.2.1" + fmt.Sprintf("%d", i),
-				SSHPort:        22,
-				SSHUser:        "root",
-				MaxSessions:    uint32(1000 + i),
-				PublicKey:      publicKey,
-				UpdateKey:      updateKey,
-				Datacenter:     ghostDatacenter,
-				MRC:            19700000000000,
-				Overage:        26000000000000,
-				BWRule:         routing.BWRuleBurst,
-				ContractTerm:   12,
-				StartDate:      time.Now(),
-				EndDate:        time.Now(),
-				Type:           routing.BareMetal,
-				State:          routing.RelayStateMaintenance,
+				ID:                  rid,
+				Name:                "ghost-army.locale.1" + fmt.Sprintf("%d", i),
+				Addr:                addr,
+				ManagementAddr:      "4.3.2.1" + fmt.Sprintf("%d", i),
+				SSHPort:             22,
+				SSHUser:             "root",
+				MaxSessions:         uint32(1000 + i),
+				PublicKey:           publicKey,
+				UpdateKey:           updateKey,
+				Datacenter:          ghostDatacenter,
+				MRC:                 19700000000000,
+				Overage:             26000000000000,
+				BWRule:              routing.BWRuleBurst,
+				ContractTerm:        12,
+				StartDate:           time.Now(),
+				EndDate:             time.Now(),
+				Type:                routing.BareMetal,
+				State:               routing.RelayStateMaintenance,
+				IncludedBandwidthGB: 10000,
+				NICSpeedMbps:        1000,
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding ghost relay: %w", err)
 			}
