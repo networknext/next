@@ -5613,10 +5613,15 @@ int main( int argc, const char ** argv )
 
         relay_platform_mutex_acquire( relay.mutex );
         auto iter = relay.sessions->begin();
-        while (iter != relay.sessions->end()) {
-            if (iter->second && iter->second->expire_timestamp < relay_timestamp( &relay )) {
-                iter = relay.sessions->erase(iter);
-            } else {
+        while ( iter != relay.sessions->end() ) 
+        {
+            if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) ) 
+            {
+                printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
+                iter = relay.sessions->erase( iter );
+            } 
+            else 
+            {
                 iter++;
             }
         }
