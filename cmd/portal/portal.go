@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -28,6 +26,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -107,21 +106,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var relayPublicKey []byte
-	var customerID uint64
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
-
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-			customerPublicKey = customerPublicKey[8:]
-		}
-	}
-
 	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
@@ -146,10 +130,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-
 	manager, err := management.New(
 		os.Getenv("AUTH_DOMAIN"),
 		os.Getenv("AUTH_CLIENTID"),
@@ -164,39 +144,19 @@ func main() {
 	var jobManager storage.JobManager = manager.Job
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		gcpProjectID = "local"
 
-		level.Info(logger).Log("msg", "Detected firestore emulator")
+	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
 	}
 
-	if gcpOK || emulatorOK {
-		// Firestore
-		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		}
-	}
+	// switch db.(type) {
+	// case *storage.SQL:
+	// 	if env == "local" {
+	// 		err = storage.SeedSQLStorage(ctx, db)
+	// 	}
+	// }
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -229,9 +189,12 @@ func main() {
 		}
 	}
 
-	if env == "local" {
-		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
-	}
+	// if env == "local" {
+	// 	if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
+	// 		level.Error(logger).Log("err", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
 	// is commented out in the ops service.
 
