@@ -15,7 +15,8 @@ export class AuthService {
     this.authClient = new Auth0Client({
       client_id: this.clientID,
       domain: this.domain,
-      cacheLocation: 'localstorage'
+      cacheLocation: 'localstorage',
+      useRefreshTokens: true
     })
     this.processAuthentication()
   }
