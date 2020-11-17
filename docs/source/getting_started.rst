@@ -39,10 +39,22 @@ You'll see something like this:
 
 	IMPORTANT: Save your private key in a secure place and don't share it with anybody, not even us!
 
+4. Setup your company in the portal
+-----------------------------------
+
+Go to the "Settings" page in the portal and enter your company name and company code
+
+For example:
+
+.. image:: images/settings.png
+
+
 4. Enter your public key in the portal
 --------------------------------------
 
-Go back to the portal and copy your public key into the game settings page to associate the keypair with your account:
+Once your company is setup, you the "Game Settings" tab is revealed.
+
+Enter your public key from the keygen to your keypair with your account:
 
 .. image:: images/game_settings_public_key.png
 
