@@ -343,10 +343,13 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name      string
-	Enabled   bool
-	Latitude  float64
-	Longitude float64
+	Name          string
+	Enabled       bool
+	Latitude      float64
+	Longitude     float64
+	SupplierName  string
+	StreetAddress string
+	SellerID      string
 }
 
 // used to decode dcMap hex strings from json
@@ -1277,26 +1280,13 @@ func main() {
 					jsonData := readJSONData("datacenters", args)
 
 					// Unmarshal the JSON and create the datacenter struct
-					var datacenter datacenter
-					if err := json.Unmarshal(jsonData, &datacenter); err != nil {
+					var dc datacenter
+					if err := json.Unmarshal(jsonData, &dc); err != nil {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter: %v\n", err), 1)
 					}
 
-					// Build the actual Datacenter struct from the input datacenter struct
-					did := crypto.HashID(datacenter.Name)
-					realDatacenter := routing.Datacenter{
-						ID:       did,
-						SignedID: int64(did),
-						Name:     datacenter.Name,
-						Enabled:  datacenter.Enabled,
-						Location: routing.Location{
-							Latitude:  datacenter.Latitude,
-							Longitude: datacenter.Longitude,
-						},
-					}
-
 					// Add the Datacenter to storage
-					addDatacenter(rpcClient, env, realDatacenter)
+					addDatacenter(rpcClient, env, dc)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -1306,10 +1296,13 @@ func main() {
 						ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							example := datacenter{
-								Name:      "amazon.ohio.2",
-								Enabled:   false,
-								Latitude:  90,
-								Longitude: 180,
+								Name:          "some.locale.1",
+								Enabled:       false,
+								Latitude:      90,
+								Longitude:     180,
+								SupplierName:  "supplier.locale.1",
+								StreetAddress: "Somewhere, Else, Earth",
+								SellerID:      "some_seller",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1319,6 +1312,7 @@ func main() {
 
 							fmt.Println("Example JSON schema to add a new datacenter:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("Note: a valid Seller ID is required to add a datacenter.")
 							return nil
 						},
 					},
@@ -1446,6 +1440,7 @@ func main() {
 
 							fmt.Println("Example JSON schema to add a new buyer:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("Note: a valid company code is required to add a buyer.")
 							return nil
 						},
 					},
