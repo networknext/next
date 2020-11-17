@@ -49,16 +49,18 @@ Go back to the portal and copy your public key into the game settings page to as
 5. Set your public key on the client
 ------------------------------------
 
-In *upgraded_client.cpp* example, replace the test customer public key with your own:
+The client needs only your public key to associate with your account. It's safe to share your public key outside your company.
+
+In the *upgraded_client.cpp* example, replace the test customer public key with your own:
 
 .. code-block:: c++
 
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-The client needs only your public key to associate with your account. It is safe to share your public key outside your company.
-
 5. Set your private key on the server
 -------------------------------------
+
+The server needs your private key to associate with your account.
 
 Can change the code in the *upgraded_server.cpp* example:
 
@@ -71,8 +73,6 @@ Or pass it in with an environment variable:
 .. code-block:: console
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
-
-The server needs your private key to associate with your account. _Please take great care with your private key and do not share it with anyone outside your company._
 
 6. Build and run a client and server
 ------------------------------------
@@ -89,8 +89,8 @@ And the client output should look like this:
 
 (Image showing client output)
 
-7. See your sessions on the portal
-----------------------------------
+7. See your session in the portal
+---------------------------------
 
 You should see a dot on your map at your location:
 
@@ -104,4 +104,13 @@ You can drill in on the session and see your latency, jitter and packet loss ove
 
 (Image showing session drill in)
 
-Congratulations! Your account is now setup and ready to go.
+8. Welcome to Network Next!
+---------------------------
+
+Congratulations! Your account is now fully setup.
+
+We look forward to working with you. Please reach out to support@networknext.com and we'll guide you through your integration with your game.
+
+cheers
+
+- Glenn Fiedler, Founder and CEO, Network Next
