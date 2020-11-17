@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"sort"
@@ -185,21 +186,24 @@ type BuyersReply struct {
 type buyer struct {
 	CompanyName string `json:"company_name"`
 	CompanyCode string `json:"company_code"`
+	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
-		company, err := s.Storage.Customer(b.CompanyCode)
+		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() failed to find company: %v", err)
+			err = fmt.Errorf("Buyers() could not find Customer %s: %v", b.CompanyCode, err)
 			s.Logger.Log("err", err)
 			return err
 		}
+		fmt.Printf("customer name: %s\n", c.Name)
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
-			CompanyName: company.Name,
-			CompanyCode: company.Code,
+			CompanyName: c.Name,
+			CompanyCode: b.CompanyCode,
+			ShortName:   b.ShortName,
 		})
 	}
 
@@ -271,74 +275,6 @@ type routingRuleSettings struct {
 	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
-func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
-	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
-	if err != nil {
-		err = fmt.Errorf("RoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	buyer, err := s.Storage.Buyer(buyerID)
-	if err != nil {
-		return err
-	}
-
-	reply.RoutingRuleSettings = []routingRuleSettings{
-		{
-			EnvelopeKbpsUp:               buyer.RoutingRulesSettings.EnvelopeKbpsUp,
-			EnvelopeKbpsDown:             buyer.RoutingRulesSettings.EnvelopeKbpsDown,
-			Mode:                         buyer.RoutingRulesSettings.Mode,
-			MaxNibblinsPerGB:             buyer.RoutingRulesSettings.MaxNibblinsPerGB,
-			RTTEpsilon:                   buyer.RoutingRulesSettings.RTTEpsilon,
-			RTTThreshold:                 buyer.RoutingRulesSettings.RTTThreshold,
-			RTTHysteresis:                buyer.RoutingRulesSettings.RTTHysteresis,
-			RTTVeto:                      buyer.RoutingRulesSettings.RTTVeto,
-			EnableYouOnlyLiveOnce:        buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
-			EnablePacketLossSafety:       buyer.RoutingRulesSettings.EnablePacketLossSafety,
-			EnableMultipathForPacketLoss: buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
-			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
-			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
-			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
-			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
-			TryBeforeYouBuyMaxSlices:     buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices,
-			SelectionPercentage:          buyer.RoutingRulesSettings.SelectionPercentage,
-		},
-	}
-
-	return nil
-}
-
-type SetRoutingRulesSettingsArgs struct {
-	BuyerID              string
-	RoutingRulesSettings routing.RoutingRulesSettings
-}
-
-func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRoutingRulesSettingsReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelFunc()
-
-	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
-	if err != nil {
-		err = fmt.Errorf("SetRoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	buyer, err := s.Storage.Buyer(buyerID)
-	if err != nil {
-		err = fmt.Errorf("SetRoutingRulesSettings() Storage.Buyer error: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	buyer.RoutingRulesSettings = args.RoutingRulesSettings
-
-	return s.Storage.SetBuyer(ctx, buyer)
-}
-
-type SetRoutingRulesSettingsReply struct{}
-
 type SellersArgs struct{}
 
 type SellersReply struct {
@@ -353,12 +289,19 @@ type seller struct {
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
-	for _, s := range s.Storage.Sellers() {
+	for _, localSeller := range s.Storage.Sellers() {
+		c, err := s.Storage.Customer(localSeller.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		fmt.Printf("customer name: %s\n", c.Name)
 		reply.Sellers = append(reply.Sellers, seller{
-			ID:                   s.ID,
-			Name:                 s.Name,
-			IngressPriceNibblins: s.IngressPriceNibblinsPerGB,
-			EgressPriceNibblins:  s.EgressPriceNibblinsPerGB,
+			ID:                   localSeller.ID,
+			Name:                 c.Name,
+			IngressPriceNibblins: localSeller.IngressPriceNibblinsPerGB,
+			EgressPriceNibblins:  localSeller.EgressPriceNibblinsPerGB,
 		})
 	}
 
@@ -383,18 +326,22 @@ type customer struct {
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
-	var buyerID string
 
 	customers := s.Storage.Customers()
 
 	for _, c := range customers {
+
+		buyerID := ""
+
+		// TODO both of these support functions should be
+		// removed or modified to check by FK
 		buyer, _ := s.Storage.BuyerWithCompanyCode(c.Code)
 		seller, _ := s.Storage.SellerWithCompanyCode(c.Code)
-		if buyer.ID == 0 {
-			buyerID = ""
-		} else {
+
+		if buyer.ID != 0 {
 			buyerID = fmt.Sprintf("%x", buyer.ID)
 		}
+
 		reply.Customers = append(reply.Customers, customer{
 			Name:     c.Name,
 			Code:     c.Code,
@@ -425,6 +372,29 @@ func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *
 		return err
 	}
 	return nil
+}
+
+type SellerArg struct {
+	ID string
+}
+
+type SellerReply struct {
+	Seller routing.Seller
+}
+
+func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply) error {
+
+	var seller routing.Seller
+	var err error
+	if seller, err = s.Storage.Seller(arg.ID); err != nil {
+		err = fmt.Errorf("Seller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Seller = seller
+	return nil
+
 }
 
 type AddSellerArgs struct {
@@ -695,6 +665,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	shortDate := time.Now().Format("2006-01-02")
 	shortTime := time.Now().Format("15:04:05")
 	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
+	relay.Addr = net.UDPAddr{} // clear the address to 0 when removed
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
@@ -952,7 +923,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 			s.Logger.Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
 			s.Logger.Log("err", err)
@@ -969,7 +940,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
-			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      company.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 		}
