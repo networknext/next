@@ -222,7 +222,6 @@ func datacenterMapsForBuyer(
 			return
 		}
 
-		fmt.Println("back from ListDatacenterMaps")
 		for _, dcMap := range reply.DatacenterMaps {
 			fmt.Printf("dcMap: %s\n", dcMap)
 		}
