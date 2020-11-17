@@ -917,8 +917,8 @@ publish-route-matrix-selector-artifacts-dev:
 publish-route-matrix-selector-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s route_matrix_selector
 
-.PHONY: publish-route-matrix_selector-artifacts-prod
-publish-route-matrix_selector-artifacts-prod:
+.PHONY: publish-route-matrix-selector-artifacts-prod
+publish-route-matrix-selector-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s route_matrix_selector
 
 
