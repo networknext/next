@@ -154,6 +154,7 @@ type internalConfig struct {
 	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
 	ForceNext                  bool  `firestore:"forceNext"`
 	LargeCustomer              bool  `firestore:"largeCustomer"`
+	Uncommitted                bool  `firestore:"uncommitted"`
 }
 
 type FirestoreError struct {
@@ -2277,6 +2278,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.TryBeforeYouBuy = tempIC.TryBeforeYouBuy
 	ic.ForceNext = tempIC.ForceNext
 	ic.LargeCustomer = tempIC.LargeCustomer
+	ic.Uncommitted = tempIC.Uncommitted
 
 	return ic, nil
 }
@@ -2295,6 +2297,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
 		"forceNext":                  internalConfig.ForceNext,
 		"largeCustomer":              internalConfig.LargeCustomer,
+		"uncommitted":                internalConfig.Uncommitted,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
