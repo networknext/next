@@ -129,7 +129,7 @@ Modify the client source code to open a session to your server IP address:
 
 Then build and run the client. 
 
-The client should connect to your server and look like this:
+The client should connect to your server and exchange packets:
 
 .. code-block:: c++
 
