@@ -2,100 +2,200 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"strconv"
 	"strings"
 )
 
 const (
-	ServersPerVM = 50
-	ClientsPerVM = 2000
-
 	MaxVMsPerMIG = 1000
+
+	ClientsPerVM     = 2000
+	ServersPerVM     = 50
+	ClientsPerServer = 200
 )
 
-func getRelayList() (string, error) {
-	success, output := bashQuiet("gcloud compute instances list --project=network-next-v3-staging --filter=\"name:relay*\" --format=\"value(name)\"")
-	if !success {
-		return "", fmt.Errorf("could not retrieve relay list: %s", output)
-	}
-
-	// Replace endlines with spaces to allow the relays to be used as parameters in future commands
-	return strings.ReplaceAll(output, "\n", " "), nil
+type StagingServiceConfig struct {
+	Cores int `json:"cores"`
+	Count int `json:"count"`
 }
 
-func getPortalCruncherList() (string, error) {
-	success, output := bashQuiet("gcloud compute instances list --project=network-next-v3-staging --filter=\"name:portal-cruncher*\" --format=\"value(name)\"")
-	if !success {
-		return "", fmt.Errorf("could not retrieve portal cruncher list: %s", output)
-	}
-
-	// Replace endlines with spaces to allow the portal crunchers to be used as parameters in future commands
-	return strings.ReplaceAll(output, "\n", " "), nil
+type StagingConfig struct {
+	RelayBackend   StagingServiceConfig `json:"relay-backend"`
+	Relays         StagingServiceConfig `json:"relays"`
+	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
+	Analytics      StagingServiceConfig `json:"analytics"`
+	Billing        StagingServiceConfig `json:"billing"`
+	Portal         StagingServiceConfig `json:"portal"`
+	ServerBackend  StagingServiceConfig `json:"server-backend"`
+	Server         StagingServiceConfig `json:"server"`
+	Client         StagingServiceConfig `json:"client"`
 }
 
-func getClientMIGCount() (int, error) {
-	success, output := bashQuiet("gcloud compute instance-groups managed list --project=network-next-v3-staging --filter=\"name:load-test-clients*\" --format=\"value(name)\"")
-	if !success {
-		return 0, fmt.Errorf("could not retrieve client MIG list: %s", output)
-	}
+var DefaultStagingConfig = StagingConfig{
+	RelayBackend: StagingServiceConfig{
+		Cores: 96,
+		Count: 1,
+	},
 
-	// Replace endlines with spaces to allow the client MIGs to be used as parameters in future commands
-	return strings.Count(output, "load-test-clients"), nil
+	Relays: StagingServiceConfig{
+		Cores: 4,
+		Count: 80,
+	},
+
+	PortalCruncher: StagingServiceConfig{
+		Cores: 8,
+		Count: 4,
+	},
+
+	Analytics: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
+	Billing: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
+	Portal: StagingServiceConfig{
+		Cores: 16,
+		Count: -1,
+	},
+
+	ServerBackend: StagingServiceConfig{
+		Cores: 16,
+		Count: 4,
+	},
+
+	Server: StagingServiceConfig{
+		Cores: 50,
+		Count: 500,
+	},
+
+	Client: StagingServiceConfig{
+		Cores: 8,
+		Count: 100000,
+	},
 }
 
-func waitForMIGStable(mig string) error {
-	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed wait-until %s --project=network-next-v3-staging --stable --zone=us-central1-a", mig))
-	if !success {
-		return fmt.Errorf("could not wait for mig to stabilize: %s", output)
+// InstanceGroup defines the necessary functionality for a group
+// of virtual machine instances to be managed by the next tool
+type InstanceGroup interface {
+	Name() string
+	ServiceConfig() StagingServiceConfig
+	Start() error
+	Stop() error
+	Resize(size int) error
+	Instances(limit int) ([]string, error)
+	CoreCount() (int, error)
+}
+
+type ManagedInstanceGroup struct {
+	name          string
+	serviceConfig StagingServiceConfig
+	autoscale     bool
+	wait          bool
+}
+
+func NewManagedInstanceGroup(name string, wait bool, serviceConfig StagingServiceConfig) *ManagedInstanceGroup {
+	var autoscale bool
+	if serviceConfig.Count < 0 {
+		autoscale = true
+	}
+
+	return &ManagedInstanceGroup{name: name, wait: wait, autoscale: autoscale, serviceConfig: serviceConfig}
+}
+
+func (mig *ManagedInstanceGroup) Name() string {
+	return mig.name
+}
+
+func (mig *ManagedInstanceGroup) ServiceConfig() StagingServiceConfig {
+	return mig.serviceConfig
+}
+
+func (mig *ManagedInstanceGroup) Start() error {
+	if mig.autoscale {
+		return mig.setAutoscaling(true)
+	}
+
+	if err := mig.Resize(mig.serviceConfig.Count); err != nil {
+		return err
+	}
+
+	if mig.wait {
+		waitForMIGStable(mig.name)
 	}
 
 	return nil
 }
 
-func startInstances(instances string, wait bool) error {
-	var asyncFlag string
-	if !wait {
-		asyncFlag = "--async"
+func (mig *ManagedInstanceGroup) Stop() error {
+	if err := mig.setAutoscaling(false); err != nil {
+		return err
 	}
 
-	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances start --project=network-next-v3-staging %s --zone=us-central1-a", instances, asyncFlag))
-	if !success {
-		return fmt.Errorf("could not start instances: %s", output)
-	}
-
-	return nil
+	return mig.Resize(0)
 }
 
-func stopInstances(instances string, wait bool) error {
-	var asyncFlag string
-	if !wait {
-		asyncFlag = "--async"
-	}
-
-	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances stop --project=network-next-v3-staging %s --zone=us-central1-a", instances, asyncFlag))
-	if !success {
-		return fmt.Errorf("could not stop instances: %s", output)
-	}
-
-	return nil
-}
-
-func resizeMIG(mig string, size int) error {
-	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed resize %s --project=network-next-v3-staging --size=%d --zone=us-central1-a", mig, size))
+func (mig *ManagedInstanceGroup) Resize(size int) error {
+	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed resize %s --project=network-next-v3-staging --size=%d --zone=us-central1-a", mig.name, size))
 	if !success {
 		return fmt.Errorf("could not resize MIG to %d instances: %s", size, output)
 	}
 
+	if mig.wait {
+		waitForMIGStable(mig.name)
+	}
+
 	return nil
 }
 
-func setAutoscaling(mig string, enabled bool) error {
+func (mig *ManagedInstanceGroup) Instances(limit int) ([]string, error) {
+	command := fmt.Sprintf("gcloud compute instances list --project=network-next-v3-staging --filter=\"name:%s*\" --format=\"value(name)\"", mig.name)
+	if limit > 0 {
+		command = fmt.Sprintf("gcloud compute instances list --project=network-next-v3-staging --filter=\"name:%s*\" --format=\"value(name)\" --limit=%d", mig.name, limit)
+	}
+
+	success, output := bashQuiet(command)
+	if !success {
+		return nil, fmt.Errorf("could not retrieve instance list: %s", output)
+	}
+
+	return strings.Split(output, "\n"), nil
+}
+
+func (mig *ManagedInstanceGroup) CoreCount() (int, error) {
+	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed describe %s --project=network-next-v3-staging --format=\"value(instanceTemplate)\" --zone=us-central1-a | xargs gcloud compute instance-templates describe --project=network-next-v3-staging --format=\"value(properties.machineType)\"", mig.name))
+	if !success {
+		return 0, fmt.Errorf("could not retrieve core count from MIG instance template: %s", output)
+	}
+
+	machineTypeParts := strings.Split(strings.Trim(output, " \t\r\n"), "-")
+	if len(machineTypeParts) < 3 {
+		return 0, fmt.Errorf("error when retrieving core count for service %s: bad machine type result", mig.name)
+	}
+
+	coreCountString := machineTypeParts[2]
+	if machineTypeParts[0] == "custom" {
+		coreCountString = machineTypeParts[1]
+	}
+
+	coreCount, err := strconv.Atoi(coreCountString)
+	if err != nil {
+		return 0, fmt.Errorf("error when retrieving core count for service %s: could not parse core count '%s'", mig.name, coreCountString)
+	}
+
+	return coreCount, nil
+}
+
+func (mig *ManagedInstanceGroup) setAutoscaling(enabled bool) error {
 	enabledString := "off"
 	if enabled {
 		enabledString = "on"
 	}
 
-	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed update-autoscaling %s --project=network-next-v3-staging --mode=%s --zone=us-central1-a", mig, enabledString))
+	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed update-autoscaling %s --project=network-next-v3-staging --mode=%s --zone=us-central1-a", mig.name, enabledString))
 	if !success {
 		if enabled {
 			return fmt.Errorf("could not enable autoscaling: %s", output)
@@ -107,213 +207,280 @@ func setAutoscaling(mig string, enabled bool) error {
 	return nil
 }
 
-func startStaging(serverBackendCount int, clientCount int) error {
-	clientMIGCount, err := getClientMIGCount()
+type UnmanagedInstanceGroup struct {
+	name          string
+	serviceConfig StagingServiceConfig
+}
+
+func NewUnmanagedInstanceGroup(name string, serviceConfig StagingServiceConfig) *UnmanagedInstanceGroup {
+	return &UnmanagedInstanceGroup{name: name, serviceConfig: serviceConfig}
+}
+
+func (mig *UnmanagedInstanceGroup) Name() string {
+	return mig.name
+}
+
+func (mig *UnmanagedInstanceGroup) ServiceConfig() StagingServiceConfig {
+	return mig.serviceConfig
+}
+
+func (ig *UnmanagedInstanceGroup) Start() error {
+	instances, err := ig.Instances(0)
 	if err != nil {
 		return err
 	}
 
-	if clientCount < ClientsPerVM {
+	instancesString := strings.Join(instances, " ")
+	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances start --project=network-next-v3-staging --async --zone=us-central1-a", instancesString))
+	if !success {
+		return fmt.Errorf("could not start instances: %s", output)
+	}
+
+	return nil
+}
+
+func (ig *UnmanagedInstanceGroup) Stop() error {
+	instances, err := ig.Instances(0)
+	if err != nil {
+		return err
+	}
+
+	instancesString := strings.Join(instances, " ")
+	success, output := bashQuiet(fmt.Sprintf("echo %s | xargs gcloud compute instances stop --project=network-next-v3-staging --async --zone=us-central1-a", instancesString))
+	if !success {
+		return fmt.Errorf("could not stop instances: %s", output)
+	}
+
+	return nil
+}
+
+func (ig *UnmanagedInstanceGroup) Resize(size int) error {
+	return fmt.Errorf("unimplemented")
+}
+
+func (ig *UnmanagedInstanceGroup) Instances(limit int) ([]string, error) {
+	command := fmt.Sprintf("gcloud compute instances list --project=network-next-v3-staging --filter=\"name:%s*\" --format=\"value(name)\"", ig.name)
+	if limit > 0 {
+		command = fmt.Sprintf("gcloud compute instances list --project=network-next-v3-staging --filter=\"name:%s*\" --format=\"value(name)\" --limit=%d", ig.name, limit)
+	}
+
+	success, output := bashQuiet(command)
+	if !success {
+		return nil, fmt.Errorf("could not retrieve instance list: %s", output)
+	}
+
+	return strings.Split(output, "\n"), nil
+}
+
+func (ig *UnmanagedInstanceGroup) CoreCount() (int, error) {
+	instance, err := ig.Instances(1)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(instance) == 0 {
+		return 0, fmt.Errorf("could not retrieve core count: no instances in %s", ig.name)
+	}
+
+	success, output := bashQuiet(fmt.Sprintf("gcloud compute instances describe %s --project=network-next-v3-staging --format=\"value(machineType)\" --zone=us-central1-a", instance[0]))
+	if !success {
+		return 0, fmt.Errorf("could not retrieve instance machine type: %s", output)
+	}
+
+	lastSlashIndex := strings.LastIndex(output, "/")
+	if lastSlashIndex+1 < 0 || lastSlashIndex+1 >= len(output) {
+		return 0, fmt.Errorf("error when retrieving core count for service %s: bad machine type result", ig.name)
+	}
+
+	machineTypeString := strings.Trim(output[lastSlashIndex+1:], " \t\r\n")
+
+	machineTypeParts := strings.Split(machineTypeString, "-")
+	if len(machineTypeParts) < 3 {
+		return 0, fmt.Errorf("error when retrieving core count for service %s: bad machine type result", ig.name)
+	}
+
+	coreCountString := machineTypeParts[2]
+	if machineTypeParts[0] == "custom" {
+		coreCountString = machineTypeParts[1]
+	}
+
+	coreCount, err := strconv.Atoi(coreCountString)
+	if err != nil {
+		return 0, fmt.Errorf("error when retrieving core count for service %s: could not parse core count '%s'", ig.name, coreCountString)
+	}
+
+	return coreCount, nil
+}
+
+// Waits for the given MIG to stabilize before continuing
+func waitForMIGStable(mig string) error {
+	success, output := bashQuiet(fmt.Sprintf("gcloud compute instance-groups managed wait-until %s --project=network-next-v3-staging --stable --zone=us-central1-a", mig))
+	if !success {
+		return fmt.Errorf("could not wait for mig to stabilize: %s", output)
+	}
+
+	return nil
+}
+
+func StartStaging(config StagingConfig) error {
+	if config.Client.Count < ClientsPerVM {
 		return fmt.Errorf("must run at least %d clients", ClientsPerVM)
 	}
 
-	if clientCount > MaxVMsPerMIG*clientMIGCount*ClientsPerVM {
-		return fmt.Errorf("cannot run more than %d clients", clientCount)
+	if config.Client.Count > MaxVMsPerMIG*ClientsPerVM {
+		return fmt.Errorf("cannot run more than %d clients", config.Client.Count)
 	}
 
-	relays, err := getRelayList()
-	if err != nil {
-		return err
-	}
+	config.Server.Count = config.Client.Count / ClientsPerServer / ServersPerVM
+	config.Client.Count /= ClientsPerVM
 
-	fmt.Println("starting relay backend and relays...")
-	if err := startInstances(relays, false); err != nil {
-		return err
-	}
+	instanceGroups := createInstanceGroups(config, true)
 
-	portalCrunchers, err := getPortalCruncherList()
-	if err != nil {
-		return err
-	}
+	for _, instanceGroup := range instanceGroups {
+		serviceConfig := instanceGroup.ServiceConfig()
 
-	fmt.Println("starting portal crunchers...")
-	if err := startInstances(portalCrunchers, false); err != nil {
-		return err
-	}
+		if serviceConfig.Count < 0 {
+			fmt.Printf("configuring %s with autoscaling and with %d cores each...", instanceGroup.Name(), serviceConfig.Cores)
+		} else {
+			fmt.Printf("configuring %s with %d instances with %d cores each...", instanceGroup.Name(), serviceConfig.Count, serviceConfig.Cores)
+		}
 
-	fmt.Println("starting analytics service...")
-	if err := setAutoscaling("analytics-mig", true); err != nil {
-		return err
-	}
+		coreCount, err := instanceGroup.CoreCount()
+		if err != nil {
+			return err
+		}
 
-	fmt.Println("starting billing service...")
-	if err := setAutoscaling("billing", true); err != nil {
-		return err
-	}
+		if coreCount != serviceConfig.Cores {
+			// Update with desired core count
+		}
 
-	fmt.Println("starting portal...")
-	if err := setAutoscaling("portal-mig", true); err != nil {
-		return err
-	}
+		instances, err := instanceGroup.Instances(0)
+		if err != nil {
+			return err
+		}
 
-	if err := resizeStaging(serverBackendCount, clientCount); err != nil {
-		return err
+		if len(instances) != serviceConfig.Count {
+			// Update with desired instance count
+		}
+
+		fmt.Print("starting...")
+		if err := instanceGroup.Start(); err != nil {
+			return err
+		}
+
+		fmt.Println()
 	}
 
 	fmt.Println("staging started")
 	return nil
 }
 
-func resizeStaging(serverBackendCount int, clientCount int) error {
-	// Scale down the number of servers based on how many run on a single VM and enforce a proportion of 200 clients per server
-	serverCount := int(math.Ceil(float64(clientCount / 200 / ServersPerVM)))
-	if serverCount == 0 && clientCount > 0 {
-		serverCount = 1
-	}
+func StopStaging() error {
+	instanceGroups := createInstanceGroups(DefaultStagingConfig, false)
 
-	clientMIGCount, err := getClientMIGCount()
-	if err != nil {
-		return err
-	}
-
-	if clientCount < ClientsPerVM {
-		return fmt.Errorf("must run at least %d clients", ClientsPerVM)
-	}
-
-	if clientCount > MaxVMsPerMIG*clientMIGCount*ClientsPerVM {
-		return fmt.Errorf("cannot run more than %d clients", clientCount)
-	}
-
-	// Scale down the number of clients based on how many run on a single VM
-	clientCount = clientCount / ClientsPerVM
-
-	// We need to stop the servers and clients first so that a change to the server backend mig
-	// will keep the servers and clients evenly distributed
-	fmt.Println("stopping clients...")
-	for i := 1; i <= clientMIGCount; i++ {
-		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", i), 0); err != nil {
+	for i := len(instanceGroups) - 1; i >= 0; i-- {
+		fmt.Printf("stopping %s...\n", instanceGroups[i].Name())
+		if err := instanceGroups[i].Stop(); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("stopping servers...")
-	if err := resizeMIG("load-test-server-mig", 0); err != nil {
-		return err
-	}
-
-	fmt.Printf("resizing to %d server backends...\n", serverBackendCount)
-	if err := resizeMIG("server-backend4-mig", serverBackendCount); err != nil {
-		return err
-	}
-
-	// Wait for the server backend mig to stabilize so that the created servers and clients will connect evenly
-	if err := waitForMIGStable("server-backend4-mig"); err != nil {
-		return err
-	}
-
-	fmt.Printf("resizing to %d servers (%d instances)...\n", serverCount*ServersPerVM, serverCount)
-	if err := resizeMIG("load-test-server-mig", serverCount); err != nil {
-		return err
-	}
-
-	// Wait for the load test server mig to stabilize so that the created clients will connect evenly
-	if err := waitForMIGStable("load-test-server-mig"); err != nil {
-		return err
-	}
-
-	fmt.Printf("resizing to %d clients (%d instances)...\n", clientCount*ClientsPerVM, clientCount)
-	runningClientCount := clientCount
-	var clientRunCount int
-	for runningClientCount > 0 {
-		clientRunCount++
-
-		var overflowClientCount int
-		if runningClientCount > MaxVMsPerMIG {
-			overflowClientCount = runningClientCount - MaxVMsPerMIG
-			runningClientCount = MaxVMsPerMIG
-		}
-
-		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", clientRunCount), runningClientCount); err != nil {
-			return err
-		}
-
-		runningClientCount -= MaxVMsPerMIG
-		runningClientCount += overflowClientCount
-	}
-
+	fmt.Println("\nstaging stopped")
 	return nil
 }
 
-func stopStaging() error {
-	clientMIGCount, err := getClientMIGCount()
-	if err != nil {
-		return err
-	}
+func createInstanceGroups(config StagingConfig, wait bool) []InstanceGroup {
+	instanceGroups := make([]InstanceGroup, 0)
 
-	fmt.Println("stopping clients...")
-	for i := 1; i <= clientMIGCount; i++ {
-		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", i), 0); err != nil {
-			return err
-		}
-	}
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", wait, config.ServerBackend))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-server-mig", wait, config.Server))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-clients-1", false, config.Client))
 
-	fmt.Println("stopping servers...")
-	if err := resizeMIG("load-test-server-mig", 0); err != nil {
-		return err
-	}
-
-	fmt.Println("stopping server backend...")
-	if err := resizeMIG("server-backend4-mig", 0); err != nil {
-		return err
-	}
-
-	fmt.Println("stopping portal...")
-	if err := setAutoscaling("portal-mig", false); err != nil {
-		return err
-	}
-
-	if err := resizeMIG("portal-mig", 0); err != nil {
-		return err
-	}
-
-	fmt.Println("stopping billing service...")
-	if err := setAutoscaling("billing", false); err != nil {
-		return err
-	}
-
-	if err := resizeMIG("billing", 0); err != nil {
-		return err
-	}
-
-	fmt.Println("stopping analytics service...")
-	if err := setAutoscaling("analytics-mig", false); err != nil {
-		return err
-	}
-
-	if err := resizeMIG("analytics-mig", 0); err != nil {
-		return err
-	}
-
-	portalCrunchers, err := getPortalCruncherList()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("stopping portal crunchers...")
-	if err := stopInstances(portalCrunchers, false); err != nil {
-		return err
-	}
-
-	relays, err := getRelayList()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("stopping relay backend and relays...")
-	if err := stopInstances(relays, false); err != nil {
-		return err
-	}
-
-	fmt.Println("staging stopped")
-	return nil
+	return instanceGroups
 }
+
+// func resizeStaging(config StagingConfig) error {
+// 	// Scale down the number of servers based on how many run on a single VM and enforce a proportion of 200 clients per server
+// 	serverCount := int(math.Ceil(float64(config.Client.Count / 200 / config.Server.ServersPerVM)))
+// 	if serverCount == 0 && config.Client.Count > 0 {
+// 		serverCount = 1
+// 	}
+
+// 	clientMIGCount, err := getClientMIGCount()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if config.Client.Count < config.Client.ClientsPerVM {
+// 		return fmt.Errorf("must run at least %d clients", config.Client.ClientsPerVM)
+// 	}
+
+// 	if config.Client.Count > MaxVMsPerMIG*clientMIGCount*config.Client.ClientsPerVM {
+// 		return fmt.Errorf("cannot run more than %d clients", config.Client.Count)
+// 	}
+
+// 	// We need to stop the servers and clients first so that a change to the server backend mig
+// 	// will keep the servers and clients evenly distributed
+// 	fmt.Println("stopping clients...")
+// 	for i := 1; i <= clientMIGCount; i++ {
+// 		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", i), 0); err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	fmt.Println("stopping servers...")
+// 	if err := resizeMIG("load-test-server-mig", 0); err != nil {
+// 		return err
+// 	}
+
+// 	fmt.Printf("resizing to %d server backends...\n", config.ServerBackend.Count)
+// 	if err := resizeMIG("server-backend4-mig", config.ServerBackend.Count); err != nil {
+// 		return err
+// 	}
+
+// 	// Wait for the server backend mig to stabilize so that the created servers and clients will connect evenly
+// 	if err := waitForMIGStable("server-backend4-mig"); err != nil {
+// 		return err
+// 	}
+
+// 	fmt.Printf("resizing to %d servers (%d instances)...\n", serverCount*config.Server.ServersPerVM, serverCount)
+// 	if err := resizeMIG("load-test-server-mig", serverCount); err != nil {
+// 		return err
+// 	}
+
+// 	// Wait for the load test server mig to stabilize so that the created clients will connect evenly
+// 	if err := waitForMIGStable("load-test-server-mig"); err != nil {
+// 		return err
+// 	}
+
+// 	fmt.Printf("resizing to %d clients (%d instances)...\n", config.Client.Count*config.Client.ClientsPerVM, config.Client.Count)
+
+// 	// Scale down the number of clients based on how many run on a single VM
+// 	runningClientCount := config.Client.Count / config.Client.ClientsPerVM
+
+// 	var clientRunCount int
+// 	for runningClientCount > 0 {
+// 		clientRunCount++
+
+// 		var overflowClientCount int
+// 		if runningClientCount > MaxVMsPerMIG {
+// 			overflowClientCount = runningClientCount - MaxVMsPerMIG
+// 			runningClientCount = MaxVMsPerMIG
+// 		}
+
+// 		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", clientRunCount), runningClientCount); err != nil {
+// 			return err
+// 		}
+
+// 		runningClientCount -= MaxVMsPerMIG
+// 		runningClientCount += overflowClientCount
+// 	}
+
+// 	return nil
+// }

@@ -265,7 +265,7 @@ func readJSONData(entity string, args []string) []byte {
 	} else {
 		// Read the file at the given filepath
 		if len(args) == 0 {
-			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example\n", entity, entity, entity, entity), 0)
+			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\n", entity), 0)
 		}
 
 		data, err = ioutil.ReadFile(args[0])
@@ -484,15 +484,6 @@ func main() {
 	// Sort -ops output by IncludedBandwidthGB, descending
 	var relayBWSort bool
 	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
-
-	// Define a flag set for configuring the staging environmen
-	stagingfs := flag.NewFlagSet("staging paramters", flag.ExitOnError)
-
-	var serverBackendCount int
-	stagingfs.IntVar(&serverBackendCount, "server-backend-count", 4, "number of server backends to create (default: 4)")
-
-	var clientCount int
-	stagingfs.IntVar(&clientCount, "client-count", 100000, "number of clients to load test with (default: 100,000)")
 
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
@@ -2110,12 +2101,19 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		Subcommands: []*ffcli.Command{
 			{
 				Name:       "start",
-				ShortUsage: "next staging start",
-				ShortHelp:  "Start up the staging environment with the given flags",
-				FlagSet:    stagingfs,
+				ShortUsage: "next staging start [config file]",
+				ShortHelp:  "Start up the staging environment optionally using the configuration file provided.",
 				Exec: func(ctx context.Context, args []string) error {
-					if err := startStaging(serverBackendCount, clientCount); err != nil {
-						handleJSONRPCError(env, err)
+					config := DefaultStagingConfig
+
+					if len(args) > 0 {
+						if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
+							handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
+						}
+					}
+
+					if err := StartStaging(config); err != nil {
+						handleRunTimeError(err.Error(), 1)
 					}
 
 					return nil
@@ -2126,25 +2124,58 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortUsage: "next staging stop",
 				ShortHelp:  "Shuts down the staging environment",
 				Exec: func(ctx context.Context, args []string) error {
-					if err := stopStaging(); err != nil {
-						handleJSONRPCError(env, err)
+					if err := StopStaging(); err != nil {
+						handleRunTimeError(err.Error(), 1)
 					}
 					return nil
 				},
 			},
+
 			{
-				Name:       "resize",
-				ShortUsage: "next staging resize",
-				ShortHelp:  "Resizes the staging environment with the given flags",
-				FlagSet:    stagingfs,
+				Name:       "example",
+				ShortUsage: "next staging example",
+				ShortHelp:  "Displays an example JSON schema for the staging configuration",
 				Exec: func(ctx context.Context, args []string) error {
-					if err := resizeStaging(serverBackendCount, clientCount); err != nil {
-						handleJSONRPCError(env, err)
+					jsonBytes, err := json.MarshalIndent(DefaultStagingConfig, "", "    ")
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not marshal example JSON: %v", err), 1)
 					}
 
+					fmt.Println(string(jsonBytes))
 					return nil
 				},
 			},
+			// {
+			// 	Name:       "configure",
+			// 	ShortUsage: "next staging configure <config file>",
+			// 	ShortHelp:  "Reconfigures the staging environment with the given configuration file",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		var config StagingConfig
+			// 		if len(args) > 0 {
+			// 			if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
+			// 				handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
+			// 			}
+			// 		}
+
+			// 		if err := configureStaging(config); err != nil {
+			// 			handleRunTimeError(err.Error(), 1)
+			// 		}
+
+			// 		return nil
+			// 	},
+			// },
+			// {
+			// 	Name:       "resize",
+			// 	ShortUsage: "next staging resize",
+			// 	ShortHelp:  "Resizes the staging environment with the given flags",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		if err := resizeStaging(serverBackendCount, clientCount); err != nil {
+			// 			handleJSONRPCError(env, err)
+			// 		}
+
+			// 		return nil
+			// 	},
+			// },
 		},
 	}
 
