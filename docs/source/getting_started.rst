@@ -86,13 +86,11 @@ Or pass it in with an environment variable:
 8. Build and run a server
 -------------------------
 
-Follow [building_the_sdk](these instructions) to build the SDK and the examples on your platform.
-
-Once built, the upgraded server example will run linked to your account. 
+Follow [building_the_sdk](these instructions) to build the SDK examples.
 
 IMPORTANT: Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
 
-The server output should look something like this:
+The server output should look like this:
 
 .. code-block:: console
 
@@ -125,11 +123,13 @@ The server output should look something like this:
 
 Modify the client source code to open a session to your server IP address:
 
+.. code-block:: c++
+
         const char * server_address = "173.255.241.176:50000";
 
 Then build and run the client. 
 
-The client should now connect to your server and look like this:
+The client should connect to your server and look like this:
 
 .. code-block:: c++
 
@@ -158,17 +158,18 @@ The client should now connect to your server and look like this:
 	1.781426: info: client received packet from server (32 bytes)
 	2.036010: info: client received packet from server (32 bytes)
 	2.288679: info: client received packet from server (32 bytes)
+	...
 
 10. See your session in the portal
----------------------------------
+----------------------------------
 
 Go to the portal at https://portal.networknext.com
 
-You should now see a dot on your map at your location:
+You should see a dot on your map at your location:
 
 .. image:: images/map.png
 
-And in the sessions page you will see your session showing up:
+And in the sessions page you should see your session:
 
 .. image:: images/sessions.png
 
@@ -181,4 +182,4 @@ Welcome to Network Next!
 
 Congratulations, your account is now fully setup. We look forward to working with you!
 
-Please reach out to support@networknext.com and we'll guide you through the rest of your integration and launch.
+Please reach out to support@networknext.com and we'll guide you through the rest of your integration.
