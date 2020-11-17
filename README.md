@@ -293,6 +293,15 @@ or
 
     Add the environment variable `FIRESTORE_PUBSUB_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
 
+Bigtable:
+Install the gcloud bigtable emulator:
+`gcloud components install beta`
+`gcloud components install bigtable`
+or
+`sudo apt install google-cloud-sdk-bigtable-emulator`
+
+    Add the environment variable `BIGTABLE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8086`).
+
 ## Functional Tests
 
 In addition to unit tests, the system also take advantage of functional tests that run real world scenarios to make sure that all of the components are working properly.
