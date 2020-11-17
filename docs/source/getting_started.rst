@@ -48,17 +48,16 @@ For example:
 
 .. image:: images/settings.png
 
-
-4. Enter your public key in the portal
+5. Enter your public key in the portal
 --------------------------------------
 
-Once your company is setup, you the "Game Configuration" tab is revealed.
+Once your company is setup, the "Game Configuration" tab is revealed.
 
-Select it and enter your public key from the keygen to link your keypair with your account:
+Select it and enter your public key to link the keypair with your account:
 
-.. image:: images/game_settings_public_key.png
+.. image:: images/public_key.png
 
-5. Set your public key on the client
+6. Set your public key on the client
 ------------------------------------
 
 The client needs only your public key to associate with your account. It's safe to share your public key outside your company.
@@ -69,7 +68,7 @@ In the *upgraded_client.cpp* example, replace the test customer public key with 
 
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-5. Set your private key on the server
+7. Set your private key on the server
 -------------------------------------
 
 The server needs your private key to associate with your account.
@@ -86,22 +85,60 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-6. Build and run a client and server
+Also, change the Network Next hostname from "dev.spacecats.net" to "prod.spacecats.net" to use the production environment.
+
+.. code-block: c++
+
+        const char * backend_hostname = "prod.spacecats.net";
+	
+Or pass it in with an environment variable:
+
+.. code-block: console
+
+	export NEXT_HOSTNAME=prod.spacecats.net
+
+8. Build and run a client and server
 ------------------------------------
 
-Now you should now be able to run the upgraded client and server and see the session show up in the portal. 
+Follow the instructions to build the SDK and the examples on your platform: building_the_sdk
 
-Make sure to run the server on a public IP address because it will not work if it is behind NAT.
+Once built, you should now be able to run the upgraded client and server example and have it linked to your account.
 
-The server output should look like this:
+Make sure to run the server on a public IP address somewhere because it will not work if it is behind NAT.
 
-(Image showing server output)
+If everything is working properly, the server output should look something like this:
 
-And the client output should look like this:
+.. code-block: console
+
+	root@linux:~/sdk# ./bin/upgraded_server
+
+	CPU features: sse2 ssse3 sse41 avx
+
+	blake2b -> sse41
+	poly1305 -> sse3
+	curve25519 -> avx
+	chacha20 -> ssse3
+	salsa20 -> xmm6
+
+	0.000317: info: customer private key override
+	0.000342: info: found valid customer private key
+	0.000347: info: override next hostname: 'prod.spacecats.net'
+	0.000368: info: server sdk version is 4.0.2
+	0.000377: info: server address override: '173.255.241.176:50000'
+	0.000387: info: server datacenter is 'linode.fremont'
+	0.000419: info: server bound to 0.0.0.0:50000
+	0.001378: info: server started on 173.255.241.176:50000
+	0.001445: info: server resolving backend hostname 'prod.spacecats.net'
+	0.001572: info: server increased thread priority
+	0.103092: info: server resolved backend hostname to 34.121.72.52:40000
+	1.085716: info: server received init response from backend
+	1.085754: info: welcome to network next :)
+
+And the client output should look something like this:
 
 (Image showing client output)
 
-7. See your session in the portal
+9. See your session in the portal
 ---------------------------------
 
 You should see a dot on your map at your location:
@@ -116,15 +153,9 @@ You can drill in on the session and see your latency, jitter and packet loss ove
 
 (Image showing session drill in)
 
-8. Welcome to Network Next!
----------------------------
+10. Welcome to Network Next!
+----------------------------
 
-Congratulations! Your account is now fully setup.
-
-We look forward to working with you. 
+Congratulations, your account is now fully setup. We look forward to working with you!
 
 Please reach out to support@networknext.com and we'll guide you through the rest of your integration and launch.
-
-cheers
-
-- Glenn Fiedler, Founder and CEO, Network Next
