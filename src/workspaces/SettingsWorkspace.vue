@@ -25,13 +25,13 @@
             <router-link to="/settings/account" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'account-settings'}">Account Settings</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
-            <router-link to="/settings/users" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'users'}">Users</router-link>
-          </li>
-          <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
-            <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Configuration</router-link>
+            <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Settings</router-link>
           </li>
           <li class="nav-item" v-if="$flagService.isEnabled(featureEnums.ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/route-shader" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
+          </li>
+          <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
+            <router-link to="/settings/users" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'users'}">Users</router-link>
           </li>
         </ul>
       </div>
