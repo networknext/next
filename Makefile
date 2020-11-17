@@ -150,6 +150,10 @@ ifndef REDIS_HOST_SESSION_MAP
 export REDIS_HOST_SESSION_MAP = 127.0.0.1:6379
 endif
 
+ifndef RELAY_STORE_ADDRESS
+export RELAY_STORE_ADDRESS = 127.0.0.1:6379
+endif
+
 ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
@@ -324,6 +328,18 @@ dev-portal: build-portal-local ## runs a local portal
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
 
+.PHONY: dev-relay-gateway
+dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+	@PORT=30001 ./dist/relay_gateway
+
+.PHONY: dev-optimizer
+dev-optimizer: build-optimizer ## runs a local optimizer
+	@PORT=30005 ./dist/optimizer
+
+.PHONY: dev-route-matrix-selector
+dev-route-matrix-selector: build-route-matrix-selector ## runs a local route matrix selector
+	@PORT=30010 ./dist/route-matrix-selector
+
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
@@ -421,6 +437,24 @@ build-relay-backend:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
+.PHONY: build-relay-gateway
+build-relay-gateway:
+	@printf "Building relay gateway... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
+	@printf "done\n"
+
+.PHONY: build-optimizer
+build-optimizer:
+	@printf "Building Optimizer... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
+	@printf "done\n"
+
+.PHONY: build-route-matrix-selector
+build-route-matrix-selector:
+	@printf "Building Route Matrix Selector... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/route-matrix-selector ./cmd/route_matrix.go
+	@printf "done\n"
+
 .PHONY: build-server-backend
 build-server-backend:
 	@printf "Building server backend... "
@@ -456,6 +490,18 @@ deploy-portal-crunchers-staging:
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
+
+.PHONY: deploy-optimzer-dev
+deploy-optimizer-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t optimizer -n optimizer -b gs://development_artifacts
+
+.PHONY: deploy-optimizer-staging
+deploy-optimizer-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t optimizer -n optimizer -b gs://staging_artifacts
+
+.PHONY: deploy-optimizer-prod
+deploy-optimizer-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t optimizer -n optimizer -b gs://prod_artifacts
 
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
@@ -511,6 +557,42 @@ build-portal-cruncher-artifacts-dev: build-portal-cruncher
 .PHONY: build-relay-backend-artifacts-dev
 build-relay-backend-artifacts-dev: build-relay-backend
 	./deploy/build-artifacts.sh -e dev -s relay_backend
+
+.PHONY: build-relay-gateway-artifacts-dev
+build-relay-gateway-artifacts-dev: build-relay-gateway
+	./deploy/build-artifacts.sh -e dev -s relay_gateway
+
+.PHONY: build-relay-gateway-artifacts-staging
+build-relay-gateway-artifacts-staging: build-relay-gateway
+	./deploy/build-artifacts.sh -e staging -s relay_gateway
+
+.PHONY: build-relay-gateway-artifacts-prod
+build-relay-gateway-artifacts-prod: build-relay-gateway
+	./deploy/build-artifacts.sh -e prod -s relay_gateway
+
+.PHONY: build-optimizer-artifacts-dev
+build-optimizer-artifacts-dev: build-optimizer
+	./deploy/build-artifacts.sh -e dev -s optimizer
+
+.PHONY: build-optimizer-artifacts-staging
+build-optimizer-artifacts-staging: build-optimizer
+	./deploy/build-artifacts.sh -e staging -s optimizer
+
+.PHONY: build-optimizer-artifacts-prod
+build-optimizer-artifacts-prod: build-optimizer
+	./deploy/build-artifacts.sh -e prod -s optimizer
+
+.PHONY: build-route-matrix-selector-artifacts-dev
+build-route-matrix-selector-artifacts-dev: build-route-matrix-selector
+	./deploy/build-artifacts.sh -e dev -s route-matrix-selector
+
+.PHONY: build-route-matrix-selector-artifacts-staging
+build-route-matrix-selector-artifacts-staging: build-route-matrix-selector
+	./deploy/build-artifacts.sh -e staging -s route-matrix-selector
+
+.PHONY: build-route-matrix-selector-artifacts-prod
+build-route-matrix-selector-artifacts-prod: build-route-matrix-selector
+	./deploy/build-artifacts.sh -e prod -s route-matrix-selector
 
 .PHONY: build-server-backend-artifacts-dev
 build-server-backend-artifacts-dev: build-server-backend
@@ -615,6 +697,42 @@ publish-portal-cruncher-artifacts-dev:
 .PHONY: publish-relay-backend-artifacts-dev
 publish-relay-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_backend
+
+.PHONY: publish-relay-gateway-artifacts-dev
+publish-relay-gateway-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay-gateway
+
+.PHONY: publish-relay-gateway-artifacts-staging
+publish-relay-gateway-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay-gateway
+
+.PHONY: publish-relay-gateway-artifacts-prod
+publish-relay-gateway-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay-gateway
+
+.PHONY: publish-optimizer-artifacts-dev
+publish-optimizer-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s optimizer
+
+.PHONY: publish-optimizer-artifacts-staging
+publish-optimizer-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s optimizer
+
+.PHONY: publish-optimizer-artifacts-prod
+publish-optimizer-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s optimizer
+
+.PHONY: publish-route_matrix_selector-artifacts-dev
+publish-route_matrix_selector-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s route_matrix_selector
+
+.PHONY: publish-route_matrix_selector-artifacts-staging
+publish-route_matrix_selector-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s route_matrix_selector
+
+.PHONY: publish-route_matrix_selector-artifacts-prod
+publish-route_matrix_selector-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s route_matrix_selector
 
 .PHONY: publish-server-backend-artifacts-dev
 publish-server-backend-artifacts-dev:
