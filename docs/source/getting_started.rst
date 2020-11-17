@@ -106,7 +106,7 @@ Make sure to run the server on a public IP address somewhere because the server 
 
 If everything is working properly, the server output should look like this:
 
-.. code-block: console
+.. code-block:: console
 
 	root@linux:~/sdk# ./bin/upgraded_server
 
@@ -140,7 +140,7 @@ And rebuild and run the client.
 
 The client should now connect to your server and print out something like the following:
 
-.. code-block: c++
+.. code-block:: c++
 
 	glenn@macbook sdk % ./bin/upgraded_client
 
@@ -170,7 +170,7 @@ The client should now connect to your server and print out something like the fo
 
 And the client output should look like this:
 
-.. code-block: c++
+.. code-block:: c++
 
 	glenn@macbook sdk % ./bin/upgraded_client
 
