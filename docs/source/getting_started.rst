@@ -52,9 +52,9 @@ For example:
 4. Enter your public key in the portal
 --------------------------------------
 
-Once your company is setup, you the "Game Settings" tab is revealed.
+Once your company is setup, you the "Game Configuration" tab is revealed.
 
-Enter your public key from the keygen to your keypair with your account:
+Select it and enter your public key from the keygen to link your keypair with your account:
 
 .. image:: images/game_settings_public_key.png
 
