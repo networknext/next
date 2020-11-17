@@ -42,9 +42,7 @@ You'll see something like this:
 4. Setup your company in the portal
 -----------------------------------
 
-Go to the "Settings" page in the portal and enter your company name and company code
-
-For example:
+Go to the "Settings" page in the portal and enter your company name and company code:
 
 .. image:: images/settings.png
 
@@ -53,14 +51,14 @@ For example:
 
 Once your company is setup, the "Game Configuration" tab is revealed.
 
-Select it and enter your public key to link the keypair with your account:
+Select it and enter your public key to link your keypair with your account:
 
 .. image:: images/public_key.png
 
 6. Set your public key on the client
 ------------------------------------
 
-The client needs only your public key to associate with your account. It's safe to share your public key outside your company.
+The client needs only your public key to link with your account. It's safe to share your public key outside your company.
 
 In the *upgraded_client.cpp* example, replace the test customer public key with your own:
 
@@ -71,9 +69,9 @@ In the *upgraded_client.cpp* example, replace the test customer public key with 
 7. Set your private key on the server
 -------------------------------------
 
-The server needs your private key to associate with your account.
+The server needs your private key to link with your account. It's very important that nobody outside your company knows your private key.
 
-Can change the code in the *upgraded_server.cpp* example:
+Change the code in the *upgraded_server.cpp* example:
 
 .. code-block:: c++
 
@@ -85,7 +83,7 @@ Or pass it in with an environment variable:
 
 	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
-Also, change the Network Next hostname from "dev.spacecats.net" to "prod.spacecats.net" to use the production environment.
+Change the Network Next backend hostname from "dev.spacecats.net" to "prod.spacecats.net" to use the production environment.
 
 .. code-block: c++
 
@@ -100,15 +98,15 @@ Or pass it in with an environment variable:
 8. Build and run a client and server
 ------------------------------------
 
-Follow the instructions to build the SDK and the examples on your platform: building_the_sdk
+Follow these instructions to build the SDK and the examples on your platform: building_the_sdk
 
 Once built, you should now be able to run the upgraded client and server example and have it linked to your account.
 
-Make sure to run the server on a public IP address somewhere because it will not work if it is behind NAT.
+Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
 
-If everything is working properly, the server output should look something like this:
+If everything is working properly, the server output should look like this:
 
-.. code-block: console
+.. code-block:: console
 
 	root@linux:~/sdk# ./bin/upgraded_server
 
@@ -134,22 +132,84 @@ If everything is working properly, the server output should look something like 
 	1.085716: info: server received init response from backend
 	1.085754: info: welcome to network next :)
 
-And the client output should look something like this:
+Modify the client source code to open a session to your server IP address:
 
-(Image showing client output)
+        const char * server_address = "173.255.241.176:50000";
+
+And rebuild and run the client. 
+
+The client should now connect to your server and print out something like the following:
+
+.. code-block:: c++
+
+	glenn@macbook sdk % ./bin/upgraded_client
+
+	CPU features: sse2 ssse3 sse41 avx avx2
+
+	blake2b -> avx2
+	poly1305 -> sse3
+	curve25519 -> avx
+	chacha20 -> avx2
+	salsa20 -> avx2
+
+	0.010058: info: found valid customer public key
+	0.010086: info: client sdk version is 4.0.3
+	0.010204: info: client bound to 0.0.0.0:59617
+	0.010396: info: client increased thread priority
+	0.106846: info: client opened session to 173.255.241.176:50000
+	0.517579: info: client received packet from server (32 bytes)
+	0.517605: info: client upgraded to session a496cc24b0b5e804
+	0.601095: info: client direct route
+	0.768587: info: client received packet from server (32 bytes)
+	1.018871: info: client received packet from server (32 bytes)
+	1.273413: info: client received packet from server (32 bytes)
+	1.526227: info: client received packet from server (32 bytes)
+	1.781426: info: client received packet from server (32 bytes)
+	2.036010: info: client received packet from server (32 bytes)
+	2.288679: info: client received packet from server (32 bytes)
+
+And the client output should look like this:
+
+.. code-block:: c++
+
+	glenn@macbook sdk % ./bin/upgraded_client
+
+	CPU features: sse2 ssse3 sse41 avx avx2
+
+	blake2b -> avx2
+	poly1305 -> sse3
+	curve25519 -> avx
+	chacha20 -> avx2
+	salsa20 -> avx2
+
+	0.010058: info: found valid customer public key
+	0.010086: info: client sdk version is 4.0.3
+	0.010204: info: client bound to 0.0.0.0:59617
+	0.010396: info: client increased thread priority
+	0.106846: info: client opened session to 173.255.241.176:50000
+	0.517579: info: client received packet from server (32 bytes)
+	0.517605: info: client upgraded to session a496cc24b0b5e804
+	0.601095: info: client direct route
+	0.768587: info: client received packet from server (32 bytes)
+	1.018871: info: client received packet from server (32 bytes)
+	1.273413: info: client received packet from server (32 bytes)
+	1.526227: info: client received packet from server (32 bytes)
+	1.781426: info: client received packet from server (32 bytes)
+	2.036010: info: client received packet from server (32 bytes)
+	2.288679: info: client received packet from server (32 bytes)
 
 9. See your session in the portal
 ---------------------------------
 
 You should see a dot on your map at your location:
 
-(Example image showing the dot)
+.. image:: images/map.png
 
 And in the top sessions page you will see your session showing up:
 
 (Example image showing session)
 
-You can drill in on the session and see your latency, jitter and packet loss over time:
+You can click on your session id to drill in and see your latency, jitter and packet loss in real-time:
 
 (Image showing session drill in)
 
