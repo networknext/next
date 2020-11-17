@@ -3,8 +3,9 @@ module github.com/networknext/backend
 go 1.13
 
 require (
-	cloud.google.com/go v0.57.0
+	cloud.google.com/go v0.65.0
 	cloud.google.com/go/bigquery v1.8.0
+	cloud.google.com/go/bigtable v1.6.0
 	cloud.google.com/go/firestore v1.1.1
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/pubsub v1.3.1
@@ -25,10 +26,13 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
+	github.com/lib/pq v1.8.0
+	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/oschwald/geoip2-golang v1.4.0
+	github.com/panjf2000/ants/v2 v2.4.1
 	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rs/cors v1.7.0
@@ -39,13 +43,12 @@ require (
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
-	golang.org/x/net v0.0.0-20200513185701-a91f0712d120
-	golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9
-	google.golang.org/api v0.24.0
-	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
-	google.golang.org/grpc v1.29.1
-	google.golang.org/protobuf v1.24.0 // indirect
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/net v0.0.0-20200822124328-c89045814202
+	golang.org/x/sys v0.0.0-20200828194041-157a740278f4
+	google.golang.org/api v0.31.0
+	google.golang.org/genproto v0.0.0-20200911024640-645f7a48b24f
+	google.golang.org/grpc v1.31.1
 	gopkg.in/auth0.v4 v4.3.4
 	gopkg.in/go-playground/assert.v1 v1.2.1
 	gopkg.in/yaml.v2 v2.2.7 // indirect

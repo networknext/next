@@ -168,6 +168,10 @@ ifndef GOOGLE_FIRESTORE_SYNC_INTERVAL
 export GOOGLE_FIRESTORE_SYNC_INTERVAL = 10s
 endif
 
+ifndef GOOGLE_CLOUD_SQL_SYNC_INTERVAL
+export GOOGLE_CLOUD_SQL_SYNC_INTERVAL = 10s
+endif
+
 ifndef PORTAL_CRUNCHER_HOSTS
 export PORTAL_CRUNCHER_HOSTS = tcp://127.0.0.1:5555,tcp://127.0.0.1:5556
 endif
@@ -226,6 +230,23 @@ endif
 
 ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
+endif
+
+# Bigtable emulator must be running before testing bigtable in happy path
+ifndef FEATURE_BIGTABLE
+export FEATURE_BIGTABLE = false
+endif
+
+ifndef BIGTABLE_CF_NAME
+export BIGTABLE_CF_NAME = portal-session-history
+endif
+
+ifndef BIGTABLE_TABLE_NAME
+export BIGTABLE_TABLE_NAME = BTTest
+endif
+
+ifndef BIGTABLE_HISTORICAL_TXT
+export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
 endif
 
 .PHONY: help
