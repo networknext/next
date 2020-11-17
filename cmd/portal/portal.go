@@ -342,6 +342,11 @@ func main() {
 		Storage:                db,
 	}
 
+	configService := jsonrpc.ConfigService{
+		Logger:  logger,
+		Storage: db,
+	}
+
 	go func() {
 		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
 		syncInterval, err := time.ParseDuration(genmapinterval)
@@ -460,6 +465,7 @@ func main() {
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
+		s.RegisterService(&configService, "")
 		s.RegisterService(&jsonrpc.AuthService{
 			MailChimpManager: transport.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,

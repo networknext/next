@@ -1,21 +1,25 @@
 package config
 
+type FeatureEnum int
+
 const (
-	FEATURE_BIGTABLE          = 0
-	FEATURE_NEW_RELAY_BACKEND = 1
-	FEATURE_POSTGRESQL        = 2
+	FEATURE_BIGTABLE          FeatureEnum = 0
+	FEATURE_NEW_RELAY_BACKEND FeatureEnum = 1
+	FEATURE_POSTGRES          FeatureEnum = 2
 )
+
+const NumFeatures = 3
 
 type Feature struct {
 	Name        string
+	Enum        FeatureEnum
 	Value       bool
 	Description string
 }
 
 type Config interface {
-	FeatureEnabled(enum int) bool
+	FeatureEnabled(enum FeatureEnum) bool
 	AllFeatures() []Feature
-	FeatureByName(name string) Feature
 	AllEnabledFeatures() []Feature
 	AllDisabledFeatures() []Feature
 }
