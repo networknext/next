@@ -387,7 +387,8 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 
 .PHONY: dev-mock-relay
 dev-mock-relay: ## runs a mock relay
-	$(GO) run cmd/mock_relay/mock_relay.go
+	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
+	./bin/mock_relay
 
 .PHONY: dev-client
 dev-client: build-client  ## runs a local client

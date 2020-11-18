@@ -26,15 +26,15 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/backend"		// todo: not a good name for a module
 	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/jsonrpc"
-	"github.com/networknext/backend/transport/middleware"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 var (

@@ -25,13 +25,13 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/backend"			// todo: not a good name for a module
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport"
 )
 
 var (

@@ -30,8 +30,8 @@ import (
 	"syscall"
 
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"

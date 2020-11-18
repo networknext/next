@@ -34,7 +34,8 @@ import (
 		"github.com/networknext/backend/transport"
 		"github.com/networknext/backend/transport/pubsub"
 		"github.com/pebbe/zmq4"
-	*/)
+	*/
+)
 
 // ----------------------------------------------------------------------
 
