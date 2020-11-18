@@ -267,26 +267,25 @@ func main() {
 
 		response, err := httpClient.Post(fmt.Sprintf("%s/relay_init", relayBackendHostnameEnv), "application/octet-stream", bytes.NewBuffer(initData))
 		if err != nil {
-			fmt.Printf("relay init post error: %v\n", err)
 			continue
 		}
 
 		responseData, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			fmt.Printf("io read error: %v\n", err)
 			continue
 		}
 
 		response.Body.Close()
 
-		// todo: process response
-	
+		if response.StatusCode != 200 {
+			continue
+		}
+
+	   	if len(responseData) < 4 {
+	   		continue
+	   	}
+
 		/*
-		   if ( init_response_buffer.size < 4 )
-		   {
-		       relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
-		       return RELAY_ERROR;
-		   }
 
 		   const uint8_t * r = init_response_buffer.data;
 
