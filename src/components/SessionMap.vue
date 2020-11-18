@@ -1,7 +1,7 @@
 <template>
   <div v-bind:class="{
-    'map-container-no-offset': !$store.getters.isAnonymousPlus,
-    'map-container-offset': $store.getters.isAnonymousPlus,
+    'map-container-no-offset': !offsetMap,
+    'map-container-offset': offsetMap,
   }">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
@@ -30,11 +30,16 @@ import { Component, Vue } from 'vue-property-decorator'
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
+  get offsetMap () {
+    return this.$store.getters.isAnonymousPlus
+  }
+
   private deckGlInstance: any
   private mapInstance: any
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private unwatchProfile: any
 
   constructor () {
     super()
@@ -68,11 +73,21 @@ export default class SessionMap extends Vue {
         this.restartLoop()
       }
     )
+    this.unwatchProfile = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.userProfile
+      },
+      () => {
+        clearInterval(this.mapLoop)
+        this.restartLoop()
+      }
+    )
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
+    this.unwatchProfile()
   }
 
   private fetchMapSessions () {
