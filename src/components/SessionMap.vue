@@ -1,8 +1,5 @@
 <template>
-  <div v-bind:class="{
-    'map-container-no-offset': !offsetMap,
-    'map-container-offset': offsetMap,
-  }">
+  <div class="map-container-no-offset">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
