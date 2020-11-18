@@ -39,6 +39,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private unwatchProfile: any
 
   constructor () {
     super()
@@ -72,11 +73,21 @@ export default class SessionMap extends Vue {
         this.restartLoop()
       }
     )
+    this.unwatchProfile = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.userProfile
+      },
+      () => {
+        clearInterval(this.mapLoop)
+        this.restartLoop()
+      }
+    )
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
+    this.unwatchProfile()
   }
 
   private fetchMapSessions () {
