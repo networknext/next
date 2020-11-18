@@ -1,13 +1,11 @@
 package storage
 
-import(
+import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
-
 
 	"github.com/gomodule/redigo/redis"
 )
