@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
 )
 

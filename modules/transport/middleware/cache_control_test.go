@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/networknext/backend/transport/middleware"
+	"github.com/networknext/backend/modules/transport/middleware"
 	"gopkg.in/go-playground/assert.v1"
 )
 

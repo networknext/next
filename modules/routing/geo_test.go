@@ -43,7 +43,7 @@ func TestNewMaxmindDBReader(t *testing.T) {
 
 	t.Run("local file found", func(t *testing.T) {
 		r := routing.MaxmindDB{}
-		err := r.OpenCity(context.Background(), http.DefaultClient, "../testdata/GeoIP2-City-Test.mmdb")
+		err := r.OpenCity(context.Background(), http.DefaultClient, "../../testdata/GeoIP2-City-Test.mmdb")
 		assert.NoError(t, err)
 	})
 
@@ -73,7 +73,7 @@ func TestNewMaxmindDBReader(t *testing.T) {
 	})
 
 	t.Run("response gzipped but not tar", func(t *testing.T) {
-		db, err := ioutil.ReadFile("../testdata/GeoIP2-City-Test.mmdb")
+		db, err := ioutil.ReadFile("../../testdata/GeoIP2-City-Test.mmdb")
 		assert.NoError(t, err)
 
 		svr := httptest.NewServer(
@@ -115,7 +115,7 @@ func TestNewMaxmindDBReader(t *testing.T) {
 	})
 
 	t.Run("response gzipped tar mmdb", func(t *testing.T) {
-		db, err := ioutil.ReadFile("../testdata/GeoIP2-City-Test.mmdb")
+		db, err := ioutil.ReadFile("../../testdata/GeoIP2-City-Test.mmdb")
 		assert.NoError(t, err)
 
 		svr := httptest.NewServer(
@@ -148,15 +148,15 @@ func TestIPLocator(t *testing.T) {
 	t.Run("Maxmind", func(t *testing.T) {
 		mmdb := routing.MaxmindDB{}
 
-		err := mmdb.OpenCity(context.Background(), nil, "../testdata/GeoIP2-City-Test.mmdb")
+		err := mmdb.OpenCity(context.Background(), nil, "../../testdata/GeoIP2-City-Test.mmdb")
 		assert.NoError(t, err)
-		err = mmdb.OpenISP(context.Background(), nil, "../testdata/GeoIP2-ISP-Test.mmdb")
-		assert.NoError(t, err)
-
-		cityreader, err := geoip2.Open("../testdata/GeoIP2-City-Test.mmdb")
+		err = mmdb.OpenISP(context.Background(), nil, "../../testdata/GeoIP2-ISP-Test.mmdb")
 		assert.NoError(t, err)
 
-		ispreader, err := geoip2.Open("../testdata/GeoIP2-ISP-Test.mmdb")
+		cityreader, err := geoip2.Open("../../testdata/GeoIP2-City-Test.mmdb")
+		assert.NoError(t, err)
+
+		ispreader, err := geoip2.Open("../../testdata/GeoIP2-ISP-Test.mmdb")
 		assert.NoError(t, err)
 
 		{
