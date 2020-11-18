@@ -53,7 +53,7 @@ export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_ADDRESS
-export RELAY_ADDRESS = 127.0.0.1:0
+export RELAY_ADDRESS = 127.0.0.1
 endif
 
 ifndef RELAY_DEBUG
@@ -388,7 +388,7 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 .PHONY: dev-mock-relay
 dev-mock-relay: ## runs a mock relay
 	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
-	./bin/mock_relay
+	./dist/mock_relay
 
 .PHONY: dev-client
 dev-client: build-client  ## runs a local client
