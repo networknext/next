@@ -385,6 +385,10 @@ dev-reference-backend: ## runs a local reference backend
 dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
+.PHONY: dev-mock-relay
+dev-mock-relay: ## runs a mock relay
+	$(GO) run cmd/mock_relay/mock_relay.go
+
 .PHONY: dev-client
 dev-client: build-client  ## runs a local client
 	@./dist/client
