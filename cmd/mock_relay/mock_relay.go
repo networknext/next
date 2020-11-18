@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"encoding/base64"
+	"github.com/networknext/backend/modules/core"	
 )
 
 func main() {
@@ -19,8 +21,14 @@ func main() {
 
 	fmt.Printf("    relay address is \"%s\"\n", relayAddressEnv)
 
-	// todo: parse address and get port
-	relayPort := 0
+	relayAddress := core.ParseAddress(relayAddressEnv)
+	if relayAddress == nil {
+		fmt.Printf("error: failed to parse RELAY_ADDRESS\n\n")
+		os.Exit(1)
+	}
+
+	relayPort := relayAddress.Port
+
 	fmt.Printf("    relay bind port is %d\n", relayPort)
 
 	relayPrivateKeyEnv := os.Getenv("RELAY_PRIVATE_KEY")
@@ -29,7 +37,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// todo: parse base64 for relay private key
+	relayPrivateKey, err := base64.StdEncoding.DecodeString(relayPrivateKeyEnv)
+	if err != nil {
+		fmt.Printf("error: could not parse RELAY_PRIVATE_KEY as base64\n\n")
+		os.Exit(1)
+	}
+
+	_ = relayPrivateKey
 
     fmt.Printf( "    relay private key is \"%s\"\n", relayPrivateKeyEnv );
 
@@ -39,7 +53,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// todo: parse base64 for relay public key
+	relayPublicKey, err := base64.StdEncoding.DecodeString(relayPublicKeyEnv)
+	if err != nil {
+		fmt.Printf("error: could not parse RELAY_PUBLIC_KEY as base64\n\n")
+		os.Exit(1)
+	}
+
+	_ = relayPublicKey
 
     fmt.Printf( "    relay public key is \"%s\"\n", relayPublicKeyEnv );
 
@@ -49,7 +69,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// todo: parse base64 for relay public key
+	relayRouterPublicKey, err := base64.StdEncoding.DecodeString(relayRouterPublicKeyEnv)
+	if err != nil {
+		fmt.Printf("error: could not parse RELAY_ROUTER_PUBLIC_KEY as base64\n\n")
+		os.Exit(1)
+	}
+
+	_ = relayRouterPublicKey
 
     fmt.Printf( "    relay router public key is \"%s\"\n", relayRouterPublicKeyEnv );
 
@@ -60,23 +86,6 @@ func main() {
 	}
 
 	fmt.Printf("    relay backend hostname is \"%s\"\n", relayBackendHostnameEnv)
-
-    /*
-    const char * backend_hostname = relay_platform_getenv( "RELAY_BACKEND_HOSTNAME" );
-    if ( !backend_hostname )
-    {
-        printf( "\nerror: RELAY_BACKEND_HOSTNAME not set\n\n" );
-        return 1;
-    }
-
-    printf( "    backend hostname is '%s'\n", backend_hostname );
-
-    if ( relay_initialize() != RELAY_OK )
-    {
-        printf( "\nerror: failed to initialize relay\n\n" );
-        return 1;
-    }
-    */
 
 	// init the relay
 
