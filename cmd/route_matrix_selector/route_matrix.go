@@ -9,18 +9,18 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/transport"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	rm "github.com/networknext/backend/route_matrix_selector"
-	"github.com/networknext/backend/storage"
+	rm "github.com/networknext/backend/modules/route_matrix_selector"
+	"github.com/networknext/backend/modules/storage"
 
 	//logging
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/backend"	// todo: not a good name for a module
 )
 
 var (

@@ -19,14 +19,14 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/backend"		// todo: not a good module name
 	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/pubsub"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/pubsub"
 
-	portalcruncher "github.com/networknext/backend/portal_cruncher"
+	portalcruncher "github.com/networknext/backend/modules/portal_cruncher"
 )
 
 var (

@@ -10,23 +10,23 @@ import (
 	"expvar"
 	"fmt"
 	"github.com/networknext/backend/modules/analytics"
-	"github.com/networknext/backend/optimizer"
-	"github.com/networknext/backend/storage"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/backend"
-	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/transport"
-
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/backend"		// todo: bad name for module
+	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/optimizer"
+	"github.com/networknext/backend/modules/storage"
 
 	gcpPub "cloud.google.com/go/pubsub"
 )
@@ -259,10 +259,7 @@ func mainReturnWithCode() int {
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 				}
 			}()
-
-
 		}
-
 	}
 
 

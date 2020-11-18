@@ -29,8 +29,8 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000

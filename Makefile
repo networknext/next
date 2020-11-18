@@ -53,7 +53,7 @@ export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_ADDRESS
-export RELAY_ADDRESS = 127.0.0.1:0
+export RELAY_ADDRESS = 127.0.0.1
 endif
 
 ifndef RELAY_DEBUG
@@ -384,6 +384,11 @@ dev-reference-backend: ## runs a local reference backend
 .PHONY: dev-reference-relay
 dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
+
+.PHONY: dev-mock-relay
+dev-mock-relay: ## runs a mock relay
+	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
+	./dist/mock_relay
 
 .PHONY: dev-client
 dev-client: build-client  ## runs a local client
@@ -880,7 +885,7 @@ build-optimizer-artifacts-staging: build-optimizer
 build-optimizer-artifacts-prod: build-optimizer
 	./deploy/build-artifacts.sh -e prod -s optimizer
 
-.PHONY: deploy-optimzer-dev
+.PHONY: deploy-optimizer-dev
 deploy-optimizer-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t optimizer -n optimizer -b gs://development_artifacts
 
