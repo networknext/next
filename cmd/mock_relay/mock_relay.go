@@ -203,11 +203,11 @@ func main() {
 
 	WriteString(initData, &index, relayAddressEnv, MaxRelayAddressLength)
 
+	// relayTokenIndex := index
+
+	// WriteBytes(initData, &index, relayToken, RelayTokenBytes)
+
 	fmt.Printf("\n(wrote %d bytes)\n", index)
-
-	relayTokenIndex := index
-
-	WriteBytes(initData, &index, relayToken, RelayTokenBytes)
 
 	// todo: write relay token to init data
 	/*
