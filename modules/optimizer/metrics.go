@@ -5,18 +5,19 @@ import (
 
 	"github.com/networknext/backend/modules/metrics"
 )
-type Metrics struct{
-	CostMatrixMetrics *metrics.CostMatrixMetrics
-	OptimizeMetrics *metrics.OptimizeMetrics
-	RelayBackendMetrics *metrics.RelayBackendMetrics
-	RelayInitMetrics *metrics.RelayInitMetrics
-	RelayUpdateMetrics *metrics.RelayUpdateMetrics
-	ValveCostMatrixMetrics *metrics.CostMatrixMetrics
+
+type Metrics struct {
+	CostMatrixMetrics       *metrics.CostMatrixMetrics
+	OptimizeMetrics         *metrics.OptimizeMetrics
+	RelayBackendMetrics     *metrics.RelayBackendMetrics
+	RelayInitMetrics        *metrics.RelayInitMetrics
+	RelayUpdateMetrics      *metrics.RelayUpdateMetrics
+	ValveCostMatrixMetrics  *metrics.CostMatrixMetrics
 	ValveOptimizeMetrics    *metrics.OptimizeMetrics
 	ValveRouteMatrixMetrics *metrics.RouteMatrixMetrics
 }
 
-func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error, string){
+func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error, string) {
 	m := &Metrics{}
 	costMatrixMetrics, err := metrics.NewCostMatrixMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -66,5 +67,5 @@ func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, 
 	}
 	m.ValveRouteMatrixMetrics = valveRouteMatrixMetrics
 
-	return m,nil,""
+	return m, nil, ""
 }

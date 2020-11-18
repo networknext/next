@@ -46,11 +46,11 @@ func (sub *GenericSubscriber) Unsubscribe(topic Topic) error {
 	sub.mutex.Lock()
 	defer sub.mutex.Unlock()
 
-	if _, ok := sub.topics[topic]; !ok{
+	if _, ok := sub.topics[topic]; !ok {
 		return fmt.Errorf("failed to unsubscribe from topic %s: not subscribed to topic", topic.String())
 	}
 
-	delete(sub.topics,topic)
+	delete(sub.topics, topic)
 	return sub.socket.SetUnsubscribe(string(topic))
 }
 
@@ -83,20 +83,18 @@ func (sub *GenericSubscriber) ReceiveMessage(ctx context.Context) <-chan Message
 		return receiveChan
 	}
 
-
 	topic := Topic(message[0][0])
 
 	if _, ok := sub.topics[topic]; !ok {
-		go receiveFunc( 0, nil, errors.New("subscriber received message from wrong topic"))
+		go receiveFunc(0, nil, errors.New("subscriber received message from wrong topic"))
 		return receiveChan
 	}
 
 	go receiveFunc(topic, message[1], nil)
 	return receiveChan
 
-
 }
 
-func (sub *GenericSubscriber)Close(){
+func (sub *GenericSubscriber) Close() {
 	sub.socket.Close()
 }
