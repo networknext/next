@@ -1,5 +1,9 @@
 package main
 
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
+
 import (
 	"encoding/base64"
 	"encoding/binary"
@@ -108,6 +112,20 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	}
 }
 
+func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) error {
+	result := C.crypto_box_easy((*C.uchar)(&buffer[0]),
+		(*C.uchar)(&buffer[0]),
+		C.ulonglong(bytes),
+		(*C.uchar)(&nonce[0]),
+		(*C.uchar)(&receiverPublicKey[0]),
+		(*C.uchar)(&senderPrivateKey[0]))
+	if result != 0 {
+		return fmt.Errorf("failed to encrypt: result = %d", result)
+	} else {
+		return nil
+	}
+}
+
 func main() {
 
 	fmt.Printf("\nNetwork Next Mock Relay\n")
@@ -203,30 +221,19 @@ func main() {
 
 	WriteString(initData, &index, relayAddressEnv, MaxRelayAddressLength)
 
-	// relayTokenIndex := index
+	relayTokenIndex := index
+	relayToken := make([]byte, RelayTokenBytes)
+	core.RandomBytes(relayToken)
+	WriteBytes(initData, &index, relayToken, RelayTokenBytes)
 
-	// WriteBytes(initData, &index, relayToken, RelayTokenBytes)
+	err = Encrypt(relayPrivateKey, relayRouterPublicKey, nonce, initData[relayTokenIndex:], RelayTokenBytes)
+	if err != nil {
+		fmt.Printf("could not encrypt relay token data: %v\n", err)
+	}
 
-	fmt.Printf("\n(wrote %d bytes)\n", index)
+	initData = initData[:index + C.crypto_box_MACBYTES]
 
-	// todo: write relay token to init data
-	/*
-	   uint8_t * q = p;
-
-	   relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
-	*/
-
-	// encrypt init data with relay private key (what part is being encrypted exactly, and why? I forget...)
-	/*
-	   int encrypt_length = int( p - q );
-
-	   if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
-	   {
-	       return RELAY_ERROR;
-	   }
-
-	   int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
-	*/
+	fmt.Printf("\n(wrote %d bytes)\n", len(initData))
 
 	// todo: send the init request to the backend
 
