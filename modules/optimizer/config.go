@@ -7,23 +7,23 @@ import (
 	"time"
 )
 
-type Config struct{
-	MaxJitter float32
-	MaxPacketLoss float32
-	MatrixBufferSize  int
-	RelayCacheUpdate time.Duration
-	RelayStoreAddress string
-	RelayStoreReadTimeout time.Duration
-	RelayStoreWriteTimeout time.Duration
-	RelayStoreRelayTimeout time.Duration
-	MatrixStoreAddress string
-	MatrixStoreReadTimeout time.Duration
-	MatrixStoreWriteTimeout time.Duration
-	subscriberPort 		string
+type Config struct {
+	MaxJitter                   float32
+	MaxPacketLoss               float32
+	MatrixBufferSize            int
+	RelayCacheUpdate            time.Duration
+	RelayStoreAddress           string
+	RelayStoreReadTimeout       time.Duration
+	RelayStoreWriteTimeout      time.Duration
+	RelayStoreRelayTimeout      time.Duration
+	MatrixStoreAddress          string
+	MatrixStoreReadTimeout      time.Duration
+	MatrixStoreWriteTimeout     time.Duration
+	subscriberPort              string
 	subscriberRecieveBufferSize int
 }
 
-func GetConfig() (*Config, error){
+func GetConfig() (*Config, error) {
 	var err error
 	// Get the max jitter and max packet loss env vars
 	if !envvar.Exists("RELAY_ROUTER_MAX_JITTER") {
@@ -49,7 +49,7 @@ func GetConfig() (*Config, error){
 		return nil, err
 	}
 
-	relayCacheUpdate, err := envvar.GetDuration("RELAY_CACHE_UPDATE", 1 *time.Second)
+	relayCacheUpdate, err := envvar.GetDuration("RELAY_CACHE_UPDATE", 1*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -59,17 +59,17 @@ func GetConfig() (*Config, error){
 	}
 	relayStoreAddress := envvar.Get("RELAY_STORE_ADDRESS", "")
 
-	relayStoreReadTimeout, err := envvar.GetDuration( "RELAY_STORE_READ_TIMEOUT", 250 * time.Millisecond)
+	relayStoreReadTimeout, err := envvar.GetDuration("RELAY_STORE_READ_TIMEOUT", 250*time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 
-	relayStoreWriteTimeout, err := envvar.GetDuration( "RELAY_STORE_WRITE_TIMEOUT", 250 * time.Millisecond)
+	relayStoreWriteTimeout, err := envvar.GetDuration("RELAY_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 
-	relayStoreRelayTimeout, err := envvar.GetDuration( "_STORE_MATRIX_TIMEOUT", 5 * time.Second)
+	relayStoreRelayTimeout, err := envvar.GetDuration("_STORE_MATRIX_TIMEOUT", 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -79,36 +79,36 @@ func GetConfig() (*Config, error){
 	}
 	matrixStoreAddress := envvar.Get("MATRIX_STORE_ADDRESS", "")
 
-	matrixStoreReadTimeout, err := envvar.GetDuration( "MATRIX_STORE_READ_TIMEOUT", 250 * time.Millisecond)
+	matrixStoreReadTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 
-	matrixStoreWriteTimeout, err := envvar.GetDuration( "MATRIX_STORE_WRITE_TIMEOUT", 250 * time.Millisecond)
+	matrixStoreWriteTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 
 	subscriberPort := envvar.Get("SUBSCRIBER_PORT", "5555")
 
-	subscriberRecieveBufferSize, err := envvar.GetInt("SUBSCRIBER_RECEIVE_BUFFER_SIZE",100000)
+	subscriberRecieveBufferSize, err := envvar.GetInt("SUBSCRIBER_RECEIVE_BUFFER_SIZE", 100000)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Config{
-		MaxJitter: float32(maxJitter),
-		MaxPacketLoss: float32(maxPacketLoss),
-		MatrixBufferSize: matrixBufferSize,
-		RelayCacheUpdate: relayCacheUpdate,
-		RelayStoreAddress: relayStoreAddress,
-		RelayStoreReadTimeout: relayStoreReadTimeout,
-		RelayStoreWriteTimeout: relayStoreWriteTimeout,
-		RelayStoreRelayTimeout: relayStoreRelayTimeout,
-		MatrixStoreAddress: matrixStoreAddress,
-		MatrixStoreReadTimeout: matrixStoreReadTimeout,
-		MatrixStoreWriteTimeout: matrixStoreWriteTimeout,
-		subscriberPort: subscriberPort,
+		MaxJitter:                   float32(maxJitter),
+		MaxPacketLoss:               float32(maxPacketLoss),
+		MatrixBufferSize:            matrixBufferSize,
+		RelayCacheUpdate:            relayCacheUpdate,
+		RelayStoreAddress:           relayStoreAddress,
+		RelayStoreReadTimeout:       relayStoreReadTimeout,
+		RelayStoreWriteTimeout:      relayStoreWriteTimeout,
+		RelayStoreRelayTimeout:      relayStoreRelayTimeout,
+		MatrixStoreAddress:          matrixStoreAddress,
+		MatrixStoreReadTimeout:      matrixStoreReadTimeout,
+		MatrixStoreWriteTimeout:     matrixStoreWriteTimeout,
+		subscriberPort:              subscriberPort,
 		subscriberRecieveBufferSize: subscriberRecieveBufferSize,
 	}, nil
 }

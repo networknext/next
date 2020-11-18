@@ -11,7 +11,7 @@ func (topic Topic) String() string {
 	return fmt.Sprintf("%d", topic)
 }
 
-const(
+const (
 	RelayUpdateTopic = 3
 )
 

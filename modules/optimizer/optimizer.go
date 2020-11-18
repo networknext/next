@@ -20,24 +20,24 @@ import (
 	"time"
 )
 
-type Optimizer struct{
-	id			uint64
-	cfg         *Config
-	createdAt   time.Time
-	relayCache  *storage.RelayCache
-	shutdown    bool
+type Optimizer struct {
+	id         uint64
+	cfg        *Config
+	createdAt  time.Time
+	relayCache *storage.RelayCache
+	shutdown   bool
 
-	Logger 		log.Logger
+	Logger      log.Logger
 	Metrics     *Metrics
 	MatrixStore storage.MatrixStore
-	RelayMap 	*routing.RelayMap
+	RelayMap    *routing.RelayMap
 	RelayStore  storage.RelayStore
-	StatsDB 	*routing.StatsDatabase
-	Store  		storage.Storer
+	StatsDB     *routing.StatsDatabase
+	Store       storage.Storer
 }
 
 func NewBaseOptimizer(cfg *Config) *Optimizer {
-		o := new(Optimizer)
+	o := new(Optimizer)
 	o.id = rand.Uint64()
 	o.createdAt = time.Now()
 	o.shutdown = false
@@ -46,7 +46,7 @@ func NewBaseOptimizer(cfg *Config) *Optimizer {
 	return o
 }
 
-func (o *Optimizer) GetRelayIDs(excludeList []string) []uint64{
+func (o *Optimizer) GetRelayIDs(excludeList []string) []uint64 {
 	return o.RelayMap.GetAllRelayIDs(excludeList)
 }
 
@@ -70,7 +70,7 @@ func (o *Optimizer) costMatrix(relayIDs []uint64, costMatrix *routing.CostMatrix
 	return costMatrix
 }
 
-func (o *Optimizer) numSegments(numRelays int) int{
+func (o *Optimizer) numSegments(numRelays int) int {
 	numCPUs := runtime.NumCPU()
 	numSegments := numRelays
 	if numCPUs < numRelays {
@@ -83,7 +83,7 @@ func (o *Optimizer) numSegments(numRelays int) int{
 	return numSegments
 }
 
-func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.CostMatrix, routeMatrix *routing.RouteMatrix, metrics *metrics.OptimizeMetrics) *routing.RouteMatrix{
+func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.CostMatrix, routeMatrix *routing.RouteMatrix, metrics *metrics.OptimizeMetrics) *routing.RouteMatrix {
 	metrics.Invocations.Add(1)
 	optimizeDurationStart := time.Now()
 
@@ -110,23 +110,22 @@ func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.Cos
 	return routeMatrix
 }
 
-func (o *Optimizer) GetRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix){
+func (o *Optimizer) GetRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix) {
 	relayIDs := o.GetRelayIDs([]string{"valve"})
 	costMatrix, routeMatrix := o.NewCostAndRouteMatrixBaseRelayData(relayIDs)
 
 	costMatrix = o.costMatrix(relayIDs, costMatrix, o.Metrics.CostMatrixMetrics)
-	if costMatrix == nil{
+	if costMatrix == nil {
 		return nil, nil
 	}
 
 	numRelays := len(relayIDs)
 	numSegments := o.numSegments(numRelays)
 
-	routeMatrix = o.optimize(numRelays,numSegments, costMatrix, routeMatrix, o.Metrics.OptimizeMetrics)
-	if routeMatrix == nil{
+	routeMatrix = o.optimize(numRelays, numSegments, costMatrix, routeMatrix, o.Metrics.OptimizeMetrics)
+	if routeMatrix == nil {
 		return nil, nil
 	}
-
 
 	o.Metrics.RelayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrix.GetResponseData())))
 	o.Metrics.RelayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(routeMatrix.RelayIDs)))
@@ -151,7 +150,7 @@ func (o *Optimizer) GetRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix)
 	return costMatrix, routeMatrix
 }
 
-func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix){
+func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix) {
 	relayIDs := o.GetRelayIDs([]string{})
 
 	costMatrix, routeMatrix := o.NewCostAndRouteMatrixBaseRelayData(relayIDs)
@@ -179,7 +178,6 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 
 	routeMatrix.RouteEntries = routeEntries
 
-
 	if err := routeMatrix.WriteResponseData(o.cfg.MatrixBufferSize); err != nil {
 		level.Error(o.Logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 		return nil, nil
@@ -191,18 +189,18 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 	o.Metrics.ValveRouteMatrixMetrics.RelayCount.Set(float64(len(routeMatrix.RelayIDs)))
 	o.Metrics.ValveRouteMatrixMetrics.DatacenterCount.Set(float64(len(routeMatrix.RelayDatacenterIDs)))
 
-		// todo: calculate this in optimize and Store in route matrix so we don't have to calc this here
-		numRoutes := int32(0)
-		for i := range routeMatrix.RouteEntries {
-			numRoutes += routeMatrix.RouteEntries[i].NumRoutes
-		}
+	// todo: calculate this in optimize and Store in route matrix so we don't have to calc this here
+	numRoutes := int32(0)
+	for i := range routeMatrix.RouteEntries {
+		numRoutes += routeMatrix.RouteEntries[i].NumRoutes
+	}
 	o.Metrics.ValveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
 
-	return costMatrix,routeMatrix
+	return costMatrix, routeMatrix
 }
 
-func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error{
-	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(),matrixType, routeMatrix.GetResponseData())
+func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error {
+	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(), matrixType, routeMatrix.GetResponseData())
 
 	err := o.MatrixStore.UpdateOptimizerMatrix(matrix)
 	if err != nil {
@@ -324,7 +322,7 @@ func (o *Optimizer) NewCostAndRouteMatrixBaseRelayData(relayIDs []uint64) (*rout
 	return costMatrix, routeMatrix
 }
 
-func (o *Optimizer) MetricsOutput(){
+func (o *Optimizer) MetricsOutput() {
 	fmt.Printf("-----------------------------\n")
 	fmt.Printf("%.2f mb allocated\n", o.Metrics.RelayBackendMetrics.MemoryAllocated.Value())
 	fmt.Printf("%d goroutines\n", int(o.Metrics.RelayBackendMetrics.Goroutines.Value()))
@@ -347,13 +345,13 @@ func (o *Optimizer) MetricsOutput(){
 	fmt.Printf("-----------------------------\n")
 }
 
-func (o *Optimizer) RelayCacheRunner() error{
+func (o *Optimizer) RelayCacheRunner() error {
 
 	o.relayCache = storage.NewRelayCache()
 
 	errCount := 0
 	syncTimer := helpers.NewSyncTimer(o.cfg.RelayCacheUpdate)
-	for !o.shutdown{
+	for !o.shutdown {
 		syncTimer.Run()
 
 		if errCount > 10 {
@@ -374,12 +372,12 @@ func (o *Optimizer) RelayCacheRunner() error{
 			continue
 		}
 
-		for _, relay := range addArr{
-			 o.initializeRelay(relay)
+		for _, relay := range addArr {
+			o.initializeRelay(relay)
 		}
 
-		for _, id := range removeArr{
-			 o.removeRelay(id)
+		for _, id := range removeArr {
+			o.removeRelay(id)
 		}
 
 		errCount = 0
@@ -388,23 +386,23 @@ func (o *Optimizer) RelayCacheRunner() error{
 	return nil
 }
 
-func (o *Optimizer) StartSubscriber()error{
+func (o *Optimizer) StartSubscriber() error {
 	level.Debug(o.Logger).Log("msg", "subscriber starting")
 
 	sub, err := pubsub.NewGenericSubscriber(o.cfg.subscriberPort, o.cfg.subscriberRecieveBufferSize)
 	defer sub.Close()
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	err = sub.Subscribe(pubsub.RelayUpdateTopic)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	for {
-		if o.shutdown == true{
+		if o.shutdown == true {
 			return nil
 		}
 		msgChan := sub.ReceiveMessage(context.Background())
@@ -413,7 +411,7 @@ func (o *Optimizer) StartSubscriber()error{
 		if msg.Err != nil {
 			level.Error(o.Logger).Log("err", err)
 		}
-		if msg.Topic != pubsub.RelayUpdateTopic{
+		if msg.Topic != pubsub.RelayUpdateTopic {
 			level.Error(o.Logger).Log("err", "received the wrong topic")
 		}
 
@@ -421,7 +419,7 @@ func (o *Optimizer) StartSubscriber()error{
 	}
 }
 
-func (o *Optimizer) PublishRunner(){
+func (o *Optimizer) PublishRunner() {
 	// ping stats
 	//var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	//{

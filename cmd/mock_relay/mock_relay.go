@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"math"
 	"encoding/base64"
 	"encoding/binary"
-	"github.com/networknext/backend/modules/core"	
+	"fmt"
+	"github.com/networknext/backend/modules/core"
+	"math"
+	"os"
 )
 
 const InitRequestMagic = uint32(0x9083708f)
@@ -110,9 +110,9 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 
 func main() {
 
-    fmt.Printf( "\nNetwork Next Mock Relay\n");
+	fmt.Printf("\nNetwork Next Mock Relay\n")
 
-    fmt.Printf( "\nEnvironment:\n\n" );
+	fmt.Printf("\nEnvironment:\n\n")
 
 	relayAddressEnv := os.Getenv("RELAY_ADDRESS")
 	if relayAddressEnv == "" {
@@ -146,7 +146,7 @@ func main() {
 
 	_ = relayPrivateKey
 
-    fmt.Printf( "    relay private key is \"%s\"\n", relayPrivateKeyEnv );
+	fmt.Printf("    relay private key is \"%s\"\n", relayPrivateKeyEnv)
 
 	relayPublicKeyEnv := os.Getenv("RELAY_PUBLIC_KEY")
 	if relayPublicKeyEnv == "" {
@@ -162,7 +162,7 @@ func main() {
 
 	_ = relayPublicKey
 
-    fmt.Printf( "    relay public key is \"%s\"\n", relayPublicKeyEnv );
+	fmt.Printf("    relay public key is \"%s\"\n", relayPublicKeyEnv)
 
 	relayRouterPublicKeyEnv := os.Getenv("RELAY_ROUTER_PUBLIC_KEY")
 	if relayRouterPublicKeyEnv == "" {
@@ -178,7 +178,7 @@ func main() {
 
 	_ = relayRouterPublicKey
 
-    fmt.Printf( "    relay router public key is \"%s\"\n", relayRouterPublicKeyEnv );
+	fmt.Printf("    relay router public key is \"%s\"\n", relayRouterPublicKeyEnv)
 
 	relayBackendHostnameEnv := os.Getenv("RELAY_BACKEND_HOSTNAME")
 	if relayBackendHostnameEnv == "" {
@@ -191,9 +191,9 @@ func main() {
 	// write init data
 
 	initData := make([]byte, 1024)
-	
+
 	index := 0
-	
+
 	WriteUint32(initData, &index, InitRequestMagic)
 	WriteUint32(initData, &index, InitRequestVersion)
 
@@ -205,105 +205,109 @@ func main() {
 
 	fmt.Printf("\n(wrote %d bytes)\n", index)
 
-    // todo: write relay token to init data
-    /*
-    uint8_t * q = p;
+	relayTokenIndex := index
 
-    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
-    */
+	WriteBytes(initData, &index, relayToken, RelayTokenBytes)
 
-    // encrypt init data with relay private key (what part is being encrypted exactly, and why? I forget...)
-    /*
-    int encrypt_length = int( p - q );
+	// todo: write relay token to init data
+	/*
+	   uint8_t * q = p;
 
-    if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
-    {
-        return RELAY_ERROR;
-    }
+	   relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
+	*/
 
-    int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
-    */
+	// encrypt init data with relay private key (what part is being encrypted exactly, and why? I forget...)
+	/*
+	   int encrypt_length = int( p - q );
 
-    // todo: send the init request to the backend
+	   if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
+	   {
+	       return RELAY_ERROR;
+	   }
 
-    /*
-    struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
+	   int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
+	*/
 
-    curl_buffer_t init_response_buffer;
-    init_response_buffer.size = 0;
-    init_response_buffer.max_size = 1024;
-    init_response_buffer.data = (uint8_t*) alloca( init_response_buffer.max_size );
+	// todo: send the init request to the backend
 
-    char init_url[1024];
-    sprintf( init_url, "%s/relay_init", hostname );
+	/*
+	   struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
 
-    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
-    curl_easy_setopt( curl, CURLOPT_URL, init_url );
-    curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, init_data );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)init_length );
-    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
-    curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
-    curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
-    curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
-    curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
-    curl_easy_setopt( curl, CURLOPT_WRITEDATA, &init_response_buffer );
-    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+	   curl_buffer_t init_response_buffer;
+	   init_response_buffer.size = 0;
+	   init_response_buffer.max_size = 1024;
+	   init_response_buffer.data = (uint8_t*) alloca( init_response_buffer.max_size );
 
-    CURLcode ret = curl_easy_perform( curl );
+	   char init_url[1024];
+	   sprintf( init_url, "%s/relay_init", hostname );
 
-    curl_slist_free_all( slist );
-    slist = NULL;
-    */
+	   curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
+	   curl_easy_setopt( curl, CURLOPT_URL, init_url );
+	   curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
+	   curl_easy_setopt( curl, CURLOPT_POSTFIELDS, init_data );
+	   curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)init_length );
+	   curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
+	   curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
+	   curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
+	   curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
+	   curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
+	   curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
+	   curl_easy_setopt( curl, CURLOPT_WRITEDATA, &init_response_buffer );
+	   curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
 
-    // todo: check the http request response
+	   CURLcode ret = curl_easy_perform( curl );
 
-    /*
-    if ( ret != 0 )
-    {
-        return RELAY_ERROR;
-    }
+	   curl_slist_free_all( slist );
+	   slist = NULL;
+	*/
 
-    long code;
-    curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
-    if ( code != 200 )
-    {
-        return RELAY_ERROR;
-    }
-    */
+	// todo: check the http request response
 
-    /*
-    if ( init_response_buffer.size < 4 )
-    {
-        relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
-        return RELAY_ERROR;
-    }
+	/*
+	   if ( ret != 0 )
+	   {
+	       return RELAY_ERROR;
+	   }
 
-    const uint8_t * r = init_response_buffer.data;
+	   long code;
+	   curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
+	   if ( code != 200 )
+	   {
+	       return RELAY_ERROR;
+	   }
+	*/
 
-    uint32_t version = relay_read_uint32( &r );
+	/*
+	   if ( init_response_buffer.size < 4 )
+	   {
+	       relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
+	       return RELAY_ERROR;
+	   }
 
-    const uint32_t init_response_version = 0;
+	   const uint8_t * r = init_response_buffer.data;
 
-    if ( version != init_response_version )
-    {
-        relay_printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
-        return RELAY_ERROR;
-    }
+	   uint32_t version = relay_read_uint32( &r );
 
-    if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
-    {
-        relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );
-        return RELAY_ERROR;
-    }
+	   const uint32_t init_response_version = 0;
 
-    *router_timestamp = relay_read_uint64( &r );
+	   if ( version != init_response_version )
+	   {
+	       relay_printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
+	       return RELAY_ERROR;
+	   }
 
-    memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
+	   if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
+	   {
+	       relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );
+	       return RELAY_ERROR;
+	   }
 
-    return RELAY_OK;
-    */
+	   *router_timestamp = relay_read_uint64( &r );
+
+	   memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
+
+	   return RELAY_OK;
+	*/
 
 	// ---------------------------------------------------------
 
