@@ -8,6 +8,10 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"time"
+	"bytes"
+	"io/ioutil"
+	"net/http"
 	"github.com/networknext/backend/modules/core"
 	"math"
 	"os"
@@ -147,6 +151,10 @@ func main() {
 	}
 
 	relayPort := relayAddress.Port
+	if relayPort == 0 {
+		relayPort = 40000
+	}
+	relayAddress.Port = relayPort
 
 	fmt.Printf("    relay bind port is %d\n", relayPort)
 
@@ -219,7 +227,7 @@ func main() {
 	core.RandomBytes(nonce)
 	WriteBytes(initData, &index, nonce, NonceBytes)
 
-	WriteString(initData, &index, relayAddressEnv, MaxRelayAddressLength)
+	WriteString(initData, &index, relayAddress.String(), MaxRelayAddressLength)
 
 	relayTokenIndex := index
 	relayToken := make([]byte, RelayTokenBytes)
@@ -235,7 +243,35 @@ func main() {
 
 	fmt.Printf("\n(wrote %d bytes)\n", len(initData))
 
-	// todo: send the init request to the backend
+	transport := &http.Transport{
+		MaxConnsPerHost:     0,
+		ForceAttemptHTTP2:   true,
+        MaxIdleConns:        100000,
+        MaxIdleConnsPerHost: 100000,
+    }
+
+	httpClient := http.Client{
+		Transport: transport,
+		Timeout: time.Second * 10,
+	}
+
+	response, err := httpClient.Post(fmt.Sprintf("%s/relay_init", relayBackendHostnameEnv), "application/octet-stream", bytes.NewBuffer(initData))
+	if err != nil {
+		fmt.Printf("relay init post error: %v\n", err)
+		os.Exit(1)
+	}
+
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Printf("io read error: %v\n", err)
+		os.Exit(1)
+	}
+
+	response.Body.Close()
+
+	// todo: process response
+
+	_ = responseData
 
 	/*
 	   struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
