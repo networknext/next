@@ -208,6 +208,9 @@ export default class SessionMap extends Vue {
       clearInterval(this.mapLoop)
     }
     this.fetchMapSessions()
+    this.mapLoop = setInterval(() => {
+      this.fetchMapSessions()
+    }, 1000)
   }
 }
 </script>
