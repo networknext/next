@@ -1,5 +1,8 @@
 <template>
-  <div class="map-container-no-offset">
+  <div v-bind:class="{
+    'map-container-no-offset': !offsetMap,
+    'map-container-offset': offsetMap,
+  }">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
@@ -214,6 +217,13 @@ export default class SessionMap extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+.map-container-offset {
+  width: 100%;
+  height: calc(-160px + 95vh);
+  position: relative;
+  overflow: hidden;
+  max-height: 1000px;
+}
 .map-container-no-offset {
   width: 100%;
   height: calc(-160px + 100vh);

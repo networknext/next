@@ -126,11 +126,11 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
   // Email is verified
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
-    store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
     Vue.prototype.$authService.refreshToken()
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
     next('/')
     return
   }
