@@ -1,10 +1,5 @@
 <template>
   <div class="container-fluid below-nav-bar">
-    <Alert :message="alertMessage" :alertType="alertType" v-if="message !== ''">
-      <a href="#" @click="resendVerificationEmail()">
-        Resend email
-      </a>
-    </Alert>
     <div class="row">
       <main role="main" class="col-md-12 col-lg-12 px-4">
         <SessionCounts
@@ -13,6 +8,11 @@
         <router-view />
       </main>
     </div>
+    <Alert :message="alertMessage" :alertType="alertType" v-if="message !== ''" style="margin-top: 2rem;">
+      <a href="#" @click="resendVerificationEmail()">
+        Resend email
+      </a>
+    </Alert>
   </div>
 </template>
 

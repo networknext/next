@@ -1,8 +1,5 @@
 <template>
-  <div v-bind:class="{
-    'map-container-no-offset': !offsetMap,
-    'map-container-offset': offsetMap,
-  }">
+  <div class="map-container-no-offset">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
@@ -39,7 +36,6 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
-  private unwatchProfile: any
 
   constructor () {
     super()
@@ -67,15 +63,6 @@ export default class SessionMap extends Vue {
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
-      },
-      () => {
-        clearInterval(this.mapLoop)
-        this.restartLoop()
-      }
-    )
-    this.unwatchProfile = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.userProfile
       },
       () => {
         clearInterval(this.mapLoop)
@@ -227,13 +214,6 @@ export default class SessionMap extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-.map-container-offset {
-  width: 100%;
-  height: calc(-160px + 95vh);
-  position: relative;
-  overflow: hidden;
-  max-height: 1000px;
-}
 .map-container-no-offset {
   width: 100%;
   height: calc(-160px + 100vh);
