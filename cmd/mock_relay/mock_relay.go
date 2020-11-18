@@ -280,6 +280,38 @@ func main() {
 		response.Body.Close()
 
 		// todo: process response
+	
+		/*
+		   if ( init_response_buffer.size < 4 )
+		   {
+		       relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
+		       return RELAY_ERROR;
+		   }
+
+		   const uint8_t * r = init_response_buffer.data;
+
+		   uint32_t version = relay_read_uint32( &r );
+
+		   const uint32_t init_response_version = 0;
+
+		   if ( version != init_response_version )
+		   {
+		       relay_printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
+		       return RELAY_ERROR;
+		   }
+
+		   if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
+		   {
+		       relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );
+		       return RELAY_ERROR;
+		   }
+
+		   *router_timestamp = relay_read_uint64( &r );
+
+		   memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
+
+		   return RELAY_OK;
+		*/
 
 		_ = responseData
 
@@ -294,85 +326,6 @@ func main() {
 	}
 
     fmt.Printf( "\nRelay initialized\n" );
-
-	/*
-	   struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
-
-	   curl_buffer_t init_response_buffer;
-	   init_response_buffer.size = 0;
-	   init_response_buffer.max_size = 1024;
-	   init_response_buffer.data = (uint8_t*) alloca( init_response_buffer.max_size );
-
-	   char init_url[1024];
-	   sprintf( init_url, "%s/relay_init", hostname );
-
-	   curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
-	   curl_easy_setopt( curl, CURLOPT_URL, init_url );
-	   curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
-	   curl_easy_setopt( curl, CURLOPT_POSTFIELDS, init_data );
-	   curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)init_length );
-	   curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
-	   curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
-	   curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
-	   curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
-	   curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
-	   curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
-	   curl_easy_setopt( curl, CURLOPT_WRITEDATA, &init_response_buffer );
-	   curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
-
-	   CURLcode ret = curl_easy_perform( curl );
-
-	   curl_slist_free_all( slist );
-	   slist = NULL;
-	*/
-
-	// todo: check the http request response
-
-	/*
-	   if ( ret != 0 )
-	   {
-	       return RELAY_ERROR;
-	   }
-
-	   long code;
-	   curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
-	   if ( code != 200 )
-	   {
-	       return RELAY_ERROR;
-	   }
-	*/
-
-	/*
-	   if ( init_response_buffer.size < 4 )
-	   {
-	       relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
-	       return RELAY_ERROR;
-	   }
-
-	   const uint8_t * r = init_response_buffer.data;
-
-	   uint32_t version = relay_read_uint32( &r );
-
-	   const uint32_t init_response_version = 0;
-
-	   if ( version != init_response_version )
-	   {
-	       relay_printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
-	       return RELAY_ERROR;
-	   }
-
-	   if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
-	   {
-	       relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );
-	       return RELAY_ERROR;
-	   }
-
-	   *router_timestamp = relay_read_uint64( &r );
-
-	   memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
-
-	   return RELAY_OK;
-	*/
 
 	// ---------------------------------------------------------
 
