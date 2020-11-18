@@ -2,17 +2,17 @@
   <div class="container-fluid below-nav-bar">
     <div class="row">
       <main role="main" class="col-md-12 col-lg-12 px-4">
+        <Alert :message="alertMessage" :alertType="alertType" v-if="message !== ''">
+          <a href="#" @click="resendVerificationEmail()">
+            Resend email
+          </a>
+        </Alert>
         <SessionCounts
           v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
         />
         <router-view />
       </main>
     </div>
-    <Alert :message="alertMessage" :alertType="alertType" v-if="message !== ''" style="margin-top: 2rem;">
-      <a href="#" @click="resendVerificationEmail()">
-        Resend email
-      </a>
-    </Alert>
   </div>
 </template>
 
