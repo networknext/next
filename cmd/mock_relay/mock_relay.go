@@ -11,6 +11,7 @@ import (
 
 const InitRequestMagic = uint32(0x9083708f)
 const InitRequestVersion = 0
+const NonceBytes = 24
 const InitResponseVersion = 0
 const UpdateRequestVersion = 0
 const UpdateResponseVersion = 0
@@ -187,32 +188,32 @@ func main() {
 
 	fmt.Printf("    relay backend hostname is \"%s\"\n", relayBackendHostnameEnv)
 
-	// ---------------------------------------------------------
-
-	// init the relay
+	// write init data
 
 	initData := make([]byte, 1024)
+	
+	index := 0
+	
+	WriteUint32(initData, &index, InitRequestMagic)
+	WriteUint32(initData, &index, InitRequestVersion)
 
-	_ = initData
+	nonce := make([]byte, NonceBytes)
+	core.RandomBytes(nonce)
+	WriteBytes(initData, &index, nonce, NonceBytes)
 
-	// todo: nonce
-	/*
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    relay_random_bytes( nonce, crypto_box_NONCEBYTES );
+	WriteString(initData, &index, relayAddressEnv, MaxRelayAddressLength)
+
+	fmt.Printf("\n(wrote %d bytes)\n", index)
+
+    // todo: write relay token to init data
+    /*
+    uint8_t * q = p;
+
+    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
     */
 
+    // encrypt init data with relay private key (what part is being encrypted exactly, and why? I forget...)
     /*
-    uint8_t * p = init_data;
-
-    relay_write_uint32( &p, init_request_magic );
-    relay_write_uint32( &p, init_request_version );
-    relay_write_bytes( &p, nonce, crypto_box_NONCEBYTES );
-    relay_write_string( &p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH );
-
-    uint8_t * q = p;
-
-    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
-
     int encrypt_length = int( p - q );
 
     if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
@@ -221,20 +222,11 @@ func main() {
     }
 
     int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
+    */
 
-    uint8_t * q = p;
+    // todo: send the init request to the backend
 
-    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
-
-    int encrypt_length = int( p - q );
-
-    if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
-    {
-        return RELAY_ERROR;
-    }
-
-    int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
-
+    /*
     struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
 
     curl_buffer_t init_response_buffer;
@@ -263,7 +255,11 @@ func main() {
 
     curl_slist_free_all( slist );
     slist = NULL;
+    */
 
+    // todo: check the http request response
+
+    /*
     if ( ret != 0 )
     {
         return RELAY_ERROR;
@@ -275,7 +271,9 @@ func main() {
     {
         return RELAY_ERROR;
     }
+    */
 
+    /*
     if ( init_response_buffer.size < 4 )
     {
         relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
