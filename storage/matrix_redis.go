@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -116,13 +117,13 @@ func (r *RedisMatrixStore)UpdateOptimizerMatrix(matrix Matrix) error{
 	}
 
 	conn := r.pool.Get()
-	_, err = conn.Do(hSet, optimizer, string(matrix.OptimizerID)+matrix.Type, jsonMatrix)
+	_, err = conn.Do(hSet, optimizer, fmt.Sprint(matrix.OptimizerID)+matrix.Type, jsonMatrix)
 	return err
 }
 
 func (r *RedisMatrixStore)DeleteOptimizerMatrix(id uint64, matrixType string) error {
 	conn := r.pool.Get()
-	_, err := conn.Do(hDel, optimizer, string(id)+matrixType)
+	_, err := conn.Do(hDel, optimizer, fmt.Sprint(id)+matrixType)
 	return err
 }
 
