@@ -28,6 +28,7 @@ func SetupEnv() {
 
 func TestInsertSQL(t *testing.T) {
 
+	t.Skip()
 	SetupEnv()
 
 	ctx := context.Background()
@@ -273,6 +274,8 @@ func TestInsertSQL(t *testing.T) {
 
 func TestDeleteSQL(t *testing.T) {
 
+	t.Skip()
+
 	SetupEnv()
 
 	ctx := context.Background()
@@ -473,6 +476,8 @@ func TestDeleteSQL(t *testing.T) {
 }
 
 func TestUpdateSQL(t *testing.T) {
+
+	t.Skip()
 
 	SetupEnv()
 
