@@ -241,7 +241,7 @@ func main() {
 
 	initData = initData[:index + C.crypto_box_MACBYTES]
 
-	fmt.Printf("\n(wrote %d bytes)\n", len(initData))
+	// create and reuse one http client
 
 	transport := &http.Transport{
 		MaxConnsPerHost:     0,
@@ -255,23 +255,45 @@ func main() {
 		Timeout: time.Second * 10,
 	}
 
-	response, err := httpClient.Post(fmt.Sprintf("%s/relay_init", relayBackendHostnameEnv), "application/octet-stream", bytes.NewBuffer(initData))
-	if err != nil {
-		fmt.Printf("relay init post error: %v\n", err)
+	// init relay
+
+    fmt.Printf( "\nInitializing relay\n" );
+
+	initialized := false
+
+	for {
+
+		time.Sleep(1 * time.Second)
+
+		response, err := httpClient.Post(fmt.Sprintf("%s/relay_init", relayBackendHostnameEnv), "application/octet-stream", bytes.NewBuffer(initData))
+		if err != nil {
+			fmt.Printf("relay init post error: %v\n", err)
+			continue
+		}
+
+		responseData, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			fmt.Printf("io read error: %v\n", err)
+			continue
+		}
+
+		response.Body.Close()
+
+		// todo: process response
+
+		_ = responseData
+
+		initialized = true
+
+		break
+	}
+
+	if !initialized {
+		fmt.Printf("error: failed to init relay\n\n")
 		os.Exit(1)
 	}
 
-	responseData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Printf("io read error: %v\n", err)
-		os.Exit(1)
-	}
-
-	response.Body.Close()
-
-	// todo: process response
-
-	_ = responseData
+    fmt.Printf( "\nRelay initialized\n" );
 
 	/*
 	   struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );

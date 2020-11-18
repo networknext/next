@@ -386,7 +386,7 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
 .PHONY: dev-mock-relay
-dev-mock-relay: ## runs a mock relay
+dev-mock-relay: ## runs a local mock relay
 	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
 	./dist/mock_relay
 
