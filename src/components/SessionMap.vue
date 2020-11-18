@@ -87,7 +87,6 @@ export default class SessionMap extends Vue {
   private beforeDestroy () {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
-    this.unwatchProfile()
   }
 
   private fetchMapSessions () {
@@ -221,7 +220,7 @@ export default class SessionMap extends Vue {
     this.fetchMapSessions()
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()
-    }, 1000)
+    }, 10000)
   }
 }
 </script>
