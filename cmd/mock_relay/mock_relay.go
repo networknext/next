@@ -87,32 +87,45 @@ func main() {
 
 	fmt.Printf("    relay backend hostname is \"%s\"\n", relayBackendHostnameEnv)
 
+	// ---------------------------------------------------------
+
 	// init the relay
 
-	// loop and update the relay
+	const InitRequestMagic = uint32(0x9083708f)
 
-	fmt.Printf("\n")
-}
+	initRequestVersion := uint32(0)
 
-/*
-int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const char * relay_address, const uint8_t * router_public_key, const uint8_t * relay_private_key, uint64_t * router_timestamp )
-{
-    const uint32_t init_request_magic = 0x9083708f;
+	initVersion := make([]byte, 1024)
 
-    uint32_t init_request_version = 0;
+	_ = initRequestVersion
+	_ = initVersion
 
-    uint8_t init_data[1024];
-    memset( init_data, 0, sizeof(init_data) );
-
+	// todo: nonce
+	/*
     unsigned char nonce[crypto_box_NONCEBYTES];
     relay_random_bytes( nonce, crypto_box_NONCEBYTES );
+    */
 
+    /*
     uint8_t * p = init_data;
 
     relay_write_uint32( &p, init_request_magic );
     relay_write_uint32( &p, init_request_version );
     relay_write_bytes( &p, nonce, crypto_box_NONCEBYTES );
     relay_write_string( &p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH );
+
+    uint8_t * q = p;
+
+    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
+
+    int encrypt_length = int( p - q );
+
+    if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
+    {
+        return RELAY_ERROR;
+    }
+
+    int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
 
     uint8_t * q = p;
 
@@ -197,8 +210,16 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
     memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
 
     return RELAY_OK;
+    */
+
+	// ---------------------------------------------------------
+
+	// loop and update the relay
+
+	fmt.Printf("\n")
 }
 
+/*
 int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay, bool shutdown )
 {
     // build update data
