@@ -285,8 +285,18 @@ func main() {
 	   		continue
 	   	}
 
-		/*
+	   	index := 0
 
+	   	var version uint32
+		if !ReadUint32(responseData, &index, &version) {
+			continue
+		}
+
+		if version != 0 {
+			continue
+		}
+
+		/*
 		   const uint8_t * r = init_response_buffer.data;
 
 		   uint32_t version = relay_read_uint32( &r );
