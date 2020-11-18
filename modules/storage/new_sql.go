@@ -25,18 +25,21 @@ import (
 func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 	fmt.Println("Creating SQLite3 Storer.")
+	pwd, _ := os.Getwd()
+	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 
 	// remove the old db file if it exists (SQLite3 save one by default when
 	// exiting)
-	if _, err := os.Stat("network_next.db"); err == nil || os.IsExist(err) {
-		err = os.Remove("network_next.db")
+	fmt.Println("--> Attempting to remove db file")
+	if _, err := os.Stat("testdata/network_next.db"); err == nil || os.IsExist(err) {
+		err = os.Remove("testdata/network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
 			return nil, err
 		}
 	}
 
-	sqlite3, err := sql.Open("sqlite3", "file:network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+	sqlite3, err := sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 		return nil, err
@@ -61,12 +64,10 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		SyncSequenceNumber: -1,
 	}
 
-	// pwd, _ := os.Getwd()
-	// fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 	// populate the db with some data from dev
-	file, err := ioutil.ReadFile("storage/sqlite3-empty.sql") // happy path
+	file, err := ioutil.ReadFile("testdata/sqlite3-empty.sql") // happy path
 	if err != nil {
-		file, err = ioutil.ReadFile("sqlite3-empty.sql") // unit test
+		file, err = ioutil.ReadFile("testdata/sqlite3-empty.sql") // unit test
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
 			return nil, err

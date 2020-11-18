@@ -293,7 +293,7 @@ func SeedSQLStorage(
 				StartDate:           time.Now(),
 				EndDate:             time.Now(),
 				Type:                routing.BareMetal,
-				State:               routing.RelayStateMaintenance,
+				State:               routing.RelayStateEnabled,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
 			}); err != nil {
@@ -316,6 +316,12 @@ func SeedSQLStorage(
 			addr = net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
 			rid = crypto.HashID(addr.String())
 
+			// set ghost-army relays to random states
+			var ghostRelayState routing.RelayState
+			rand.Seed(time.Now().UnixNano())
+			state := rand.Int63n(6)
+			ghostRelayState, _ = routing.GetRelayStateSQL(state)
+
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
 				Name:                "ghost-army.locale.1" + fmt.Sprintf("%d", i),
@@ -334,7 +340,7 @@ func SeedSQLStorage(
 				StartDate:           time.Now(),
 				EndDate:             time.Now(),
 				Type:                routing.BareMetal,
-				State:               routing.RelayStateMaintenance,
+				State:               ghostRelayState,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
 			}); err != nil {
