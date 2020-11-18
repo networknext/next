@@ -18,13 +18,13 @@ import (
 )
 
 type GatewayHandlerConfig struct {
-	RelayStore 		 storage.RelayStore
-	RelayCache	     storage.RelayCache
+	RelayStore       storage.RelayStore
+	RelayCache       storage.RelayCache
 	Storer           storage.Storer
 	InitMetrics      *metrics.RelayInitMetrics
-	UpdateMetrics	 *metrics.RelayUpdateMetrics
+	UpdateMetrics    *metrics.RelayUpdateMetrics
 	RouterPrivateKey []byte
-	Publishers        []pubsub.Publisher
+	Publishers       []pubsub.Publisher
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -116,7 +116,7 @@ func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig
 
 		relayData := storage.NewRelayStoreData(id, relayInitRequest.RelayVersion, relayInitRequest.Address)
 		err = params.RelayStore.Set(*relayData)
-		if err != nil{
+		if err != nil {
 			fmt.Printf("redis error %s \n", err.Error())
 		}
 
@@ -194,8 +194,8 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		}
 
 		id := crypto.HashID(relayUpdateRequest.Address.String())
-		relayData, err:= params.RelayStore.Get(id)
-		if relayData == nil  || err != nil{
+		relayData, err := params.RelayStore.Get(id)
+		if relayData == nil || err != nil {
 			level.Warn(localLogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
 			params.UpdateMetrics.ErrorMetrics.RelayNotFound.Add(1)
@@ -254,7 +254,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		for _, pub := range params.Publishers {
 			fmt.Println("publishing")
 			_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, body)
-			if err!= nil {
+			if err != nil {
 				fmt.Println(err.Error())
 			}
 		}
@@ -281,7 +281,6 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 			level.Error(localLogger).Log("msg", "failed to update relay", "err", err)
 			http.Error(writer, "failed to update relay", http.StatusInternalServerError)
 		}
-
 
 		level.Debug(relayslogger).Log(
 			"id", relayData.ID,

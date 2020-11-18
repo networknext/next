@@ -100,7 +100,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-
 	publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -108,23 +107,23 @@ func mainReturnWithCode() int {
 	fmt.Printf("num publishers %v", len(publishers))
 
 	gateway := &relay_gateway.Gateway{
-		Cfg: cfg,
-		Logger: logger,
+		Cfg:         cfg,
+		Logger:      logger,
 		RelayLogger: relaysLogger,
-		Metrics: relayMetrics,
-		Publishers: publishers,
-		Store: &storer,
-		RelayStore: relayStore,
-		RelayCache: storage.NewRelayCache(),
+		Metrics:     relayMetrics,
+		Publishers:  publishers,
+		Store:       &storer,
+		RelayStore:  relayStore,
+		RelayCache:  storage.NewRelayCache(),
 		ShutdownSvc: false,
 	}
-	
+
 	go func() {
-	err = gateway.RelayCacheRunner()
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
+		err = gateway.RelayCacheRunner()
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
 	}()
 
 	fmt.Printf("starting http server\n")

@@ -240,10 +240,10 @@ func TestUserSessions(t *testing.T) {
 
 	svc := jsonrpc.BuyersService{
 		Storage:                &storer,
-		UseBigtable:			true,
-		BigTableCfName:			btCfName,
+		UseBigtable:            true,
+		BigTableCfName:         btCfName,
 		BigTable:               btClient,
-		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
+		BigTableMetrics:        &metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
@@ -819,10 +819,10 @@ func TestSessionDetails(t *testing.T) {
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
-		UseBigtable:			true,
-		BigTableCfName:			btCfName,
+		UseBigtable:            true,
+		BigTableCfName:         btCfName,
 		BigTable:               btClient,
-		BigTableMetrics:		&metrics.EmptyBigTableMetrics,
+		BigTableMetrics:        &metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,

@@ -1,5 +1,3 @@
-
-
 package main
 
 import (
@@ -20,7 +18,7 @@ import (
 
 	//logging
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/backend"	// todo: not a good name for a module
+	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
 )
 
 var (
@@ -43,7 +41,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	cfg,err := rm.GetConfig()
+	cfg, err := rm.GetConfig()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 	}
@@ -63,7 +61,7 @@ func main() {
 	//update matrix service
 	go func() {
 		errorCount := 0
-		syncTimer :=helpers.NewSyncTimer(250 *time.Millisecond)
+		syncTimer := helpers.NewSyncTimer(250 * time.Millisecond)
 		for {
 			syncTimer.Run()
 			if shutdown {
@@ -73,7 +71,7 @@ func main() {
 			if err != nil {
 				_ = level.Error(logger).Log("err", err)
 				errorCount++
-				if errorCount >= 3{
+				if errorCount >= 3 {
 					_ = level.Error(logger).Log("msg", "updating svc failed multiple times in a row")
 					os.Exit(1)
 				}
@@ -85,7 +83,7 @@ func main() {
 
 	//core loop
 	go func() {
-		syncTimer := helpers.NewSyncTimer(1000 *time.Millisecond)
+		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
 		for {
 			syncTimer.Run()
 			if shutdown {
@@ -98,7 +96,7 @@ func main() {
 				continue
 			}
 
-			if !svc.AmMaster(){
+			if !svc.AmMaster() {
 				continue
 			}
 
@@ -119,7 +117,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage,false, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
 	go func() {
@@ -137,9 +135,9 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 
-	select{
-		case <-sigint:
-			shutdown = true
-			time.Sleep(5 * time.Second)
+	select {
+	case <-sigint:
+		shutdown = true
+		time.Sleep(5 * time.Second)
 	}
 }

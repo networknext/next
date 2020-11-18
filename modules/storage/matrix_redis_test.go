@@ -1,6 +1,6 @@
 package storage
 
-import(
+import (
 	"testing"
 	"time"
 
@@ -8,10 +8,10 @@ import(
 	"github.com/stretchr/testify/assert"
 )
 
-func matrixRedisTestHelperRedisStore(t *testing.T) *RedisMatrixStore{
+func matrixRedisTestHelperRedisStore(t *testing.T) *RedisMatrixStore {
 	rSvr, err := miniredis.Run()
 	assert.Nil(t, err)
-	store, err := NewRedisMatrixStore(rSvr.Addr(),200*time.Millisecond,200*time.Millisecond,5*time.Second)
+	store, err := NewRedisMatrixStore(rSvr.Addr(), 200*time.Millisecond, 200*time.Millisecond, 5*time.Second)
 	assert.Nil(t, err)
 	return store
 }
@@ -19,7 +19,7 @@ func matrixRedisTestHelperRedisStore(t *testing.T) *RedisMatrixStore{
 func TestNewRedisMatrix_New(t *testing.T) {
 	store := matrixRedisTestHelperRedisStore(t)
 	assert.NotNil(t, store)
-	assert.Equal(t,5*time.Second, store.matrixTimeout)
+	assert.Equal(t, 5*time.Second, store.matrixTimeout)
 }
 
 func TestRedisMatrixStore_Close(t *testing.T) {

@@ -149,7 +149,7 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
-return relayMap.relays[relayAddress]
+	return relayMap.relays[relayAddress]
 }
 
 func (relayMap *RelayMap) GetAllRelayData() []RelayData {
@@ -172,7 +172,6 @@ func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
 	defer relayMap.RUnlock()
 	relayIDs := make([]uint64, 0)
 
-
 	if len(excludeList) == 0 {
 		for _, relayData := range relayMap.relays {
 			relayIDs = append(relayIDs, relayData.ID)
@@ -181,7 +180,7 @@ func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
 	}
 
 	excludeMap := make(map[string]bool)
-	for _,exclude := range excludeList{
+	for _, exclude := range excludeList {
 		excludeMap[exclude] = true
 	}
 

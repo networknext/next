@@ -5,13 +5,13 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 )
 
-type Metrics struct{
-	RelayInitMetrics *metrics.RelayInitMetrics
-	RelayUpdateMetrics *metrics.RelayUpdateMetrics
+type Metrics struct {
+	RelayInitMetrics    *metrics.RelayInitMetrics
+	RelayUpdateMetrics  *metrics.RelayUpdateMetrics
 	RelayBackendMetrics *metrics.RelayBackendMetrics
 }
 
-func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error ,string){
+func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error, string) {
 	m := new(Metrics)
 
 	// Create relay init metrics
@@ -30,9 +30,9 @@ func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, 
 
 	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
 	if err != nil {
-		return nil,err, "failed to create relay backend metrics"
+		return nil, err, "failed to create relay backend metrics"
 	}
 	m.RelayBackendMetrics = relayBackendMetrics
 
-	return m, nil,""
+	return m, nil, ""
 }
