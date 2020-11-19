@@ -1195,6 +1195,19 @@ func main() {
 							return nil
 						},
 					},
+					{
+						Name:       "mgmt",
+						ShortUsage: "next relay ops mgmt <relay> <IP address e.g 10.1.2.34>",
+						ShortHelp:  "Set the management address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address"), 0)
+							}
+
+							opsManagementAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
 				},
 			},
 			{
