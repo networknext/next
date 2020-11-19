@@ -28,10 +28,15 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	pwd, _ := os.Getwd()
 	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 
-	// remove the old db file if it exists (SQLite3 save one by default when
-	// exiting)
+	// remove the old db file if it exists (SQLite3 saves one by default when exiting)
 	fmt.Println("--> Attempting to remove db file")
-	if _, err := os.Stat("../../testdata/network_next.db"); err == nil || os.IsExist(err) {
+	if _, err := os.Stat("testdata/network_next.db"); err == nil || os.IsExist(err) { // happy path
+		err = os.Remove("testdata/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
+			return nil, err
+		}
+	} else if _, err := os.Stat("../../testdata/network_next.db"); err == nil || os.IsExist(err) { // unit test
 		err = os.Remove("../../testdata/network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
@@ -39,10 +44,15 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		}
 	}
 
-	sqlite3, err := sql.Open("sqlite3", "file:../../testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+	// happy path
+	sqlite3, err := sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 	if err != nil {
-		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
-		return nil, err
+		// uint test
+		sqlite3, err = sql.Open("sqlite3", "file:../../testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
+			return nil, err
+		}
 	}
 
 	// db.Ping actually establishes the connection and validates the parameters

@@ -762,6 +762,8 @@ func (db *SQL) Relays() []routing.Relay {
 //  relay_state    : float64 (json number)
 //  MRC            : USD float64 (json number)
 //  Overage        : USD float64 (json number)
+//  StartDate      : string ('January 2, 2006')
+//  EndDate        : string ('January 2, 2006')
 //  all others are bool, float64 or string, based on field type
 func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 
@@ -937,22 +939,34 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		relay.ContractTerm = int32(term)
 
 	case "StartDate":
-		startDate, ok := value.(time.Time)
+		startDate, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("%v is not a valid time.Time value", value)
+			return fmt.Errorf("%v is not a valid string value", value)
 		}
+
+		newStartDate, err := time.Parse("January 2, 2006", startDate)
+		if err != nil {
+			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
+		}
+
 		updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
 		args = append(args, startDate, relay.DatabaseID)
-		relay.StartDate = startDate
+		relay.StartDate = newStartDate
 
 	case "EndDate":
-		endDate, ok := value.(time.Time)
+		endDate, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("%v is not a valid time.Time value", value)
+			return fmt.Errorf("%v is not a valid string value", value)
 		}
+
+		newEndDate, err := time.Parse("January 2, 2006", endDate)
+		if err != nil {
+			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
+		}
+
 		updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
 		args = append(args, endDate, relay.DatabaseID)
-		relay.EndDate = endDate
+		relay.EndDate = newEndDate
 
 	case "Type":
 		machineType, ok := value.(float64)

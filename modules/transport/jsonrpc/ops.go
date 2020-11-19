@@ -955,26 +955,24 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	return nil
 }
 
-type RelayMetadataArgs struct {
-	Relay routing.Relay
-}
+// type RelayMetadataArgs struct {
+// 	Relay routing.Relay
+// }
 
-type RelayMetadataReply struct {
-	Ok           bool
-	ErrorMessage string
-}
+// type RelayMetadataReply struct {
+// 	Ok           bool
+// 	ErrorMessage string
+// }
 
-func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+// func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
 
-	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
-	if err != nil {
-		return err // TODO detail
-	}
+// 	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+// 	if err != nil {
+// 		return err // TODO detail
+// 	}
 
-	return nil
-}
-
-// used in routes.go
+// 	return nil
+// }
 
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
@@ -987,70 +985,20 @@ type RouteSelectionReply struct {
 	Routes []routing.Route `json:"routes"`
 }
 
-// func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, reply *RouteSelectionReply) error {
-// 	relays := s.Storage.Relays()
+type UpdateRelayArgs struct {
+	RelayID uint64
+	Field   string
+	Value   interface{}
+}
 
-// 	var srcrelays []routing.Relay
-// 	for _, relay := range relays {
-// 		for _, srcrelay := range args.SourceRelays {
-// 			if relay.Name == srcrelay {
-// 				srcrelays = append(srcrelays, relay)
-// 			}
-// 		}
-// 	}
-// 	if len(srcrelays) == 0 {
-// 		srcrelays = relays
-// 	}
+type UpdateRelayReply struct{}
 
-// 	var destrelays []routing.Relay
-// 	for _, relay := range relays {
-// 		for _, destrelay := range args.DestinationRelays {
-// 			if relay.Name == destrelay {
-// 				destrelays = append(destrelays, relay)
-// 			}
-// 		}
-// 	}
-// 	if len(destrelays) == 0 {
-// 		destrelays = relays
-// 	}
-
-// 	var selectors []routing.SelectorFunc
-// 	selectors = append(selectors, routing.SelectUnencumberedRoutes(0.8))
-
-// 	if args.RTT > 0 {
-// 		selectors = append(selectors, routing.SelectAcceptableRoutesFromBestRTT(args.RTT))
-// 	}
-
-// 	if args.RouteHash > 0 {
-// 		selectors = append(selectors, routing.SelectContainsRouteHash(args.RouteHash))
-// 	}
-
-// 	// todo: fill in source relay costs here
-// 	sourceRelayCosts := make([]int, len(srcrelays))
-
-// 	routes, err := s.RouteMatrix.Routes(srcrelays, sourceRelayCosts, destrelays, selectors...)
-// 	if err != nil {
-// 		err = fmt.Errorf("RouteSelection() Routes error: %w", err)
-// 		s.Logger.Log("err", err)
-// 		return err
-// 	}
-
-// 	for routeidx := range routes {
-// 		for relayidx := range routes[routeidx].Relays {
-// 			routes[routeidx].Relays[relayidx], err = s.Storage.Relay(routes[routeidx].Relays[relayidx].ID)
-// 			if err != nil {
-// 				err = fmt.Errorf("RouteSelection() Relays error: %w", err)
-// 				s.Logger.Log("err", err)
-// 				return err
-// 			}
-// 		}
-// 	}
-
-// 	sort.Slice(routes, func(i int, j int) bool {
-// 		return routes[i].Stats.RTT < routes[j].Stats.RTT && routes[i].Relays[0].Name < routes[j].Relays[0].Name
-// 	})
-
-// 	reply.Routes = routes
-
-// 	return nil
-// }
+func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
+	err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+	if err != nil {
+		err = fmt.Errorf("UpdateRelay() failed to modify relay record for field %s with value %v: %w", args.Field, args.Value, err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	return nil
+}
