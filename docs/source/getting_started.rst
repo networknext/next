@@ -182,4 +182,4 @@ Welcome to Network Next!
 
 Congratulations, your account is now fully setup. We look forward to working with you!
 
-Please reach out to support@networknext.com and we'll guide you through the rest of your integration.
+Please reach out to support@networknext.com and we'll guide you the rest of the way.
