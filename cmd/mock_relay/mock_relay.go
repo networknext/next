@@ -281,7 +281,7 @@ func main() {
 			continue
 		}
 
-	   	if len(responseData) < 4 {
+	   	if len(responseData) != 4 + 8 + RelayTokenBytes {
 	   		continue
 	   	}
 
@@ -292,37 +292,11 @@ func main() {
 			continue
 		}
 
-		if version != 0 {
+		if version != InitResponseVersion {
 			continue
 		}
 
-		/*
-		   const uint8_t * r = init_response_buffer.data;
-
-		   uint32_t version = relay_read_uint32( &r );
-
-		   const uint32_t init_response_version = 0;
-
-		   if ( version != init_response_version )
-		   {
-		       relay_printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
-		       return RELAY_ERROR;
-		   }
-
-		   if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
-		   {
-		       relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );
-		       return RELAY_ERROR;
-		   }
-
-		   *router_timestamp = relay_read_uint64( &r );
-
-		   memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
-
-		   return RELAY_OK;
-		*/
-
-		_ = responseData
+		copy(relayToken, responseData[4+8:])
 
 		initialized = true
 
@@ -336,9 +310,15 @@ func main() {
 
     fmt.Printf( "\nRelay initialized\n" );
 
-	// ---------------------------------------------------------
-
 	// loop and update the relay
+
+	for {
+
+		time.Sleep(1 * time.Second)
+
+		// todo
+
+	}
 
 	fmt.Printf("\n")
 }
