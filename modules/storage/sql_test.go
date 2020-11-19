@@ -28,7 +28,6 @@ func SetupEnv() {
 
 func TestInsertSQL(t *testing.T) {
 
-	t.Skip()
 	SetupEnv()
 
 	ctx := context.Background()
@@ -274,8 +273,6 @@ func TestInsertSQL(t *testing.T) {
 
 func TestDeleteSQL(t *testing.T) {
 
-	t.Skip()
-
 	SetupEnv()
 
 	ctx := context.Background()
@@ -477,8 +474,6 @@ func TestDeleteSQL(t *testing.T) {
 
 func TestUpdateSQL(t *testing.T) {
 
-	t.Skip()
-
 	SetupEnv()
 
 	ctx := context.Background()
@@ -641,7 +636,7 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
 	})
 
-	t.Run("SetRelay", func(t *testing.T) {
+	t.Run("UpdateRelay", func(t *testing.T) {
 
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
@@ -657,75 +652,166 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		relay := routing.Relay{
-			ID:             rid,
-			Name:           "local.1",
-			Addr:           *addr,
-			ManagementAddr: "1.2.3.4",
-			SSHPort:        22,
-			SSHUser:        "fred",
-			MaxSessions:    1000,
-			PublicKey:      publicKey,
-			UpdateKey:      updateKey,
-			Datacenter:     datacenterWithID,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
-			StartDate:      time.Now(),
-			EndDate:        time.Now(),
-			Type:           routing.BareMetal,
-			State:          routing.RelayStateMaintenance,
+			ID:                  rid,
+			Name:                "local.1",
+			Addr:                *addr,
+			ManagementAddr:      "1.2.3.4",
+			SSHPort:             22,
+			SSHUser:             "fred",
+			MaxSessions:         1000,
+			PublicKey:           publicKey,
+			UpdateKey:           updateKey,
+			Datacenter:          datacenterWithID,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			NICSpeedMbps:        1000,
+			IncludedBandwidthGB: 10000,
+			ContractTerm:        12,
+			StartDate:           time.Now(),
+			EndDate:             time.Now(),
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
 		}
 
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
+		_, err = db.Relay(rid)
+		assert.NoError(t, err)
+
+		// relay.Name
+		err = db.UpdateRelay(ctx, rid, "Name", "local.2")
+		assert.NoError(t, err)
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
+		assert.Equal(t, "local.2", checkRelay.Name)
 
-		// set some modifications
+		// relay.Addr
 		newAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
 		assert.NoError(t, err)
-
-		checkRelay.Name = "local.2"
-		checkRelay.Addr = *newAddr
-		checkRelay.ManagementAddr = "9.8.7.6"
-		checkRelay.SSHPort = 13
-		checkRelay.SSHUser = "Fred"
-		checkRelay.MaxSessions = 10000
-		checkRelay.PublicKey = []byte("public key")
-		checkRelay.UpdateKey = []byte("update key")
-		// checkRelay.Datacenter = only one datacenter available...
-		checkRelay.MRC = 197
-		checkRelay.Overage = 260
-		checkRelay.BWRule = routing.BWRuleFlat
-		checkRelay.ContractTerm = 1
-		checkRelay.StartDate = time.Now()
-		checkRelay.EndDate = time.Now()
-		checkRelay.Type = routing.VirtualMachine
-		checkRelay.State = routing.RelayStateEnabled
-
-		err = db.SetRelay(ctx, checkRelay)
+		err = db.UpdateRelay(ctx, rid, "Addr", "192.168.0.1:40000")
 		assert.NoError(t, err)
-
-		checkModifiedRelay, err := db.Relay(rid)
+		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, checkModifiedRelay.Name, checkRelay.Name)
-		assert.Equal(t, checkModifiedRelay.Addr, checkRelay.Addr)
-		assert.Equal(t, checkModifiedRelay.ManagementAddr, checkRelay.ManagementAddr)
-		assert.Equal(t, checkModifiedRelay.SSHPort, checkRelay.SSHPort)
-		assert.Equal(t, checkModifiedRelay.SSHUser, checkRelay.SSHUser)
-		assert.Equal(t, checkModifiedRelay.MaxSessions, checkRelay.MaxSessions)
-		assert.Equal(t, checkModifiedRelay.PublicKey, checkRelay.PublicKey)
-		assert.Equal(t, checkModifiedRelay.UpdateKey, checkRelay.UpdateKey)
-		assert.Equal(t, checkModifiedRelay.MRC, checkRelay.MRC)
-		assert.Equal(t, checkModifiedRelay.Overage, checkRelay.Overage)
-		assert.Equal(t, checkModifiedRelay.BWRule, checkRelay.BWRule)
-		assert.Equal(t, checkModifiedRelay.ContractTerm, checkRelay.ContractTerm)
-		assert.Equal(t, checkModifiedRelay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
-		assert.Equal(t, checkModifiedRelay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
-		assert.Equal(t, checkModifiedRelay.Type, checkRelay.Type)
-		assert.Equal(t, checkModifiedRelay.State, checkRelay.State)
+		assert.Equal(t, *newAddr, checkRelay.Addr)
+
+		// relay.ManagementAddr
+		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "9.8.7.6", checkRelay.ManagementAddr)
+
+		// relay.SSHPort
+		// Note: ints in json are unmarshalled as float64
+		err = db.UpdateRelay(ctx, rid, "SSHPort", float64(13))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(13), checkRelay.SSHPort)
+
+		// checkRelay.SSHUser
+		err = db.UpdateRelay(ctx, rid, "SSHUser", "Abercrombie")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "Abercrombie", checkRelay.SSHUser)
+
+		// relay.MaxSessions
+		err = db.UpdateRelay(ctx, rid, "MaxSessions", float64(25000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(25000), checkRelay.MaxSessions)
+
+		// relay.PublicKey
+		err = db.UpdateRelay(ctx, rid, "PublicKey", []byte("public key"))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("public key"), checkRelay.PublicKey)
+
+		// relay.UpdateKey
+		err = db.UpdateRelay(ctx, rid, "UpdateKey", []byte("update key"))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("update key"), checkRelay.UpdateKey)
+
+		// relay.Datacenter = only one datacenter available...
+
+		// relay.MRC
+		err = db.UpdateRelay(ctx, rid, "MRC", float64(397))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.Nibblin(39700000000000), checkRelay.MRC)
+
+		// relay.Overage
+		err = db.UpdateRelay(ctx, rid, "Overage", float64(260))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.Nibblin(26000000000000), checkRelay.Overage)
+
+		// relay.BWRule
+		err = db.UpdateRelay(ctx, rid, "BWRule", float64(3))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.BWRulePool, checkRelay.BWRule)
+
+		// relay.ContractTerm
+		err = db.UpdateRelay(ctx, rid, "ContractTerm", float64(1))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), checkRelay.ContractTerm)
+
+		// relay.StartDate
+		startDate := time.Now()
+		err = db.UpdateRelay(ctx, rid, "StartDate", startDate)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, startDate, checkRelay.StartDate)
+
+		// relay.EndDate
+		endDate := time.Now()
+		err = db.UpdateRelay(ctx, rid, "EndDate", endDate)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, endDate, checkRelay.EndDate)
+
+		// relay.Type
+		err = db.UpdateRelay(ctx, rid, "Type", float64(2))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.VirtualMachine, checkRelay.Type)
+
+		// relay.State
+		err = db.UpdateRelay(ctx, rid, "State", float64(0))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.RelayStateEnabled, checkRelay.State)
+
+		// relay.NICSpeedMbps
+		err = db.UpdateRelay(ctx, rid, "NICSpeedMbps", float64(20000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(20000), checkRelay.NICSpeedMbps)
+
+		// relay.IncludedBandwidthGB
+		err = db.UpdateRelay(ctx, rid, "IncludedBandwidthGB", float64(25000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(25000), checkRelay.IncludedBandwidthGB)
 
 	})
 }
