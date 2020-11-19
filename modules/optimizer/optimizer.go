@@ -64,7 +64,7 @@ func (o *Optimizer) costMatrix(relayIDs []uint64, costMatrix *routing.CostMatrix
 	}
 
 	if err := costMatrix.WriteResponseData(o.cfg.MatrixBufferSize); err != nil {
-		level.Error(o.Logger).Log("matrix", "cost", "op", "write_response", "msg", "could not write response data", "err", err)
+		_ = level.Error(o.Logger).Log("matrix", "cost", "op", "write_response", "msg", "could not write response data", "err", err)
 		return nil
 	}
 
@@ -92,7 +92,7 @@ func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.Cos
 
 	routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, costMatrix.RelayDatacenterIDs)
 	if len(routeEntries) == 0 {
-		level.Warn(o.Logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+		_ = level.Warn(o.Logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 		return nil
 	}
 	routeMatrix.RouteEntries = routeEntries
@@ -104,7 +104,7 @@ func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.Cos
 	}
 
 	if err := routeMatrix.WriteResponseData(o.cfg.MatrixBufferSize); err != nil {
-		level.Error(o.Logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
+		_ = level.Error(o.Logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 		return nil
 	}
 
@@ -169,7 +169,7 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 
 	routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, costMatrix.RelayDatacenterIDs)
 	if len(routeEntries) == 0 {
-		level.Warn(o.Logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+		_ = level.Warn(o.Logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 		return nil, nil
 	}
 
@@ -184,7 +184,7 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 
 
 	if err := routeMatrix.WriteResponseData(o.cfg.MatrixBufferSize); err != nil {
-		level.Error(o.Logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
+		_ = level.Error(o.Logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 		return nil, nil
 	}
 
@@ -204,12 +204,12 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 	return costMatrix,routeMatrix
 }
 
-func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error{
+func (o *Optimizer) UpdateMatrix(routeMatrix *routing.RouteMatrix, matrixType string) error{
 	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(),matrixType, routeMatrix.GetResponseData())
 
 	err := o.MatrixStore.UpdateOptimizerMatrix(matrix)
 	if err != nil {
-		level.Error(o.Logger).Log("msg", "failed to route matrix in MatrixStore", "err", err)
+		_ = level.Error(o.Logger).Log("msg", "failed to route matrix in MatrixStore", "err", err)
 		return err
 	}
 	return nil
@@ -219,7 +219,7 @@ func (o *Optimizer) initializeRelay(data *storage.RelayStoreData) {
 
 	relay, err := o.Store.Relay(data.ID)
 	if err != nil {
-		level.Error(o.Logger).Log("msg", "failed to get relay from storage", "err", err)
+		_ = level.Error(o.Logger).Log("msg", "failed to get relay from storage", "err", err)
 		o.Metrics.RelayInitMetrics.ErrorMetrics.RelayNotFound.Add(1)
 		return
 	}
@@ -227,7 +227,7 @@ func (o *Optimizer) initializeRelay(data *storage.RelayStoreData) {
 	defer o.RelayMap.Unlock()
 	relayData := o.RelayMap.GetRelayData(data.Address.String())
 	if relayData != nil {
-		level.Warn(o.Logger).Log("msg", "relay already initialized")
+		_ = level.Warn(o.Logger).Log("msg", "relay already initialized")
 		o.Metrics.RelayInitMetrics.ErrorMetrics.RelayAlreadyExists.Add(1)
 		return
 	}
@@ -246,11 +246,10 @@ func (o *Optimizer) initializeRelay(data *storage.RelayStoreData) {
 	}
 
 	o.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
-	return
 }
 
 func (o *Optimizer) removeRelay(relayAddress string) {
-	level.Debug(o.Logger).Log("msg", "relay being removed", "id", relayAddress)
+	_ = level.Debug(o.Logger).Log("msg", "relay being removed", "id", relayAddress)
 	o.RelayMap.Lock()
 	o.RelayMap.RemoveRelayData(relayAddress)
 	o.RelayMap.Unlock()
@@ -261,14 +260,14 @@ func (o *Optimizer) UpdateRelay(requestBody []byte) {
 	var relayUpdateRequest transport.RelayUpdateRequest
 	err := relayUpdateRequest.UnmarshalBinary(requestBody)
 	if err != nil {
-		level.Error(o.Logger).Log("msg", "error unmarshaling relay update request", "err", err)
+		_ = level.Error(o.Logger).Log("msg", "error unmarshaling relay update request", "err", err)
 		o.Metrics.RelayUpdateMetrics.ErrorMetrics.UnmarshalFailure.Add(1)
 		return
 	}
 
 	relayData := o.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
 	if relayData == nil {
-		level.Warn(o.Logger).Log("msg", "relay not initialized")
+		_ = level.Warn(o.Logger).Log("msg", "relay not initialized")
 		o.Metrics.RelayUpdateMetrics.ErrorMetrics.RelayNotFound.Add(1)
 		return
 	}
@@ -365,14 +364,14 @@ func (o *Optimizer) RelayCacheRunner() error{
 
 		relayArr, err := o.RelayStore.GetAll()
 		if err != nil {
-			level.Error(o.Logger).Log("msg", "unable to get relays from Relay Store", "err", err.Error())
+			_ = level.Error(o.Logger).Log("msg", "unable to get relays from Relay Store", "err", err.Error())
 			errCount++
 			continue
 		}
 
 		addArr, removeArr, err := o.relayCache.SetAllWithAddRemove(relayArr)
 		if err != nil {
-			level.Error(o.Logger).Log("msg", "unable to get relays from Relay Store", "err", err.Error())
+			_ = level.Error(o.Logger).Log("msg", "unable to get relays from Relay Store", "err", err.Error())
 			errCount++
 			continue
 		}
@@ -392,36 +391,35 @@ func (o *Optimizer) RelayCacheRunner() error{
 }
 
 func (o *Optimizer) StartSubscriber()error{
-	level.Debug(o.Logger).Log("msg", "subscriber starting")
+	_ = level.Debug(o.Logger).Log("msg", "subscriber starting")
 
 	sub, err := pubsub.NewGenericSubscriber(o.cfg.subscriberPort, o.cfg.subscriberRecieveBufferSize)
-	defer sub.Close()
-
 	if err != nil{
 		return err
 	}
+	defer sub.Close()
+
+
 
 	err = sub.Subscribe(pubsub.RelayUpdateTopic)
 	if err != nil{
 		return err
 	}
 
-	for {
-		if o.shutdown == true{
-			return nil
-		}
+	for !o.shutdown{
 		msgChan := sub.ReceiveMessage(context.Background())
 		msg := <-msgChan
-		level.Debug(o.Logger).Log("msg", "meesage recved")
+		_ = level.Debug(o.Logger).Log("msg", "meesage recved")
 		if msg.Err != nil {
-			level.Error(o.Logger).Log("err", err)
+			_ = level.Error(o.Logger).Log("err", err)
 		}
 		if msg.Topic != pubsub.RelayUpdateTopic{
-			level.Error(o.Logger).Log("err", "received the wrong topic")
+			_ = level.Error(o.Logger).Log("err", "received the wrong topic")
 		}
 
 		o.UpdateRelay(msg.Message)
 	}
+	return nil
 }
 
 func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPublisher,ctx context.Context, publishInterval time.Duration) error {
@@ -432,7 +430,7 @@ func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPubl
 		cpy := o.StatsDB.MakeCopy()
 		entries := analytics.ExtractPingStats(cpy)
 		if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
-			level.Error(o.Logger).Log("err", err)
+			_ = level.Error(o.Logger).Log("err", err)
 			return err
 		}
 	}
