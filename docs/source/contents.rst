@@ -3,9 +3,9 @@
 .. toctree::
    :maxdepth: 1
 
-   how_it_works
    getting_started
    building_the_sdk
+   how_it_works
    simple_client_example
    simple_server_example
    upgraded_client_example
