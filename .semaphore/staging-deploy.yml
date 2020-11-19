@@ -19,7 +19,6 @@ global_job_config:
       - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
       - git submodule init sdk
       - git submodule update sdk
-      
       # libsodium in apt is too old, build from source
       - curl https://download.libsodium.org/libsodium/releases/libsodium-1.0.17.tar.gz --output libsodium-1.0.17.tar.gz
       - tar -zxvf libsodium-1.0.17.tar.gz
@@ -77,5 +76,17 @@ blocks:
             - make build-ghost-army-artifacts-staging
             - make publish-ghost-army-artifacts-staging
             - make publish-ghost-army-bootstrap-script-staging
+        - name: Relay Gateway
+          commands:
+            - make build-relay-gateway-artifacts-staging
+            - make publish-relay-gateway-artifacts-staging
+        - name: Optimizer
+          commands:
+            - make build-optimizer-artifacts-staging
+            - make publish-optimizer-artifacts-staging
+        - name: Route Matrix Selector
+          commands:
+            - make build-route-matrix-selector-artifacts-staging
+            - make publish-route-matrix-selector-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging

@@ -12,7 +12,7 @@ import (
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/modules/routing"
 
 	"github.com/stretchr/testify/assert"
 )

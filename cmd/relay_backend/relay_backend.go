@@ -25,13 +25,13 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/backend"
 	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport"
 )
 
 var (
@@ -225,7 +225,7 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
-			syncTimer := NewSyncTimer(publishInterval)
+			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
@@ -282,7 +282,7 @@ func mainReturnWithCode() int {
 				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 			}
 
-			syncTimer := NewSyncTimer(publishInterval)
+			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
 				allRelayData := relayMap.GetAllRelayData()
@@ -403,7 +403,7 @@ func mainReturnWithCode() int {
 
 	// Generate the route matrix
 	go func() {
-		syncTimer := NewSyncTimer(syncInterval)
+		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
 			// For now, exclude all valve relays
@@ -552,7 +552,7 @@ func mainReturnWithCode() int {
 
 	// Generate the route matrix specifically for valve
 	go func() {
-		syncTimer := NewSyncTimer(syncInterval)
+		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
 			// All relays included
@@ -705,7 +705,7 @@ func mainReturnWithCode() int {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
@@ -732,24 +732,4 @@ func mainReturnWithCode() int {
 	<-sigint
 
 	return 0
-}
-
-type SyncTimer struct {
-	lastRun  time.Time
-	interval time.Duration
-}
-
-func NewSyncTimer(interval time.Duration) *SyncTimer {
-	s := new(SyncTimer)
-	s.lastRun = time.Now().Add(interval * 5)
-	s.interval = interval
-	return s
-}
-
-func (s *SyncTimer) Run() {
-	timeSince := time.Since(s.lastRun)
-	if timeSince < s.interval && timeSince > 0 {
-		time.Sleep(s.interval - timeSince)
-	}
-	s.lastRun = time.Now()
 }
