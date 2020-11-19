@@ -5503,6 +5503,7 @@ int main( int argc, const char ** argv )
     }
 
     uint8_t relay_token[RELAY_TOKEN_BYTES];
+    relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
     printf( "\nInitializing relay\n" );
 

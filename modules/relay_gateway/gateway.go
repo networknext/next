@@ -13,34 +13,33 @@ import (
 	"time"
 )
 
-type Gateway struct{
-	Cfg *Config
-	Logger log.Logger
+type Gateway struct {
+	Cfg         *Config
+	Logger      log.Logger
 	RelayLogger log.Logger
-	Metrics *Metrics
-	Publishers []pubsub.Publisher
-	Store *storage.Storer
-	RelayStore storage.RelayStore
-	RelayCache *storage.RelayCache
+	Metrics     *Metrics
+	Publishers  []pubsub.Publisher
+	Store       *storage.Storer
+	RelayStore  storage.RelayStore
+	RelayCache  *storage.RelayCache
 	ShutdownSvc bool
 }
 
-
-func (g *Gateway) Shutdown(){
+func (g *Gateway) Shutdown() {
 	g.ShutdownSvc = true
-	time.Sleep(10 *time.Second)
+	time.Sleep(10 * time.Second)
 }
 
 func (g *Gateway) RelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
 
 	fmt.Println("init request recieved")
 	Cfg := &transport.GatewayHandlerConfig{
-		RelayStore: 		g.RelayStore,
-		RelayCache:	    	*g.RelayCache,
-		Storer:           	*g.Store,
-		InitMetrics:      	g.Metrics.RelayInitMetrics,
-		UpdateMetrics:	 	g.Metrics.RelayUpdateMetrics,
-		RouterPrivateKey:	g.Cfg.RouterPrivateKey,
+		RelayStore:       g.RelayStore,
+		RelayCache:       *g.RelayCache,
+		Storer:           *g.Store,
+		InitMetrics:      g.Metrics.RelayInitMetrics,
+		UpdateMetrics:    g.Metrics.RelayUpdateMetrics,
+		RouterPrivateKey: g.Cfg.RouterPrivateKey,
 	}
 
 	return transport.GatewayRelayInitHandlerFunc(g.Logger, Cfg)
@@ -49,22 +48,22 @@ func (g *Gateway) RelayInitHandlerFunc() func(writer http.ResponseWriter, reques
 func (g *Gateway) RelayUpdateHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
 	fmt.Println("update request recieved")
 	Cfg := &transport.GatewayHandlerConfig{
-		RelayStore:       	g.RelayStore,
-		RelayCache:       	*g.RelayCache,
-		Storer:           	*g.Store,
-		UpdateMetrics:    	g.Metrics.RelayUpdateMetrics,
-		RouterPrivateKey:	g.Cfg.RouterPrivateKey,
-		Publishers: 		g.Publishers,
+		RelayStore:       g.RelayStore,
+		RelayCache:       *g.RelayCache,
+		Storer:           *g.Store,
+		UpdateMetrics:    g.Metrics.RelayUpdateMetrics,
+		RouterPrivateKey: g.Cfg.RouterPrivateKey,
+		Publishers:       g.Publishers,
 	}
 
-	return transport.GatewayRelayUpdateHandlerFunc(g.Logger,g.RelayLogger, Cfg)
+	return transport.GatewayRelayUpdateHandlerFunc(g.Logger, g.RelayLogger, Cfg)
 }
 
-func (g *Gateway) RelayCacheRunner() error{
+func (g *Gateway) RelayCacheRunner() error {
 
 	errCount := 0
 	syncTimer := helpers.NewSyncTimer(g.Cfg.RelayCacheUpdate)
-	for !g.ShutdownSvc{
+	for !g.ShutdownSvc {
 		syncTimer.Run()
 
 		if errCount > 10 {

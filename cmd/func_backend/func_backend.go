@@ -26,8 +26,8 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/sys/unix"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
@@ -251,11 +251,11 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
- 	if sessionUpdate.Reported {
+	if sessionUpdate.Reported {
 		fmt.Printf("client reported session\n")
 	}
 
- 	if sessionUpdate.ClientPingTimedOut {
+	if sessionUpdate.ClientPingTimedOut {
 		fmt.Printf("client ping timed out\n")
 	}
 

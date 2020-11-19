@@ -604,6 +604,3 @@ func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.Respons
 		}
 	}
 }
-
-
-

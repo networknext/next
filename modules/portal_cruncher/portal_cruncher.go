@@ -1,16 +1,16 @@
 package portalcruncher
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"sync"
-	"time"
 	"bufio"
 	"bytes"
+	"context"
+	"fmt"
 	"io"
-	"strings"
+	"os"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -523,10 +523,10 @@ func SetupBigtable(ctx context.Context,
 func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []string, historicalPath string) error {
 	// Load in text file
 	var (
-		file *os.File
-		part []byte
+		file   *os.File
+		part   []byte
 		prefix bool
-		err error
+		err    error
 	)
 	if file, err = os.Open(historicalPath); err != nil {
 		return fmt.Errorf("SeedBigtable() open file path %s: %v", historicalPath, err)
@@ -576,16 +576,16 @@ func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []s
 			cfMap[colName] = btCfNames[0]
 		} else if colName != "" {
 			// Get the data for the column name
-			
+
 			// Clean up raw data string
 			rawData := strings.TrimSpace(line)
-			rawData = rawData[1 : len(rawData) - 1]
+			rawData = rawData[1 : len(rawData)-1]
 			strData := strings.Split(rawData, " ")
 
 			// Fill a byte slice with the bytes from the raw data
 			var data []byte
 			var singleByte byte
-			for _, b := range(strData) {
+			for _, b := range strData {
 				if b != " " {
 					bInt, err := strconv.Atoi(b)
 					if err != nil {

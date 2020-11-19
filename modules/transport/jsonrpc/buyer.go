@@ -46,9 +46,9 @@ type BuyersService struct {
 	mapPointsBuyerCache        map[string]json.RawMessage
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
-	UseBigtable		bool
-	BigTableCfName	string
-	BigTable  		*storage.BigTable
+	UseBigtable     bool
+	BigTableCfName  string
+	BigTable        *storage.BigTable
 	BigTableMetrics *metrics.BigTableMetrics
 
 	RedisPoolTopSessions   *redis.Pool
