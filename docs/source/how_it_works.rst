@@ -18,6 +18,10 @@ Once a player is upgraded, the SDK does the following logic every 10 seconds:
 2. If we find one, steer that player's traffic across the network next route instead of the default internet route.
 3. Otherwise, keep sending packets across the public internet, because it's already good enough.
 
-Typically, we can provide siginificant improvements for your player base, by accelerating just the 10 or 20% of your players at any time. In trials, we've found that over a month, this improves the network performance of over 70% of your players, at sometime during that month. It's not the same set of players getting accelerated all the time.
+Typically, we can provide siginificant improvements for your player base, by accelerating just the 10 or 20% of your players at any time. 
 
-This way we keep your costs down, and target your spend effectively towards players that need it the most.
+In trials, we've found that over a month, this improves the network performance of over 70% of your players, at sometime during that month. 
+
+This means it's not the same set of players getting accelerated all the time.
+
+This way we keep your costs down, while targeting your spend towards players that need it the most.
