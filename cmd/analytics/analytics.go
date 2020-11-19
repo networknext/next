@@ -21,7 +21,7 @@ import (
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/transport"
 )
 
 var (

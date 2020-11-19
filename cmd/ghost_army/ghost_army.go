@@ -12,8 +12,8 @@ import (
 
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/pubsub"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/pubsub"
 
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )

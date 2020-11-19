@@ -26,15 +26,15 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
 	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/jsonrpc"
-	"github.com/networknext/backend/transport/middleware"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 var (
@@ -166,6 +166,7 @@ func main() {
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BIGTABLE",
+			Enum:        config.FEATURE_BIGTABLE,
 			Value:       false,
 			Description: "Bigtable integration for historic session data",
 		},
@@ -182,7 +183,7 @@ func main() {
 		level.Info(logger).Log("msg", "Detected bigtable emulator host")
 	}
 
-	useBigtable := featureConfig.FeatureEnabled(0) && (gcpOK || btEmulatorOK)
+	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
 
 	var btClient *storage.BigTable
 	var btCfName string

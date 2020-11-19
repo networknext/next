@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/modules/routing"
 )
 
 func analyzeRouteMatrix(inputFile string) {
