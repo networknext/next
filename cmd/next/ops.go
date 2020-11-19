@@ -288,6 +288,35 @@ func opsNic(rpcClient jsonrpc.RPCClient,
 
 }
 
+func opsExternalAddr(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	extAddress string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "Addr",
+		Value:   extAddress,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay external address successfully updated.")
+	return
+
+}
+
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (uint64, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
