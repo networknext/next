@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport"
 )
 
 const (
