@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"time"
 	"bytes"
+	"net"
+	"strconv"
 	"io/ioutil"
 	"net/http"
-	"github.com/networknext/backend/modules/core"
 	"math"
 	"os"
+	"unsafe"
 )
 
 const InitRequestMagic = uint32(0x9083708f)
@@ -26,6 +28,23 @@ const UpdateResponseVersion = 0
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 5
+
+func RandomBytes(buffer []byte) {
+	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(len(buffer)))
+}
+
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
@@ -149,7 +168,7 @@ func main() {
 
 	fmt.Printf("    relay address is \"%s\"\n", relayAddressEnv)
 
-	relayAddress := core.ParseAddress(relayAddressEnv)
+	relayAddress := ParseAddress(relayAddressEnv)
 	if relayAddress == nil {
 		fmt.Printf("error: failed to parse RELAY_ADDRESS\n\n")
 		os.Exit(1)
@@ -229,14 +248,14 @@ func main() {
 	WriteUint32(initData, &index, InitRequestVersion)
 
 	nonce := make([]byte, NonceBytes)
-	core.RandomBytes(nonce)
+	RandomBytes(nonce)
 	WriteBytes(initData, &index, nonce, NonceBytes)
 
 	WriteString(initData, &index, relayAddress.String(), MaxRelayAddressLength)
 
 	relayTokenIndex := index
 	relayToken := make([]byte, RelayTokenBytes)
-	core.RandomBytes(relayToken)
+	RandomBytes(relayToken)
 	WriteBytes(initData, &index, relayToken, RelayTokenBytes)
 
 	err = Encrypt(relayPrivateKey, relayRouterPublicKey, nonce, initData[relayTokenIndex:], RelayTokenBytes)
