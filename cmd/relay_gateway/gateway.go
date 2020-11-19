@@ -10,12 +10,12 @@ import (
 	"expvar"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/backend"
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/relay_gateway"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/pubsub"
+	"github.com/networknext/backend/modules/relay_gateway"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/pubsub"
 	"net/http"
 	"os"
 	"os/signal"
@@ -100,7 +100,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-
 	publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -108,23 +107,23 @@ func mainReturnWithCode() int {
 	fmt.Printf("num publishers %v", len(publishers))
 
 	gateway := &relay_gateway.Gateway{
-		Cfg: cfg,
-		Logger: logger,
+		Cfg:         cfg,
+		Logger:      logger,
 		RelayLogger: relaysLogger,
-		Metrics: relayMetrics,
-		Publishers: publishers,
-		Store: &storer,
-		RelayStore: relayStore,
-		RelayCache: storage.NewRelayCache(),
+		Metrics:     relayMetrics,
+		Publishers:  publishers,
+		Store:       &storer,
+		RelayStore:  relayStore,
+		RelayCache:  storage.NewRelayCache(),
 		ShutdownSvc: false,
 	}
-	
+
 	go func() {
-	err = gateway.RelayCacheRunner()
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
+		err = gateway.RelayCacheRunner()
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
 	}()
 
 	fmt.Printf("starting http server\n")
