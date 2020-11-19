@@ -4,27 +4,26 @@ import "github.com/networknext/backend/modules/envvar"
 
 type EnvVarConfig struct {
 	Features []Feature
+	LookUp   []bool
 }
 
 func NewEnvVarConfig(defaultFeatures []Feature) *EnvVarConfig {
-	features := make([]Feature, 0)
+	lookUp := make([]bool, NumFeatures)
+	features := defaultFeatures
 	for _, f := range defaultFeatures {
-		value, _ := envvar.GetBool(f.Name, false)
-		f.Value = value
-		features = append(features, f)
+		newValue, _ := envvar.GetBool(f.Name, f.Value)
+		f.Value = newValue
+		lookUp[f.Enum] = newValue
 	}
 
 	return &EnvVarConfig{
 		Features: features,
+		LookUp:   lookUp,
 	}
 }
 
-func (e *EnvVarConfig) FeatureEnabled(enum int) bool {
-	if enum > len(e.Features) {
-		return false
-	}
-	feature := e.Features[enum]
-	return feature.Value
+func (e *EnvVarConfig) FeatureEnabled(enum FeatureEnum) bool {
+	return e.LookUp[enum]
 }
 
 func (e *EnvVarConfig) AllFeatures() []Feature {

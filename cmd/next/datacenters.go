@@ -7,8 +7,9 @@ import (
 	"regexp"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -110,7 +111,31 @@ func datacenters(
 
 }
 
-func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, datacenter routing.Datacenter) {
+func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) {
+
+	var sellerReply localjsonrpc.SellerReply
+	var sellerArg localjsonrpc.SellerArg
+
+	sellerArg.ID = dc.SellerID
+	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	did := crypto.HashID(dc.Name)
+	datacenter := routing.Datacenter{
+		ID:      did,
+		Name:    dc.Name,
+		Enabled: dc.Enabled,
+		Location: routing.Location{
+			Latitude:  dc.Latitude,
+			Longitude: dc.Longitude,
+		},
+		StreetAddress: dc.StreetAddress,
+		SupplierName:  dc.SupplierName,
+		SellerID:      sellerReply.Seller.DatabaseID,
+	}
+
 	args := localjsonrpc.AddDatacenterArgs{
 		Datacenter: datacenter,
 	}

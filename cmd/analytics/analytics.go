@@ -21,7 +21,7 @@ import (
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/modules/transport"
 )
 
 var (
@@ -294,7 +294,7 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
