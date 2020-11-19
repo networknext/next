@@ -255,13 +255,13 @@ export default class NavBar extends Vue {
   display: block;
   text-align: center;
   border-radius: 9999px;
-  background-color: #f94a21;
+  background-color: #FF6700;
   font-weight: bold;
   line-height: 1.1rem;
 }
 .signup:hover {
   text-decoration: none;
-  background-color: rgba(249, 73, 33, 0.9);
+  background-color: rgba(255, 103, 0, 0.9);
 }
 .signup:not(:disabled):not(.disabled):active {
   background-color: #007bff;
@@ -280,7 +280,7 @@ export default class NavBar extends Vue {
   height: 1.7rem;
   display: block;
   border-width: 1px;
-  border-color: #f94a21;
+  border-color: #FF6700;
   border-radius: 9999px;
   text-align: center;
   background-color: #343a40;
@@ -289,9 +289,9 @@ export default class NavBar extends Vue {
   line-height: 1rem;
 }
 .login:hover {
-  background-color: rgba(249, 73, 33, 0.1);
+  background-color: rgba(255, 103, 0, 0.1);
   text-decoration: none;
-  border-color: #f94a21;
+  border-color: #FF6700;
 }
 .login:not(:disabled):not(.disabled):active {
   background-color: #343a40;
@@ -310,7 +310,7 @@ export default class NavBar extends Vue {
   height: 1.7rem;
   display: block;
   border-width: 1px;
-  border-color: #f94a21;
+  border-color: #FF6700;
   border-radius: 9999px;
   text-align: center;
   background-color: #343a40;
@@ -319,9 +319,9 @@ export default class NavBar extends Vue {
   line-height: 1rem;
 }
 .logout:hover {
-  background-color: rgba(249, 73, 33, 0.1);
+  background-color: rgba(255, 103, 0, 0.1);
   text-decoration: none;
-  border-color: #f94a21;
+  border-color: #FF6700;
 }
 .logout:not(:disabled):not(.disabled):active {
   background-color: #343a40;
