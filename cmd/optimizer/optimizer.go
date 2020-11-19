@@ -17,18 +17,19 @@ import (
 
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/backend"		// todo: bad name for module
+	"github.com/networknext/backend/modules/backend" // todo: bad name for module
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/optimizer"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 
 	gcpPub "cloud.google.com/go/pubsub"
+	"github.com/networknext/backend/modules/transport"
+
 )
 
 var (
@@ -132,11 +133,11 @@ func mainReturnWithCode() int {
 	svc.Logger = logger
 
 	go func() {
-	err = svc.RelayCacheRunner()
-	if err != nil{
-		level.Error(logger).Log("error", err)
-		os.Exit(1)
-	}
+		err = svc.RelayCacheRunner()
+		if err != nil {
+			level.Error(logger).Log("error", err)
+			os.Exit(1)
+		}
 	}()
 	go func() {
 		err = svc.StartSubscriber()
@@ -145,7 +146,6 @@ func mainReturnWithCode() int {
 			os.Exit(1)
 		}
 	}()
-
 
 	syncInterval, err := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	if err != nil {
@@ -267,7 +267,7 @@ func mainReturnWithCode() int {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage,false, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
 	//todo fix getRouteMatrixFunc??
@@ -292,4 +292,3 @@ func mainReturnWithCode() int {
 
 	return 0
 }
-

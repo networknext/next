@@ -1,12 +1,12 @@
 package pubsub
 
 import (
-"context"
+	"context"
 	"fmt"
 	"sync"
-"syscall"
+	"syscall"
 
-"github.com/pebbe/zmq4"
+	"github.com/pebbe/zmq4"
 )
 
 type GenericPublisher struct {
@@ -14,11 +14,11 @@ type GenericPublisher struct {
 	mutex  sync.Mutex
 }
 
-func NewMultiPublisher(hosts []string, sendBufferSize int) ([]Publisher,error) {
+func NewMultiPublisher(hosts []string, sendBufferSize int) ([]Publisher, error) {
 	var publishers []Publisher
 	for _, host := range hosts {
 		var publisher Publisher
-		gPub, err := NewGenericPublisher(host,sendBufferSize)
+		gPub, err := NewGenericPublisher(host, sendBufferSize)
 		if err != nil {
 			return nil, err
 		}
@@ -32,19 +32,19 @@ func NewMultiPublisher(hosts []string, sendBufferSize int) ([]Publisher,error) {
 func NewGenericPublisher(host string, sendBufferSize int) (*GenericPublisher, error) {
 	socket, err := zmq4.NewSocket(zmq4.PUB)
 	if err != nil {
-		return nil, fmt.Errorf("create socket error %v",err)
+		return nil, fmt.Errorf("create socket error %v", err)
 	}
 
 	if err := socket.SetXpubNodrop(true); err != nil {
-		return nil, fmt.Errorf("Xpubnodrop error %v",err)
+		return nil, fmt.Errorf("Xpubnodrop error %v", err)
 	}
 
 	if err := socket.SetSndhwm(sendBufferSize); err != nil {
-		return nil, fmt.Errorf("sndhwm error %v",err)
+		return nil, fmt.Errorf("sndhwm error %v", err)
 	}
 
 	if err = socket.Connect(host); err != nil {
-		return nil, fmt.Errorf("connection error %v",err)
+		return nil, fmt.Errorf("connection error %v", err)
 	}
 
 	return &GenericPublisher{

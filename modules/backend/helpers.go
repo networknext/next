@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"

@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 )
-const(
-MatrixTypeNormal = "Normal"
-MatrixTypeValve  = "Valve"
+
+const (
+	MatrixTypeNormal = "Normal"
+	MatrixTypeValve  = "Valve"
 )
 
 //go:generate moq -out matrix_test_mocks.go . MatrixStore
-type MatrixStore interface{
+type MatrixStore interface {
 	//Live Matrix for server backend
 	GetLiveMatrix(matrixType string) ([]byte, error)
 	UpdateLiveMatrix(matrixData []byte, matrixType string) error
@@ -35,19 +36,19 @@ type MatrixStore interface{
 	UpdateOptimizerMaster(id uint64) error
 }
 
-type Matrix struct{
-	OptimizerID uint64           	`json:"optimizer_id"`
-	OptimizerCreatedAt time.Time 	`json:"optimizer_created_at"`
-	CreatedAt time.Time				`json:"created_at"`
-	Type string						`json:"type"`
-	Data []byte						`json:"data"`
+type Matrix struct {
+	OptimizerID        uint64    `json:"optimizer_id"`
+	OptimizerCreatedAt time.Time `json:"optimizer_created_at"`
+	CreatedAt          time.Time `json:"created_at"`
+	Type               string    `json:"type"`
+	Data               []byte    `json:"data"`
 }
 
-func wrap(pre, err, post string) error{
-	return fmt.Errorf("%s%s%s",pre,err,post)
+func wrap(pre, err, post string) error {
+	return fmt.Errorf("%s%s%s", pre, err, post)
 }
 
-func NewMatrix(optimizerID uint64, optimizerCreated, createdAt time.Time,matrixType string, data[]byte) Matrix{
+func NewMatrix(optimizerID uint64, optimizerCreated, createdAt time.Time, matrixType string, data []byte) Matrix {
 	m := new(Matrix)
 	m.OptimizerID = optimizerID
 	m.OptimizerCreatedAt = optimizerCreated
@@ -57,23 +58,23 @@ func NewMatrix(optimizerID uint64, optimizerCreated, createdAt time.Time,matrixT
 	return *m
 }
 
-func MatrixToJSON(matrix Matrix) ([]byte, error){
+func MatrixToJSON(matrix Matrix) ([]byte, error) {
 	return json.Marshal(matrix)
 }
 
-func MatrixFromJSON(data []byte) (Matrix, error){
+func MatrixFromJSON(data []byte) (Matrix, error) {
 	m := new(Matrix)
 	err := json.Unmarshal(data, m)
 	return *m, err
 }
 
 type MatrixSvcData struct {
-	ID uint64			`json:"id"`
-	CreatedAt time.Time	`json:"created_at"`
-	UpdatedAt time.Time	`json:"Updated_at"`
+	ID        uint64    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"Updated_at"`
 }
 
-func NewMatrixSvcData(id uint64, createdAt, updatedAt time.Time) MatrixSvcData{
+func NewMatrixSvcData(id uint64, createdAt, updatedAt time.Time) MatrixSvcData {
 	m := new(MatrixSvcData)
 	m.ID = id
 	m.CreatedAt = createdAt
@@ -81,15 +82,15 @@ func NewMatrixSvcData(id uint64, createdAt, updatedAt time.Time) MatrixSvcData{
 	return *m
 }
 
-func MatrixSvcToJSON(matrixSvc MatrixSvcData)([]byte, error){
+func MatrixSvcToJSON(matrixSvc MatrixSvcData) ([]byte, error) {
 	return json.Marshal(matrixSvc)
 }
 
-func MatrixSvcFromJSON(data []byte) (MatrixSvcData, error){
+func MatrixSvcFromJSON(data []byte) (MatrixSvcData, error) {
 	m := new(MatrixSvcData)
 	err := json.Unmarshal(data, m)
 	if err != nil {
-		return *m, wrap("unable to unmarshal",err.Error(),"")
+		return *m, wrap("unable to unmarshal", err.Error(), "")
 	}
 	return *m, nil
 }
