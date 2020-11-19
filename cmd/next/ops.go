@@ -346,6 +346,93 @@ func opsManagementAddr(rpcClient jsonrpc.RPCClient,
 
 }
 
+func opsSSHUser(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	username string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "SSHUser",
+		Value:   username,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay SSH user name successfully updated.")
+	return
+
+}
+
+func opsSSHPort(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	port int64,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "SSHPort",
+		Value:   port,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay SSH port number successfully updated.")
+	return
+
+}
+
+func opsMaxSessions(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	sessions int64,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "SSHPort",
+		Value:   sessions,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay max sessions value successfully updated.")
+	return
+
+}
+
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (uint64, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,

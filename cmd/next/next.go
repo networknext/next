@@ -1208,6 +1208,55 @@ func main() {
 							return nil
 						},
 					},
+					{
+						Name:       "sshuser",
+						ShortUsage: "next relay ops sshuser <relay> <user name>",
+						ShortHelp:  "Set the username to use for SSHing into the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a username"), 0)
+							}
+
+							opsSSHUser(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "sshport",
+						ShortUsage: "next relay ops sshport <relay> <port number>",
+						ShortHelp:  "Set the SSH port for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a port number"), 0)
+							}
+
+							port, err := strconv.ParseInt(args[1], 10, 32)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
+							}
+
+							opsSSHPort(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
+					{
+						Name:       "maxsessions",
+						ShortUsage: "next relay ops maxsessions <relay> <session count>",
+						ShortHelp:  "Set the maximum number of concurrent sessions the specified relay can support",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a session count"), 0)
+							}
+
+							port, err := strconv.ParseInt(args[1], 10, 32)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
+							}
+
+							opsMaxSessions(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
 				},
 			},
 			{
