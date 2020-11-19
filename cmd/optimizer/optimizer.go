@@ -9,9 +9,12 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"github.com/networknext/backend/modules/analytics"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
+
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -23,7 +26,10 @@ import (
 	"github.com/networknext/backend/modules/optimizer"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+
+	gcpPub "cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/transport"
+
 )
 
 var (
@@ -188,6 +194,74 @@ func mainReturnWithCode() int {
 			svc.UpdateMatrix(*routeMatrix, storage.MatrixTypeValve)
 		}
 	}()
+
+	//Publishers
+	{
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+				defer cancelFunc()
+
+				level.Info(svc.Logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub settings
+			settings := gcpPub.PublishSettings{
+				DelayThreshold: time.Second,
+				CountThreshold: 1,
+				ByteThreshold:  1 << 14,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pingStatsPublisher, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &svc.Metrics.RelayBackendMetrics.PingStatsMetrics, svc.Logger, gcpProjectID, "ping_stats", settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+				return 1
+			}
+
+			psPublishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", time.Minute)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			}
+
+			go func() {
+				err := svc.PingPublishRunner(pingStatsPublisher, ctx, psPublishInterval)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+				}
+			}()
+
+			relayStatsPublisher, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &svc.Metrics.RelayBackendMetrics.RelayStatsMetrics, svc.Logger, gcpProjectID, "relay_stats", settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+				return 1
+			}
+
+			rsPublishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			}
+
+			go func() {
+				err := svc.RelayPublishRunner(relayStatsPublisher, ctx, rsPublishInterval)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+				}
+			}()
+		}
+	}
+
 
 	fmt.Printf("starting http server\n")
 
