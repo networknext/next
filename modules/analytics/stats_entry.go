@@ -3,7 +3,7 @@ package analytics
 import (
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/modules/routing"
 )
 
 const (

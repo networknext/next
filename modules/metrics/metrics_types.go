@@ -80,54 +80,6 @@ var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetri
 	RelayNotEnabled:  &EmptyCounter{},
 }
 
-type RelayHandlerMetrics struct {
-	Invocations   Counter
-	DurationGauge Gauge
-	ErrorMetrics  RelayHandlerErrorMetrics
-}
-
-var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
-	Invocations:   &EmptyCounter{},
-	DurationGauge: &EmptyGauge{},
-	ErrorMetrics:  EmptyRelayHandlerErrorMetrics,
-}
-
-type RelayHandlerErrorMetrics struct {
-	UnmarshalFailure    Counter
-	ExceedMaxRelays     Counter
-	RelayNotFound       Counter
-	RelayQuarantined    Counter
-	NoAuthHeader        Counter
-	BadAuthHeaderLength Counter
-	BadAuthHeaderToken  Counter
-	BadNonce            Counter
-	BadEncryptedAddress Counter
-	DecryptFailure      Counter
-}
-
-var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{
-	UnmarshalFailure:    &EmptyCounter{},
-	ExceedMaxRelays:     &EmptyCounter{},
-	RelayNotFound:       &EmptyCounter{},
-	RelayQuarantined:    &EmptyCounter{},
-	NoAuthHeader:        &EmptyCounter{},
-	BadAuthHeaderLength: &EmptyCounter{},
-	BadAuthHeaderToken:  &EmptyCounter{},
-	BadNonce:            &EmptyCounter{},
-	BadEncryptedAddress: &EmptyCounter{},
-	DecryptFailure:      &EmptyCounter{},
-}
-
-type RelayStatMetrics struct {
-	NumRelays Gauge
-	NumRoutes Gauge
-}
-
-var EmptyRelayStatMetrics RelayStatMetrics = RelayStatMetrics{
-	NumRelays: &EmptyGauge{},
-	NumRoutes: &EmptyGauge{},
-}
-
 type CostMatrixMetrics struct {
 	Invocations     Counter
 	DurationGauge   Gauge
@@ -289,6 +241,124 @@ var EmptyPortalCruncherMetrics = PortalCruncherMetrics{
 	ReceivedMessageCount: &EmptyCounter{},
 }
 
+type BigTableMetrics struct {
+	WriteMetaSuccessCount  Counter
+	WriteSliceSuccessCount Counter
+	WriteMetaFailureCount  Counter
+	WriteSliceFailureCount Counter
+	ReadMetaSuccessCount   Counter
+	ReadSliceSuccessCount  Counter
+	ReadMetaFailureCount   Counter
+	ReadSliceFailureCount  Counter
+}
+
+var EmptyBigTableMetrics = BigTableMetrics{
+	WriteMetaSuccessCount:  &EmptyCounter{},
+	WriteSliceSuccessCount: &EmptyCounter{},
+	WriteMetaFailureCount:  &EmptyCounter{},
+	WriteSliceFailureCount: &EmptyCounter{},
+	ReadMetaSuccessCount:   &EmptyCounter{},
+	ReadSliceSuccessCount:  &EmptyCounter{},
+	ReadMetaFailureCount:   &EmptyCounter{},
+	ReadSliceFailureCount:  &EmptyCounter{},
+}
+
+func NewBigTableMetrics(ctx context.Context, metricsHandler Handler) (*BigTableMetrics, error) {
+	var err error
+
+	bigtableMetrics := BigTableMetrics{}
+
+	bigtableMetrics.WriteMetaSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Meta Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.meta.success.count",
+		Unit:        "writes",
+		Description: "The number of successful meta writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.WriteSliceSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Slice Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.slice.success.count",
+		Unit:        "writes",
+		Description: "The number of successful slice writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.WriteMetaFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Meta Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.meta.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed meta writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.WriteSliceFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Write Slice Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.write.slice.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed slice writes to bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadMetaSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Meta Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.meta.success.count",
+		Unit:        "writes",
+		Description: "The number of successful meta reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadSliceSuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Slice Success Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.slice.success.count",
+		Unit:        "writes",
+		Description: "The number of successful slice reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadMetaFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Meta Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.meta.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed meta reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bigtableMetrics.ReadSliceFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bigtable Read Slice Failure Count",
+		ServiceName: "bigtable",
+		ID:          "bigtable.read.slice.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed slice reads from bigtable",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &bigtableMetrics, nil
+}
+
 func NewPortalCruncherMetrics(ctx context.Context, metricsHandler Handler) (*PortalCruncherMetrics, error) {
 	var err error
 
@@ -392,38 +462,6 @@ func NewRelayUpdateMetrics(ctx context.Context, metricsHandler Handler) (*RelayU
 	}
 
 	return &updateMetrics, nil
-}
-
-func NewRelayHandlerMetrics(ctx context.Context, metricsHandler Handler) (*RelayHandlerMetrics, error) {
-	handlerCount, err := metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total relay handler count",
-		ServiceName: "relay_backend",
-		ID:          "relay.handler.count",
-		Unit:        "requests",
-		Description: "The total number of received relay requests",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	handlerDuration, err := metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Relay handler duration",
-		ServiceName: "relay_backend",
-		ID:          "relay.handler.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a relay request",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	handerMetrics := RelayHandlerMetrics{
-		Invocations:   handlerCount,
-		DurationGauge: handlerDuration,
-		ErrorMetrics:  EmptyRelayHandlerErrorMetrics,
-	}
-
-	return &handerMetrics, nil
 }
 
 func NewCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixMetrics, error) {
