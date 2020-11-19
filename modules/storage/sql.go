@@ -753,7 +753,8 @@ func (db *SQL) Relays() []routing.Relay {
 	return relays
 }
 
-// UpdateRelay updates one field (2 for addr) in a relay record
+// UpdateRelay updates one field (2 for addr) in a relay record - field names
+// are those provided by routing.Relay.
 // value:
 //	addr           : ipaddress:port (string)
 //  bw_billing_rule: float64 (json number)
@@ -779,7 +780,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
-		updateSQL.Write([]byte("update relays set display_name='$1' where id=$2"))
+		updateSQL.Write([]byte("update relays set display_name=$1 where id=$2"))
 		args = append(args, name, relay.DatabaseID)
 		relay.Name = name
 
@@ -971,13 +972,16 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 	}
 
+	// fmt.Printf("--> updateSQL: %s\n", updateSQL.String())
+
 	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
 		return err
 	}
 
-	result, err := stmt.Exec(args)
+	// fmt.Println("--> UpdateRelay() stmt.Exec()")
+	result, err := stmt.Exec(args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
 		return err
@@ -1174,6 +1178,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 
 // SetRelay updates the relay in storage with the provided copy and returns an
 // error if the relay could not be updated.
+// TODO: chopping block
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	var sql bytes.Buffer

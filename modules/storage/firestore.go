@@ -2319,3 +2319,7 @@ func (fs *Firestore) SetFeatureFlagByName(ctx context.Context, flagName string, 
 func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in Firestore storer"))
 }
+
+func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+}

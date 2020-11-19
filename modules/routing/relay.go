@@ -133,7 +133,7 @@ func GetBandwidthRuleSQL(bwRule int64) (BandWidthRule, error) {
 		return BWRuleFlat, nil
 	case 2:
 		return BWRuleBurst, nil
-	case 4:
+	case 3:
 		return BWRulePool, nil
 	default:
 		return BWRuleNone, fmt.Errorf("invalid BandWidthRule '%d'", bwRule)
