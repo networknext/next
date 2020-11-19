@@ -182,7 +182,7 @@ func main() {
 		level.Info(logger).Log("msg", "Detected bigtable emulator host")
 	}
 
-	useBigtable := featureConfig.FeatureEnabled(0) && (gcpOK || btEmulatorOK)
+	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
 
 	var btClient *storage.BigTable
 	var btCfName string
