@@ -166,6 +166,7 @@ func main() {
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BIGTABLE",
+			Enum:        config.FEATURE_BIGTABLE,
 			Value:       false,
 			Description: "Bigtable integration for historic session data",
 		},
