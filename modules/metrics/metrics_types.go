@@ -80,54 +80,6 @@ var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetri
 	RelayNotEnabled:  &EmptyCounter{},
 }
 
-type RelayHandlerMetrics struct {
-	Invocations   Counter
-	DurationGauge Gauge
-	ErrorMetrics  RelayHandlerErrorMetrics
-}
-
-var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
-	Invocations:   &EmptyCounter{},
-	DurationGauge: &EmptyGauge{},
-	ErrorMetrics:  EmptyRelayHandlerErrorMetrics,
-}
-
-type RelayHandlerErrorMetrics struct {
-	UnmarshalFailure    Counter
-	ExceedMaxRelays     Counter
-	RelayNotFound       Counter
-	RelayQuarantined    Counter
-	NoAuthHeader        Counter
-	BadAuthHeaderLength Counter
-	BadAuthHeaderToken  Counter
-	BadNonce            Counter
-	BadEncryptedAddress Counter
-	DecryptFailure      Counter
-}
-
-var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{
-	UnmarshalFailure:    &EmptyCounter{},
-	ExceedMaxRelays:     &EmptyCounter{},
-	RelayNotFound:       &EmptyCounter{},
-	RelayQuarantined:    &EmptyCounter{},
-	NoAuthHeader:        &EmptyCounter{},
-	BadAuthHeaderLength: &EmptyCounter{},
-	BadAuthHeaderToken:  &EmptyCounter{},
-	BadNonce:            &EmptyCounter{},
-	BadEncryptedAddress: &EmptyCounter{},
-	DecryptFailure:      &EmptyCounter{},
-}
-
-type RelayStatMetrics struct {
-	NumRelays Gauge
-	NumRoutes Gauge
-}
-
-var EmptyRelayStatMetrics RelayStatMetrics = RelayStatMetrics{
-	NumRelays: &EmptyGauge{},
-	NumRoutes: &EmptyGauge{},
-}
-
 type CostMatrixMetrics struct {
 	Invocations     Counter
 	DurationGauge   Gauge
@@ -510,38 +462,6 @@ func NewRelayUpdateMetrics(ctx context.Context, metricsHandler Handler) (*RelayU
 	}
 
 	return &updateMetrics, nil
-}
-
-func NewRelayHandlerMetrics(ctx context.Context, metricsHandler Handler) (*RelayHandlerMetrics, error) {
-	handlerCount, err := metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total relay handler count",
-		ServiceName: "relay_backend",
-		ID:          "relay.handler.count",
-		Unit:        "requests",
-		Description: "The total number of received relay requests",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	handlerDuration, err := metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Relay handler duration",
-		ServiceName: "relay_backend",
-		ID:          "relay.handler.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a relay request",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	handerMetrics := RelayHandlerMetrics{
-		Invocations:   handlerCount,
-		DurationGauge: handlerDuration,
-		ErrorMetrics:  EmptyRelayHandlerErrorMetrics,
-	}
-
-	return &handerMetrics, nil
 }
 
 func NewCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixMetrics, error) {
