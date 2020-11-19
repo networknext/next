@@ -267,15 +267,7 @@ func main() {
 
 	// create and reuse one http client
 
-	transport := &http.Transport{
-		MaxConnsPerHost:     0,
-		ForceAttemptHTTP2:   true,
-        MaxIdleConns:        100000,
-        MaxIdleConnsPerHost: 100000,
-    }
-
 	httpClient := http.Client{
-		Transport: transport,
 		Timeout: time.Second * 10,
 	}
 
