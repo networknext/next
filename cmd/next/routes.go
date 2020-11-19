@@ -6,8 +6,8 @@ import (
 	"sort"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 

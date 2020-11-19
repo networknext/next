@@ -19,9 +19,9 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
-	"os"
 	"net"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"sort"
 	"strconv"
@@ -73,8 +73,8 @@ const NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT = uint32(1 << 6)
 const NEXT_FLAGS_CLIENT_TIMED_OUT = uint32(1 << 7)
 const NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT = uint32(1 << 8)
 const NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT = uint32(1 << 9)
-const NEXT_FLAGS_DIRECT_PONG_TIMED_OUT = uint32(1<<10)
-const NEXT_FLAGS_NEXT_PONG_TIMED_OUT = uint32(1<<11)
+const NEXT_FLAGS_DIRECT_PONG_TIMED_OUT = uint32(1 << 10)
+const NEXT_FLAGS_NEXT_PONG_TIMED_OUT = uint32(1 << 11)
 const NEXT_FLAGS_COUNT = 12
 
 const NEXT_RELAY_INIT_REQUEST_MAGIC = uint32(0x9083708f)
@@ -216,7 +216,7 @@ type NextBackendSessionUpdatePacket struct {
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
-	ClientPingTimedOut				bool
+	ClientPingTimedOut              bool
 	NumTags                         int32
 	Tags                            [NEXT_MAX_TAGS]uint64
 	Flags                           uint32
@@ -2552,7 +2552,7 @@ func main() {
 			takeNetworkNext := len(nearRelayIds) > 0 && !sessionUpdate.FallbackToDirect
 
 			if on_off {
-				if ( sessionData.SliceNumber % 2 ) != 0 {
+				if (sessionData.SliceNumber % 2) != 0 {
 					takeNetworkNext = false
 				}
 			}

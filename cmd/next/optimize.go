@@ -6,7 +6,7 @@ import (
 	"runtime"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/modules/routing"
 )
 
 func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32) {
