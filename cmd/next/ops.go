@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/networknext/backend/modules/routing"
@@ -22,6 +24,8 @@ func opsMRC(rpcClient jsonrpc.RPCClient,
 		// error msg printed by called function
 		return
 	}
+
+	fmt.Printf("opsMRC() relay check returned: %s\n", relay.String())
 
 	relay.MRC = routing.CentsToNibblins(mrcUSD * 100)
 
@@ -300,6 +304,7 @@ func opsNic(rpcClient jsonrpc.RPCClient,
 }
 
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (routing.Relay, bool) {
+	fmt.Printf("checkForRelay() regex: %s\n", regex)
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -317,12 +322,39 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 		handleRunTimeError(fmt.Sprintf("'%s' returned more than one relay - please be more specific.", regex), 0)
 	}
 
+	addr, err := net.ResolveUDPAddr("udp", reply.Relays[0].Addr)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error converting relay address %s: %v", reply.Relays[0].Addr, err), 1)
+	}
+
+	publicKey, err := base64.StdEncoding.DecodeString(reply.Relays[0].PublicKey)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error decoding public key %s: %v", reply.Relays[0].PublicKey, err), 1)
+	}
+
+	state, err := routing.ParseRelayState(reply.Relays[0].State)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error parsing relay state %s: %v", reply.Relays[0].State, err), 1)
+	}
+
+	updateKey, err := base64.StdEncoding.DecodeString(reply.Relays[0].UpdateKey)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error decoding update key %s: %v", reply.Relays[0].Addr, err), 1)
+	}
+
 	replyRelay := routing.Relay{
 		ID:                  reply.Relays[0].ID,
 		Name:                reply.Relays[0].Name,
-		IncludedBandwidthGB: reply.Relays[0].IncludedBandwidthGB,
+		Addr:                *addr,
+		PublicKey:           publicKey,
 		NICSpeedMbps:        reply.Relays[0].NICSpeedMbps,
-		FirestoreID:         reply.Relays[0].FirestoreID,
+		IncludedBandwidthGB: reply.Relays[0].IncludedBandwidthGB,
+		State:               state,
+		ManagementAddr:      reply.Relays[0].ManagementAddr,
+		SSHUser:             reply.Relays[0].SSHUser,
+		SSHPort:             reply.Relays[0].SSHPort,
+		MaxSessions:         reply.Relays[0].MaxSessionCount,
+		UpdateKey:           updateKey,
 		MRC:                 reply.Relays[0].MRC,
 		Overage:             reply.Relays[0].Overage,
 		BWRule:              reply.Relays[0].BWRule,
@@ -330,6 +362,7 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 		StartDate:           reply.Relays[0].StartDate,
 		EndDate:             reply.Relays[0].EndDate,
 		Type:                reply.Relays[0].Type,
+		DatabaseID:          reply.Relays[0].DatabaseID,
 	}
 
 	return replyRelay, true

@@ -537,6 +537,7 @@ type relay struct {
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
+	DatabaseID          int64
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -567,6 +568,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
 			Type:                r.Type,
+			DatabaseID:          r.DatabaseID,
 		}
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
