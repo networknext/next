@@ -62,22 +62,8 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		fmt.Println("--> opened ../../testdata/network_next.db")
 	} else {
 		fmt.Println("--> did not find db file?")
-		os.Exit(1)
+		os.Exit(0)
 	}
-
-	// happy path
-	// sqlite3, err := sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
-	// if err != nil {
-	// 	// unit test
-	// 	sqlite3, err = sql.Open("sqlite3", "file:../../testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
-	// 	if err != nil {
-	// 		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
-	// 		return nil, err
-	// 	}
-	// 	fmt.Println("--> opened ../../testdata/network_next.db")
-	// } else {
-	// 	fmt.Println("--> opened testdata/network_next.db")
-	// }
 
 	// db.Ping actually establishes the connection and validates the parameters
 	err := sqlite3.Ping()

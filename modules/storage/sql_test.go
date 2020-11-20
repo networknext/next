@@ -692,6 +692,15 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *newAddr, checkRelay.Addr)
 
+		// relay.Addr
+		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
+		assert.NoError(t, err)
+		err = db.UpdateRelay(ctx, rid, "Addr", "192.168.0.2:40000")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, *intAddr, checkRelay.Addr)
+
 		// relay.ManagementAddr
 		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
 		assert.NoError(t, err)
