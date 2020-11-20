@@ -24,29 +24,49 @@ import (
 // only used for unit testing.
 func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
+	var sqlite3 *sql.DB
+
 	fmt.Println("Creating SQLite3 Storer.")
 	pwd, _ := os.Getwd()
 	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 
-	// remove the old db file if it exists (SQLite3 save one by default when
-	// exiting)
+	// remove the old db file if it exists (SQLite3 saves one by default when exiting)
 	fmt.Println("--> Attempting to remove db file")
-	if _, err := os.Stat("testdata/network_next.db"); err == nil || os.IsExist(err) {
+	if _, err := os.Stat("testdata/sqlite3-empty.sql"); err == nil || os.IsExist(err) { // happy path
+		fmt.Println("--> Removing testdata/network_next.db")
 		err = os.Remove("testdata/network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
+			// return nil, err
+		}
+		fmt.Println("--> Removed testdata/network_next.db")
+		sqlite3, err = sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 			return nil, err
 		}
-	}
-
-	sqlite3, err := sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
-	if err != nil {
-		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
-		return nil, err
+		fmt.Println("--> opened testdata/network_next.db")
+	} else if _, err := os.Stat("../../testdata/sqlite3-empty.sql"); err == nil || os.IsExist(err) { // unit test
+		fmt.Println("--> Removing ../../testdata/network_next.db")
+		err = os.Remove("../../testdata/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
+			// return nil, err
+		}
+		fmt.Println("--> Removed ../../testdata/network_next.db")
+		sqlite3, err = sql.Open("sqlite3", "file:../../testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
+			return nil, err
+		}
+		fmt.Println("--> opened ../../testdata/network_next.db")
+	} else {
+		fmt.Println("--> did not find db file?")
+		os.Exit(0)
 	}
 
 	// db.Ping actually establishes the connection and validates the parameters
-	err = sqlite3.Ping()
+	err := sqlite3.Ping()
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error pinging db: %w", err)
 		return nil, err
@@ -67,7 +87,7 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	// populate the db with some data from dev
 	file, err := ioutil.ReadFile("testdata/sqlite3-empty.sql") // happy path
 	if err != nil {
-		file, err = ioutil.ReadFile("testdata/sqlite3-empty.sql") // unit test
+		file, err = ioutil.ReadFile("../../testdata/sqlite3-empty.sql") // unit test
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
 			return nil, err
@@ -316,9 +336,10 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sql.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
 	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
-	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.update_key, "))
-	sql.Write([]byte("relays.bw_billing_rule, relays.datacenter, "))
-	sql.Write([]byte("relays.machine_type, relays.relay_state from relays "))
+	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
+	sql.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
+	sql.Write([]byte("relays.machine_type, relays.relay_state, "))
+	sql.Write([]byte("relays.internal_ip, relays.internal_ip_port from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -347,11 +368,14 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.SSHPort,
 			&relay.SSHUser,
 			&relay.StartDate,
-			&relay.UpdateKey,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
 			&relay.BWRule,
 			&relay.DatacenterID,
 			&relay.MachineType,
 			&relay.State,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
@@ -366,6 +390,11 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
+		fullInternalAddress := relay.InternalIP + ":" + fmt.Sprintf("%d", relay.InternalIPPort)
+		internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+		}
 		// TODO: this should be treated as a legit address
 		// managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
 		// if err != nil {
@@ -396,6 +425,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			ID:                  rid,
 			Name:                relay.Name,
 			Addr:                *publicAddr,
+			InternalAddr:        *internalAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -405,7 +435,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
-			UpdateKey:           relay.UpdateKey,
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,

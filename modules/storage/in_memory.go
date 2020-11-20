@@ -532,3 +532,7 @@ func (m *InMemory) SetSequenceNumber(ctx context.Context, value int64) error {
 	return nil
 
 }
+
+func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+}

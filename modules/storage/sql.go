@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -752,13 +753,290 @@ func (db *SQL) Relays() []routing.Relay {
 	return relays
 }
 
+// UpdateRelay updates one field (2 for addr) in a relay record - field names
+// are those provided by routing.Relay.
+// value:
+//	addr           : ipaddress:port (string)
+//  bw_billing_rule: float64 (json number)
+//  machine_type   : float64 (json number)
+//  relay_state    : float64 (json number)
+//  MRC            : USD float64 (json number)
+//  Overage        : USD float64 (json number)
+//  StartDate      : string ('January 2, 2006')
+//  EndDate        : string ('January 2, 2006')
+//  all others are bool, float64 or string, based on field type
+func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	relay, err := db.Relay(relayID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", relayID)}
+	}
+
+	switch field {
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update relays set display_name=$1 where id=$2"))
+		args = append(args, name, relay.DatabaseID)
+		relay.Name = name
+
+	case "Addr":
+		addrString, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		uriTuple := strings.Split(addrString, ":")
+		if uriTuple[0] == "" || uriTuple[1] == "" {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
+		}
+		updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
+		updateSQL.Write([]byte("where id=$3"))
+		args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
+
+		addr, err := net.ResolveUDPAddr("udp", addrString)
+		if err != nil {
+			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
+		}
+		relay.Addr = *addr
+
+	case "InternalAddr":
+		addrString, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		uriTuple := strings.Split(addrString, ":")
+		if uriTuple[0] == "" || uriTuple[1] == "" {
+			return fmt.Errorf("Unable to parse URI fo InternalAddr field: %v", value)
+		}
+		updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
+		updateSQL.Write([]byte("where id=$3"))
+		args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
+
+		addr, err := net.ResolveUDPAddr("udp", addrString)
+		if err != nil {
+			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
+		}
+		relay.Addr = *addr
+
+	case "PublicKey":
+		publicKey, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("%v is not a valid []byte type", value)
+		}
+		updateSQL.Write([]byte("update relays set public_key=$1 where id=$2"))
+		args = append(args, publicKey, relay.DatabaseID)
+		relay.PublicKey = publicKey
+
+	case "NICSpeedMbps":
+		portSpeed, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		updateSQL.Write([]byte("update relays set port_speed=$1 where id=$2"))
+		args = append(args, portSpeed, relay.DatabaseID)
+		relay.NICSpeedMbps = int32(portSpeed)
+
+	case "IncludedBandwidthGB":
+		includedBW, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		updateSQL.Write([]byte("update relays set included_bandwidth_gb=$1 where id=$2"))
+		args = append(args, includedBW, relay.DatabaseID)
+		relay.IncludedBandwidthGB = int32(includedBW)
+
+	case "State":
+		state, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		if state < 0 || state > 5 {
+			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(state))
+		}
+		updateSQL.Write([]byte("update relays set relay_state=$1 where id=$2"))
+		args = append(args, int64(state), relay.DatabaseID)
+		// already checked int validity above
+		relay.State, _ = routing.GetRelayStateSQL(int64(state))
+
+	case "ManagementAddr":
+		// routing.Relay.ManagementIP is currently a string type although
+		// the database field is inet
+		managementIP, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update relays set management_ip=$1 where id=$2"))
+		args = append(args, managementIP, relay.DatabaseID)
+		relay.ManagementAddr = managementIP
+
+	case "SSHUser":
+		user, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string type", value)
+		}
+		updateSQL.Write([]byte("update relays set ssh_user=$1 where id=$2"))
+		args = append(args, user, relay.DatabaseID)
+		relay.SSHUser = user
+
+	case "SSHPort":
+		port, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		updateSQL.Write([]byte("update relays set ssh_port=$1 where id=$2"))
+		args = append(args, port, relay.DatabaseID)
+		relay.SSHPort = int64(port)
+
+	case "MaxSessions":
+		maxSessions, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		updateSQL.Write([]byte("update relays set max_sessions=$1 where id=$2"))
+		args = append(args, int64(maxSessions), relay.DatabaseID)
+		relay.MaxSessions = uint32(maxSessions)
+
+	case "MRC":
+		mrcUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		mrc := routing.DollarsToNibblins(mrcUSD)
+		updateSQL.Write([]byte("update relays set mrc=$1 where id=$2"))
+		args = append(args, int64(mrc), relay.DatabaseID)
+		relay.MRC = mrc
+
+	case "Overage":
+		overageUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		overage := routing.DollarsToNibblins(overageUSD)
+		updateSQL.Write([]byte("update relays set overage=$1 where id=$2"))
+		args = append(args, int64(overage), relay.DatabaseID)
+		relay.Overage = overage
+
+	case "BWRule":
+		bwRule, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		if bwRule < 0 || bwRule > 4 {
+			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(bwRule))
+		}
+		updateSQL.Write([]byte("update relays set bw_billing_rule=$1 where id=$2"))
+		args = append(args, int64(bwRule), relay.DatabaseID)
+		// already checked int validity above
+		relay.BWRule, _ = routing.GetBandwidthRuleSQL(int64(bwRule))
+
+	case "ContractTerm":
+		term, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		if term < 0 {
+			return fmt.Errorf("%d is not a valid ContractTerm value", int32(term))
+		}
+		updateSQL.Write([]byte("update relays set contract_term=$1 where id=$2"))
+		args = append(args, int64(term), relay.DatabaseID)
+		relay.ContractTerm = int32(term)
+
+	case "StartDate":
+		startDate, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		newStartDate, err := time.Parse("January 2, 2006", startDate)
+		if err != nil {
+			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
+		}
+
+		updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
+		args = append(args, startDate, relay.DatabaseID)
+		relay.StartDate = newStartDate
+
+	case "EndDate":
+		endDate, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		newEndDate, err := time.Parse("January 2, 2006", endDate)
+		if err != nil {
+			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
+		}
+
+		updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
+		args = append(args, endDate, relay.DatabaseID)
+		relay.EndDate = newEndDate
+
+	case "Type":
+		machineType, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		if machineType < 0 || machineType > 2 {
+			return fmt.Errorf("%d is not a valid MachineType value", int64(machineType))
+		}
+		updateSQL.Write([]byte("update relays set machine_type=$1 where id=$2"))
+		args = append(args, int64(machineType), relay.DatabaseID)
+		// already checked int validity above
+		relay.Type, _ = routing.GetMachineTypeSQL(int64(machineType))
+
+	default:
+		return fmt.Errorf("Field %v not available for update (not part of schema)", value)
+
+	}
+
+	// fmt.Printf("--> updateSQL: %s\n", updateSQL.String())
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
+		return err
+	}
+
+	// fmt.Println("--> UpdateRelay() stmt.Exec()")
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.relayMutex.Lock()
+	db.relays[relayID] = relay
+	db.relayMutex.Unlock()
+
+	return nil
+}
+
 type sqlRelay struct {
 	ID                 uint64
 	Name               string
 	PublicIP           string // []byte?
 	PublicIPPort       int64
+	InternalIP         string // []byte?
+	InternalIPPort     int64
 	PublicKey          []byte
-	UpdateKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
 	DatacenterID       int64
@@ -794,13 +1072,18 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
+	internalIPPort, err := strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	}
 
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
 		PublicIPPort:       publicIPPort,
+		InternalIP:         strings.Split(r.InternalAddr.String(), ":")[0],
+		InternalIPPort:     internalIPPort,
 		PublicKey:          r.PublicKey,
-		UpdateKey:          r.UpdateKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
@@ -821,10 +1104,10 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sql.Write([]byte("insert into relays ("))
 	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
-	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
+	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
+	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20)"))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -848,11 +1131,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.SSHPort,
 		relay.SSHUser,
 		relay.StartDate,
-		relay.UpdateKey,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
 		relay.State,
+		relay.InternalIP,
+		relay.InternalIPPort,
 	)
 
 	if err != nil {
@@ -926,6 +1210,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 
 // SetRelay updates the relay in storage with the provided copy and returns an
 // error if the relay could not be updated.
+// TODO: chopping block
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	var sql bytes.Buffer
@@ -943,12 +1228,18 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
+	internalIPPort, err := strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
 		PublicIPPort:       publicIPPort,
+		InternalIP:         strings.Split(r.InternalAddr.String(), ":")[0],
+		InternalIPPort:     internalIPPort,
 		PublicKey:          r.PublicKey,
-		UpdateKey:          r.UpdateKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
@@ -969,10 +1260,10 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	sql.Write([]byte("update relays set ("))
 	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
-	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
+	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
+	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
 	sql.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20) where id = $21"))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) where id = $22"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -996,11 +1287,12 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.SSHPort,
 		relay.SSHUser,
 		relay.StartDate,
-		relay.UpdateKey,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
 		relay.State,
+		relay.InternalIP,
+		relay.InternalIPPort,
 		r.DatabaseID,
 	)
 
@@ -1319,7 +1611,10 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-	return fmt.Errorf("SetRelayMetadata() not implemented in SQL Storer")
+	// return fmt.Errorf("SetRelayMetadata() not implemented in SQL Storer")
+	fmt.Printf("SetRelayMetadata(): %s\n", relay.String())
+	err := db.SetRelay(ctx, relay)
+	return err
 }
 
 // CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
