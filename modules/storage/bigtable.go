@@ -8,6 +8,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/envvar"
+
 	"cloud.google.com/go/bigtable"
 	"google.golang.org/api/option"
 )
@@ -179,6 +181,81 @@ func (bt *BigTable) InsertRowInTable(ctx context.Context, rowKeys []string, data
 	return nil
 }
 
+// Write a unique row with one cell per row key
+// Works by overwriting a previous row by using a timestamp with Unix time of 0
+// NOTE: MaxAgePolicy will delete any rows before the last X days, so use today's date to prevent this
+// from happening until it's appropriate
+// Reference: https://cloud.google.com/bigtable/docs/gc-latest-value
+func (bt *BigTable) WriteRowInTable(ctx context.Context, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
+	// Create timestamp with only today's date (to avoid MaxAgePolicy)
+	timeNow := time.Now()
+	year, month, date := timeNow.Date()
+	location := timeNow.Location()
+	currentDateTime := bigtable.Time(time.Date(year, month, date, 0, 0, 0, 0, location)).TruncateToMilliseconds()
+
+	// Create the mutation for the rows
+	mut := bigtable.NewMutation()
+
+	for colName, value := range dataMap {
+		if cfName, ok := cfMap[colName]; ok {
+			mut.Set(cfName, colName, currentDateTime, value)
+		} else {
+			return fmt.Errorf("WriteRowInTable() Column name %v not present in column family map", colName)
+		}
+	}
+
+	// Insert into table
+	for _, rowKey := range rowKeys {
+		if err := bt.SessionTable.Apply(ctx, rowKey, mut); err != nil {
+			return fmt.Errorf("WriteRowInTable() Could not insert row in table %v", err)
+		}
+	}
+
+	return nil
+}
+
+// Write and delete a row in a table
+func (bt *BigTable) WriteAndDeleteRowInTable(ctx context.Context, rowKeys []string, dataMap map[string][]byte, cfMap map[string]string) error {
+	timeNow := time.Now()
+	// Get the timestamp for time of insertion
+	currentTimestamp := bigtable.Time(timeNow)
+
+	// Get the timestamp from 1 millisecond ago
+	deltaTimestamp := bigtable.Time(timeNow.Add(-1 * time.Millisecond)).TruncateToMilliseconds()
+	// Create timestamp with unix time of 0 (1 January 1970)
+	zeroTime := bigtable.Time(time.Unix(0,0)).TruncateToMilliseconds()
+
+	// Create slice of mutations for deleting any rows not within the past 1 millisecond
+	deleteMut := bigtable.NewMutation()
+	// Create slice of mutations for the new rows
+	rowMut := bigtable.NewMutation()
+
+	for colName, value := range dataMap {
+		if cfName, ok := cfMap[colName]; ok {
+			// Create a mutation for deleting any rows not within the past 1 millisecond
+			deleteMut.DeleteTimestampRange(cfName, colName, zeroTime, deltaTimestamp)
+
+			// Create the mutation for the replacement row
+			rowMut.Set(cfName, colName, currentTimestamp, value)
+		} else {
+			return fmt.Errorf("WriteAndDeleteRowInTable() Column name %v not present in column family map", colName)
+		}
+	}
+
+	// Add the latest rows first then delete older rows
+	for _, rowKey := range rowKeys {
+		if err := bt.SessionTable.Apply(ctx, rowKey, rowMut); err != nil {
+			return fmt.Errorf("WriteAndDeleteRowInTable() Could not insert row in table %v", err)
+		}
+
+		if err := bt.SessionTable.Apply(ctx, rowKey, deleteMut); err != nil {
+			return fmt.Errorf("WriteAndDeleteRowInTable() Could not delete row in table %v", err)
+		}
+	}
+
+	return nil
+}
+
 // Inserts session data into Bigtable
 func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	btCfNames []string,
@@ -197,8 +274,22 @@ func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
 
-	if err := bt.InsertRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
+	// Decide if should write and delete row
+	// or if should just write row and let compaction take care of deleting the row later
+	deleteWrite, err := envvar.GetBool("BIGTABLE_WRITE_DELETE_ROW", false)
+	if err != nil {
 		return err
+	}
+
+	// A/B testing for above
+	if deleteWrite {
+		if err := bt.WriteAndDeleteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
+			return err
+		}
+	} else {
+		if err := bt.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
+			return err
+		}
 	}
 
 	return nil

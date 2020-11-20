@@ -167,14 +167,18 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		var sessionMeta transport.SessionMeta
 		if len(rowsByHash) > 0 {
 			for _, row := range rowsByHash {
-				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+					return err
+				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}
 			}
 		} else if len(rowsByID) > 0 {
 			for _, row := range rowsByID {
-				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+					return err
+				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}

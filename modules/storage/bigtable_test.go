@@ -410,6 +410,119 @@ func TestBigTable(t *testing.T) {
 		})
 	})
 
+	t.Run("Write Meta Rows Into Table", func(t *testing.T) {
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, btAdmin)
+
+		tblName := "Test"
+		btCfNames := []string{"ColFamName"}
+		err = btAdmin.CreateTable(ctx, tblName, btCfNames)
+		assert.NoError(t, err)
+
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, tblName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+
+		t.Run("Write and Delete Row In Table", func(t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			assert.NoError(t, err)
+			assert.NotNil(t, btClient)
+
+			defer func() {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			// Create row data
+			rowKeys := []string{"metaWriteDelete"}
+
+			metaBinary, err := transport.SessionMeta{}.MarshalBinary()
+			assert.NoError(t, err)
+			
+			// Create a map of column name to session data
+			sessionDataMap := make(map[string][]byte)
+			sessionDataMap["meta"] = metaBinary
+
+			cfMap := make(map[string]string)
+			cfMap["meta"] = btCfNames[0]
+
+			// Insert a row
+			err = btClient.WriteAndDeleteRowInTable(ctx, rowKeys, sessionDataMap, cfMap)
+			assert.NoError(t, err)
+
+			// Get rows with this rowkey, only one row should exist
+			rows, err := btClient.GetRowWithRowKey(ctx, rowKeys[0])
+			assert.NoError(t, err)
+			assert.NotEmpty(t, rows)
+			assert.Equal(t, len(rows[btCfNames[0]]), 1)
+
+			// Sleep for 1 second
+			time.Sleep(1 * time.Second)
+
+			// Insert a row again
+			err = btClient.WriteAndDeleteRowInTable(ctx, rowKeys, sessionDataMap, cfMap)
+			assert.NoError(t, err)
+
+			// Get rows with this rowkey, only one row should exist
+			rows, err = btClient.GetRowWithRowKey(ctx, rowKeys[0])
+			assert.NoError(t, err)
+			assert.NotEmpty(t, rows)
+			assert.Equal(t, len(rows[btCfNames[0]]), 1)
+		})
+
+		t.Run("Write Row In Table", func(t *testing.T) {
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			assert.NoError(t, err)
+			assert.NotNil(t, btClient)
+
+			defer func() {
+				err = btClient.Close()
+				assert.NoError(t, err)
+			}()
+
+			// Create row data
+			rowKeys := []string{"metaWrite"}
+
+			metaBinary, err := transport.SessionMeta{}.MarshalBinary()
+			assert.NoError(t, err)
+			
+			// Create a map of column name to session data
+			sessionDataMap := make(map[string][]byte)
+			sessionDataMap["meta"] = metaBinary
+
+			cfMap := make(map[string]string)
+			cfMap["meta"] = btCfNames[0]
+
+			// Insert a row
+			err = btClient.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap)
+			assert.NoError(t, err)
+
+			// Get rows with this rowkey, only one row should exist
+			rows, err := btClient.GetRowWithRowKey(ctx, rowKeys[0])
+			assert.NoError(t, err)
+			assert.NotEmpty(t, rows)
+			assert.Equal(t, len(rows[btCfNames[0]]), 1)
+
+			// Sleep for 1 second
+			time.Sleep(1 * time.Second)
+
+			// Insert a row again
+			err = btClient.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap)
+			assert.NoError(t, err)
+
+			// Get rows with this rowkey, only one row should exist
+			rows, err = btClient.GetRowWithRowKey(ctx, rowKeys[0])
+			assert.NoError(t, err)
+			assert.NotEmpty(t, rows)
+			assert.Equal(t, len(rows[btCfNames[0]]), 1)
+		})
+	})
+
 	t.Run("Insert Session Data Into Table", func(t *testing.T) {
 		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
 		assert.NoError(t, err)
