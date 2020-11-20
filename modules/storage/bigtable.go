@@ -223,7 +223,7 @@ func (bt *BigTable) WriteAndDeleteRowInTable(ctx context.Context, rowKeys []stri
 	// Get the timestamp from 1 millisecond ago
 	deltaTimestamp := bigtable.Time(timeNow.Add(-1 * time.Millisecond)).TruncateToMilliseconds()
 	// Create timestamp with unix time of 0 (1 January 1970)
-	zeroTime := bigtable.Time(time.Unix(0,0)).TruncateToMilliseconds()
+	zeroTime := bigtable.Time(time.Unix(0, 0)).TruncateToMilliseconds()
 
 	// Create slice of mutations for deleting any rows not within the past 1 millisecond
 	deleteMut := bigtable.NewMutation()

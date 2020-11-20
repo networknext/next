@@ -443,7 +443,7 @@ func TestBigTable(t *testing.T) {
 
 			metaBinary, err := transport.SessionMeta{}.MarshalBinary()
 			assert.NoError(t, err)
-			
+
 			// Create a map of column name to session data
 			sessionDataMap := make(map[string][]byte)
 			sessionDataMap["meta"] = metaBinary
@@ -490,7 +490,7 @@ func TestBigTable(t *testing.T) {
 
 			metaBinary, err := transport.SessionMeta{}.MarshalBinary()
 			assert.NoError(t, err)
-			
+
 			// Create a map of column name to session data
 			sessionDataMap := make(map[string][]byte)
 			sessionDataMap["meta"] = metaBinary
