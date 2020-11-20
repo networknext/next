@@ -11884,9 +11884,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.platform_id = session->stats_platform_id;
             packet.user_hash = session->user_hash;
             packet.num_tags = session->num_tags;
-            for ( int i = 0; i < session->num_tags; ++i )
+            for ( int j = 0; j < session->num_tags; ++j )
             {
-                packet.tags[i] = session->tags[i];
+                packet.tags[j] = session->tags[j];
             }
             packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
