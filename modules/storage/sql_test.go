@@ -184,14 +184,13 @@ func TestInsertSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
+		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
+		assert.NoError(t, err)
+
 		rid := crypto.HashID(addr.String())
 
 		publicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(publicKey)
-		assert.NoError(t, err)
-
-		updateKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(updateKey)
 		assert.NoError(t, err)
 
 		// fields not stored in the database are not tested here
@@ -199,12 +198,12 @@ func TestInsertSQL(t *testing.T) {
 			ID:             rid,
 			Name:           "local.1",
 			Addr:           *addr,
+			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
 			SSHPort:        22,
 			SSHUser:        "fred",
 			MaxSessions:    1000,
 			PublicKey:      publicKey,
-			UpdateKey:      updateKey,
 			// Datacenter:     outerDatacenter,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
@@ -239,7 +238,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
-		assert.Equal(t, relay.UpdateKey, checkRelay.UpdateKey)
 		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
@@ -379,26 +377,25 @@ func TestDeleteSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
+		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
+		assert.NoError(t, err)
+
 		rid := crypto.HashID(addr.String())
 
 		relayPublicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(relayPublicKey)
 		assert.NoError(t, err)
 
-		updateKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(updateKey)
-		assert.NoError(t, err)
-
 		relay := routing.Relay{
 			ID:             rid,
 			Name:           "local.1",
 			Addr:           *addr,
+			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
 			SSHPort:        22,
 			SSHUser:        "fred",
 			MaxSessions:    1000,
 			PublicKey:      relayPublicKey,
-			UpdateKey:      updateKey,
 			Datacenter:     outerDatacenter,
 			MRC:            19700000000000,
 			Overage:        26000000000000,
@@ -643,24 +640,23 @@ func TestUpdateSQL(t *testing.T) {
 
 		rid := crypto.HashID(addr.String())
 
-		publicKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(publicKey)
+		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
 		assert.NoError(t, err)
 
-		updateKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(updateKey)
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
 		relay := routing.Relay{
 			ID:                  rid,
 			Name:                "local.1",
 			Addr:                *addr,
+			InternalAddr:        *internalAddr,
 			ManagementAddr:      "1.2.3.4",
 			SSHPort:             22,
 			SSHUser:             "fred",
 			MaxSessions:         1000,
 			PublicKey:           publicKey,
-			UpdateKey:           updateKey,
 			Datacenter:          datacenterWithID,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
@@ -732,13 +728,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("public key"), checkRelay.PublicKey)
 
-		// relay.UpdateKey
-		err = db.UpdateRelay(ctx, rid, "UpdateKey", []byte("update key"))
-		assert.NoError(t, err)
-		checkRelay, err = db.Relay(rid)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("update key"), checkRelay.UpdateKey)
-
 		// relay.Datacenter = only one datacenter available...
 
 		// relay.MRC
@@ -770,20 +759,25 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, int32(1), checkRelay.ContractTerm)
 
 		// relay.StartDate
-		startDate := time.Now()
+		// We use a string as type-switching (in UpdateRelay()) doesn't work with a time.Time type
+		startDate := "July 7, 2023"
 		err = db.UpdateRelay(ctx, rid, "StartDate", startDate)
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, startDate, checkRelay.StartDate)
+		startDateFormatted, err := time.Parse("January 2, 2006", startDate)
+		assert.NoError(t, err)
+		assert.Equal(t, startDateFormatted, checkRelay.StartDate)
 
 		// relay.EndDate
-		endDate := time.Now()
+		endDate := "July 7, 2025"
 		err = db.UpdateRelay(ctx, rid, "EndDate", endDate)
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, endDate, checkRelay.EndDate)
+		endDateFormatted, err := time.Parse("January 2, 2006", endDate)
+		assert.NoError(t, err)
+		assert.Equal(t, endDateFormatted, checkRelay.EndDate)
 
 		// relay.Type
 		err = db.UpdateRelay(ctx, rid, "Type", float64(2))

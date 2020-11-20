@@ -1185,7 +1185,7 @@ func main() {
 					{
 						Name:       "addr",
 						ShortUsage: "next relay ops addr <relay> <IP address:port e.g 10.1.2.34:40000>",
-						ShortHelp:  "Set the internal address for the specified relay",
+						ShortHelp:  "Set the external address for the specified relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
 								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
@@ -1254,6 +1254,19 @@ func main() {
 							}
 
 							opsMaxSessions(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
+					{
+						Name:       "internaladdr",
+						ShortUsage: "next relay ops internaladdr <relay> <IP address:port e.g 10.1.2.34:40000>",
+						ShortHelp:  "Set the internal network address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
+							}
+
+							opsInternalAddr(rpcClient, env, args[0], args[1])
 							return nil
 						},
 					},

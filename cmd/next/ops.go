@@ -433,6 +433,35 @@ func opsMaxSessions(rpcClient jsonrpc.RPCClient,
 
 }
 
+func opsInternalAddr(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	addr string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "InternalAddr",
+		Value:   addr,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay internal IP address successfully updated.")
+	return
+
+}
+
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (uint64, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
