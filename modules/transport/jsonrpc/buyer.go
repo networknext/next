@@ -142,8 +142,13 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if s.UseBigtable {
+		// Create the filters to use for reading rows
+		chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"),
+			bigtable.LatestNFilter(1),
+		)
+
 		// Fetch historic sessions by user hash if there are any
-		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -153,7 +158,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Fetch historic sessions by user ID if there are any
-		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -167,14 +172,18 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		var sessionMeta transport.SessionMeta
 		if len(rowsByHash) > 0 {
 			for _, row := range rowsByHash {
-				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+					return err
+				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}
 			}
 		} else if len(rowsByID) > 0 {
 			for _, row := range rowsByID {
-				sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+					return err
+				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}

@@ -504,11 +504,16 @@ func SetupBigtable(ctx context.Context,
 
 	if btEmulatorOK {
 		if historicalPath, ok := os.LookupEnv("BIGTABLE_HISTORICAL_TXT"); ok {
-			// Insert historical data into bigtable during local testing
-			level.Info(logger).Log("msg", "Seeding bigtable with historical data.")
-			err = SeedBigtable(ctx, btClient, btCfNames, historicalPath)
-			if err != nil {
-				return nil, nil, err
+			// Check if historical path is valid
+			if _, err := os.Stat(historicalPath); !os.IsNotExist(err) {
+				// Insert historical data into bigtable during local testing
+				level.Info(logger).Log("msg", "Seeding bigtable with historical data.")
+				err = SeedBigtable(ctx, btClient, btCfNames, historicalPath)
+				if err != nil {
+					return nil, nil, err
+				}
+			} else {
+				level.Info(logger).Log("msg", "path", historicalPath, "Does not exist. Skipping over seeding bigtable with historical data")
 			}
 		} else {
 			level.Info(logger).Log("msg", "Could not locate BIGTABLE_HISTORICAL_TXT. Skipping over seeding bigtable with historical data")
