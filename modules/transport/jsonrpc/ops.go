@@ -512,6 +512,7 @@ type relay struct {
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
+	InternalAddr        string                `json:"internalAddr"`
 	Latitude            float64               `json:"latitude"`
 	Longitude           float64               `json:"longitude"`
 	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
@@ -523,7 +524,6 @@ type relay struct {
 	SSHPort             int64                 `json:"ssh_port"`
 	MaxSessionCount     uint32                `json:"maxSessionCount"`
 	PublicKey           string                `json:"public_key"`
-	UpdateKey           string                `json:"update_key"`
 	FirestoreID         string                `json:"firestore_id"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
@@ -538,6 +538,7 @@ type relay struct {
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
 	DatabaseID          int64
+	DatacenterID        uint64
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -557,7 +558,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			State:               r.State.String(),
 			LastUpdateTime:      r.LastUpdateTime,
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
-			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
@@ -1000,5 +1000,55 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		s.Logger.Log("err", err)
 		return err
 	}
+	return nil
+}
+
+type GetRelayArgs struct {
+	RelayID uint64
+}
+
+type GetRelayReply struct {
+	Relay relay
+}
+
+func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRelayReply) error {
+	routingRelay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("Error retrieving relay ID %016x: %v", args.RelayID, err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	relay := relay{
+		ID:                  routingRelay.ID,
+		SignedID:            routingRelay.SignedID,
+		Name:                routingRelay.Name,
+		Addr:                routingRelay.Addr.String(),
+		InternalAddr:        routingRelay.InternalAddr.String(),
+		Latitude:            routingRelay.Datacenter.Location.Latitude,
+		Longitude:           routingRelay.Datacenter.Location.Longitude,
+		NICSpeedMbps:        routingRelay.NICSpeedMbps,
+		IncludedBandwidthGB: routingRelay.IncludedBandwidthGB,
+		ManagementAddr:      routingRelay.ManagementAddr,
+		SSHUser:             routingRelay.SSHUser,
+		SSHPort:             routingRelay.SSHPort,
+		State:               routingRelay.State.String(),
+		LastUpdateTime:      routingRelay.LastUpdateTime,
+		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
+		MaxSessionCount:     routingRelay.MaxSessions,
+		SellerName:          routingRelay.Seller.Name,
+		MRC:                 routingRelay.MRC,
+		Overage:             routingRelay.Overage,
+		BWRule:              routingRelay.BWRule,
+		ContractTerm:        routingRelay.ContractTerm,
+		StartDate:           routingRelay.StartDate,
+		EndDate:             routingRelay.EndDate,
+		Type:                routingRelay.Type,
+		DatabaseID:          routingRelay.DatabaseID,
+		DatacenterID:        routingRelay.Datacenter.ID,
+	}
+
+	reply.Relay = relay
+
 	return nil
 }

@@ -781,7 +781,6 @@ func main() {
 					relay := &relays[0]
 
 					fmt.Printf("Public Key: %s\n", relay.publicKey)
-					fmt.Printf("Update Key: %s\n", relay.updateKey)
 
 					return nil
 				},
@@ -1282,6 +1281,19 @@ func main() {
 					} else {
 						relayTraffic(rpcClient, env, "")
 					}
+					return nil
+				},
+			},
+			{
+				Name:       "info",
+				ShortUsage: "next relay info [regex]",
+				ShortHelp:  "Display detailed information for the specified relay(s)",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Must provide a relay name"), 0)
+					}
+
+					getDetailedRelayInfo(rpcClient, env, args[0])
 					return nil
 				},
 			},

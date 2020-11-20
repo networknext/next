@@ -462,6 +462,61 @@ func opsInternalAddr(rpcClient jsonrpc.RPCClient,
 
 }
 
+func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.GetRelayArgs{
+		RelayID: relayID,
+	}
+
+	var reply localjsonrpc.GetRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.GetRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	startDate := reply.Relay.StartDate.Format("January 1, 2006")
+	endDate := reply.Relay.EndDate.Format("January 1, 2006")
+
+	relay := "\nrelay info:\n"
+	relay += "  ID                 : " + fmt.Sprintf("%d", reply.Relay.ID) + "\n"
+	relay += "  Name               : " + reply.Relay.Name + "\n"
+	relay += "  Addr               : " + reply.Relay.Addr + "\n"
+	relay += "  InternalAddr       : " + reply.Relay.InternalAddr + "\n"
+	relay += "  PublicKey          : " + string(reply.Relay.PublicKey) + "\n"
+	relay += "  Datacenter         : " + fmt.Sprintf("%016x", reply.Relay.DatacenterID) + "\n"
+	relay += "  NICSpeedMbps       : " + fmt.Sprintf("%d", reply.Relay.NICSpeedMbps) + "\n"
+	relay += "  IncludedBandwidthGB: " + fmt.Sprintf("%d", reply.Relay.IncludedBandwidthGB) + "\n"
+	relay += "  State              : " + fmt.Sprintf("%v", reply.Relay.State) + "\n"
+	relay += "  ManagementAddr     : " + reply.Relay.ManagementAddr + "\n"
+	relay += "  SSHUser            : " + reply.Relay.SSHUser + "\n"
+	relay += "  SSHPort            : " + fmt.Sprintf("%d", reply.Relay.SSHPort) + "\n"
+	relay += "  MaxSessions        : " + fmt.Sprintf("%d", reply.Relay.MaxSessionCount) + "\n"
+	relay += "  CPUUsage           : " + fmt.Sprintf("%f", reply.Relay.CPUUsage) + "\n"
+	relay += "  MemUsage           : " + fmt.Sprintf("%f", reply.Relay.MemUsage) + "\n"
+	relay += "  MRC                : " + fmt.Sprintf("%v", reply.Relay.MRC) + "\n"
+	relay += "  Overage            : " + fmt.Sprintf("%v", reply.Relay.Overage) + "\n"
+	relay += "  BWRule             : " + fmt.Sprintf("%v", reply.Relay.BWRule) + "\n"
+	relay += "  ContractTerm       : " + fmt.Sprintf("%d", reply.Relay.ContractTerm) + "\n"
+	relay += "  StartDate          : " + startDate + "\n"
+	relay += "  EndDate            : " + endDate + "\n"
+	relay += "  Type               : " + fmt.Sprintf("%v", reply.Relay.Type) + "\n"
+	relay += "  DatabaseID         : " + fmt.Sprintf("%d", reply.Relay.DatabaseID) + "\n"
+
+	fmt.Printf("%s\n", relay)
+
+	return
+
+}
+
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (uint64, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
