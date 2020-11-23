@@ -1444,9 +1444,29 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	defer bqClient.Close()
 
 	// a timestamp must be provided although it is not relevant to this query
-	sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
-	sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-	sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+	if env, ok := os.LookupEnv("ENV"); ok {
+		if ok {
+			if env == "prod" {
+				sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
+				sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+				sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+
+			} else if env == "dev" {
+				sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
+				sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+				sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+
+			} else {
+				err = fmt.Errorf("GetAllSessionBillingInfo() failed to parse env: %v", err)
+				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+				return err
+			}
+		} else {
+			err = fmt.Errorf("GetAllSessionBillingInfo() failed to parse env: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+	}
 
 	q := bqClient.Query(string(sql.String()))
 
