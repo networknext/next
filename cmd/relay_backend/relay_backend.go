@@ -229,7 +229,7 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy)
+				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss))
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
@@ -332,7 +332,9 @@ func mainReturnWithCode() int {
 
 						rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
 						if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
-							numRouteable++
+							if jitter <= float32(maxJitter) && pl <= float32(maxPacketLoss) {
+								numRouteable++
+							}
 						}
 					}
 
