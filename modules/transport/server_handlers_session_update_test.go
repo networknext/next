@@ -59,6 +59,20 @@ func assertAllMetricsEqual(t *testing.T, expectedMetrics metrics.SessionUpdateMe
 	}
 }
 
+func assertResponseEqual(t *testing.T, expectedResponse transport.SessionResponsePacket, actualResponse transport.SessionResponsePacket) {
+	// We can't check if the entire response is equal since the response's tokens will be different each time
+	// since the encryption generates random bytes for the nonce
+	assert.Equal(t, expectedResponse.SessionID, actualResponse.SessionID)
+	assert.Equal(t, expectedResponse.SliceNumber, actualResponse.SliceNumber)
+	assert.Equal(t, expectedResponse.RouteType, actualResponse.RouteType)
+	assert.Equal(t, expectedResponse.NumNearRelays, actualResponse.NumNearRelays)
+	assert.Equal(t, expectedResponse.NearRelayIDs, actualResponse.NearRelayIDs)
+	assert.Equal(t, expectedResponse.NearRelayAddresses, actualResponse.NearRelayAddresses)
+	assert.Equal(t, expectedResponse.NumTokens, actualResponse.NumTokens)
+	assert.Equal(t, expectedResponse.HasDebug, actualResponse.HasDebug)
+	assert.Equal(t, expectedResponse.Debug, actualResponse.Debug)
+}
+
 // todo: these should be their own type/file and not tested alongside the session update handler
 func TestGetRouteAddressesAndPublicKeysFailure(t *testing.T) {
 	ctx := context.Background()
@@ -1469,16 +1483,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
@@ -1733,16 +1738,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
@@ -1993,15 +1989,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
+	assertResponseEqual(t, expectedResponse, responsePacket)
 
 	assert.Equal(t, 5*core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, len(responsePacket.Tokens))
 
@@ -2224,16 +2212,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
@@ -2439,16 +2418,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
@@ -2654,16 +2624,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
@@ -2831,16 +2792,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.NoRoute.Value())
 }
 
@@ -3027,16 +2979,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.MultipathOverload.Value())
 }
 
@@ -3219,16 +3162,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.LatencyWorse.Value())
 }
 
@@ -3437,16 +3371,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
-
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
 
@@ -3642,15 +3567,213 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 
 	assert.Equal(t, expectedSessionData, sessionData)
 
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, responsePacket.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, responsePacket.RouteType)
-	assert.Equal(t, expectedResponse.NumNearRelays, responsePacket.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, responsePacket.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, responsePacket.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, responsePacket.NumTokens)
+	assertResponseEqual(t, expectedResponse, responsePacket)
+	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
+}
 
+func TestSessionUpdateDebugResponse(t *testing.T) {
+	// Seed the RNG so we don't get different results from running `make test`
+	// and running the test directly in VSCode
+	rand.Seed(0)
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+
+	expectedMetrics := metrics.EmptyServerBackendMetrics
+	var err error
+	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	err = storer.AddBuyer(context.Background(), routing.Buyer{
+		ID:             100,
+		Live:           true,
+		Debug:          true,
+		RouteShader:    core.NewRouteShader(),
+		InternalConfig: core.NewInternalConfig(),
+	})
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
+	assert.NoError(t, err)
+
+	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+	assert.NoError(t, err)
+	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	assert.NoError(t, err)
+
+	publicKey := make([]byte, crypto.KeySize)
+	privateKey := [crypto.KeySize]byte{}
+
+	err = storer.AddRelay(context.Background(), routing.Relay{
+		ID:         1,
+		Name:       "test.relay.1",
+		Addr:       *relayAddr1,
+		PublicKey:  publicKey,
+		Seller:     routing.Seller{ID: "seller"},
+		Datacenter: routing.Datacenter{ID: 10},
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddRelay(context.Background(), routing.Relay{
+		ID:         2,
+		Name:       "test.relay.2",
+		Addr:       *relayAddr2,
+		PublicKey:  publicKey,
+		Seller:     routing.Seller{ID: "seller"},
+		Datacenter: routing.Datacenter{ID: 10},
+	})
+	assert.NoError(t, err)
+
+	sessionDataStruct := transport.SessionData{
+		Version:         transport.SessionDataVersion,
+		SessionID:       1111,
+		SliceNumber:     1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: uint64(time.Now().Unix()),
+		RouteNumRelays:  2,
+		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteState: core.RouteState{
+			Next:          true,
+			ReduceLatency: true,
+			CommitPending: true,
+			CommitCounter: 3,
+		},
+	}
+
+	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
+	assert.NoError(t, err)
+
+	sessionDataArray := [transport.MaxSessionDataSize]byte{}
+	copy(sessionDataArray[:], sessionDataSlice)
+
+	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:57247")
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+
+	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
+		SessionID:            1111,
+		CustomerID:           100,
+		DatacenterID:         10,
+		SliceNumber:          1,
+		SessionDataBytes:     int32(len(sessionDataSlice)),
+		SessionData:          sessionDataArray,
+		ClientAddress:        *clientAddr,
+		ServerAddress:        *serverAddr,
+		ClientRoutePublicKey: publicKey,
+		ServerRoutePublicKey: publicKey,
+		DirectRTT:            60,
+		Next:                 true,
+		NextRTT:              62,
+		NumNearRelays:        2,
+		NearRelayIDs:         []uint64{1, 2},
+		NearRelayRTT:         []float32{10, 15},
+		NearRelayJitter:      []float32{0, 0},
+		NearRelayPacketLoss:  []float32{0, 0},
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var goodIPLocator goodIPLocator
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &goodIPLocator
+	}
+
+	routeMatrix := routing.RouteMatrix{
+		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1},
+		RelayIDs:           []uint64{1, 2},
+		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
+		RelayNames:         []string{"test.relay.1", "test.relay.2"},
+		RelayLatitudes:     []float32{90, 89},
+		RelayLongitudes:    []float32{180, 179},
+		RelayDatacenterIDs: []uint64{10, 10},
+		RouteEntries: []core.RouteEntry{
+			{
+				DirectCost:     65,
+				NumRoutes:      int32(core.TriMatrixLength(2)),
+				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
+				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
+				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
+					{
+						1, 0,
+					},
+				},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(1, 0)},
+			},
+		},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix {
+		return &routeMatrix
+	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
+	expectedResponse := transport.SessionResponsePacket{
+		Version:            requestPacket.Version,
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeContinue,
+		NumNearRelays:      2,
+		NearRelayIDs:       []uint64{1, 2},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
+		NumTokens:          4,
+		HasDebug:           true,
+		Debug:              "test.relay.2 -> test.relay.1",
+	}
+
+	expectedSessionData := transport.SessionData{
+		SessionID:       requestPacket.SessionID,
+		SessionVersion:  sessionDataStruct.SessionVersion,
+		SliceNumber:     requestPacket.SliceNumber + 1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		Initial:         false,
+		RouteNumRelays:  2,
+		RouteCost:       50,
+		RouteRelayIDs:   [5]uint64{2, 1, 0, 0, 0},
+		RouteState: core.RouteState{
+			UserID:        requestPacket.UserHash,
+			Next:          true,
+			ReduceLatency: true,
+			Committed:     true,
+		},
+		EverOnNext: true,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+
+	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
