@@ -157,47 +157,6 @@
                 <dd>
                   {{ this.meta.connection }}
                 </dd>
-                <!-- TODO: Combine this so that we only check is Admin once -->
-                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                    Nearby Relays
-                </dt>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
-                    No Nearby Relays
-                </dd>
-                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                  <thead>
-                    <tr>
-                      <th style="width: 50%;">
-                        Name
-                      </th>
-                      <th style="width: 16.66%;">
-                        RTT
-                      </th>
-                      <th style="width: 16.66%;">
-                        Jitter
-                      </th>
-                      <th style="width: 16.66%;">
-                        Packet Loss
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
-                        <td>
-                          <a class="text-dark">{{relay.name}}</a>&nbsp;
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
-                        </td>
-                      </tr>
-                  </tbody>
-                </table>
                 <dt  v-if="$store.getters.isAdmin">
                     Route
                 </dt>
@@ -241,6 +200,47 @@
                     </tr>
                   </tbody>
                 </table>
+                <!-- TODO: Combine this so that we only check is Admin once -->
+                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                    Nearby Relays
+                </dt>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
+                    No Nearby Relays
+                </dd>
+                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                  <thead>
+                    <tr>
+                      <th style="width: 50%;">
+                        Name
+                      </th>
+                      <th style="width: 16.66%;">
+                        RTT
+                      </th>
+                      <th style="width: 16.66%;">
+                        Jitter
+                      </th>
+                      <th style="width: 16.66%;">
+                        Packet Loss
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
+                        <td>
+                          <a class="text-dark">{{relay.name}}</a>&nbsp;
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
+                        </td>
+                      </tr>
+                  </tbody>
+                </table>
               </dl>
             </div>
           </div>
@@ -261,6 +261,7 @@ import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
+import data1 from '../../test_data/session_details.json'
 
 /**
  * This component displays all of the information related to the session
@@ -314,6 +315,8 @@ export default class SessionDetails extends Vue {
     this.searchID = ''
     this.message = ''
     this.alertType = AlertTypes.ERROR
+    this.slices = (data1 as any).result.slices
+    this.meta = (data1 as any).result.meta
   }
 
   private mounted () {
@@ -353,8 +356,8 @@ export default class SessionDetails extends Vue {
   private fetchSessionDetails () {
     this.$apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
-        this.meta = response.meta
-        this.slices = response.slices
+        // this.meta = response.meta
+        // this.slices = response.slices
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
@@ -560,14 +563,15 @@ export default class SessionDetails extends Vue {
         }
       },
       scales: {
-        ms: {
+        // This causing the axis to not render correctly....
+        /* ms: {
           from: 'y',
           auto: false,
           range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
             0,
             max
           ]
-        }
+        } */
       },
       series: series,
       axes: [
@@ -577,8 +581,6 @@ export default class SessionDetails extends Vue {
         {
           scale: 'ms',
           show: true,
-          gap: 5,
-          size: 70,
           values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + 'ms')
         }
       ]
@@ -645,14 +647,15 @@ export default class SessionDetails extends Vue {
         }
       },
       scales: {
-        kbps: {
+        // This causing the axis to not render correctly....
+        /* kbps: {
           from: 'y',
           auto: false,
           range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
             0,
             max
           ]
-        }
+        } */
       },
       series: [
         {},
