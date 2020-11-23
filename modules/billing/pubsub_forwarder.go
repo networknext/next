@@ -59,7 +59,13 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		billingEntries := make([]BillingEntry, len(entries))
 		for i := range billingEntries {
 			if ReadBillingEntry(&billingEntries[i], entries[i]) {
-				billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
+				// Starting with version 13 of the billing entry the timestamp is now stored per entry
+				// This means we don't want to use pubsub's publish time anymore, unless it's an older
+				// version where the timestamp wouldn't be deserialized.
+				if billingEntries[i].Timestamp == 0 {
+					billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
+				}
+
 				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 					return
