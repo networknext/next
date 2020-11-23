@@ -157,7 +157,7 @@
                 <dd>
                   {{ this.meta.connection }}
                 </dd>
-                <dt  v-if="$store.getters.isAdmin">
+                <dt v-if="$store.getters.isAdmin" style="padding-top: 20px;">
                     Route
                 </dt>
                 <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
