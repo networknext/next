@@ -704,6 +704,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	}
 
 	billingEntry := &billing.BillingEntry{
+		Timestamp:                 uint64(time.Now().Unix()),
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
 		SessionID:                 packet.SessionID,
