@@ -172,6 +172,8 @@
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
+#define NEXT_MAX_SESSION_DEBUG                                       1024
+
 static uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -9582,6 +9584,8 @@ struct NextBackendSessionResponsePacket
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     bool multipath;
     bool committed;
+    bool has_debug;
+    char debug[NEXT_MAX_SESSION_DEBUG];
 
     NextBackendSessionResponsePacket()
     {
@@ -9624,6 +9628,12 @@ struct NextBackendSessionResponsePacket
         if ( response_type == NEXT_UPDATE_TYPE_CONTINUE )
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+        }
+
+        serialize_bool( stream, has_debug );
+        if ( has_debug )
+        {
+            serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
         
         return true;
@@ -10869,6 +10879,16 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                     memcpy( entry->previous_route_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
                 }
             }
+
+            // SDK 4.0.4 adds the ability for the backend to pass down a free form
+            // debug string to the server in the session response. Print it out here 
+            // so we can see what's going on on the server-side
+            if ( packet.has_debug )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session debug for %" PRIx64 ": %s\n", entry->session_id, packet.debug );
+            }
+
+            // todo: store the session debug info in the session entry and pass it down to the client in the next route update
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
@@ -14812,6 +14832,8 @@ static void test_backend_packets()
         {
             in.session_data[i] = uint8_t(i);
         }
+        in.has_debug = true;
+        strcpy( in.debug, "hello session" );
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14826,6 +14848,8 @@ static void test_backend_packets()
             next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
         next_check( in.response_type == out.response_type );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
     }
 
     // session response packet (route)
