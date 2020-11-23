@@ -1444,7 +1444,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	defer bqClient.Close()
 
 	// a timestamp must be provided although it is not relevant to this query
-	// use 5782814167830682977 as a temporart signed int
 	sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
 	sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
 	sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
