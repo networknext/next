@@ -230,7 +230,6 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		Version:            requestPacket.Version,
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
@@ -3765,6 +3764,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 

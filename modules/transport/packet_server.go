@@ -465,16 +465,6 @@ type SessionResponsePacket struct {
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
-	versionMajor := uint32(packet.Version.Major)
-	versionMinor := uint32(packet.Version.Minor)
-	versionPatch := uint32(packet.Version.Patch)
-
-	stream.SerializeBits(&versionMajor, 8)
-	stream.SerializeBits(&versionMinor, 8)
-	stream.SerializeBits(&versionPatch, 8)
-
-	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-
 	stream.SerializeUint64(&packet.SessionID)
 	stream.SerializeUint32(&packet.SliceNumber)
 
@@ -517,7 +507,7 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeBytes(packet.Tokens)
 	}
 
-	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 4) {
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
 		stream.SerializeBool(&packet.HasDebug)
 		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
 	}
