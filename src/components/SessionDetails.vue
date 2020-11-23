@@ -449,6 +449,7 @@ export default class SessionDetails extends Vue {
     const latencyData: Array<Array<number>> = [
       [],
       [],
+      [],
       []
     ]
     const jitterData: Array<Array<number>> = [
@@ -487,6 +488,7 @@ export default class SessionDetails extends Vue {
 
       const nextRTT = parseFloat(slice.next.rtt)
       const directRTT = parseFloat(slice.direct.rtt)
+      const predictedRTT = parseFloat(slice.predicted.rtt)
 
       const nextJitter = parseFloat(slice.next.jitter)
       const directJitter = parseFloat(slice.direct.jitter)
@@ -500,6 +502,7 @@ export default class SessionDetails extends Vue {
       latencyData[0].push(timestamp)
       latencyData[1].push(next)
       latencyData[2].push(direct)
+      latencyData[3].push(predictedRTT)
 
       // Jitter
       next = (slice.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
@@ -547,6 +550,14 @@ export default class SessionDetails extends Vue {
       value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
     })
 
+    if (this.$store.getters.isAdmin) {
+      series.push({
+        stroke: 'rgb(255, 103, 0)',
+        label: 'Predicted',
+        value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
+      })
+    }
+
     let chartWidth = 0
 
     if (latencyChartElement) {
@@ -581,6 +592,63 @@ export default class SessionDetails extends Vue {
         {
           scale: 'ms',
           show: true,
+          gap: 5,
+          size: 70,
+          values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + 'ms')
+        }
+      ]
+    }
+
+    series = [
+      {}
+    ]
+
+    if (!directOnly) {
+      series.push({
+        stroke: 'rgb(0, 109, 44)',
+        fill: 'rgba(0, 109, 44, 0.1)',
+        label: 'Network Next',
+        value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
+      })
+    }
+
+    series.push({
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      label: 'Direct',
+      value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
+    })
+
+    const jitterComparisonOpts: uPlot.Options = {
+      width: chartWidth,
+      height: 260,
+      cursor: {
+        drag: {
+          x: false,
+          y: false
+        }
+      },
+      scales: {
+        // This causing the axis to not render correctly....
+        /* ms: {
+          from: 'y',
+          auto: false,
+          range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
+            0,
+            max
+          ]
+        } */
+      },
+      series: series,
+      axes: [
+        {
+          show: false
+        },
+        {
+          scale: 'ms',
+          show: true,
+          gap: 5,
+          size: 70,
           values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + 'ms')
         }
       ]
@@ -700,7 +768,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (jitterChartElement) {
-      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, jitterChartElement)
+      this.jitterComparisonChart = new uPlot(jitterComparisonOpts, jitterData, jitterChartElement)
     }
 
     if (this.packetLossComparisonChart) {
