@@ -10885,7 +10885,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // so we can see what's going on on the server-side
             if ( packet.has_debug )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session debug for %" PRIx64 ": %s\n", entry->session_id, packet.debug );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session debug for %" PRIx64 ": %s", entry->session_id, packet.debug );
             }
 
             // todo: store the session debug info in the session entry and pass it down to the client in the next route update
