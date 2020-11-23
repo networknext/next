@@ -1405,3 +1405,43 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 		assert.True(t, verified)
 	})
 }
+
+func TestGetAllSessionBillingInfo(t *testing.T) {
+
+	// the target endpoint makes an external call we can't easily mock
+	t.Skip()
+
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	logger := log.NewNopLogger()
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("get all", func(t *testing.T) {
+
+		arg := &jsonrpc.GetAllSessionBillingInfoArg{
+			SessionID: 5782814167830682977,
+		}
+
+		reply := &jsonrpc.GetAllSessionBillingInfoReply{
+			SessionBillingInfo: []transport.BigQueryBillingEntry{},
+		}
+
+		err := svc.GetAllSessionBillingInfo(req, arg, reply)
+		assert.NoError(t, err)
+
+	})
+}

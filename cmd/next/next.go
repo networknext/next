@@ -625,6 +625,27 @@ func main() {
 			sessions(rpcClient, env, args[0], sessionCount)
 			return nil
 		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "dump",
+				ShortUsage: "next session dump <session id>",
+				ShortHelp:  "Write all billing data for the given ID to a CSV file",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
+					}
+
+					sessionID, err := strconv.ParseUint(args[0], 16, 64)
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not convert %s to uint64", args[0]), 0)
+					}
+
+					dumpSession(rpcClient, env, sessionID)
+
+					return nil
+				},
+			},
+		},
 	}
 
 	var relaysCommand = &ffcli.Command{
