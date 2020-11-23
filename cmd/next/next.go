@@ -2015,7 +2015,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		Subcommands: []*ffcli.Command{
 			{
 				Name:       "cost",
-				ShortUsage: "next view cost",
+				ShortUsage: "next view costs",
 				ShortHelp:  "View the entries of the cost matrix",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "cost.bin"
@@ -2025,7 +2025,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 			},
 			{
 				Name:       "route",
-				ShortUsage: "next view route [srcRelay] [destRelay]",
+				ShortUsage: "next view routes [srcRelay] [destRelay]",
 				ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "optimize.bin"
