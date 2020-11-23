@@ -261,7 +261,7 @@ import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-import data1 from '../../test_data/session_details.json'
+// import data1 from '../../test_data/session_details.json'
 
 /**
  * This component displays all of the information related to the session
@@ -315,8 +315,8 @@ export default class SessionDetails extends Vue {
     this.searchID = ''
     this.message = ''
     this.alertType = AlertTypes.ERROR
-    this.slices = (data1 as any).result.slices
-    this.meta = (data1 as any).result.meta
+    // this.slices = (data1 as any).result.slices
+    // this.meta = (data1 as any).result.meta
   }
 
   private mounted () {
@@ -356,8 +356,8 @@ export default class SessionDetails extends Vue {
   private fetchSessionDetails () {
     this.$apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
-        // this.meta = response.meta
-        // this.slices = response.slices
+        this.meta = response.meta
+        this.slices = response.slices
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
