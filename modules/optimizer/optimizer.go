@@ -3,6 +3,11 @@ package optimizer
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"net"
+	"runtime"
+	"time"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/util/conn"
@@ -15,12 +20,6 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
-	"math/rand"
-	"net"
-	"runtime"
-	"time"
-
-
 )
 
 type Optimizer struct {
@@ -422,14 +421,13 @@ func (o *Optimizer) StartSubscriber() error {
 	}
 }
 
-
-func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPublisher,ctx context.Context, publishInterval time.Duration) error {
+func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPublisher, ctx context.Context, publishInterval time.Duration) error {
 	syncTimer := helpers.NewSyncTimer(publishInterval)
-	for !o.shutdown{
+	for !o.shutdown {
 		syncTimer.Run()
 
 		cpy := o.StatsDB.MakeCopy()
-		entries := analytics.ExtractPingStats(cpy)
+		entries := analytics.ExtractPingStats(cpy, o.cfg.MaxJitter, o.cfg.MaxPacketLoss)
 		if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 			level.Error(o.Logger).Log("err", err)
 			return err
@@ -439,10 +437,10 @@ func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPubl
 	return nil
 }
 
-func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsPublisher,ctx context.Context, publishInterval time.Duration) error {
+func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsPublisher, ctx context.Context, publishInterval time.Duration) error {
 
 	syncTimer := helpers.NewSyncTimer(publishInterval)
-	for !o.shutdown{
+	for !o.shutdown {
 		syncTimer.Run()
 		allRelayData := o.RelayMap.GetAllRelayData()
 		entries := make([]analytics.RelayStatsEntry, len(allRelayData))
@@ -491,7 +489,9 @@ func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsP
 
 				rtt, jitter, pl := o.StatsDB.GetSample(relay.ID, otherRelay.ID)
 				if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
-					numRouteable++
+					if jitter <= float32(o.cfg.MaxJitter) && pl <= float32(o.cfg.MaxPacketLoss) {
+						numRouteable++
+					}
 				}
 			}
 

@@ -22,7 +22,7 @@ type PingStatsEntry struct {
 	Routable   bool
 }
 
-func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
+func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32) []PingStatsEntry {
 	length := routing.TriMatrixLength(len(statsdb.Entries))
 	entries := make([]PingStatsEntry, length)
 
@@ -41,6 +41,15 @@ func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
 				idB := ids[j]
 
 				rtt, jitter, pl := statsdb.GetSample(idA, idB)
+				routable := rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue
+
+				if jitter > maxJitter {
+					routable = false
+				}
+
+				if pl > maxPacketLoss {
+					routable = false
+				}
 
 				entries[routing.TriMatrixIndex(i, j)] = PingStatsEntry{
 					RelayA:     idA,
@@ -48,7 +57,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
 					RTT:        rtt,
 					Jitter:     jitter,
 					PacketLoss: pl,
-					Routable:   rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue,
+					Routable:   routable,
 				}
 			}
 		}
