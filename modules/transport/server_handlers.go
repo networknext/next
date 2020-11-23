@@ -279,6 +279,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		datacenter := routing.UnknownDatacenter
 
 		response := SessionResponsePacket{
+			Version:     packet.Version,
 			SessionID:   packet.SessionID,
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
@@ -565,6 +566,17 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 			routeRelayNames[i] = relay.Name
 			routeRelaySellers[i] = relay.Seller
+		}
+
+		if buyer.Debug {
+			response.HasDebug = true
+
+			for i := int32(0); i < routeNumRelays; i++ {
+				response.Debug += routeRelayNames[i]
+				if i < routeNumRelays-1 {
+					response.Debug += " -> "
+				}
+			}
 		}
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
