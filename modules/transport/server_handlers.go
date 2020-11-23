@@ -801,6 +801,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 				Jitter:     float64(packet.DirectJitter),
 				PacketLoss: float64(packet.DirectPacketLoss),
 			},
+			Predicted: routing.Stats{
+				RTT: float64(sessionData.RouteCost),
+			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),
 				Down: int64(packet.NextKbpsDown),
