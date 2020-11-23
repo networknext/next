@@ -18,7 +18,7 @@ const (
 	SessionCountDataVersion  = 0
 	SessionPortalDataVersion = 1
 	SessionMetaVersion       = 0
-	SessionSliceVersion      = 0
+	SessionSliceVersion      = 1
 	SessionMapPointVersion   = 0
 )
 
@@ -704,6 +704,7 @@ type SessionSlice struct {
 	Timestamp         time.Time        `json:"timestamp"`
 	Next              routing.Stats    `json:"next"`
 	Direct            routing.Stats    `json:"direct"`
+	Predicted         routing.Stats    `json:"predicted"`
 	Envelope          routing.Envelope `json:"envelope"`
 	OnNetworkNext     bool             `json:"on_network_next"`
 	IsMultiPath       bool             `json:"is_multipath"`
@@ -748,6 +749,12 @@ func (s *SessionSlice) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionSlice] invalid read at direct packet loss")
 	}
 
+	if SessionSliceVersion > 0 {
+		if !encoding.ReadFloat64(data, &index, &s.Predicted.RTT) {
+			return errors.New("[SessionSlice] invalid read at predicted RTT")
+		}
+	}
+
 	var up uint64
 	if !encoding.ReadUint64(data, &index, &up) {
 		return errors.New("[SessionSlice] invalid read at envelope up")
@@ -787,6 +794,7 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 	encoding.WriteFloat64(data, &index, s.Direct.RTT)
 	encoding.WriteFloat64(data, &index, s.Direct.Jitter)
 	encoding.WriteFloat64(data, &index, s.Direct.PacketLoss)
+	encoding.WriteFloat64(data, &index, s.Predicted.RTT)
 	encoding.WriteUint64(data, &index, uint64(s.Envelope.Up))
 	encoding.WriteUint64(data, &index, uint64(s.Envelope.Down))
 	encoding.WriteBool(data, &index, s.OnNetworkNext)
@@ -797,7 +805,7 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 }
 
 func (s SessionSlice) Size() uint64 {
-	return 4 + 8 + (3 * 8) + (3 * 8) + (2 * 8) + 1 + 1 + 1
+	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + 1 + 1 + 1
 }
 
 func (s SessionSlice) RedisString() string {

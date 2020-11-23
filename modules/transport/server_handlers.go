@@ -279,6 +279,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		datacenter := routing.UnknownDatacenter
 
 		response := SessionResponsePacket{
+			Version:     packet.Version,
 			SessionID:   packet.SessionID,
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
@@ -306,7 +307,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
+			if !packet.ClientPingTimedOut {
+				go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
+			}
 		}()
 
 		if packet.ClientPingTimedOut {
@@ -565,6 +568,17 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			routeRelaySellers[i] = relay.Seller
 		}
 
+		if buyer.Debug {
+			response.HasDebug = true
+
+			for i := int32(0); i < routeNumRelays; i++ {
+				response.Debug += routeRelayNames[i]
+				if i < routeNumRelays-1 {
+					response.Debug += " -> "
+				}
+			}
+		}
+
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
 }
@@ -704,6 +718,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	}
 
 	billingEntry := &billing.BillingEntry{
+		Timestamp:                 uint64(time.Now().Unix()),
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
 		SessionID:                 packet.SessionID,
@@ -800,6 +815,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 				RTT:        float64(packet.DirectRTT),
 				Jitter:     float64(packet.DirectJitter),
 				PacketLoss: float64(packet.DirectPacketLoss),
+			},
+			Predicted: routing.Stats{
+				RTT: float64(sessionData.RouteCost),
 			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),
