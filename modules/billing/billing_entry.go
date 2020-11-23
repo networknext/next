@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(12)
+	BillingEntryVersion = uint8(13)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -17,8 +17,8 @@ const (
 )
 
 type BillingEntry struct {
-	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
 	Version                   uint8
+	Timestamp                 uint64
 	BuyerID                   uint64
 	UserHash                  uint64
 	SessionID                 uint64
@@ -70,6 +70,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	data := make([]byte, MaxBillingEntryBytes)
 	index := 0
 	encoding.WriteUint8(data, &index, BillingEntryVersion)
+	encoding.WriteUint64(data, &index, entry.Timestamp)
 	encoding.WriteUint64(data, &index, entry.BuyerID)
 	encoding.WriteUint64(data, &index, entry.UserHash)
 	encoding.WriteUint64(data, &index, entry.SessionID)
@@ -142,32 +143,47 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
 		return false
 	}
+
 	if entry.Version > BillingEntryVersion {
 		return false
 	}
+
+	if entry.Version >= 13 {
+		if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
+			return false
+		}
+	}
+
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
 		return false
 	}
+
 	if entry.Version >= 6 {
 		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
 			return false
 		}
 	}
+
 	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
 		return false
 	}
+
 	if !encoding.ReadUint32(data, &index, &entry.SliceNumber) {
 		return false
 	}
+
 	if !encoding.ReadFloat32(data, &index, &entry.DirectRTT) {
 		return false
 	}
+
 	if !encoding.ReadFloat32(data, &index, &entry.DirectJitter) {
 		return false
 	}
+
 	if !encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss) {
 		return false
 	}
+
 	if !encoding.ReadBool(data, &index, &entry.Next) {
 		return false
 	}
@@ -176,31 +192,39 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		if !encoding.ReadFloat32(data, &index, &entry.NextRTT) {
 			return false
 		}
+
 		if !encoding.ReadFloat32(data, &index, &entry.NextJitter) {
 			return false
 		}
+
 		if !encoding.ReadFloat32(data, &index, &entry.NextPacketLoss) {
 			return false
 		}
+
 		if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
 			return false
 		}
+
 		if entry.NumNextRelays > BillingEntryMaxRelays {
 			return false
 		}
+
 		for i := 0; i < int(entry.NumNextRelays); i++ {
 			if !encoding.ReadUint64(data, &index, &entry.NextRelays[i]) {
 				return false
 			}
 		}
+
 		if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
 			return false
 		}
 	}
+
 	if entry.Version >= 2 {
 		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
 			return false
 		}
+
 		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsLost) {
 			return false
 		}
@@ -227,6 +251,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesUp) {
 				return false
 			}
+
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
 				return false
 			}
@@ -235,6 +260,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 				if !encoding.ReadUint64(data, &index, &entry.EnvelopeBytesUp) {
 					return false
 				}
+
 				if !encoding.ReadUint64(data, &index, &entry.EnvelopeBytesDown) {
 					return false
 				}
@@ -251,6 +277,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			if !encoding.ReadBool(data, &index, &entry.RTTReduction) {
 				return false
 			}
+
 			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
 				return false
 			}
@@ -262,9 +289,11 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
 				return false
 			}
+
 			if entry.NumNextRelays > BillingEntryMaxRelays {
 				return false
 			}
+
 			for i := 0; i < int(entry.NumNextRelays); i++ {
 				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
 					return false

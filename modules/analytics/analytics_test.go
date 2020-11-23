@@ -103,8 +103,10 @@ func TestExtractPingStats(t *testing.T) {
 		statsdb.ProcessStats(&update)
 	}
 
-	pairs := analytics.ExtractPingStats(statsdb)
+	maxJitter := float32(5.0)
+	maxPacketLoss := float32(0.1)
 
+	pairs := analytics.ExtractPingStats(statsdb, maxJitter, maxPacketLoss)
 	assert.Len(t, pairs, numRelays*(numRelays-1)/2)
 
 	for i := 0; i < numRelays; i++ {

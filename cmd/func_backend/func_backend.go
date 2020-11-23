@@ -287,13 +287,13 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if backend.mode == BACKEND_MODE_JITTER {
 		if sessionUpdate.JitterClientToServer > 0 {
 			fmt.Printf("%f jitter up\n", sessionUpdate.JitterClientToServer)
-			if sessionUpdate.JitterClientToServer > 10 {
+			if sessionUpdate.JitterClientToServer > 100 {
 				panic("jitter up too high")
 			}
 		}
 		if sessionUpdate.JitterServerToClient > 0 {
 			fmt.Printf("%f jitter down\n", sessionUpdate.JitterServerToClient)
-			if sessionUpdate.JitterServerToClient > 10 {
+			if sessionUpdate.JitterServerToClient > 100 {
 				panic("jitter down too high")
 			}
 		}
