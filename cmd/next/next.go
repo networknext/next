@@ -2014,7 +2014,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "cost",
+				Name:       "costs",
 				ShortUsage: "next view costs",
 				ShortHelp:  "View the entries of the cost matrix",
 				Exec: func(ctx context.Context, args []string) error {
@@ -2024,7 +2024,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				},
 			},
 			{
-				Name:       "route",
+				Name:       "routes",
 				ShortUsage: "next view routes [srcRelay] [destRelay]",
 				ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
 				Exec: func(ctx context.Context, args []string) error {
