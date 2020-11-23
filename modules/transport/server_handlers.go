@@ -704,6 +704,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	}
 
 	billingEntry := &billing.BillingEntry{
+		Timestamp:                 uint64(time.Now().Unix()),
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
 		SessionID:                 packet.SessionID,
@@ -800,6 +801,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 				RTT:        float64(packet.DirectRTT),
 				Jitter:     float64(packet.DirectJitter),
 				PacketLoss: float64(packet.DirectPacketLoss),
+			},
+			Predicted: routing.Stats{
+				RTT: float64(sessionData.RouteCost),
 			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),
