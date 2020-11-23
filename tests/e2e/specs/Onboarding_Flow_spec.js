@@ -18,14 +18,17 @@ function overrideEndpointsEmpty () {
         sessions: []
       }
     })
+    cy.stub(win.app.$authService, 'login')
+    cy.stub(win.app.$authService, 'logout')
+    cy.stub(win.app.$authService, 'signUp')
   })
 }
 
 // TODO: Figure out how to test number of map points
 // TODO: Figure out how to stub out endpoints earlier. Page loads using non-overridden functions
 
-describe('App Initialization Tests', () => {
-  it('checks to see if the portal loaded correctly', () => {
+describe('Basic Onboarding flow with auth0 stubbed out', () => {
+  it('Sign up', () => {
     // Load the page
     cy.visit('/')
 
@@ -33,7 +36,7 @@ describe('App Initialization Tests', () => {
     overrideEndpointsEmpty()
 
     // check if we are on the right page (router is routing correctly)
-    cy.url().should('eq', 'http://127.0.0.1:8080/#/')
+    cy.url().should('eq', 'http://127.0.0.1:8080')
     cy.contains('h1', 'Map').should('exist')
 
     // Check if all the links / buttons are available
@@ -53,7 +56,7 @@ describe('App Initialization Tests', () => {
 
     // Switch to sessions page and see what that looks like
     cy.get('[data-test="sessionsLink"').click()
-    cy.url().should('eq', 'http://127.0.0.1:8080/#/sessions')
+    cy.url().should('eq', 'http://127.0.0.1:8080/sessions')
 
     // Check for main features of page
     cy.contains('h1', 'Sessions').should('exist')
@@ -75,7 +78,7 @@ describe('App Initialization Tests', () => {
 
     // Switch to session tool page and see what that looks like
     cy.get('[data-test="sessionToolLink"').click()
-    cy.url().should('eq', 'http://127.0.0.1:8080/#/session-tool')
+    cy.url().should('eq', 'http://127.0.0.1:8080/session-tool')
 
     // Check for main features of the page
     cy.contains('h1', 'Session Tool').should('exist')
@@ -87,7 +90,7 @@ describe('App Initialization Tests', () => {
     cy.get('[data-test="mapLink"').click()
 
     // check if we are on the right page (router is routing correctly)
-    cy.url().should('eq', 'http://127.0.0.1:8080/#/')
+    cy.url().should('eq', 'http://127.0.0.1:8080/')
     cy.contains('h1', 'Map').should('exist')
   })
 })

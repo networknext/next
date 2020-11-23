@@ -22,9 +22,6 @@ import { FeatureEnum, Flag } from './components/types/FeatureTypes'
 
 Vue.config.productionTip = false
 
-const app: any = null
-const win: any = window
-
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
 
@@ -76,11 +73,13 @@ if (useAPI) {
   Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
 }
 
-new Vue({
+const app = new Vue({
   router,
   store,
   render: h => h(App)
 }).$mount('#app')
+
+const win: any = window
 
 if (win.Cypress) {
   win.app = app

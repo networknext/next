@@ -1,0 +1,988 @@
+{
+	"result": {
+		"meta": {
+			"client_addr": "?",
+			"connection": "wired",
+			"customer_id": "0000000000000000",
+			"datacenter_alias": "",
+			"datacenter_name": "psychz.saopaulo",
+			"delta_rtt": 115.33,
+			"direct_rtt": 199.46,
+			"hops": [
+				{
+					"id": 12024411294142503000,
+					"name": "?"
+				},
+				{
+					"id": 15523729259756487000,
+					"name": "?"
+				},
+				{
+					"id": 15655389045890073000,
+					"name": "?"
+				}
+			],
+			"id": "06dba30379a34970",
+			"location": {
+				"continent": "",
+				"country": "",
+				"country_code": "",
+				"region": "",
+				"city": "",
+				"latitude": -50.41,
+				"longitude": -71.83,
+				"isp": "Cooperativa Telefonica de Calafate Ltda.",
+				"asn": 0
+			},
+			"nearby_relays": [],
+			"next_rtt": 84.13,
+			"on_network_next": true,
+			"platform": "Windows",
+			"sdk": "4.0.0",
+			"server_addr": "?",
+			"user_hash": "430d57c77e29e029"
+		},
+		"slices": [
+			{
+				"timestamp": "2020-11-20T19:27:08Z",
+				"next": {
+					"rtt": 83.01,
+					"jitter": 46.63,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.47,
+					"jitter": 49.37,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:27:18Z",
+				"next": {
+					"rtt": 83.68,
+					"jitter": 44.61,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.49,
+					"jitter": 44.37,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:27:28Z",
+				"next": {
+					"rtt": 83.6,
+					"jitter": 32.72,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.3,
+					"jitter": 32.88,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 560
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:27:38Z",
+				"next": {
+					"rtt": 83.93,
+					"jitter": 29.12,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.41,
+					"jitter": 29.11,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:27:48Z",
+				"next": {
+					"rtt": 83.95,
+					"jitter": 41.69,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.75,
+					"jitter": 46.12,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 440,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:27:59Z",
+				"next": {
+					"rtt": 84.06,
+					"jitter": 35.45,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.65,
+					"jitter": 35.66,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:28:08Z",
+				"next": {
+					"rtt": 82.76,
+					"jitter": 40.07,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.26,
+					"jitter": 40.56,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:28:18Z",
+				"next": {
+					"rtt": 83.9,
+					"jitter": 49.66,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.47,
+					"jitter": 52.03,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:28:28Z",
+				"next": {
+					"rtt": 84.61,
+					"jitter": 54.2,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.45,
+					"jitter": 58.07,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:28:38Z",
+				"next": {
+					"rtt": 84.86,
+					"jitter": 46.94,
+					"packet_loss": 1.22
+				},
+				"direct": {
+					"rtt": 200.92,
+					"jitter": 46.49,
+					"packet_loss": 1.22
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:28:48Z",
+				"next": {
+					"rtt": 84.53,
+					"jitter": 60.58,
+					"packet_loss": 1.2
+				},
+				"direct": {
+					"rtt": 200.01,
+					"jitter": 59.75,
+					"packet_loss": 1.2
+				},
+				"envelope": {
+					"up": 440,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:28:58Z",
+				"next": {
+					"rtt": 83.33,
+					"jitter": 139.39,
+					"packet_loss": 2.41
+				},
+				"direct": {
+					"rtt": 199.49,
+					"jitter": 133.42,
+					"packet_loss": 2.38
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:29:08Z",
+				"next": {
+					"rtt": 83.99,
+					"jitter": 46.49,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.31,
+					"jitter": 45.19,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:29:18Z",
+				"next": {
+					"rtt": 83.91,
+					"jitter": 40.02,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.78,
+					"jitter": 38.33,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:29:28Z",
+				"next": {
+					"rtt": 84.06,
+					"jitter": 61.65,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 200.19,
+					"jitter": 59.16,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:29:38Z",
+				"next": {
+					"rtt": 83.44,
+					"jitter": 112.42,
+					"packet_loss": 8.64
+				},
+				"direct": {
+					"rtt": 199.48,
+					"jitter": 160.95,
+					"packet_loss": 3.7
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:29:48Z",
+				"next": {
+					"rtt": 83.91,
+					"jitter": 37.33,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.77,
+					"jitter": 42.39,
+					"packet_loss": 1.25
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:29:58Z",
+				"next": {
+					"rtt": 83.65,
+					"jitter": 37.92,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.74,
+					"jitter": 44.34,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 440
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:30:08Z",
+				"next": {
+					"rtt": 83.84,
+					"jitter": 48.81,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.44,
+					"jitter": 45.83,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 320
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:30:18Z",
+				"next": {
+					"rtt": 84.37,
+					"jitter": 45.22,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 200.53,
+					"jitter": 46.57,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 440,
+					"down": 560
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:30:28Z",
+				"next": {
+					"rtt": 84.37,
+					"jitter": 38.27,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.61,
+					"jitter": 40.57,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:30:38Z",
+				"next": {
+					"rtt": 84.45,
+					"jitter": 48.95,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.82,
+					"jitter": 47.94,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:30:48Z",
+				"next": {
+					"rtt": 84.17,
+					"jitter": 39.95,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.51,
+					"jitter": 39.8,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 440,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:30:58Z",
+				"next": {
+					"rtt": 84.17,
+					"jitter": 40.34,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.5,
+					"jitter": 37.65,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:31:08Z",
+				"next": {
+					"rtt": 83.84,
+					"jitter": 48.27,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.69,
+					"jitter": 48.35,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:31:18Z",
+				"next": {
+					"rtt": 84.13,
+					"jitter": 32.9,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.59,
+					"jitter": 31.82,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:31:28Z",
+				"next": {
+					"rtt": 83.7,
+					"jitter": 38.05,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.5,
+					"jitter": 37.73,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:31:38Z",
+				"next": {
+					"rtt": 84.71,
+					"jitter": 56.08,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.68,
+					"jitter": 60.39,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 440
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:31:48Z",
+				"next": {
+					"rtt": 83.98,
+					"jitter": 58.69,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 198.95,
+					"jitter": 59.78,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:31:58Z",
+				"next": {
+					"rtt": 83.71,
+					"jitter": 47.08,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.53,
+					"jitter": 49.08,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:32:08Z",
+				"next": {
+					"rtt": 84.19,
+					"jitter": 39.31,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.56,
+					"jitter": 40.65,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 600
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:32:18Z",
+				"next": {
+					"rtt": 83.95,
+					"jitter": 33.97,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.55,
+					"jitter": 38.36,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:32:28Z",
+				"next": {
+					"rtt": 84.14,
+					"jitter": 42.91,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.86,
+					"jitter": 45.3,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 440
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:32:38Z",
+				"next": {
+					"rtt": 83.97,
+					"jitter": 34.57,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.53,
+					"jitter": 35.71,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:32:48Z",
+				"next": {
+					"rtt": 83.33,
+					"jitter": 43.37,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.97,
+					"jitter": 42.61,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 440,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:32:58Z",
+				"next": {
+					"rtt": 83.68,
+					"jitter": 50.83,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.68,
+					"jitter": 53.53,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:33:08Z",
+				"next": {
+					"rtt": 82.98,
+					"jitter": 57.95,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.81,
+					"jitter": 53.62,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:33:18Z",
+				"next": {
+					"rtt": 84.31,
+					"jitter": 51.2,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.54,
+					"jitter": 52.09,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 480
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:33:28Z",
+				"next": {
+					"rtt": 83.74,
+					"jitter": 41.98,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.71,
+					"jitter": 39.97,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:33:38Z",
+				"next": {
+					"rtt": 84.15,
+					"jitter": 46.08,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.72,
+					"jitter": 39.24,
+					"packet_loss": 1.23
+				},
+				"envelope": {
+					"up": 360,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:33:48Z",
+				"next": {
+					"rtt": 84.42,
+					"jitter": 42.92,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 200.23,
+					"jitter": 41.67,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:33:59Z",
+				"next": {
+					"rtt": 84.12,
+					"jitter": 47.45,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 200.22,
+					"jitter": 44.56,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 400,
+					"down": 520
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:34:08Z",
+				"next": {
+					"rtt": 84.41,
+					"jitter": 69.93,
+					"packet_loss": 2.44
+				},
+				"direct": {
+					"rtt": 199.78,
+					"jitter": 71.47,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 360
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:34:18Z",
+				"next": {
+					"rtt": 83.87,
+					"jitter": 109.53,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.67,
+					"jitter": 127.25,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 920
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:34:28Z",
+				"next": {
+					"rtt": 83.91,
+					"jitter": 39.36,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.34,
+					"jitter": 39.15,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 400
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:34:38Z",
+				"next": {
+					"rtt": 84.13,
+					"jitter": 46.38,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.46,
+					"jitter": 50.03,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 440
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			},
+			{
+				"timestamp": "2020-11-20T19:34:48Z",
+				"next": {
+					"rtt": 84.13,
+					"jitter": 47.65,
+					"packet_loss": 0
+				},
+				"direct": {
+					"rtt": 199.46,
+					"jitter": 50.88,
+					"packet_loss": 0
+				},
+				"envelope": {
+					"up": 360,
+					"down": 440
+				},
+				"on_network_next": true,
+				"is_multipath": false,
+				"is_try_before_you_buy": false
+			}
+		]
+	}
+}

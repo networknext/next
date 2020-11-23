@@ -26,7 +26,6 @@
             href="#"
             onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.3.zip')"
             class="btn btn-primary m-1 btn-width"
-            title="SDK v4.0.1"
           >
             <font-awesome-icon icon="download"
                                 class="fa-w-16 fa-fw"
@@ -37,7 +36,6 @@
             href="#"
             onclick="window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')"
             class="btn btn-primary m-1 btn-width"
-            title="Documentation"
           >
             <font-awesome-icon icon="download"
                                 class="fa-w-16 fa-fw"
