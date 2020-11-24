@@ -1478,7 +1478,10 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	envelopeBytesDown,
 	predictedNextRTT,
 	multipathVetoed,
-	debug from `))
+	debug,
+	fallbackToDirect,
+	clientFlags,
+	userFlags from `))
 
 	// a timestamp must be provided although it is not relevant to this query
 	if s.Env == "prod" {
