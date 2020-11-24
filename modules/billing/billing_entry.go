@@ -7,13 +7,54 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(13)
+	BillingEntryVersion = uint8(14)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
 	BillingEntryMaxSDKVersionLength = 11
+	BillingEntryMaxDebugLength      = 512
 
-	MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8) + 4 + 4 + BillingEntryMaxISPLength + 1 + 8 + 1 + 1 + BillingEntryMaxSDKVersionLength
+	MaxBillingEntryBytes = 1 + // Version
+		8 + // Timestamp
+		8 + // BuyerID
+		8 + // UserHash
+		8 + // SessionID
+		4 + // SliceNumber
+		4 + // DirectRTT
+		4 + // DirectJitter
+		4 + // DirectPacketLoss
+		1 + // Next
+		4 + // NextRTT
+		4 + // NextJitter
+		4 + // NextPacketLoss
+		1 + // NumNextRelays
+		BillingEntryMaxRelays*8 + // NextRelays
+		8 + // TotalPrice
+		8 + // ClientToServerPacketsLost
+		8 + // ServerToClientPacketsLost
+		1 + // Committed
+		1 + // Flagged
+		1 + // Multipath
+		1 + // Initial
+		8 + // NextBytesUp
+		8 + // NextBytesDown
+		8 + // EnvelopeBytesUp
+		8 + // EnvelopeBytesDown
+		8 + // DatacenterID
+		1 + // RTTReduction
+		1 + // PacketLossReduction
+		BillingEntryMaxRelays*8 + // NextRelaysPrice
+		4 + // Latitude
+		4 + // Longitude
+		4 + BillingEntryMaxISPLength + // ISP
+		1 + // ABTest
+		1 + // ConnectionType
+		1 + // PlatformType
+		4 + BillingEntryMaxSDKVersionLength + // SDKVersion
+		4 + // PacketLoss
+		4 + // PredictedNextRTT
+		1 + // MultipathVetoed
+		4 + BillingEntryMaxDebugLength // Debug
 )
 
 type BillingEntry struct {
@@ -58,6 +99,7 @@ type BillingEntry struct {
 	PacketLoss                float32
 	PredictedNextRTT          float32
 	MultipathVetoed           bool
+	Debug                     string
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -123,7 +165,6 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteFloat32(data, &index, entry.Longitude)
 	encoding.WriteString(data, &index, entry.ISP, BillingEntryMaxISPLength)
 	encoding.WriteBool(data, &index, entry.ABTest)
-	encoding.WriteUint64(data, &index, entry.RouteDecision)
 
 	encoding.WriteUint8(data, &index, entry.ConnectionType)
 	encoding.WriteUint8(data, &index, entry.PlatformType)
@@ -134,6 +175,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteFloat32(data, &index, entry.PredictedNextRTT)
 
 	encoding.WriteBool(data, &index, entry.MultipathVetoed)
+	encoding.WriteString(data, &index, entry.Debug, BillingEntryMaxDebugLength)
 
 	return data[:index]
 }
@@ -319,8 +361,10 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			return false
 		}
 
-		if !encoding.ReadUint64(data, &index, &entry.RouteDecision) {
-			return false
+		if entry.Version < 14 {
+			if !encoding.ReadUint64(data, &index, &entry.RouteDecision) {
+				return false
+			}
 		}
 	}
 
@@ -352,6 +396,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 12 {
 		if !encoding.ReadBool(data, &index, &entry.MultipathVetoed) {
+			return false
+		}
+	}
+
+	if entry.Version >= 14 {
+		if !encoding.ReadString(data, &index, &entry.Debug, BillingEntryMaxDebugLength) {
 			return false
 		}
 	}
