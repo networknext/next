@@ -42,7 +42,7 @@
       </div>
     </form>
     <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/session-tool'"/>
-    <router-view />
+    <router-view :key="$route.fullPath"/>
   </div>
 </template>
 
@@ -83,7 +83,7 @@ export default class SessionToolWorkspace extends Vue {
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    this.searchID = ''
+    this.searchID = this.$route.params.pathMatch || ''
     this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
     this.alertType = AlertTypes.INFO
     next()
