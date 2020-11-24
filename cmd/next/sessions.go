@@ -342,48 +342,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		return
 	}
 
-	// bqBillingDataEntry := []struct {
-	// 	Timestamp                 time.Time
-	// 	BuyerID                   string
-	// 	SessionID                 string
-	// 	SliceNumber               string
-	// 	Next                      string
-	// 	DirectRTT                 string
-	// 	DirectJitter              string
-	// 	DirectPacketLoss          string
-	// 	NextRTT                   string
-	// 	NextJitter                string
-	// 	NextPacketLoss            string
-	// 	NextRelays                string
-	// 	TotalPrice                string
-	// 	ClientToServerPacketsLost string
-	// 	ServerToClientPacketsLost string
-	// 	Committed                 string
-	// 	Flagged                   string
-	// 	Multipath                 string
-	// 	NextBytesUp               string
-	// 	NextBytesDown             string
-	// 	Initial                   string
-	// 	DatacenterID              string
-	// 	RttReduction              string
-	// 	PacketLossReduction       string
-	// 	NextRelaysPrice           string
-	// 	UserHash                  string
-	// 	Latitude                  string
-	// 	Longitude                 string
-	// 	ISP                       string
-	// 	ABTest                    string
-	// 	RouteDecision             string
-	// 	ConnectionType            string
-	// 	PlatformType              string
-	// 	SdkVersion                string
-	// 	PacketLoss                string
-	// 	EnvelopeBytesUp           string
-	// 	EnvelopeBytesDown         string
-	// 	PredictedNextRTT          string
-	// 	MultipathVetoed           string
-	// }{}
-
 	bqBillingDataEntryCSV := [][]string{{}}
 
 	bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
