@@ -497,7 +497,7 @@ export default class SessionDetails extends Vue {
       const directPL = parseFloat(slice.direct.packet_loss)
 
       // Latency
-      let next = (slice.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
+      let next = (slice.is_multipath && nextRTT >= directRTT && !this.$store.getters.isAdmin) ? directRTT : nextRTT
       let direct = directRTT
       latencyData[0].push(timestamp)
       latencyData[1].push(next)
@@ -505,14 +505,14 @@ export default class SessionDetails extends Vue {
       latencyData[3].push(predictedRTT)
 
       // Jitter
-      next = (slice.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
+      next = (slice.is_multipath && nextJitter >= directJitter && !this.$store.getters.isAdmin) ? directJitter : nextJitter
       direct = directJitter
       jitterData[0].push(timestamp)
       jitterData[1].push(next)
       jitterData[2].push(direct)
 
       // Packetloss
-      next = (slice.is_multipath && nextPL >= directPL) ? directPL : nextPL
+      next = (slice.is_multipath && nextPL >= directPL && !this.$store.getters.isAdmin) ? directPL : nextPL
       direct = directPL
       packetLossData[0].push(timestamp)
       packetLossData[1].push(next)
