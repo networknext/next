@@ -74,11 +74,10 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, e
 // Gets points for a metric for the last N duration
 // given a metricServiceName (i.e. server_backend)
 // and a metricID (i.e. session_update.latency_worse)
-func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, metricServiceName string, metricID string, duration time.Duration) ([]byte, error) {
+func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, gcpProjectID string, metricServiceName string, metricID string, duration time.Duration) ([]byte, error) {
 	filter := fmt.Sprintf(`metric.type = "custom.googleapis.com/%s/%s"`, metricServiceName, metricID)
-	name := fmt.Sprintf(`projects/network-next-v3-dev/metricDescriptors/custom.googleapis.com/%s/%s`, metricServiceName, metricID)
+	name := fmt.Sprintf(`projects/%s/metricDescriptors/custom.googleapis.com/%s/%s`, gcpProjectID, metricServiceName, metricID)
 	startTime := timestamppb.New(time.Now().Add(duration))
-	// aggr := &monitoringpb.Aggregation
 	req := &monitoringpb.ListTimeSeriesRequest{
 		Name: name,
 		Filter: filter,

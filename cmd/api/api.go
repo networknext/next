@@ -10,13 +10,11 @@ import (
 	"strconv"
 	"time"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/vanity_metrics"
@@ -27,24 +25,26 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+	gcpProjectID  string
 	vanityMetrics *vanity_metrics.VanityMetricHandler
 )
 
 
 func main() {
-	fmt.Printf("analytics: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("api: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
+	env, err := backend.GetEnv()
+	if err != nil {
 		level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
 	}
 
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	gcpProjectID = backend.GetGCPProjectID()
+	gcpOK := gcpProjectID != ""
 	if gcpOK {
 		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "Found GOOGLE_PROJECT_ID")
 	} else {
@@ -53,45 +53,11 @@ func main() {
 	}
 
 	// StackDriver Logging
-	var enableSDLogging bool
-	enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-	if ok {
-		var err error
-		enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
+	logger, err = backend.GetLogger(ctx, gcpProjectID, "api")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
 	}
-
-	if enableSDLogging {
-		if gcpOK {
-			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-				os.Exit(1)
-			}
-
-			logger = logging.NewStackdriverLogger(loggingClient, "api")
-		}
-	}
-
-	switch os.Getenv("BACKEND_LOG_LEVEL") {
-	case "none":
-		logger = level.NewFilter(logger, level.AllowNone())
-	case level.ErrorValue().String():
-		logger = level.NewFilter(logger, level.AllowError())
-	case level.WarnValue().String():
-		logger = level.NewFilter(logger, level.AllowWarn())
-	case level.InfoValue().String():
-		logger = level.NewFilter(logger, level.AllowInfo())
-	case level.DebugValue().String():
-		logger = level.NewFilter(logger, level.AllowDebug())
-	default:
-		logger = level.NewFilter(logger, level.AllowWarn())
-	}
-
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -99,7 +65,6 @@ func main() {
 	
 	// StackDriver Metrics
 	var enableSDMetrics bool
-	var err error
 	enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
 	if ok {
 		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
@@ -128,28 +93,9 @@ func main() {
 	}
 
 	// StackDriver Profiler
-
-	var enableSDProfiler bool
-	enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-	if ok {
-		enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	if enableSDProfiler {
-		// Set up StackDriver profiler
-		if err := profiler.Start(profiler.Config{
-			Service:        "api",
-			ServiceVersion: env,
-			ProjectID:      gcpProjectID,
-			MutexProfiling: true,
-		}); err != nil {
-			level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
-			os.Exit(1)
-		}
+	if err = backend.InitStackDriverProfiler(gcpProjectID, "api", env); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
+		os.Exit(1)
 	}
 
 	vanityMetrics = &vanity_metrics.VanityMetricHandler{Handler: &sd, Logger: logger}
@@ -190,7 +136,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request){
 		dummyData, err := vanityMetrics.GetEmptyMetrics()
 		// dummyData, err := vanityMetrics.ListCustomMetrics(context.Background())
-		// dummyData, err := vanityMetrics.GetPointDetails(context.Background(), "server_backend", "session_update.latency_worse", -10 * time.Minute)
+		// dummyData, err := vanityMetrics.GetPointDetails(context.Background(), gcpProjectID, "server_backend", "session_update.latency_worse", -10 * time.Minute)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
