@@ -2,24 +2,17 @@ package vanity_metrics
 
 import (
 	"context"
-	// "fmt"
-	// "io/ioutil"
-	// "os"
-	// "os/signal"
-	// "runtime"
-	// "strconv"
-	// "time"
+	"fmt"
+	"time"
 	"encoding/json"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	// "github.com/gorilla/mux"
-	// "google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/api/iterator"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 
 	"github.com/networknext/backend/modules/metrics"
-	// "github.com/networknext/backend/modules/transport"
 )
 
 type VanityMetricHandler struct {
@@ -35,6 +28,7 @@ type VanityMetrics struct {
 	NumPlayHours			int
 }
 
+// Returns a marshaled JSON of an empty VanityMetrics struct
 func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 	ret_val, err := json.Marshal(&VanityMetrics{})
 	if err != nil {
@@ -45,30 +39,8 @@ func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 	return ret_val, nil
 }
 
-
+// Returns a marshaled JSON of all custom metrics tracked through Stackdriver
 func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, error) {
-	// filter := `metric.type = "custom.googleapis.com/server_backend/session_update.latency_worse"`
-	// startTime := timestamppb.New(time.Now().Add(-10 * time.Minute))
-	// // aggr := &monitoringpb.Aggregation
-	// req := &monitoringpb.ListTimeSeriesRequest{
-	// 	Name: "projects/network-next-v3-dev/metricDescriptors/custom.googleapis.com/server_backend/session_update.latency_worse",
-	// 	Filter: filter,
-	// 	Interval: &monitoringpb.TimeInterval{EndTime: timestamppb.Now(), StartTime: startTime},
-	// 	View: monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
-
-	// }
-	// it := vm.Handler.Client.ListTimeSeries(ctx, req)
-	// for {
-	// 	resp, err := it.Next()
-	// 	if err == iterator.Done {
-	// 		break
-	// 	}
-	// 	if err != nil {
-	// 		level.Error(vm.Logger).Log("err", err)
-	// 		return nil, err
-	// 	}		
-	// }
-
 	descFilter := `metric.type = starts_with("custom.googleapis.com/")`
 	descReq := &monitoringpb.ListMetricDescriptorsRequest{
 		Name: "projects/" + vm.Handler.ProjectID,
@@ -91,6 +63,46 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, e
 
 	// Encode the map of custom metric names to descriptions
 	ret_val, err := json.Marshal(customMetrics)
+	if err != nil {
+		level.Error(vm.Logger).Log("err", err)
+		return nil, err
+	}
+
+	return ret_val, nil
+}
+
+// Gets points for a metric for the last N duration
+// given a metricServiceName (i.e. server_backend)
+// and a metricID (i.e. session_update.latency_worse)
+func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, metricServiceName string, metricID string, duration time.Duration) ([]byte, error) {
+	filter := fmt.Sprintf(`metric.type = "custom.googleapis.com/%s/%s"`, metricServiceName, metricID)
+	name := fmt.Sprintf(`projects/network-next-v3-dev/metricDescriptors/custom.googleapis.com/%s/%s`, metricServiceName, metricID)
+	startTime := timestamppb.New(time.Now().Add(duration))
+	// aggr := &monitoringpb.Aggregation
+	req := &monitoringpb.ListTimeSeriesRequest{
+		Name: name,
+		Filter: filter,
+		Interval: &monitoringpb.TimeInterval{EndTime: timestamppb.Now(), StartTime: startTime},
+		View: monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
+
+	}
+	it := vm.Handler.Client.ListTimeSeries(ctx, req)
+
+	metricDetails := make(map[string][]*monitoringpb.Point)
+	for {
+		resp, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			level.Error(vm.Logger).Log("err", err)
+			return nil, err
+		}
+		metricDetails[resp.GetMetric().GetType()] = resp.GetPoints()		
+	}
+
+	// Encode the map of custom metric names to descriptions
+	ret_val, err := json.Marshal(metricDetails)
 	if err != nil {
 		level.Error(vm.Logger).Log("err", err)
 		return nil, err

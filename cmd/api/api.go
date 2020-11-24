@@ -150,7 +150,7 @@ func main() {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
-			
+
 		}()
 	}
 
@@ -164,6 +164,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request){
 		dummyData, err := vanityMetrics.GetEmptyMetrics()
 		// dummyData, err := vanityMetrics.ListCustomMetrics(context.Background())
+		// dummyData, err := vanityMetrics.GetPointDetails(context.Background(), "server_backend", "session_update.latency_worse", -10 * time.Minute)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
