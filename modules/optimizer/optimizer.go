@@ -1,5 +1,6 @@
 package optimizer
 
+import "C"
 import (
 	"context"
 	"fmt"
@@ -20,6 +21,8 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
+
+	gcStorage "cloud.google.com/go/storage"
 )
 
 type Optimizer struct {
@@ -36,6 +39,7 @@ type Optimizer struct {
 	RelayStore  storage.RelayStore
 	StatsDB     *routing.StatsDatabase
 	Store       storage.Storer
+	CloudBucket *gcStorage.BucketHandle
 }
 
 func NewBaseOptimizer(cfg *Config) *Optimizer {
@@ -201,14 +205,24 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 	return costMatrix, routeMatrix
 }
 
-func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error {
-	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(), matrixType, routeMatrix.GetResponseData())
+func (o *Optimizer) CloudStoreMatrix(matrixType string, timestamp time.Time, matrix []byte) error {
+	dir := fmt.Sprintf("matrix/optimizer/%d/%d/%d/%d/%d/%d/%s-%d", o.id, timestamp.Year(), timestamp.Month(), timestamp.Day(), timestamp.Hour(), timestamp.Minute(), matrixType, timestamp.Second())
+	obj := o.CloudBucket.Object(dir)
+	writer := obj.NewWriter(context.Background())
+	defer writer.Close()
+	_, err := writer.Write(matrix)
+	return err
+}
 
+func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error {
+
+	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(), matrixType, routeMatrix.GetResponseData())
 	err := o.MatrixStore.UpdateOptimizerMatrix(matrix)
 	if err != nil {
 		level.Error(o.Logger).Log("msg", "failed to route matrix in MatrixStore", "err", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -254,7 +268,6 @@ func (o *Optimizer) removeRelay(relayAddress string) {
 }
 
 func (o *Optimizer) UpdateRelay(requestBody []byte) {
-	fmt.Println("update relay called")
 	var relayUpdateRequest transport.RelayUpdateRequest
 	err := relayUpdateRequest.UnmarshalBinary(requestBody)
 	if err != nil {
