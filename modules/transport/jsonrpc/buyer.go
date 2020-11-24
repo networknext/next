@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"sort"
@@ -1434,39 +1435,49 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	sessionID := int64(args.SessionID)
 
 	var sql bytes.Buffer
+	var dbName string
 
-	bqClient, err := bigquery.NewClient(ctx, "network-next-v3-prod")
+	// a timestamp must be provided although it is not relevant to this query
+	if env, ok := os.LookupEnv("ENV"); ok {
+		if env == "prod" {
+			sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
+			sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+			sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+			dbName = "network-next-v3-prod"
+
+		} else if env == "dev" {
+			sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
+			sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+			sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+			dbName = "network-next-v3-dev"
+		} else {
+			// env == local, unit test
+			err := returnLocalTestData(reply)
+			if err != nil {
+				err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
+				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+				return err
+			}
+			return nil
+		}
+	} else {
+		// env == "", e.g. `go test -run TestGetAllSessionBillingInfo`
+		err := returnLocalTestData(reply)
+		if err != nil {
+			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+		return nil
+	}
+
+	bqClient, err := bigquery.NewClient(ctx, dbName)
 	if err != nil {
 		err = fmt.Errorf("GetAllSessionBillingInfo() failed to create BigQuery client: %v", err)
 		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
 		return err
 	}
 	defer bqClient.Close()
-
-	// a timestamp must be provided although it is not relevant to this query
-	if env, ok := os.LookupEnv("ENV"); ok {
-		if ok {
-			if env == "prod" {
-				sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
-				sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-				sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
-
-			} else if env == "dev" {
-				sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
-				sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-				sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
-
-			} else {
-				err = fmt.Errorf("GetAllSessionBillingInfo() failed to parse env: %v", err)
-				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-				return err
-			}
-		} else {
-			err = fmt.Errorf("GetAllSessionBillingInfo() failed to parse env: %v", err)
-			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-			return err
-		}
-	}
 
 	q := bqClient.Query(string(sql.String()))
 
@@ -1499,7 +1510,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	for {
 		var rec transport.BigQueryBillingEntry
 		err := it.Next(&rec)
-		// the docs say to use Done, but it provides an error
 
 		if err == iterator.Done {
 			break
@@ -1514,4 +1524,22 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 
 	return nil
 
+}
+
+func returnLocalTestData(reply *GetAllSessionBillingInfoReply) error {
+	var localRow transport.BigQueryBillingEntry
+	bqRow, err := ioutil.ReadFile("../../../testdata/bq_billing_row.json")
+	if err != nil {
+		err = fmt.Errorf("returnLocalTestData() error opening local testdata file: %v", err)
+		return err
+	}
+	err = json.Unmarshal(bqRow, &localRow)
+	if err != nil {
+		err = fmt.Errorf("returnLocalTestData() error unmarshalling json from local file: %v", err)
+		return err
+	}
+
+	reply.SessionBillingInfo = []transport.BigQueryBillingEntry{localRow}
+
+	return nil
 }
