@@ -51,6 +51,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import UserSessions from '@/components/UserSessions.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
+import { NavigationGuardNext, Route } from 'vue-router'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -85,6 +86,13 @@ export default class UserToolWorkspace extends Vue {
 
   private created () {
     this.searchID = this.$route.params.pathMatch || ''
+  }
+
+  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+    this.searchID = this.$route.params.pathMatch || ''
+    this.message = 'Please enter a User ID to view their sessions.'
+    this.alertType = AlertTypes.INFO
+    next()
   }
 
   private fetchUserSessions () {
