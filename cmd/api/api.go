@@ -7,22 +7,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	// "runtime"
 	"strconv"
 	"time"
 
-	// gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/api/iterator"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
-
+	"github.com/networknext/backend/modules/vanity_metrics"
 )
 
 var (
@@ -30,7 +25,9 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+	vanityMetrics *vanity_metrics.VanityMetricHandler
 )
+
 
 func main() {
 	fmt.Printf("analytics: Git Hash: %s - Commit: %s\n", sha, commitMessage)
@@ -38,8 +35,6 @@ func main() {
 	ctx := context.Background()
 
 	logger := log.NewLogfmtLogger(os.Stdout)
-
-	// var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
@@ -50,13 +45,6 @@ func main() {
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	if gcpOK {
 		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "Found GOOGLE_PROJECT_ID")
-		// loggingClient, err := gcplogging.NewClient(ctx, projectID)
-		// if err != nil {
-		// 	level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-		// 	os.Exit(1)
-		// }
-
-		// logger = logging.NewStackdriverLogger(loggingClient, "analytics")
 	} else {
 		level.Error(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Cannot get vanity metrics.")
 		os.Exit(1)
@@ -78,12 +66,6 @@ func main() {
 	}
 
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-
-	// env, ok := os.LookupEnv("ENV")
-	// if !ok {
-	// 	level.Error(logger).Log("err", "ENV not set")
-	// 	os.Exit(1)
-	// }
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -117,20 +99,7 @@ func main() {
 			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 			os.Exit(1)
 		}
-
-
-
-		// metricsHandler = &sd
-
-		// sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-		// writeInterval, err := time.ParseDuration(sdwriteinterval)
-		// if err != nil {
-		// 	level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-		// 	os.Exit(1)
-		// }
-		// go metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 	}
-
 
 	// StackDriver Profiler
 
@@ -147,7 +116,7 @@ func main() {
 	if enableSDProfiler {
 		// Set up StackDriver profiler
 		if err := profiler.Start(profiler.Config{
-			Service:        "vanity_metrics",
+			Service:        "api",
 			ServiceVersion: env,
 			ProjectID:      gcpProjectID,
 			MutexProfiling: true,
@@ -157,35 +126,13 @@ func main() {
 		}
 	}
 
-	filter := `metric.type = "custom.googleapis.com/server_backend/session_update.latency_worse"`
-	// Name: "projects/" + sd.ProjectID,
-	startTime := timestamppb.New(time.Now().Add(-10 * time.Minute))
-	req := &monitoringpb.ListTimeSeriesRequest{
-		Name: "projects/network-next-v3-dev/metricDescriptors/custom.googleapis.com/server_backend/session_update.latency_worse",
-		Filter: filter,
-		Interval: &monitoringpb.TimeInterval{EndTime: timestamppb.Now(), StartTime: startTime},
-		View: monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
-
-	}
-	it := sd.Client.ListTimeSeries(ctx, req)
-	for {
-		resp, err := it.Next()
-		if err == iterator.Done {
-			fmt.Println("done with iterator")
-			break
-		}
-		if err != nil {
-			level.Error(logger).Log("err", err)
-		}
-		fmt.Printf("My resp is %v\n", resp)
-		break
-	}
-
+	vanityMetrics = &vanity_metrics.VanityMetricHandler{Handler: &sd, Logger: logger}
 
 	// Start HTTP server
 	{
 		go func() {
 			router := mux.NewRouter()
+			router.HandleFunc("/vanity", VanityMetricHandlerFunc())
 			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
@@ -195,9 +142,10 @@ func main() {
 				os.Exit(1)
 			}
 
-			level.Info(logger).Log("addr", ":"+port)
+			serviceName := ""
+			level.Info(logger).Log("addr", serviceName+":"+port)
 
-			err := http.ListenAndServe(":"+port, router)
+			err := http.ListenAndServe(serviceName+":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -209,6 +157,21 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+}
+
+func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request){
+		dummyData, err := vanityMetrics.GetEmptyMetrics()
+		// dummyData, err := vanityMetrics.ListCustomMetrics(context.Background())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(dummyData)
+		return
+	}
 }
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
