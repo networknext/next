@@ -3149,6 +3149,8 @@ struct NextRouteUpdatePacket
     uint64_t packets_lost_client_to_server;
     uint64_t packets_out_of_order_client_to_server;
     float jitter_client_to_server;
+    bool has_debug;
+    char debug[NEXT_MAX_SESSION_DEBUG];
 
     NextRouteUpdatePacket()
     {
@@ -3183,6 +3185,11 @@ struct NextRouteUpdatePacket
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_out_of_order_client_to_server );
         serialize_float( stream, jitter_client_to_server );
+        serialize_bool( stream, has_debug );
+        if ( has_debug )
+        {
+            serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
+        }
         return true;
     }
 };
@@ -6621,6 +6628,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet from server" );
 
+            if ( packet.has_debug )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
+            }
+
             next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -9176,6 +9188,11 @@ struct next_session_entry_t
     double last_client_next_ping;
 
     NEXT_DECLARE_SENTINEL(26)
+
+    bool has_debug;
+    char debug[NEXT_MAX_SESSION_DEBUG];
+
+    NEXT_DECLARE_SENTINEL(27)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9209,6 +9226,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
     NEXT_INITIALIZE_SENTINEL( entry, 26 )
+    NEXT_INITIALIZE_SENTINEL( entry, 27 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9242,6 +9260,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
     NEXT_VERIFY_SENTINEL( entry, 26 )
+    NEXT_VERIFY_SENTINEL( entry, 27 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -10463,6 +10482,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
             next_platform_mutex_release( &server->session_mutex );
 
+            packet.has_debug = entry->has_debug;
+            memcpy( packet.debug, entry->debug, NEXT_MAX_SESSION_DEBUG );
+
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
 
             entry->update_last_send_time = current_time;
@@ -10880,15 +10902,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 }
             }
 
-            // SDK 4.0.4 adds the ability for the backend to pass down a free form
-            // debug string to the server in the session response. Print it out here 
-            // so we can see what's going on on the server-side
-            if ( packet.has_debug )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session debug for %" PRIx64 ": %s", entry->session_id, packet.debug );
-            }
-
-            // todo: store the session debug info in the session entry and pass it down to the client in the next route update
+            entry->has_debug = packet.has_debug;
+            memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
@@ -14138,6 +14153,8 @@ static void test_packets()
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
         in.jitter_client_to_server = 0.1f;
+        in.has_debug = true;
+        strcpy( in.debug, "debug time" );
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -14158,6 +14175,8 @@ static void test_packets()
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
     }
 
     // route update packet (route)
