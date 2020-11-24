@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
@@ -1403,5 +1404,94 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 		verified, err := sameBuyerRoleFunc(req)
 		assert.NoError(t, err)
 		assert.True(t, verified)
+	})
+}
+
+func TestGetAllSessionBillingInfo(t *testing.T) {
+
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	logger := log.NewNopLogger()
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("get local json", func(t *testing.T) {
+
+		// this test relies on the values in place in testdata/bq_billing_row.json
+
+		arg := &jsonrpc.GetAllSessionBillingInfoArg{
+			SessionID: 5782814167830682977,
+		}
+
+		reply := &jsonrpc.GetAllSessionBillingInfoReply{
+			SessionBillingInfo: []transport.BigQueryBillingEntry{},
+		}
+
+		err := svc.GetAllSessionBillingInfo(req, arg, reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(-1887321533039368516), reply.SessionBillingInfo[0].BuyerID)
+		assert.Equal(t, int64(8000587274513071088), reply.SessionBillingInfo[0].SessionID)
+		assert.Equal(t, int64(11), reply.SessionBillingInfo[0].SliceNumber)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Next)
+		assert.Equal(t, 21.8623, reply.SessionBillingInfo[0].DirectRTT)
+		assert.Equal(t, 0.41678265, reply.SessionBillingInfo[0].DirectJitter)
+		assert.Equal(t, 0.0, reply.SessionBillingInfo[0].DirectPacketLoss)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 23.9552, Valid: true}, reply.SessionBillingInfo[0].NextRTT)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 3.2498908, Valid: true}, reply.SessionBillingInfo[0].NextJitter)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 0.0, Valid: true}, reply.SessionBillingInfo[0].NextPacketLoss)
+
+		assert.Equal(t, int64(-5331203109990078190), reply.SessionBillingInfo[0].NextRelays[0])
+		assert.Equal(t, int64(-3720675711246319663), reply.SessionBillingInfo[0].NextRelays[1])
+
+		assert.Equal(t, int64(12800000), reply.SessionBillingInfo[0].TotalPrice)
+
+		// 2 empty/null columns
+		assert.Equal(t, bigquery.NullInt64{Int64: 0, Valid: false}, reply.SessionBillingInfo[0].ClientToServerPacketsLost)
+		assert.Equal(t, bigquery.NullInt64{Int64: 0, Valid: false}, reply.SessionBillingInfo[0].ServerToClientPacketsLost)
+
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Committed)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Flagged)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Multipath)
+		assert.Equal(t, bigquery.NullInt64{Int64: 127500, Valid: true}, reply.SessionBillingInfo[0].NextBytesUp)
+		assert.Equal(t, bigquery.NullInt64{Int64: 153750, Valid: true}, reply.SessionBillingInfo[0].NextBytesDown)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Initial)
+		assert.Equal(t, bigquery.NullInt64{Int64: 3619875606514892624, Valid: true}, reply.SessionBillingInfo[0].DatacenterID)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RttReduction)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].PacketLossReduction)
+
+		assert.Equal(t, int64(5120000), reply.SessionBillingInfo[0].NextRelaysPrice[0])
+		assert.Equal(t, int64(5120000), reply.SessionBillingInfo[0].NextRelaysPrice[1])
+
+		assert.Equal(t, bigquery.NullInt64{Int64: 3161472066075933729, Valid: true}, reply.SessionBillingInfo[0].UserHash)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 42.7273, Valid: true}, reply.SessionBillingInfo[0].Latitude)
+		assert.Equal(t, bigquery.NullFloat64{Float64: -73.6696, Valid: true}, reply.SessionBillingInfo[0].Longitude)
+		assert.Equal(t, bigquery.NullString{StringVal: "CSTC", Valid: true}, reply.SessionBillingInfo[0].ISP)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].ABTest)
+		assert.Equal(t, bigquery.NullInt64{Int64: 0, Valid: true}, reply.SessionBillingInfo[0].RouteDecision)
+		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].ConnectionType)
+		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].PlatformType)
+		assert.Equal(t, bigquery.NullString{StringVal: "4.0.1", Valid: true}, reply.SessionBillingInfo[0].SdkVersion)
+
+		// empty/null column
+		assert.Equal(t, bigquery.NullFloat64{Float64: 0, Valid: false}, reply.SessionBillingInfo[0].PacketLoss)
+
+		assert.Equal(t, bigquery.NullInt64{Int64: 1280000, Valid: true}, reply.SessionBillingInfo[0].EnvelopeBytesUp)
+		assert.Equal(t, bigquery.NullInt64{Int64: 1280000, Valid: true}, reply.SessionBillingInfo[0].EnvelopeBytesDown)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 6.0, Valid: true}, reply.SessionBillingInfo[0].PredictedNextRTT)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].MultipathVetoed)
 	})
 }
