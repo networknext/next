@@ -249,14 +249,6 @@ ifndef BIGTABLE_HISTORICAL_TXT
 export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
 endif
 
-ifndef GOOGLE_PROJECT_ID
-export GOOGLE_PROJECT_ID = network-next-v3-dev
-endif
-
-ifndef GOOGLE_APPLICATION_CREDENTIALS
-export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
-endif
-
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
