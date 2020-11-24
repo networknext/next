@@ -289,6 +289,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		var routeRelayNames [routing.MaxRelays]string
 		var routeRelaySellers [routing.MaxRelays]routing.Seller
 
+		var debug string
+
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
@@ -308,7 +310,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
+				go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
 			}
 		}()
 
@@ -572,11 +574,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			response.HasDebug = true
 
 			for i := int32(0); i < routeNumRelays; i++ {
-				response.Debug += routeRelayNames[i]
+				debug += routeRelayNames[i]
 				if i < routeNumRelays-1 {
-					response.Debug += " -> "
+					debug += " -> "
 				}
 			}
+
+			response.Debug = debug
 		}
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
@@ -680,7 +684,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter) {
+func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, debug string) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -758,6 +762,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		PacketLoss:                inGamePacketLoss,
 		PredictedNextRTT:          float32(sessionData.RouteCost),
 		MultipathVetoed:           multipathVetoed,
+		Debug:                     debug,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)

@@ -1,12 +1,14 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"sort"
@@ -15,7 +17,10 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/bigtable"
+	"google.golang.org/api/iterator"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
@@ -46,10 +51,14 @@ type BuyersService struct {
 	mapPointsBuyerCache        map[string]json.RawMessage
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
+	Env string
+
 	UseBigtable     bool
 	BigTableCfName  string
 	BigTable        *storage.BigTable
 	BigTableMetrics *metrics.BigTableMetrics
+
+	BqClient *bigquery.Client
 
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
@@ -203,7 +212,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
-	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(s.Env)
 	var ghostArmyScalar uint64 = 50
 	if v, ok := os.LookupEnv("GHOST_ARMY_SCALER"); ok {
 		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
@@ -1412,4 +1421,116 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 
 	sessions = sessionMetas
 	return sessions, err
+}
+
+type GetAllSessionBillingInfoArg struct {
+	SessionID uint64
+}
+
+type GetAllSessionBillingInfoReply struct {
+	SessionBillingInfo []transport.BigQueryBillingEntry
+}
+
+func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSessionBillingInfoArg, reply *GetAllSessionBillingInfoReply) error {
+
+	ctx := context.Background()
+	sessionID := int64(args.SessionID)
+
+	var sql bytes.Buffer
+	var dbName string
+
+	// a timestamp must be provided although it is not relevant to this query
+	if s.Env == "prod" {
+		sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
+		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		dbName = "network-next-v3-prod"
+
+	} else if s.Env == "dev" {
+		sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
+		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		dbName = "network-next-v3-dev"
+	} else {
+		// env == local, unit test
+		err := returnLocalTestData(reply)
+		if err != nil {
+			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+		return nil
+	}
+
+	bqClient, err := bigquery.NewClient(ctx, dbName)
+	if err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() failed to create BigQuery client: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+	defer bqClient.Close()
+
+	q := bqClient.Query(string(sql.String()))
+
+	job, err := q.Run(ctx)
+	if err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() failed to query BigQuery: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+
+	status, err := job.Wait(ctx)
+	if err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() error waiting for job to complete: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+	if err := status.Err(); err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() job returned an error: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+
+	var rows []transport.BigQueryBillingEntry
+
+	it, err := job.Read(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		var rec transport.BigQueryBillingEntry
+		err := it.Next(&rec)
+
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		rows = append(rows, rec)
+	}
+
+	reply.SessionBillingInfo = rows
+
+	return nil
+
+}
+
+func returnLocalTestData(reply *GetAllSessionBillingInfoReply) error {
+	var localRow transport.BigQueryBillingEntry
+	bqRow, err := ioutil.ReadFile("../../../testdata/bq_billing_row.json")
+	if err != nil {
+		err = fmt.Errorf("returnLocalTestData() error opening local testdata file: %v", err)
+		return err
+	}
+	err = json.Unmarshal(bqRow, &localRow)
+	if err != nil {
+		err = fmt.Errorf("returnLocalTestData() error unmarshalling json from local file: %v", err)
+		return err
+	}
+
+	reply.SessionBillingInfo = []transport.BigQueryBillingEntry{localRow}
+
+	return nil
 }
