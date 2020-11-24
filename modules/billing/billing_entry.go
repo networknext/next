@@ -12,7 +12,7 @@ const (
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
 	BillingEntryMaxSDKVersionLength = 11
-	BillingEntryMaxDebugLength      = 512
+	BillingEntryMaxDebugLength      = 2048
 
 	MaxBillingEntryBytes = 1 + // Version
 		8 + // Timestamp
