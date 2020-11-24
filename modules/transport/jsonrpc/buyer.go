@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -15,7 +16,10 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/bigtable"
+	"google.golang.org/api/iterator"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
@@ -50,6 +54,8 @@ type BuyersService struct {
 	BigTableCfName  string
 	BigTable        *storage.BigTable
 	BigTableMetrics *metrics.BigTableMetrics
+
+	BqClient *bigquery.Client
 
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
@@ -1412,4 +1418,100 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 
 	sessions = sessionMetas
 	return sessions, err
+}
+
+type GetAllSessionBillingInfoArg struct {
+	SessionID uint64
+}
+
+type GetAllSessionBillingInfoReply struct {
+	SessionBillingInfo []transport.BigQueryBillingEntry
+}
+
+func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSessionBillingInfoArg, reply *GetAllSessionBillingInfoReply) error {
+
+	ctx := context.Background()
+	sessionID := int64(args.SessionID)
+
+	var sql bytes.Buffer
+
+	bqClient, err := bigquery.NewClient(ctx, "network-next-v3-prod")
+	if err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() failed to create BigQuery client: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+	defer bqClient.Close()
+
+	// a timestamp must be provided although it is not relevant to this query
+	if env, ok := os.LookupEnv("ENV"); ok {
+		if ok {
+			if env == "prod" {
+				sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
+				sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+				sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+
+			} else if env == "dev" {
+				sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
+				sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+				sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+
+			} else {
+				err = fmt.Errorf("GetAllSessionBillingInfo() failed to parse env: %v", err)
+				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+				return err
+			}
+		} else {
+			err = fmt.Errorf("GetAllSessionBillingInfo() failed to parse env: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+	}
+
+	q := bqClient.Query(string(sql.String()))
+
+	job, err := q.Run(ctx)
+	if err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() failed to query BigQuery: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+
+	status, err := job.Wait(ctx)
+	if err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() error waiting for job to complete: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+	if err := status.Err(); err != nil {
+		err = fmt.Errorf("GetAllSessionBillingInfo() job returned an error: %v", err)
+		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+		return err
+	}
+
+	var rows []transport.BigQueryBillingEntry
+
+	it, err := job.Read(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		var rec transport.BigQueryBillingEntry
+		err := it.Next(&rec)
+		// the docs say to use Done, but it provides an error
+
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		rows = append(rows, rec)
+	}
+
+	reply.SessionBillingInfo = rows
+
+	return nil
+
 }
