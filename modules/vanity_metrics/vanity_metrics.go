@@ -2,7 +2,7 @@ package vanity_metrics
 
 import (
 	"context"
-	"fmt"
+	// "fmt"
 	// "io/ioutil"
 	// "os"
 	// "os/signal"

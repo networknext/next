@@ -150,6 +150,7 @@ func main() {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
+			
 		}()
 	}
 
