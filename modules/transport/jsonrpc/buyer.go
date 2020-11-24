@@ -1510,7 +1510,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	for {
 		var rec transport.BigQueryBillingEntry
 		err := it.Next(&rec)
-		// the docs say to use Done, but it provides an error
 
 		if err == iterator.Done {
 			break
