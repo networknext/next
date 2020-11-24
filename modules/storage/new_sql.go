@@ -367,16 +367,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
-		var internalAddr *net.UDPAddr
-		if relay.InternalIP != "" {
-			internalAddr, err = net.ResolveUDPAddr("udp", relay.InternalIP+":"+fmt.Sprintf("%d", relay.InternalIPPort))
-			if err != nil {
-				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
-			}
-		} else {
-			internalAddr = publicAddr
-		}
-
 		// TODO: this should be treated as a legit address
 		// managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
 		// if err != nil {
@@ -407,7 +397,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			ID:                  rid,
 			Name:                relay.Name,
 			Addr:                *publicAddr,
-			InternalAddr:        *internalAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -426,6 +415,16 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Type:                machineType,
 			DatabaseID:          relay.DatabaseID,
 		}
+
+		var internalAddr *net.UDPAddr
+		if relay.InternalIP != "" {
+			internalAddr, err = net.ResolveUDPAddr("udp", relay.InternalIP+":"+fmt.Sprintf("%d", relay.InternalIPPort))
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+			}
+			r.InternalAddr = *internalAddr
+		}
+
 		relays[rid] = r
 
 	}
