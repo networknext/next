@@ -1433,26 +1433,63 @@ type GetAllSessionBillingInfoReply struct {
 
 func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSessionBillingInfoArg, reply *GetAllSessionBillingInfoReply) error {
 
+	fmt.Println("--> Entering GetAllSessionBillingInfo()")
 	ctx := context.Background()
 	sessionID := int64(args.SessionID)
 
-	var sql bytes.Buffer
 	var dbName string
+	var sql bytes.Buffer
+	sql.Write([]byte(`select 
+	timeStamp,
+	buyerID,
+	sessionID,
+	sliceNumber,
+	next,
+	directRTT,
+	directJitter,
+	directPacketLoss,
+	nextRTT,
+	nextJitter,
+	nextPacketLoss,
+	nextRelays,
+	totalPrice,
+	clientToServerPacketsLost,
+	serverToClientPacketsLost,
+	committed,
+	flagged,
+	multipath,
+	nextBytesUp,
+	nextBytesDown,
+	initial,
+	datacenterID,
+	rttReduction,
+	plReduction,
+	nextRelaysPrice,
+	userHash,
+	latitude,
+	longitude,
+	isp,
+	abTest,
+	connType,
+	platformType,
+	sdkVersion,
+	packetLoss,
+	envelopeBytesUp,
+	envelopeBytesDown,
+	predictedNextRTT,
+	multipathVetoed,
+	debug from `))
 
 	// a timestamp must be provided although it is not relevant to this query
 	if s.Env == "prod" {
-		sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
-		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		sql.Write([]byte("network-next-v3-prod.prod.billing"))
 		dbName = "network-next-v3-prod"
 
 	} else if s.Env == "dev" {
-		sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
-		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		sql.Write([]byte("network-next-v3-dev.dev.billing"))
 		dbName = "network-next-v3-dev"
 	} else {
-		// env == local, unit test
+		// env == local (unit test) or env == "" (e.g. go test -run TestGetAllSessionBillingInfo)
 		err := returnLocalTestData(reply)
 		if err != nil {
 			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
@@ -1461,6 +1498,11 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 		}
 		return nil
 	}
+
+	sql.Write([]byte(" where sessionId = "))
+	sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+	sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+	sql.Write([]byte(" order by sliceNumber asc"))
 
 	bqClient, err := bigquery.NewClient(ctx, dbName)
 	if err != nil {
