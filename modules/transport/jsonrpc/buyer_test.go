@@ -1481,7 +1481,6 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullFloat64{Float64: -73.6696, Valid: true}, reply.SessionBillingInfo[0].Longitude)
 		assert.Equal(t, bigquery.NullString{StringVal: "CSTC", Valid: true}, reply.SessionBillingInfo[0].ISP)
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].ABTest)
-		assert.Equal(t, bigquery.NullInt64{Int64: 0, Valid: true}, reply.SessionBillingInfo[0].RouteDecision)
 		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].ConnectionType)
 		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].PlatformType)
 		assert.Equal(t, bigquery.NullString{StringVal: "4.0.1", Valid: true}, reply.SessionBillingInfo[0].SdkVersion)

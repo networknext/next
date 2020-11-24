@@ -1470,7 +1470,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	longitude,
 	isp,
 	abTest,
-	routeDecision,
 	connType,
 	platformType,
 	sdkVersion,

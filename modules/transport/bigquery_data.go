@@ -38,7 +38,6 @@ type BigQueryBillingEntry struct {
 	Longitude                 bigquery.NullFloat64
 	ISP                       bigquery.NullString
 	ABTest                    bigquery.NullBool
-	RouteDecision             bigquery.NullInt64
 	ConnectionType            bigquery.NullInt64
 	PlatformType              bigquery.NullInt64
 	SdkVersion                bigquery.NullString
