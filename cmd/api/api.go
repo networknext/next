@@ -10,11 +10,13 @@ import (
 	"strconv"
 	"time"
 
+	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
+	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/vanity_metrics"
@@ -48,6 +50,30 @@ func main() {
 	} else {
 		level.Error(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Cannot get vanity metrics.")
 		os.Exit(1)
+	}
+
+	// StackDriver Logging
+	var enableSDLogging bool
+	enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
+	if ok {
+		var err error
+		enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
+		if err != nil {
+			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+	}
+
+	if enableSDLogging {
+		if gcpOK {
+			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
+				os.Exit(1)
+			}
+
+			logger = logging.NewStackdriverLogger(loggingClient, "api")
+		}
 	}
 
 	switch os.Getenv("BACKEND_LOG_LEVEL") {
