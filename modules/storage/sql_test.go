@@ -185,14 +185,13 @@ func TestInsertSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
+		internalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+		assert.NoError(t, err)
+
 		rid := crypto.HashID(addr.String())
 
 		publicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(publicKey)
-		assert.NoError(t, err)
-
-		updateKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(updateKey)
 		assert.NoError(t, err)
 
 		// fields not stored in the database are not tested here
@@ -200,12 +199,12 @@ func TestInsertSQL(t *testing.T) {
 			ID:             rid,
 			Name:           "local.1",
 			Addr:           *addr,
+			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
 			SSHPort:        22,
 			SSHUser:        "fred",
 			MaxSessions:    1000,
 			PublicKey:      publicKey,
-			UpdateKey:      updateKey,
 			// Datacenter:     outerDatacenter,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
@@ -235,12 +234,12 @@ func TestInsertSQL(t *testing.T) {
 
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
+		assert.Equal(t, relay.InternalAddr, checkRelay.InternalAddr)
 		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)
 		assert.Equal(t, relay.SSHPort, checkRelay.SSHPort)
 		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
-		assert.Equal(t, relay.UpdateKey, checkRelay.UpdateKey)
 		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
@@ -382,26 +381,25 @@ func TestDeleteSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
+		internalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+		assert.NoError(t, err)
+
 		rid := crypto.HashID(addr.String())
 
 		relayPublicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(relayPublicKey)
 		assert.NoError(t, err)
 
-		updateKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(updateKey)
-		assert.NoError(t, err)
-
 		relay := routing.Relay{
 			ID:             rid,
 			Name:           "local.1",
 			Addr:           *addr,
+			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
 			SSHPort:        22,
 			SSHUser:        "fred",
 			MaxSessions:    1000,
 			PublicKey:      relayPublicKey,
-			UpdateKey:      updateKey,
 			Datacenter:     outerDatacenter,
 			MRC:            19700000000000,
 			Overage:        26000000000000,
@@ -646,26 +644,25 @@ func TestUpdateSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
+		internalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+		assert.NoError(t, err)
+
 		rid := crypto.HashID(addr.String())
 
 		publicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		updateKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(updateKey)
-		assert.NoError(t, err)
-
 		relay := routing.Relay{
 			ID:             rid,
 			Name:           "local.1",
 			Addr:           *addr,
+			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
 			SSHPort:        22,
 			SSHUser:        "fred",
 			MaxSessions:    1000,
 			PublicKey:      publicKey,
-			UpdateKey:      updateKey,
 			Datacenter:     datacenterWithID,
 			MRC:            19700000000000,
 			Overage:        26000000000000,
@@ -687,14 +684,17 @@ func TestUpdateSQL(t *testing.T) {
 		newAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
 		assert.NoError(t, err)
 
+		newInternalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.4:40000")
+		assert.NoError(t, err)
+
 		checkRelay.Name = "local.2"
 		checkRelay.Addr = *newAddr
+		checkRelay.InternalAddr = *newInternalAddr
 		checkRelay.ManagementAddr = "9.8.7.6"
 		checkRelay.SSHPort = 13
 		checkRelay.SSHUser = "Fred"
 		checkRelay.MaxSessions = 10000
 		checkRelay.PublicKey = []byte("public key")
-		checkRelay.UpdateKey = []byte("update key")
 		// checkRelay.Datacenter = only one datacenter available...
 		checkRelay.MRC = 197
 		checkRelay.Overage = 260
@@ -712,12 +712,12 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, checkModifiedRelay.Name, checkRelay.Name)
 		assert.Equal(t, checkModifiedRelay.Addr, checkRelay.Addr)
+		assert.Equal(t, checkModifiedRelay.InternalAddr, checkRelay.InternalAddr)
 		assert.Equal(t, checkModifiedRelay.ManagementAddr, checkRelay.ManagementAddr)
 		assert.Equal(t, checkModifiedRelay.SSHPort, checkRelay.SSHPort)
 		assert.Equal(t, checkModifiedRelay.SSHUser, checkRelay.SSHUser)
 		assert.Equal(t, checkModifiedRelay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, checkModifiedRelay.PublicKey, checkRelay.PublicKey)
-		assert.Equal(t, checkModifiedRelay.UpdateKey, checkRelay.UpdateKey)
 		assert.Equal(t, checkModifiedRelay.MRC, checkRelay.MRC)
 		assert.Equal(t, checkModifiedRelay.Overage, checkRelay.Overage)
 		assert.Equal(t, checkModifiedRelay.BWRule, checkRelay.BWRule)
