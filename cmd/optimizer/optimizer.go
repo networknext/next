@@ -9,27 +9,24 @@ import (
 	"context"
 	"expvar"
 	"fmt"
-	"github.com/networknext/backend/modules/analytics"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
-
 	"time"
 
+	gcpPub "cloud.google.com/go/pubsub"
+	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-
+	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend" // todo: bad name for module
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/optimizer"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
-
-	gcpPub "cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/transport"
-
 )
 
 var (
@@ -132,6 +129,16 @@ func mainReturnWithCode() int {
 	svc.StatsDB = statsDB
 	svc.Logger = logger
 
+	if cfg.CloudStoreActive {
+		client, err := gcStorage.NewClient(ctx)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		bkt := client.Bucket(fmt.Sprintf("%s-matrices", gcpProjectID))
+		err = bkt.Create(ctx, gcpProjectID, nil)
+		svc.CloudBucket = bkt
+	}
+
 	go func() {
 		err = svc.RelayCacheRunner()
 		if err != nil {
@@ -172,8 +179,21 @@ func mainReturnWithCode() int {
 			costMatrixData.SetMatrix(costMatrix.GetResponseData())
 			routeMatrixData.SetMatrix(routeMatrix.GetResponseData())
 
-			svc.UpdateMatrix(*routeMatrix, storage.MatrixTypeNormal)
+			if cfg.CloudStoreActive {
+				timeStamp := time.Now().UTC()
+				err := svc.CloudStoreMatrix("cost", timeStamp, costMatrix.GetResponseData())
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				}
+				err = svc.CloudStoreMatrix("route", timeStamp, routeMatrix.GetResponseData())
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				}
+			}
 
+			if !cfg.CloudStoreOnly {
+				svc.UpdateMatrix(*routeMatrix, storage.MatrixTypeNormal)
+			}
 			svc.MetricsOutput()
 		}
 	}()
@@ -191,7 +211,9 @@ func mainReturnWithCode() int {
 
 			valveRouteMatrixData.SetMatrix(routeMatrix.GetResponseData())
 
-			svc.UpdateMatrix(*routeMatrix, storage.MatrixTypeValve)
+			if !cfg.CloudStoreOnly {
+				svc.UpdateMatrix(*routeMatrix, storage.MatrixTypeValve)
+			}
 		}
 	}()
 
@@ -261,7 +283,6 @@ func mainReturnWithCode() int {
 			}()
 		}
 	}
-
 
 	fmt.Printf("starting http server\n")
 
