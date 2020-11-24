@@ -161,8 +161,12 @@ func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 		return 0, err
 	}
 
-	err = m.Serialize(writeStream)
-	return int64(writeStream.GetBytesProcessed()), err
+	if err = m.Serialize(writeStream); err != nil {
+		return int64(writeStream.GetBytesProcessed()), err
+	}
+
+	n, err := writer.Write(writeStream.GetData())
+	return int64(n), err
 }
 
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
