@@ -40,7 +40,7 @@ type StackDriverHandler struct {
 	ContainerName   string
 	NamespaceName   string // If this is not set, it will default to "default"
 
-	client *monitoring.MetricClient
+	Client *monitoring.MetricClient
 
 	counters   map[string]counterMapData
 	gauges     map[string]gaugeMapData
@@ -75,7 +75,7 @@ func (handler *StackDriverHandler) Open(ctx context.Context) error {
 
 	// Create a Stackdriver metrics client
 	var err error
-	handler.client, err = monitoring.NewMetricClient(ctx)
+	handler.Client, err = monitoring.NewMetricClient(ctx)
 	return err
 }
 
@@ -205,7 +205,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 					e = metricsCount
 				}
 
-				if err := handler.client.CreateTimeSeries(ctx, &monitoringpb.CreateTimeSeriesRequest{
+				if err := handler.Client.CreateTimeSeries(ctx, &monitoringpb.CreateTimeSeriesRequest{
 					Name:       monitoring.MetricProjectPath(handler.ProjectID),
 					TimeSeries: timeSeries[i:e],
 				}); err != nil {
@@ -304,7 +304,7 @@ func (handler *StackDriverHandler) createMetric(ctx context.Context, descriptor 
 	}
 
 	// Create the metric in StackDriver
-	_, err := handler.client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
+	_, err := handler.Client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
 		Name: monitoring.MetricProjectPath(handler.ProjectID),
 		MetricDescriptor: &metricpb.MetricDescriptor{
 			Name:        descriptor.ID,
@@ -324,7 +324,7 @@ func (handler *StackDriverHandler) createMetric(ctx context.Context, descriptor 
 
 		// The metric already exists in StackDriver (from a previous run), check if it needs to be overwritten
 		var stackdriverDescriptor *metricpb.MetricDescriptor
-		if stackdriverDescriptor, err = handler.client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
+		if stackdriverDescriptor, err = handler.Client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
 			Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
 		}); err != nil {
 			return err
@@ -360,7 +360,7 @@ func (handler *StackDriverHandler) overwriteMetric(ctx context.Context, descript
 	}
 
 	// Start by deleting the existing metric
-	if err := handler.client.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{
+	if err := handler.Client.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{
 		Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
 	}); err != nil {
 		return err
@@ -374,7 +374,7 @@ func (handler *StackDriverHandler) overwriteMetric(ctx context.Context, descript
 	for loop {
 		select {
 		case <-ticker.C:
-			if _, err := handler.client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
+			if _, err := handler.Client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
 				Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
 			}); err != nil {
 				if status.Code(err) == codes.NotFound {
@@ -391,7 +391,7 @@ func (handler *StackDriverHandler) overwriteMetric(ctx context.Context, descript
 	}
 
 	// Recreate the metric
-	_, err := handler.client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
+	_, err := handler.Client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
 		Name: monitoring.MetricProjectPath(handler.ProjectID),
 		MetricDescriptor: &metricpb.MetricDescriptor{
 			Name:        descriptor.ID,
@@ -411,7 +411,7 @@ func (handler *StackDriverHandler) overwriteMetric(ctx context.Context, descript
 func (handler *StackDriverHandler) Close() error {
 	// Closes the client and flushes the data to Stackdriver.
 	var err error
-	if err = handler.client.Close(); err != nil {
+	if err = handler.Client.Close(); err != nil {
 		handler.counterMapMutex.Lock()
 		handler.counters = make(map[string]counterMapData)
 		handler.gauges = make(map[string]gaugeMapData)

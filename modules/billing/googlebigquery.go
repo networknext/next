@@ -172,5 +172,15 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["debug"] = entry.Debug
 	}
 
+	e["fallbackToDirect"] = entry.FallbackToDirect
+
+	if entry.ClientFlags != 0 {
+		e["clientFlags"] = int(entry.ClientFlags)
+	}
+
+	if entry.UserFlags != 0 {
+		e["userFlags"] = int(entry.UserFlags)
+	}
+
 	return e, "", nil
 }
