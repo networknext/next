@@ -425,7 +425,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		nextRelays := ""
 		if len(billingEntry.NextRelays) > 0 {
 			for _, relay := range billingEntry.NextRelays {
-				nextRelays += fmt.Sprintf("%016x", relay) + " "
+				nextRelays += fmt.Sprintf("%016x", uint64(relay)) + " "
 			}
 		}
 		// TotalPrice
@@ -573,6 +573,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextRTT,
 			nextJitter,
 			nextPacketLoss,
+			nextRelays,
 			totalPrice,
 			clientToServerPacketsLost,
 			serverToClientPacketsLost,
@@ -585,6 +586,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			datacenterID,
 			rttReduction,
 			plReduction,
+			nextRelaysPrice,
 			userHash,
 			latitude,
 			longitude,

@@ -47,4 +47,5 @@ type BigQueryBillingEntry struct {
 	EnvelopeBytesDown         bigquery.NullInt64
 	PredictedNextRTT          bigquery.NullFloat64
 	MultipathVetoed           bigquery.NullBool
+	Debug                     bigquery.NullString
 }
