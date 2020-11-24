@@ -279,6 +279,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		datacenter := routing.UnknownDatacenter
 
 		response := SessionResponsePacket{
+			Version:     packet.Version,
 			SessionID:   packet.SessionID,
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
@@ -287,6 +288,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		var routeNumRelays int32
 		var routeRelayNames [routing.MaxRelays]string
 		var routeRelaySellers [routing.MaxRelays]routing.Seller
+
+		var debug string
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -306,7 +309,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter)
+			if !packet.ClientPingTimedOut {
+				go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
+			}
 		}()
 
 		if packet.ClientPingTimedOut {
@@ -565,6 +570,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			routeRelaySellers[i] = relay.Seller
 		}
 
+		if buyer.Debug {
+			response.HasDebug = true
+
+			for i := int32(0); i < routeNumRelays; i++ {
+				debug += routeRelayNames[i]
+				if i < routeNumRelays-1 {
+					debug += " -> "
+				}
+			}
+
+			response.Debug = debug
+		}
+
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
 }
@@ -666,7 +684,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter) {
+func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, debug string) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -704,6 +722,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	}
 
 	billingEntry := &billing.BillingEntry{
+		Timestamp:                 uint64(time.Now().Unix()),
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
 		SessionID:                 packet.SessionID,
@@ -743,6 +762,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		PacketLoss:                inGamePacketLoss,
 		PredictedNextRTT:          float32(sessionData.RouteCost),
 		MultipathVetoed:           multipathVetoed,
+		Debug:                     debug,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
@@ -768,6 +788,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
 		deltaRTT = packet.DirectRTT - packet.NextRTT
 	}
+
+	var predictedRTT int64
+	predictedRTT = int64(sessionData.RouteCost)
 
 	portalData := &SessionPortalData{
 		Meta: SessionMeta{
@@ -800,6 +823,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 				RTT:        float64(packet.DirectRTT),
 				Jitter:     float64(packet.DirectJitter),
 				PacketLoss: float64(packet.DirectPacketLoss),
+			},
+			Predicted: routing.Stats{
+				RTT: float64(predictedRTT),
 			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),

@@ -120,6 +120,8 @@ const (
 	NEXT_PLATFORM_MAX      = 7
 )
 
+const NEXT_MAX_SESSION_DEBUG = 1024
+
 var relayPublicKey = []byte{
 	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
 	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
@@ -378,6 +380,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 // --------------------------------------------------------------------------------
 
 type NextBackendSessionResponsePacket struct {
+	VersionMajor       uint32
+	VersionMinor       uint32
+	VersionPatch       uint32
 	SessionId          uint64
 	SliceNumber        uint32
 	SessionDataBytes   int32
@@ -390,6 +395,8 @@ type NextBackendSessionResponsePacket struct {
 	Tokens             []byte
 	Multipath          bool
 	Committed          bool
+	HasDebug           bool
+	Debug              string
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
@@ -436,6 +443,11 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
+	}
+
+	if ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, 4, 0, 4) {
+		stream.SerializeBool(&packet.HasDebug)
+		stream.SerializeString(&packet.Debug, NEXT_MAX_SESSION_DEBUG)
 	}
 
 	return stream.Error()
@@ -2670,6 +2682,10 @@ func main() {
 				continue
 			}
 
+			sessionResponse.VersionMajor = sessionUpdate.VersionMajor
+			sessionResponse.VersionMinor = sessionUpdate.VersionMinor
+			sessionResponse.VersionPatch = sessionUpdate.VersionPatch
+
 			backend.mutex.Lock()
 			if sessionData.SliceNumber == 1 {
 				backend.dirty = true
@@ -2698,6 +2714,9 @@ func main() {
 
 			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
 			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
+
+			sessionResponse.HasDebug = true
+			sessionResponse.Debug = "test session debug"
 
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {

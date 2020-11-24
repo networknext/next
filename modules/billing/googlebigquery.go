@@ -168,5 +168,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e["multipathVetoed"] = entry.MultipathVetoed
 
+	if entry.Debug != "" {
+		e["debug"] = entry.Debug
+	}
+
 	return e, "", nil
 }
