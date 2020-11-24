@@ -42,7 +42,7 @@
       </div>
     </form>
     <Alert :message="message" :alertType="alertType" v-if="alertMessage !== '' && $route.path === '/user-tool'"/>
-    <router-view />
+    <router-view :key="$route.fullPath"/>
   </div>
 </template>
 
