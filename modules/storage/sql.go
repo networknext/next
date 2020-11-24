@@ -791,7 +791,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.ID}
 	}
 
-	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+	publicIP := strings.Split(r.Addr.String(), ":")
+	publicIPPort, err := strconv.ParseInt(publicIP[1], 10, 64)
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
@@ -808,7 +809,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	relay := sqlRelay{
 		Name:               r.Name,
-		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIP:           publicIP[0],
 		PublicIPPort:       publicIPPort,
 		InternalIP:         internalIP,
 		InternalIPPort:     internalIPPort,
@@ -952,7 +953,8 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", r.ID)}
 	}
 
-	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+	publicIP := strings.Split(r.Addr.String(), ":")
+	publicIPPort, err := strconv.ParseInt(publicIP[1], 10, 64)
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
@@ -969,7 +971,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	relay := sqlRelay{
 		Name:               r.Name,
-		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIP:           publicIP[0],
 		PublicIPPort:       publicIPPort,
 		PublicKey:          r.PublicKey,
 		InternalIP:         internalIP,
