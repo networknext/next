@@ -373,6 +373,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			if err != nil {
 				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
 			}
+		} else {
+			internalAddr = publicAddr
 		}
 
 		// TODO: this should be treated as a legit address
