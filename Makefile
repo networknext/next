@@ -533,6 +533,10 @@ build-billing-artifacts-dev: build-billing
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
+.PHONY: build-api-artifacts-dev
+build-api-artifacts-dev: build-api
+	./deploy/build-artifacts.sh -e dev -s api
+
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
@@ -568,6 +572,10 @@ build-billing-artifacts-staging: build-billing
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
+
+.PHONY: build-api-artifacts-staging
+build-api-artifacts-staging: build-api
+	./deploy/build-artifacts.sh -e staging -s api
 
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
@@ -605,6 +613,10 @@ build-billing-artifacts-prod: build-billing
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
 
+.PHONY: build-api-artifacts-prod
+build-api-artifacts-prod: build-api
+	./deploy/build-artifacts.sh -e prod -s api
+
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
@@ -636,6 +648,10 @@ publish-billing-artifacts-dev:
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
+
+.PHONY: publish-api-artifacts-dev
+publish-api-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s api
 
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
@@ -672,6 +688,10 @@ publish-billing-artifacts-staging:
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
+.PHONY: publish-api-artifacts-staging
+publish-api-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET) -s api
 
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
@@ -716,6 +736,10 @@ publish-load-test-server-list:
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-api-artifacts-prod
+publish-api-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET) -s api
 
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
@@ -997,7 +1021,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-load-test build-portal-cruncher build-analytics build-api build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
