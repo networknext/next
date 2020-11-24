@@ -571,8 +571,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		}
 
 		if buyer.Debug {
-			response.HasDebug = true
-
 			for i := int32(0); i < routeNumRelays; i++ {
 				debug += routeRelayNames[i]
 				if i < routeNumRelays-1 {
@@ -581,6 +579,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			response.Debug = debug
+			if response.Debug != "" {
+				response.HasDebug = true
+			}
 		}
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
@@ -763,6 +764,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		PredictedNextRTT:          float32(sessionData.RouteCost),
 		MultipathVetoed:           multipathVetoed,
 		Debug:                     debug,
+		FallbackToDirect:          packet.FallbackToDirect,
+		ClientFlags:               packet.Flags,
+		UserFlags:                 packet.UserFlags,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)

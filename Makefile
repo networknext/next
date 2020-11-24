@@ -339,6 +339,13 @@ test-load: ## runs load tests
 	@printf "\nRunning load tests...\n" ; \
 	$(GO) run ./cmd/load_test/load_tests.go
 
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
+	@printf "done\n"
+
+
 #######################
 
 .PHONY: dev-portal
@@ -401,6 +408,10 @@ dev-multi-clients: build-client  ## runs 10 local clients
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
 	@./dist/server
+
+.PHONY: dev-api
+dev-api: build-api ## runs a local api endpoint service
+	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
 
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
