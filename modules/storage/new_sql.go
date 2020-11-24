@@ -315,8 +315,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sql.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sql.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
-	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
-	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.update_key, "))
+	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.internal_ip, relays.internal_ip_port, relays.public_key, "))
+	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, "))
 	sql.Write([]byte("relays.bw_billing_rule, relays.datacenter, "))
 	sql.Write([]byte("relays.machine_type, relays.relay_state from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
@@ -343,11 +343,12 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.NICSpeedMbps,
 			&relay.PublicIP,
 			&relay.PublicIPPort,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
 			&relay.PublicKey,
 			&relay.SSHPort,
 			&relay.SSHUser,
 			&relay.StartDate,
-			&relay.UpdateKey,
 			&relay.BWRule,
 			&relay.DatacenterID,
 			&relay.MachineType,
@@ -405,7 +406,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
-			UpdateKey:           relay.UpdateKey,
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
@@ -415,6 +415,16 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Type:                machineType,
 			DatabaseID:          relay.DatabaseID,
 		}
+
+		var internalAddr *net.UDPAddr
+		if relay.InternalIP != "" {
+			internalAddr, err = net.ResolveUDPAddr("udp", relay.InternalIP+":"+fmt.Sprintf("%d", relay.InternalIPPort))
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+			}
+			r.InternalAddr = *internalAddr
+		}
+
 		relays[rid] = r
 
 	}
