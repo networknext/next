@@ -755,14 +755,15 @@ func (db *SQL) Relays() []routing.Relay {
 type sqlRelay struct {
 	ID                 uint64
 	Name               string
-	PublicIP           string // []byte?
+	PublicIP           string
 	PublicIPPort       int64
+	InternalIP         string
+	InternalIPPort     int64
 	PublicKey          []byte
-	UpdateKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
 	DatacenterID       int64
-	ManagementIP       string // []byte?
+	ManagementIP       string
 	SSHUser            string
 	SSHPort            int64
 	State              int64
@@ -790,17 +791,29 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.ID}
 	}
 
-	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+	publicIP := strings.Split(r.Addr.String(), ":")
+	publicIPPort, err := strconv.ParseInt(publicIP[1], 10, 64)
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
+	internalIP := ""
+	internalIPPort := int64(0)
+	if r.InternalAddr.String() != "" {
+		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+		}
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
-		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIP:           publicIP[0],
 		PublicIPPort:       publicIPPort,
+		InternalIP:         internalIP,
+		InternalIPPort:     internalIPPort,
 		PublicKey:          r.PublicKey,
-		UpdateKey:          r.UpdateKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
@@ -821,10 +834,10 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sql.Write([]byte("insert into relays ("))
 	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
+	sql.Write([]byte("public_ip_port, internal_ip, internal_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20)"))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -844,11 +857,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.NICSpeedMbps,
 		relay.PublicIP,
 		relay.PublicIPPort,
+		relay.InternalIP,
+		relay.InternalIPPort,
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
 		relay.StartDate,
-		relay.UpdateKey,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -926,6 +940,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 
 // SetRelay updates the relay in storage with the provided copy and returns an
 // error if the relay could not be updated.
+// TODO: chopping block (obsoleted by UpdateRelay)
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	var sql bytes.Buffer
@@ -938,17 +953,29 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", r.ID)}
 	}
 
-	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+	publicIP := strings.Split(r.Addr.String(), ":")
+	publicIPPort, err := strconv.ParseInt(publicIP[1], 10, 64)
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
+	internalIP := ""
+	internalIPPort := int64(0)
+	if r.InternalAddr.String() != "" {
+		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+		}
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
-		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIP:           publicIP[0],
 		PublicIPPort:       publicIPPort,
 		PublicKey:          r.PublicKey,
-		UpdateKey:          r.UpdateKey,
+		InternalIP:         internalIP,
+		InternalIPPort:     internalIPPort,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
@@ -969,10 +996,10 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	sql.Write([]byte("update relays set ("))
 	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, update_key, "))
+	sql.Write([]byte("public_ip_port, internal_ip, internal_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state "))
 	sql.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20) where id = $21"))
+	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) where id = $22"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -992,11 +1019,12 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.NICSpeedMbps,
 		relay.PublicIP,
 		relay.PublicIPPort,
+		relay.InternalIP,
+		relay.InternalIPPort,
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
 		relay.StartDate,
-		relay.UpdateKey,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
