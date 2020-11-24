@@ -347,10 +347,10 @@ test-load: ## runs load tests
 	@printf "\nRunning load tests...\n" ; \
 	$(GO) run ./cmd/load_test/load_tests.go
 
-.PHONY: build-vanity-metrics
-build-vanity-metrics: dist
-	@printf "Building vanity analytics... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity_metrics ./cmd/api/api.go
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
 	@printf "done\n"
 
 
@@ -417,9 +417,9 @@ dev-multi-clients: build-client  ## runs 10 local clients
 dev-server: build-sdk build-server  ## runs a local server
 	@./dist/server
 
-.PHONY: dev-vanity-metrics
-dev-vanity-metrics: build-vanity-metrics ## runs a local vanity metrics service
-	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/vanity_metrics
+.PHONY: dev-api
+dev-api: build-api ## runs a local api endpoint service
+	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
 
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
