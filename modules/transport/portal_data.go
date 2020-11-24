@@ -824,7 +824,7 @@ func (s SessionSlice) RedisString() string {
 		isTryBeforeYouBuyString = "1"
 	}
 
-	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s", s.Timestamp.Unix(), s.Next.RedisString(), s.Direct.RedisString(), s.Envelope.RedisString(), onNetworkNextString, isMultipathString, isTryBeforeYouBuyString)
+	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s|%s", s.Timestamp.Unix(), s.Next.RedisString(), s.Direct.RedisString(), s.Predicted.RedisString(), s.Envelope.RedisString(), onNetworkNextString, isMultipathString, isTryBeforeYouBuyString)
 }
 
 func (s *SessionSlice) ParseRedisString(values []string) error {
@@ -846,6 +846,11 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 
 	if err := s.Direct.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
 		return fmt.Errorf("[SessionSlice] failed to read direct stats from redis data: %v", err)
+	}
+	index += 3
+
+	if err := s.Predicted.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read predicted stats from redis data: %v", err)
 	}
 	index += 3
 
