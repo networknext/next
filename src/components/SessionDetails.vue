@@ -477,8 +477,9 @@ export default class SessionDetails extends Vue {
     const bandwidthChartElement: HTMLElement | null = document.getElementById('bandwidth-chart-1')
 
     let directOnly = true
+    let lastPrediction = 0
 
-    this.slices.map((slice: any) => {
+    this.slices.map((slice: any, index: number) => {
       const timestamp = new Date(slice.timestamp).getTime() / 1000
       const onNN = slice.on_network_next
 
@@ -488,7 +489,13 @@ export default class SessionDetails extends Vue {
 
       const nextRTT = parseFloat(slice.next.rtt)
       const directRTT = parseFloat(slice.direct.rtt)
-      const predictedRTT = parseFloat(slice.predicted.rtt)
+
+      let predictedRTT = 0
+
+      if (index > 0) {
+        predictedRTT = lastPrediction
+      }
+      lastPrediction = slice.predicted.rtt
 
       const nextJitter = parseFloat(slice.next.jitter)
       const directJitter = parseFloat(slice.direct.jitter)
