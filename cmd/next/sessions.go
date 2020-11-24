@@ -345,10 +345,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 	bqBillingDataEntryCSV := [][]string{{}}
 
 	bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
+		"SliceNumber",
 		"Timestamp",
 		"BuyerID",
 		"SessionID",
-		"SliceNumber",
 		"Next",
 		"DirectRTT",
 		"DirectJitter",
@@ -384,6 +384,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"EnvelopeBytesDown",
 		"PredictedNextRTT",
 		"MultipathVetoed",
+		"Debug String",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {
@@ -425,7 +426,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		nextRelays := ""
 		if len(billingEntry.NextRelays) > 0 {
 			for _, relay := range billingEntry.NextRelays {
-				nextRelays += fmt.Sprintf("%016x", relay) + " "
+				nextRelays += fmt.Sprintf("%016x", uint64(relay)) + " "
 			}
 		}
 		// TotalPrice
@@ -515,11 +516,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.ABTest.Valid {
 			abTest = strconv.FormatBool(billingEntry.ABTest.Bool)
 		}
-		// RouteDecision
-		routeDecision := ""
-		if billingEntry.RouteDecision.Valid {
-			routeDecision = fmt.Sprintf("%d", billingEntry.RouteDecision.Int64)
-		}
 		// ConnectionType
 		connType := ""
 		if billingEntry.ConnectionType.Valid {
@@ -561,11 +557,17 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			multipathVetoed = strconv.FormatBool(billingEntry.MultipathVetoed.Bool)
 		}
 
+		// Debug
+		debug := ""
+		if billingEntry.Debug.Valid {
+			debug = billingEntry.Debug.StringVal
+		}
+
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
+			sliceNumber,
 			timeStamp,
 			buyerID,
 			sessionID,
-			sliceNumber,
 			next,
 			directRTT,
 			directJitter,
@@ -573,6 +575,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextRTT,
 			nextJitter,
 			nextPacketLoss,
+			nextRelays,
 			totalPrice,
 			clientToServerPacketsLost,
 			serverToClientPacketsLost,
@@ -585,12 +588,12 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			datacenterID,
 			rttReduction,
 			plReduction,
+			nextRelaysPrice,
 			userHash,
 			latitude,
 			longitude,
 			isp,
 			abTest,
-			routeDecision,
 			connType,
 			platformType,
 			sdkVersion,
@@ -599,6 +602,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			envelopeBytesDown,
 			predictedNextRTT,
 			multipathVetoed,
+			debug,
 		})
 	}
 

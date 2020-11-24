@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(14)
+	BillingEntryVersion = uint8(15)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -54,7 +54,10 @@ const (
 		4 + // PacketLoss
 		4 + // PredictedNextRTT
 		1 + // MultipathVetoed
-		4 + BillingEntryMaxDebugLength // Debug
+		4 + BillingEntryMaxDebugLength + // Debug
+		1 + // FallbackToDirect
+		4 + // ClientFlags
+		8 // UserFlags
 )
 
 type BillingEntry struct {
@@ -100,6 +103,9 @@ type BillingEntry struct {
 	PredictedNextRTT          float32
 	MultipathVetoed           bool
 	Debug                     string
+	FallbackToDirect          bool
+	ClientFlags               uint32
+	UserFlags                 uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -176,6 +182,10 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 
 	encoding.WriteBool(data, &index, entry.MultipathVetoed)
 	encoding.WriteString(data, &index, entry.Debug, BillingEntryMaxDebugLength)
+
+	encoding.WriteBool(data, &index, entry.FallbackToDirect)
+	encoding.WriteUint32(data, &index, entry.ClientFlags)
+	encoding.WriteUint64(data, &index, entry.UserFlags)
 
 	return data[:index]
 }
@@ -402,6 +412,20 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 14 {
 		if !encoding.ReadString(data, &index, &entry.Debug, BillingEntryMaxDebugLength) {
+			return false
+		}
+	}
+
+	if entry.Version >= 15 {
+		if !encoding.ReadBool(data, &index, &entry.FallbackToDirect) {
+			return false
+		}
+
+		if !encoding.ReadUint32(data, &index, &entry.ClientFlags) {
+			return false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.UserFlags) {
 			return false
 		}
 	}
