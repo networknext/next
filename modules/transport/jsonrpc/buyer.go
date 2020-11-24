@@ -51,6 +51,8 @@ type BuyersService struct {
 	mapPointsBuyerCache        map[string]json.RawMessage
 	mapPointsCompactBuyerCache map[string]json.RawMessage
 
+	Env string
+
 	UseBigtable     bool
 	BigTableCfName  string
 	BigTable        *storage.BigTable
@@ -210,7 +212,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
-	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(s.Env)
 	var ghostArmyScalar uint64 = 50
 	if v, ok := os.LookupEnv("GHOST_ARMY_SCALER"); ok {
 		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
@@ -1438,30 +1440,19 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	var dbName string
 
 	// a timestamp must be provided although it is not relevant to this query
-	if env, ok := os.LookupEnv("ENV"); ok {
-		if env == "prod" {
-			sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
-			sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-			sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
-			dbName = "network-next-v3-prod"
+	if s.Env == "prod" {
+		sql.Write([]byte("select * from network-next-v3-prod.prod.billing where sessionId = "))
+		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		dbName = "network-next-v3-prod"
 
-		} else if env == "dev" {
-			sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
-			sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-			sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
-			dbName = "network-next-v3-dev"
-		} else {
-			// env == local, unit test
-			err := returnLocalTestData(reply)
-			if err != nil {
-				err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
-				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-				return err
-			}
-			return nil
-		}
+	} else if s.Env == "dev" {
+		sql.Write([]byte("select * from network-next-v3-dev.dev.billing where sessionId = "))
+		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		dbName = "network-next-v3-dev"
 	} else {
-		// env == "", e.g. `go test -run TestGetAllSessionBillingInfo`
+		// env == local, unit test
 		err := returnLocalTestData(reply)
 		if err != nil {
 			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
