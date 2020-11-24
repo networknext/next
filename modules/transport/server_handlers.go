@@ -769,6 +769,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		deltaRTT = packet.DirectRTT - packet.NextRTT
 	}
 
+	var predictedRTT int64
+	predictedRTT = int64(sessionData.RouteCost)
+
 	portalData := &SessionPortalData{
 		Meta: SessionMeta{
 			ID:              packet.SessionID,
@@ -802,7 +805,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 				PacketLoss: float64(packet.DirectPacketLoss),
 			},
 			Predicted: routing.Stats{
-				RTT: float64(sessionData.RouteCost),
+				RTT: float64(predictedRTT),
 			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),
