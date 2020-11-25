@@ -1437,6 +1437,10 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	ctx := context.Background()
 	sessionID := int64(args.SessionID)
 
+	cacheBuyerID := int64(0)
+	cacheDatacenterID := int64(0)
+	cacheRelayNames := []string{}
+
 	var dbName string
 	var sql bytes.Buffer
 	sql.Write([]byte(`select 
@@ -1554,6 +1558,38 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 			return err
 		}
 		rows = append(rows, rec)
+	}
+
+	// wire up relay, datacenter and buyer names
+	for _, row := range rows {
+
+		if row.BuyerID != cacheBuyerID {
+			buyer, err := s.Storage.Buyer(uint64(row.BuyerID))
+			if err != nil {
+				err = fmt.Errorf("GetAllSessionBillingInfo() could not parse BuyerID: %v", err)
+				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(row.BuyerID)))
+				return err
+			}
+			row.BuyerString = buyer.ShortName
+			cacheBuyerID = row.BuyerID
+		}
+
+		// for _, relay := range row.NextRelays {
+		// }
+
+		if row.DatacenterID.Valid {
+			if row.DatacenterID.Int64 != cacheDatacenterID {
+				dc, err := s.Storage.Datacenter(uint64(row.DatacenterID.Int64))
+				if err != nil {
+					err = fmt.Errorf("GetAllSessionBillingInfo() could not parse DatacenterID: %v", err)
+					level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(row.DatacenterID.Int64)))
+					return err
+				}
+				row.DatacenterString = bigquery.NullString{StringVal: dc.Name, Valid: true}
+				cacheDatacenterID = row.DatacenterID.Int64
+			}
+		}
+
 	}
 
 	reply.SessionBillingInfo = rows
