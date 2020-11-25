@@ -10,6 +10,7 @@ import (
 type BigQueryBillingEntry struct {
 	Timestamp                 time.Time
 	BuyerID                   int64
+	BuyerString               string
 	SessionID                 int64
 	SliceNumber               int64
 	Next                      bigquery.NullBool
@@ -20,6 +21,7 @@ type BigQueryBillingEntry struct {
 	NextJitter                bigquery.NullFloat64
 	NextPacketLoss            bigquery.NullFloat64
 	NextRelays                []int64
+	NextRelaysStrings         []string
 	TotalPrice                int64
 	ClientToServerPacketsLost bigquery.NullInt64
 	ServerToClientPacketsLost bigquery.NullInt64
@@ -30,6 +32,7 @@ type BigQueryBillingEntry struct {
 	NextBytesDown             bigquery.NullInt64
 	Initial                   bigquery.NullBool
 	DatacenterID              bigquery.NullInt64
+	DatacenterString          bigquery.NullString
 	RttReduction              bigquery.NullBool
 	PacketLossReduction       bigquery.NullBool
 	NextRelaysPrice           []int64
@@ -47,4 +50,7 @@ type BigQueryBillingEntry struct {
 	PredictedNextRTT          bigquery.NullFloat64
 	MultipathVetoed           bigquery.NullBool
 	Debug                     bigquery.NullString
+	FallbackToDirect          bigquery.NullBool
+	ClientFlags               bigquery.NullInt64
+	UserFlags                 bigquery.NullInt64
 }
