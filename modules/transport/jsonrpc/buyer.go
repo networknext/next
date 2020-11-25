@@ -1603,6 +1603,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 					return err
 				}
 				row.NextRelaysStrings = append(row.NextRelaysStrings, relay.Name)
+				cachedRelayNames = append(cachedRelayNames, relayID)
 			}
 		}
 
