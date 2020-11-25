@@ -1437,9 +1437,9 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	ctx := context.Background()
 	sessionID := int64(args.SessionID)
 
-	cacheBuyerID := int64(0)
-	cacheDatacenterID := int64(0)
-	cacheRelayNames := []string{}
+	cachedBuyerID := int64(0)
+	cachedDatacenterID := int64(0)
+	cachedRelayNames := []int64{}
 
 	var dbName string
 	var sql bytes.Buffer
@@ -1467,14 +1467,14 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	initial,
 	datacenterID,
 	rttReduction,
-	plReduction,
+	packetLossReduction,
 	nextRelaysPrice,
 	userHash,
 	latitude,
 	longitude,
 	isp,
 	abTest,
-	connType,
+	connectionType,
 	platformType,
 	sdkVersion,
 	packetLoss,
@@ -1487,7 +1487,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	clientFlags,
 	userFlags from `))
 
-	// a timestamp must be provided although it is not relevant to this query
 	if s.Env == "prod" {
 		sql.Write([]byte("network-next-v3-prod.prod.billing"))
 		dbName = "network-next-v3-prod"
@@ -1496,7 +1495,8 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 		sql.Write([]byte("network-next-v3-dev.dev.billing"))
 		dbName = "network-next-v3-dev"
 	} else {
-		// env == local (unit test) or env == "" (e.g. go test -run TestGetAllSessionBillingInfo)
+		// env == local (unit test)
+		// env == ""    (e.g. go test -run TestGetAllSessionBillingInfo)
 		err := returnLocalTestData(reply)
 		if err != nil {
 			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
@@ -1508,6 +1508,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 
 	sql.Write([]byte(" where sessionId = "))
 	sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+	// a timestamp must be provided although it is not relevant to this query
 	sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
 	sql.Write([]byte(" order by sliceNumber asc"))
 
@@ -1547,6 +1548,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 		return err
 	}
 
+	// process result set and load rows
 	for {
 		var rec transport.BigQueryBillingEntry
 		err := it.Next(&rec)
@@ -1563,7 +1565,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	// wire up relay, datacenter and buyer names
 	for _, row := range rows {
 
-		if row.BuyerID != cacheBuyerID {
+		if row.BuyerID != cachedBuyerID {
 			buyer, err := s.Storage.Buyer(uint64(row.BuyerID))
 			if err != nil {
 				err = fmt.Errorf("GetAllSessionBillingInfo() could not parse BuyerID: %v", err)
@@ -1571,14 +1573,11 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 				return err
 			}
 			row.BuyerString = buyer.ShortName
-			cacheBuyerID = row.BuyerID
+			cachedBuyerID = row.BuyerID
 		}
 
-		// for _, relay := range row.NextRelays {
-		// }
-
 		if row.DatacenterID.Valid {
-			if row.DatacenterID.Int64 != cacheDatacenterID {
+			if row.DatacenterID.Int64 != cachedDatacenterID {
 				dc, err := s.Storage.Datacenter(uint64(row.DatacenterID.Int64))
 				if err != nil {
 					err = fmt.Errorf("GetAllSessionBillingInfo() could not parse DatacenterID: %v", err)
@@ -1586,7 +1585,24 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 					return err
 				}
 				row.DatacenterString = bigquery.NullString{StringVal: dc.Name, Valid: true}
-				cacheDatacenterID = row.DatacenterID.Int64
+				cachedDatacenterID = row.DatacenterID.Int64
+			}
+		}
+
+		// sort then compare (these are very small slices)
+		sort.Slice(row.NextRelays, func(i, j int) bool {
+			return row.NextRelays[i] < row.NextRelays[j]
+		})
+
+		if !slicesAreEqual(row.NextRelays, cachedRelayNames) {
+			for _, relayID := range row.NextRelays {
+				relay, err := s.Storage.Relay(uint64(relayID))
+				if err != nil {
+					err = fmt.Errorf("GetAllSessionBillingInfo() could not parse Relay ID: %v", err)
+					level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(relayID)))
+					return err
+				}
+				row.NextRelaysStrings = append(row.NextRelaysStrings, relay.Name)
 			}
 		}
 
@@ -1614,4 +1630,16 @@ func returnLocalTestData(reply *GetAllSessionBillingInfoReply) error {
 	reply.SessionBillingInfo = []transport.BigQueryBillingEntry{localRow}
 
 	return nil
+}
+
+func slicesAreEqual(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }
