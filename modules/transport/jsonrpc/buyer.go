@@ -1433,7 +1433,6 @@ type GetAllSessionBillingInfoReply struct {
 
 func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSessionBillingInfoArg, reply *GetAllSessionBillingInfoReply) error {
 
-	fmt.Println("--> Entering GetAllSessionBillingInfo()")
 	ctx := context.Background()
 	sessionID := int64(args.SessionID)
 
