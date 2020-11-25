@@ -1463,14 +1463,14 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	initial,
 	datacenterID,
 	rttReduction,
-	plReduction,
+	packetLossReduction,
 	nextRelaysPrice,
 	userHash,
 	latitude,
 	longitude,
 	isp,
 	abTest,
-	connType,
+	connectionType,
 	platformType,
 	sdkVersion,
 	packetLoss,
@@ -1496,6 +1496,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
 			return err
 		}
+
 		return nil
 	}
 
