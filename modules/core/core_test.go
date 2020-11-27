@@ -5082,4 +5082,79 @@ func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
 	assert.Equal(t, expectedRouteState, routeState)
 }
 
+func TestNearRelayFilterRTT(t *testing.T) {
+
+	t.Parallel()
+
+	routeState := RouteState{}
+
+	assert.Equal(t, 0, len(routeState.NearRelayId))
+	assert.Equal(t, 0, len(routeState.NearRelayRTT))
+
+	// randomize the set of near relay ids (must be non-zero)
+
+	relayIds := make([]uint64, 32)
+	for i := range relayIds {
+		relayIds[i] = uint64(1000) - uint64(i)
+	}
+
+	// add a bunch of near relays at first at zero rtt
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 0.0)
+		assert.Equal(t, float32(0), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// now add the same near relays at 100ms RTT
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 100.0)
+		assert.Equal(t, float32(100), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// now add the same near relays at 50ms RTT, should still return 100ms (max)
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 50.0)
+		assert.Equal(t, float32(100), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// bump up to 110ms RTT
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 110.0)
+		assert.Equal(t, float32(110), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// now add a random relay id 0, guaranteed unique @ 100ms
+
+	rtt := NearRelayFilterRTT(&routeState, 0, 100.0)
+	assert.Equal(t, float32(100), rtt)
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
+
+	// for the existing relays, make sure we still remember their rtts
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 50.0)
+		assert.Equal(t, float32(110), rtt)
+	}
+
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
+
+}
+
 // -----------------------------------------------------------------------------

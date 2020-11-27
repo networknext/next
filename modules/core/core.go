@@ -976,11 +976,13 @@ type RouteState struct {
 	Multipath         bool
 	Committed         bool
 	CommitPending     bool
-	CommitCounter     int32
+	CommitCounter     int32 		// todo: int32 is excessive. we only count up to 3!
 	LatencyWorse      bool
 	MultipathOverload bool
 	NoRoute           bool
 	CommitVeto        bool
+	NearRelayId       []uint64
+	NearRelayRTT      []float32
 }
 
 type InternalConfig struct {
@@ -1009,6 +1011,26 @@ func NewInternalConfig() InternalConfig {
 		LargeCustomer:              false,
 		Uncommitted:                false,
 	}
+}
+
+func NearRelayFilterRTT(routeState *RouteState, relayId uint64, rtt float32) float32 {
+	// Take the maximum RTT value seen for the near relay to improve the quality of RTT prediction.
+	// IMPORTANT: this is incredibly slow O(n^2), just testing this out to see if it helps before optimizing!
+	found := false
+	for i := range routeState.NearRelayId {
+		if routeState.NearRelayId[i] == relayId {
+			found = true
+			if rtt > routeState.NearRelayRTT[i] {
+				routeState.NearRelayRTT[i] = rtt
+			}
+			return routeState.NearRelayRTT[i]
+		}
+	}
+	if !found {
+		routeState.NearRelayId = append(routeState.NearRelayId, relayId)
+		routeState.NearRelayRTT = append(routeState.NearRelayRTT, rtt)
+	}
+	return rtt
 }
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
@@ -1042,6 +1064,67 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 		return true
 	}
 
+	return false
+}
+
+func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {
+	
+	// always commit to the route when using multipath
+	if routeState.Multipath {
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// reset the commit when the route has switched
+	if routeSwitched {
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+	}
+	// todo: ^--- no we do not want this. try 3 slices, and stay committed from that point forward.
+
+	if !routeState.CommitPending {
+		// start observing the route to see if it should be committed to
+		if !routeState.Committed {
+			routeState.CommitPending = true
+			routeState.CommitCounter = 0
+			return true
+		}
+
+		// the route is already committed to
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// the route was the same or better than direct, so commit
+	if nextLatency <= directLatency && nextPacketLoss <= directPacketLoss {
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// the route wasn't so bad that it was vetoed, so continue to observe the route for up to 3 slices
+	// todo: I'm not understanding the veto concept here. veto should *not* apply while we are uncommitted!
+	// otherwise, we will veto too early, and not give the route a chance to sort itself out.
+	if !routeState.Veto && routeState.CommitCounter < 3 {
+		if nextLatency > directLatency || nextPacketLoss > directPacketLoss {
+			routeState.Committed = false
+			routeState.CommitPending = true
+			routeState.CommitCounter++
+			return true
+		}
+	}
+
+	// no improvement after n slices -> veto the route
+	routeState.Committed = false
+	routeState.CommitPending = false
+	routeState.CommitCounter = 0
+	routeState.CommitVeto = true
 	return false
 }
 
@@ -1084,6 +1167,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	}
 
 	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
+
 	if internal.ForceNext {
 		maxCost = math.MaxInt32
 		routeState.ForcedNext = true
@@ -1103,16 +1187,22 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		return false
 	}
 
-	// default the route to being committed
+	// decide if we should commit to sending packets across network next
+
 	routeState.Committed = true
 	routeState.CommitPending = false
 	routeState.CommitCounter = 0
 
-	// if the config is set to be uncommitted, always set committed = false
 	if internal.Uncommitted {
+
+		// uncommitted. never send packets across network next
+
 		routeState.Committed = false
+
 	} else if internal.TryBeforeYouBuy {
-		// set up the committed counter
+
+		// try before you buy. try the route out for n slices before committing
+
 		TryBeforeYouBuy(routeState, internal, directLatency, 0, directPacketLoss, 0, true)
 	}
 
@@ -1143,6 +1233,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	var maxCost int32
 
 	// only check if the route is worse if we are not forcing a network next route
+
 	if !internal.ForceNext {
 
 		// if we overload the connection in multipath, leave network next
@@ -1157,6 +1248,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		}
 
 		// if we have made rtt significantly worse, leave network next
+
+		// todo: we shouldn't run this logic unless committed == true
 
 		rttVeto := internal.RTTVeto_Default
 
@@ -1178,9 +1271,11 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		}
 
 		maxCost = directLatency - rttVeto
+
 	} else {
 
 		maxCost = math.MaxInt32
+
 	}
 
 	// update the current best route
@@ -1202,24 +1297,34 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// if the config is set to be uncommitted, always set committed = false
+	// decide if we want to commit to sending packets over the network next route
+
 	if internal.Uncommitted {
+
+		// uncommitted. never send packets across the network next route
+
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
+
 	} else if internal.TryBeforeYouBuy {
-		// try the route before committing to it
+
+		// try before you buy. try network next for up to n slices before committing to it
+
 		if !TryBeforeYouBuy(routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, routeSwitched) {
 			return false, false
 		}
+
 	} else {
-		// if the config isn't set to uncommitted or try before you buy, then always commit
+
+		// default: commit right away
+
 		routeState.Committed = true
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
 	}
 
-	// have still have a route, stay on network next
+	// we still have a route, stay on network next
 
 	*out_updatedRouteCost = bestRouteCost
 	*out_updatedRouteNumRelays = bestRouteNumRelays
@@ -1239,62 +1344,3 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *
 
 	return stayOnNetworkNext, nextRouteSwitched
 }
-
-func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {
-	// always commit to the route when using multipath
-	if routeState.Multipath {
-		routeState.Committed = true
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-		return true
-	}
-
-	// reset the commit when the route has switched
-	if routeSwitched {
-		routeState.Committed = false
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-	}
-
-	if !routeState.CommitPending {
-		// start observing the route to see if it should be committed to
-		if !routeState.Committed {
-			routeState.CommitPending = true
-			routeState.CommitCounter = 0
-			return true
-		}
-
-		// the route is already committed to
-		routeState.Committed = true
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-		return true
-	}
-
-	// the route was the same or better than direct, so commit to it
-	if nextLatency <= directLatency && nextPacketLoss <= directPacketLoss {
-		routeState.Committed = true
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-		return true
-	}
-
-	// the route wasn't so bad that it was vetoed, so continue to observe the route for up to 3 slices
-	if !routeState.Veto && routeState.CommitCounter < 3 {
-		if nextLatency > directLatency || nextPacketLoss > directPacketLoss {
-			routeState.Committed = false
-			routeState.CommitPending = true
-			routeState.CommitCounter++
-			return true
-		}
-	}
-
-	// an improvement couldn't be found after 3 slices, so veto the route
-	routeState.Committed = false
-	routeState.CommitPending = false
-	routeState.CommitCounter = 0
-	routeState.CommitVeto = true
-	return false
-}
-
-// -------------------------------------------
