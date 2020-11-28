@@ -5343,3 +5343,60 @@ func TestStayOnNetworkNext_TryBeforeYouBuy_ReducePacketLoss_LatencyTolerance(t *
 }
 
 // -------------------------------------------------------------
+
+// This test makes sure we return predicted RTT (routeCost) back even if
+// the network next route is worse than direct. This gives us better visibility
+// in the admin portal and in bigquery for direct routes, so we can see why
+// they chose not to take network next (eg. best next route had high RTT).
+
+func TestPredictedRTT(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(1)
+	directPacketLoss := float32(0.0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+	routeState := RouteState{}
+	multipathVetoUsers := map[uint64]bool{}
+	internal := NewInternalConfig()
+
+	routeState.UserID = 100
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.False(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	assert.Equal(t, int32(20), routeCost)
+}
+
+// -------------------------------------------------------------
