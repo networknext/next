@@ -3484,6 +3484,7 @@ func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
 	routeState.UserID = 100
 	routeState.ReduceLatency = true
 	routeState.Veto = true
+	routeState.Committed = true
 
 	currentRouteNumRelays := int32(2)
 	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
@@ -3497,6 +3498,7 @@ func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
 	expectedRouteState.UserID = 100
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.Veto = true
+	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }
@@ -3544,6 +3546,7 @@ func TestStayOnNetworkNext_EarlyOut_Banned(t *testing.T) {
 	routeState.Next = true
 	routeState.UserID = 100
 	routeState.ReduceLatency = true
+	routeState.Committed = true
 	routeState.Banned = true
 
 	currentRouteNumRelays := int32(2)
@@ -3557,6 +3560,7 @@ func TestStayOnNetworkNext_EarlyOut_Banned(t *testing.T) {
 	expectedRouteState := RouteState{}
 	expectedRouteState.UserID = 100
 	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = true
 	expectedRouteState.Banned = true
 	expectedRouteState.Veto = true
 
@@ -4681,6 +4685,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	routeState.Next = true
 	routeState.UserID = 100
 	routeState.ForcedNext = true
+	routeState.Committed = true
 
 	result, routeSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
 
@@ -4692,6 +4697,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	expectedRouteState.ForcedNext = true
 	expectedRouteState.Veto = true
 	expectedRouteState.NoRoute = true
+	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }
@@ -4736,7 +4742,6 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	routeShader.ReduceLatency = false
 	
 	routeState := RouteState{}
-	routeState.Committed = true
 
 	internal := NewInternalConfig()
 	internal.ForceNext = true
@@ -4747,6 +4752,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	routeState.Next = true
 	routeState.UserID = 100
 	routeState.ForcedNext = true
+	routeState.Committed = true
 
 	result, routeSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
 
