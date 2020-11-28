@@ -1092,18 +1092,18 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 		return false
 	}
 
-	// if we are reducing packet loss, commit if RTT is within tolerance and packet loss is not worse
+	// if we are reducing packet loss. commit if RTT is within tolerance and packet loss is not worse
 
 	if routeState.ReducePacketLoss {
-		if nextLatency < directLatency - internal.RTTVeto_PacketLoss && nextPacketLoss <= directPacketLoss {
+		if nextLatency <= directLatency - internal.RTTVeto_PacketLoss && nextPacketLoss <= directPacketLoss {
 			routeState.Committed = true
 		}
 		return true
 	}
 
-	// we are reducing latency, commit if RTT is reduced and packet loss is not worse
+	// we are reducing latency. commit if latency and packet loss are not worse.
 
-	if nextLatency < directLatency && nextPacketLoss <= directPacketLoss {
+	if nextLatency <= directLatency && nextPacketLoss <= directPacketLoss {
 		routeState.Committed = true
 		return true
 	}

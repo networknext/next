@@ -4466,457 +4466,6 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 
 // -----------------------------------------------------------------------------
 
-// todo: review all these tests
-
-/*
-func TestTakeNetworkNext_TryBeforeYouBuy_NewRoute(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-	env.AddRelay("a", "10.0.0.3")
-
-	env.SetCost("losangeles", "a", 1)
-	env.SetCost("a", "chicago", 1)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	directPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	multipathVetoUsers := map[uint64]bool{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.UserID = 100
-
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.True(t, result)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.CommitPending = true
-
-	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(12), routeCost)
-	assert.Equal(t, int32(3), routeNumRelays)
-}
-
-func TestStayOnNetworkNext_TryBeforeYouBuy_SwitchToNewRoute(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-	env.AddRelay("a", "10.0.0.3")
-
-	env.SetCost("losangeles", "a", 1)
-	env.SetCost("a", "chicago", 1)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	nextLatency := int32(20)
-
-	directPacketLoss := float32(0)
-
-	nextPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.Next = true
-	routeState.UserID = 100
-	routeState.ReduceLatency = true
-	routeState.CommitPending = true
-	routeState.CommitCounter = 2
-
-	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
-
-	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.True(t, result)
-	assert.True(t, nextRouteSwitched)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.CommitPending = true
-
-	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(12), routeCost)
-	assert.Equal(t, int32(3), routeNumRelays)
-}
-
-func TestStayOnNetworkNext_TryBeforeYouBuy_Multipath(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	nextLatency := int32(20)
-
-	directPacketLoss := float32(0)
-
-	nextPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.Next = true
-	routeState.UserID = 100
-	routeState.ReduceLatency = true
-	routeState.Multipath = true
-
-	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
-
-	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.True(t, result)
-	assert.False(t, nextRouteSwitched)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.Multipath = true
-	expectedRouteState.Committed = true
-
-	assert.Equal(t, expectedRouteState, routeState)
-}
-
-func TestStayOnNetworkNext_TryBeforeYouBuy_Improvement(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	nextLatency := int32(20)
-
-	directPacketLoss := float32(0)
-
-	nextPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.Next = true
-	routeState.UserID = 100
-	routeState.ReduceLatency = true
-	routeState.CommitPending = true
-	routeState.CommitCounter = 2
-
-	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
-
-	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.True(t, result)
-	assert.False(t, nextRouteSwitched)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.Committed = true
-
-	assert.Equal(t, expectedRouteState, routeState)
-}
-
-func TestStayOnNetworkNext_TryBeforeYouBuy_KeepWatching(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	nextLatency := int32(35)
-
-	directPacketLoss := float32(0)
-
-	nextPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.Next = true
-	routeState.UserID = 100
-	routeState.ReduceLatency = true
-	routeState.CommitPending = true
-	routeState.CommitCounter = 2
-
-	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
-
-	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.True(t, result)
-	assert.False(t, nextRouteSwitched)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.CommitPending = true
-	expectedRouteState.CommitCounter = 3
-
-	assert.Equal(t, expectedRouteState, routeState)
-}
-
-func TestStayOnNetworkNext_TryBeforeYouBuy_CommitVeto(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	nextLatency := int32(35)
-
-	directPacketLoss := float32(0)
-
-	nextPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.Next = true
-	routeState.UserID = 100
-	routeState.ReduceLatency = true
-	routeState.CommitPending = true
-	routeState.CommitCounter = 3
-
-	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
-
-	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.False(t, result)
-	assert.False(t, nextRouteSwitched)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Veto = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.CommitVeto = true
-
-	assert.Equal(t, expectedRouteState, routeState)
-}
-
-func TestStayOnNetworkNext_TryBeforeYouBuy_AlreadyCommitted(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	costMatrix, numRelays := env.GetCostMatrix()
-
-	relayDatacenters := env.GetRelayDatacenters()
-
-	numSegments := numRelays
-
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
-
-	directLatency := int32(30)
-
-	nextLatency := int32(20)
-
-	directPacketLoss := float32(0)
-
-	nextPacketLoss := float32(0)
-
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	internal := NewInternalConfig()
-	internal.TryBeforeYouBuy = true
-
-	routeState.Next = true
-	routeState.UserID = 100
-	routeState.ReduceLatency = true
-	routeState.Committed = true
-
-	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
-
-	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
-
-	assert.True(t, result)
-	assert.False(t, nextRouteSwitched)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.Committed = true
-
-	assert.Equal(t, expectedRouteState, routeState)
-}
-*/
-
-// -----------------------------------------------------------------------------
-
 func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	t.Parallel()
@@ -5334,6 +4883,8 @@ func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
 	assert.Equal(t, expectedRouteState, routeState)
 }
 
+// ------------------------------------------------
+
 func TestNearRelayFilterRTT(t *testing.T) {
 
 	t.Parallel()
@@ -5343,7 +4894,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 	assert.Equal(t, 0, len(routeState.NearRelayId))
 	assert.Equal(t, 0, len(routeState.NearRelayRTT))
 
-	// randomize the set of near relay ids (must be non-zero)
+	// generate set of near relay ids (must be non-zero)
 
 	relayIds := make([]uint64, 32)
 	for i := range relayIds {
@@ -5410,3 +4961,385 @@ func TestNearRelayFilterRTT(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------------
+
+func TestTakeNetworkNext_TryBeforeYouBuy(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(50)
+	directPacketLoss := float32(0.0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+	routeState.UserID = 100
+	
+	multipathVetoUsers := map[uint64]bool{}
+	
+	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = true
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = false
+
+	assert.Equal(t, expectedRouteState, routeState)
+}
+
+func TestStayOnNetworkNext_TryBeforeYouBuy_Commit(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(30)
+
+	nextLatency := int32(20)
+
+	directPacketLoss := float32(0)
+
+	nextPacketLoss := float32(0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+	routeState.Next = true
+	routeState.UserID = 100
+	routeState.ReduceLatency = true
+	routeState.Committed = false
+
+	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = true
+
+	currentRouteNumRelays := int32(2)
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
+
+	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = true
+	expectedRouteState.CommitCounter = 1
+
+	assert.Equal(t, expectedRouteState, routeState)
+}
+
+func TestStayOnNetworkNext_TryBeforeYouBuy_LatencyWorse(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(30)
+
+	nextLatency := int32(100)
+
+	directPacketLoss := float32(0)
+
+	nextPacketLoss := float32(0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+	routeState.Next = true
+	routeState.UserID = 100
+	routeState.ReduceLatency = true
+	routeState.Committed = false
+
+	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = true
+
+	currentRouteNumRelays := int32(2)
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
+
+	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 1
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 2
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 3
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.False(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState.Next = false
+	expectedRouteState.Veto = true
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 4
+	expectedRouteState.CommitVeto = true
+
+	assert.Equal(t, expectedRouteState, routeState)
+}
+
+func TestStayOnNetworkNext_TryBeforeYouBuy_PacketLossWorse(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(30)
+
+	nextLatency := int32(10)
+
+	directPacketLoss := float32(0)
+
+	nextPacketLoss := float32(1)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+	routeState.Next = true
+	routeState.UserID = 100
+	routeState.ReduceLatency = true
+	routeState.Committed = false
+
+	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = true
+
+	currentRouteNumRelays := int32(2)
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
+
+	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 1
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 2
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 3
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.False(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState.Next = false
+	expectedRouteState.Veto = true
+	expectedRouteState.Committed = false
+	expectedRouteState.CommitCounter = 4
+	expectedRouteState.CommitVeto = true
+
+	assert.Equal(t, expectedRouteState, routeState)
+}
+
+func TestStayOnNetworkNext_TryBeforeYouBuy_ReducePacketLoss_LatencyTolerance(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(30)
+
+	nextLatency := int32(40)
+
+	directPacketLoss := float32(1)
+
+	nextPacketLoss := float32(0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+	routeState.Next = true
+	routeState.UserID = 100
+	routeState.ReducePacketLoss = true
+	routeState.Committed = false
+
+	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = true
+
+	currentRouteNumRelays := int32(2)
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
+
+	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+	expectedRouteState.CommitCounter = 1
+
+	assert.Equal(t, expectedRouteState, routeState)
+}
+
+// -------------------------------------------------------------
