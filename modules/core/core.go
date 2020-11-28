@@ -1177,7 +1177,6 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// if the next route RTT is too high, don't take it
 
 	if bestRouteCost > internal.MaxRTT {
-		routeState.NextLatencyTooHigh = true
 		return false
 	}
 
@@ -1253,6 +1252,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	// if the next route RTT is too high, leave network next
 
 	if bestRouteCost > internal.MaxRTT {
+		routeState.NextLatencyTooHigh = true
 		return false, false
 	}
 
