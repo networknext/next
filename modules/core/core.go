@@ -862,14 +862,15 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	}
 
 	bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
+
 	if bestRouteCost > maxCost {
+		*out_bestRouteCost = bestRouteCost
 		return false
 	}
 
 	numBestRoutes := 0
 	bestRoutes := make([]BestRoute, 1024)
 	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, bestRoutes, &numBestRoutes)
-
 	if numBestRoutes == 0 {
 		return false
 	}
@@ -960,28 +961,29 @@ func NewRouteShader() RouteShader {
 }
 
 type RouteState struct {
-	UserID            uint64
-	Next              bool
-	Veto              bool
-	Banned            bool
-	Disabled          bool
-	NotSelected       bool
-	ABTest            bool
-	A                 bool
-	B                 bool
-	ForcedNext        bool
-	ReduceLatency     bool
-	ReducePacketLoss  bool
-	ProMode           bool
-	Multipath         bool
-	Committed         bool
-	CommitVeto        bool
-	CommitCounter     byte
-	LatencyWorse      bool
-	MultipathOverload bool
-	NoRoute           bool
-	NearRelayId       []uint64
-	NearRelayRTT      []float32
+	UserID             uint64
+	Next               bool
+	Veto               bool
+	Banned             bool
+	Disabled           bool
+	NotSelected        bool
+	ABTest             bool
+	A                  bool
+	B                  bool
+	ForcedNext         bool
+	ReduceLatency      bool
+	ReducePacketLoss   bool
+	ProMode            bool
+	Multipath          bool
+	Committed          bool
+	CommitVeto         bool
+	CommitCounter      byte
+	LatencyWorse       bool
+	MultipathOverload  bool
+	NoRoute            bool
+	NextLatencyTooHigh bool
+	NearRelayId        []uint64
+	NearRelayRTT       []float32
 }
 
 type InternalConfig struct {
@@ -995,6 +997,7 @@ type InternalConfig struct {
 	ForceNext                  bool
 	LargeCustomer              bool
 	Uncommitted                bool
+	MaxRTT                     int32
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1009,6 +1012,7 @@ func NewInternalConfig() InternalConfig {
 		ForceNext:                  false,
 		LargeCustomer:              false,
 		Uncommitted:                false,
+		MaxRTT:                     300,
 	}
 }
 
@@ -1160,9 +1164,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays)
 
+	*out_routeCost = bestRouteCost
+	*out_routeNumRelays = bestRouteNumRelays
+	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
+
 	// if we don't have a network next route, we can't take network next
 
 	if bestRouteNumRelays == 0 {
+		return false
+	}
+
+	// if the next route RTT is too high, don't take it
+
+	if bestRouteCost > internal.MaxRTT {
+		routeState.NextLatencyTooHigh = true
 		return false
 	}
 
@@ -1173,10 +1188,6 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	routeState.ReducePacketLoss = reducePacketLoss
 	routeState.ProMode = proMode
 	routeState.Multipath = (proMode || routeShader.Multipath) && !userHasMultipathVeto
-
-	*out_routeCost = bestRouteCost
-	*out_routeNumRelays = bestRouteNumRelays
-	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
 
 	// should we commit to sending packets across network next?
 
@@ -1236,6 +1247,12 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
 	if bestRouteNumRelays == 0 {
 		routeState.NoRoute = true
+		return false, false
+	}
+
+	// if the next route RTT is too high, leave network next
+
+	if bestRouteCost > internal.MaxRTT {
 		return false, false
 	}
 
