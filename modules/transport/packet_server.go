@@ -16,7 +16,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 1
+	SessionDataVersion = 0
 	MaxSessionDataSize = 1024
 
 	MaxNearRelays = 32

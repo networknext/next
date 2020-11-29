@@ -1226,7 +1226,10 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 			rttVeto = internal.RTTVeto_Multipath
 		}
 
-		if nextLatency > directLatency-rttVeto {
+		// IMPORTANT: Here is where we abort the network next route if we see that we have
+		// make latency worse on the previous slice. Importantly, this is disabled while we
+		// are not committed, so we can properly evaluate the route in try before you buy.
+		if routeState.Committed && nextLatency > (directLatency-rttVeto) {
 			routeState.LatencyWorse = true
 			return false, false
 		}
