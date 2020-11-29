@@ -17,7 +17,7 @@ const (
 	MaxSessionUpdateRetries = 10
 
 	SessionDataVersion = 0
-	MaxSessionDataSize = 1024
+	MaxSessionDataSize = 511
 
 	MaxNearRelays = 32
 	MaxTokens     = 7
@@ -465,7 +465,9 @@ type SessionResponsePacket struct {
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
+
 	stream.SerializeUint64(&packet.SessionID)
+
 	stream.SerializeUint32(&packet.SliceNumber)
 
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
