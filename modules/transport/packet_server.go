@@ -16,8 +16,8 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 0
-	MaxSessionDataSize = 511
+	SessionDataVersion = 1
+	MaxSessionDataSize = 1024
 
 	MaxNearRelays = 32
 	MaxTokens     = 7
@@ -553,15 +553,24 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 }
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
+
+	// todo: we need to do better than this, otherwise our deploys will be disruptive when we change session data.
+	// instead, we need to actually make our code compatible to read the session data from old session data
+	// so we can smoothly transition from old session data -> new session data with in flight sessions!
 	stream.SerializeBits(&sessionData.Version, 8)
 	if stream.IsReading() && sessionData.Version != SessionDataVersion {
 		return fmt.Errorf("bad session data version %d, expected %d", sessionData.Version, SessionDataVersion)
 	}
+
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
+
 	stream.SerializeUint32(&sessionData.SliceNumber)
+
 	stream.SerializeUint64(&sessionData.ExpireTimestamp)
+
 	stream.SerializeBool(&sessionData.Initial)
+
 	locationSize := uint32(sessionData.Location.Size())
 	stream.SerializeUint32(&locationSize)
 	if stream.IsReading() {
@@ -577,6 +586,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 		stream.SerializeBytes(locationBytes)
 	}
+
 	hasRoute := sessionData.RouteNumRelays > 0
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
@@ -585,6 +595,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
 		}
+	
 	}
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)
@@ -601,14 +612,26 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ProMode)
 	stream.SerializeBool(&sessionData.RouteState.Multipath)
 	stream.SerializeBool(&sessionData.RouteState.Committed)
-	stream.SerializeBool(&sessionData.RouteState.CommitPending)
-	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 3)
+	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
+	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 4)
 	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
-	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
+	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
+	
 	stream.SerializeBool(&sessionData.EverOnNext)
+
 	stream.SerializeBool(&sessionData.FellBackToDirect)
+
+	var numRelays uint32
+	if stream.IsWriting() {
+		numRelays = uint32(len(sessionData.RouteState.NearRelayId))
+	}
+	stream.SerializeUint32(&numRelays)
+	for i := 0; i < int(numRelays); i++ {
+		stream.SerializeUint64(&sessionData.RouteState.NearRelayId[i])
+		stream.SerializeFloat32(&sessionData.RouteState.NearRelayRTT[i])
+	}
 
 	return stream.Error()
 }

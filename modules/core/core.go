@@ -977,7 +977,7 @@ type RouteState struct {
 	Multipath          bool
 	Committed          bool
 	CommitVeto         bool
-	CommitCounter      byte
+	CommitCounter      int32
 	LatencyWorse       bool
 	MultipathOverload  bool
 	NoRoute            bool
@@ -1214,7 +1214,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
 	maxCost := int32(math.MaxInt32)
 
-	if !internal.ForceNext && routeState.Committed {
+	if !internal.ForceNext {
 
 		rttVeto := internal.RTTVeto_Default
 
