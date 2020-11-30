@@ -556,11 +556,25 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.MultipathVetoed.Valid {
 			multipathVetoed = strconv.FormatBool(billingEntry.MultipathVetoed.Bool)
 		}
-
 		// Debug
 		debug := ""
 		if billingEntry.Debug.Valid {
 			debug = billingEntry.Debug.StringVal
+		}
+		// FallbackToDirect
+		fallbackToDirect := ""
+		if billingEntry.FallbackToDirect.Valid {
+			fallbackToDirect = strconv.FormatBool(billingEntry.FallbackToDirect.Bool)
+		}
+		// ClientFlags
+		clientFlags := ""
+		if billingEntry.ClientFlags.Valid {
+			clientFlags = "0b" + strconv.FormatInt(billingEntry.ClientFlags.Int64, 2)
+		}
+		// UserFlags
+		userFlags := ""
+		if billingEntry.UserFlags.Valid {
+			userFlags = "0b" + strconv.FormatInt(billingEntry.UserFlags.Int64, 2)
 		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
@@ -603,6 +617,9 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			predictedNextRTT,
 			multipathVetoed,
 			debug,
+			fallbackToDirect,
+			clientFlags,
+			userFlags,
 		})
 	}
 

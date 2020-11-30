@@ -32,6 +32,8 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
+
+	gcStorage "cloud.google.com/go/storage"
 )
 
 var (
@@ -379,6 +381,18 @@ func mainReturnWithCode() int {
 
 	}
 
+	var gcBucket *gcStorage.BucketHandle
+	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+	if gcStoreActive {
+		gcBucket, err = GCStoreConnect(ctx, gcpProjectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+	}
+
 	syncInterval, err := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -546,6 +560,33 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
+
+			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				continue
+			}
+			if gcStoreActive {
+				if gcBucket == nil {
+					gcBucket, err = GCStoreConnect(ctx, gcpProjectID)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						continue
+					}
+				}
+
+				timestamp := time.Now().UTC()
+				err = GCStoreMatrix(gcBucket, "cost", timestamp, costMatrixNew.GetResponseData())
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					continue
+				}
+				err = GCStoreMatrix(gcBucket, "route", timestamp, routeMatrixNew.GetResponseData())
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					continue
+				}
+			}
 		}
 	}()
 
@@ -734,4 +775,26 @@ func mainReturnWithCode() int {
 	<-sigint
 
 	return 0
+}
+
+func GCStoreConnect(ctx context.Context, gcpProjectID string) (*gcStorage.BucketHandle, error) {
+	client, err := gcStorage.NewClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	bkt := client.Bucket(fmt.Sprintf("%s-matrices", gcpProjectID))
+	err = bkt.Create(ctx, gcpProjectID, nil)
+	if err != nil {
+		return nil, err
+	}
+	return bkt, nil
+}
+
+func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp time.Time, matrix []byte) error {
+	dir := fmt.Sprintf("matrix/relay-backend/0/%d/%d/%d/%d/%d/%s-%d", timestamp.Year(), timestamp.Month(), timestamp.Day(), timestamp.Hour(), timestamp.Minute(), matrixType, timestamp.Second())
+	obj := bkt.Object(dir)
+	writer := obj.NewWriter(context.Background())
+	defer writer.Close()
+	_, err := writer.Write(matrix)
+	return err
 }
