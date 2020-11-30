@@ -510,6 +510,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
+	sessionResponse.Version = sessionUpdate.Version
+
 	sessionDataBuffer, err := transport.MarshalSessionData(&sessionData)
 	if err != nil {
 		fmt.Printf("error: failed to marshal session data: %v\n", err)

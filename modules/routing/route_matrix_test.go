@@ -82,7 +82,7 @@ func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 	for i := 0; i < expectedNumNearRelays; i++ {
 		expected = append(expected, routing.NearRelayData{
 			ID:       routeMatrix.RelayIDs[i],
-			Addr:     &routeMatrix.RelayAddresses[i],
+			Addr:     routeMatrix.RelayAddresses[i],
 			Name:     routeMatrix.RelayNames[i],
 			Distance: int(core.HaversineDistance(float64(expectedLat), float64(expectedLong), float64(routeMatrix.RelayLatitudes[i]), float64(routeMatrix.RelayLongitudes[i]))),
 		})
@@ -105,7 +105,7 @@ func TestRouteMatrixGetNearRelaysSuccessWithMax(t *testing.T) {
 	for i := 0; i < expectedNumNearRelays; i++ {
 		expected = append(expected, routing.NearRelayData{
 			ID:       routeMatrix.RelayIDs[i],
-			Addr:     &routeMatrix.RelayAddresses[i],
+			Addr:     routeMatrix.RelayAddresses[i],
 			Name:     routeMatrix.RelayNames[i],
 			Distance: int(core.HaversineDistance(float64(expectedLat), float64(expectedLong), float64(routeMatrix.RelayLatitudes[i]), float64(routeMatrix.RelayLongitudes[i]))),
 		})
