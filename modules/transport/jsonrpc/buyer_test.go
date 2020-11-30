@@ -1493,5 +1493,9 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullFloat64{Float64: 6.0, Valid: true}, reply.SessionBillingInfo[0].PredictedNextRTT)
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].MultipathVetoed)
 		assert.Equal(t, bigquery.NullString{StringVal: "", Valid: false}, reply.SessionBillingInfo[0].Debug)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].FallbackToDirect)
+		assert.Equal(t, bigquery.NullInt64{Int64: 8, Valid: true}, reply.SessionBillingInfo[0].ClientFlags)
+		assert.Equal(t, bigquery.NullInt64{Int64: 6, Valid: true}, reply.SessionBillingInfo[0].UserFlags)
+
 	})
 }
