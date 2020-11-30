@@ -375,7 +375,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Longitude",
 		"ISP",
 		"ABTest",
-		"RouteDecision",
 		"ConnectionType",
 		"PlatformType",
 		"SdkVersion",
@@ -385,6 +384,9 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"PredictedNextRTT",
 		"MultipathVetoed",
 		"Debug String",
+		"FallbackToDirect",
+		"ClientFlags",
+		"UserFlags",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {

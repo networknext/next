@@ -2,9 +2,11 @@ package jsonrpc_test
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +17,7 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -1408,14 +1411,173 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 }
 
 func TestGetAllSessionBillingInfo(t *testing.T) {
+	// this test follows all the add& rules for the SQL storer
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
 	var storer = storage.InMemory{}
 
-	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	ctx := context.Background()
+
+	customerShortName := "shortName"
+	customer := routing.Customer{
+		Active:                 true,
+		Debug:                  true,
+		Code:                   customerShortName,
+		Name:                   "Company, Ltd.",
+		AutomaticSignInDomains: "fredscuttle.com",
+	}
+
+	err := storer.AddCustomer(ctx, customer)
+	assert.NoError(t, err)
+
+	outerCustomer, err := storer.Customer(customerShortName)
+	assert.NoError(t, err)
+
+	seller := routing.Seller{
+		ID:                        customerShortName,
+		ShortName:                 customerShortName,
+		CompanyCode:               customerShortName,
+		IngressPriceNibblinsPerGB: 10,
+		EgressPriceNibblinsPerGB:  20,
+		CustomerID:                outerCustomer.DatabaseID,
+	}
+
+	err = storer.AddSeller(ctx, seller)
+	assert.NoError(t, err)
+
+	outerSeller, err := storer.Seller(customerShortName)
+	assert.NoError(t, err)
+
+	publicKey := []byte("01234567890123456789012345678901")
+	internalBuyerID := binary.LittleEndian.Uint64(publicKey[:8])
+
+	buyer := routing.Buyer{
+		ShortName:   outerCustomer.Code,
+		CompanyCode: outerCustomer.Code,
+		Live:        true,
+		Debug:       true,
+		PublicKey:   publicKey,
+		ID:          internalBuyerID, // sql store ignores this field, fs and in_memory require it
+	}
+
+	err = storer.AddBuyer(ctx, buyer)
+	assert.NoError(t, err)
+
+	outerBuyer, err := storer.Buyer(internalBuyerID)
+	assert.NoError(t, err)
+
+	// we need to add the buyer ID to bq_billing_row.json
+	// fmt.Printf("BuyerID: %d\n", outerBuyer.ID)
+
+	datacenter := routing.Datacenter{
+		ID:      crypto.HashID("some.locale.name"),
+		Name:    "some.locale.name",
+		Enabled: true,
+		Location: routing.Location{
+			Latitude:  70.5,
+			Longitude: 120.5,
+		},
+		StreetAddress: "Somewhere, USA",
+		SellerID:      outerSeller.DatabaseID,
+	}
+
+	err = storer.AddDatacenter(ctx, datacenter)
+	assert.NoError(t, err)
+
+	outerDatacenter, err := storer.Datacenter(datacenter.ID)
+	assert.NoError(t, err)
+
+	// we need to add the datacenter ID to bq_billing_row.json
+	// fmt.Printf("DatacenterID: %d\n", int64(outerDatacenter.ID))
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	internalAddr1, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+	assert.NoError(t, err)
+
+	rid1 := crypto.HashID(addr1.String())
+
+	relay1PublicKey := []byte("12345678901234567890123456789012")
+
+	relay1 := routing.Relay{
+		ID:                  rid1,
+		Name:                "local.1",
+		Addr:                *addr1,
+		InternalAddr:        *internalAddr1,
+		ManagementAddr:      "1.2.3.4",
+		SSHPort:             22,
+		SSHUser:             "fred",
+		MaxSessions:         1000,
+		PublicKey:           relay1PublicKey,
+		Datacenter:          outerDatacenter,
+		MRC:                 19700000000000,
+		Overage:             26000000000000,
+		BWRule:              routing.BWRuleBurst,
+		ContractTerm:        12,
+		StartDate:           time.Now(),
+		EndDate:             time.Now(),
+		Type:                routing.BareMetal,
+		State:               routing.RelayStateMaintenance,
+		IncludedBandwidthGB: 10000,
+		NICSpeedMbps:        1000,
+		Seller:              outerSeller, // TODO: remove - in_memory requires this, it is meaningless for the SQL storer
+	}
+
+	err = storer.AddRelay(ctx, relay1)
+	assert.NoError(t, err)
+
+	// checkRelay1, err := storer.Relay(rid1)
+	_, err = storer.Relay(rid1)
+	assert.NoError(t, err)
+
+	// we need to add the relay ID to bq_billing_row.json
+	// fmt.Printf("Relay1 ID: %d\n", int64(checkRelay1.ID))
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+
+	internalAddr2, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
+	assert.NoError(t, err)
+
+	rid2 := crypto.HashID(addr2.String())
+
+	relay2PublicKey := []byte("12345678901234567890123456789012")
+
+	relay2 := routing.Relay{
+		ID:                  rid2,
+		Name:                "local.2",
+		Addr:                *addr2,
+		InternalAddr:        *internalAddr2,
+		ManagementAddr:      "1.2.3.4",
+		SSHPort:             22,
+		SSHUser:             "fred",
+		MaxSessions:         1000,
+		PublicKey:           relay2PublicKey,
+		Datacenter:          outerDatacenter,
+		MRC:                 19700000000000,
+		Overage:             26000000000000,
+		BWRule:              routing.BWRuleBurst,
+		ContractTerm:        12,
+		StartDate:           time.Now(),
+		EndDate:             time.Now(),
+		Type:                routing.BareMetal,
+		State:               routing.RelayStateMaintenance,
+		IncludedBandwidthGB: 10000,
+		NICSpeedMbps:        1000,
+		Seller:              outerSeller, // TODO: remove - in_memory requires this, it is meaningless for the SQL storer
+	}
+
+	err = storer.AddRelay(ctx, relay2)
+	assert.NoError(t, err)
+
+	// checkRelay2, err := storer.Relay(rid2)
+	_, err = storer.Relay(rid2)
+	assert.NoError(t, err)
+
+	// we need to add the relay ID to bq_billing_row.json
+	// fmt.Printf("Relay2 ID: %d\n", int64(checkRelay2.ID))
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -1443,7 +1605,7 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		err := svc.GetAllSessionBillingInfo(req, arg, reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, int64(-1887321533039368516), reply.SessionBillingInfo[0].BuyerID)
+		assert.Equal(t, int64(outerBuyer.ID), reply.SessionBillingInfo[0].BuyerID)
 		assert.Equal(t, int64(8000587274513071088), reply.SessionBillingInfo[0].SessionID)
 		assert.Equal(t, int64(11), reply.SessionBillingInfo[0].SliceNumber)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Next)
@@ -1454,8 +1616,10 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullFloat64{Float64: 3.2498908, Valid: true}, reply.SessionBillingInfo[0].NextJitter)
 		assert.Equal(t, bigquery.NullFloat64{Float64: 0.0, Valid: true}, reply.SessionBillingInfo[0].NextPacketLoss)
 
-		assert.Equal(t, int64(-5331203109990078190), reply.SessionBillingInfo[0].NextRelays[0])
-		assert.Equal(t, int64(-3720675711246319663), reply.SessionBillingInfo[0].NextRelays[1])
+		assert.Equal(t, int64(relay1.ID), reply.SessionBillingInfo[0].NextRelays[0])
+		// assert.Equal(t, relay1.Name, reply.SessionBillingInfo[0].NextRelaysStrings[0])
+		assert.Equal(t, int64(relay2.ID), reply.SessionBillingInfo[0].NextRelays[1])
+		// assert.Equal(t, relay2.Name, reply.SessionBillingInfo[0].NextRelaysStrings[1])
 
 		assert.Equal(t, int64(12800000), reply.SessionBillingInfo[0].TotalPrice)
 
@@ -1469,7 +1633,7 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullInt64{Int64: 127500, Valid: true}, reply.SessionBillingInfo[0].NextBytesUp)
 		assert.Equal(t, bigquery.NullInt64{Int64: 153750, Valid: true}, reply.SessionBillingInfo[0].NextBytesDown)
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Initial)
-		assert.Equal(t, bigquery.NullInt64{Int64: 3619875606514892624, Valid: true}, reply.SessionBillingInfo[0].DatacenterID)
+		assert.Equal(t, bigquery.NullInt64{Int64: int64(outerDatacenter.ID), Valid: true}, reply.SessionBillingInfo[0].DatacenterID)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RttReduction)
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].PacketLossReduction)
 

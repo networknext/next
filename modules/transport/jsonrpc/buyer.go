@@ -1437,6 +1437,8 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	ctx := context.Background()
 	sessionID := int64(args.SessionID)
 
+	var rows []transport.BigQueryBillingEntry
+
 	cachedBuyerID := int64(0)
 	cachedDatacenterID := int64(0)
 	cachedRelayNames := []int64{}
@@ -1487,79 +1489,79 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	clientFlags,
 	userFlags from `))
 
-	if s.Env == "prod" {
-		sql.Write([]byte("network-next-v3-prod.prod.billing"))
-		dbName = "network-next-v3-prod"
-
-	} else if s.Env == "dev" {
-		sql.Write([]byte("network-next-v3-dev.dev.billing"))
-		dbName = "network-next-v3-dev"
-	} else {
+	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
 		// env == local (unit test)
 		// env == ""    (e.g. go test -run TestGetAllSessionBillingInfo)
-		err := returnLocalTestData(reply)
+		var err error
+		rows, err = returnLocalTestData(reply)
 		if err != nil {
 			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
 			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
 			return err
 		}
-		return nil
-	}
+	} else {
+		if s.Env == "prod" {
+			sql.Write([]byte("network-next-v3-prod.prod.billing"))
+			dbName = "network-next-v3-prod"
 
-	sql.Write([]byte(" where sessionId = "))
-	sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-	// a timestamp must be provided although it is not relevant to this query
-	sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
-	sql.Write([]byte(" order by sliceNumber asc"))
-
-	bqClient, err := bigquery.NewClient(ctx, dbName)
-	if err != nil {
-		err = fmt.Errorf("GetAllSessionBillingInfo() failed to create BigQuery client: %v", err)
-		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-		return err
-	}
-	defer bqClient.Close()
-
-	q := bqClient.Query(string(sql.String()))
-
-	job, err := q.Run(ctx)
-	if err != nil {
-		err = fmt.Errorf("GetAllSessionBillingInfo() failed to query BigQuery: %v", err)
-		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-		return err
-	}
-
-	status, err := job.Wait(ctx)
-	if err != nil {
-		err = fmt.Errorf("GetAllSessionBillingInfo() error waiting for job to complete: %v", err)
-		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-		return err
-	}
-	if err := status.Err(); err != nil {
-		err = fmt.Errorf("GetAllSessionBillingInfo() job returned an error: %v", err)
-		level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-		return err
-	}
-
-	var rows []transport.BigQueryBillingEntry
-
-	it, err := job.Read(ctx)
-	if err != nil {
-		return err
-	}
-
-	// process result set and load rows
-	for {
-		var rec transport.BigQueryBillingEntry
-		err := it.Next(&rec)
-
-		if err == iterator.Done {
-			break
+		} else if s.Env == "dev" {
+			sql.Write([]byte("network-next-v3-dev.dev.billing"))
+			dbName = "network-next-v3-dev"
 		}
+
+		sql.Write([]byte(" where sessionId = "))
+		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+		// a timestamp must be provided although it is not relevant to this query
+		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
+		sql.Write([]byte(" order by sliceNumber asc"))
+
+		bqClient, err := bigquery.NewClient(ctx, dbName)
+		if err != nil {
+			err = fmt.Errorf("GetAllSessionBillingInfo() failed to create BigQuery client: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+		defer bqClient.Close()
+
+		q := bqClient.Query(string(sql.String()))
+
+		job, err := q.Run(ctx)
+		if err != nil {
+			err = fmt.Errorf("GetAllSessionBillingInfo() failed to query BigQuery: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+
+		status, err := job.Wait(ctx)
+		if err != nil {
+			err = fmt.Errorf("GetAllSessionBillingInfo() error waiting for job to complete: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+		if err := status.Err(); err != nil {
+			err = fmt.Errorf("GetAllSessionBillingInfo() job returned an error: %v", err)
+			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
+			return err
+		}
+
+		it, err := job.Read(ctx)
 		if err != nil {
 			return err
 		}
-		rows = append(rows, rec)
+
+		// process result set and load rows
+		for {
+			var rec transport.BigQueryBillingEntry
+			err := it.Next(&rec)
+
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			rows = append(rows, rec)
+		}
 	}
 
 	// wire up relay, datacenter and buyer names
@@ -1615,22 +1617,24 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 
 }
 
-func returnLocalTestData(reply *GetAllSessionBillingInfoReply) error {
+func returnLocalTestData(reply *GetAllSessionBillingInfoReply) ([]transport.BigQueryBillingEntry, error) {
 	var localRow transport.BigQueryBillingEntry
+	var rows []transport.BigQueryBillingEntry
+
 	bqRow, err := ioutil.ReadFile("../../../testdata/bq_billing_row.json")
 	if err != nil {
 		err = fmt.Errorf("returnLocalTestData() error opening local testdata file: %v", err)
-		return err
+		return []transport.BigQueryBillingEntry{}, err
 	}
 	err = json.Unmarshal(bqRow, &localRow)
 	if err != nil {
 		err = fmt.Errorf("returnLocalTestData() error unmarshalling json from local file: %v", err)
-		return err
+		return []transport.BigQueryBillingEntry{}, err
 	}
 
-	reply.SessionBillingInfo = []transport.BigQueryBillingEntry{localRow}
+	rows = append(rows, localRow)
 
-	return nil
+	return rows, nil
 }
 
 func slicesAreEqual(a, b []int64) bool {
