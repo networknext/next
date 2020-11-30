@@ -35,7 +35,7 @@ func (self sortableEntries) Less(i, j int) bool {
 
 const (
 	maxRTT = 300.0
-	maxPL  = .10
+	maxPL  = 0.10
 )
 
 func main() {
