@@ -443,7 +443,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			for i := range nearRelays {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if nearRelays[i].ID == clientNearRelayID {
-						nearRelays[i].ClientStats.RTT = math.Ceil(float64(packet.NearRelayRTT[j]))
+						maxRTT := core.NearRelayFilterRTT(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j])
+
+						nearRelays[i].ClientStats.RTT = math.Ceil(float64(maxRTT))
 						nearRelays[i].ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[j]))
 						nearRelays[i].ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[j]))
 					}
