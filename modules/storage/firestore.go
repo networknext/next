@@ -155,6 +155,7 @@ type internalConfig struct {
 	ForceNext                  bool  `firestore:"forceNext"`
 	LargeCustomer              bool  `firestore:"largeCustomer"`
 	Uncommitted                bool  `firestore:"uncommitted"`
+	MaxRTT                     int32 `firestore:"maxRTT"`
 }
 
 type FirestoreError struct {
@@ -2279,6 +2280,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.ForceNext = tempIC.ForceNext
 	ic.LargeCustomer = tempIC.LargeCustomer
 	ic.Uncommitted = tempIC.Uncommitted
+	ic.MaxRTT = tempIC.MaxRTT
 
 	return ic, nil
 }
@@ -2298,6 +2300,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"forceNext":                  internalConfig.ForceNext,
 		"largeCustomer":              internalConfig.LargeCustomer,
 		"uncommitted":                internalConfig.Uncommitted,
+		"maxRTT":                     internalConfig.MaxRTT,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
