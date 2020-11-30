@@ -445,6 +445,7 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
@@ -773,6 +774,7 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
@@ -849,6 +851,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:          transport.SessionDataVersion,
 		SessionID:        requestPacket.SessionID,
 		SliceNumber:      requestPacket.SliceNumber + 1,
 		Location:         routing.LocationNullIsland,
@@ -925,6 +928,7 @@ func TestSessionUpdateHandlerNoNearRelays(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
@@ -1027,6 +1031,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
@@ -1137,6 +1142,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
@@ -1256,6 +1262,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
@@ -1443,6 +1450,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -1698,6 +1706,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -1949,6 +1958,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -2172,6 +2182,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -2378,6 +2389,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -2584,6 +2596,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -2597,7 +2610,6 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
-			Committed:     true,
 		},
 		EverOnNext: true,
 	}
@@ -2756,6 +2768,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -2942,6 +2955,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -3043,6 +3057,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			Committed:     true,
 		},
 	}
 
@@ -3126,6 +3141,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -3135,6 +3151,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Veto:          true,
+			Committed:     true,
 			ReduceLatency: true,
 			LatencyWorse:  true,
 		},
@@ -3166,8 +3183,6 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.LatencyWorse.Value())
 }
 
-// todo: ryan please review and update
-/*
 func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	// Seed the RNG so we don't get different results from running `make test`
 	// and running the test directly in VSCode
@@ -3239,7 +3254,6 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			CommitPending: true,
 			CommitCounter: 1,
 		},
 	}
@@ -3332,6 +3346,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -3345,7 +3360,6 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
-			CommitPending: true,
 			CommitCounter: 2,
 		},
 		EverOnNext: true,
@@ -3448,7 +3462,6 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			CommitPending: true,
 			CommitCounter: 3,
 		},
 	}
@@ -3533,6 +3546,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -3543,6 +3557,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Veto:          true,
 			ReduceLatency: true,
+			CommitCounter: 4,
 			CommitVeto:    true,
 		},
 	}
@@ -3645,8 +3660,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			CommitPending: true,
-			CommitCounter: 3,
+			Committed:     true,
 		},
 	}
 
@@ -3735,6 +3749,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
 		SessionVersion:  sessionDataStruct.SessionVersion,
 		SliceNumber:     requestPacket.SliceNumber + 1,
@@ -3779,5 +3794,3 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	assertResponseEqual(t, expectedResponse, responsePacket)
 	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
 }
-*/
-

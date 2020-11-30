@@ -809,9 +809,9 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
-func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
+func ReframeRoute(relayIDToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
 	for i := range routeRelayIds {
-		relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
+		relayIndex, ok := relayIDToIndex[routeRelayIds[i]]
 		if !ok {
 			return false
 		}
@@ -820,7 +820,7 @@ func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_r
 	return true
 }
 
-func ReframeRelays(relayIdToIndex map[uint64]int32, sourceRelayIds []uint64, sourceRelayLatency []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_numSourceRelays *int32, out_sourceRelays []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(relayIDToIndex map[uint64]int32, sourceRelayIds []uint64, sourceRelayLatency []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_numSourceRelays *int32, out_sourceRelays []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	numSourceRelays := int32(0)
 	numDestRelays := int32(0)
@@ -834,7 +834,7 @@ func ReframeRelays(relayIdToIndex map[uint64]int32, sourceRelayIds []uint64, sou
 			// any source relay with > 50% PL in the last slice is bad news
 			continue
 		}
-		sourceRelayIndex, ok := relayIdToIndex[sourceRelayIds[i]]
+		sourceRelayIndex, ok := relayIDToIndex[sourceRelayIds[i]]
 		if !ok {
 			continue
 		}
@@ -843,7 +843,7 @@ func ReframeRelays(relayIdToIndex map[uint64]int32, sourceRelayIds []uint64, sou
 	}
 
 	for i := range destRelayIds {
-		destRelayIndex, ok := relayIdToIndex[destRelayIds[i]]
+		destRelayIndex, ok := relayIDToIndex[destRelayIds[i]]
 		if !ok {
 			continue
 		}
@@ -982,7 +982,7 @@ type RouteState struct {
 	MultipathOverload  bool
 	NoRoute            bool
 	NextLatencyTooHigh bool
-	NearRelayId        []uint64
+	NearRelayID        []uint64
 	NearRelayRTT       []float32
 }
 
@@ -1016,12 +1016,12 @@ func NewInternalConfig() InternalConfig {
 	}
 }
 
-func NearRelayFilterRTT(routeState *RouteState, relayId uint64, rtt float32) float32 {
+func NearRelayFilterRTT(routeState *RouteState, relayID uint64, rtt float32) float32 {
 	// Take the maximum RTT value seen for the near relay to improve the quality of RTT prediction.
 	// IMPORTANT: this is incredibly slow O(n^2), just testing this out to see if it helps before optimizing!
 	found := false
-	for i := range routeState.NearRelayId {
-		if routeState.NearRelayId[i] == relayId {
+	for i := range routeState.NearRelayID {
+		if routeState.NearRelayID[i] == relayID {
 			found = true
 			if rtt > routeState.NearRelayRTT[i] {
 				routeState.NearRelayRTT[i] = rtt
@@ -1030,7 +1030,7 @@ func NearRelayFilterRTT(routeState *RouteState, relayId uint64, rtt float32) flo
 		}
 	}
 	if !found {
-		routeState.NearRelayId = append(routeState.NearRelayId, relayId)
+		routeState.NearRelayID = append(routeState.NearRelayID, relayID)
 		routeState.NearRelayRTT = append(routeState.NearRelayRTT, rtt)
 	}
 	return rtt
@@ -1095,7 +1095,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	// if we are reducing packet loss. commit if RTT is within tolerance and packet loss is not worse
 
 	if routeState.ReducePacketLoss {
-		if nextLatency <= directLatency - internal.RTTVeto_PacketLoss && nextPacketLoss <= directPacketLoss {
+		if nextLatency <= directLatency-internal.RTTVeto_PacketLoss && nextPacketLoss <= directPacketLoss {
 			routeState.Committed = true
 		}
 		return true

@@ -4619,7 +4619,7 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 	routeState.UserID = 100
 	routeState.ForcedNext = true
 	routeState.Committed = true
-	
+
 	internal := NewInternalConfig()
 	internal.ForceNext = true
 
@@ -4740,7 +4740,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeShader.ReduceLatency = false
-	
+
 	routeState := RouteState{}
 
 	internal := NewInternalConfig()
@@ -4897,7 +4897,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 
 	routeState := RouteState{}
 
-	assert.Equal(t, 0, len(routeState.NearRelayId))
+	assert.Equal(t, 0, len(routeState.NearRelayID))
 	assert.Equal(t, 0, len(routeState.NearRelayRTT))
 
 	// generate set of near relay ids (must be non-zero)
@@ -4914,7 +4914,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 		assert.Equal(t, float32(0), rtt)
 	}
 
-	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
 
 	// now add the same near relays at 100ms RTT
@@ -4924,7 +4924,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 		assert.Equal(t, float32(100), rtt)
 	}
 
-	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
 
 	// now add the same near relays at 50ms RTT, should still return 100ms (max)
@@ -4934,7 +4934,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 		assert.Equal(t, float32(100), rtt)
 	}
 
-	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
 
 	// bump up to 110ms RTT
@@ -4944,14 +4944,14 @@ func TestNearRelayFilterRTT(t *testing.T) {
 		assert.Equal(t, float32(110), rtt)
 	}
 
-	assert.Equal(t, len(relayIds), len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
 
 	// now add a random relay id 0, guaranteed unique @ 100ms
 
 	rtt := NearRelayFilterRTT(&routeState, 0, 100.0)
 	assert.Equal(t, float32(100), rtt)
-	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
 
 	// for the existing relays, make sure we still remember their rtts
@@ -4961,7 +4961,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 		assert.Equal(t, float32(110), rtt)
 	}
 
-	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayId))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
 
 }
@@ -5003,9 +5003,9 @@ func TestTakeNetworkNext_TryBeforeYouBuy(t *testing.T) {
 
 	routeState := RouteState{}
 	routeState.UserID = 100
-	
+
 	multipathVetoUsers := map[uint64]bool{}
-	
+
 	internal := NewInternalConfig()
 	internal.TryBeforeYouBuy = true
 
