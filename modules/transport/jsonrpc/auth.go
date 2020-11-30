@@ -115,22 +115,12 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
-	if !ok {
-		err := fmt.Errorf("AllAcounts() unable to parse email from token")
-		s.Logger.Log("err", err)
-		return err
-	}
-
 	requestCompany, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
 		return fmt.Errorf("AllAcounts(): user is not assigned to a company")
 	}
 
 	for _, a := range accountList.Users {
-		if requestEmail == *a.Email {
-			continue
-		}
 		companyCode, ok := a.AppMetadata["company_code"].(string)
 		if !ok || requestCompany != companyCode {
 			continue
