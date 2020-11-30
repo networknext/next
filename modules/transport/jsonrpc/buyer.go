@@ -1565,7 +1565,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	}
 
 	// wire up relay, datacenter and buyer names
-	for _, row := range rows {
+	for index, row := range rows {
 
 		if row.BuyerID != cachedBuyerID {
 			buyer, err := s.Storage.Buyer(uint64(row.BuyerID))
@@ -1574,7 +1574,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(row.BuyerID)))
 				return err
 			}
-			row.BuyerString = buyer.ShortName
+			rows[index].BuyerString = buyer.ShortName
 			cachedBuyerID = row.BuyerID
 		}
 
@@ -1586,7 +1586,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 					level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(row.DatacenterID.Int64)))
 					return err
 				}
-				row.DatacenterString = bigquery.NullString{StringVal: dc.Name, Valid: true}
+				rows[index].DatacenterString = bigquery.NullString{StringVal: dc.Name, Valid: true}
 				cachedDatacenterID = row.DatacenterID.Int64
 			}
 		}
@@ -1604,7 +1604,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 					level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(relayID)))
 					return err
 				}
-				row.NextRelaysStrings = append(row.NextRelaysStrings, relay.Name)
+				rows[index].NextRelaysStrings = append(rows[index].NextRelaysStrings, relay.Name)
 				cachedRelayNames = append(cachedRelayNames, relayID)
 			}
 		}

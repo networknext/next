@@ -1606,6 +1606,7 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, int64(outerBuyer.ID), reply.SessionBillingInfo[0].BuyerID)
+		assert.Equal(t, outerBuyer.ShortName, reply.SessionBillingInfo[0].BuyerString)
 		assert.Equal(t, int64(8000587274513071088), reply.SessionBillingInfo[0].SessionID)
 		assert.Equal(t, int64(11), reply.SessionBillingInfo[0].SliceNumber)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Next)
@@ -1617,9 +1618,9 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullFloat64{Float64: 0.0, Valid: true}, reply.SessionBillingInfo[0].NextPacketLoss)
 
 		assert.Equal(t, int64(relay1.ID), reply.SessionBillingInfo[0].NextRelays[0])
-		// assert.Equal(t, relay1.Name, reply.SessionBillingInfo[0].NextRelaysStrings[0])
+		assert.Equal(t, relay1.Name, reply.SessionBillingInfo[0].NextRelaysStrings[0])
 		assert.Equal(t, int64(relay2.ID), reply.SessionBillingInfo[0].NextRelays[1])
-		// assert.Equal(t, relay2.Name, reply.SessionBillingInfo[0].NextRelaysStrings[1])
+		assert.Equal(t, relay2.Name, reply.SessionBillingInfo[0].NextRelaysStrings[1])
 
 		assert.Equal(t, int64(12800000), reply.SessionBillingInfo[0].TotalPrice)
 
@@ -1634,6 +1635,7 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullInt64{Int64: 153750, Valid: true}, reply.SessionBillingInfo[0].NextBytesDown)
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Initial)
 		assert.Equal(t, bigquery.NullInt64{Int64: int64(outerDatacenter.ID), Valid: true}, reply.SessionBillingInfo[0].DatacenterID)
+		assert.Equal(t, bigquery.NullString{StringVal: outerDatacenter.Name, Valid: true}, reply.SessionBillingInfo[0].DatacenterString)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RttReduction)
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].PacketLossReduction)
 
