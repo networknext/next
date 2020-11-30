@@ -724,6 +724,16 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		multipathVetoed = true
 	}
 
+	var nearRelayRTT float32
+	if sessionData.RouteNumRelays > 0 {
+		for i := range nearRelays {
+			if nearRelays[i].ID == sessionData.RouteRelayIDs[0] {
+				nearRelayRTT = float32(nearRelays[i].ClientStats.RTT)
+				break
+			}
+		}
+	}
+
 	billingEntry := &billing.BillingEntry{
 		Timestamp:                 uint64(time.Now().Unix()),
 		BuyerID:                   packet.CustomerID,
@@ -769,6 +779,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		FallbackToDirect:          packet.FallbackToDirect,
 		ClientFlags:               packet.Flags,
 		UserFlags:                 packet.UserFlags,
+		NearRelayRTT:              nearRelayRTT,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)

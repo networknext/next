@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(15)
+	BillingEntryVersion = uint8(16)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -57,7 +57,8 @@ const (
 		4 + BillingEntryMaxDebugLength + // Debug
 		1 + // FallbackToDirect
 		4 + // ClientFlags
-		8 // UserFlags
+		8 + // UserFlags
+		4 // NearRelayRTT
 )
 
 type BillingEntry struct {
@@ -106,6 +107,7 @@ type BillingEntry struct {
 	FallbackToDirect          bool
 	ClientFlags               uint32
 	UserFlags                 uint64
+	NearRelayRTT              float32
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -186,6 +188,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.FallbackToDirect)
 	encoding.WriteUint32(data, &index, entry.ClientFlags)
 	encoding.WriteUint64(data, &index, entry.UserFlags)
+
+	encoding.WriteFloat32(data, &index, entry.NearRelayRTT)
 
 	return data[:index]
 }
@@ -426,6 +430,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.UserFlags) {
+			return false
+		}
+	}
+
+	if entry.Version >= 16 {
+		if !encoding.ReadFloat32(data, &index, &entry.NearRelayRTT) {
 			return false
 		}
 	}
