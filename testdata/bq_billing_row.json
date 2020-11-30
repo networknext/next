@@ -1,6 +1,6 @@
 {
     "timestamp": "2006-01-02T15:04:05Z",
-    "buyerId": -1887321533039368516,
+    "buyerId": 3978425819141910832,
     "sessionId": 8000587274513071088,
     "sliceNumber": 11,
     "next": true,
@@ -11,8 +11,8 @@
     "nextJitter": 3.2498908,
     "nextPacketLoss": 0.0,
     "nextRelays": [
-        -5331203109990078190,
-        -3720675711246319663
+        -3456699813249939352,
+        -1639022554078105531
     ],
     "totalPrice": 12800000,
     "clientToServerPacketsLost": null,
@@ -23,7 +23,7 @@
     "nextBytesUp": 127500,
     "nextBytesDown": 153750,
     "initial": false,
-    "datacenterID": 3619875606514892624,
+    "datacenterID": -4782787265783630760,
     "rttReduction": true,
     "packetLossReduction": false,
     "nextRelaysPrice": [
