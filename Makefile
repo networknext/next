@@ -691,7 +691,7 @@ publish-analytics-artifacts-staging:
 
 .PHONY: publish-api-artifacts-staging
 publish-api-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET) -s api
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s api
 
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
@@ -739,7 +739,7 @@ publish-billing-artifacts-prod:
 
 .PHONY: publish-api-artifacts-prod
 publish-api-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET) -s api
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s api
 
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
