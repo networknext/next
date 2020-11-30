@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -347,7 +348,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 	bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 		"SliceNumber",
 		"Timestamp",
-		"BuyerID",
+		"Buyer",
 		"SessionID",
 		"Next",
 		"DirectRTT",
@@ -366,7 +367,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NextBytesUp",
 		"NextBytesDown",
 		"Initial",
-		"DatacenterID",
+		"Datacenter",
 		"RttReduction",
 		"PacketLossReduction",
 		"NextRelaysPrice",
@@ -392,8 +393,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 	for _, billingEntry := range reply.SessionBillingInfo {
 		// Timestamp
 		timeStamp := billingEntry.Timestamp.String()
-		// BuyerID
-		buyerID := fmt.Sprintf("%016x", uint64(billingEntry.BuyerID))
+		// BuyerString
+		buyerName := billingEntry.BuyerString
 		// SessionID
 		sessionID := fmt.Sprintf("%016x", uint64(billingEntry.SessionID))
 		// SliceNumber
@@ -427,9 +428,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// NextRelays
 		nextRelays := ""
 		if len(billingEntry.NextRelays) > 0 {
-			for _, relay := range billingEntry.NextRelays {
-				nextRelays += fmt.Sprintf("%016x", uint64(relay)) + " "
+			for _, relay := range billingEntry.NextRelaysStrings {
+				nextRelays += relay + ", "
 			}
+			nextRelays = strings.TrimSuffix(nextRelays, ", ")
 		}
 		// TotalPrice
 		totalPrice := fmt.Sprintf("%d", billingEntry.TotalPrice)
@@ -473,10 +475,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.Initial.Valid {
 			initial = strconv.FormatBool(billingEntry.Initial.Bool)
 		}
-		// DatacenterID
-		datacenterID := ""
-		if billingEntry.DatacenterID.Valid {
-			datacenterID = fmt.Sprintf("%016x", uint64(billingEntry.DatacenterID.Int64))
+		// DatacenterString
+		datacenterName := ""
+		if billingEntry.DatacenterString.Valid {
+			datacenterName = billingEntry.DatacenterString.StringVal
 		}
 		// RttReduction
 		rttReduction := ""
@@ -582,7 +584,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
 			timeStamp,
-			buyerID,
+			buyerName,
 			sessionID,
 			next,
 			directRTT,
@@ -601,7 +603,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextBytesUp,
 			nextBytesDown,
 			initial,
-			datacenterID,
+			datacenterName,
 			rttReduction,
 			plReduction,
 			nextRelaysPrice,
