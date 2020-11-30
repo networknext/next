@@ -44,5 +44,8 @@
     "envelopeBytesDown": 1280000,
     "predictedNextRTT": 6.0,
     "multipathVetoed": false,
-    "debug": null
+    "debug": null,
+    "fallbackToDirect": true,
+    "clientFlags": 8,
+    "userFlags": 6
 }
