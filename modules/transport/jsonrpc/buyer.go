@@ -1433,7 +1433,6 @@ type GetAllSessionBillingInfoReply struct {
 
 func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSessionBillingInfoArg, reply *GetAllSessionBillingInfoReply) error {
 
-	fmt.Println("--> Entering GetAllSessionBillingInfo()")
 	ctx := context.Background()
 	sessionID := int64(args.SessionID)
 
@@ -1503,6 +1502,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
 			return err
 		}
+
 		return nil
 	}
 
