@@ -450,6 +450,10 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -612,6 +616,10 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 		SessionID:   1,
 		SliceNumber: 1,
 		Location:    routing.LocationNullIsland,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -703,6 +711,10 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 		SessionID:   1111,
 		SliceNumber: 1,
 		Location:    routing.LocationNullIsland,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -779,6 +791,10 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -851,11 +867,15 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
-		Version:          transport.SessionDataVersion,
-		SessionID:        requestPacket.SessionID,
-		SliceNumber:      requestPacket.SliceNumber + 1,
-		Location:         routing.LocationNullIsland,
-		ExpireTimestamp:  uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		Version:         transport.SessionDataVersion,
+		SessionID:       requestPacket.SessionID,
+		SliceNumber:     requestPacket.SliceNumber + 1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 		FellBackToDirect: true,
 	}
 
@@ -933,6 +953,10 @@ func TestSessionUpdateHandlerNoNearRelays(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1036,6 +1060,10 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1147,6 +1175,10 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1267,6 +1299,10 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteState: core.RouteState{
+			NearRelayID:  []uint64{},
+			NearRelayRTT: []float32{},
+		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1465,6 +1501,8 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -1721,6 +1759,8 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -1973,6 +2013,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -2093,6 +2135,8 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -2197,6 +2241,8 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -2296,6 +2342,8 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -2404,6 +2452,8 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -2503,6 +2553,8 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -2610,6 +2662,8 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -2700,6 +2754,8 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -2780,6 +2836,8 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 			Veto:          true,
 			NoRoute:       true,
 			ReduceLatency: true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -2872,6 +2930,8 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Multipath:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -2968,6 +3028,8 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 			Multipath:         true,
 			MultipathOverload: true,
 			ReduceLatency:     true,
+			NearRelayID:       []uint64{1, 2},
+			NearRelayRTT:      []float32{10, 15},
 		},
 	}
 
@@ -3058,6 +3120,8 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -3154,6 +3218,8 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 			Committed:     true,
 			ReduceLatency: true,
 			LatencyWorse:  true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -3255,6 +3321,8 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			CommitCounter: 1,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -3361,6 +3429,8 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			CommitCounter: 2,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -3463,6 +3533,8 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			CommitCounter: 3,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -3559,6 +3631,8 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 			ReduceLatency: true,
 			CommitCounter: 4,
 			CommitVeto:    true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -3661,6 +3735,8 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 	}
 
@@ -3764,6 +3840,8 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
+			NearRelayID:   []uint64{1, 2},
+			NearRelayRTT:  []float32{10, 15},
 		},
 		EverOnNext: true,
 	}

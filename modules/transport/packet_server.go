@@ -631,6 +631,12 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 			numRelays = uint32(len(sessionData.RouteState.NearRelayID))
 		}
 		stream.SerializeUint32(&numRelays)
+
+		if stream.IsReading() {
+			sessionData.RouteState.NearRelayID = make([]uint64, numRelays)
+			sessionData.RouteState.NearRelayRTT = make([]float32, numRelays)
+		}
+
 		for i := 0; i < int(numRelays); i++ {
 			stream.SerializeUint64(&sessionData.RouteState.NearRelayID[i])
 			stream.SerializeFloat32(&sessionData.RouteState.NearRelayRTT[i])
