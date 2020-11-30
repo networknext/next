@@ -3,6 +3,7 @@ import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
+import Vue from 'vue'
 
 export class AuthService {
   private clientID: string
@@ -18,7 +19,6 @@ export class AuthService {
       cacheLocation: 'localstorage',
       useRefreshTokens: true
     })
-    this.processAuthentication()
   }
 
   public logout () {
@@ -48,7 +48,7 @@ export class AuthService {
       })
   }
 
-  private async processAuthentication () {
+  public async processAuthentication (): Promise<any> {
     const query = window.location.search
 
     const isAuthenticated =
@@ -74,49 +74,42 @@ export class AuthService {
         domains: []
       }
 
-      this.authClient
-        .getIdTokenClaims()
-        .then((authResult: any) => {
-          const nnScope = authResult[
-            'https://networknext.com/userData'
-          ]
-          const roles: Array<any> = nnScope.roles || { roles: [] }
-          const companyCode: string = nnScope.company_code || ''
-          const newsletterConsent: boolean = nnScope.newsletter || false
-          const email = authResult.email || ''
-          const token = authResult.__raw
+      const authResult = await this.authClient.getIdTokenClaims()
+      const nnScope = authResult[
+        'https://networknext.com/userData'
+      ]
+      const roles: Array<any> = nnScope.roles || { roles: [] }
+      const companyCode: string = nnScope.company_code || ''
+      const newsletterConsent: boolean = nnScope.newsletter || false
+      const email = authResult.email || ''
+      const token = authResult.__raw
 
-          userProfile.roles = roles
-          userProfile.email = email
-          userProfile.idToken = token
-          userProfile.auth0ID = authResult.sub
-          userProfile.verified = authResult.email_verified
-          userProfile.companyCode = companyCode
-          userProfile.newsletterConsent = newsletterConsent
-          // TODO: There should be a better way to access the Vue instance rather than through the router object
-          if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
-            (window as any).Intercom('boot', {
-              api_base: process.env.VUE_APP_INTERCOM_BASE_API,
-              app_id: process.env.VUE_APP_INTERCOM_ID,
-              email: email,
-              user_id: userProfile.auth0ID,
-              unsubscribed_from_emails: newsletterConsent,
-              avatar: authResult.picture,
-              company: companyCode
-            })
-          }
-
-          if (query.includes('signup=true')) {
-            store.commit('UPDATE_IS_SIGNUP', true)
-          }
-
-          store.commit('UPDATE_USER_PROFILE', userProfile)
+      userProfile.roles = roles
+      userProfile.email = email
+      userProfile.idToken = token
+      userProfile.auth0ID = authResult.sub
+      userProfile.verified = authResult.email_verified
+      userProfile.companyCode = companyCode
+      userProfile.newsletterConsent = newsletterConsent
+      // TODO: There should be a better way to access the Vue instance rather than through the router object
+      if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+        (window as any).Intercom('boot', {
+          api_base: process.env.VUE_APP_INTERCOM_BASE_API,
+          app_id: process.env.VUE_APP_INTERCOM_ID,
+          email: email,
+          user_id: userProfile.auth0ID,
+          unsubscribed_from_emails: newsletterConsent,
+          avatar: authResult.picture,
+          company: companyCode
         })
-        .catch((error: Error) => {
-          console.log('Something went wrong fetching user details')
-          console.log(error.message)
-        })
-      return
+      }
+
+      if (query.includes('signup=true')) {
+        store.commit('UPDATE_IS_SIGNUP', true)
+      }
+
+      store.commit('UPDATE_USER_PROFILE', userProfile)
+      return store.dispatch('processAuthChange')
     }
     if (query.includes('code=') && query.includes('state=')) {
       await this.authClient.handleRedirectCallback()
@@ -124,12 +117,10 @@ export class AuthService {
           console.log('something went wrong with parsing the redirect callback')
           console.log(error)
         })
-      this.processAuthentication()
-      router.push('/')
-      return
+      return this.processAuthentication()
     }
     // TODO: There should be a better way to access the Vue instance rather than through the router object
-    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
         api_base: process.env.VUE_APP_INTERCOM_BASE_API,
         app_id: process.env.VUE_APP_INTERCOM_ID

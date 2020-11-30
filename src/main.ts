@@ -73,14 +73,20 @@ if (useAPI) {
   Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
 }
 
-const app = new Vue({
-  router,
-  store,
-  render: h => h(App)
-}).$mount('#app')
+Vue.prototype.$authService.processAuthentication().then(() => {
+  const query = window.location.search
+  if (query.includes('code=') && query.includes('state=')) {
+    router.push('/')
+  }
+  const app = new Vue({
+    router,
+    store,
+    render: h => h(App)
+  }).$mount('#app')
 
-const win: any = window
+  const win: any = window
 
-if (win.Cypress) {
-  win.app = app
-}
+  if (win.Cypress) {
+    win.app = app
+  }
+})

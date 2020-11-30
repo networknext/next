@@ -86,7 +86,6 @@ export default class UserSessions extends Vue {
   private searchID: string
   private message: string
   private alertType: string
-  private unwatch: any
 
   constructor () {
     super()

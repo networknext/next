@@ -34,7 +34,7 @@
           <br/>
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validCompanyInfo">
+      <button type="submit" class="btn btn-primary btn-sm">
         Update Company Settings
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -69,7 +69,7 @@
           I would like to receive the Network Next newsletter
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
+      <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 1rem;" v-if="false">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -81,7 +81,9 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
+import { ErrorTypes } from './types/ErrorTypes'
 import { UserProfile } from './types/AuthTypes'
+import { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -109,7 +111,6 @@ export default class AccountSettings extends Vue {
   private companyCode: string
   private newPassword: string
   private confirmPassword: string
-  private unwatch: any
   private validPassword: boolean
   private validPasswordForm: boolean
   private validCompanyCode: boolean
@@ -142,28 +143,13 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
-    if (this.$store.getters.userProfile) {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-    this.unwatch = this.$store.watch(
-      (_, getters: any) => getters.userProfile,
-      (userProfile: any) => {
-        this.checkUserProfile(userProfile)
-      }
-    )
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
+    const userProfile = cloneDeep(this.$store.getters.userProfile)
     this.companyName = userProfile.companyName || ''
     this.companyCode = userProfile.companyCode || ''
     this.newsletterConsent = userProfile.newsletterConsent || false
     this.checkCompanyName()
     this.checkCompanyCode()
     this.checkConfirmPassword()
-  }
-
-  private destory () {
-    this.unwatch()
   }
 
   private checkCompanyName () {
@@ -244,6 +230,15 @@ export default class AccountSettings extends Vue {
   }
 
   private updateCompanyInformation () {
+    if (!this.validCompanyInfo) {
+      this.message = ErrorTypes.INVALID_FORM_ENTRY
+      this.alertType = AlertTypes.ERROR
+      setTimeout(() => {
+        this.message = ''
+        this.alertType = AlertTypes.DEFAULT
+      }, 5000)
+      return
+    }
     this.$apiService
       .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
       .then((response: any) => {
@@ -270,6 +265,15 @@ export default class AccountSettings extends Vue {
   }
 
   private updateAccountSettings () {
+    if (!this.validPasswordForm) {
+      this.message = ErrorTypes.INVALID_FORM_ENTRY
+      this.alertType = AlertTypes.ERROR
+      setTimeout(() => {
+        this.message = ''
+        this.alertType = AlertTypes.DEFAULT
+      }, 5000)
+      return
+    }
     this.$apiService
       .updateAccountSettings({ newsletter: this.newsletterConsent })
       .then((response: any) => {

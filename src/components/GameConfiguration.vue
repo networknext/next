@@ -61,7 +61,6 @@ export default class GameConfiguration extends Vue {
   private message: string
   private alertType: string
   private userProfile: UserProfile
-  private unwatch: any
 
   constructor () {
     super()
@@ -72,31 +71,14 @@ export default class GameConfiguration extends Vue {
     this.userProfile = {} as UserProfile
   }
 
-  private destroy () {
-    this.unwatch()
-  }
-
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
     if (this.companyName === '') {
-      this.companyName = userProfile.companyName || ''
+      this.companyName = this.userProfile.companyName || ''
     }
     if (this.pubKey === '') {
-      this.pubKey = userProfile.pubKey || ''
+      this.pubKey = this.userProfile.pubKey || ''
     }
-    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private updatePubKey () {

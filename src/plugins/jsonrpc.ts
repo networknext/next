@@ -1,5 +1,4 @@
 import store from '@/store'
-import { cloneDeep } from 'lodash'
 
 export class JSONRPCService {
   private headers: any
@@ -10,50 +9,6 @@ export class JSONRPCService {
       'Accept-Encoding': 'gzip',
       'Content-Type': 'application/json'
     }
-
-    store.watch(
-      (_, getters: any) => getters.idToken,
-      () => {
-        this.processAuthChange()
-      }
-    )
-  }
-
-  private processAuthChange (): void {
-    const userProfile = cloneDeep(store.getters.userProfile)
-    let promises = []
-    if (store.getters.registeredToCompany) {
-      promises = [
-        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
-        this.fetchGameConfiguration(),
-        this.fetchAllBuyers()
-      ]
-    } else {
-      promises = [
-        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
-        this.fetchAllBuyers()
-      ]
-    }
-    Promise.all(promises)
-      .then((responses: any) => {
-        let allBuyers = []
-        if (store.getters.registeredToCompany) {
-          allBuyers = responses[2].buyers
-          userProfile.pubKey = responses[1].game_config.public_key
-        } else {
-          allBuyers = responses[1].buyers
-        }
-        userProfile.buyerID = responses[0].account.id
-        userProfile.companyName = responses[0].account.company_name || ''
-        userProfile.domains = responses[0].domains || []
-        store.commit('UPDATE_USER_PROFILE', userProfile)
-        store.commit('UPDATE_ALL_BUYERS', allBuyers)
-        store.commit('UPDATE_CURRENT_FILTER', { companyCode: userProfile.buyerID === '' || store.getters.isAdmin ? '' : userProfile.companyCode })
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong fetching user details')
-        console.log(error.message)
-      })
   }
 
   private call (method: string, params: any): Promise<any> {

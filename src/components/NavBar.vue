@@ -119,6 +119,7 @@
 </template>
 
 <script lang="ts">
+import { cloneDeep } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import { UserProfile } from './types/AuthTypes'
 import { FeatureEnum } from './types/FeatureTypes'
@@ -142,7 +143,6 @@ export default class NavBar extends Vue {
 
   private companyCode: string
   private portalVersion: string
-  private unwatch: any
   private featureEnums: any
 
   constructor () {
@@ -158,20 +158,8 @@ export default class NavBar extends Vue {
   }
 
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
     if (this.companyCode === '') {
+      const userProfile = cloneDeep(this.$store.getters.userProfile)
       this.companyCode = userProfile.companyCode || ''
     }
   }
