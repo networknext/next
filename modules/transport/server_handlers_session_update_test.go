@@ -1061,8 +1061,8 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
+			NearRelayID:  []uint64{1},
+			NearRelayRTT: []float32{0},
 		},
 	}
 
