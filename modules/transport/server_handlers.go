@@ -760,6 +760,11 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		multipathVetoed = true
 	}
 
+	var routeCost int32 = sessionData.RouteCost
+	if sessionData.RouteCost == math.MaxInt32 {
+		routeCost = 0
+  }
+
 	var nearRelayRTT float32
 	if sessionData.RouteNumRelays > 0 {
 		for i := range nearRelays {
@@ -809,7 +814,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		PlatformType:              uint8(packet.PlatformType),
 		SDKVersion:                packet.Version.String(),
 		PacketLoss:                inGamePacketLoss,
-		PredictedNextRTT:          float32(sessionData.RouteCost),
+		PredictedNextRTT:          float32(routeCost),
 		MultipathVetoed:           multipathVetoed,
 		Debug:                     debug,
 		FallbackToDirect:          packet.FallbackToDirect,
@@ -843,7 +848,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	}
 
 	var predictedRTT int64
-	predictedRTT = int64(sessionData.RouteCost)
+	predictedRTT = int64(routeCost)
 
 	portalData := &SessionPortalData{
 		Meta: SessionMeta{
