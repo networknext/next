@@ -88,7 +88,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 type NearRelayData struct {
 	ID          uint64
-	Addr        *net.UDPAddr
+	Addr        net.UDPAddr
 	Name        string
 	Distance    int
 	ClientStats Stats
@@ -107,7 +107,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 
 	for i, relayID := range m.RelayIDs {
 		nearRelayData[i].ID = relayID
-		nearRelayData[i].Addr = &m.RelayAddresses[i]
+		nearRelayData[i].Addr = m.RelayAddresses[i]
 		nearRelayData[i].Name = m.RelayNames[i]
 		lat2 := float64(m.RelayLatitudes[i])
 		long2 := float64(m.RelayLongitudes[i])
