@@ -1026,6 +1026,12 @@ func NearRelayFilterRTT(routeState *RouteState, relayID uint64, rtt float32) flo
 			if rtt > routeState.NearRelayRTT[i] {
 				routeState.NearRelayRTT[i] = rtt
 			}
+
+			// Since we can only store near relay RTT as a byte in the session data,
+			// we need to clamp the near relay RTT to 255
+			if routeState.NearRelayRTT[i] > 255 {
+				routeState.NearRelayRTT[i] = 255
+			}
 			return routeState.NearRelayRTT[i]
 		}
 	}
