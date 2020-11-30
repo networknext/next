@@ -182,5 +182,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["userFlags"] = int(entry.UserFlags)
 	}
 
+	if entry.NearRelayRTT != 0 {
+		e["nearRelayRTT"] = entry.NearRelayRTT
+	}
+
 	return e, "", nil
 }
