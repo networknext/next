@@ -3,7 +3,7 @@ import Vuex from 'vuex'
 import UserManagement from '@/components/UserManagement.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 
-describe('SessionCounts.vue', () => {
+describe('UserManagement.vue', () => {
   const localVue = createLocalVue()
 
   localVue.use(Vuex)
@@ -11,8 +11,14 @@ describe('SessionCounts.vue', () => {
 
   const defaultStore = new Vuex.Store({
     state: {
+      userProfile: {
+        companyCode: '',
+        companyName: '',
+        domains: []
+      }
     },
     getters: {
+      userProfile: (state: any) => state.userProfile
     }
   })
 
@@ -33,7 +39,7 @@ describe('SessionCounts.vue', () => {
   })
 
   describe('UserManagement.vue', () => {
-    it('mounts the game config tab in the settings workspace successfully', () => {
+    it('mounts the users tab in the settings workspace successfully', () => {
       const store = defaultStore
       const wrapper = shallowMount(UserManagement, { localVue, store })
       expect(wrapper.exists()).toBe(true)
