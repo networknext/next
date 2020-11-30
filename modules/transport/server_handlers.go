@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -53,7 +52,7 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	}
 
 	if len(sessionDataBuffer) > MaxSessionDataSize {
-		return errors.New("session data too large")
+		return fmt.Errorf("session data of %d exceeds limit of %d bytes", len(sessionDataBuffer), MaxSessionDataSize)
 	}
 
 	response.SessionDataBytes = int32(len(sessionDataBuffer))
