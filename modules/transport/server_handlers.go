@@ -528,6 +528,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, reframedNearRelayCosts, &numDestRelays, reframedDestRelays)
 
 		reframedNearRelays = reframedNearRelays[:numNearRelays]
+		reframedNearRelayCosts = reframedNearRelayCosts[:numNearRelays]
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
 
 		var routeCost int32
