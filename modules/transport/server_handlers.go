@@ -568,6 +568,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 					// Check if the route has changed
 					if nextRouteSwitched {
+						metrics.RouteSwitched.Add(1)
+
 						// Create a next token here rather than a continue token since the route has switched
 						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
 					} else {
