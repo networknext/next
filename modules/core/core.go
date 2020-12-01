@@ -120,7 +120,7 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
 // ---------------------------------------------------
 
 const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 8
+const MaxRoutesPerEntry = 64
 
 type RouteManager struct {
 	NumRoutes       int

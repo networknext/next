@@ -1518,7 +1518,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		Initial:         true,
 		RouteNumRelays:  2,
 		RouteCost:       45,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -1780,7 +1780,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		Initial:         true,
 		RouteNumRelays:  3,
 		RouteCost:       45,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{3, 2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{3, 2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2038,7 +2038,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		Initial:         true,
 		RouteNumRelays:  3,
 		RouteCost:       50,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{1, 2, 3},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2, 3},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2161,7 +2161,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -2266,7 +2266,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		Initial:         false,
 		RouteNumRelays:  2,
 		RouteCost:       50 + core.CostBias,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2372,7 +2372,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{5, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{5, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -2480,7 +2480,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		Initial:         true,
 		RouteNumRelays:  2,
 		RouteCost:       45,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2586,7 +2586,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{1, 2},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -2694,7 +2694,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		Initial:         true,
 		RouteNumRelays:  2,
 		RouteCost:       45,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2787,7 +2787,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -2961,7 +2961,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        1234567890,
 			Next:          true,
@@ -3152,7 +3152,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -3353,7 +3353,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -3460,7 +3460,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		Initial:         false,
 		RouteNumRelays:  2,
 		RouteCost:       50 + core.CostBias,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -3565,7 +3565,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
