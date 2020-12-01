@@ -505,6 +505,7 @@ export default class SessionDetails extends Vue {
 
       // Latency
       let next = (slice.is_multipath && nextRTT >= directRTT && !this.$store.getters.isAdmin) ? directRTT : nextRTT
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       let direct = directRTT
       latencyData[0].push(timestamp)
       latencyData[1].push(next)
@@ -513,6 +514,7 @@ export default class SessionDetails extends Vue {
 
       // Jitter
       next = (slice.is_multipath && nextJitter >= directJitter && !this.$store.getters.isAdmin) ? directJitter : nextJitter
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       direct = directJitter
       jitterData[0].push(timestamp)
       jitterData[1].push(next)
@@ -520,6 +522,7 @@ export default class SessionDetails extends Vue {
 
       // Packetloss
       next = (slice.is_multipath && nextPL >= directPL && !this.$store.getters.isAdmin) ? directPL : nextPL
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       direct = directPL
       packetLossData[0].push(timestamp)
       packetLossData[1].push(next)
