@@ -554,6 +554,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 				// todo: ryan, we should have a counter here. if this number goes up, something is wrong!
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
+				metrics.RouteDoesNotExist.Add(1)
 
 				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
