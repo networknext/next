@@ -165,7 +165,7 @@ func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 		return int64(writeStream.GetBytesProcessed()), err
 	}
 
-	n, err := writer.Write(writeStream.GetData())
+	n, err := writer.Write(writeStream.GetData()[:writeStream.GetBytesProcessed()])
 	return int64(n), err
 }
 
