@@ -76,6 +76,7 @@ type SessionUpdateMetrics struct {
 	NearRelaysLocateFailure                    Counter
 	NoRelaysInDatacenter                       Counter
 	RouteDoesNotExist                          Counter
+	RouteSwitched                              Counter
 	NoRoute                                    Counter
 	MultipathOverload                          Counter
 	LatencyWorse                               Counter
@@ -112,6 +113,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	NearRelaysLocateFailure:                    &EmptyCounter{},
 	NoRelaysInDatacenter:                       &EmptyCounter{},
 	RouteDoesNotExist:                          &EmptyCounter{},
+	RouteSwitched:                              &EmptyCounter{},
 	NoRoute:                                    &EmptyCounter{},
 	MultipathOverload:                          &EmptyCounter{},
 	LatencyWorse:                               &EmptyCounter{},
@@ -704,6 +706,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".route_does_not_exist",
 		Unit:        "errors",
 		Description: "The number of times a route no longer exists for a " + packetDescription + ".",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.RouteSwitched, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Route Switched",
+		ServiceName: serviceName,
+		ID:          handlerID + ".route_switched",
+		Unit:        "errors",
+		Description: "The number of times a route switched for a " + packetDescription + ".",
 	})
 	if err != nil {
 		return nil, err
