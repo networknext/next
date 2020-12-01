@@ -2528,9 +2528,12 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{ID: "next_slices"})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.RouteSwitched, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{ID: "route_switched"})
 	assert.NoError(t, err)
 	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+	expectedMetrics.SessionUpdateMetrics.RouteSwitched.Add(1)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
