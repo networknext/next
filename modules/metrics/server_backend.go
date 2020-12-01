@@ -75,6 +75,7 @@ type SessionUpdateMetrics struct {
 	DatacenterNotFound                         Counter
 	NearRelaysLocateFailure                    Counter
 	NoRelaysInDatacenter                       Counter
+	RouteDoesNotExist                          Counter
 	NoRoute                                    Counter
 	MultipathOverload                          Counter
 	LatencyWorse                               Counter
@@ -110,6 +111,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	DatacenterNotFound:                         &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
 	NoRelaysInDatacenter:                       &EmptyCounter{},
+	RouteDoesNotExist:                          &EmptyCounter{},
 	NoRoute:                                    &EmptyCounter{},
 	MultipathOverload:                          &EmptyCounter{},
 	LatencyWorse:                               &EmptyCounter{},
@@ -691,6 +693,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".no_relays_in_datacenter",
 		Unit:        "errors",
 		Description: "The number of times we found no relays in the game server's datacenter for a " + packetDescription + ".",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.RouteDoesNotExist, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Route Does Not Exists",
+		ServiceName: serviceName,
+		ID:          handlerID + ".no_does_not_exist",
+		Unit:        "errors",
+		Description: "The number of times a route no longer exists for a " + packetDescription + ".",
 	})
 	if err != nil {
 		return nil, err
