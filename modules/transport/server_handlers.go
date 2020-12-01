@@ -270,10 +270,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		newSession := packet.SliceNumber == 0
 
 		var sessionData SessionData
+		var prevSessionData SessionData
 
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
-		nearRelays := []routing.NearRelayData{}
 		buyer := routing.Buyer{}
 		datacenter := routing.UnknownDatacenter
 
@@ -283,10 +283,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
 		}
-
-		var routeNumRelays int32
-		var routeRelayNames [routing.MaxRelays]string
-		var routeRelaySellers [routing.MaxRelays]routing.Seller
 
 		var debug string
 
@@ -308,8 +304,41 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
+			// Rebuild the arrays of relay names and sellers from the previous session data
+			routeRelayNames := [5]string{}
+			routeRelaySellers := [5]routing.Seller{}
+			for i := int32(0); i < prevSessionData.RouteNumRelays; i++ {
+				relay, err := storer.Relay(prevSessionData.RouteRelayIDs[i])
+				if err != nil {
+					continue
+				}
+
+				routeRelayNames[i] = relay.Name
+				routeRelaySellers[i] = relay.Seller
+			}
+
+			// Rebuild the near relays from the previous session data
+			nearRelays := make([]routing.NearRelayData, len(prevSessionData.RouteState.NearRelayID))
+			for i := 0; i < len(nearRelays); i++ {
+				nearRelays[i].ID = prevSessionData.RouteState.NearRelayID[i]
+				relayIndex := routeMatrix.RelayIDsToIndices[nearRelays[i].ID]
+
+				nearRelays[i].Name = routeMatrix.RelayNames[relayIndex]
+				nearRelays[i].Addr = routeMatrix.RelayAddresses[relayIndex]
+				nearRelays[i].ClientStats.RTT = math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))
+
+				// We don't actually store the jitter or packet loss in the session data, so just use the
+				// values from the session update packet
+				nearRelays[i].ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[i]))
+				nearRelays[i].ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[i]))
+
+				if nearRelays[i].ClientStats.RTT == 255 {
+					nearRelays[i].ClientStats.PacketLoss = 100
+				}
+			}
+
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
+				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
 			}
 		}()
 
@@ -366,21 +395,24 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 		} else {
-			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
+			err := UnmarshalSessionData(&prevSessionData, packet.SessionData[:])
+			sessionData = prevSessionData // Have an extra copy of the session data so we can use the unmodified one in the post session
+
+			if err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
 				metrics.ReadSessionDataFailure.Add(1)
 				return
 			}
 
-			if sessionData.SessionID != packet.SessionID {
+			if prevSessionData.SessionID != packet.SessionID {
 				level.Error(logger).Log("err", "bad session ID in session data")
 				metrics.BadSessionID.Add(1)
 				return
 			}
 
-			if sessionData.SliceNumber != packet.SliceNumber {
-				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", sessionData.SliceNumber,
-					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", sessionData.RouteState.Next, "ever_on_next", sessionData.EverOnNext)
+			if prevSessionData.SliceNumber != packet.SliceNumber {
+				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", prevSessionData.SliceNumber,
+					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", prevSessionData.RouteState.Next, "ever_on_next", prevSessionData.EverOnNext)
 				metrics.BadSliceNumber.Add(1)
 				return
 			}
@@ -433,6 +465,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		// todo: clean up this near relay stuff
 
+		var nearRelays []routing.NearRelayData
 		var numNearRelays int32
 		var nearRelayIDs []uint64
 		var nearRelayAddresses []net.UDPAddr
@@ -543,6 +576,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			"rtt_threshold", buyer.RouteShader.LatencyThreshold,
 			"selection_percent", buyer.RouteShader.SelectionPercent,
 			"route_switch_threshold", buyer.InternalConfig.RouteSwitchThreshold)
+
+		var routeNumRelays int32
+		var routeRelayNames [routing.MaxRelays]string
+		var routeRelaySellers [routing.MaxRelays]routing.Seller
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
