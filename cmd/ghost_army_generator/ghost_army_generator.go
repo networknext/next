@@ -33,6 +33,11 @@ func (self sortableEntries) Less(i, j int) bool {
 
 // Input files can be in any order
 
+const (
+	maxRTT = 300.0
+	maxPL  = 0.10
+)
+
 func main() {
 	if len(os.Args) < 6 {
 		fmt.Println("you must supply at least 5 arguments: <processing threads> <datacenter csv> <ISPs file> <output file> <input file name(s)>")
@@ -55,6 +60,7 @@ func main() {
 
 	var entryMutex sync.Mutex
 	var entries = make(sortableEntries, 0)
+	deleteSessionMap := make(map[int64]bool)
 
 	var wg sync.WaitGroup
 	wg.Add(len(infiles))
@@ -88,6 +94,17 @@ func main() {
 					}
 					var entry ghostarmy.Entry
 					parseLine(line, lineNum, &entry, dcmap, isps)
+
+					//skip bad session entry and add a delete to the
+					if entry.NextRTT >= maxRTT || entry.NextPacketLoss >= maxPL {
+						deleteSessionMap[entry.SessionID] = true
+						continue
+					}
+
+					//skip known bad sessions
+					if _, exists := deleteSessionMap[entry.SessionID]; exists {
+						continue
+					}
 					localentries = append(localentries, entry)
 				}
 
@@ -101,6 +118,16 @@ func main() {
 	}
 
 	wg.Wait()
+
+	//check entries for sessions that should be deleted
+	for i := 0; i < len(entries); i++ {
+		if _, exists := deleteSessionMap[entries[i].SessionID]; exists {
+			entries[i] = entries[len(entries)-1]
+			entries[len(entries)-1] = ghostarmy.Entry{}
+			entries = entries[:len(entries)-1]
+			i--
+		}
+	}
 
 	// sort on timestamp
 	fmt.Printf("sorting %d entries...\n", len(entries))
