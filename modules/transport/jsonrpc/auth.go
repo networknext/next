@@ -304,6 +304,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			registered[*a.Email] = a
 		}
 	}
+	currentTime := time.Now()
 
 	// Create an account for each new email
 	var newUser *management.User
@@ -325,6 +326,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				AppMetadata: map[string]interface{}{
 					"company_code": userCompanyCode,
 				},
+				CreatedAt: &currentTime,
 			}
 			if err = s.UserManager.Create(newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to create new user: %w", err)
@@ -350,6 +352,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				},
 				Identities: user.Identities,
 				Name:       user.Name,
+				CreatedAt:  &currentTime,
 			}
 			if err = s.UserManager.Update(*user.ID, newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to update user: %w", err)

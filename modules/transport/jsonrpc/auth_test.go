@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -108,6 +109,8 @@ func TestAllAccounts(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
+	currentTime := time.Now()
+
 	userManager.Create(&management.User{
 		ID:    &IDs[0],
 		Email: &emails[0],
@@ -119,7 +122,8 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
-		Name: &names[0],
+		Name:      &names[0],
+		CreatedAt: &currentTime,
 	})
 
 	userManager.Create(&management.User{
@@ -133,7 +137,8 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name: &names[1],
+		Name:      &names[1],
+		CreatedAt: &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
@@ -147,6 +152,13 @@ func TestAllAccounts(t *testing.T) {
 	userManager.Create(&management.User{
 		ID:    &IDs[2],
 		Email: &emails[2],
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[2],
+			},
+		},
+		Name:      &names[2],
+		CreatedAt: &currentTime,
 	})
 
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test"})
@@ -276,6 +288,8 @@ func TestUserAccount(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
+	currentTime := time.Now()
+
 	userManager.Create(&management.User{
 		ID:    &IDs[0],
 		Email: &emails[0],
@@ -287,7 +301,8 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
-		Name: &names[0],
+		Name:      &names[0],
+		CreatedAt: &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
@@ -309,7 +324,8 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name: &names[1],
+		Name:      &names[1],
+		CreatedAt: &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
@@ -328,7 +344,8 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[2],
 			},
 		},
-		Name: &names[2],
+		Name:      &names[2],
+		CreatedAt: &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[2], []*management.Role{
@@ -706,6 +723,8 @@ func TestAddUserAccount(t *testing.T) {
 		"Lenny",
 	}
 
+	currentTime := time.Now()
+
 	userManager.Create(&management.User{
 		ID:    &IDs[1],
 		Email: &emails[1],
@@ -717,7 +736,8 @@ func TestAddUserAccount(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name: &names[1],
+		Name:      &names[1],
+		CreatedAt: &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
