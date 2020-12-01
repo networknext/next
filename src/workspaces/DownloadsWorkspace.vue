@@ -24,7 +24,7 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <a
             href="#"
-            onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.3.zip')"
+            v-on:click="downloadSDK()"
             class="btn btn-primary m-1 btn-width"
           >
             <font-awesome-icon icon="download"
@@ -34,7 +34,7 @@
           </a>
           <a
             href="#"
-            onclick="window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')"
+            v-on:click="downloadDocs()"
             class="btn btn-primary m-1 btn-width"
           >
             <font-awesome-icon icon="download"
@@ -52,6 +52,7 @@
 </template>
 
 <script lang="ts">
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { Component, Vue } from 'vue-property-decorator'
 
 /**
@@ -65,6 +66,24 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class DownloadsWorkspace extends Vue {
   // Empty for now
+
+  private downloadSDK () {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event('sdk-download', {
+        event_category: 'Important Clicks'
+      })
+    }
+    window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.3.zip')
+  }
+
+  private downloadDocs () {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event('SDK-docs-download', {
+        event_category: 'Important Clicks'
+      })
+    }
+    window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')
+  }
 }
 </script>
 

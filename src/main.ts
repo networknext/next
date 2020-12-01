@@ -25,12 +25,6 @@ Vue.config.productionTip = false
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
 
-if (process.env.VUE_APP_MODE === 'prod') {
-  Vue.use(VueGtag, {
-    config: { id: 'UA-141272717-2' }
-  }, router)
-}
-
 Vue.use(AuthPlugin, {
   domain: domain,
   clientID: clientID
@@ -57,6 +51,11 @@ const flags: Array<Flag> = [
     name: FeatureEnum.FEATURE_IMPERSONATION,
     description: 'Feature to allow admins to impersonate a customer in a read only state',
     value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_ANALYTICS,
+    description: 'Google analytics and tag manager hooks',
+    value: false
   }
 ]
 
@@ -71,6 +70,12 @@ if (useAPI) {
   Vue.prototype.$flagService.fetchAllRemoteFeatureFlags()
 } else {
   Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
+}
+
+if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+  Vue.use(VueGtag, {
+    config: { id: 'UA-141272717-2' }
+  }, router)
 }
 
 const app = new Vue({
