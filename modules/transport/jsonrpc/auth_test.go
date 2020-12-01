@@ -119,6 +119,7 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
+		Name: &names[0],
 	})
 
 	userManager.Create(&management.User{
@@ -166,6 +167,14 @@ func TestAllAccounts(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	userManager.AssignRoles(IDs[0], []*management.Role{
+		{
+			ID:          &roleIDs[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
 	t.Run("all - success - no users in company", func(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
@@ -182,7 +191,11 @@ func TestAllAccounts(t *testing.T) {
 		err := svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 0, len(reply.UserAccounts))
+		assert.Equal(t, 1, len(reply.UserAccounts))
+		assert.Equal(t, names[0], reply.UserAccounts[0].Name)
+		assert.Equal(t, emails[0], reply.UserAccounts[0].Email)
+		assert.Equal(t, IDs[0], reply.UserAccounts[0].UserID)
+		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccounts[0].ID)
 	})
 
 	t.Run("all - success", func(t *testing.T) {
