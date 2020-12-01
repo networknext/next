@@ -552,7 +552,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		} else {
 			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
 
-				// todo: ryan, we should have a counter here. if this number goes up, something is wrong!
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
 				metrics.RouteDoesNotExist.Add(1)
 
