@@ -1278,7 +1278,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we commit to sending packets across network next?
 
-	routeState.Committed = !internal.Uncommitted && !internal.TryBeforeYouBuy
+	routeState.Committed = !internal.Uncommitted && (!internal.TryBeforeYouBuy || routeState.Multipath)
 
 	return true
 }
