@@ -1,14 +1,17 @@
 package analytics
 
 import (
+	"math"
+
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 )
 
 const (
-	PingStatsEntryVersion  = uint8(2)
-	RelayStatsEntryVersion = uint8(2)
+	PingStatsEntryVersion      = uint8(2)
+	RelayStatsEntryVersion     = uint8(2)
+	RelayNamesHashEntryVersion = uint8(1)
 )
 
 type PingStatsEntry struct {
@@ -363,6 +366,78 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["max_sessions"] = int(e.MaxSessions)
 	bqEntry["num_routable"] = int(e.NumRoutable)
 	bqEntry["num_unroutable"] = int(e.NumUnroutable)
+
+	return bqEntry, "", nil
+}
+
+type RelayNamesHashEntry struct {
+	Timestamp uint64
+	Hash      uint64
+	Names     []string
+}
+
+func WriteRelayNamesHashEntry(entry RelayNamesHashEntry) []byte {
+
+	length := 1 + 8
+	for _, name := range entry.Names {
+		length = length + 4 + 8 + 8 + len(name)
+	}
+	data := make([]byte, length)
+	index := 0
+	encoding.WriteUint8(data, &index, RelayNamesHashEntryVersion)
+	encoding.WriteUint64(data, &index, uint64(entry.Timestamp))
+	encoding.WriteUint64(data, &index, uint64(entry.Hash))
+	encoding.WriteUint64(data, &index, uint64(len(entry.Names)))
+
+	for _, name := range entry.Names {
+		encoding.WriteString(data, &index, name, uint32(len(name)))
+	}
+	return data
+}
+
+func ReadRelayNamesHashEntry(data []byte) (*RelayNamesHashEntry, bool) {
+	index := 0
+
+	entry := new(RelayNamesHashEntry)
+	var version uint8
+	if !encoding.ReadUint8(data, &index, &version) {
+		return nil, false
+	}
+
+	if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
+		return nil, false
+	}
+
+	if !encoding.ReadUint64(data, &index, &entry.Hash) {
+		return nil, false
+	}
+
+	var length uint64
+	if !encoding.ReadUint64(data, &index, &length) {
+		return nil, false
+	}
+
+	entry.Names = make([]string, length)
+
+	for i := range entry.Names {
+		var name string
+		if !encoding.ReadString(data, &index, &name, math.MaxInt32) {
+			return nil, false
+		}
+		entry.Names[i] = name
+	}
+
+	return entry, true
+}
+
+// Save implements the bigquery.ValueSaver interface for an Entry
+// so it can be used in Put()
+func (e *RelayNamesHashEntry) Save() (map[string]bigquery.Value, string, error) {
+	bqEntry := make(map[string]bigquery.Value)
+
+	bqEntry["timestamp"] = int(e.Timestamp)
+	bqEntry["names_hash"] = int(e.Hash)
+	bqEntry["names_strings"] = e.Names
 
 	return bqEntry, "", nil
 }
