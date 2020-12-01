@@ -118,3 +118,49 @@ func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
 		bq.Metrics.EntriesFlushed.Add(float64(len(entries)))
 	}
 }
+
+type RelayNamesHashWriter interface {
+	Write(ctx context.Context, entry *RelayNamesHashEntry) error
+}
+
+type NoOpRelayNamesHashWriter struct {
+	written uint64
+}
+
+func (bq *NoOpRelayNamesHashWriter) Write(ctx context.Context, entry *RelayNamesHashEntry) error {
+	atomic.AddUint64(&bq.written, 1)
+	return nil
+}
+
+type GoogleBigQueryRelayNamesHashWriter struct {
+	Metrics       *metrics.AnalyticsMetrics
+	Logger        log.Logger
+	TableInserter *bigquery.Inserter
+
+	entries chan *RelayNamesHashEntry
+}
+
+func NewGoogleBigQueryRelayNamesHashWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayNamesHashWriter {
+	return GoogleBigQueryRelayNamesHashWriter{
+		Metrics:       metrics,
+		Logger:        logger,
+		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
+		entries:       make(chan *RelayNamesHashEntry, DefaultBigQueryChannelSize),
+	}
+}
+
+func (bq *GoogleBigQueryRelayNamesHashWriter) Write(ctx context.Context, entries *RelayNamesHashEntry) error {
+	bq.Metrics.EntriesSubmitted.Add(1)
+	bq.entries <- entries
+	return nil
+}
+
+func (bq *GoogleBigQueryRelayNamesHashWriter) WriteLoop(ctx context.Context) {
+	for entries := range bq.entries {
+		if err := bq.TableInserter.Put(ctx, entries); err != nil {
+			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+		}
+		bq.Metrics.EntriesFlushed.Add(1)
+	}
+}

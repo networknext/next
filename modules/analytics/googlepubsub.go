@@ -158,3 +158,51 @@ func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, e
 
 	return nil
 }
+
+type GooglePubSubRelayNamesHashPublisher struct {
+	client *googlePubSubClient
+}
+
+type RelayNamesHashPublisher interface {
+	Publish(ctx context.Context, entries RelayNamesHashEntry) error
+}
+
+type NoOpRelayNamesHashPublisher struct {
+	submitted uint64
+}
+
+func (publisher *NoOpRelayNamesHashPublisher) Publish(ctx context.Context, entry RelayNamesHashEntry) error {
+	atomic.AddUint64(&publisher.submitted, 1)
+	return nil
+}
+
+func NewGooglePubSubRelayNamesHashPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayNamesHashPublisher, error) {
+	publisher := &GooglePubSubRelayNamesHashPublisher{}
+
+	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)
+	if err != nil {
+		return nil, err
+	}
+	publisher.client = client
+
+	go client.pubsubResults(ctx, resultLogger)
+
+	return publisher, nil
+}
+
+func (publisher *GooglePubSubRelayNamesHashPublisher) Publish(ctx context.Context, entry RelayNamesHashEntry) error {
+	data := WriteRelayNamesHashEntry(entry)
+
+	if publisher.client == nil {
+		return fmt.Errorf("analytics: client not initialized")
+	}
+
+	topic := publisher.client.Topic
+	resultChan := publisher.client.ResultChan
+
+	result := topic.Publish(ctx, &pubsub.Message{Data: data})
+	resultChan <- result
+	publisher.client.Metrics.EntriesSubmitted.Add(1)
+
+	return nil
+}
