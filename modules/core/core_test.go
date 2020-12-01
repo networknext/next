@@ -1316,7 +1316,7 @@ func TestBestRouteCostSimple(t *testing.T) {
 
 	bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(40), bestRouteCost)
+	assert.Equal(t, int32(40+CostBias), bestRouteCost)
 }
 
 func TestBestRouteCostComplex(t *testing.T) {
@@ -1363,7 +1363,7 @@ func TestBestRouteCostComplex(t *testing.T) {
 
 	bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(15), bestRouteCost)
+	assert.Equal(t, int32(15+CostBias), bestRouteCost)
 }
 
 func TestBestRouteCostNoRoute(t *testing.T) {
@@ -1435,7 +1435,7 @@ func TestCurrentRouteCost_Simple(t *testing.T) {
 
 	currentRouteCost := env.GetCurrentRouteCost(routeMatrix, routeRelays, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(40), currentRouteCost)
+	assert.Equal(t, int32(40+CostBias), currentRouteCost)
 }
 
 func TestCurrentRouteCost_Reverse(t *testing.T) {
@@ -1476,7 +1476,7 @@ func TestCurrentRouteCost_Reverse(t *testing.T) {
 
 	currentRouteCost := env.GetCurrentRouteCost(routeMatrix, routeRelays, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(40), currentRouteCost)
+	assert.Equal(t, int32(40+CostBias), currentRouteCost)
 }
 
 func TestGetBestRoutes_Simple(t *testing.T) {
@@ -2048,7 +2048,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
-	sourceRelayCosts := []int32{10}
+	sourceRelayCosts := []int32{8}
 
 	destRelayNames := []string{"chicago"}
 
@@ -2056,7 +2056,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
-	assert.Equal(t, int32(40), bestRouteCost)
+	assert.Equal(t, int32(36+CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
 
@@ -2257,7 +2257,7 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
 
-	assert.Equal(t, int32(40), bestRouteCost)
+	assert.Equal(t, int32(40+CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
 
@@ -4744,7 +4744,7 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(50), routeCost)
+	assert.Equal(t, int32(50+CostBias), routeCost)
 	assert.Equal(t, int32(2), routeNumRelays)
 }
 
@@ -5540,7 +5540,7 @@ func TestPredictedRTT(t *testing.T) {
 
 	assert.Equal(t, expectedRouteState, routeState)
 
-	assert.Equal(t, int32(20), routeCost)
+	assert.Equal(t, int32(20+CostBias), routeCost)
 }
 
 // -------------------------------------------------------------
