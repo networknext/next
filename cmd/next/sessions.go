@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -342,55 +343,13 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		return
 	}
 
-	// bqBillingDataEntry := []struct {
-	// 	Timestamp                 time.Time
-	// 	BuyerID                   string
-	// 	SessionID                 string
-	// 	SliceNumber               string
-	// 	Next                      string
-	// 	DirectRTT                 string
-	// 	DirectJitter              string
-	// 	DirectPacketLoss          string
-	// 	NextRTT                   string
-	// 	NextJitter                string
-	// 	NextPacketLoss            string
-	// 	NextRelays                string
-	// 	TotalPrice                string
-	// 	ClientToServerPacketsLost string
-	// 	ServerToClientPacketsLost string
-	// 	Committed                 string
-	// 	Flagged                   string
-	// 	Multipath                 string
-	// 	NextBytesUp               string
-	// 	NextBytesDown             string
-	// 	Initial                   string
-	// 	DatacenterID              string
-	// 	RttReduction              string
-	// 	PacketLossReduction       string
-	// 	NextRelaysPrice           string
-	// 	UserHash                  string
-	// 	Latitude                  string
-	// 	Longitude                 string
-	// 	ISP                       string
-	// 	ABTest                    string
-	// 	RouteDecision             string
-	// 	ConnectionType            string
-	// 	PlatformType              string
-	// 	SdkVersion                string
-	// 	PacketLoss                string
-	// 	EnvelopeBytesUp           string
-	// 	EnvelopeBytesDown         string
-	// 	PredictedNextRTT          string
-	// 	MultipathVetoed           string
-	// }{}
-
 	bqBillingDataEntryCSV := [][]string{{}}
 
 	bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
-		"Timestamp",
-		"BuyerID",
-		"SessionID",
 		"SliceNumber",
+		"Timestamp",
+		"Buyer",
+		"SessionID",
 		"Next",
 		"DirectRTT",
 		"DirectJitter",
@@ -408,7 +367,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NextBytesUp",
 		"NextBytesDown",
 		"Initial",
-		"DatacenterID",
+		"Datacenter",
 		"RttReduction",
 		"PacketLossReduction",
 		"NextRelaysPrice",
@@ -417,7 +376,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Longitude",
 		"ISP",
 		"ABTest",
-		"RouteDecision",
 		"ConnectionType",
 		"PlatformType",
 		"SdkVersion",
@@ -426,13 +384,17 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"EnvelopeBytesDown",
 		"PredictedNextRTT",
 		"MultipathVetoed",
+		"Debug String",
+		"FallbackToDirect",
+		"ClientFlags",
+		"UserFlags",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {
 		// Timestamp
 		timeStamp := billingEntry.Timestamp.String()
-		// BuyerID
-		buyerID := fmt.Sprintf("%016x", uint64(billingEntry.BuyerID))
+		// BuyerString
+		buyerName := billingEntry.BuyerString
 		// SessionID
 		sessionID := fmt.Sprintf("%016x", uint64(billingEntry.SessionID))
 		// SliceNumber
@@ -443,32 +405,33 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			next = strconv.FormatBool(billingEntry.Next.Bool)
 		}
 		// DirectRTT
-		directRTT := fmt.Sprintf("%5.2f", billingEntry.DirectRTT)
+		directRTT := fmt.Sprintf("%5.5f", billingEntry.DirectRTT)
 		// DirectJitter
-		directJitter := fmt.Sprintf("%5.2f", billingEntry.DirectJitter)
+		directJitter := fmt.Sprintf("%5.5f", billingEntry.DirectJitter)
 		// DirectPacketLoss
-		directPacketLoss := fmt.Sprintf("%5.2f", billingEntry.DirectPacketLoss)
+		directPacketLoss := fmt.Sprintf("%5.5f", billingEntry.DirectPacketLoss)
 		// NextRTT
 		nextRTT := ""
 		if billingEntry.NextRTT.Valid {
-			nextRTT = fmt.Sprintf("%5.2f", billingEntry.NextRTT.Float64)
+			nextRTT = fmt.Sprintf("%5.5f", billingEntry.NextRTT.Float64)
 		}
 		// NextJitter
 		nextJitter := ""
 		if billingEntry.NextJitter.Valid {
-			nextRTT = fmt.Sprintf("%5.2f", billingEntry.NextJitter.Float64)
+			nextJitter = fmt.Sprintf("%5.5f", billingEntry.NextJitter.Float64)
 		}
 		// NextPacketLoss
 		nextPacketLoss := ""
 		if billingEntry.NextPacketLoss.Valid {
-			nextRTT = fmt.Sprintf("%5.2f", billingEntry.NextPacketLoss.Float64)
+			nextPacketLoss = fmt.Sprintf("%5.5f", billingEntry.NextPacketLoss.Float64)
 		}
 		// NextRelays
 		nextRelays := ""
 		if len(billingEntry.NextRelays) > 0 {
-			for _, relay := range billingEntry.NextRelays {
-				nextRelays += fmt.Sprintf("%016x", relay) + " "
+			for _, relay := range billingEntry.NextRelaysStrings {
+				nextRelays += relay + ", "
 			}
+			nextRelays = strings.TrimSuffix(nextRelays, ", ")
 		}
 		// TotalPrice
 		totalPrice := fmt.Sprintf("%d", billingEntry.TotalPrice)
@@ -512,10 +475,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.Initial.Valid {
 			initial = strconv.FormatBool(billingEntry.Initial.Bool)
 		}
-		// DatacenterID
-		datacenterID := ""
-		if billingEntry.DatacenterID.Valid {
-			datacenterID = fmt.Sprintf("%016x", uint64(billingEntry.DatacenterID.Int64))
+		// DatacenterString
+		datacenterName := ""
+		if billingEntry.DatacenterString.Valid {
+			datacenterName = billingEntry.DatacenterString.StringVal
 		}
 		// RttReduction
 		rttReduction := ""
@@ -557,11 +520,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.ABTest.Valid {
 			abTest = strconv.FormatBool(billingEntry.ABTest.Bool)
 		}
-		// RouteDecision
-		routeDecision := ""
-		if billingEntry.RouteDecision.Valid {
-			routeDecision = fmt.Sprintf("%d", billingEntry.RouteDecision.Int64)
-		}
 		// ConnectionType
 		connType := ""
 		if billingEntry.ConnectionType.Valid {
@@ -602,12 +560,32 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.MultipathVetoed.Valid {
 			multipathVetoed = strconv.FormatBool(billingEntry.MultipathVetoed.Bool)
 		}
+		// Debug
+		debug := ""
+		if billingEntry.Debug.Valid {
+			debug = billingEntry.Debug.StringVal
+		}
+		// FallbackToDirect
+		fallbackToDirect := ""
+		if billingEntry.FallbackToDirect.Valid {
+			fallbackToDirect = strconv.FormatBool(billingEntry.FallbackToDirect.Bool)
+		}
+		// ClientFlags
+		clientFlags := ""
+		if billingEntry.ClientFlags.Valid {
+			clientFlags = "0b" + strconv.FormatInt(billingEntry.ClientFlags.Int64, 2)
+		}
+		// UserFlags
+		userFlags := ""
+		if billingEntry.UserFlags.Valid {
+			userFlags = "0b" + strconv.FormatInt(billingEntry.UserFlags.Int64, 2)
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
-			timeStamp,
-			buyerID,
-			sessionID,
 			sliceNumber,
+			timeStamp,
+			buyerName,
+			sessionID,
 			next,
 			directRTT,
 			directJitter,
@@ -615,6 +593,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextRTT,
 			nextJitter,
 			nextPacketLoss,
+			nextRelays,
 			totalPrice,
 			clientToServerPacketsLost,
 			serverToClientPacketsLost,
@@ -624,15 +603,15 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextBytesUp,
 			nextBytesDown,
 			initial,
-			datacenterID,
+			datacenterName,
 			rttReduction,
 			plReduction,
+			nextRelaysPrice,
 			userHash,
 			latitude,
 			longitude,
 			isp,
 			abTest,
-			routeDecision,
 			connType,
 			platformType,
 			sdkVersion,
@@ -641,6 +620,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			envelopeBytesDown,
 			predictedNextRTT,
 			multipathVetoed,
+			debug,
+			fallbackToDirect,
+			clientFlags,
+			userFlags,
 		})
 	}
 

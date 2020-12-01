@@ -11,7 +11,7 @@ import (
 func relayRedisTestHelperRedisStore(t *testing.T) (*RedisRelayStore, *miniredis.Miniredis) {
 	rSvr, err := miniredis.Run()
 	assert.Nil(t, err)
-	store, err := NewRedisRelayStore(rSvr.Addr(), 200*time.Millisecond, 200*time.Millisecond, 5*time.Second)
+	store, err := NewRedisRelayStore(rSvr.Addr(), 500*time.Millisecond, 500*time.Millisecond, 5*time.Second)
 	assert.Nil(t, err)
 	return store, rSvr
 }

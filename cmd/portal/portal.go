@@ -341,6 +341,7 @@ func main() {
 		RedisPoolSessionSlices: redisPoolSessionSlices,
 		RedisPoolSessionMap:    redisPoolSessionMap,
 		Storage:                db,
+		Env:                    env,
 	}
 
 	configService := jsonrpc.ConfigService{
