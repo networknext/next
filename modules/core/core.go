@@ -709,7 +709,35 @@ func ReverseRoute(route []int32) {
 	}
 }
 
-func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32) int32 {
+func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, debug *string) bool {
+	if len(routeMatrix) == 0 {
+		return false
+	}
+	if routeRelays[0] < routeRelays[routeNumRelays-1] {
+		ReverseRoute(routeRelays[:routeNumRelays])
+	}
+	sourceRelayIndex := routeRelays[0]
+	destRelayIndex := routeRelays[routeNumRelays-1]
+	index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+	entry := &routeMatrix[index]
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		if entry.RouteNumRelays[i] == routeNumRelays {
+			found := true
+			for j := range routeRelays {
+				if entry.RouteRelays[i][j] != routeRelays[j] {
+					found = false
+					break
+				}
+			}
+			if found {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
 	reversed := false
 	if routeRelays[0] < routeRelays[routeNumRelays-1] {
 		ReverseRoute(routeRelays[:routeNumRelays])
@@ -857,7 +885,7 @@ func ReframeRelays(relayIDToIndex map[uint64]int32, sourceRelayIds []uint64, sou
 	*out_numDestRelays = numDestRelays
 }
 
-func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32) bool {
+func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32, debug *string) bool {
 
 	if maxCost == -1 {
 		return false
@@ -865,7 +893,14 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 
 	bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
+	if debug != nil {
+		*debug += fmt.Sprintf("best route cost is %d\n", bestRouteCost)
+	}
+
 	if bestRouteCost > maxCost {
+		if debug != nil {
+			*debug += fmt.Sprintf("could not find any next route <= max cost %d\n", maxCost)
+		}
 		*out_bestRouteCost = bestRouteCost
 		return false
 	}
@@ -874,6 +909,9 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	bestRoutes := make([]BestRoute, 1024)
 	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, bestRoutes, &numBestRoutes)
 	if numBestRoutes == 0 {
+		if debug != nil {
+			*debug += "could not find any next routes. this should never happen\n"
+		}
 		return false
 	}
 
@@ -894,19 +932,26 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	return true
 }
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32) bool {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32, debug *string) bool {
 
-	return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays)
+	return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays, debug)
 }
 
-func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, routeSwitchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32) bool {
+func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, routeSwitchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32, debug *string) bool {
 
 	// if the current route no longer exists, pick a new route
 
-	currentRouteCost := GetCurrentRouteCost(routeMatrix, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays)
+	currentRouteCost := GetCurrentRouteCost(routeMatrix, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, debug)
 
 	if currentRouteCost < 0 {
-		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+		if debug != nil {
+			if RouteExists(routeMatrix, currentRouteNumRelays, currentRouteRelays, debug) {
+				*debug += "current route still exists, but we couldn't get a cost for it?! - picking a new random route\n"
+			} else {
+				*debug += "current route no longer exists. picking a new random route\n"
+			}
+		}		
+		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		return true
 	}
 
@@ -915,7 +960,10 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 	bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
 	if currentRouteCost > bestRouteCost+routeSwitchThreshold {
-		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+routeSwitchThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+		if debug != nil {
+			*debug += fmt.Sprintf("current route no longer within threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, routeSwitchThreshold)
+		}		
+		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+routeSwitchThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		return true
 	}
 
@@ -1000,6 +1048,7 @@ type InternalConfig struct {
 	LargeCustomer              bool
 	Uncommitted                bool
 	MaxRTT                     int32
+	DisableRouteSwitching      bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1015,6 +1064,7 @@ func NewInternalConfig() InternalConfig {
 		LargeCustomer:              false,
 		Uncommitted:                false,
 		MaxRTT:                     300,
+		DisableRouteSwitching:      false,
 	}
 }
 
@@ -1119,7 +1169,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, debug *string) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1127,32 +1177,44 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	maxCost := directLatency
 
-	// if we predict we can reduce latency, take network next
+	// should we try to reduce latency?
 
 	reduceLatency := false
 	if routeShader.ReduceLatency {
 		if directLatency > routeShader.AcceptableLatency {
+			if debug != nil {
+				*debug += "try to reduce latency\n"
+			}
 			maxCost = directLatency - routeShader.LatencyThreshold
 			reduceLatency = true
 		} else {
+			if debug != nil {
+				*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %d, latency threshold = %d\n", directLatency, routeShader.LatencyThreshold)
+			}
 			maxCost = -1
 		}
 	}
 
-	// if we predict we can reduce packet loss, take network next
+	// should we try to reduce packet loss?
 
 	reducePacketLoss := false
 	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss {
+		if debug != nil {
+			*debug += "try to reduce packet loss\n"
+		}
 		maxCost = directLatency + internal.MaxLatencyTradeOff
 		reducePacketLoss = true
 	}
 
-	// if we are in pro mode, take network next pro-actively in multipath before anything goes wrong
+	// should we enable pro mode?
 
 	userHasMultipathVeto := multipathVetoUsers[routeState.UserID]
 
 	proMode := false
 	if routeShader.ProMode && !userHasMultipathVeto {
+		if debug != nil {
+			*debug += "pro mode\n"
+		}
 		maxCost = directLatency + internal.MaxLatencyTradeOff
 		proMode = true
 	}
@@ -1160,6 +1222,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
 
 	if internal.ForceNext {
+		if debug != nil {
+			*debug += "forcing network next\n"
+		}		
 		maxCost = math.MaxInt32
 		routeState.ForcedNext = true
 	}
@@ -1170,7 +1235,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	bestRouteNumRelays := int32(0)
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
-	GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays)
+	GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
 
 	*out_routeCost = bestRouteCost
 	*out_routeNumRelays = bestRouteNumRelays
@@ -1179,12 +1244,18 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// if we don't have a network next route, we can't take network next
 
 	if bestRouteNumRelays == 0 {
+		if debug != nil {
+			*debug += "not taking network next. no next route available within parameters\n"
+		}
 		return false
 	}
 
 	// if the next route RTT is too high, don't take it
 
 	if bestRouteCost > internal.MaxRTT {
+		if debug != nil {
+			*debug += fmt.Sprintf("not taking network next. best route is higher than max rtt %d\n", internal.MaxRTT)
+		}
 		return false
 	}
 
@@ -1203,7 +1274,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
 	// if we early out, go direct
 
@@ -1214,6 +1285,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	// if we overload the connection in multipath, leave network next
 
 	if routeState.Multipath && directLatency >= internal.MultipathOverloadThreshold {
+		if debug != nil {
+			*debug += fmt.Sprintf("multipath overload: direct rtt = %d > threshold %d\n", directLatency, internal.MultipathOverloadThreshold)
+		}
 		routeState.MultipathOverload = true
 		return false, false
 	}
@@ -1235,9 +1309,12 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		}
 
 		// IMPORTANT: Here is where we abort the network next route if we see that we have
-		// make latency worse on the previous slice. Importantly, this is disabled while we
+		// made latency worse on the previous slice. Importantly, this is disabled while we
 		// are not committed, so we can properly evaluate the route in try before you buy.
 		if routeState.Committed && nextLatency > (directLatency-rttVeto) {
+			if debug != nil {
+				*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+			}
 			routeState.LatencyWorse = true
 			return false, false
 		}
@@ -1251,11 +1328,14 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	bestRouteNumRelays := int32(0)
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
-	routeSwitched := GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays)
+	routeSwitched := GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
 
 	// if we don't have a network next route, leave network next
 
 	if bestRouteNumRelays == 0 {
+		if debug != nil {
+			*debug += fmt.Sprintf("leaving network next because we no longer have a suitable next route\n")
+		}
 		routeState.NoRoute = true
 		return false, false
 	}
@@ -1263,6 +1343,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	// if the next route RTT is too high, leave network next
 
 	if bestRouteCost > internal.MaxRTT {
+		if debug != nil {
+			*debug += fmt.Sprintf("next latency is too high. next rtt = %d, threshold = %d\n", bestRouteCost, internal.MaxRTT)
+		}
 		routeState.NextLatencyTooHigh = true
 		return false, false
 	}
@@ -1270,6 +1353,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	// run try before you buy logic
 
 	if !TryBeforeYouBuy(routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss) {
+		if debug != nil {
+			*debug += "leaving network next because try before you buy vetoed the session\n"
+		}
 		return false, false
 	}
 
@@ -1282,9 +1368,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
-	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 
 	if routeState.Next && !stayOnNetworkNext {
 		routeState.Next = false
