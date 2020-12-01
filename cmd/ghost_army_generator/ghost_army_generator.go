@@ -60,7 +60,7 @@ func main() {
 
 	var entryMutex sync.Mutex
 	var entries = make(sortableEntries, 0)
-	var deleteSessionMap map[int64]bool
+	deleteSessionMap := make(map[int64]bool)
 
 	var wg sync.WaitGroup
 	wg.Add(len(infiles))
