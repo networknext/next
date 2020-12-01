@@ -16,6 +16,8 @@ import (
 	"unsafe"
 )
 
+const CostBias = 2
+
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
 const NEXT_ROUTE_TOKEN_BYTES = 76
@@ -700,7 +702,10 @@ func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRela
 			}
 		}
 	}
-	return bestRouteCost
+	if bestRouteCost == int32(math.MaxInt32) {
+		return bestRouteCost
+	}
+	return bestRouteCost + CostBias
 }
 
 func ReverseRoute(route []int32) {
@@ -790,7 +795,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 		if entry.RouteNumRelays[i] != routeNumRelays {
 			continue
 		}
-		return sourceCost + entry.RouteCost[i]
+		return sourceCost + entry.RouteCost[i] + CostBias
 	}
 
 	// We didn't find the route :(
