@@ -701,7 +701,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	m.RouteDoesNotExist, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Route Does Not Exists",
 		ServiceName: serviceName,
-		ID:          handlerID + ".no_does_not_exist",
+		ID:          handlerID + ".route_does_not_exist",
 		Unit:        "errors",
 		Description: "The number of times a route no longer exists for a " + packetDescription + ".",
 	})
