@@ -408,15 +408,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			if prevSessionData.SessionID != packet.SessionID {
+			if sessionData.SessionID != packet.SessionID {
 				level.Error(logger).Log("err", "bad session ID in session data")
 				metrics.BadSessionID.Add(1)
 				return
 			}
 
-			if prevSessionData.SliceNumber != packet.SliceNumber {
-				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", prevSessionData.SliceNumber,
-					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", prevSessionData.RouteState.Next, "ever_on_next", prevSessionData.EverOnNext)
+			if sessionData.SliceNumber != packet.SliceNumber {
+				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", sessionData.SliceNumber,
+					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", sessionData.RouteState.Next, "ever_on_next", sessionData.EverOnNext)
 				metrics.BadSliceNumber.Add(1)
 				return
 			}
