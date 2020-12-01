@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"fmt"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
@@ -2264,7 +2265,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
 		RouteNumRelays:  2,
-		RouteCost:       50,
+		RouteCost:       50 + core.CostBias,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -3458,7 +3459,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
 		RouteNumRelays:  2,
-		RouteCost:       50,
+		RouteCost:       50 + core.CostBias,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -3850,7 +3851,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
 		NumTokens:          4,
 		HasDebug:           true,
-		Debug:              "try to reduce latency\nbest route cost is 45\n",
+		Debug:              fmt.Sprintf("try to reduce latency\nbest route cost is %d\n", 45 + core.CostBias),
 	}
 
 	expectedSessionData := transport.SessionData{
