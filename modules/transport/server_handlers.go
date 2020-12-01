@@ -396,7 +396,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 		} else {
 			err := UnmarshalSessionData(&prevSessionData, packet.SessionData[:])
-			sessionData = prevSessionData // Have an extra copy of the session data so we can use the unmodified one in the post session
+			sessionData.CopyFrom(&prevSessionData) // Have an extra copy of the session data so we can use the unmodified one in the post session
 
 			if err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
