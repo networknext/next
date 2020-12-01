@@ -522,11 +522,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		}
 
 		reframedNearRelays := make([]int32, numNearRelays)
+		reframedNearRelayCosts := make([]int32, numNearRelays)
 		var numDestRelays int32
 		reframedDestRelays := make([]int32, len(destRelayIDs))
-		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, &numDestRelays, reframedDestRelays)
+		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, reframedNearRelayCosts, &numDestRelays, reframedDestRelays)
 
 		reframedNearRelays = reframedNearRelays[:numNearRelays]
+		reframedNearRelayCosts = reframedNearRelayCosts[:numNearRelays]
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
 
 		var routeCost int32
@@ -544,18 +546,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
 			}
 		} else {
 			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
-				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
 
-				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
+				metrics.RouteDoesNotExist.Add(1)
+
+				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
 				}
 			} else {
-				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]); stay {
+				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]); stay {
 					// Continue token
 
 					// Check if the route has changed
@@ -763,7 +767,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	var routeCost int32 = sessionData.RouteCost
 	if sessionData.RouteCost == math.MaxInt32 {
 		routeCost = 0
-  }
+	}
 
 	var nearRelayRTT float32
 	if sessionData.RouteNumRelays > 0 {

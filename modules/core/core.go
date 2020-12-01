@@ -820,7 +820,7 @@ func ReframeRoute(relayIDToIndex map[uint64]int32, routeRelayIds []uint64, out_r
 	return true
 }
 
-func ReframeRelays(relayIDToIndex map[uint64]int32, sourceRelayIds []uint64, sourceRelayLatency []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_numSourceRelays *int32, out_sourceRelays []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(relayIDToIndex map[uint64]int32, sourceRelayIds []uint64, sourceRelayLatency []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_numSourceRelays *int32, out_sourceRelays []int32, out_sourceRelayLatency []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	numSourceRelays := int32(0)
 	numDestRelays := int32(0)
@@ -836,9 +836,11 @@ func ReframeRelays(relayIDToIndex map[uint64]int32, sourceRelayIds []uint64, sou
 		}
 		sourceRelayIndex, ok := relayIDToIndex[sourceRelayIds[i]]
 		if !ok {
+			// if the relay no longer exists, we can't use it as a source relay
 			continue
 		}
 		out_sourceRelays[numSourceRelays] = sourceRelayIndex
+		out_sourceRelayLatency[numSourceRelays] = sourceRelayLatency[i]
 		numSourceRelays++
 	}
 

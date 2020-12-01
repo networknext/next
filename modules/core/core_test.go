@@ -1908,20 +1908,22 @@ func TestReframeRelays(t *testing.T) {
 		RelayHash64("chicago.b"),
 	}
 
-	numSourceRelays := int32(0)
-	sourceRelays := [32]int32{}
+	out_numSourceRelays := int32(0)
+	out_sourceRelays := [32]int32{}
+	out_sourceRelayLatency := [32]int32{}
 
-	numDestRelays := int32(0)
-	destRelays := [32]int32{}
+	out_numDestRelays := int32(0)
+	out_destRelays := [32]int32{}
 
-	ReframeRelays(relayIdToIndex, sourceRelayIds, sourceRelayLatency, sourceRelayPacketLoss, destRelayIds, &numSourceRelays, sourceRelays[:], &numDestRelays, destRelays[:])
+	ReframeRelays(relayIdToIndex, sourceRelayIds, sourceRelayLatency, sourceRelayPacketLoss, destRelayIds, &out_numSourceRelays, out_sourceRelays[:], out_sourceRelayLatency[:], &out_numDestRelays, out_destRelays[:])
 
-	assert.Equal(t, int32(1), numSourceRelays)
-	assert.Equal(t, int32(0), sourceRelays[0])
+	assert.Equal(t, int32(1), out_numSourceRelays)
+	assert.Equal(t, int32(0), out_sourceRelays[0])
+	assert.Equal(t, int32(10), out_sourceRelayLatency[0])
 
-	assert.Equal(t, int32(2), numDestRelays)
-	assert.Equal(t, int32(2), destRelays[0])
-	assert.Equal(t, int32(3), destRelays[1])
+	assert.Equal(t, int32(2), out_numDestRelays)
+	assert.Equal(t, int32(2), out_destRelays[0])
+	assert.Equal(t, int32(3), out_destRelays[1])
 }
 
 func TestEarlyOutDirect(t *testing.T) {
