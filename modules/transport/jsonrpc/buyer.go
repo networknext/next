@@ -1439,7 +1439,9 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	var rows []transport.BigQueryBillingEntry
 
 	cachedBuyerID := int64(0)
+	cachedBuyerName := ""
 	cachedDatacenterID := int64(0)
+	var cachedDatacenterName bigquery.NullString
 	cachedRelayNames := []int64{}
 
 	var dbName string
@@ -1575,6 +1577,9 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 			}
 			rows[index].BuyerString = buyer.ShortName
 			cachedBuyerID = row.BuyerID
+			cachedBuyerName = buyer.ShortName
+		} else {
+			rows[index].BuyerString = cachedBuyerName
 		}
 
 		if row.DatacenterID.Valid {
@@ -1587,6 +1592,9 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 				}
 				rows[index].DatacenterString = bigquery.NullString{StringVal: dc.Name, Valid: true}
 				cachedDatacenterID = row.DatacenterID.Int64
+				cachedDatacenterName = bigquery.NullString{StringVal: dc.Name, Valid: true}
+			} else {
+				rows[index].DatacenterString = cachedDatacenterName
 			}
 		}
 
