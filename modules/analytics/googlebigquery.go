@@ -140,13 +140,35 @@ type GoogleBigQueryRelayNamesHashWriter struct {
 	entries chan *RelayNamesHashEntry
 }
 
-func NewGoogleBigQueryRelayNamesHashWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayNamesHashWriter {
+func NewGoogleBigQueryRelayNamesHashWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) (GoogleBigQueryRelayNamesHashWriter, error) {
+
+	bqTable := client.Dataset(dataset).Table(table)
+	meta, err := bqTable.Metadata(context.Background())
+	if meta == nil || err != nil {
+		schema, err := bigquery.InferSchema(RelayNamesHashEntry{})
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return GoogleBigQueryRelayNamesHashWriter{}, err
+		}
+
+		tblMeta := &bigquery.TableMetadata{
+			Name:        table,
+			Description: "Relay Names and Hash Table",
+			Schema:      schema,
+		}
+		err = bqTable.Create(context.Background(), tblMeta)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return GoogleBigQueryRelayNamesHashWriter{}, err
+		}
+	}
+
 	return GoogleBigQueryRelayNamesHashWriter{
 		Metrics:       metrics,
 		Logger:        logger,
-		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
+		TableInserter: bqTable.Inserter(),
 		entries:       make(chan *RelayNamesHashEntry, DefaultBigQueryChannelSize),
-	}
+	}, nil
 }
 
 func (bq *GoogleBigQueryRelayNamesHashWriter) Write(ctx context.Context, entries *RelayNamesHashEntry) error {
