@@ -738,58 +738,64 @@ func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [Ma
 }
 
 func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
-	reversed := false
+
+	// IMPORTANT: This can happen. Make sure we handle it without exploding
+	if len(routeMatrix) == 0 {
+		if debug != nil {
+			*debug += "route matrix is empty\n"
+		}
+		return -1
+	}
+
+	// Find the cost to first relay in the route
+	sourceCost := int32(1000)
+	for i := range sourceRelays {
+		if routeRelays[0] == sourceRelays[i] {
+			sourceCost = sourceRelayCost[i]
+			break
+		}
+	}
+	if sourceCost > 255 {
+		if debug != nil {
+			*debug += "can't find source relay for route\n"
+		}
+		return -1
+	}
+
+	// The route matrix is triangular, so depending on the indices for the 
+	// source and dest relays in the route, we need to reverse the route
 	if routeRelays[0] < routeRelays[routeNumRelays-1] {
 		ReverseRoute(routeRelays[:routeNumRelays])
 		destRelays, sourceRelays = sourceRelays, destRelays
-		reversed = true
 	}
-	routeHash := RouteHash(routeRelays[:routeNumRelays]...)
-	firstRouteRelay := routeRelays[0]
-	for i := range sourceRelays {
-		if sourceRelays[i] == firstRouteRelay {
-			for j := range destRelays {
-				sourceRelayIndex := sourceRelays[i]
-				destRelayIndex := destRelays[j]
-				if sourceRelayIndex == destRelayIndex {
-					continue
-				}
-				index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
-				entry := &routeMatrix[index]
-				for k := 0; k < int(entry.NumRoutes); k++ {
-					if entry.RouteHash[k] == routeHash && entry.RouteNumRelays[k] == routeNumRelays {
-						found := true
-						for l := range routeRelays {
-							if entry.RouteRelays[k][l] != routeRelays[l] {
-								found = false
-								break
-							}
-						}
-						if found {
-							sourceCost := int32(100000)
-							if reversed {
-								sourceRelays = destRelays
-								actualSourceRelay := routeRelays[routeNumRelays-1]
-								for m := range sourceRelays {
-									if sourceRelays[m] == actualSourceRelay {
-										sourceCost = sourceRelayCost[m]
-										break
-									}
-								}
-							} else {
-								for m := range sourceRelays {
-									if sourceRelays[m] == firstRouteRelay {
-										sourceCost = sourceRelayCost[m]
-										break
-									}
-								}
-							}
-							return sourceCost + entry.RouteCost[k]
-						}
-					}
-				}
-			}
+
+	// IMPORTANT: We have to handle this. If it's passed in we'll crash out otherwise
+	sourceRelayIndex := routeRelays[0]
+	destRelayIndex := routeRelays[routeNumRelays-1]
+	if sourceRelayIndex == destRelayIndex {
+		if debug != nil {
+			*debug += "source and dest relays are the same\n"
 		}
+		return -1
+	}
+
+	// Speed things up by hashing the route and comparing that vs. checking route relays manually
+	routeHash := RouteHash(routeRelays[:routeNumRelays]...)
+	index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+	entry := &routeMatrix[index]
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		if entry.RouteHash[i] != routeHash {
+			continue
+		}
+		if entry.RouteNumRelays[i] != routeNumRelays {
+			continue
+		}
+		return sourceCost + entry.RouteCost[i]
+	}
+
+	// We didn't find the route :(
+	if debug != nil {
+		*debug += "could not find route\n"
 	}
 	return -1
 }
