@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"fmt"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
@@ -2264,7 +2265,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
 		RouteNumRelays:  2,
-		RouteCost:       50,
+		RouteCost:       50 + core.CostBias,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -2528,9 +2529,12 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	var err error
 	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
 	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
+	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{ID: "next_slices"})
+	assert.NoError(t, err)
+	expectedMetrics.SessionUpdateMetrics.RouteSwitched, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{ID: "route_switched"})
 	assert.NoError(t, err)
 	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
+	expectedMetrics.SessionUpdateMetrics.RouteSwitched.Add(1)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -3455,7 +3459,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
 		RouteNumRelays:  2,
-		RouteCost:       50,
+		RouteCost:       50 + core.CostBias,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -3762,14 +3766,9 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		SliceNumber:     1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
-		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
-			Next:          true,
-			ReduceLatency: true,
-			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayID:  []uint64{1, 2},
+			NearRelayRTT: []float32{10, 15},
 		},
 	}
 
@@ -3794,9 +3793,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		ServerAddress:        *serverAddr,
 		ClientRoutePublicKey: publicKey,
 		ServerRoutePublicKey: publicKey,
-		DirectRTT:            60,
-		Next:                 true,
-		NextRTT:              62,
+		DirectRTT:            80,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
 		NearRelayRTT:         []float32{10, 15},
@@ -3848,26 +3845,26 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		Version:            requestPacket.Version,
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeContinue,
+		RouteType:          routing.RouteTypeNew,
 		NumNearRelays:      2,
 		NearRelayIDs:       []uint64{1, 2},
 		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
 		NumTokens:          4,
 		HasDebug:           true,
-		Debug:              "test.relay.2 -> test.relay.1",
+		Debug:              fmt.Sprintf("try to reduce latency\nbest route cost is %d\n", 45 + core.CostBias),
 	}
 
 	expectedSessionData := transport.SessionData{
 		Version:         transport.SessionDataVersion,
 		SessionID:       requestPacket.SessionID,
-		SessionVersion:  sessionDataStruct.SessionVersion,
+		SessionVersion:  sessionDataStruct.SessionVersion + 1,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		Initial:         false,
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2,
+		Initial:         true,
 		RouteNumRelays:  2,
-		RouteCost:       50,
-		RouteRelayIDs:   [5]uint64{2, 1, 0, 0, 0},
+		RouteCost:       45,
+		RouteRelayIDs:   [5]uint64{1, 2, 0, 0, 0},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
