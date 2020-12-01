@@ -1054,7 +1054,6 @@ type InternalConfig struct {
 	LargeCustomer              bool
 	Uncommitted                bool
 	MaxRTT                     int32
-	DisableRouteSwitching      bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1070,7 +1069,6 @@ func NewInternalConfig() InternalConfig {
 		LargeCustomer:              false,
 		Uncommitted:                false,
 		MaxRTT:                     300,
-		DisableRouteSwitching:      false,
 	}
 }
 
