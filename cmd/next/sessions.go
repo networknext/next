@@ -405,25 +405,25 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			next = strconv.FormatBool(billingEntry.Next.Bool)
 		}
 		// DirectRTT
-		directRTT := fmt.Sprintf("%5.2f", billingEntry.DirectRTT)
+		directRTT := fmt.Sprintf("%5.5f", billingEntry.DirectRTT)
 		// DirectJitter
-		directJitter := fmt.Sprintf("%5.2f", billingEntry.DirectJitter)
+		directJitter := fmt.Sprintf("%5.5f", billingEntry.DirectJitter)
 		// DirectPacketLoss
-		directPacketLoss := fmt.Sprintf("%5.2f", billingEntry.DirectPacketLoss)
+		directPacketLoss := fmt.Sprintf("%5.5f", billingEntry.DirectPacketLoss)
 		// NextRTT
 		nextRTT := ""
 		if billingEntry.NextRTT.Valid {
-			nextRTT = fmt.Sprintf("%5.2f", billingEntry.NextRTT.Float64)
+			nextRTT = fmt.Sprintf("%5.5f", billingEntry.NextRTT.Float64)
 		}
 		// NextJitter
 		nextJitter := ""
 		if billingEntry.NextJitter.Valid {
-			nextRTT = fmt.Sprintf("%5.2f", billingEntry.NextJitter.Float64)
+			nextJitter = fmt.Sprintf("%5.5f", billingEntry.NextJitter.Float64)
 		}
 		// NextPacketLoss
 		nextPacketLoss := ""
 		if billingEntry.NextPacketLoss.Valid {
-			nextRTT = fmt.Sprintf("%5.2f", billingEntry.NextPacketLoss.Float64)
+			nextPacketLoss = fmt.Sprintf("%5.5f", billingEntry.NextPacketLoss.Float64)
 		}
 		// NextRelays
 		nextRelays := ""
