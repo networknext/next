@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -74,6 +75,7 @@ type account struct {
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
+	CreatedAt   time.Time          `json:"created_at"`
 }
 
 var roleIDs []string = []string{
@@ -431,6 +433,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Name:        *u.Name,
 		Email:       *u.Email,
 		Roles:       r,
+		CreatedAt:   *u.CreatedAt,
 	}
 
 	return account
@@ -449,7 +452,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	reply.Roles = make([]*management.Role, 0)
 
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("AllRoles(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -492,7 +495,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("UserRoles(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
