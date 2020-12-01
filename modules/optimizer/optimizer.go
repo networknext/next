@@ -93,7 +93,9 @@ func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.Cos
 	metrics.Invocations.Add(1)
 	optimizeDurationStart := time.Now()
 
-	routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, costMatrix.RelayDatacenterIDs)
+	costThreshold := int32(1)
+
+	routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs)
 	if len(routeEntries) == 0 {
 		level.Warn(o.Logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 		return nil
