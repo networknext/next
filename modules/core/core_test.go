@@ -616,7 +616,8 @@ func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []RouteEntry, sourceR
 	var bestRouteNumRelays int32
 	var bestRouteRelays [MaxRelaysPerRoute]int32
 	debug := ""
-	GetRandomBestRoute(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	selectThreshold := int32(2)
+	GetRandomBestRoute(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
 	if bestRouteNumRelays == 0 {
 		return nil
 	}
@@ -682,8 +683,8 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourc
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
 	debug := ""
-
-	result := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	selectThreshold := int32(2)
+	result := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
 	if !result {
 		return 0, []string{}
 	}
@@ -698,7 +699,7 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourc
 	return bestRouteCost, bestRouteRelayNames
 }
 
-func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32, costThreshold int32, currentRouteRelayNames []string) (int32, []string) {
+func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteRelayNames []string) (int32, []string) {
 
 	sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
 
@@ -712,8 +713,7 @@ func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, source
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
 	debug := ""
-
-	GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, costThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, switchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
 
 	if bestRouteNumRelays == 0 {
 		return 0, []string{}
@@ -2255,11 +2255,12 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
 	maxCost := int32(1000)
 
-	costThreshold := int32(5)
+	selectThreshold := int32(2)
+	switchThreshold := int32(5)
 
 	currentRoute := []string{"losangeles", "a", "b", "chicago"}
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
+	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
 	assert.Equal(t, int32(40+CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
@@ -2297,11 +2298,12 @@ func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
 
 	maxCost := int32(5)
 
-	costThreshold := int32(5)
+	selectThreshold := int32(2)
+	switchThreshold := int32(5)
 
 	currentRoute := []string{"losangeles", "a", "b", "chicago"}
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
+	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
 	assert.Equal(t, int32(2), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "chicago"}, bestRouteRelays)
@@ -2333,11 +2335,12 @@ func TestGetBestRoute_Update_NoRoute(t *testing.T) {
 
 	maxCost := int32(5)
 
-	costThreshold := int32(5)
+	selectThreshold := int32(2)
+	switchThreshold := int32(5)
 
 	currentRoute := []string{"losangeles", "a", "b", "chicago"}
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
+	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
 	assert.Equal(t, int32(0), bestRouteCost)
 	assert.Equal(t, []string{}, bestRouteRelays)
@@ -2369,11 +2372,12 @@ func TestGetBestRoute_Update_NegativeMaxCost(t *testing.T) {
 
 	maxCost := int32(-1)
 
-	costThreshold := int32(5)
+	selectThreshold := int32(2)
+	switchThreshold := int32(5)
 
 	currentRoute := []string{"losangeles", "a", "b", "chicago"}
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
+	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
 	assert.Equal(t, int32(0), bestRouteCost)
 	assert.Equal(t, []string{}, bestRouteRelays)
