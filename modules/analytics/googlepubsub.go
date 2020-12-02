@@ -158,3 +158,51 @@ func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, e
 
 	return nil
 }
+
+type GooglePubSubRouteMatrixStatsPublisher struct {
+	client *googlePubSubClient
+}
+
+type RouteMatrixStatsPublisher interface {
+	Publish(ctx context.Context, entries RouteMatrixStatsEntry) error
+}
+
+type NoOpRouteMatrixStatsPublisher struct {
+	submitted uint64
+}
+
+func (publisher *NoOpRouteMatrixStatsPublisher) Publish(ctx context.Context, entry RouteMatrixStatsEntry) error {
+	atomic.AddUint64(&publisher.submitted, 1)
+	return nil
+}
+
+func NewGooglePubSubRouteMatrixStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRouteMatrixStatsPublisher, error) {
+	publisher := &GooglePubSubRouteMatrixStatsPublisher{}
+
+	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)
+	if err != nil {
+		return nil, err
+	}
+	publisher.client = client
+
+	go client.pubsubResults(ctx, resultLogger)
+
+	return publisher, nil
+}
+
+func (publisher *GooglePubSubRouteMatrixStatsPublisher) Publish(ctx context.Context, entry RouteMatrixStatsEntry) error {
+	data := WriteRouteMatrixStatsEntry(entry)
+
+	if publisher.client == nil {
+		return fmt.Errorf("analytics: client not initialized")
+	}
+
+	topic := publisher.client.Topic
+	resultChan := publisher.client.ResultChan
+
+	result := topic.Publish(ctx, &pubsub.Message{Data: data})
+	resultChan <- result
+	publisher.client.Metrics.EntriesSubmitted.Add(1)
+
+	return nil
+}
