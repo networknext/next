@@ -262,7 +262,7 @@ func main() {
 	{
 		// BigQuery
 		if gcpOK {
-			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_RELAY_NAMES_HASH"); ok {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
 				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
@@ -333,6 +333,10 @@ func main() {
 				fmt.Printf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d route matrix stats entries received\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d route matrix entries submitted\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d route matrix entries queued\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d route matrix entries flushed\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

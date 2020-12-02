@@ -16,7 +16,7 @@ import (
 	"unsafe"
 )
 
-const CostBias = 3
+const CostBias = 1
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -932,7 +932,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 
 	randomIndex := rand.Intn(numBestRoutes)
 
-	*out_bestRouteCost = bestRoutes[randomIndex].Cost
+	*out_bestRouteCost = bestRoutes[randomIndex].Cost + CostBias
 	*out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays
 
 	if !bestRoutes[randomIndex].NeedToReverse {
