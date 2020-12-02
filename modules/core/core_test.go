@@ -1734,7 +1734,7 @@ func TestGetRandomBestRoute_Simple(t *testing.T) {
 	assert.True(t, bestRoute != nil)
 	assert.True(t, bestRoute.cost > 0)
 	assert.True(t, bestRoute.cost <= maxCost)
-	assert.True(t, bestRoute.cost == 12 || bestRoute.cost == 17)
+	assert.True(t, bestRoute.cost == 12+CostBias || bestRoute.cost == 17+CostBias)
 
 	if bestRoute.cost == 12 {
 		assert.Equal(t, []string{"losangeles.b", "b", "chicago.b"}, bestRoute.relays)
@@ -1794,7 +1794,7 @@ func TestGetRandomBestRoute_Reverse(t *testing.T) {
 	assert.True(t, bestRoute != nil)
 	assert.True(t, bestRoute.cost > 0)
 	assert.True(t, bestRoute.cost <= maxCost)
-	assert.True(t, bestRoute.cost == 12 || bestRoute.cost == 17)
+	assert.True(t, bestRoute.cost == 12+CostBias || bestRoute.cost == 17+CostBias)
 
 	if bestRoute.cost == 12 {
 		assert.Equal(t, []string{"chicago.b", "b", "losangeles.b"}, bestRoute.relays)
@@ -2060,7 +2060,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
-	assert.Equal(t, int32(32+CostBias), bestRouteCost)
+	assert.Equal(t, int32(35+CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
 
@@ -2112,7 +2112,7 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 
 	assert.True(t, bestRouteCost > 0)
 	assert.True(t, bestRouteCost <= maxCost)
-	assert.True(t, bestRouteCost == 12 || bestRouteCost == 17)
+	assert.True(t, bestRouteCost == 12+CostBias || bestRouteCost == 17+CostBias)
 
 	if bestRouteCost == 12 {
 		assert.Equal(t, []string{"losangeles.b", "b", "chicago.b"}, bestRouteRelays)
@@ -2305,7 +2305,7 @@ func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
-	assert.Equal(t, int32(2), bestRouteCost)
+	assert.Equal(t, int32(2+CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "chicago"}, bestRouteRelays)
 }
 
@@ -3971,7 +3971,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(12), routeCost)
+	assert.Equal(t, int32(12+CostBias), routeCost)
 	assert.Equal(t, int32(3), routeNumRelays)
 }
 
@@ -4040,7 +4040,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToBetterRoute(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(12), routeCost)
+	assert.Equal(t, int32(12+CostBias), routeCost)
 	assert.Equal(t, int32(3), routeNumRelays)
 }
 
@@ -4633,7 +4633,7 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(50), routeCost)
+	assert.Equal(t, int32(50+CostBias), routeCost)
 	assert.Equal(t, int32(2), routeNumRelays)
 }
 
@@ -4884,7 +4884,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(50), routeCost)
+	assert.Equal(t, int32(50+CostBias), routeCost)
 	assert.Equal(t, int32(2), routeNumRelays)
 }
 
@@ -4944,7 +4944,7 @@ func TestTakeNetworkNext_Uncommitted(t *testing.T) {
 	expectedRouteState.ReduceLatency = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(12), routeCost)
+	assert.Equal(t, int32(12+CostBias), routeCost)
 	assert.Equal(t, int32(3), routeNumRelays)
 }
 
