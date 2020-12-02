@@ -1521,7 +1521,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  2,
-		RouteCost:       45,
+		RouteCost:       45 + core.CostBias,
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -1783,7 +1783,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  3,
-		RouteCost:       45,
+		RouteCost:       45 + core.CostBias,
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{3, 2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -2017,7 +2017,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES*5)
 	routeAddresses := make([]*net.UDPAddr, 0)
-	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3Internal, serverAddr)
+	routeAddresses = append(routeAddresses, clientAddr, relayAddr3External, relayAddr2Internal, relayAddr1Internal, serverAddr)
 	routePublicKeys := make([][]byte, 0)
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, *privateKey)
@@ -2041,8 +2041,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  3,
-		RouteCost:       50,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2, 3},
+		RouteCost:       45 + core.CostBias,
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{3, 2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2483,7 +2483,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  2,
-		RouteCost:       45,
+		RouteCost:       45 + core.CostBias,
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -2697,7 +2697,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  2,
-		RouteCost:       45,
+		RouteCost:       45 + core.CostBias,
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
@@ -3866,7 +3866,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2,
 		Initial:         true,
 		RouteNumRelays:  2,
-		RouteCost:       45,
+		RouteCost:       45 + core.CostBias,
 		RouteRelayIDs:   [5]uint64{1, 2, 0, 0, 0},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
