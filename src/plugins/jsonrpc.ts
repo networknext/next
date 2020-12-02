@@ -1,5 +1,7 @@
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 import store from '@/store'
 import { cloneDeep } from 'lodash'
+import Vue from 'vue'
 
 export class JSONRPCService {
   private headers: any
@@ -46,6 +48,11 @@ export class JSONRPCService {
         userProfile.buyerID = responses[0].account.id
         userProfile.companyName = responses[0].account.company_name || ''
         userProfile.domains = responses[0].domains || []
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+          (window as any).Intercom('update', {
+            created_at: responses[0].created_at
+          })
+        }
         store.commit('UPDATE_USER_PROFILE', userProfile)
         store.commit('UPDATE_ALL_BUYERS', allBuyers)
         store.commit('UPDATE_CURRENT_FILTER', { companyCode: userProfile.buyerID === '' || store.getters.isAdmin ? '' : userProfile.companyCode })
