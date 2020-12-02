@@ -1965,7 +1965,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		Exec: func(ctx context.Context, args []string) error {
 			input := "cost.bin"
 			output := "optimize.bin"
-			rtt := int32(5)
+			rtt := int32(1)
 
 			if len(args) > 0 {
 				if res, err := strconv.ParseInt(args[0], 10, 32); err == nil {
