@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -471,7 +472,6 @@ func mainReturnWithCode() int {
 			relayDatacenterIDs := make([]uint64, numRelays)
 
 			relayHash := fnv.New64a()
-			var relayBytes []byte
 			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -490,7 +490,8 @@ func mainReturnWithCode() int {
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 
 				if hashing {
-					relayBytes = relayHash.Sum([]byte(relay.Name))
+
+					_, _ = relayHash.Write([]byte(relay.Name))
 				}
 			}
 
@@ -641,11 +642,12 @@ func mainReturnWithCode() int {
 
 			if hashing {
 				timestamp := time.Now().UTC().Unix()
-				hash, err := relayHash.Write(relayBytes)
+				hash := relayHash.Sum64()
 				if err != nil {
 					level.Error(logger).Log("err", err)
 				}
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
+				sort.Strings(namesHashEntry.Names)
 				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
 				if err != nil {
 					level.Error(logger).Log("err", err)
