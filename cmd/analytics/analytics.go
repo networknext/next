@@ -258,6 +258,57 @@ func main() {
 		}
 	}
 
+	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
+	{
+		// BigQuery
+		if gcpOK {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_RELAY_NAMES_HASH"); ok {
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_NAMES_HASH"))
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+
+				relayNamesHashWriter = &b
+
+				go b.WriteLoop(ctx)
+			}
+		}
+
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
+				Logger: logger,
+			}
+
+			level.Info(logger).Log("msg", "detected pubsub emulator")
+		}
+
+		// google pubsub forwarder
+		if gcpOK || emulatorOK {
+			topicName := "relay_names_hash"
+			subscriptionName := "relay_names_hash"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+			defer cancelFunc()
+
+			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			go pubsubForwarder.Forward(ctx)
+		}
+	}
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
