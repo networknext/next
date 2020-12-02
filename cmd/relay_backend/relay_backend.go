@@ -484,7 +484,9 @@ func mainReturnWithCode() int {
 			optimizeMetrics.Invocations.Add(1)
 			optimizeDurationStart := time.Now()
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, 5, relayDatacenterIDs)
+			costThreshold := int32(1)
+
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				continue
