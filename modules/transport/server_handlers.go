@@ -831,9 +831,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 
 		for i := uint8(0); i < numNearRelays; i++ {
 			nearRelayIDs[i] = nearRelays[i].ID
-			nearRelayRTTs[i] = float32(nearRelays[i].ClientStats.RTT)
-			nearRelayJitters[i] = float32(nearRelays[i].ClientStats.Jitter)
-			nearRelayPacketLosses[i] = float32(nearRelays[i].ClientStats.PacketLoss)
+			nearRelayRTTs[i] = float32(math.Ceil(nearRelays[i].ClientStats.RTT))
+			nearRelayJitters[i] = float32(math.Ceil(nearRelays[i].ClientStats.Jitter))
+			nearRelayPacketLosses[i] = float32(math.Ceil(nearRelays[i].ClientStats.PacketLoss))
 		}
 	}
 
