@@ -145,6 +145,7 @@ type routeShader struct {
 }
 
 type internalConfig struct {
+	RouteSelectThreshold       int32 `firestore:"routeSelectThreshold"`
 	RouteSwitchThreshold       int32 `firestore:"routeSwitchThreshold"`
 	MaxLatencyTradeOff         int32 `firestore:"maxLatencyTradeOff"`
 	RTTVeto_Default            int32 `firestore:"rttVeto_default"`
@@ -2270,6 +2271,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		return ic, err
 	}
 
+	ic.RouteSelectThreshold = tempIC.RouteSelectThreshold
 	ic.RouteSwitchThreshold = tempIC.RouteSwitchThreshold
 	ic.MaxLatencyTradeOff = tempIC.MaxLatencyTradeOff
 	ic.RTTVeto_Default = tempIC.RTTVeto_Default
@@ -2290,6 +2292,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 
 	icFirestore := map[string]interface{}{
 		"displayName":                name,
+		"routeSelectThreshold":       internalConfig.RouteSelectThreshold,
 		"routeSwitchThreshold":       internalConfig.RouteSwitchThreshold,
 		"maxLatencyTradeOff":         internalConfig.MaxLatencyTradeOff,
 		"rttVeto_default":            internalConfig.RTTVeto_Default,
