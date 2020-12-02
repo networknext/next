@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"math"
 	"net"
 
 	"github.com/networknext/backend/modules/core"
@@ -527,7 +528,7 @@ type SessionData struct {
 	Location         routing.Location
 	RouteNumRelays   int32
 	RouteCost        int32
-	RouteRelayIDs    [routing.MaxRelays]uint64
+	RouteRelayIDs    [core.MaxRelaysPerRoute]uint64
 	RouteState       core.RouteState
 	EverOnNext       bool
 	FellBackToDirect bool
@@ -592,7 +593,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	hasRoute := sessionData.RouteNumRelays > 0
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
-		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, routing.MaxRelays)
+		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, core.MaxRelaysPerRoute)
 		stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
@@ -641,7 +642,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint64(&sessionData.RouteState.NearRelayID[i])
 
 			if sessionData.Version >= 2 {
-				nearRelayRTT := int32(sessionData.RouteState.NearRelayRTT[i])
+				nearRelayRTT := int32(math.Ceil(float64(sessionData.RouteState.NearRelayRTT[i])))
 				stream.SerializeInteger(&nearRelayRTT, 0, 255)
 				sessionData.RouteState.NearRelayRTT[i] = float32(nearRelayRTT)
 			} else {
@@ -651,4 +652,13 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	}
 
 	return stream.Error()
+}
+
+func (sessionData *SessionData) CopyFrom(other *SessionData) {
+	*sessionData = *other
+	sessionData.RouteState.NearRelayID = make([]uint64, len(other.RouteState.NearRelayID))
+	copy(sessionData.RouteState.NearRelayID, other.RouteState.NearRelayID)
+
+	sessionData.RouteState.NearRelayRTT = make([]float32, len(other.RouteState.NearRelayRTT))
+	copy(sessionData.RouteState.NearRelayRTT, other.RouteState.NearRelayRTT)
 }

@@ -270,10 +270,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		newSession := packet.SliceNumber == 0
 
 		var sessionData SessionData
+		var prevSessionData SessionData
 
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
-		nearRelays := []routing.NearRelayData{}
 		buyer := routing.Buyer{}
 		datacenter := routing.UnknownDatacenter
 
@@ -283,10 +283,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
 		}
-
-		var routeNumRelays int32
-		var routeRelayNames [routing.MaxRelays]string
-		var routeRelaySellers [routing.MaxRelays]routing.Seller
 
 		var debug *string
 
@@ -308,8 +304,41 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
+			// Rebuild the arrays of relay names and sellers from the previous session data
+			routeRelayNames := [5]string{}
+			routeRelaySellers := [5]routing.Seller{}
+			for i := int32(0); i < prevSessionData.RouteNumRelays; i++ {
+				relay, err := storer.Relay(prevSessionData.RouteRelayIDs[i])
+				if err != nil {
+					continue
+				}
+
+				routeRelayNames[i] = relay.Name
+				routeRelaySellers[i] = relay.Seller
+			}
+
+			// Rebuild the near relays from the previous session data
+			nearRelays := make([]routing.NearRelayData, len(prevSessionData.RouteState.NearRelayID))
+			for i := 0; i < len(nearRelays); i++ {
+				nearRelays[i].ID = prevSessionData.RouteState.NearRelayID[i]
+				relayIndex := routeMatrix.RelayIDsToIndices[nearRelays[i].ID]
+
+				nearRelays[i].Name = routeMatrix.RelayNames[relayIndex]
+				nearRelays[i].Addr = routeMatrix.RelayAddresses[relayIndex]
+				nearRelays[i].ClientStats.RTT = math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))
+
+				// We don't actually store the jitter or packet loss in the session data, so just use the
+				// values from the session update packet
+				nearRelays[i].ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[i]))
+				nearRelays[i].ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[i]))
+
+				if nearRelays[i].ClientStats.RTT == 255 {
+					nearRelays[i].ClientStats.PacketLoss = 100
+				}
+			}
+
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
+				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
 			}
 		}()
 
@@ -370,7 +399,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 		} else {
-			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
+			err := UnmarshalSessionData(&prevSessionData, packet.SessionData[:])
+			sessionData.CopyFrom(&prevSessionData) // Have an extra copy of the session data so we can use the unmodified one in the post session
+
+			if err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
 				metrics.ReadSessionDataFailure.Add(1)
 				return
@@ -437,6 +469,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		// todo: clean up this near relay stuff
 
+		var nearRelays []routing.NearRelayData
 		var numNearRelays int32
 		var nearRelayIDs []uint64
 		var nearRelayAddresses []net.UDPAddr
@@ -536,7 +569,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
 
 		var routeCost int32
-		routeRelays := [routing.MaxRelays]int32{}
+		routeRelays := [core.MaxRelaysPerRoute]int32{}
 
 		sessionData.Initial = false
 
@@ -547,6 +580,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			"rtt_threshold", buyer.RouteShader.LatencyThreshold,
 			"selection_percent", buyer.RouteShader.SelectionPercent,
 			"route_switch_threshold", buyer.InternalConfig.RouteSwitchThreshold)
+
+		var routeNumRelays int32
+		var routeRelayNames [core.MaxRelaysPerRoute]string
+		var routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
@@ -726,7 +763,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, debug *string) {
+func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [core.MaxRelaysPerRoute]string, routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, debug *string) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -743,8 +780,8 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		}
 	}
 
-	nextRelaysPrice := [routing.MaxRelays]uint64{}
-	for i := 0; i < routing.MaxRelays; i++ {
+	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
+	for i := 0; i < core.MaxRelaysPerRoute; i++ {
 		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
 	}
 
@@ -920,7 +957,7 @@ func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration u
 	return bytesUp, bytesDown
 }
 
-func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [routing.MaxRelays]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
 	if routeNumRelays == 0 {
 		return 0
@@ -940,8 +977,8 @@ func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [routing.MaxRe
 	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [routing.MaxRelays]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [routing.MaxRelays]routing.Nibblin {
-	relayPrices := [routing.MaxRelays]routing.Nibblin{}
+func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
+	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
 
 	if routeNumRelays == 0 {
 		return relayPrices
