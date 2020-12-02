@@ -168,7 +168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e["multipathVetoed"] = entry.MultipathVetoed
 
-	if entry.UseDebug {
+	if entry.UseDebug && entry.Debug != "" {
 		e["debug"] = entry.Debug
 	}
 
@@ -205,31 +205,31 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	if entry.UseDebug {
 		if entry.NumNearRelays != 0 {
 			e["numNearRelays"] = int(entry.NumNearRelays)
-		}
 
-		nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
-		for i := 0; i < int(entry.NumNearRelays); i++ {
-			nearRelayIDs[i] = int(entry.NearRelayIDs[i])
-		}
-		e["nearRelayIDs"] = nearRelayIDs
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+			}
+			e["nearRelayIDs"] = nearRelayIDs
 
-		nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
-		for i := 0; i < int(entry.NumNearRelays); i++ {
-			nearRelayRTTs[i] = entry.NearRelayRTTs[i]
-		}
-		e["nearRelayRTTs"] = nearRelayRTTs
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+			}
+			e["nearRelayRTTs"] = nearRelayRTTs
 
-		nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
-		for i := 0; i < int(entry.NumNearRelays); i++ {
-			nearRelayJitters[i] = entry.NearRelayJitters[i]
-		}
-		e["nearRelayJitters"] = nearRelayJitters
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayJitters[i] = entry.NearRelayJitters[i]
+			}
+			e["nearRelayJitters"] = nearRelayJitters
 
-		nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
-		for i := 0; i < int(entry.NumNearRelays); i++ {
-			nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			}
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
 		}
-		e["nearRelayPacketLosses"] = nearRelayPacketLosses
 	}
 
 	return e, "", nil
