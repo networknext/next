@@ -437,8 +437,8 @@ func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error
 	bqEntry := make(map[string]bigquery.Value)
 
 	bqEntry["timestamp"] = time.Unix(int64(e.Timestamp), 0)
-	bqEntry["names_hash"] = int(e.Hash)
-	bqEntry["names_strings"] = e.Names
+	bqEntry["relay_hash"] = int64(e.Hash)
+	bqEntry["relay_names"] = e.Names
 
 	return bqEntry, "", nil
 }
