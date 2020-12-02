@@ -10,6 +10,7 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"net/http"
 	"os"
@@ -381,6 +382,43 @@ func mainReturnWithCode() int {
 
 	}
 
+	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
+	{
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "relay_names_hash", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					return 1
+				}
+
+				relayNamesHashPublisher = pubsub
+			}
+		}
+	}
+
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if err != nil {
@@ -432,6 +470,13 @@ func mainReturnWithCode() int {
 			relayLongitudes := make([]float32, numRelays)
 			relayDatacenterIDs := make([]uint64, numRelays)
 
+			relayHash := fnv.New64a()
+			var relayBytes []byte
+			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+
 			for i, relayID := range relayIDs {
 				relay, err := storer.Relay(relayID)
 				if err != nil {
@@ -443,6 +488,10 @@ func mainReturnWithCode() int {
 				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
 				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 				relayDatacenterIDs[i] = relay.Datacenter.ID
+
+				if hashing {
+					relayBytes = relayHash.Sum([]byte(relay.Name))
+				}
 			}
 
 			costMatrixMetrics.Invocations.Add(1)
@@ -587,6 +636,19 @@ func mainReturnWithCode() int {
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					continue
+				}
+			}
+
+			if hashing {
+				timestamp := time.Now().UTC().Unix()
+				hash, err := relayHash.Write(relayBytes)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				}
+				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
+				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
+				if err != nil {
+					level.Error(logger).Log("err", err)
 				}
 			}
 		}
