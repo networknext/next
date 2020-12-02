@@ -16,7 +16,7 @@ import (
 	"unsafe"
 )
 
-const CostBias = 2
+const CostBias = 3
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
