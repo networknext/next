@@ -268,7 +268,7 @@ func main() {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_NAMES_HASH"))
+				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
