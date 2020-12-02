@@ -408,7 +408,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRelayNamesHashPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_names_hash", settings)
+				pubsub, err := analytics.NewGooglePubSubRelayNamesHashPublisher(pubsubCtx, &relayBackendMetrics.RelayNamesHashMetrics, logger, gcpProjectID, "relay_names_hash", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					return 1
@@ -644,7 +644,10 @@ func mainReturnWithCode() int {
 					level.Error(logger).Log("err", err)
 				}
 				namesHashEntry := analytics.RelayNamesHashEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
-				go relayNamesHashPublisher.Publish(ctx, namesHashEntry)
+				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				}
 			}
 		}
 	}()

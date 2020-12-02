@@ -387,7 +387,7 @@ func WriteRelayNamesHashEntry(entry RelayNamesHashEntry) []byte {
 	encoding.WriteUint8(data, &index, RelayNamesHashEntryVersion)
 	encoding.WriteUint64(data, &index, uint64(entry.Timestamp))
 	encoding.WriteUint64(data, &index, uint64(entry.Hash))
-	encoding.WriteUint64(data, &index, uint64(len(entry.Names)))
+	encoding.WriteUint32(data, &index, uint32(len(entry.Names)))
 
 	for _, name := range entry.Names {
 		encoding.WriteString(data, &index, name, uint32(len(name)))
@@ -412,8 +412,8 @@ func ReadRelayNamesHashEntry(data []byte) (*RelayNamesHashEntry, bool) {
 		return nil, false
 	}
 
-	var length uint64
-	if !encoding.ReadUint64(data, &index, &length) {
+	var length uint32
+	if !encoding.ReadUint32(data, &index, &length) {
 		return nil, false
 	}
 

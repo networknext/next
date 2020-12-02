@@ -268,7 +268,12 @@ func main() {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b := analytics.NewGoogleBigQueryRelayNamesHashWriter(bqClient, logger, &analyticsMetrics.RelayNamesHashMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_NAMES_HASH"))
+				b, err := analytics.NewGoogleBigQueryRelayNamesHashWriter(bqClient, logger, &analyticsMetrics.RelayNamesHashMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_NAMES_HASH"))
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+
 				relayNamesHashWriter = &b
 
 				go b.WriteLoop(ctx)
