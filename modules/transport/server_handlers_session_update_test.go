@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-	"fmt"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
@@ -71,7 +70,12 @@ func assertResponseEqual(t *testing.T, expectedResponse transport.SessionRespons
 	assert.Equal(t, expectedResponse.NearRelayAddresses, actualResponse.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, actualResponse.NumTokens)
 	assert.Equal(t, expectedResponse.HasDebug, actualResponse.HasDebug)
-	assert.Equal(t, expectedResponse.Debug, actualResponse.Debug)
+
+	if expectedResponse.HasDebug {
+		assert.NotEmpty(t, actualResponse.Debug)
+	} else {
+		assert.Empty(t, actualResponse.Debug)
+	}
 }
 
 // todo: these should be their own type/file and not tested alongside the session update handler
@@ -2013,7 +2017,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES*5)
 	routeAddresses := make([]*net.UDPAddr, 0)
-	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3Internal, serverAddr)
+	routeAddresses = append(routeAddresses, clientAddr, relayAddr3External, relayAddr2Internal, relayAddr1Internal, serverAddr)
 	routePublicKeys := make([][]byte, 0)
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, *privateKey)
@@ -2037,8 +2041,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  3,
-		RouteCost:       50,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2, 3},
+		RouteCost:       45,
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{3, 2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -3851,7 +3855,6 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
 		NumTokens:          4,
 		HasDebug:           true,
-		Debug:              fmt.Sprintf("try to reduce latency\nbest route cost is %d\n", 45 + core.CostBias),
 	}
 
 	expectedSessionData := transport.SessionData{
