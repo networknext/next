@@ -293,8 +293,8 @@ func main() {
 
 		// google pubsub forwarder
 		if gcpOK || emulatorOK {
-			topicName := "relay_names_hash"
-			subscriptionName := "relay_names_hash"
+			topicName := "route_matrix_stats"
+			subscriptionName := "route_matrix_stats"
 
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
