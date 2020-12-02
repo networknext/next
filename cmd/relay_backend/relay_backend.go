@@ -408,7 +408,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "relay_names_hash", settings)
+				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					return 1
