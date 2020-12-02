@@ -820,52 +820,79 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		debugString = *debug
 	}
 
+	var numNearRelays uint8
+	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
+	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
+
+	if buyer.Debug {
+		numNearRelays = uint8(len(nearRelays))
+
+		for i := uint8(0); i < numNearRelays; i++ {
+			nearRelayIDs[i] = nearRelays[i].ID
+			nearRelayRTTs[i] = float32(nearRelays[i].ClientStats.RTT)
+			nearRelayJitters[i] = float32(nearRelays[i].ClientStats.Jitter)
+			nearRelayPacketLosses[i] = float32(nearRelays[i].ClientStats.PacketLoss)
+		}
+	}
+
 	billingEntry := &billing.BillingEntry{
-		Timestamp:                 uint64(time.Now().Unix()),
-		BuyerID:                   packet.CustomerID,
-		UserHash:                  packet.UserHash,
-		SessionID:                 packet.SessionID,
-		SliceNumber:               packet.SliceNumber,
-		DirectRTT:                 packet.DirectRTT,
-		DirectJitter:              packet.DirectJitter,
-		DirectPacketLoss:          packet.DirectPacketLoss,
-		Next:                      packet.Next,
-		NextRTT:                   packet.NextRTT,
-		NextJitter:                packet.NextJitter,
-		NextPacketLoss:            packet.NextPacketLoss,
-		NumNextRelays:             uint8(sessionData.RouteNumRelays),
-		NextRelays:                sessionData.RouteRelayIDs,
-		TotalPrice:                uint64(totalPrice),
-		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
-		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
-		Committed:                 packet.Committed,
-		Flagged:                   packet.Reported,
-		Multipath:                 sessionData.RouteState.Multipath,
-		Initial:                   sessionData.Initial,
-		NextBytesUp:               nextBytesUp,
-		NextBytesDown:             nextBytesDown,
-		EnvelopeBytesUp:           nextEnvelopeBytesUp,
-		EnvelopeBytesDown:         nextEnvelopeBytesDown,
-		DatacenterID:              datacenter.ID,
-		RTTReduction:              sessionData.RouteState.ReduceLatency,
-		PacketLossReduction:       sessionData.RouteState.ReducePacketLoss,
-		NextRelaysPrice:           nextRelaysPrice,
-		Latitude:                  float32(sessionData.Location.Latitude),
-		Longitude:                 float32(sessionData.Location.Longitude),
-		ISP:                       sessionData.Location.ISP,
-		ABTest:                    sessionData.RouteState.ABTest,
-		RouteDecision:             0,
-		ConnectionType:            uint8(packet.ConnectionType),
-		PlatformType:              uint8(packet.PlatformType),
-		SDKVersion:                packet.Version.String(),
-		PacketLoss:                inGamePacketLoss,
-		PredictedNextRTT:          float32(routeCost),
-		MultipathVetoed:           multipathVetoed,
-		Debug:                     debugString,
-		FallbackToDirect:          packet.FallbackToDirect,
-		ClientFlags:               packet.Flags,
-		UserFlags:                 packet.UserFlags,
-		NearRelayRTT:              nearRelayRTT,
+		Timestamp:                       uint64(time.Now().Unix()),
+		BuyerID:                         packet.CustomerID,
+		UserHash:                        packet.UserHash,
+		SessionID:                       packet.SessionID,
+		SliceNumber:                     packet.SliceNumber,
+		DirectRTT:                       packet.DirectRTT,
+		DirectJitter:                    packet.DirectJitter,
+		DirectPacketLoss:                packet.DirectPacketLoss,
+		Next:                            packet.Next,
+		NextRTT:                         packet.NextRTT,
+		NextJitter:                      packet.NextJitter,
+		NextPacketLoss:                  packet.NextPacketLoss,
+		NumNextRelays:                   uint8(sessionData.RouteNumRelays),
+		NextRelays:                      sessionData.RouteRelayIDs,
+		TotalPrice:                      uint64(totalPrice),
+		ClientToServerPacketsLost:       packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost:       packet.PacketsLostServerToClient,
+		Committed:                       packet.Committed,
+		Flagged:                         packet.Reported,
+		Multipath:                       sessionData.RouteState.Multipath,
+		Initial:                         sessionData.Initial,
+		NextBytesUp:                     nextBytesUp,
+		NextBytesDown:                   nextBytesDown,
+		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
+		EnvelopeBytesDown:               nextEnvelopeBytesDown,
+		DatacenterID:                    datacenter.ID,
+		RTTReduction:                    sessionData.RouteState.ReduceLatency,
+		PacketLossReduction:             sessionData.RouteState.ReducePacketLoss,
+		NextRelaysPrice:                 nextRelaysPrice,
+		Latitude:                        float32(sessionData.Location.Latitude),
+		Longitude:                       float32(sessionData.Location.Longitude),
+		ISP:                             sessionData.Location.ISP,
+		ABTest:                          sessionData.RouteState.ABTest,
+		RouteDecision:                   0,
+		ConnectionType:                  uint8(packet.ConnectionType),
+		PlatformType:                    uint8(packet.PlatformType),
+		SDKVersion:                      packet.Version.String(),
+		PacketLoss:                      inGamePacketLoss,
+		PredictedNextRTT:                float32(routeCost),
+		MultipathVetoed:                 multipathVetoed,
+		UseDebug:                        buyer.Debug,
+		Debug:                           debugString,
+		FallbackToDirect:                packet.FallbackToDirect,
+		ClientFlags:                     packet.Flags,
+		UserFlags:                       packet.UserFlags,
+		NearRelayRTT:                    nearRelayRTT,
+		PacketsOutOfOrderClientToServer: packet.PacketsOutOfOrderClientToServer,
+		PacketsOutOfOrderServerToClient: packet.PacketsOutOfOrderServerToClient,
+		JitterClientToServer:            packet.JitterClientToServer,
+		JitterServerToClient:            packet.JitterServerToClient,
+		NumNearRelays:                   numNearRelays,
+		NearRelayIDs:                    nearRelayIDs,
+		NearRelayRTTs:                   nearRelayRTTs,
+		NearRelayJitters:                nearRelayJitters,
+		NearRelayPacketLosses:           nearRelayPacketLosses,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
