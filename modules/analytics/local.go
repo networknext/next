@@ -55,13 +55,13 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*Relay
 	return nil
 }
 
-type LocalRelayNamesHashWriter struct {
+type LocalRouteMatrixStatsWriter struct {
 	Logger log.Logger
 
 	written uint64
 }
 
-func (writer *LocalRelayNamesHashWriter) Write(ctx context.Context, entry *RelayNamesHashEntry) error {
+func (writer *LocalRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMatrixStatsEntry) error {
 	writer.written++
 
 	if writer.Logger == nil {

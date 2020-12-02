@@ -382,7 +382,7 @@ func mainReturnWithCode() int {
 
 	}
 
-	var relayNamesHashPublisher analytics.RelayNamesHashPublisher = &analytics.NoOpRelayNamesHashPublisher{}
+	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
 	{
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 		if gcpProjectID != "" || emulatorOK {
@@ -408,7 +408,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRelayNamesHashPublisher(pubsubCtx, &relayBackendMetrics.RelayNamesHashMetrics, logger, gcpProjectID, "relay_names_hash", settings)
+				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "relay_names_hash", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					return 1
@@ -472,7 +472,7 @@ func mainReturnWithCode() int {
 
 			relayHash := fnv.New64a()
 			var relayBytes []byte
-			hashing, err := envvar.GetBool("FEATURE_RELAY_NAME_HASHING", true)
+			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 			}
@@ -643,7 +643,7 @@ func mainReturnWithCode() int {
 				if err != nil {
 					level.Error(logger).Log("err", err)
 				}
-				namesHashEntry := analytics.RelayNamesHashEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
+				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
 				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
 				if err != nil {
 					level.Error(logger).Log("err", err)

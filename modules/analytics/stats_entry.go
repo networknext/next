@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"math"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
@@ -370,13 +371,13 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	return bqEntry, "", nil
 }
 
-type RelayNamesHashEntry struct {
+type RouteMatrixStatsEntry struct {
 	Timestamp uint64
 	Hash      uint64
 	Names     []string
 }
 
-func WriteRelayNamesHashEntry(entry RelayNamesHashEntry) []byte {
+func WriteRouteMatrixStatsEntry(entry RouteMatrixStatsEntry) []byte {
 
 	length := 1 + 8
 	for _, name := range entry.Names {
@@ -395,10 +396,10 @@ func WriteRelayNamesHashEntry(entry RelayNamesHashEntry) []byte {
 	return data
 }
 
-func ReadRelayNamesHashEntry(data []byte) (*RelayNamesHashEntry, bool) {
+func ReadRouteMatrixStatsEntry(data []byte) (*RouteMatrixStatsEntry, bool) {
 	index := 0
 
-	entry := new(RelayNamesHashEntry)
+	entry := new(RouteMatrixStatsEntry)
 	var version uint8
 	if !encoding.ReadUint8(data, &index, &version) {
 		return nil, false
@@ -432,10 +433,10 @@ func ReadRelayNamesHashEntry(data []byte) (*RelayNamesHashEntry, bool) {
 
 // Save implements the bigquery.ValueSaver interface for an Entry
 // so it can be used in Put()
-func (e *RelayNamesHashEntry) Save() (map[string]bigquery.Value, string, error) {
+func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
-	bqEntry["timestamp"] = int(e.Timestamp)
+	bqEntry["timestamp"] = time.Unix(int64(e.Timestamp), 0)
 	bqEntry["names_hash"] = int(e.Hash)
 	bqEntry["names_strings"] = e.Names
 

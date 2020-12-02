@@ -116,16 +116,16 @@ func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context) {
 	}
 }
 
-type RelayNamesHashPubSubForwarder struct {
-	Writer  RelayNamesHashWriter
+type RouteMatrixStatsPubSubForwarder struct {
+	Writer  RouteMatrixStatsWriter
 	Logger  log.Logger
 	Metrics *metrics.AnalyticsMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewRelayNamesHashPubSubForwarder(ctx context.Context, writer RelayNamesHashWriter, logger log.Logger, metrics *metrics.AnalyticsMetrics,
-	gcpProjectID string, topicName string, subscriptionName string) (*RelayNamesHashPubSubForwarder, error) {
+func NewRouteMatrixStatsPubSubForwarder(ctx context.Context, writer RouteMatrixStatsWriter, logger log.Logger, metrics *metrics.AnalyticsMetrics,
+	gcpProjectID string, topicName string, subscriptionName string) (*RouteMatrixStatsPubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -139,7 +139,7 @@ func NewRelayNamesHashPubSubForwarder(ctx context.Context, writer RelayNamesHash
 		}
 	}
 
-	return &RelayNamesHashPubSubForwarder{
+	return &RouteMatrixStatsPubSubForwarder{
 		Writer:             writer,
 		Logger:             logger,
 		Metrics:            metrics,
@@ -148,10 +148,10 @@ func NewRelayNamesHashPubSubForwarder(ctx context.Context, writer RelayNamesHash
 }
 
 // Forward reads the analytics entry from pubsub and writes it to BigQuery
-func (psf *RelayNamesHashPubSubForwarder) Forward(ctx context.Context) {
+func (psf *RouteMatrixStatsPubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		psf.Metrics.EntriesReceived.Add(1)
-		if entry, ok := ReadRelayNamesHashEntry(m.Data); ok {
+		if entry, ok := ReadRouteMatrixStatsEntry(m.Data); ok {
 			m.Ack()
 
 			psf.Writer.Write(context.Background(), entry)

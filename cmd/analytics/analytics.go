@@ -258,7 +258,7 @@ func main() {
 		}
 	}
 
-	var relayNamesHashWriter analytics.RelayNamesHashWriter = &analytics.NoOpRelayNamesHashWriter{}
+	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
 	{
 		// BigQuery
 		if gcpOK {
@@ -268,7 +268,7 @@ func main() {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b, err := analytics.NewGoogleBigQueryRelayNamesHashWriter(bqClient, logger, &analyticsMetrics.RelayNamesHashMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_NAMES_HASH"))
+				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_NAMES_HASH"))
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
@@ -284,7 +284,7 @@ func main() {
 		if emulatorOK {
 			gcpProjectID = "local"
 
-			relayNamesHashWriter = &analytics.LocalRelayNamesHashWriter{
+			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
 				Logger: logger,
 			}
 
@@ -299,7 +299,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewRelayNamesHashPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RelayNamesHashMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)

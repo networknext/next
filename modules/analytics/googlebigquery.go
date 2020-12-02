@@ -119,65 +119,44 @@ func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
 	}
 }
 
-type RelayNamesHashWriter interface {
-	Write(ctx context.Context, entry *RelayNamesHashEntry) error
+type RouteMatrixStatsWriter interface {
+	Write(ctx context.Context, entry *RouteMatrixStatsEntry) error
 }
 
-type NoOpRelayNamesHashWriter struct {
+type NoOpRouteMatrixStatsWriter struct {
 	written uint64
 }
 
-func (bq *NoOpRelayNamesHashWriter) Write(ctx context.Context, entry *RelayNamesHashEntry) error {
+func (bq *NoOpRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMatrixStatsEntry) error {
 	atomic.AddUint64(&bq.written, 1)
 	return nil
 }
 
-type GoogleBigQueryRelayNamesHashWriter struct {
+type GoogleBigQueryRouteMatrixStatsWriter struct {
 	Metrics       *metrics.AnalyticsMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
-	entries chan *RelayNamesHashEntry
+	entries chan *RouteMatrixStatsEntry
 }
 
-func NewGoogleBigQueryRelayNamesHashWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) (GoogleBigQueryRelayNamesHashWriter, error) {
+func NewGoogleBigQueryRouteMatrixStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) (GoogleBigQueryRouteMatrixStatsWriter, error) {
 
-	bqTable := client.Dataset(dataset).Table(table)
-	meta, err := bqTable.Metadata(context.Background())
-	if meta == nil || err != nil {
-		schema, err := bigquery.InferSchema(RelayNamesHashEntry{})
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return GoogleBigQueryRelayNamesHashWriter{}, err
-		}
-
-		tblMeta := &bigquery.TableMetadata{
-			Name:        table,
-			Description: "Relay Names and Hash Table",
-			Schema:      schema,
-		}
-		err = bqTable.Create(context.Background(), tblMeta)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return GoogleBigQueryRelayNamesHashWriter{}, err
-		}
-	}
-
-	return GoogleBigQueryRelayNamesHashWriter{
+	return GoogleBigQueryRouteMatrixStatsWriter{
 		Metrics:       metrics,
 		Logger:        logger,
-		TableInserter: bqTable.Inserter(),
-		entries:       make(chan *RelayNamesHashEntry, DefaultBigQueryChannelSize),
+		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
+		entries:       make(chan *RouteMatrixStatsEntry, DefaultBigQueryChannelSize),
 	}, nil
 }
 
-func (bq *GoogleBigQueryRelayNamesHashWriter) Write(ctx context.Context, entries *RelayNamesHashEntry) error {
+func (bq *GoogleBigQueryRouteMatrixStatsWriter) Write(ctx context.Context, entries *RouteMatrixStatsEntry) error {
 	bq.Metrics.EntriesSubmitted.Add(1)
 	bq.entries <- entries
 	return nil
 }
 
-func (bq *GoogleBigQueryRelayNamesHashWriter) WriteLoop(ctx context.Context) {
+func (bq *GoogleBigQueryRouteMatrixStatsWriter) WriteLoop(ctx context.Context) {
 	for entries := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entries); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)

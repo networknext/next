@@ -186,12 +186,12 @@ var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
 }
 
 type RelayBackendMetrics struct {
-	Goroutines            Gauge
-	MemoryAllocated       Gauge
-	RouteMatrix           RouteMatrixMetrics
-	PingStatsMetrics      AnalyticsMetrics
-	RelayStatsMetrics     AnalyticsMetrics
-	RelayNamesHashMetrics AnalyticsMetrics
+	Goroutines              Gauge
+	MemoryAllocated         Gauge
+	RouteMatrix             RouteMatrixMetrics
+	PingStatsMetrics        AnalyticsMetrics
+	RelayStatsMetrics       AnalyticsMetrics
+	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyRelayBackendMetrics RelayBackendMetrics = RelayBackendMetrics{
@@ -217,11 +217,11 @@ var EmptyRouteMatrixMetrics RouteMatrixMetrics = RouteMatrixMetrics{
 }
 
 type AnalyticsServiceMetrics struct {
-	Goroutines            Gauge
-	MemoryAllocated       Gauge
-	PingStatsMetrics      AnalyticsMetrics
-	RelayStatsMetrics     AnalyticsMetrics
-	RelayNamesHashMetrics AnalyticsMetrics
+	Goroutines              Gauge
+	MemoryAllocated         Gauge
+	PingStatsMetrics        AnalyticsMetrics
+	RelayStatsMetrics       AnalyticsMetrics
+	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
@@ -987,21 +987,21 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
 
 	//RelayNamesHash
-	relayBackendMetrics.RelayNamesHashMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Names Hash Entries Received",
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Received",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_names_hash.entries",
+		ID:          "relay_backend.route_matrix_stats.entries",
 		Unit:        "entries",
-		Description: "The total number of relay names hash entries received through Google Pub/Sub",
+		Description: "The total number of Route Matrix Stats entries received through Google Pub/Sub",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	relayBackendMetrics.RelayNamesHashMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Names Hash Entries Submitted",
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Submitted",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_names_hash.entries.submitted",
+		ID:          "relay_backend.route_matrix_stats.entries.submitted",
 		Unit:        "entries",
 		Description: "The total number of relay stats entries submitted to BigQuery",
 	})
@@ -1009,10 +1009,10 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 		return nil, err
 	}
 
-	relayBackendMetrics.RelayNamesHashMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Names Hash Entries Queued",
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Queued",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_names_hash.entries.queued",
+		ID:          "relay_backend.route_matrix_stats.entries.queued",
 		Unit:        "entries",
 		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
 	})
@@ -1020,10 +1020,10 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 		return nil, err
 	}
 
-	relayBackendMetrics.RelayNamesHashMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Names Hash Entries Flushed",
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Flushed",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_names_hash.entries.flushed",
+		ID:          "relay_backend.route_matrix_stats.entries.flushed",
 		Unit:        "entries",
 		Description: "The total number of relay stats entries written to BigQuery",
 	})
@@ -1031,22 +1031,22 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 		return nil, err
 	}
 
-	relayBackendMetrics.RelayNamesHashMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
 
-	relayBackendMetrics.RelayNamesHashMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Names Hash Read Failure",
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Read Failure",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_names_hash.error.read_failure",
+		ID:          "relay_backend.route_matrix_stats.error.read_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	relayBackendMetrics.RelayNamesHashMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Names Hash Write Failure",
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Write Failure",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_names_hash.error.write_failure",
+		ID:          "relay_backend.route_matrix_stats.error.write_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
@@ -1266,21 +1266,21 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 	}
 
 	//RelayNamesHash
-	analyticsMetrics.RelayNamesHashMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Names Hash Entries Received",
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Received",
 		ServiceName: "analytics",
-		ID:          "analytics.relay_names_hash.entries",
+		ID:          "analytics.route_matrix_stats.entries",
 		Unit:        "entries",
-		Description: "The total number of relay names hash entries received through Google Pub/Sub",
+		Description: "The total number of Route Matrix Stats entries received through Google Pub/Sub",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	analyticsMetrics.RelayNamesHashMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Names Hash Entries Submitted",
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Submitted",
 		ServiceName: "analytics",
-		ID:          "analytics.relay_names_hash.entries.submitted",
+		ID:          "analytics.route_matrix_stats.entries.submitted",
 		Unit:        "entries",
 		Description: "The total number of relay stats entries submitted to BigQuery",
 	})
@@ -1288,10 +1288,10 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		return nil, err
 	}
 
-	analyticsMetrics.RelayNamesHashMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Names Hash Entries Queued",
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Queued",
 		ServiceName: "analytics",
-		ID:          "analytics.relay_names_hash.entries.queued",
+		ID:          "analytics.route_matrix_stats.entries.queued",
 		Unit:        "entries",
 		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
 	})
@@ -1299,10 +1299,10 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		return nil, err
 	}
 
-	analyticsMetrics.RelayNamesHashMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Names Hash Entries Flushed",
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Flushed",
 		ServiceName: "analytics",
-		ID:          "analytics.relay_names_hash.entries.flushed",
+		ID:          "analytics.route_matrix_stats.entries.flushed",
 		Unit:        "entries",
 		Description: "The total number of relay stats entries written to BigQuery",
 	})
@@ -1310,22 +1310,22 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		return nil, err
 	}
 
-	analyticsMetrics.RelayNamesHashMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
 
-	analyticsMetrics.RelayNamesHashMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Names Hash Read Failure",
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Read Failure",
 		ServiceName: "analytics",
-		ID:          "analytics.relay_names_hash.error.read_failure",
+		ID:          "analytics.route_matrix_stats.error.read_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	analyticsMetrics.RelayNamesHashMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Names Hash Write Failure",
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Write Failure",
 		ServiceName: "analytics",
-		ID:          "analytics.relay_names_hash.error.write_failure",
+		ID:          "analytics.route_matrix_stats.error.write_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

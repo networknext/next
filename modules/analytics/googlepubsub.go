@@ -159,25 +159,25 @@ func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, e
 	return nil
 }
 
-type GooglePubSubRelayNamesHashPublisher struct {
+type GooglePubSubRouteMatrixStatsPublisher struct {
 	client *googlePubSubClient
 }
 
-type RelayNamesHashPublisher interface {
-	Publish(ctx context.Context, entries RelayNamesHashEntry) error
+type RouteMatrixStatsPublisher interface {
+	Publish(ctx context.Context, entries RouteMatrixStatsEntry) error
 }
 
-type NoOpRelayNamesHashPublisher struct {
+type NoOpRouteMatrixStatsPublisher struct {
 	submitted uint64
 }
 
-func (publisher *NoOpRelayNamesHashPublisher) Publish(ctx context.Context, entry RelayNamesHashEntry) error {
+func (publisher *NoOpRouteMatrixStatsPublisher) Publish(ctx context.Context, entry RouteMatrixStatsEntry) error {
 	atomic.AddUint64(&publisher.submitted, 1)
 	return nil
 }
 
-func NewGooglePubSubRelayNamesHashPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayNamesHashPublisher, error) {
-	publisher := &GooglePubSubRelayNamesHashPublisher{}
+func NewGooglePubSubRouteMatrixStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRouteMatrixStatsPublisher, error) {
+	publisher := &GooglePubSubRouteMatrixStatsPublisher{}
 
 	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)
 	if err != nil {
@@ -190,8 +190,8 @@ func NewGooglePubSubRelayNamesHashPublisher(ctx context.Context, statsMetrics *m
 	return publisher, nil
 }
 
-func (publisher *GooglePubSubRelayNamesHashPublisher) Publish(ctx context.Context, entry RelayNamesHashEntry) error {
-	data := WriteRelayNamesHashEntry(entry)
+func (publisher *GooglePubSubRouteMatrixStatsPublisher) Publish(ctx context.Context, entry RouteMatrixStatsEntry) error {
+	data := WriteRouteMatrixStatsEntry(entry)
 
 	if publisher.client == nil {
 		return fmt.Errorf("analytics: client not initialized")
