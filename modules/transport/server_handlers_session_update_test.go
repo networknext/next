@@ -2041,8 +2041,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  3,
-		RouteCost:       45,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{3, 2, 1},
+		RouteCost:       50,
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2, 3},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
