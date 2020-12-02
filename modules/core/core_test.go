@@ -2052,7 +2052,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
-	sourceRelayCosts := []int32{8}
+	sourceRelayCosts := []int32{5}
 
 	destRelayNames := []string{"chicago"}
 
@@ -2060,7 +2060,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
-	assert.Equal(t, int32(36+CostBias), bestRouteCost)
+	assert.Equal(t, int32(32+CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
 
