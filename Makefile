@@ -334,10 +334,12 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
-.PHONY: test-load
-test-load: ## runs load tests
-	@printf "\nRunning load tests...\n" ; \
-	$(GO) run ./cmd/load_test/load_tests.go
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
+	@printf "done\n"
+
 
 #######################
 
@@ -402,6 +404,10 @@ dev-multi-clients: build-client  ## runs 10 local clients
 dev-server: build-sdk build-server  ## runs a local server
 	@./dist/server
 
+.PHONY: dev-api
+dev-api: build-api ## runs a local api endpoint service
+	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
+
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
@@ -409,12 +415,6 @@ $(DIST_DIR)/$(SDKNAME).so: dist
 
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so
-
-PHONY: build-load-test
-build-load-test:
-	@printf "Building load test... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load-test ./cmd/load_test/load_tests.go
-	@printf "done\n"
 
 PHONY: build-portal-cruncher
 build-portal-cruncher:
@@ -574,10 +574,6 @@ build-relay-backend-artifacts-staging: build-relay-backend
 build-portal-cruncher-artifacts-staging: build-portal-cruncher
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
-.PHONY: build-load-test-artifacts-staging
-build-load-test-artifacts-staging: build-load-test
-	./deploy/build-artifacts.sh -e staging -s load-test
-
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
@@ -673,10 +669,6 @@ publish-portal-artifacts-staging:
 .PHONY: publish-portal-cruncher-artifacts-staging
 publish-portal-cruncher-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
-
-.PHONY: publish-load-test-artifacts-staging
-publish-load-test-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test
 
 .PHONY: publish-relay-backend-artifacts-staging
 publish-relay-backend-artifacts-staging:
@@ -986,7 +978,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

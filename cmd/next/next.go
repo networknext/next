@@ -625,6 +625,27 @@ func main() {
 			sessions(rpcClient, env, args[0], sessionCount)
 			return nil
 		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "dump",
+				ShortUsage: "next session dump <session id>",
+				ShortHelp:  "Write all billing data for the given ID to a CSV file",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
+					}
+
+					sessionID, err := strconv.ParseUint(args[0], 16, 64)
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not convert %s to uint64", args[0]), 0)
+					}
+
+					dumpSession(rpcClient, env, sessionID)
+
+					return nil
+				},
+			},
+		},
 	}
 
 	var relaysCommand = &ffcli.Command{
@@ -2044,7 +2065,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		Exec: func(ctx context.Context, args []string) error {
 			input := "cost.bin"
 			output := "optimize.bin"
-			rtt := int32(5)
+			rtt := int32(1)
 
 			if len(args) > 0 {
 				if res, err := strconv.ParseInt(args[0], 10, 32); err == nil {
@@ -2114,8 +2135,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "cost",
-				ShortUsage: "next view cost",
+				Name:       "costs",
+				ShortUsage: "next view costs",
 				ShortHelp:  "View the entries of the cost matrix",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "cost.bin"
@@ -2124,8 +2145,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				},
 			},
 			{
-				Name:       "route",
-				ShortUsage: "next view route [srcRelay] [destRelay]",
+				Name:       "routes",
+				ShortUsage: "next view routes [srcRelay] [destRelay]",
 				ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "optimize.bin"

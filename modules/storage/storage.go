@@ -1,3 +1,4 @@
+//go:generate moq -out storage_test_mocks.go . Storer
 package storage
 
 import (

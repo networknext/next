@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"math"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -325,4 +328,317 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 	} else {
 		table.Output(sessions)
 	}
+}
+
+func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64) {
+
+	arg := localjsonrpc.GetAllSessionBillingInfoArg{
+		SessionID: sessionID,
+	}
+
+	var reply localjsonrpc.GetAllSessionBillingInfoReply
+
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetAllSessionBillingInfo", arg); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	bqBillingDataEntryCSV := [][]string{{}}
+
+	bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
+		"SliceNumber",
+		"Timestamp",
+		"Buyer",
+		"SessionID",
+		"Next",
+		"DirectRTT",
+		"DirectJitter",
+		"DirectPacketLoss",
+		"NextRTT",
+		"NextJitter",
+		"NextPacketLoss",
+		"NextRelays",
+		"TotalPrice",
+		"ClientToServerPacketsLost",
+		"ServerToClientPacketsLost",
+		"Committed",
+		"Flagged",
+		"Multipath",
+		"NextBytesUp",
+		"NextBytesDown",
+		"Initial",
+		"Datacenter",
+		"RttReduction",
+		"PacketLossReduction",
+		"NextRelaysPrice",
+		"UserHash",
+		"Latitude",
+		"Longitude",
+		"ISP",
+		"ABTest",
+		"ConnectionType",
+		"PlatformType",
+		"SdkVersion",
+		"PacketLoss",
+		"EnvelopeBytesUp",
+		"EnvelopeBytesDown",
+		"PredictedNextRTT",
+		"MultipathVetoed",
+		"Debug String",
+		"FallbackToDirect",
+		"ClientFlags",
+		"UserFlags",
+	})
+
+	for _, billingEntry := range reply.SessionBillingInfo {
+		// Timestamp
+		timeStamp := billingEntry.Timestamp.String()
+		// BuyerString
+		buyerName := billingEntry.BuyerString
+		// SessionID
+		sessionID := fmt.Sprintf("%016x", uint64(billingEntry.SessionID))
+		// SliceNumber
+		sliceNumber := fmt.Sprintf("%d", billingEntry.SliceNumber)
+		// Next
+		next := ""
+		if billingEntry.Next.Valid {
+			next = strconv.FormatBool(billingEntry.Next.Bool)
+		}
+		// DirectRTT
+		directRTT := fmt.Sprintf("%5.5f", billingEntry.DirectRTT)
+		// DirectJitter
+		directJitter := fmt.Sprintf("%5.5f", billingEntry.DirectJitter)
+		// DirectPacketLoss
+		directPacketLoss := fmt.Sprintf("%5.5f", billingEntry.DirectPacketLoss)
+		// NextRTT
+		nextRTT := ""
+		if billingEntry.NextRTT.Valid {
+			nextRTT = fmt.Sprintf("%5.5f", billingEntry.NextRTT.Float64)
+		}
+		// NextJitter
+		nextJitter := ""
+		if billingEntry.NextJitter.Valid {
+			nextJitter = fmt.Sprintf("%5.5f", billingEntry.NextJitter.Float64)
+		}
+		// NextPacketLoss
+		nextPacketLoss := ""
+		if billingEntry.NextPacketLoss.Valid {
+			nextPacketLoss = fmt.Sprintf("%5.5f", billingEntry.NextPacketLoss.Float64)
+		}
+		// NextRelays
+		nextRelays := ""
+		if len(billingEntry.NextRelays) > 0 {
+			for _, relay := range billingEntry.NextRelaysStrings {
+				nextRelays += relay + ", "
+			}
+			nextRelays = strings.TrimSuffix(nextRelays, ", ")
+		}
+		// TotalPrice
+		totalPrice := fmt.Sprintf("%d", billingEntry.TotalPrice)
+		// ClientToServerPacketsLost
+		clientToServerPacketsLost := ""
+		if billingEntry.ClientToServerPacketsLost.Valid {
+			clientToServerPacketsLost = fmt.Sprintf("%d", billingEntry.ClientToServerPacketsLost.Int64)
+		}
+		// ServerToClientPacketsLost
+		serverToClientPacketsLost := ""
+		if billingEntry.ClientToServerPacketsLost.Valid {
+			serverToClientPacketsLost = fmt.Sprintf("%d", billingEntry.ClientToServerPacketsLost.Int64)
+		}
+		// Committed
+		committed := ""
+		if billingEntry.Committed.Valid {
+			committed = strconv.FormatBool(billingEntry.Committed.Bool)
+		}
+		// Flagged
+		flagged := ""
+		if billingEntry.Flagged.Valid {
+			flagged = strconv.FormatBool(billingEntry.Flagged.Bool)
+		}
+		// Multipath
+		multipath := ""
+		if billingEntry.Next.Valid {
+			multipath = strconv.FormatBool(billingEntry.Next.Bool)
+		}
+		// NextBytesUp
+		nextBytesUp := ""
+		if billingEntry.NextBytesUp.Valid {
+			nextBytesUp = fmt.Sprintf("%d", billingEntry.NextBytesUp.Int64)
+		}
+		// NextBytesDown
+		nextBytesDown := ""
+		if billingEntry.NextBytesDown.Valid {
+			nextBytesDown = fmt.Sprintf("%d", billingEntry.NextBytesDown.Int64)
+		}
+		// Initial
+		initial := ""
+		if billingEntry.Initial.Valid {
+			initial = strconv.FormatBool(billingEntry.Initial.Bool)
+		}
+		// DatacenterString
+		datacenterName := ""
+		if billingEntry.DatacenterString.Valid {
+			datacenterName = billingEntry.DatacenterString.StringVal
+		}
+		// RttReduction
+		rttReduction := ""
+		if billingEntry.RttReduction.Valid {
+			rttReduction = strconv.FormatBool(billingEntry.RttReduction.Bool)
+		}
+		// PacketLossReduction
+		plReduction := ""
+		if billingEntry.PacketLossReduction.Valid {
+			plReduction = strconv.FormatBool(billingEntry.PacketLossReduction.Bool)
+		}
+		// NextRelaysPrice
+		nextRelaysPrice := ""
+		if len(billingEntry.NextRelaysPrice) > 0 {
+			nextRelaysPrice += fmt.Sprintf("%d", billingEntry.NextRelaysPrice[0])
+		}
+		// UserHash
+		userHash := ""
+		if billingEntry.UserHash.Valid {
+			userHash = fmt.Sprintf("%016x", billingEntry.UserHash.Int64)
+		}
+		// Latitude
+		latitude := ""
+		if billingEntry.Latitude.Valid {
+			latitude = fmt.Sprintf("%3.2f", billingEntry.Latitude.Float64)
+		}
+		// Longitude
+		longitude := ""
+		if billingEntry.Longitude.Valid {
+			longitude = fmt.Sprintf("%3.2f", billingEntry.Longitude.Float64)
+		}
+		// ISP
+		isp := ""
+		if billingEntry.ISP.Valid {
+			isp = billingEntry.ISP.StringVal
+		}
+		// ABTest
+		abTest := ""
+		if billingEntry.ABTest.Valid {
+			abTest = strconv.FormatBool(billingEntry.ABTest.Bool)
+		}
+		// ConnectionType
+		connType := ""
+		if billingEntry.ConnectionType.Valid {
+			connType = fmt.Sprintf("%d", billingEntry.ConnectionType.Int64)
+		}
+		// PlatformType
+		platformType := ""
+		if billingEntry.PlatformType.Valid {
+			platformType = fmt.Sprintf("%d", billingEntry.PlatformType.Int64)
+		}
+		// SdkVersion
+		sdkVersion := ""
+		if billingEntry.SdkVersion.Valid {
+			sdkVersion = billingEntry.SdkVersion.StringVal
+		}
+		// PacketLoss
+		packetLoss := ""
+		if billingEntry.PacketLoss.Valid {
+			packetLoss = fmt.Sprintf("%2.8f", billingEntry.PacketLoss.Float64)
+		}
+		// EnvelopeBytesUp
+		envelopeBytesUp := ""
+		if billingEntry.EnvelopeBytesUp.Valid {
+			envelopeBytesUp = fmt.Sprintf("%d", billingEntry.EnvelopeBytesUp.Int64)
+		}
+		// EnvelopeBytesDown
+		envelopeBytesDown := ""
+		if billingEntry.EnvelopeBytesDown.Valid {
+			envelopeBytesDown = fmt.Sprintf("%d", billingEntry.EnvelopeBytesDown.Int64)
+		}
+		// PredictedNextRTT
+		predictedNextRTT := ""
+		if billingEntry.PredictedNextRTT.Valid {
+			predictedNextRTT = fmt.Sprintf("%5.2f", billingEntry.PredictedNextRTT.Float64)
+		}
+		// MultipathVetoed
+		multipathVetoed := ""
+		if billingEntry.MultipathVetoed.Valid {
+			multipathVetoed = strconv.FormatBool(billingEntry.MultipathVetoed.Bool)
+		}
+		// Debug
+		debug := ""
+		if billingEntry.Debug.Valid {
+			debug = billingEntry.Debug.StringVal
+		}
+		// FallbackToDirect
+		fallbackToDirect := ""
+		if billingEntry.FallbackToDirect.Valid {
+			fallbackToDirect = strconv.FormatBool(billingEntry.FallbackToDirect.Bool)
+		}
+		// ClientFlags
+		clientFlags := ""
+		if billingEntry.ClientFlags.Valid {
+			clientFlags = "0b" + strconv.FormatInt(billingEntry.ClientFlags.Int64, 2)
+		}
+		// UserFlags
+		userFlags := ""
+		if billingEntry.UserFlags.Valid {
+			userFlags = "0b" + strconv.FormatInt(billingEntry.UserFlags.Int64, 2)
+		}
+
+		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
+			sliceNumber,
+			timeStamp,
+			buyerName,
+			sessionID,
+			next,
+			directRTT,
+			directJitter,
+			directPacketLoss,
+			nextRTT,
+			nextJitter,
+			nextPacketLoss,
+			nextRelays,
+			totalPrice,
+			clientToServerPacketsLost,
+			serverToClientPacketsLost,
+			committed,
+			flagged,
+			multipath,
+			nextBytesUp,
+			nextBytesDown,
+			initial,
+			datacenterName,
+			rttReduction,
+			plReduction,
+			nextRelaysPrice,
+			userHash,
+			latitude,
+			longitude,
+			isp,
+			abTest,
+			connType,
+			platformType,
+			sdkVersion,
+			packetLoss,
+			envelopeBytesUp,
+			envelopeBytesDown,
+			predictedNextRTT,
+			multipathVetoed,
+			debug,
+			fallbackToDirect,
+			clientFlags,
+			userFlags,
+		})
+	}
+
+	fileName := "./session-" + fmt.Sprintf("%016x", sessionID) + ".csv"
+	f, err := os.Create(fileName)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+	}
+
+	writer := csv.NewWriter(f)
+	err = writer.WriteAll(bqBillingDataEntryCSV)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+	}
+	fmt.Println("CSV file written: ", fileName)
+	return
+
 }

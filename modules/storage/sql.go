@@ -1072,16 +1072,21 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
-	internalIPPort, err := strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
-	if err != nil {
-		return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	internalIP := ""
+	internalIPPort := int64(0)
+	if r.InternalAddr.String() != "" {
+		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+		}
 	}
 
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
 		PublicIPPort:       publicIPPort,
-		InternalIP:         strings.Split(r.InternalAddr.String(), ":")[0],
+		InternalIP:         internalIP,
 		InternalIPPort:     internalIPPort,
 		PublicKey:          r.PublicKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),
@@ -1228,16 +1233,21 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
-	internalIPPort, err := strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
-	if err != nil {
-		return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	internalIP := ""
+	internalIPPort := int64(0)
+	if r.InternalAddr.String() != "" {
+		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+		}
 	}
 
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
 		PublicIPPort:       publicIPPort,
-		InternalIP:         strings.Split(r.InternalAddr.String(), ":")[0],
+		InternalIP:         internalIP,
 		InternalIPPort:     internalIPPort,
 		PublicKey:          r.PublicKey,
 		NICSpeedMbps:       int64(r.NICSpeedMbps),

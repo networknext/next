@@ -1,14 +1,18 @@
 package analytics
 
 import (
+	"math"
+	"time"
+
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 )
 
 const (
-	PingStatsEntryVersion  = uint8(2)
-	RelayStatsEntryVersion = uint8(2)
+	PingStatsEntryVersion      = uint8(2)
+	RelayStatsEntryVersion     = uint8(2)
+	RelayNamesHashEntryVersion = uint8(1)
 )
 
 type PingStatsEntry struct {
@@ -22,7 +26,7 @@ type PingStatsEntry struct {
 	Routable   bool
 }
 
-func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
+func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32) []PingStatsEntry {
 	length := routing.TriMatrixLength(len(statsdb.Entries))
 	entries := make([]PingStatsEntry, length)
 
@@ -41,6 +45,15 @@ func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
 				idB := ids[j]
 
 				rtt, jitter, pl := statsdb.GetSample(idA, idB)
+				routable := rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue
+
+				if jitter > maxJitter {
+					routable = false
+				}
+
+				if pl > maxPacketLoss {
+					routable = false
+				}
 
 				entries[routing.TriMatrixIndex(i, j)] = PingStatsEntry{
 					RelayA:     idA,
@@ -48,7 +61,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase) []PingStatsEntry {
 					RTT:        rtt,
 					Jitter:     jitter,
 					PacketLoss: pl,
-					Routable:   rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue,
+					Routable:   routable,
 				}
 			}
 		}
@@ -354,6 +367,78 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["max_sessions"] = int(e.MaxSessions)
 	bqEntry["num_routable"] = int(e.NumRoutable)
 	bqEntry["num_unroutable"] = int(e.NumUnroutable)
+
+	return bqEntry, "", nil
+}
+
+type RouteMatrixStatsEntry struct {
+	Timestamp uint64
+	Hash      uint64
+	Names     []string
+}
+
+func WriteRouteMatrixStatsEntry(entry RouteMatrixStatsEntry) []byte {
+
+	length := 1 + 8
+	for _, name := range entry.Names {
+		length = length + 4 + 8 + 8 + len(name)
+	}
+	data := make([]byte, length)
+	index := 0
+	encoding.WriteUint8(data, &index, RelayNamesHashEntryVersion)
+	encoding.WriteUint64(data, &index, uint64(entry.Timestamp))
+	encoding.WriteUint64(data, &index, uint64(entry.Hash))
+	encoding.WriteUint32(data, &index, uint32(len(entry.Names)))
+
+	for _, name := range entry.Names {
+		encoding.WriteString(data, &index, name, uint32(len(name)))
+	}
+	return data
+}
+
+func ReadRouteMatrixStatsEntry(data []byte) (*RouteMatrixStatsEntry, bool) {
+	index := 0
+
+	entry := new(RouteMatrixStatsEntry)
+	var version uint8
+	if !encoding.ReadUint8(data, &index, &version) {
+		return nil, false
+	}
+
+	if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
+		return nil, false
+	}
+
+	if !encoding.ReadUint64(data, &index, &entry.Hash) {
+		return nil, false
+	}
+
+	var length uint32
+	if !encoding.ReadUint32(data, &index, &length) {
+		return nil, false
+	}
+
+	entry.Names = make([]string, length)
+
+	for i := range entry.Names {
+		var name string
+		if !encoding.ReadString(data, &index, &name, math.MaxInt32) {
+			return nil, false
+		}
+		entry.Names[i] = name
+	}
+
+	return entry, true
+}
+
+// Save implements the bigquery.ValueSaver interface for an Entry
+// so it can be used in Put()
+func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error) {
+	bqEntry := make(map[string]bigquery.Value)
+
+	bqEntry["timestamp"] = time.Unix(int64(e.Timestamp), 0)
+	bqEntry["relay_hash"] = int64(e.Hash)
+	bqEntry["relay_names"] = e.Names
 
 	return bqEntry, "", nil
 }

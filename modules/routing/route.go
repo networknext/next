@@ -6,15 +6,18 @@ import (
 	"hash/fnv"
 	"net"
 	"strings"
+
+	"github.com/networknext/backend/modules/core"
 )
 
+// todo: is this still used?
 type Route struct {
-	NumRelays       int                    `json:"numRelays"`
-	RelayIDs        [MaxRelays]uint64      `json:"relayIDs"`
-	RelayNames      [MaxRelays]string      `json:"relayNames"`
-	RelayAddrs      [MaxRelays]net.UDPAddr `json:"relayAddrs"`
-	RelayPublicKeys [MaxRelays][]byte      `json:"relayPublicKeys"`
-	RelaySellers    [MaxRelays]Seller      `json:"relaySellers"`
+	NumRelays       int                    	`json:"numRelays"`
+	RelayIDs        [core.MaxRelaysPerRoute]uint64      `json:"relayIDs"`
+	RelayNames      [core.MaxRelaysPerRoute]string      `json:"relayNames"`
+	RelayAddrs      [core.MaxRelaysPerRoute]net.UDPAddr `json:"relayAddrs"`
+	RelayPublicKeys [core.MaxRelaysPerRoute][]byte      `json:"relayPublicKeys"`
+	RelaySellers    [core.MaxRelaysPerRoute]Seller      `json:"relaySellers"`
 	Stats           Stats                  `json:"stats"`
 }
 

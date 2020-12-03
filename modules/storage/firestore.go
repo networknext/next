@@ -145,6 +145,7 @@ type routeShader struct {
 }
 
 type internalConfig struct {
+	RouteSelectThreshold       int32 `firestore:"routeSelectThreshold"`
 	RouteSwitchThreshold       int32 `firestore:"routeSwitchThreshold"`
 	MaxLatencyTradeOff         int32 `firestore:"maxLatencyTradeOff"`
 	RTTVeto_Default            int32 `firestore:"rttVeto_default"`
@@ -155,6 +156,7 @@ type internalConfig struct {
 	ForceNext                  bool  `firestore:"forceNext"`
 	LargeCustomer              bool  `firestore:"largeCustomer"`
 	Uncommitted                bool  `firestore:"uncommitted"`
+	MaxRTT                     int32 `firestore:"maxRTT"`
 }
 
 type FirestoreError struct {
@@ -2269,6 +2271,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		return ic, err
 	}
 
+	ic.RouteSelectThreshold = tempIC.RouteSelectThreshold
 	ic.RouteSwitchThreshold = tempIC.RouteSwitchThreshold
 	ic.MaxLatencyTradeOff = tempIC.MaxLatencyTradeOff
 	ic.RTTVeto_Default = tempIC.RTTVeto_Default
@@ -2279,6 +2282,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.ForceNext = tempIC.ForceNext
 	ic.LargeCustomer = tempIC.LargeCustomer
 	ic.Uncommitted = tempIC.Uncommitted
+	ic.MaxRTT = tempIC.MaxRTT
 
 	return ic, nil
 }
@@ -2288,6 +2292,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 
 	icFirestore := map[string]interface{}{
 		"displayName":                name,
+		"routeSelectThreshold":       internalConfig.RouteSelectThreshold,
 		"routeSwitchThreshold":       internalConfig.RouteSwitchThreshold,
 		"maxLatencyTradeOff":         internalConfig.MaxLatencyTradeOff,
 		"rttVeto_default":            internalConfig.RTTVeto_Default,
@@ -2298,6 +2303,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"forceNext":                  internalConfig.ForceNext,
 		"largeCustomer":              internalConfig.LargeCustomer,
 		"uncommitted":                internalConfig.Uncommitted,
+		"maxRTT":                     internalConfig.MaxRTT,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)

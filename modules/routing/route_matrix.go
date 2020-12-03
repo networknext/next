@@ -72,12 +72,12 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
-		for i := 0; i < MaxRoutesPerRelayPair; i++ {
+		for i := 0; i < core.MaxRoutesPerEntry; i++ {
 			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
-			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, MaxRelays)
+			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
 
-			for j := 0; j < MaxRelays; j++ {
+			for j := 0; j < core.MaxRelaysPerRoute; j++ {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
 			}
 		}
@@ -88,7 +88,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 type NearRelayData struct {
 	ID          uint64
-	Addr        *net.UDPAddr
+	Addr        net.UDPAddr
 	Name        string
 	Distance    int
 	ClientStats Stats
@@ -107,7 +107,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 
 	for i, relayID := range m.RelayIDs {
 		nearRelayData[i].ID = relayID
-		nearRelayData[i].Addr = &m.RelayAddresses[i]
+		nearRelayData[i].Addr = m.RelayAddresses[i]
 		nearRelayData[i].Name = m.RelayNames[i]
 		lat2 := float64(m.RelayLatitudes[i])
 		long2 := float64(m.RelayLongitudes[i])
@@ -161,8 +161,12 @@ func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 		return 0, err
 	}
 
-	err = m.Serialize(writeStream)
-	return int64(writeStream.GetBytesProcessed()), err
+	if err = m.Serialize(writeStream); err != nil {
+		return int64(writeStream.GetBytesProcessed()), err
+	}
+
+	n, err := writer.Write(writeStream.GetData()[:writeStream.GetBytesProcessed()])
+	return int64(n), err
 }
 
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
@@ -232,7 +236,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	maxRoutesPerRelayPair := int32(0)
 	relayPairsWithNoRoutes := 0
 	relayPairsWithOneRoute := 0
-	averageRouteLength := 0.0
+	totalRouteLength := uint64(0)
 
 	for i := range src {
 		for j := range dest {
@@ -249,9 +253,9 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 				if n == 1 {
 					relayPairsWithOneRoute++
 				}
-				for k := 0; k < int(m.RouteEntries[ijFlatIndex].NumRoutes); k++ {
+				for k := 0; k < int(n); k++ {
 					numRelays := m.RouteEntries[ijFlatIndex].RouteNumRelays[k]
-					averageRouteLength += float64(numRelays)
+					totalRouteLength += uint64(numRelays)
 					if numRelays > maxRouteLength {
 						maxRouteLength = numRelays
 					}
@@ -261,7 +265,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	}
 
 	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
-	averageRouteLength = averageRouteLength / float64(totalRoutes)
+	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
 
 	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
 	fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)

@@ -123,7 +123,7 @@ func OptimizeThread() {
 			}
 		}
 
-		core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenterIDs)
+		core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenterIDs)
 
 		backend.mutex.Unlock()
 
@@ -436,8 +436,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 		// Make next route from near relays (but respect hop limit)
 		numRelays := len(nearRelays)
-		if numRelays > routing.MaxRelays {
-			numRelays = routing.MaxRelays
+		if numRelays > core.MaxRelaysPerRoute {
+			numRelays = core.MaxRelaysPerRoute
 		}
 		nextRoute := routing.Route{
 			NumRelays:       numRelays,
@@ -509,6 +509,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		fmt.Printf("error: nil session response\n")
 		return
 	}
+
+	sessionResponse.Version = sessionUpdate.Version
 
 	sessionDataBuffer, err := transport.MarshalSessionData(&sessionData)
 	if err != nil {
