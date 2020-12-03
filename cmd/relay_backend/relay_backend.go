@@ -10,11 +10,13 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -381,6 +383,43 @@ func mainReturnWithCode() int {
 
 	}
 
+	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
+	{
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					return 1
+				}
+
+				relayNamesHashPublisher = pubsub
+			}
+		}
+	}
+
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if err != nil {
@@ -443,6 +482,7 @@ func mainReturnWithCode() int {
 				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
 				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 				relayDatacenterIDs[i] = relay.Datacenter.ID
+
 			}
 
 			costMatrixMetrics.Invocations.Add(1)
@@ -484,7 +524,9 @@ func mainReturnWithCode() int {
 			optimizeMetrics.Invocations.Add(1)
 			optimizeDurationStart := time.Now()
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, 5, relayDatacenterIDs)
+			costThreshold := int32(1)
+
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				continue
@@ -585,6 +627,28 @@ func mainReturnWithCode() int {
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					continue
+				}
+			}
+
+			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if hashing {
+				timestamp := time.Now().UTC().Unix()
+				relayHash := fnv.New64a()
+				sort.Strings(relayNames)
+				for _, name := range relayNames {
+					relayHash.Write([]byte(name))
+				}
+				hash := relayHash.Sum64()
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				}
+				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
+				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
+				if err != nil {
+					level.Error(logger).Log("err", err)
 				}
 			}
 		}

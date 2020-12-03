@@ -528,7 +528,7 @@ type SessionData struct {
 	Location         routing.Location
 	RouteNumRelays   int32
 	RouteCost        int32
-	RouteRelayIDs    [routing.MaxRelays]uint64
+	RouteRelayIDs    [core.MaxRelaysPerRoute]uint64
 	RouteState       core.RouteState
 	EverOnNext       bool
 	FellBackToDirect bool
@@ -593,7 +593,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	hasRoute := sessionData.RouteNumRelays > 0
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
-		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, routing.MaxRelays)
+		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, core.MaxRelaysPerRoute)
 		stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])

@@ -54,3 +54,23 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*Relay
 
 	return nil
 }
+
+type LocalRouteMatrixStatsWriter struct {
+	Logger log.Logger
+
+	written uint64
+}
+
+func (writer *LocalRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMatrixStatsEntry) error {
+	writer.written++
+
+	if writer.Logger == nil {
+		return errors.New("no logger for local big query writer, can't display entry")
+	}
+
+	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entries")
+
+	level.Debug(writer.Logger).Log("entry", fmt.Sprintf("%+v", *entry))
+
+	return nil
+}
