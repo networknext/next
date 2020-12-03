@@ -189,7 +189,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			}
 
 			level.Info(logger).Log("msg", "Setting up PostgreSQL storage")
-			db, err = storage.NewPostgreSQL(ctx, logger)
+			db, err = storage.NewPostgreSQL(ctx, logger, pgsqlHostIP, pgsqlUserName, pgsqlPassword)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
