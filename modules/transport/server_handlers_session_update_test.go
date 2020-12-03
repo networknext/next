@@ -1168,9 +1168,8 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      1,
-		NearRelayIDs:       []uint64{1},
-		NearRelayAddresses: []net.UDPAddr{{}},
+		NearRelayIDs:       []uint64{},
+		NearRelayAddresses: []net.UDPAddr{},
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -4221,9 +4220,9 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, {}},
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr1},
 	}
 
 	expectedSessionData := transport.SessionData{

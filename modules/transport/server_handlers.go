@@ -319,46 +319,51 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			// Rebuild the near relays from the previous session data
-			nearRelays := make([]routing.NearRelayData, 0)
+			nearRelays := routing.NearRelayResult{
+				IDs:          make([]uint64, 0),
+				Addrs:        make([]net.UDPAddr, 0),
+				Names:        make([]string, 0),
+				RTTs:         make([]int32, 0),
+				Jitters:      make([]float32, 0),
+				PacketLosses: make([]float32, 0),
+			}
 			for i := 0; i < len(prevSessionData.RouteState.NearRelayID); i++ {
-				nearRelay := routing.NearRelayData{
-					ID: prevSessionData.RouteState.NearRelayID[i],
-				}
-
 				// Make sure to check if the relay exists in case the near relays are gone
 				// this slice compared to the previous slice
-				relayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelay.ID]
+				relayIndex, ok := routeMatrix.RelayIDsToIndices[prevSessionData.RouteState.NearRelayID[i]]
 				if !ok {
 					continue
 				}
 
-				nearRelay.Name = routeMatrix.RelayNames[relayIndex]
-				nearRelay.Addr = routeMatrix.RelayAddresses[relayIndex]
-				nearRelay.ClientStats.RTT = math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))
+				nearRelays.Count++
+				nearRelays.IDs = append(nearRelays.IDs, prevSessionData.RouteState.NearRelayID[i])
+				nearRelays.Names = append(nearRelays.Names, routeMatrix.RelayNames[relayIndex])
+				nearRelays.Addrs = append(nearRelays.Addrs, routeMatrix.RelayAddresses[relayIndex])
+				nearRelays.RTTs = append(nearRelays.RTTs, int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))))
 
 				// We don't actually store the jitter or packet loss in the session data, so just use the
 				// values from the session update packet
 				// We need to do an n^2 search for a relay ID match in case the set of near relays has changed
 				found := false
 				for j := int32(0); j < packet.NumNearRelays; j++ {
-					if nearRelay.ID == packet.NearRelayIDs[j] {
-						nearRelay.ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[j]))
-						nearRelay.ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[j]))
+					if nearRelays.IDs[i] == packet.NearRelayIDs[j] {
+						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(packet.NearRelayJitter[j]))))
+
+						if nearRelays.RTTs[i] >= 255 {
+							nearRelays.PacketLosses = append(nearRelays.PacketLosses, 100)
+						} else {
+							nearRelays.PacketLosses = append(nearRelays.PacketLosses, float32(math.Ceil(float64(packet.NearRelayPacketLoss[j]))))
+						}
+
 						found = true
 					}
 				}
 
-				if nearRelay.ClientStats.RTT == 255 || !found {
-					nearRelay.ClientStats.PacketLoss = 100
+				if !found {
+					nearRelays.Jitters = append(nearRelays.Jitters, 0)
+					nearRelays.PacketLosses = append(nearRelays.PacketLosses, 100)
 				}
-
-				nearRelays = append(nearRelays, nearRelay)
 			}
-
-			// Sort the near relays for display purposes
-			sort.Slice(nearRelays, func(i, j int) bool {
-				return nearRelays[i].Name < nearRelays[j].Name
-			})
 
 			if !packet.ClientPingTimedOut {
 				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
@@ -490,14 +495,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
-		// todo: clean up this near relay stuff
-
-		var nearRelays []routing.NearRelayData
-		var numNearRelays int32
-		var nearRelayIDs []uint64
-		var nearRelayAddresses []net.UDPAddr
-		var nearRelayCosts []int32
-		var nearRelayPacketLoss []float32
+		var nearRelays routing.NearRelayResult
 
 		if newSession {
 			nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, maxNearRelays)
@@ -507,80 +505,51 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			numNearRelays = int32(len(nearRelays))
-			nearRelayIDs = make([]uint64, numNearRelays)
-			nearRelayAddresses = make([]net.UDPAddr, numNearRelays)
-			nearRelayCosts = make([]int32, numNearRelays)
-			nearRelayPacketLoss = make([]float32, numNearRelays)
-
 			// Initialize the near relay list
-			for i := int32(0); i < numNearRelays; i++ {
-				core.NearRelayFilterRTT(&sessionData.RouteState, nearRelays[i].ID, 0)
+			for i := int32(0); i < nearRelays.Count; i++ {
+				core.NearRelayFilterRTT(&sessionData.RouteState, nearRelays.IDs[i], 0)
 			}
 
 		} else {
-			nearRelays = make([]routing.NearRelayData, 0)
-
 			for i := 0; i < len(sessionData.RouteState.NearRelayID); i++ {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if sessionData.RouteState.NearRelayID[i] == clientNearRelayID {
-						nearRelay := routing.NearRelayData{
-							ID: clientNearRelayID,
-						}
-
 						// Make sure to check if the relay is in the map in case the near relays
 						// are no longer in the route matrix (since 0 is a valid relay index)
 						relayIndex, ok := routeMatrix.RelayIDsToIndices[clientNearRelayID]
 						if !ok {
-							// If the near relay is gone, make sure it's unroutable
-							nearRelay.ClientStats.RTT = 255
-							nearRelay.ClientStats.PacketLoss = 100
-							nearRelays = append(nearRelays, nearRelay)
 							continue
 						}
 
+						nearRelays.Count++
+						nearRelays.IDs = append(nearRelays.IDs, clientNearRelayID)
+
 						// Retrieve the relay's name and address from the route matrix since they're constant.
 						// We don't need to store them in the session data.
-						nearRelay.Name = routeMatrix.RelayNames[relayIndex]
-						nearRelay.Addr = routeMatrix.RelayAddresses[relayIndex]
+						nearRelays.Names = append(nearRelays.Names, routeMatrix.RelayNames[relayIndex])
+						nearRelays.Addrs = append(nearRelays.Addrs, routeMatrix.RelayAddresses[relayIndex])
 
 						maxRTT := core.NearRelayFilterRTT(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j])
 
-						nearRelay.ClientStats.RTT = math.Ceil(float64(maxRTT))
-						nearRelay.ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[j]))
-						nearRelay.ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[j]))
+						nearRelays.RTTs = append(nearRelays.RTTs, int32(math.Ceil(float64(maxRTT))))
+						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(packet.NearRelayJitter[j]))))
 
 						// Since we can only store near relay RTT as a byte in the session data,
 						// we need to treat any near relay with an RTT == 255 as unroutable (100% PL)
 						// Once we further optimize the amount of session data we carry, we might be able to remove this
-						if maxRTT == 255 {
-							nearRelay.ClientStats.PacketLoss = 100
+						if maxRTT >= 255 {
+							nearRelays.PacketLosses = append(nearRelays.PacketLosses, 100)
+						} else {
+							nearRelays.PacketLosses = append(nearRelays.PacketLosses, float32(math.Ceil(float64(packet.NearRelayPacketLoss[j]))))
 						}
-
-						nearRelays = append(nearRelays, nearRelay)
 					}
 				}
 			}
-
-			numNearRelays = int32(len(nearRelays))
-			nearRelayIDs = make([]uint64, numNearRelays)
-			nearRelayAddresses = make([]net.UDPAddr, numNearRelays)
-			nearRelayCosts = make([]int32, numNearRelays)
-			nearRelayPacketLoss = make([]float32, numNearRelays)
 		}
 
-		for i := int32(0); i < numNearRelays; i++ {
-			nearRelay := &nearRelays[i]
-
-			nearRelayIDs[i] = nearRelay.ID
-			nearRelayAddresses[i] = nearRelay.Addr
-			nearRelayCosts[i] = int32(nearRelay.ClientStats.RTT)
-			nearRelayPacketLoss[i] = float32(nearRelay.ClientStats.PacketLoss)
-		}
-
-		response.NumNearRelays = numNearRelays
-		response.NearRelayIDs = nearRelayIDs
-		response.NearRelayAddresses = nearRelayAddresses
+		response.NumNearRelays = nearRelays.Count
+		response.NearRelayIDs = nearRelays.IDs
+		response.NearRelayAddresses = nearRelays.Addrs
 
 		// First slice always direct
 		if newSession {
@@ -595,14 +564,14 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
-		reframedNearRelays := make([]int32, numNearRelays)
-		reframedNearRelayCosts := make([]int32, numNearRelays)
+		reframedNearRelays := make([]int32, nearRelays.Count)
+		reframedNearRelayCosts := make([]int32, nearRelays.Count)
 		var numDestRelays int32
 		reframedDestRelays := make([]int32, len(destRelayIDs))
-		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, reframedNearRelayCosts, &numDestRelays, reframedDestRelays)
+		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelays.IDs, nearRelays.RTTs, nearRelays.PacketLosses, destRelayIDs, &nearRelays.Count, reframedNearRelays, reframedNearRelayCosts, &numDestRelays, reframedDestRelays)
 
-		reframedNearRelays = reframedNearRelays[:numNearRelays]
-		reframedNearRelayCosts = reframedNearRelayCosts[:numNearRelays]
+		reframedNearRelays = reframedNearRelays[:nearRelays.Count]
+		reframedNearRelayCosts = reframedNearRelayCosts[:nearRelays.Count]
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
 
 		var routeCost int32
@@ -800,7 +769,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [core.MaxRelaysPerRoute]string, routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, debug *string) {
+func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [core.MaxRelaysPerRoute]string, routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller, nearRelays routing.NearRelayResult, datacenter *routing.Datacenter, debug *string) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -844,9 +813,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 
 	var nearRelayRTT float32
 	if sessionData.RouteNumRelays > 0 {
-		for i := range nearRelays {
-			if nearRelays[i].ID == sessionData.RouteRelayIDs[0] {
-				nearRelayRTT = float32(nearRelays[i].ClientStats.RTT)
+		for i, nearRelayID := range nearRelays.IDs {
+			if nearRelayID == sessionData.RouteRelayIDs[0] {
+				nearRelayRTT = float32(nearRelays.RTTs[i])
 				break
 			}
 		}
@@ -915,14 +884,23 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		}
 	}
 
-	nearRelayPortalData := make([]NearRelayPortalData, len(nearRelays))
+	nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
 	for i := range nearRelayPortalData {
 		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:          nearRelays[i].ID,
-			Name:        nearRelays[i].Name,
-			ClientStats: nearRelays[i].ClientStats,
+			ID:   nearRelays.IDs[i],
+			Name: nearRelays.Names[i],
+			ClientStats: routing.Stats{
+				RTT:        float64(nearRelays.RTTs[i]),
+				Jitter:     float64(nearRelays.Jitters[i]),
+				PacketLoss: float64(nearRelays.PacketLosses[i]),
+			},
 		}
 	}
+
+	// Sort the near relays for display purposes
+	sort.Slice(nearRelayPortalData, func(i, j int) bool {
+		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
+	})
 
 	var deltaRTT float32
 	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
