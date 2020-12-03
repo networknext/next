@@ -318,23 +318,41 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			// Rebuild the near relays from the previous session data
-			nearRelays := make([]routing.NearRelayData, len(prevSessionData.RouteState.NearRelayID))
-			for i := 0; i < len(nearRelays); i++ {
-				nearRelays[i].ID = prevSessionData.RouteState.NearRelayID[i]
-				relayIndex := routeMatrix.RelayIDsToIndices[nearRelays[i].ID]
+			nearRelays := make([]routing.NearRelayData, 0)
+			for i := 0; i < len(prevSessionData.RouteState.NearRelayID); i++ {
+				nearRelay := routing.NearRelayData{
+					ID: prevSessionData.RouteState.NearRelayID[i],
+				}
 
-				nearRelays[i].Name = routeMatrix.RelayNames[relayIndex]
-				nearRelays[i].Addr = routeMatrix.RelayAddresses[relayIndex]
-				nearRelays[i].ClientStats.RTT = math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))
+				// Make sure to check if the relay exists in case the near relays are gone
+				// this slice compared to the previous slice
+				relayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelay.ID]
+				if !ok {
+					continue
+				}
+
+				nearRelay.Name = routeMatrix.RelayNames[relayIndex]
+				nearRelay.Addr = routeMatrix.RelayAddresses[relayIndex]
+				nearRelay.ClientStats.RTT = math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))
 
 				// We don't actually store the jitter or packet loss in the session data, so just use the
 				// values from the session update packet
-				nearRelays[i].ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[i]))
-				nearRelays[i].ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[i]))
-
-				if nearRelays[i].ClientStats.RTT == 255 {
-					nearRelays[i].ClientStats.PacketLoss = 100
+				// We need to do an n^2 search for a relay ID match in case the set of near relays has changed
+				found := false
+				for j := int32(0); j < packet.NumNearRelays; j++ {
+					if nearRelay.ID == packet.NearRelayIDs[j] {
+						nearRelay.ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[j]))
+						nearRelay.ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[j]))
+						found = true
+					}
 				}
+
+				if nearRelay.ClientStats.RTT == 255 || !found {
+					fmt.Println("near relay not found, no crash")
+					nearRelay.ClientStats.PacketLoss = 100
+				}
+
+				nearRelays = append(nearRelays, nearRelay)
 			}
 
 			if !packet.ClientPingTimedOut {
@@ -507,11 +525,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			for i := int32(0); i < numNearRelays; i++ {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if sessionData.RouteState.NearRelayID[i] == clientNearRelayID {
+						// Make sure to check if the relay is in the map in case the near relays
+						// are no longer in the route matrix (since 0 is a valid relay index)
+						relayIndex, ok := routeMatrix.RelayIDsToIndices[clientNearRelayID]
+						if !ok {
+							// If the near relay is gone, make sure it's unroutable
+							nearRelays[i].ClientStats.PacketLoss = 100
+							continue
+						}
+
 						nearRelays[i].ID = clientNearRelayID
 
 						// Retrieve the relay's name and address from the route matrix since they're constant.
 						// We don't need to store them in the session data.
-						relayIndex := routeMatrix.RelayIDsToIndices[clientNearRelayID]
 						nearRelays[i].Name = routeMatrix.RelayNames[relayIndex]
 						nearRelays[i].Addr = routeMatrix.RelayAddresses[relayIndex]
 
