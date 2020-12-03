@@ -13,6 +13,7 @@ import (
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type VanityMetricHandler struct {
@@ -21,13 +22,87 @@ type VanityMetricHandler struct {
 }
 
 type VanityMetrics struct {
-	NumSlicesGlobal			int
-	NumSlicesPerCustomer	int
-	NumSessionsGlobal		int
-	NumSessionsPerCustomer	int
-	NumPlayHours			int
+	BuyerID					uint64
+	NumSlicesGlobal			uint32
+	NumSlicesPerCustomer	uint32
+	NumSessionsGlobal		uint32
+	NumSessionsPerCustomer	uint32
+	NumPlayHours			uint32
 	RTTReduction			float32
 	PacketLossReduction		float32
+}
+
+func (v VanityMetrics) Size() uint64 {
+	sum = 8 + // BuyerID
+		  4 + // NumSlicesGlobal
+		  4 + // NumSlicesPerCustomer 
+		  4 + // NumSessionsGlobal
+		  4 + // NumSessionsPerCustomer
+		  4 + // NumPlayHours
+		  4 + // RTTReduction
+		  4   // PacketLossReduction
+
+	return sum
+}
+
+func (v VanityMetrics) MarshalBinary() ([]byte, error) {
+	data := make([]byte, v.Size())
+	index := 0
+
+	encoding.WriteUint64(data &index, v.BuyerID)
+
+	encoding.WriteUint32(data, &index, v.NumSlicesGlobal)
+	encoding.WriteUint32(data, &index, v.NumSlicesPerCustomer)
+	encoding.WriteUint32(data, &index, v.NumSessionsGlobal)
+	encoding.WriteUint32(data, &index, v.NumSessionsPerCustomer)
+	encoding.WriteUint32(data, &index, v.NumPlayHours)
+
+	encoding.WriteFloat32(data, &index, v.RTTReduction)
+	encoding.WriteFloat32(data, &index, v.PacketLossReduction)
+
+	return data, nil
+}
+
+func (v VanityMetrics) UnmarshalBinary(data []byte) eror {
+	index := 0
+
+	if !encoding.ReadUint64(data, &index, &v.BuyerID) {
+		return erorrs.New("[VanityMetrics] invalid read at buyer ID")
+	
+
+	if !encoding.ReadUint32(data, &index, &v.NumSlicesGlobal) {
+		return erorrs.New("[VanityMetrics] invalid read at num slices global")
+	}
+
+	if !encoding.ReadUint32(data, &index, &v.NumSlicesPerCustomer) {
+		return erorrs.New("[VanityMetrics] invalid read at num slices per customer")
+	}
+
+	if !encoding.ReadUint32(data, &index, &v.NumSessionsGlobal) {
+		return erorrs.New("[VanityMetrics] invalid read at num sessions global")
+	}
+
+	if !encoding.ReadUint32(data, &index, &v.NumSessionsPerCustomer) {
+		return erorrs.New("[VanityMetrics] invalid read at num sesions per customer")
+	}
+
+	if !encoding.ReadUint32(data, &index, &v.NumPlayHours) {
+		return erorrs.New("[VanityMetrics] invalid read at num play hours")
+	}
+
+	if !encoding.ReadUint32(data, &index, &v.NumSlicesGlobal) {
+		return erorrs.New("[VanityMetrics] invalid read at num slices global")
+	}
+
+	if !encoding.ReadFloat32(data, &index, &v.RTTReduction) {
+		return erorrs.New("[VanityMetrics] invalid read at RTT reduction")
+	}
+
+	if !encoding.ReadFloat32(data, &index, &v.PacketLossReduction) {
+		return erorrs.New("[VanityMetrics] invalid read at packet loss reduction")
+	}
+
+	return nil
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct

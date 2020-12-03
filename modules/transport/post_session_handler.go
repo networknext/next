@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
+	"math"
+	"unsafe"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport/pubsub"
+	"github.com/networknext/backend/modules/vanity"
 )
 
 type PostSessionHandler struct {
@@ -18,23 +23,34 @@ type PostSessionHandler struct {
 	postSessionBillingChannel  chan *billing.BillingEntry
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
+	vanityMetricChannel		   chan *billing.BillingEntry
 	portalPublishers           []pubsub.Publisher
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
+	vanityPublishers		   []pubsub.Publisher
+	vanityPublisherIndex	   int
+	vanityPublishMaxRetries	   int
+	vanityAggregator	   	   map[uint64]vanity.VanityMetrics
+	vanityPushDuration		   time.Duration
 	biller                     billing.Biller
 	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
+		vanityMetricChannel:		make(chan *billing.BillingEntry, chanBufferSize),
 		portalPublishers:           portalPublishers,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
+		vanityPublishers:			vanityPublishers,
+		vanityPublishMaxRetries:	vanityPublishMaxRetries,
+		vanityAggregator:	   	    make(map[uint64]vanity.VanityMetrics),
+		vanityPushDuration:		   	vanityPushDuration,
 		biller:                     biller,
 		logger:                     logger,
 		metrics:                    metrics,
@@ -128,6 +144,53 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 		}()
 	}
 
+	pushTime := time.Now()
+
+	for i := 0; i < post.numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case billingEntry := <-post.vanityMetricChannel:
+					// Aggregate elements of the billing entry to respective vanity metric per buyer
+					post.AggregateVanityMetrics(billingEntry)
+
+					// Early out if enough time has passed since the last push to ZeroMQ
+					if time.Since(pushTime) < post.vanityPushDuration {
+						continue
+					}
+					pushTime := time.Now()
+
+					// Marshal the aggregate vanity metric per buyer
+					var aggregateBinary [][]byte
+					for _, metric := range post.vanityAggregator {
+						metricBinary, err := metric.MarshalBinary()
+						if err != nil {
+							level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
+							post.metrics.VanityFailure.Add(1)
+						} 
+						append(aggregateBinary, metricBinary)
+					}
+
+					// Push the data over ZeroMQ
+					aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityData, aggregateBinary)
+					if err != nil {
+						level.Error(post.logger).Log("msg", "could not update vanity metrics", "err", err)
+						post.metrics.VanityFailure.Add(1)
+						continue
+					}
+
+					level.Debug(post.logger).Log("type", "vanity metrics", "msg", fmt.Sprintf("published %d bytes to vanity metrics", aggregateBytes))
+					post.metrics.VanityMetricsFinished.Add(1)
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
 	wg.Wait()
 }
 
@@ -161,6 +224,16 @@ func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalD
 
 }
 
+func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry) {
+	select {
+	case post.vanityMetricChannel <- billingEntry:
+		post.metrics.VanityMetricsSent.Add(1)
+	default:
+		post.metrics.VanityBufferFull.Add(1)
+	}
+
+}
+
 func (post *PostSessionHandler) BillingBufferSize() uint64 {
 	return uint64(len(post.postSessionBillingChannel))
 }
@@ -171,6 +244,10 @@ func (post *PostSessionHandler) PortalCountBufferSize() uint64 {
 
 func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
+}
+
+func (post *PostSessionHandler) VanityBufferSize() uint64 {
+	return uint64(len(post.vanityMetricChannel))
 }
 
 func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
@@ -216,4 +293,72 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 	post.portalPublisherIndex = (post.portalPublisherIndex + 1) % len(post.portalPublishers)
 	return byteCount, nil
 
+}
+
+func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic pubsub.Topic, data [][]byte) (int, error)) {
+	var byteCount int
+	var err error
+
+	for i := range post.vanityPublishers {
+		var retryCount int
+
+		// Calculate the index of the vanity publisher to use for this iteration
+		index := (post.vanityPublisherIndex + i) % len(post.vanityPublishers)
+
+		for retryCount < post.vanityPublishMaxRetries+1 { // only retry so many times
+			byteCount, err = post.vanityPublishers[index].Publish(ctx, topic, data)
+			if err != nil {
+				switch err.(type) {
+				case *pubsub.ErrRetry:
+					retryCount++
+					continue
+				default:
+					return 0, err
+				}
+			}
+
+			retryCount = -1
+			break
+		}
+
+		// We published the message, break out
+		if retryCount < post.vanityPublishMaxRetries {
+			break
+		}
+
+		// If we've hit the retry limit, try again using another vanity publisher.
+		// If this is the last iteration and we still can't publish the message, error out.
+		if i == len(post.vanityPublishers)-1 {
+			return byteCount, errors.New("exceeded retry count on vanity metric data")
+		}
+	}
+
+	// If we've successfully published the message, increment the vanity publisher index
+	// so that we evenly distribute the load across each publisher.
+	post.vanityPublisherIndex = (post.vanityPublisherIndex + 1) % len(post.vanityPublishers)
+	return byteCount, nil
+}
+
+// Aggregates vanity metrics per buyer
+func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.BillingEntry) error {
+	
+	AddFloat32(post.vanityAggregator[billingEntry.BuyerID].RTTReduction, billingEntry.RTTReduction)
+	AddFloat32(post.vanityAggregator[billingEntry.BuyerID].PacketLossReduction, billingEntry.PacketLossReduction)
+}
+
+// A version of AddUInt32 from sync/atomic for adding float32
+// Adapted from: https://stackoverflow.com/questions/27492349/go-atomic-addfloat32
+func AddFloat32(val *float32, delta float32) (new float32) {
+    for {
+        old := *val
+        new = old + delta
+        if atomic.CompareAndSwapUint32(
+            (*uint32)(unsafe.Pointer(val)),
+            math.Float32bits(old),
+            math.Float32bits(new),
+        ) {
+            break
+        }
+    }
+    return
 }
