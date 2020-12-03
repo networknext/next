@@ -57,6 +57,7 @@
               <router-link
                 v-bind:to="`/session-tool/${session.id}`"
                 class="text-dark fixed-width"
+                v-bind:data-intercom="index"
               >{{ session.id }}</router-link>
             </td>
             <td v-if="$store.getters.isAdmin">
