@@ -1,3 +1,4 @@
+//go:generate moq -out storage_test_mocks.go . Storer
 package storage
 
 import (
@@ -142,4 +143,7 @@ type Storer interface {
 
 	// RemoveFeatureFlagByName removes an existing flag from storage
 	RemoveFeatureFlagByName(ctx context.Context, flagName string) error
+
+	// UpdateRelay updates a single field in a relay record
+	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error
 }

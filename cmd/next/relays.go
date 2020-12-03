@@ -492,13 +492,15 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 	}
 
 	for key, relayCount := range relayCountList {
-		relayList = append(relayList, struct {
-			State string
-			Count string
-		}{
-			State: key,
-			Count: strconv.Itoa(relayCount),
-		})
+		if key != "decommissioned" {
+			relayList = append(relayList, struct {
+				State string
+				Count string
+			}{
+				State: key,
+				Count: strconv.Itoa(relayCount),
+			})
+		}
 	}
 
 	relayList = append(relayList, struct {
