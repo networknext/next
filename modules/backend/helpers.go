@@ -142,7 +142,6 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 
 	postgresOK := envvar.Exists("FEATURE_POSTGRESQL")
 
-	fmt.Printf("GetStorer() postgresOK: %v\n", postgresOK)
 	if postgresOK {
 		// returns a pointer to the storage solution specified for the provide environment. The
 		// database targets are currently gcp/Firestore but will move to gcp/PostgreSQL
