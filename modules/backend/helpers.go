@@ -175,7 +175,19 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		}
 
 		if pgsql {
-			// TODO: the cloud version of PostgreSQL will require gcpProjectID, etc.
+			pgsqlHostIP := envvar.Get("POSTGRESQL_HOST_IP", "")
+			if pgsqlHostIP == "" {
+				return nil, fmt.Errorf("could not parse FEATURE_POSTGRESQL string: %v", err)
+			}
+			pgsqlUserName := envvar.Get("POSTGRESQL_USER_NAME", "")
+			if pgsqlUserName == "" {
+				return nil, fmt.Errorf("could not parse POSTGRESQL_USER_NAME string: %v", err)
+			}
+			pgsqlPassword := envvar.Get("POSTGRESQL_PASSWORD", "")
+			if pgsqlPassword == "" {
+				return nil, fmt.Errorf("could not parse POSTGRESQL_PASSWORD string: %v", err)
+			}
+
 			level.Info(logger).Log("msg", "Setting up PostgreSQL storage")
 			db, err = storage.NewPostgreSQL(ctx, logger)
 			if err != nil {
