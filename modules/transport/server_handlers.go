@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -353,6 +354,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 				nearRelays = append(nearRelays, nearRelay)
 			}
+
+			// Sort the near relays for display purposes
+			sort.Slice(nearRelays, func(i, j int) bool {
+				return nearRelays[i].Name < nearRelays[j].Name
+			})
 
 			if !packet.ClientPingTimedOut {
 				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
