@@ -17,7 +17,7 @@ import (
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/vanity_metrics"
+	"github.com/networknext/backend/modules/vanity"
 )
 
 var (
@@ -26,7 +26,7 @@ var (
 	sha           string
 	tag           string
 	gcpProjectID  string
-	vanityMetrics *vanity_metrics.VanityMetricHandler
+	vanityMetrics *vanity.VanityMetricHandler
 )
 
 
@@ -98,7 +98,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	vanityMetrics = &vanity_metrics.VanityMetricHandler{Handler: &sd, Logger: logger}
+	vanityMetrics = &vanity.VanityMetricHandler{Handler: &sd, Logger: logger}
 
 	// Start HTTP server
 	{
