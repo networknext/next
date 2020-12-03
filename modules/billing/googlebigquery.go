@@ -168,7 +168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e["multipathVetoed"] = entry.MultipathVetoed
 
-	if entry.Debug != "" {
+	if entry.UseDebug && entry.Debug != "" {
 		e["debug"] = entry.Debug
 	}
 
@@ -184,6 +184,52 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.NearRelayRTT != 0 {
 		e["nearRelayRTT"] = entry.NearRelayRTT
+	}
+
+	if entry.PacketsOutOfOrderClientToServer != 0 {
+		e["packetsOutOfOrderClientToServer"] = int(entry.PacketsOutOfOrderClientToServer)
+	}
+
+	if entry.PacketsOutOfOrderServerToClient != 0 {
+		e["packetsOutOfOrderServerToClient"] = int(entry.PacketsOutOfOrderServerToClient)
+	}
+
+	if entry.JitterClientToServer != 0 {
+		e["jitterClientToServer"] = entry.JitterClientToServer
+	}
+
+	if entry.JitterServerToClient != 0 {
+		e["jitterServerToClient"] = entry.JitterServerToClient
+	}
+
+	if entry.UseDebug {
+		if entry.NumNearRelays != 0 {
+			e["numNearRelays"] = int(entry.NumNearRelays)
+
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+			}
+			e["nearRelayIDs"] = nearRelayIDs
+
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+			}
+			e["nearRelayRTTs"] = nearRelayRTTs
+
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayJitters[i] = entry.NearRelayJitters[i]
+			}
+			e["nearRelayJitters"] = nearRelayJitters
+
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			}
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+		}
 	}
 
 	return e, "", nil
