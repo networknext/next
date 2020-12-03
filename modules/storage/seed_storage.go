@@ -115,6 +115,11 @@ func SeedStorage(
 			Name:         "local",
 			SupplierName: "usw2-az4",
 		}
+		datacenterMap := routing.DatacenterMap{
+			BuyerID:      customerID,
+			DatacenterID: datacenter.ID,
+			Alias:        "local aliased",
+		}
 		if err := db.AddSeller(ctx, seller); err != nil {
 			return fmt.Errorf("AddSeller() err: %w", err)
 		}
@@ -122,6 +127,9 @@ func SeedStorage(
 			return fmt.Errorf("AddSeller() err: %w", err)
 		}
 		if err := db.AddDatacenter(ctx, datacenter); err != nil {
+			return fmt.Errorf("AddDatacenter() err: %w", err)
+		}
+		if err := db.AddDatacenterMap(ctx, datacenterMap); err != nil {
 			return fmt.Errorf("AddDatacenter() err: %w", err)
 		}
 		if val, ok := os.LookupEnv("LOCAL_RELAYS"); ok {

@@ -72,7 +72,84 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	return nil
 }
 
-func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+type ErrDatacenterNotFound struct {
+	buyer          uint64
+	datacenter     uint64
+	datacenterName string
+}
+
+func (e ErrDatacenterNotFound) Error() string {
+	if e.datacenterName != "" {
+		return fmt.Sprintf("datacenter %s for buyer %016x not found", e.datacenterName, e.buyer)
+	}
+
+	return fmt.Sprintf("datacenter %016x for buyer %016x not found", e.datacenter, e.buyer)
+}
+
+type ErrDatacenterMapMisconfigured struct {
+	buyer         uint64
+	datacenterMap routing.DatacenterMap
+}
+
+func (e ErrDatacenterMapMisconfigured) Error() string {
+	return fmt.Sprintf("datacenter alias %s misconfigured for buyer %016x: mapped to datacenter \"%016x\" which doesn't exist", e.datacenterMap.Alias, e.buyer, e.datacenterMap.DatacenterID)
+}
+
+type ErrDatacenterNotAllowed struct {
+	buyer          uint64
+	datacenter     uint64
+	datacenterName string
+}
+
+func (e ErrDatacenterNotAllowed) Error() string {
+	if e.datacenterName != "" {
+		return fmt.Sprintf("buyer %016x tried to use datacenter %s when they are not configured to do so", e.buyer, e.datacenterName)
+	}
+
+	return fmt.Sprintf("buyer %016x tried to use datacenter %016x when they are not configured to do so", e.buyer, e.datacenter)
+}
+
+func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
+	// enforce that whatever datacenter the server says it's in, we have a mapping for it
+	datacenterAliases := storer.GetDatacenterMapsForBuyer(buyerID)
+	for _, dcMap := range datacenterAliases {
+		if datacenterID == dcMap.DatacenterID {
+			// We found the datacenter
+			datacenter, err := storer.Datacenter(datacenterID)
+			if err != nil {
+				// The datacenter map is misconfigured in our database
+				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
+			}
+
+			return datacenter, nil
+		}
+
+		if datacenterID == crypto.HashID(dcMap.Alias) {
+			// We found the datacenter from the mapped alias
+			datacenter, err := storer.Datacenter(dcMap.DatacenterID)
+			if err != nil {
+				// The datacenter map is misconfigured in our database
+				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
+			}
+
+			datacenter.AliasName = dcMap.Alias
+			return datacenter, nil
+		}
+	}
+
+	// We couldn't find the datacenter, check if it is a datacenter that we have in our database
+	_, err := storer.Datacenter(datacenterID)
+	if err != nil {
+		// This isn't a datacenter we know about. It's either brand new and not configured yet
+		// or there is a typo in the server's integration of the SDK
+		return routing.UnknownDatacenter, ErrDatacenterNotFound{buyerID, datacenterID, datacenterName}
+	}
+
+	// This is a datacenter we know about, but the buyer isn't configured to use it
+	return routing.UnknownDatacenter, ErrDatacenterNotAllowed{buyerID, datacenterID, datacenterName}
+}
+
+func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -118,45 +195,25 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterT
 			return
 		}
 
-		datacenter, err := storer.Datacenter(packet.DatacenterID)
+		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, packet.DatacenterName); err != nil {
+			level.Error(logger).Log("handler", "server_init", "err", err)
 
-		// If we can't find a datacenter or alias for this customer, send an OK response
-		// and track the datacenter so we can work with them and add it to our database.
-
-		defer func() {
-			if datacenter.ID == routing.UnknownDatacenter.ID {
-				level.Warn(logger).Log("err", "received server init request with unknown datacenter", "datacenter", packet.DatacenterName)
+			switch err.(type) {
+			case ErrDatacenterNotFound:
 				metrics.DatacenterNotFound.Add(1)
 
-				datacenterTracker.AddUnknownDatacenterName(packet.DatacenterName)
+			case ErrDatacenterMapMisconfigured:
+				metrics.MisconfiguredDatacenterAlias.Add(1)
+
+			case ErrDatacenterNotAllowed:
+				metrics.DatacenterNotAllowed.Add(1)
 			}
-		}()
 
-		if err != nil {
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-
-					// If the customer does have a datacenter alias set up but its misconfigured
-					// in our database, then send an unknown datacenter response back.
-
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterName)
-
-						if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
-							level.Error(logger).Log("msg", "failed to write server init response", "err", err)
-							metrics.WriteResponseFailure.Add(1)
-						}
-
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					break
-				}
+			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
+				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
 			}
+			return
 		}
 
 		if err := writeServerInitResponse(w, &packet, InitResponseOK); err != nil {
@@ -169,7 +226,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterT
 	}
 }
 
-func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -203,35 +260,21 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacente
 			return
 		}
 
-		datacenter, err := storer.Datacenter(packet.DatacenterID)
+		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
+			level.Error(logger).Log("handler", "server_update", "err", err)
 
-		// If we can't find a datacenter or alias for this customer,
-		// track the datacenter so we can work with them and add it to our database.
-
-		defer func() {
-			if datacenter.ID == routing.UnknownDatacenter.ID {
-				level.Warn(logger).Log("err", "received server update request with unknown datacenter", "datacenter", packet.DatacenterID)
+			switch err.(type) {
+			case ErrDatacenterNotFound:
 				metrics.DatacenterNotFound.Add(1)
 
-				datacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
-			}
-		}()
+			case ErrDatacenterMapMisconfigured:
+				metrics.MisconfiguredDatacenterAlias.Add(1)
 
-		if err != nil {
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					break
-				}
+			case ErrDatacenterNotAllowed:
+				metrics.DatacenterNotAllowed.Add(1)
 			}
+
+			return
 		}
 
 		// Send the number of sessions on the server to the portal cruncher
@@ -358,31 +401,21 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			debug = new(string)
 		}
 
-		datacenter, err = storer.Datacenter(packet.DatacenterID)
-		if err != nil {
-			aliasFound := false
+		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
+			level.Error(logger).Log("handler", "session_update", "err", err)
 
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					aliasFound = true
-					break
-				}
-			}
-
-			if !aliasFound {
-				level.Error(logger).Log("msg", "datacenter not found", "err", err)
+			switch err.(type) {
+			case ErrDatacenterNotFound:
 				metrics.DatacenterNotFound.Add(1)
-				return
+
+			case ErrDatacenterMapMisconfigured:
+				metrics.MisconfiguredDatacenterAlias.Add(1)
+
+			case ErrDatacenterNotAllowed:
+				metrics.DatacenterNotAllowed.Add(1)
 			}
+
+			return
 		}
 
 		if newSession {
