@@ -870,7 +870,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 
 	postSessionHandler.SendBillingEntry(billingEntry)
 
-	postSessionHandler.SendVanityMetric(billingEntry)
+	if postSessionHandler.useVanityMetrics {
+		postSessionHandler.SendVanityMetric(billingEntry)
+	}
 
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
 	for i := int32(0); i < sessionData.RouteNumRelays; i++ {

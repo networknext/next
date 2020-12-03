@@ -505,10 +505,58 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Setup feature config for vanity metrics
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_VANITY_METRIC",
+			Enum:        config.FEATURE_VANITY_METRIC,
+			Value:       false,
+			Description: "Vanity metrics for fast aggregate statistic lookup",
+		},
+	})
+	featureConfig = envVarConfig
+	// Determine if should use vanity metrics
+	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
+
+	// Start vanity metrics publisher
+	vanityPublishers := make([]pubsub.Publisher, 0)
+	{
+		vanityMetricHosts := envvar.GetList("FEATURE_VANITY_METRIC_HOSTS", []string{"tcp://127.0.0.1:6666"})
+
+		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		for _, host := range vanityMetricHosts {
+			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
+				return 1
+			}
+
+			vanityPublishers = append(vanityPublishers, vanityPublisher)
+		}
+	}
+
+	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	postVanityMetricPushDuration, err := envvar.GetDuration("FEATURE_VANITY_METRIC_PUSH_DURATION", 10 * time.Second)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, postVanityMetricPushDuration, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis

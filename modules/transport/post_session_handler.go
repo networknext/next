@@ -32,13 +32,14 @@ type PostSessionHandler struct {
 	vanityPublishMaxRetries	   int
 	vanityAggregator	   	   map[uint64]vanity.VanityMetrics
 	vanityPushDuration		   time.Duration
+	useVanityMetrics 		   bool
 	biller                     billing.Biller
 	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
@@ -51,6 +52,7 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		vanityPublishMaxRetries:	vanityPublishMaxRetries,
 		vanityAggregator:	   	    make(map[uint64]vanity.VanityMetrics),
 		vanityPushDuration:		   	vanityPushDuration,
+		useVanityMetrics:			useVanityMetrics,
 		biller:                     biller,
 		logger:                     logger,
 		metrics:                    metrics,
@@ -144,51 +146,53 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 		}()
 	}
 
-	pushTime := time.Now()
+	if post.useVanityMetrics {
+		pushTime := time.Now()
 
-	for i := 0; i < post.numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		for i := 0; i < post.numGoroutines; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-			for {
-				select {
-				case billingEntry := <-post.vanityMetricChannel:
-					// Aggregate elements of the billing entry to respective vanity metric per buyer
-					post.AggregateVanityMetrics(billingEntry)
+				for {
+					select {
+					case billingEntry := <-post.vanityMetricChannel:
+						// Aggregate elements of the billing entry to respective vanity metric per buyer
+						post.AggregateVanityMetrics(billingEntry)
 
-					// Early out if enough time has passed since the last push to ZeroMQ
-					if time.Since(pushTime) < post.vanityPushDuration {
-						continue
-					}
-					pushTime := time.Now()
+						// Early out if not enough time has passed since the last push to ZeroMQ
+						if time.Since(pushTime) < post.vanityPushDuration {
+							continue
+						}
+						pushTime := time.Now()
 
-					// Marshal the aggregate vanity metric per buyer
-					var aggregateBinary [][]byte
-					for _, metric := range post.vanityAggregator {
-						metricBinary, err := metric.MarshalBinary()
+						// Marshal the aggregate vanity metric per buyer
+						var aggregateBinary [][]byte
+						for _, metric := range post.vanityAggregator {
+							metricBinary, err := metric.MarshalBinary()
+							if err != nil {
+								level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
+								post.metrics.VanityFailure.Add(1)
+							} 
+							append(aggregateBinary, metricBinary)
+						}
+
+						// Push the data over ZeroMQ
+						aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityData, aggregateBinary)
 						if err != nil {
-							level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
+							level.Error(post.logger).Log("msg", "could not update vanity metrics", "err", err)
 							post.metrics.VanityFailure.Add(1)
-						} 
-						append(aggregateBinary, metricBinary)
-					}
+							continue
+						}
 
-					// Push the data over ZeroMQ
-					aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityData, aggregateBinary)
-					if err != nil {
-						level.Error(post.logger).Log("msg", "could not update vanity metrics", "err", err)
-						post.metrics.VanityFailure.Add(1)
-						continue
+						level.Debug(post.logger).Log("type", "vanity metrics", "msg", fmt.Sprintf("published %d bytes to vanity metrics", aggregateBytes))
+						post.metrics.VanityMetricsFinished.Add(1)
+					case <-ctx.Done():
+						return
 					}
-
-					level.Debug(post.logger).Log("type", "vanity metrics", "msg", fmt.Sprintf("published %d bytes to vanity metrics", aggregateBytes))
-					post.metrics.VanityMetricsFinished.Add(1)
-				case <-ctx.Done():
-					return
 				}
-			}
-		}()
+			}()
+		}
 	}
 
 	wg.Wait()
