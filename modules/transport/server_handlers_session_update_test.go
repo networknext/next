@@ -1153,18 +1153,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	assert.NoError(t, err)
-
-	routeMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0},
-		RelayIDs:           []uint64{1},
-		RelayAddresses:     []net.UDPAddr{*relayAddr},
-		RelayNames:         []string{"test.relay"},
-		RelayLatitudes:     []float32{90},
-		RelayLongitudes:    []float32{180},
-		RelayDatacenterIDs: []uint64{0},
-	}
+	routeMatrix := routing.RouteMatrix{}
 	routeMatrixFunc := func() *routing.RouteMatrix {
 		return &routeMatrix
 	}
@@ -1181,7 +1170,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		RouteType:          routing.RouteTypeDirect,
 		NumNearRelays:      1,
 		NearRelayIDs:       []uint64{1},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr},
+		NearRelayAddresses: []net.UDPAddr{{}},
 	}
 
 	expectedSessionData := transport.SessionData{
