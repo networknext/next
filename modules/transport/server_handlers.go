@@ -826,23 +826,6 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		debugString = *debug
 	}
 
-	var numNearRelays uint8
-	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
-	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
-	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
-	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
-
-	if buyer.Debug {
-		numNearRelays = uint8(len(nearRelays))
-
-		for i := uint8(0); i < numNearRelays; i++ {
-			nearRelayIDs[i] = nearRelays[i].ID
-			nearRelayRTTs[i] = float32(math.Ceil(nearRelays[i].ClientStats.RTT))
-			nearRelayJitters[i] = float32(math.Ceil(nearRelays[i].ClientStats.Jitter))
-			nearRelayPacketLosses[i] = float32(math.Ceil(nearRelays[i].ClientStats.PacketLoss))
-		}
-	}
-
 	billingEntry := &billing.BillingEntry{
 		Timestamp:                       uint64(time.Now().Unix()),
 		BuyerID:                         packet.CustomerID,
@@ -894,11 +877,16 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		PacketsOutOfOrderServerToClient: packet.PacketsOutOfOrderServerToClient,
 		JitterClientToServer:            packet.JitterClientToServer,
 		JitterServerToClient:            packet.JitterServerToClient,
-		NumNearRelays:                   numNearRelays,
-		NearRelayIDs:                    nearRelayIDs,
-		NearRelayRTTs:                   nearRelayRTTs,
-		NearRelayJitters:                nearRelayJitters,
-		NearRelayPacketLosses:           nearRelayPacketLosses,
+	}
+
+	if buyer.Debug {
+		billingEntry.NumNearRelays = uint8(nearRelays.Count)
+		for i := int32(0); i < nearRelays.Count; i++ {
+			billingEntry.NearRelayIDs[i] = nearRelays.IDs[i]
+			billingEntry.NearRelayRTTs[i] = float32(nearRelays.RTTs[i])
+			billingEntry.NearRelayJitters[i] = nearRelays.Jitters[i]
+			billingEntry.NearRelayPacketLosses[i] = nearRelays.PacketLosses[i]
+		}
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
