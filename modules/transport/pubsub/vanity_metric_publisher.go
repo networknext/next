@@ -17,7 +17,7 @@ type VanityMetricPublisher struct {
 	mutex  sync.Mutex
 }
 
-func NewPortalCruncherPublisher(host string, sendBufferSize int) (*PortalCruncherPublisher, error) {
+func NewVanityMetricPublisher(host string, sendBufferSize int) (*VanityMetricPublisher, error) {
 	socket, err := zmq4.NewSocket(zmq4.PUB)
 	if err != nil {
 		return nil, err
