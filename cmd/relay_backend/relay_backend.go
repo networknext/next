@@ -471,12 +471,6 @@ func mainReturnWithCode() int {
 			relayLongitudes := make([]float32, numRelays)
 			relayDatacenterIDs := make([]uint64, numRelays)
 
-			relayHash := fnv.New64a()
-			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-			}
-
 			for i, relayID := range relayIDs {
 				relay, err := storer.Relay(relayID)
 				if err != nil {
@@ -489,10 +483,6 @@ func mainReturnWithCode() int {
 				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 
-				if hashing {
-
-					_, _ = relayHash.Write([]byte(relay.Name))
-				}
 			}
 
 			costMatrixMetrics.Invocations.Add(1)
@@ -640,14 +630,22 @@ func mainReturnWithCode() int {
 				}
 			}
 
+			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
 			if hashing {
 				timestamp := time.Now().UTC().Unix()
+				relayHash := fnv.New64a()
+				sort.Strings(relayNames)
+				for _, name := range relayNames {
+					relayHash.Write([]byte(name))
+				}
 				hash := relayHash.Sum64()
 				if err != nil {
 					level.Error(logger).Log("err", err)
 				}
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
-				sort.Strings(namesHashEntry.Names)
 				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
 				if err != nil {
 					level.Error(logger).Log("err", err)
