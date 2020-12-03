@@ -8,40 +8,48 @@ import (
 type ServerInitMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
-	ReadPacketFailure    Counter
-	BuyerNotFound        Counter
-	SDKTooOld            Counter
-	DatacenterNotFound   Counter
-	WriteResponseFailure Counter
+	ReadPacketFailure            Counter
+	BuyerNotFound                Counter
+	SDKTooOld                    Counter
+	DatacenterNotFound           Counter
+	MisconfiguredDatacenterAlias Counter
+	DatacenterNotAllowed         Counter
+	WriteResponseFailure         Counter
 }
 
 // EmptyServerInitMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerInitMetrics = ServerInitMetrics{
-	HandlerMetrics:       &EmptyPacketHandlerMetrics,
-	ReadPacketFailure:    &EmptyCounter{},
-	BuyerNotFound:        &EmptyCounter{},
-	SDKTooOld:            &EmptyCounter{},
-	DatacenterNotFound:   &EmptyCounter{},
-	WriteResponseFailure: &EmptyCounter{},
+	HandlerMetrics:               &EmptyPacketHandlerMetrics,
+	ReadPacketFailure:            &EmptyCounter{},
+	BuyerNotFound:                &EmptyCounter{},
+	SDKTooOld:                    &EmptyCounter{},
+	DatacenterNotFound:           &EmptyCounter{},
+	MisconfiguredDatacenterAlias: &EmptyCounter{},
+	DatacenterNotAllowed:         &EmptyCounter{},
+	WriteResponseFailure:         &EmptyCounter{},
 }
 
 // ServerUpdateMetrics defines the set of metrics for the server update handler in the server backend.
 type ServerUpdateMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
-	ReadPacketFailure  Counter
-	BuyerNotFound      Counter
-	SDKTooOld          Counter
-	DatacenterNotFound Counter
+	ReadPacketFailure            Counter
+	BuyerNotFound                Counter
+	SDKTooOld                    Counter
+	DatacenterNotFound           Counter
+	MisconfiguredDatacenterAlias Counter
+	DatacenterNotAllowed         Counter
 }
 
 // EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerUpdateMetrics = ServerUpdateMetrics{
-	HandlerMetrics:     &EmptyPacketHandlerMetrics,
-	ReadPacketFailure:  &EmptyCounter{},
-	BuyerNotFound:      &EmptyCounter{},
-	SDKTooOld:          &EmptyCounter{},
-	DatacenterNotFound: &EmptyCounter{},
+	HandlerMetrics:               &EmptyPacketHandlerMetrics,
+	ReadPacketFailure:            &EmptyCounter{},
+	BuyerNotFound:                &EmptyCounter{},
+	SDKTooOld:                    &EmptyCounter{},
+	DatacenterNotFound:           &EmptyCounter{},
+	MisconfiguredDatacenterAlias: &EmptyCounter{},
+	DatacenterNotAllowed:         &EmptyCounter{},
 }
 
 // SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
@@ -73,6 +81,8 @@ type SessionUpdateMetrics struct {
 	BuyerNotLive                               Counter
 	ClientPingTimedOut                         Counter
 	DatacenterNotFound                         Counter
+	MisconfiguredDatacenterAlias               Counter
+	DatacenterNotAllowed                       Counter
 	NearRelaysLocateFailure                    Counter
 	NoRelaysInDatacenter                       Counter
 	RouteDoesNotExist                          Counter
@@ -110,6 +120,8 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	BuyerNotLive:                               &EmptyCounter{},
 	ClientPingTimedOut:                         &EmptyCounter{},
 	DatacenterNotFound:                         &EmptyCounter{},
+	MisconfiguredDatacenterAlias:               &EmptyCounter{},
+	DatacenterNotAllowed:                       &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
 	NoRelaysInDatacenter:                       &EmptyCounter{},
 	RouteDoesNotExist:                          &EmptyCounter{},
@@ -335,6 +347,28 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		return nil, err
 	}
 
+	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Misconfigured Datacenter Alias",
+		ServiceName: serviceName,
+		ID:          handlerID + ".misconfigured_datacenter_alias",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a valid datacenter alias but the datacenter map was misconfigured in our database.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterNotAllowed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Not Allowed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_not_allowed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.WriteResponseFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Write Response Failure",
 		ServiceName: serviceName,
@@ -397,6 +431,28 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		ID:          handlerID + ".datacenter_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown datacenter ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Misconfigured Datacenter Alias",
+		ServiceName: serviceName,
+		ID:          handlerID + ".misconfigured_datacenter_alias",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a valid datacenter alias but the datacenter map was misconfigured in our database.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterNotAllowed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Not Allowed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_not_allowed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
 	})
 	if err != nil {
 		return nil, err
@@ -673,6 +729,28 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".datacenter_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown datacenter ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Misconfigured Datacenter Alias",
+		ServiceName: serviceName,
+		ID:          handlerID + ".misconfigured_datacenter_alias",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a valid datacenter alias but the datacenter map was misconfigured in our database.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterNotAllowed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Not Allowed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_not_allowed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
 	})
 	if err != nil {
 		return nil, err
