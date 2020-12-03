@@ -464,6 +464,8 @@ func mainReturnWithCode() int {
 			// For now, exclude all valve relays
 			relayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
 
+			sort.Slice(relayIDs, func(i, j int) bool { return relayIDs[i] < relayIDs[j] }) //sorts relayIDs before pulling data, cost matrix is in order by sorted relayIDs
+
 			numRelays := len(relayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
 			relayNames := make([]string, numRelays)
@@ -664,6 +666,8 @@ func mainReturnWithCode() int {
 			syncTimer.Run()
 			// All relays included
 			relayIDs := relayMap.GetAllRelayIDs([]string{})
+
+			sort.Slice(relayIDs, func(i, j int) bool { return relayIDs[i] < relayIDs[j] }) //sorts relayIDs before pulling data, cost matrix is in order by sorted relayIDs
 
 			numRelays := len(relayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
