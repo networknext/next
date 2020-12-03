@@ -1,4 +1,4 @@
-package vanity_metrics
+package vanity
 
 import (
 	"context"
@@ -26,6 +26,8 @@ type VanityMetrics struct {
 	NumSessionsGlobal		int
 	NumSessionsPerCustomer	int
 	NumPlayHours			int
+	RTTReduction			float32
+	PacketLossReduction		float32
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct
