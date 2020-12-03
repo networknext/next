@@ -68,8 +68,10 @@ create table route_shaders (
 create table rs_internal_configs (
   id integer primary key autoincrement,
   max_latency_tradeoff integer not null,
+  max_rtt integer not null,
   multipath_overload_threshold integer not null,
   route_switch_threshold integer not null,
+  route_select_threshold integer not null,
   rtt_veto_default integer not null,
   rtt_veto_multipath integer not null,
   rtt_veto_packetloss integer not null,
@@ -108,7 +110,7 @@ create table relays (
   included_bandwidth_gb integer not null,
   internal_ip inet,
   internal_ip_port integer,
-  management_ip inet not null,
+  management_ip varchar not null,
   max_sessions integer not null,
   mrc bigint not null,
   overage bigint not null,
@@ -143,7 +145,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/11/20 10:04:55
+-- File generation: 2020/12/02 13:38:30
 
 -- machine_types
 insert into machine_types values (0, 'none');
