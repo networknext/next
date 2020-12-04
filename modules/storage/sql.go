@@ -1653,6 +1653,55 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	return nil
 }
 
+func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+	var sql bytes.Buffer
+
+	db.internalConfigMutex.RLock()
+	_, ok := db.internalConfigs[buyerID]
+	db.internalConfigMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	buyer, err := db.Buyer(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	sql.Write([]byte("delete from internal_configs where where buyer_id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveRelay SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(buyer.DatabaseID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing internal config", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.internalConfigMutex.Lock()
+	delete(db.internalConfigs, buyerID)
+	db.internalConfigMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+}
+
 type featureFlag struct {
 	Name        string
 	Description string
@@ -1677,10 +1726,6 @@ func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) err
 
 func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateInternalConfig not yet impemented in SQL storer")
-}
-
-func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveInternalConfig not yet impemented in SQL storer")
 }
 
 func (db *SQL) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
