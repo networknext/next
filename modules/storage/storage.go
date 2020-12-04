@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 )
 
@@ -143,4 +144,10 @@ type Storer interface {
 
 	// RemoveFeatureFlagByName removes an existing flag from storage
 	RemoveFeatureFlagByName(ctx context.Context, flagName string) error
+
+	// InternalConfig returns the internal config for the given buyer ID
+	InternalConfig(buyerID uint64) (core.InternalConfig, error)
+
+	// RouteShaders returns a slice of route shaders for the given buyer ID
+	RouteShaders(buyerID uint64) ([]core.RouteShader, error)
 }

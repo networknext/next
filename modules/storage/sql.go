@@ -43,6 +43,9 @@ type SQL struct {
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
+	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
+	routeShaders    map[uint64][]core.RouteShader  // index: buyer ID
+
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
 	customerMutex       sync.RWMutex
@@ -50,6 +53,8 @@ type SQL struct {
 	sellerMutex         sync.RWMutex
 	datacenterMapMutex  sync.RWMutex
 	sequenceNumberMutex sync.RWMutex
+	internalConfigMutex sync.RWMutex
+	routeShaderMutex    sync.RWMutex
 
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
@@ -1543,152 +1548,33 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	return nil
 }
 
-type sqlRouteShader struct {
-	ABTest                    bool
-	AcceptableLatency         int64
-	AcceptablePacketLoss      float64
-	BandwidthEnvelopeDownKbps int64
-	BandwidthEnvelopeUpKbps   int64
-	DisableNetworkNext        bool
-	DisplayName               string
-	LatencyThreshold          int64
-	Multipath                 bool
-	ProMode                   bool
-	ReduceLatency             bool
-	ReducePacketLoss          bool
-	SelectionPercent          int64
+// RouteShaders returns a slice of route shaders for the given buyer ID
+func (db *SQL) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+	db.routeShaderMutex.RLock()
+	defer db.routeShaderMutex.RUnlock()
+
+	routeShaders, found := db.routeShaders[buyerID]
+	if !found {
+		return []core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
+	}
+
+	return routeShaders, nil
 }
 
-// GetRouteShaderForBuyerID TODO: will need to either return a slice of routeshaders or accept another
+// InternalConfig TODO: will need to either return a slice of routeshaders or accept another
 // arg - buyerID returns (can return) multiple records.
-func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (core.RouteShader, error) {
-	var sql bytes.Buffer
-	var coreRS core.RouteShader
+// TODO: check local storer copy (no sql)
+func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+	db.internalConfigMutex.RLock()
+	defer db.internalConfigMutex.RUnlock()
 
-	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
-	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
-	sql.Write([]byte("reduce_latency, reduce_packet_loss, selection_percent from route_shaders "))
-	sql.Write([]byte("where id=$1"))
-
-	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "GetRouteShaderForBuyerID() QueryContext returned an error", "err", err)
-		return core.RouteShader{}, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var rs sqlRouteShader
-
-		err := rows.Scan(
-			&rs.ABTest,
-			&rs.AcceptableLatency,
-			&rs.AcceptablePacketLoss,
-			&rs.BandwidthEnvelopeDownKbps,
-			&rs.BandwidthEnvelopeUpKbps,
-			&rs.DisableNetworkNext,
-			&rs.LatencyThreshold,
-			&rs.Multipath,
-			&rs.ProMode,
-			&rs.ReduceLatency,
-			&rs.ReducePacketLoss,
-			&rs.SelectionPercent,
-		)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "rows.Scan returned an error", "err", err)
-			return core.RouteShader{}, err
-		}
-
-		coreRS = core.RouteShader{
-			ABTest:                    rs.ABTest,
-			AcceptableLatency:         int32(rs.AcceptableLatency),
-			AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
-			BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
-			BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
-			DisableNetworkNext:        rs.DisableNetworkNext,
-			LatencyThreshold:          int32(rs.LatencyThreshold),
-			Multipath:                 rs.Multipath,
-			ProMode:                   rs.ProMode,
-			ReduceLatency:             rs.ReduceLatency,
-			ReducePacketLoss:          rs.ReducePacketLoss,
-			SelectionPercent:          int(rs.SelectionPercent),
-		}
-		coreRS.BannedUsers = make(map[uint64]bool) // not implemented yet
-
-		return coreRS, nil
-
+	internalConfig, found := db.internalConfigs[buyerID]
+	if !found {
+		return core.InternalConfig{}, &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%x", buyerID)}
 	}
 
-	return coreRS, &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%x", buyerID)}
-}
+	return internalConfig, nil
 
-type sqlInternalConfig struct {
-	MaxLatencyTradeOff         int64
-	MultipathOverloadThreshold int64
-	RouteSwitchThreshold       int64
-	RttVetoDefault             int64
-	RttVetoMultipath           int64
-	RttVetoPacketLoss          int64
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-}
-
-// GetInternalConfigForBuyerID TODO: will need to either return a slice of routeshaders or accept another
-// arg - buyerID returns (can return) multiple records.
-func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (core.InternalConfig, error) {
-	var sql bytes.Buffer
-	var coreIC core.InternalConfig
-
-	sql.Write([]byte("select max_latency_tradeoff, multipath_overload_threshold, "))
-	sql.Write([]byte("route_switch_threshold, rtt_veto_default, rtt_veto_multipath, "))
-	sql.Write([]byte("rtt_veto_packetloss, try_before_you_buy, force_next, large_customer "))
-	sql.Write([]byte(" from rs_internal_configs where buyer_id=$1"))
-
-	rows, err := db.Client.QueryContext(ctx, sql.String(), buyerID)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "GetInternalConfigForBuyerID() QueryContext returned an error", "err", err)
-		return core.InternalConfig{}, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var ic sqlInternalConfig
-
-		err := rows.Scan(
-			&ic.MaxLatencyTradeOff,
-			&ic.MultipathOverloadThreshold,
-			&ic.RouteSwitchThreshold,
-			&ic.RttVetoDefault,
-			&ic.RttVetoMultipath,
-			&ic.RttVetoPacketLoss,
-			&ic.TryBeforeYouBuy,
-			&ic.ForceNext,
-			&ic.LargeCustomer,
-		)
-
-		if err != nil {
-			level.Error(db.Logger).Log("during", "rows.Scan returned an error", "err", err)
-			return core.InternalConfig{}, err
-		}
-
-		coreIC = core.InternalConfig{
-			RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
-			MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
-			RTTVeto_Default:            int32(ic.RttVetoDefault),
-			RTTVeto_PacketLoss:         int32(ic.RttVetoPacketLoss),
-			RTTVeto_Multipath:          int32(ic.RttVetoMultipath),
-			MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
-			TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-			ForceNext:                  ic.ForceNext,
-			LargeCustomer:              ic.LargeCustomer,
-		}
-
-		return coreIC, nil
-
-	}
-
-	return coreIC, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%x", buyerID)}
 }
 
 type featureFlag struct {
