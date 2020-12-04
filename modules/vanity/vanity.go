@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 	"encoding/json"
+	"sync"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -16,9 +17,39 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
+type ErrReceiveMessage struct {
+	err error
+}
+
+func (e *ErrReceiveMessage) Error() string {
+	return fmt.Sprintf("error receiving message: %v", e.err)
+}
+
+type ErrUnknownMessage struct{}
+
+func (*ErrUnknownMessage) Error() string {
+	return "received an unknown message"
+}
+
+type ErrChannelFull struct{}
+
+func (e *ErrChannelFull) Error() string {
+	return "message channel full, dropping message"
+}
+
+type ErrUnmarshalMessage struct {
+	err error
+}
+
+func (e *ErrUnmarshalMessage) Error() string {
+	return fmt.Sprintf("could not unmarshal message: %v", e.err)
+}
+
 type VanityMetricHandler struct {
-	Handler 	  	*metrics.StackDriverHandler
-	Logger 			log.Logger
+	handler 	  	*metrics.StackDriverHandler
+	metrics 		*metrics.VanityMetricMetrics
+	subscriber		pubsub.Subscriber
+	logger 			log.Logger
 }
 
 type VanityMetrics struct {
@@ -30,6 +61,10 @@ type VanityMetrics struct {
 	NumPlayHours			uint32
 	RTTReduction			float32
 	PacketLossReduction		float32
+}
+
+func NewVanityMetricHandler(vanityHandler *metrics.StackDriverHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.Logger) VanityMetricHandler {
+	return &VanityMetricHandler{handler: vanityHandler, metrics: vanityMetricMetrics, subscriber: vanitySubscriber, logger: vanityLogger}
 }
 
 func (v VanityMetrics) Size() uint64 {
@@ -63,7 +98,7 @@ func (v VanityMetrics) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
-func (v VanityMetrics) UnmarshalBinary(data []byte) eror {
+func (v VanityMetrics) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	if !encoding.ReadUint64(data, &index, &v.BuyerID) {
@@ -103,6 +138,110 @@ func (v VanityMetrics) UnmarshalBinary(data []byte) eror {
 	}
 
 	return nil
+}
+
+func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityWriteGoroutines int) error {
+	var wg sync.WaitGroup
+	errChan := make(chan error, 1)
+
+	// Start the receive goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if err := vm.ReceiveMessage(ctx); err != nil {
+					switch err.(type) {
+					case *ErrChannelFull: // We don't need to stop the vanity metric handler if the channel is full
+						continue
+					default:
+						errChan <- err
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	// Start the goroutines to write to StackDriver
+	for i := 0; i < numVanityWriteGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			// Each goroutine has its own buffer to avoid syncing
+			vanityMetricDataBuffer := make([]VanityMetrics, 0)
+
+			for {
+				select {
+				// Buffer up some vanity metric entries to insert into StackDriver
+				case vanityData := <-vm.vanityMetricDataChan:
+					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
+
+					if err := vm.WriteToStackDriver(ctx, vanityMetricDataBuffer); err != nil {
+						errChan <- err
+						return
+					}
+
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	// Wait until either there is an error or the context is done
+	select {
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		// Let the goroutines finish up
+		wg.Wait()
+		return ctx.Err()
+	}
+}
+
+// Receive messages from ZeroMQ and insert them into the VanityMetricHandler's data channel
+func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+
+	case messageInfo := <-vm.subscriber.ReceiveMessage():
+		vm.metrics.ReceivedVanityCount.Add(1)
+
+		if messageInfo.Err != nil {
+			return &ErrReceiveMessage{err: messageInfo.Err}
+		}
+
+		switch messageInfo.Topic {
+		case pubsub.TopicVanityData:
+			var vanityData VanityMetrics
+			if err := vanityData.UnmarshalBinary(messageInfo.Message); err != nil {
+				return &ErrUnmarshalMessage{err: err}
+			}
+
+			select {
+			case vm.vanityMetricDataChan <- &vanityData:
+			default:
+				return &ErrChannelFull{}
+			}
+		default:
+			return &ErrUnknownMessage{}
+		}
+
+		return nil
+	}
+}
+
+// Writes messages to StackDriver
+func (vm *VanityMetricHandler) WriteToStackDriver(ctx context.Context, vanityMetricDataBuffer []VanityMetrics) error {
+
+
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct

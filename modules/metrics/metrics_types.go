@@ -265,6 +265,60 @@ var EmptyBigTableMetrics = BigTableMetrics{
 	ReadSliceFailureCount:  &EmptyCounter{},
 }
 
+type VanityMetricMetrics struct {
+	ReceivedVanityCount			Counter
+	WriteVanitySuccessCount		Counter
+	WriteVanityFailureCount		Counter
+}
+
+var EmptyVanityMetricMetrics struct {
+	ReceivedVanityCount:		&EmptyCounter{},
+	WriteVanitySuccessCount:  	&EmptyCounter{},
+	WriteVanityFailureCount:  	&EmptyCounter{},
+}
+
+
+func NewVanityMetricMetrics(ctx context.Context, metricsHandler Handler) (*VanityMetricMetrics, error) {
+	var err error
+
+	vanityMetrics := VanityMetricMetrics{}
+
+	vanityMetrics.ReceivedVanityCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Received Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.received.count",
+		Unit:        "reads",
+		Description: "The number of successful vanity metric reads from ZeroMQ",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.WriteVanitySuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Write Success Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.write.success.count",
+		Unit:        "writes",
+		Description: "The number of successful vanity metric writes to StackDriver",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.WriteVanityFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Write Failure Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.write.failure.count",
+		Unit:        "writes",
+		Description: "The number of failed vanity metric writes to StackDriver",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &vanityMetrics, nil
+}
+
 func NewBigTableMetrics(ctx context.Context, metricsHandler Handler) (*BigTableMetrics, error) {
 	var err error
 

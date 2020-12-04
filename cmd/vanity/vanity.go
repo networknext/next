@@ -1,0 +1,187 @@
+/*
+   Network Next. You control the network.
+   Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+*/
+
+package main
+
+import (
+	"bytes"
+	"context"
+	// "encoding/binary"
+	// "expvar"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	// "runtime"
+	// "strings"
+	// "sync"
+	// "syscall"
+	"time"
+
+	"os"
+	// "os/signal"
+
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	// "github.com/gorilla/mux"
+
+	// "github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/backend"
+	// "github.com/networknext/backend/modules/billing"
+	// "github.com/networknext/backend/modules/crypto"
+	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
+	// "github.com/networknext/backend/modules/routing"
+	// "github.com/networknext/backend/modules/storage"
+	// "github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/pubsub"
+	"github.com/networknext/backend/modules/vanity"
+	// "golang.org/x/sys/unix"
+)
+
+var (
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
+)
+
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
+func main() {
+	os.Exit(mainReturnWithCode())
+}
+
+func mainReturnWithCode() int {
+	serviceName := "vanity_metrics"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	ctx := context.Background()
+
+	gcpProjectID := backend.GetGCPProjectID()
+
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	env, err := backend.GetEnv()
+	if err != nil {
+		level.Error(logger).Log("err", "ENV not set")
+		return 1
+	}
+
+	gcpProjectID = backend.GetGCPProjectID()
+	gcpOK := gcpProjectID != ""
+	if gcpOK {
+		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "Found GOOGLE_PROJECT_ID")
+	} else {
+		level.Error(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Cannot write vanity metrics.")
+		return 1
+	}
+
+	// StackDriver Logging
+	logger, err = backend.GetLogger(ctx, gcpProjectID, serviceName)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	
+	// StackDriver Metrics
+	var enableSDMetrics bool
+	enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
+	if ok {
+		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
+		if err != nil {
+			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
+			return 1
+		}
+	} else {
+		level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics.")
+		return 1
+	}
+
+	var sd metrics.StackDriverHandler
+	if enableSDMetrics {
+		// Set up StackDriver metrics
+		sd = metrics.StackDriverHandler{
+			ProjectID:          gcpProjectID,
+			OverwriteFrequency: time.Second,
+			OverwriteTimeout:   10 * time.Second,
+		}
+
+		if err := sd.Open(ctx); err != nil {
+			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			return 1
+		}
+	}
+
+	// Get metrics for performance of vanity metric handler
+	metricsHandler, err := GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
+		return 1
+	}
+
+	// StackDriver Profiler
+	if err = backend.InitStackDriverProfiler(gcpProjectID, "api", env); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
+		return 1
+	}
+
+	// Get vanity metric subscribers
+	var vanitySubscriber pubsub.Subscriber
+	{
+		vanityPort := envvar.Get("FEATURE_VANITY_METRIC_PORT", "6666")
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		receiveBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_RECEIVE_BUFFER_SIZE", 1000000)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		vanityMetricSubscriber, err := pubsub.NewVanityMetricPublisher(vanityPort, int(receiveBufferSize))
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create vanity metric subscriber", "err", err)
+			return 1
+		}
+
+		if err := vanityMetricSubscriber.Subscribe(pubsub.TopicVanityData); err != nil {
+			level.Error(logger).Log("msg", "could not subscribe to vanity metric data topic", "err", err)
+			return 1
+		}
+
+		vanitySubscriber = vanityMetricSubscriber
+	}
+
+	// Get the number of goroutines for the vanity metric handler
+	numVanityWriteGoroutines, err := envvar.GetInt("FEATURE_VANITY_METRIC_GOROUTINE_COUNT", 2)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get the vanity metric handler for writing to StackDriver
+	vanityMetricHandler = vanity.NewVanityMetricHandler(&sd, vanitySubscriber, vanityMetricMetrics, logger)
+
+	// Start the goroutines for receiving vanity metrics from the backend and writing to StackDriver
+	vanityMetricHandler.Start(ctx, numVanityWriteGoroutines)
+}
