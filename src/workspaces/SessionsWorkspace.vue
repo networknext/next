@@ -51,7 +51,7 @@
                 style="margin-left: 10px;"
                 data-toggle="tooltip"
                 data-placement="right"
-                title="The datacenter of the game this session belongs to"
+                title="The datacenter of the game server this session is connected to"
               />
             </th>
             <th class="text-right">
@@ -84,7 +84,7 @@
                 style="margin-left: 10px;"
                 data-toggle="tooltip"
                 data-placement="right"
-                title="Difference in round trip time between the public internet and network next (Direct - Next)"
+                title="Difference in round trip time between the public internet and Network Next (Direct - Next)"
               />
             </th>
           </tr>
