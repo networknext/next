@@ -15,18 +15,18 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	// "runtime"
+	"runtime"
 	// "strings"
 	// "sync"
 	// "syscall"
 	"time"
 
 	"os"
-	// "os/signal"
+	"os/signal"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	// "github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 
 	// "github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/backend"
@@ -37,7 +37,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	// "github.com/networknext/backend/modules/routing"
 	// "github.com/networknext/backend/modules/storage"
-	// "github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
 	"github.com/networknext/backend/modules/vanity"
 	// "golang.org/x/sys/unix"
@@ -179,9 +179,74 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				vanityMetricMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				vanityMetricMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(vanityMetricMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", vanityMetricMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d messages received\n", int(vanityMetricMetrics.ReceivedVanityCount.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
 	// Get the vanity metric handler for writing to StackDriver
 	vanityMetricHandler = vanity.NewVanityMetricHandler(&sd, vanitySubscriber, vanityMetricMetrics, logger)
 
 	// Start the goroutines for receiving vanity metrics from the backend and writing to StackDriver
-	vanityMetricHandler.Start(ctx, numVanityWriteGoroutines)
+	errChan := make(chan error, 1)
+	go func() {
+		if err := vanityMetricHandler.Start(ctx, numVanityWriteGoroutines); err != nil {
+			level.Error(logger).Log("err", err)
+			errChan <- err
+			return
+		}
+	}()
+
+	// Start HTTP server
+	{
+		go func() {
+			router := mux.NewRouter()
+			router.HandleFunc("/health", transport.HealthHandlerFunc())
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+
+			port, ok := os.LookupEnv("HTTP_PORT")
+			if !ok {
+				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
+				errChan <- err
+				return
+			}
+
+			err := http.ListenAndServe(":"+port, router)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				errChan <- err
+				return
+			}
+		}()
+	}
+
+	// Wait for interrupt signal
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+
+	select {
+	case <-sigint:
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		return 1
+	}
 }
