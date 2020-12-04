@@ -2325,3 +2325,11 @@ func (fs *Firestore) SetFeatureFlagByName(ctx context.Context, flagName string, 
 func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in Firestore storer"))
 }
+
+func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in Firestore storer"))
+}

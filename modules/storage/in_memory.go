@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
@@ -528,7 +529,13 @@ func (m *InMemory) RemoveFeatureFlagByName(ctx context.Context, flagName string)
 }
 
 func (m *InMemory) SetSequenceNumber(ctx context.Context, value int64) error {
-
 	return nil
+}
 
+func (m *InMemory) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in InMemory storer"))
+}
+
+func (m *InMemory) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
 }
