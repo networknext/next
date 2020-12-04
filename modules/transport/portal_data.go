@@ -917,7 +917,7 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 }
 
 func (s SessionMapPoint) Size() uint64 {
-	return 4 + 8 + 8 + 1
+	return 4 + 8 + 8
 }
 
 func (s SessionMapPoint) RedisString() string {

@@ -275,10 +275,13 @@ func SeedSQLStorage(
 			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 			rid := crypto.HashID(addr.String())
 
+			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
+
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
 				Name:                "local.locale." + fmt.Sprintf("%d", i),
 				Addr:                addr,
+				InternalAddr:        internalAddr,
 				ManagementAddr:      "1.2.3.4" + fmt.Sprintf("%d", i),
 				SSHPort:             22,
 				SSHUser:             "root",
@@ -315,6 +318,8 @@ func SeedSQLStorage(
 			addr = net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
 			rid = crypto.HashID(addr.String())
 
+			internalAddr = net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 10000 + int(i)}
+
 			// set ghost-army relays to random states
 			var ghostRelayState routing.RelayState
 			rand.Seed(time.Now().UnixNano())
@@ -325,6 +330,7 @@ func SeedSQLStorage(
 				ID:                  rid,
 				Name:                "ghost-army.locale.1" + fmt.Sprintf("%d", i),
 				Addr:                addr,
+				InternalAddr:        internalAddr,
 				ManagementAddr:      "4.3.2.1" + fmt.Sprintf("%d", i),
 				SSHPort:             22,
 				SSHUser:             "root",

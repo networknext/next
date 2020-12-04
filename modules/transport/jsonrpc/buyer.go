@@ -1488,7 +1488,18 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	debug,
 	fallbackToDirect,
 	clientFlags,
-	userFlags from `))
+	userFlags,
+	nearRelayRTT,
+	packetsOutOfOrderClientToServer,
+	packetsOutOfOrderServerToClient,
+	jitterClientToServer,
+	jitterServerToClient,
+	numNearRelays,
+	nearRelayIDs,
+	nearRelayRTTs,
+	nearRelayJitters,
+	nearRelayPacketLosses
+    from `))
 
 	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
 		// env == local (unit test)
