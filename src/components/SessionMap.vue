@@ -94,9 +94,6 @@ export default class SessionMap extends Vue {
             minZoom: 1.9
           })
           // this.mapInstance.setRenderWorldCopies(status === 'false')
-          this.mapInstance.addControl(new (window as any).mapboxgl.NavigationControl({
-            showCompass: false
-          }))
         }
 
         const sessions = response.map_points || []
