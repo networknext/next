@@ -101,22 +101,21 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 }
 
 // NewPostgreSQL returns an PostgreSQL backed database pointer
-func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
+func NewPostgreSQL(
+	ctx context.Context,
+	logger log.Logger,
+	pgHostIP string,
+	pgUserName string,
+	pgPassword string,
+) (*SQL, error) {
 
 	fmt.Println("Creating PostgreSQL Storer.")
 
-	// TODO: move sensitive stuff to env w/ GCP vars
-	const (
-		host     = "localhost"
-		port     = 5432
-		user     = "engineering"
-		password = "0xdeadbeef"
-		dbname   = "nn"
-	)
-
+	// -- port and db name are the same regardless of the environment
+	// -- sslmode is a driver req, connection is internal/IP and encrypted
 	pgsqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+		pgHostIP, 5432, pgUserName, pgPassword, "network_next")
 
 	pgsql, err := sql.Open("postgres", pgsqlInfo)
 	if err != nil {

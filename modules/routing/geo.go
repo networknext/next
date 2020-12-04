@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	LocationVersion = 0
+	LocationVersion  = 1
+	MaxISPNameLength = 64
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
@@ -37,8 +38,8 @@ type Location struct {
 	CountryCode string  `json:"country_code"`
 	Region      string  `json:"region"`
 	City        string  `json:"city"`
-	Latitude    float64 `json:"latitude"`
-	Longitude   float64 `json:"longitude"`
+	Latitude    float32 `json:"latitude"`
+	Longitude   float32 `json:"longitude"`
 	ISP         string  `json:"isp"`
 	ASN         int     `json:"asn"`
 }
@@ -55,36 +56,56 @@ func (l *Location) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("unknown location version: %d", version)
 	}
 
-	if !encoding.ReadString(data, &index, &l.Continent, math.MaxInt32) {
-		return errors.New("[Location] invalid read at continent")
+	if version == 0 {
+		if !encoding.ReadString(data, &index, &l.Continent, math.MaxInt32) {
+			return errors.New("[Location] invalid read at continent")
+		}
+
+		if !encoding.ReadString(data, &index, &l.Country, math.MaxInt32) {
+			return errors.New("[Location] invalid read at country")
+		}
+
+		if !encoding.ReadString(data, &index, &l.CountryCode, math.MaxInt32) {
+			return errors.New("[Location] invalid read at country code")
+		}
+
+		if !encoding.ReadString(data, &index, &l.Region, math.MaxInt32) {
+			return errors.New("[Location] invalid read at region")
+		}
+
+		if !encoding.ReadString(data, &index, &l.City, math.MaxInt32) {
+			return errors.New("[Location] invalid read at city")
+		}
 	}
 
-	if !encoding.ReadString(data, &index, &l.Country, math.MaxInt32) {
-		return errors.New("[Location] invalid read at country")
-	}
+	if version == 0 {
+		var lat float64
+		if !encoding.ReadFloat64(data, &index, &lat) {
+			return errors.New("[Location] invalid read at latitude")
+		}
+		l.Latitude = float32(lat)
 
-	if !encoding.ReadString(data, &index, &l.CountryCode, math.MaxInt32) {
-		return errors.New("[Location] invalid read at country code")
-	}
+		var long float64
+		if !encoding.ReadFloat64(data, &index, &long) {
+			return errors.New("[Location] invalid read at longitude")
+		}
+		l.Longitude = float32(long)
 
-	if !encoding.ReadString(data, &index, &l.Region, math.MaxInt32) {
-		return errors.New("[Location] invalid read at region")
-	}
+		if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
+			return errors.New("[Location] invalid read at ISP")
+		}
+	} else {
+		if !encoding.ReadFloat32(data, &index, &l.Latitude) {
+			return errors.New("[Location] invalid read at latitude")
+		}
 
-	if !encoding.ReadString(data, &index, &l.City, math.MaxInt32) {
-		return errors.New("[Location] invalid read at city")
-	}
+		if !encoding.ReadFloat32(data, &index, &l.Longitude) {
+			return errors.New("[Location] invalid read at longitude")
+		}
 
-	if !encoding.ReadFloat64(data, &index, &l.Latitude) {
-		return errors.New("[Location] invalid read at latitude")
-	}
-
-	if !encoding.ReadFloat64(data, &index, &l.Longitude) {
-		return errors.New("[Location] invalid read at longitude")
-	}
-
-	if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
-		return errors.New("[Location] invalid read at ISP")
+		if !encoding.ReadString(data, &index, &l.ISP, MaxISPNameLength) {
+			return errors.New("[Location] invalid read at ISP")
+		}
 	}
 
 	var asn uint32
@@ -101,21 +122,21 @@ func (l Location) MarshalBinary() ([]byte, error) {
 	index := 0
 
 	encoding.WriteUint32(data, &index, LocationVersion)
-	encoding.WriteString(data, &index, l.Continent, uint32(len(l.Continent)))
-	encoding.WriteString(data, &index, l.Country, uint32(len(l.Country)))
-	encoding.WriteString(data, &index, l.CountryCode, uint32(len(l.CountryCode)))
-	encoding.WriteString(data, &index, l.Region, uint32(len(l.Region)))
-	encoding.WriteString(data, &index, l.City, uint32(len(l.City)))
-	encoding.WriteFloat64(data, &index, l.Latitude)
-	encoding.WriteFloat64(data, &index, l.Longitude)
-	encoding.WriteString(data, &index, l.ISP, uint32(len(l.ISP)))
+	encoding.WriteFloat32(data, &index, l.Latitude)
+	encoding.WriteFloat32(data, &index, l.Longitude)
+	encoding.WriteString(data, &index, l.ISP, MaxISPNameLength)
 	encoding.WriteUint32(data, &index, uint32(l.ASN))
 
 	return data, nil
 }
 
 func (l Location) Size() uint64 {
-	return uint64(4 + 4 + len(l.Continent) + 4 + len(l.Country) + 4 + len(l.CountryCode) + 4 + len(l.Region) + 4 + len(l.City) + 8 + 8 + 4 + len(l.ISP) + 4)
+	ispLength := len(l.ISP)
+	if ispLength > MaxISPNameLength {
+		ispLength = MaxISPNameLength
+	}
+
+	return uint64(4 + 4 + 4 + 4 + ispLength + 4)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
@@ -131,14 +152,18 @@ func (l *Location) ParseRedisString(values []string) error {
 	var index int
 	var err error
 
-	if l.Latitude, err = strconv.ParseFloat(values[index], 64); err != nil {
+	var lat float64
+	if lat, err = strconv.ParseFloat(values[index], 32); err != nil {
 		return fmt.Errorf("[Location] failed to read latitude from redis data: %v", err)
 	}
+	l.Latitude = float32(lat)
 	index++
 
-	if l.Longitude, err = strconv.ParseFloat(values[index], 64); err != nil {
+	var long float64
+	if long, err = strconv.ParseFloat(values[index], 32); err != nil {
 		return fmt.Errorf("[Location] failed to read longitude from redis data: %v", err)
 	}
+	l.Longitude = float32(long)
 	index++
 
 	l.ISP = values[index]
@@ -257,44 +282,16 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 		return Location{}, err
 	}
 
-	continent := "unknown"
-	if val, ok := cityres.Continent.Names["en"]; ok {
-		continent = val
-	}
-	country := "unknown"
-	if val, ok := cityres.Country.Names["en"]; ok {
-		country = val
-	}
-	countryCode := "unknown"
-	if cityres.Country.IsoCode != "" {
-		countryCode = cityres.Country.IsoCode
-	}
-	region := "unknown"
-	if len(cityres.Subdivisions) > 0 {
-		if val, ok := cityres.Subdivisions[0].Names["en"]; ok {
-			region = val
-		}
-	}
-	city := "unknown"
-	if val, ok := cityres.City.Names["en"]; ok {
-		city = val
-	}
-
 	ispres, err := mmdb.ispReader.ISP(ip)
 	if err != nil {
 		return Location{}, err
 	}
 
 	return Location{
-		Continent:   continent,
-		CountryCode: countryCode,
-		Country:     country,
-		Region:      region,
-		City:        city,
-		Latitude:    cityres.Location.Latitude,
-		Longitude:   cityres.Location.Longitude,
-		ISP:         ispres.ISP,
-		ASN:         int(ispres.AutonomousSystemNumber),
+		Latitude:  float32(cityres.Location.Latitude),
+		Longitude: float32(cityres.Location.Longitude),
+		ISP:       ispres.ISP,
+		ASN:       int(ispres.AutonomousSystemNumber),
 	}, nil
 }
 
@@ -307,11 +304,7 @@ func (f LocateIPFunc) LocateIP(ip net.IP) (Location, error) {
 }
 
 var LocationNullIsland = Location{
-	Continent: "Null Island",
-	Country:   "Null Island",
-	Region:    "Null Island",
-	City:      "Null Island",
-	ISP:       "Water",
+	ISP: "Water",
 }
 
 var NullIsland = LocateIPFunc(func(ip net.IP) (Location, error) {
