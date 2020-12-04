@@ -1469,8 +1469,8 @@ type sqlDatacenter struct {
 	ID            int64
 	Name          string
 	Enabled       bool
-	Latitude      float64
-	Longitude     float64
+	Latitude      float32
+	Longitude     float32
 	SupplierName  string
 	StreetAddress string
 	SellerID      int64
