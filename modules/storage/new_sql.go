@@ -499,7 +499,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			// level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
 
-		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.DatabaseID)
+		ic, err := db.InternalConfig(buyer.ID)
 		if err != nil {
 			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
 		}
