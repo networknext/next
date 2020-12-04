@@ -96,7 +96,7 @@ type NearRelayResult struct {
 	PacketLosses []float32
 }
 
-func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) (NearRelayResult, error) {
+func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNearRelays int) (NearRelayResult, error) {
 	// Work with the near relays as an array of structs first for easier sorting
 	type NearRelayData struct {
 		ID       uint64

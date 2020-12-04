@@ -512,8 +512,8 @@ type relay struct {
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
-	Latitude            float64               `json:"latitude"`
-	Longitude           float64               `json:"longitude"`
+	Latitude            float32               `json:"latitude"`
+	Longitude           float32               `json:"longitude"`
 	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
 	State               string                `json:"state"`
@@ -825,8 +825,8 @@ type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
 	SignedID     int64   `json:"signed_id"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
+	Latitude     float32 `json:"latitude"`
+	Longitude    float32 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
 	SupplierName string  `json:"supplierName"`
 }
