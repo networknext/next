@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
@@ -230,6 +231,10 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 	if err := db.syncRelays(ctx); err != nil {
 		return fmt.Errorf("failed to sync relays: %v", err)
+	}
+
+	if err := db.syncInternalConfigs(ctx); err != nil {
+		return fmt.Errorf("failed to sync internal configs: %v", err)
 	}
 
 	return nil
@@ -631,6 +636,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 	db.datacenterMapMutex.Unlock()
 	return nil
 }
+
 func (db *SQL) syncCustomers(ctx context.Context) error {
 	var sql bytes.Buffer
 	var customer sqlCustomer
@@ -692,5 +698,86 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 
 	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 
+	return nil
+}
+
+type sqlInternalConfig struct {
+	RouteSelectThreshold       int64
+	RouteSwitchThreshold       int64
+	MaxLatencyTradeOff         int64
+	RTTVetoDefault             int64
+	RTTVetoPacketLoss          int64
+	RTTVetoMultipath           int64
+	MultipathOverloadThreshold int64
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int64
+}
+
+func (db *SQL) syncInternalConfigs(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	var sqlIC sqlInternalConfig
+
+	internalConfigs := make(map[uint64]core.InternalConfig)
+
+	sql.Write([]byte("select max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
+	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
+	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
+	sql.Write([]byte("large_customer, is_uncommitted, buyer_id from rs_internal_configs"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var buyerID int64
+		err := rows.Scan(
+			&sqlIC.MaxLatencyTradeOff,
+			&sqlIC.MaxRTT,
+			&sqlIC.MultipathOverloadThreshold,
+			&sqlIC.RouteSwitchThreshold,
+			&sqlIC.RouteSelectThreshold,
+			&sqlIC.RTTVetoDefault,
+			&sqlIC.RTTVetoMultipath,
+			&sqlIC.RTTVetoPacketLoss,
+			&sqlIC.TryBeforeYouBuy,
+			&sqlIC.ForceNext,
+			&sqlIC.LargeCustomer,
+			&sqlIC.Uncommitted,
+			&buyerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
+
+		internalConfig := core.InternalConfig{
+			RouteSelectThreshold:       int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold:       int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:         int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:            int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:         int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:          int32(sqlIC.RTTVetoMultipath),
+			MultipathOverloadThreshold: int32(sqlIC.MultipathOverloadThreshold),
+			TryBeforeYouBuy:            sqlIC.TryBeforeYouBuy,
+			ForceNext:                  sqlIC.ForceNext,
+			LargeCustomer:              sqlIC.LargeCustomer,
+			Uncommitted:                sqlIC.Uncommitted,
+			MaxRTT:                     int32(sqlIC.MaxRTT),
+		}
+
+		id := db.buyerIDs[buyerID]
+		internalConfigs[id] = internalConfig
+	}
+
+	db.internalConfigMutex.Lock()
+	db.internalConfigs = internalConfigs
+	db.internalConfigMutex.Unlock()
 	return nil
 }

@@ -43,6 +43,9 @@ type SQL struct {
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
+	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
+	routeShaders    map[uint64][]core.RouteShader  // index: buyer ID
+
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
 	customerMutex       sync.RWMutex
@@ -50,6 +53,8 @@ type SQL struct {
 	sellerMutex         sync.RWMutex
 	datacenterMapMutex  sync.RWMutex
 	sequenceNumberMutex sync.RWMutex
+	internalConfigMutex sync.RWMutex
+	routeShaderMutex    sync.RWMutex
 
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
@@ -1622,20 +1627,9 @@ func (db *SQL) GetRouteShaderForBuyerID(ctx context.Context, buyerID int64) (cor
 	return coreRS, &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%x", buyerID)}
 }
 
-type sqlInternalConfig struct {
-	MaxLatencyTradeOff         int64
-	MultipathOverloadThreshold int64
-	RouteSwitchThreshold       int64
-	RttVetoDefault             int64
-	RttVetoMultipath           int64
-	RttVetoPacketLoss          int64
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-}
-
 // GetInternalConfigForBuyerID TODO: will need to either return a slice of routeshaders or accept another
 // arg - buyerID returns (can return) multiple records.
+// TODO: check local storer copy (no sql)
 func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (core.InternalConfig, error) {
 	var sql bytes.Buffer
 	var coreIC core.InternalConfig
@@ -1659,9 +1653,9 @@ func (db *SQL) GetInternalConfigForBuyerID(ctx context.Context, buyerID int64) (
 			&ic.MaxLatencyTradeOff,
 			&ic.MultipathOverloadThreshold,
 			&ic.RouteSwitchThreshold,
-			&ic.RttVetoDefault,
-			&ic.RttVetoMultipath,
-			&ic.RttVetoPacketLoss,
+			&ic.RTTVetoDefault,
+			&ic.RTTVetoMultipath,
+			&ic.RTTVetoPacketLoss,
 			&ic.TryBeforeYouBuy,
 			&ic.ForceNext,
 			&ic.LargeCustomer,
