@@ -802,7 +802,6 @@ func main() {
 					relay := &relays[0]
 
 					fmt.Printf("Public Key: %s\n", relay.publicKey)
-					fmt.Printf("Update Key: %s\n", relay.updateKey)
 
 					return nil
 				},
@@ -1203,6 +1202,94 @@ func main() {
 							return nil
 						},
 					},
+					{
+						Name:       "addr",
+						ShortUsage: "next relay ops addr <relay> <IP address:port e.g 10.1.2.34:40000>",
+						ShortHelp:  "Set the external address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
+							}
+
+							opsExternalAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "mgmt",
+						ShortUsage: "next relay ops mgmt <relay> <IP address e.g 10.1.2.34>",
+						ShortHelp:  "Set the management address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address"), 0)
+							}
+
+							opsManagementAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "sshuser",
+						ShortUsage: "next relay ops sshuser <relay> <user name>",
+						ShortHelp:  "Set the username to use for SSHing into the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a username"), 0)
+							}
+
+							opsSSHUser(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "sshport",
+						ShortUsage: "next relay ops sshport <relay> <port number>",
+						ShortHelp:  "Set the SSH port for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a port number"), 0)
+							}
+
+							port, err := strconv.ParseInt(args[1], 10, 32)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
+							}
+
+							opsSSHPort(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
+					{
+						Name:       "maxsessions",
+						ShortUsage: "next relay ops maxsessions <relay> <session count>",
+						ShortHelp:  "Set the maximum number of concurrent sessions the specified relay can support",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a session count"), 0)
+							}
+
+							port, err := strconv.ParseInt(args[1], 10, 32)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
+							}
+
+							opsMaxSessions(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
+					{
+						Name:       "internaladdr",
+						ShortUsage: "next relay ops internaladdr <relay> <IP address:port e.g 10.1.2.34:40000>",
+						ShortHelp:  "Set the internal network address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
+							}
+
+							opsInternalAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
 				},
 			},
 			{
@@ -1215,6 +1302,19 @@ func main() {
 					} else {
 						relayTraffic(rpcClient, env, "")
 					}
+					return nil
+				},
+			},
+			{
+				Name:       "info",
+				ShortUsage: "next relay info [regex]",
+				ShortHelp:  "Display detailed information for the specified relay(s)",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Must provide a relay name"), 0)
+					}
+
+					getDetailedRelayInfo(rpcClient, env, args[0])
 					return nil
 				},
 			},
