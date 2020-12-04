@@ -266,12 +266,16 @@ var EmptyBigTableMetrics = BigTableMetrics{
 }
 
 type VanityMetricMetrics struct {
+	Goroutines           		Gauge
+	MemoryAllocated      		Gauge
 	ReceivedVanityCount			Counter
 	WriteVanitySuccessCount		Counter
 	WriteVanityFailureCount		Counter
 }
 
 var EmptyVanityMetricMetrics struct {
+	Goroutines:		           	&EmptyGauge{},
+	MemoryAllocated:			&EmptyGauge{},
 	ReceivedVanityCount:		&EmptyCounter{},
 	WriteVanitySuccessCount:  	&EmptyCounter{},
 	WriteVanityFailureCount:  	&EmptyCounter{},
@@ -282,6 +286,28 @@ func NewVanityMetricMetrics(ctx context.Context, metricsHandler Handler) (*Vanit
 	var err error
 
 	vanityMetrics := VanityMetricMetrics{}
+
+	vanityMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Goroutine Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity_metrics.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the vanity_metrics is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Memory Allocated",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity_metrics.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the vanity_metrics has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	vanityMetrics.ReceivedVanityCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Vanity Metrics Received Count",
