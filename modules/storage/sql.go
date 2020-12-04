@@ -1561,9 +1561,7 @@ func (db *SQL) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
 	return routeShaders, nil
 }
 
-// InternalConfig TODO: will need to either return a slice of routeshaders or accept another
-// arg - buyerID returns (can return) multiple records.
-// TODO: check local storer copy (no sql)
+// InternalConfig returns the InternalConfig entry for the specified buyer
 func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
 	db.internalConfigMutex.RLock()
 	defer db.internalConfigMutex.RUnlock()
@@ -1575,6 +1573,84 @@ func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
 
 	return internalConfig, nil
 
+}
+
+// AddInternalConfig adds an InternalConfig for the specified buyer
+func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, buyerID uint64) error {
+
+	var sql bytes.Buffer
+
+	db.internalConfigMutex.RLock()
+	_, ok := db.internalConfigs[buyerID]
+	db.internalConfigMutex.RUnlock()
+
+	if ok {
+		return &AlreadyExistsError{resourceType: "InternalConfig", resourceRef: buyerID}
+	}
+
+	internalConfig := sqlInternalConfig{
+		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:             int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+		ForceNext:                  ic.ForceNext,
+		LargeCustomer:              ic.LargeCustomer,
+		Uncommitted:                ic.Uncommitted,
+		MaxRTT:                     int64(ic.MaxRTT),
+	}
+
+	sql.Write([]byte("insert into internal_configs "))
+	sql.Write([]byte("(max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
+	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
+	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
+	sql.Write([]byte("large_customer, is_uncommitted, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		internalConfig.MaxLatencyTradeOff,
+		internalConfig.MaxRTT,
+		internalConfig.MultipathOverloadThreshold,
+		internalConfig.RouteSwitchThreshold,
+		internalConfig.RouteSelectThreshold,
+		internalConfig.RTTVetoDefault,
+		internalConfig.RTTVetoMultipath,
+		internalConfig.RTTVetoPacketLoss,
+		internalConfig.TryBeforeYouBuy,
+		internalConfig.ForceNext,
+		internalConfig.LargeCustomer,
+		internalConfig.Uncommitted,
+		buyerID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding internal config", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncInternalConfigs(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
 }
 
 type featureFlag struct {
@@ -1597,10 +1673,6 @@ func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVa
 
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
-}
-
-func (db *SQL) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
-	return fmt.Errorf("AddInternalConfig not yet impemented in SQL storer")
 }
 
 func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
