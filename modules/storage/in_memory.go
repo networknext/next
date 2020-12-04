@@ -539,3 +539,27 @@ func (m *InMemory) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
 func (m *InMemory) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
 	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
 }
+
+func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
+	return fmt.Errorf("AddInternalConfig not yet impemented in InMemory storer")
+}
+
+func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateInternalConfig not yet impemented in InMemory storer")
+}
+
+func (m *InMemory) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+	return fmt.Errorf("RemoveInternalConfig not yet impemented in InMemory storer")
+}
+
+func (m *InMemory) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
+	return fmt.Errorf("AddRouteShader not yet impemented in InMemory storer")
+}
+
+func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateRouteShader not yet impemented in InMemory storer")
+}
+
+func (m *InMemory) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
+	return fmt.Errorf("RemoveRouteSHader not yet impemented in InMemory storer")
+}

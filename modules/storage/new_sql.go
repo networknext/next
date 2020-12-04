@@ -515,7 +515,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
 			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs[0], // TODO: fix type field
+			RouteShader:    rs[0], // TODO: fix routing.Buyer field
 			InternalConfig: ic,
 			CustomerID:     buyer.CustomerID,
 			DatabaseID:     buyer.DatabaseID,

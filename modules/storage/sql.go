@@ -1592,9 +1592,33 @@ func (db *SQL) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
 }
 
 func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error {
-	return fmt.Errorf(("SetFeatureFlagByName not yet impemented in SQL storer"))
+	return fmt.Errorf("SetFeatureFlagByName not yet impemented in SQL storer")
 }
 
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
-	return fmt.Errorf(("RemoveFeatureFlagByName not yet impemented in SQL storer"))
+	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
+}
+
+func (db *SQL) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
+	return fmt.Errorf("AddInternalConfig not yet impemented in SQL storer")
+}
+
+func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateInternalConfig not yet impemented in SQL storer")
+}
+
+func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+	return fmt.Errorf("RemoveInternalConfig not yet impemented in SQL storer")
+}
+
+func (db *SQL) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
+	return fmt.Errorf("AddRouteShader not yet impemented in SQL storer")
+}
+
+func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateRouteShader not yet impemented in SQL storer")
+}
+
+func (db *SQL) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
+	return fmt.Errorf("RemoveRouteSHader not yet impemented in SQL storer")
 }

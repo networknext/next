@@ -2333,3 +2333,27 @@ func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error)
 func (fs *Firestore) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
 	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in Firestore storer"))
 }
+
+func (fs *Firestore) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
+	return fmt.Errorf("AddInternalConfig not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateInternalConfig not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+	return fmt.Errorf("RemoveInternalConfig not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
+	return fmt.Errorf("AddRouteShader not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateRouteShader not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
+	return fmt.Errorf("RemoveRouteSHader not yet impemented in Firestore storer")
+}
