@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	LocationVersion = 1
+	LocationVersion  = 1
+	MaxISPNameLength = 64
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
@@ -89,6 +90,10 @@ func (l *Location) UnmarshalBinary(data []byte) error {
 			return errors.New("[Location] invalid read at longitude")
 		}
 		l.Longitude = float32(long)
+
+		if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
+			return errors.New("[Location] invalid read at ISP")
+		}
 	} else {
 		if !encoding.ReadFloat32(data, &index, &l.Latitude) {
 			return errors.New("[Location] invalid read at latitude")
@@ -97,10 +102,10 @@ func (l *Location) UnmarshalBinary(data []byte) error {
 		if !encoding.ReadFloat32(data, &index, &l.Longitude) {
 			return errors.New("[Location] invalid read at longitude")
 		}
-	}
 
-	if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
-		return errors.New("[Location] invalid read at ISP")
+		if !encoding.ReadString(data, &index, &l.ISP, MaxISPNameLength) {
+			return errors.New("[Location] invalid read at ISP")
+		}
 	}
 
 	var asn uint32
@@ -119,14 +124,14 @@ func (l Location) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, LocationVersion)
 	encoding.WriteFloat32(data, &index, l.Latitude)
 	encoding.WriteFloat32(data, &index, l.Longitude)
-	encoding.WriteString(data, &index, l.ISP, uint32(len(l.ISP)))
+	encoding.WriteString(data, &index, l.ISP, MaxISPNameLength)
 	encoding.WriteUint32(data, &index, uint32(l.ASN))
 
 	return data, nil
 }
 
 func (l Location) Size() uint64 {
-	return uint64(4 + 4 + 4 + 4 + len(l.ISP) + 4)
+	return uint64(4 + 4 + 4 + 4 + MaxISPNameLength + 4)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
