@@ -68,24 +68,20 @@ func TestRouteMatrixNoNearRelays(t *testing.T) {
 
 	nearRelays, err := routeMatrix.GetNearRelays(0, 0, transport.MaxNearRelays)
 	assert.EqualError(t, err, "no near relays")
-	assert.Nil(t, nearRelays)
+	assert.Empty(t, nearRelays)
 }
 
 func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expectedLat := uint64(float64(0))
-	expectedLong := uint64(float64(0))
-
-	expectedNumNearRelays := 2
-	expected := make([]routing.NearRelayData, 0)
-	for i := 0; i < expectedNumNearRelays; i++ {
-		expected = append(expected, routing.NearRelayData{
-			ID:       routeMatrix.RelayIDs[i],
-			Addr:     routeMatrix.RelayAddresses[i],
-			Name:     routeMatrix.RelayNames[i],
-			Distance: int(core.HaversineDistance(float64(expectedLat), float64(expectedLong), float64(routeMatrix.RelayLatitudes[i]), float64(routeMatrix.RelayLongitudes[i]))),
-		})
+	expected := routing.NearRelayResult{
+		Count:        2,
+		IDs:          routeMatrix.RelayIDs,
+		Addrs:        routeMatrix.RelayAddresses,
+		Names:        routeMatrix.RelayNames,
+		RTTs:         []int32{0, 0},
+		Jitters:      []float32{0, 0},
+		PacketLosses: []float32{0, 0},
 	}
 
 	actual, err := routeMatrix.GetNearRelays(0, 0, transport.MaxNearRelays)
@@ -97,18 +93,14 @@ func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 func TestRouteMatrixGetNearRelaysSuccessWithMax(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expectedLat := uint64(float64(0))
-	expectedLong := uint64(float64(0))
-
-	expectedNumNearRelays := 1
-	expected := make([]routing.NearRelayData, 0)
-	for i := 0; i < expectedNumNearRelays; i++ {
-		expected = append(expected, routing.NearRelayData{
-			ID:       routeMatrix.RelayIDs[i],
-			Addr:     routeMatrix.RelayAddresses[i],
-			Name:     routeMatrix.RelayNames[i],
-			Distance: int(core.HaversineDistance(float64(expectedLat), float64(expectedLong), float64(routeMatrix.RelayLatitudes[i]), float64(routeMatrix.RelayLongitudes[i]))),
-		})
+	expected := routing.NearRelayResult{
+		Count:        1,
+		IDs:          []uint64{routeMatrix.RelayIDs[0]},
+		Addrs:        []net.UDPAddr{routeMatrix.RelayAddresses[0]},
+		Names:        []string{routeMatrix.RelayNames[0]},
+		RTTs:         []int32{0},
+		Jitters:      []float32{0},
+		PacketLosses: []float32{0},
 	}
 
 	actual, err := routeMatrix.GetNearRelays(0, 0, 1)
