@@ -4137,7 +4137,14 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -4167,7 +4174,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -4196,7 +4203,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -4221,7 +4228,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -4323,7 +4330,11 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
