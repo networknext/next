@@ -19,25 +19,73 @@
             </th>
             <th>
               <span>Session ID</span>
+              <font-awesome-icon
+                icon="question-circle"
+                class="fa-w-16 fa-fw"
+                style="margin-left: 10px;"
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Unique ID of the session"
+              />
             </th>
             <th v-if="$store.getters.isAdmin">
               <span>User Hash</span>
             </th>
             <th>
               <span>ISP</span>
+              <font-awesome-icon
+                icon="question-circle"
+                class="fa-w-16 fa-fw"
+                style="margin-left: 10px;"
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Internet service provider"
+              />
             </th>
             <th v-if="$store.getters.isAdmin">Customer</th>
             <th>
               <span>Datacenter</span>
+              <font-awesome-icon
+                icon="question-circle"
+                class="fa-w-16 fa-fw"
+                style="margin-left: 10px;"
+                data-toggle="tooltip"
+                data-placement="right"
+                title="The datacenter of the game server this session is connected to"
+              />
             </th>
             <th class="text-right">
               <span>Direct RTT</span>
+              <font-awesome-icon
+                icon="question-circle"
+                class="fa-w-16 fa-fw"
+                style="margin-left: 10px;"
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Round trip time of the session over the public internet"
+              />
             </th>
             <th class="text-right">
               <span>Next RTT</span>
+              <font-awesome-icon
+                icon="question-circle"
+                class="fa-w-16 fa-fw"
+                style="margin-left: 10px;"
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Round trip time of the session over Network Next"
+              />
             </th>
             <th class="text-right">
               <span>Improvement</span>
+              <font-awesome-icon
+                icon="question-circle"
+                class="fa-w-16 fa-fw"
+                style="margin-left: 10px;"
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Difference in round trip time between the public internet and Network Next (Direct - Next)"
+              />
             </th>
           </tr>
         </thead>
