@@ -345,7 +345,7 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 	// map point
 	{
 		pt := &data.Point
-		pt.Latitude = float32(self.Latitude)
-		pt.Longitude = float32(self.Longitude)
+		pt.Latitude = self.Latitude
+		pt.Longitude = self.Longitude
 	}
 }

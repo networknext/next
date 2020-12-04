@@ -165,8 +165,8 @@ func testPortalData() *transport.SessionPortalData {
 			BuyerID:  rand.Uint64(),
 		},
 		Point: transport.SessionMapPoint{
-			Latitude:  rand.Float32(),
-			Longitude: rand.Float32(),
+			Latitude:  rand.Float64(),
+			Longitude: rand.Float64(),
 		},
 		Slice: transport.SessionSlice{
 			Timestamp: time.Now(),

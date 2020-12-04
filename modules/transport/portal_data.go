@@ -19,7 +19,7 @@ const (
 	SessionPortalDataVersion = 1
 	SessionMetaVersion       = 0
 	SessionSliceVersion      = 1
-	SessionMapPointVersion   = 1
+	SessionMapPointVersion   = 0
 )
 
 type SessionCountData struct {
@@ -878,8 +878,8 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 }
 
 type SessionMapPoint struct {
-	Latitude  float32 `json:"latitude"`
-	Longitude float32 `json:"longitude"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
@@ -894,26 +894,12 @@ func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("unknown session map point version: %d", version)
 	}
 
-	if version == 0 {
-		var lat float64
-		if !encoding.ReadFloat64(data, &index, &lat) {
-			return errors.New("[SessionMapPoint] invalid read at latitude")
-		}
-		s.Latitude = float32(lat)
+	if !encoding.ReadFloat64(data, &index, &s.Latitude) {
+		return errors.New("[SessionMapPoint] invalid read at latitude")
+	}
 
-		var long float64
-		if !encoding.ReadFloat64(data, &index, &long) {
-			return errors.New("[SessionMapPoint] invalid read at longitude")
-		}
-		s.Longitude = float32(long)
-	} else {
-		if !encoding.ReadFloat32(data, &index, &s.Latitude) {
-			return errors.New("[SessionMapPoint] invalid read at latitude")
-		}
-
-		if !encoding.ReadFloat32(data, &index, &s.Longitude) {
-			return errors.New("[SessionMapPoint] invalid read at longitude")
-		}
+	if !encoding.ReadFloat64(data, &index, &s.Longitude) {
+		return errors.New("[SessionMapPoint] invalid read at longitude")
 	}
 
 	return nil
@@ -924,14 +910,14 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 	index := 0
 
 	encoding.WriteUint32(data, &index, SessionMapPointVersion)
-	encoding.WriteFloat32(data, &index, s.Latitude)
-	encoding.WriteFloat32(data, &index, s.Longitude)
+	encoding.WriteFloat64(data, &index, s.Latitude)
+	encoding.WriteFloat64(data, &index, s.Longitude)
 
 	return data, nil
 }
 
 func (s SessionMapPoint) Size() uint64 {
-	return 4 + 4 + 4
+	return 4 + 8 + 8
 }
 
 func (s SessionMapPoint) RedisString() string {
@@ -942,18 +928,14 @@ func (s *SessionMapPoint) ParseRedisString(values []string) error {
 	var index int
 	var err error
 
-	var lat float64
-	if lat, err = strconv.ParseFloat(values[index], 32); err != nil {
+	if s.Latitude, err = strconv.ParseFloat(values[index], 64); err != nil {
 		return fmt.Errorf("[SessionMapPoint] failed to read latitude from redis data: %v", err)
 	}
-	s.Latitude = float32(lat)
 	index++
 
-	var long float64
-	if long, err = strconv.ParseFloat(values[index], 32); err != nil {
+	if s.Longitude, err = strconv.ParseFloat(values[index], 64); err != nil {
 		return fmt.Errorf("[SessionMapPoint] failed to read longitude from redis data: %v", err)
 	}
-	s.Longitude = float32(long)
 	index++
 
 	return nil
