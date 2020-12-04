@@ -7,7 +7,6 @@ import (
 	"errors"
 	"math/rand"
 	"net"
-	"reflect"
 	"testing"
 	"time"
 
@@ -34,29 +33,6 @@ type goodIPLocator struct{}
 
 func (locator *goodIPLocator) LocateIP(ip net.IP) (routing.Location, error) {
 	return routing.LocationNullIsland, nil
-}
-
-func assertAllMetricsEqual(t *testing.T, expectedMetrics metrics.SessionUpdateMetrics, actualMetrics metrics.SessionUpdateMetrics) {
-	expectedMetricsValue := reflect.ValueOf(expectedMetrics)
-	actualMetricsValue := reflect.ValueOf(actualMetrics)
-	for i := 0; i < actualMetricsValue.NumField(); i++ {
-		if expectedMetricsValue.Field(i).CanInterface() && actualMetricsValue.Field(i).CanInterface() {
-			expectedField := expectedMetricsValue.Field(i).Interface()
-			actualField := actualMetricsValue.Field(i).Interface()
-
-			expectedValuer, ok := expectedField.(metrics.Valuer)
-			if !ok {
-				continue
-			}
-
-			actualValuer, ok := actualField.(metrics.Valuer)
-			if !ok {
-				continue
-			}
-
-			assert.Equal(t, expectedValuer.Value(), actualValuer.Value(), expectedMetricsValue.Type().Field(i).Name)
-		}
-	}
 }
 
 func assertResponseEqual(t *testing.T, expectedResponse transport.SessionResponsePacket, actualResponse transport.SessionResponsePacket) {
@@ -407,6 +383,152 @@ func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
 	assert.Equal(t, metrics.SessionUpdateMetrics.DatacenterNotFound.Value(), 1.0)
 }
 
+func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
+
+	datacenterAlias := "alias"
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{Alias: datacenterAlias})
+
+	requestPacket := transport.SessionUpdatePacket{
+		SessionID:            1111,
+		DatacenterID:         crypto.HashID(datacenterAlias),
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var goodIPLocator goodIPLocator
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &goodIPLocator
+	}
+
+	var routeMatrix routing.RouteMatrix
+	routeMatrixFunc := func() *routing.RouteMatrix {
+		return &routeMatrix
+	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
+	expectedResponse := transport.SessionResponsePacket{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       []uint64{},
+		NearRelayAddresses: []net.UDPAddr{},
+	}
+
+	expectedSessionData := transport.SessionData{}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+
+	assert.Equal(t, metrics.SessionUpdateMetrics.MisconfiguredDatacenterAlias.Value(), 1.0)
+}
+
+func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
+
+	datacenterName := "datacenter.name"
+	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: crypto.HashID(datacenterName)})
+
+	requestPacket := transport.SessionUpdatePacket{
+		SessionID:            1111,
+		DatacenterID:         crypto.HashID(datacenterName),
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var goodIPLocator goodIPLocator
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &goodIPLocator
+	}
+
+	var routeMatrix routing.RouteMatrix
+	routeMatrixFunc := func() *routing.RouteMatrix {
+		return &routeMatrix
+	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
+	expectedResponse := transport.SessionResponsePacket{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       []uint64{},
+		NearRelayAddresses: []net.UDPAddr{},
+	}
+
+	expectedSessionData := transport.SessionData{}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+
+	assert.Equal(t, metrics.SessionUpdateMetrics.DatacenterNotAllowed.Value(), 1.0)
+}
+
 func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
@@ -416,6 +538,7 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -496,6 +619,7 @@ func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -567,6 +691,7 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	sessionDataStruct := transport.SessionData{
 		Version:     transport.SessionDataVersion,
@@ -662,6 +787,7 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	sessionDataStruct := transport.SessionData{
 		Version:     transport.SessionDataVersion,
@@ -757,6 +883,7 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -837,6 +964,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -919,6 +1047,7 @@ func TestSessionUpdateHandlerNoNearRelays(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -1013,6 +1142,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
 
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
@@ -1111,6 +1241,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
 
 	sessionDataStruct := transport.SessionData{
 		Version:         transport.SessionDataVersion,
@@ -1244,6 +1375,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
 
 	sessionDataStruct := transport.SessionData{
 		Version:         transport.SessionDataVersion,
@@ -1380,7 +1512,14 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -1408,7 +1547,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -1436,7 +1575,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -1466,7 +1605,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -1593,6 +1732,12 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
 	assert.NoError(t, err)
 
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 12})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 12})
+	assert.NoError(t, err)
+
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
 	assert.NoError(t, err)
 
@@ -1643,7 +1788,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		InternalAddr: *relayAddr3Internal,
 		PublicKey:    publicKey,
 		Seller:       routing.Seller{ID: "seller"},
-		Datacenter:   routing.Datacenter{ID: 10},
+		Datacenter:   routing.Datacenter{ID: 12},
 	})
 	assert.NoError(t, err)
 
@@ -1673,7 +1818,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         12,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -1703,7 +1848,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2", "test.relay.3"},
 		RelayLatitudes:     []float32{90, 89, 88},
 		RelayLongitudes:    []float32{180, 179, 178},
-		RelayDatacenterIDs: []uint64{10, 11, 10},
+		RelayDatacenterIDs: []uint64{10, 11, 12},
 		RouteEntries: []core.RouteEntry{
 			// route entries identical so there's no randomness to account for
 			{
@@ -1848,7 +1993,17 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 12})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 12})
 	assert.NoError(t, err)
 
 	seller := routing.Seller{ID: "seller_id", Name: "seller_name"}
@@ -1891,7 +2046,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		InternalAddr: *relayAddr2Internal,
 		PublicKey:    publicKey,
 		Seller:       seller,
-		Datacenter:   routing.Datacenter{ID: 10},
+		Datacenter:   routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -1901,7 +2056,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		InternalAddr: *relayAddr3Internal,
 		PublicKey:    publicKey,
 		Seller:       seller,
-		Datacenter:   routing.Datacenter{ID: 10},
+		Datacenter:   routing.Datacenter{ID: 12},
 	})
 	assert.NoError(t, err)
 
@@ -1931,7 +2086,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         12,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -1961,7 +2116,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2", "test.relay.3"},
 		RelayLatitudes:     []float32{90, 89, 88},
 		RelayLongitudes:    []float32{180, 179, 178},
-		RelayDatacenterIDs: []uint64{10, 10, 10},
+		RelayDatacenterIDs: []uint64{10, 11, 12},
 		RouteEntries: []core.RouteEntry{
 			// route entries identical so there's no randomness to account for
 			{
@@ -2017,7 +2172,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES*5)
 	routeAddresses := make([]*net.UDPAddr, 0)
-	routeAddresses = append(routeAddresses, clientAddr, relayAddr1External, relayAddr2Internal, relayAddr3Internal, serverAddr)
+	routeAddresses = append(routeAddresses, clientAddr, relayAddr3External, relayAddr2Internal, relayAddr1Internal, serverAddr)
 	routePublicKeys := make([][]byte, 0)
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, *privateKey)
@@ -2041,8 +2196,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
 		RouteNumRelays:  3,
-		RouteCost:       50 + core.CostBias,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2, 3},
+		RouteCost:       45 + core.CostBias,
+		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{3, 2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -2126,7 +2281,14 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -2154,7 +2316,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -2187,7 +2349,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -2217,7 +2379,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -2337,7 +2499,14 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -2365,7 +2534,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -2397,7 +2566,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -2428,7 +2597,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -2554,6 +2723,12 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
 	assert.NoError(t, err)
 
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
+	assert.NoError(t, err)
+
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
 	assert.NoError(t, err)
 
@@ -2579,7 +2754,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -2611,7 +2786,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -2642,7 +2817,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -2755,6 +2930,12 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
 	assert.NoError(t, err)
 
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
+	assert.NoError(t, err)
+
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
 	assert.NoError(t, err)
 
@@ -2780,7 +2961,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -2812,7 +2993,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -2842,7 +3023,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries:       []core.RouteEntry{{}},
 	}
 	routeMatrixFunc := func() *routing.RouteMatrix {
@@ -2929,6 +3110,12 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
 	assert.NoError(t, err)
 
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
+	assert.NoError(t, err)
+
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
 	assert.NoError(t, err)
 
@@ -2954,7 +3141,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -2988,7 +3175,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -3020,7 +3207,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -3117,7 +3304,14 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -3145,7 +3339,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -3178,7 +3372,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -3210,7 +3404,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -3318,7 +3512,14 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		InternalConfig: internalConfig,
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -3346,7 +3547,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -3379,7 +3580,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -3411,7 +3612,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -3530,7 +3731,14 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 		InternalConfig: internalConfig,
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -3558,7 +3766,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -3591,7 +3799,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket{
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -3623,7 +3831,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
@@ -3730,7 +3938,14 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
+
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
 	assert.NoError(t, err)
 
 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
@@ -3760,7 +3975,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		Addr:       *relayAddr2,
 		PublicKey:  publicKey,
 		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
+		Datacenter: routing.Datacenter{ID: 11},
 	})
 	assert.NoError(t, err)
 
@@ -3789,7 +4004,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
-		DatacenterID:         10,
+		DatacenterID:         11,
 		SliceNumber:          1,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
@@ -3819,7 +4034,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
 		RelayLatitudes:     []float32{90, 89},
 		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
+		RelayDatacenterIDs: []uint64{10, 11},
 		RouteEntries: []core.RouteEntry{
 			{
 				DirectCost:     65,
