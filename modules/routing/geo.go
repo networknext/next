@@ -131,7 +131,12 @@ func (l Location) MarshalBinary() ([]byte, error) {
 }
 
 func (l Location) Size() uint64 {
-	return uint64(4 + 4 + 4 + 4 + MaxISPNameLength + 4)
+	ispLength := len(l.ISP)
+	if ispLength > MaxISPNameLength {
+		ispLength = MaxISPNameLength
+	}
+
+	return uint64(4 + 4 + 4 + 4 + ispLength + 4)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
