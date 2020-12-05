@@ -862,9 +862,9 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
-	if len(sourceRelayLatency) != len(routeState.NearRelayID) {
+	if len(sourceRelayLatency) != len(routeState.NearRelayRTT) {
 		panic("source and route state near relays must match")
 		return
 	}
@@ -892,7 +892,7 @@ func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, dire
 		}
 
 		// any source relay that no longer exists cannot be routed through
-		_, ok := relayIDToIndex[routeState.NearRelayID[i]]
+		_, ok := relayIDToIndex[sourceRelayID[i]]
 		if !ok {
 			routeState.NearRelayRTT[i] = 255
 			continue
@@ -1098,7 +1098,6 @@ type RouteState struct {
 	MultipathOverload  bool
 	NoRoute            bool
 	NextLatencyTooHigh bool
-	NearRelayID        []uint64
 	NearRelayRTT       []int32
 	NearRelayJitter    []int32
 	RelayWentAway      bool
