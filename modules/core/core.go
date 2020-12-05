@@ -1049,6 +1049,7 @@ type RouteState struct {
 	NextLatencyTooHigh bool
 	NearRelayID        []uint64
 	NearRelayRTT       []float32
+	NearRelayJitter    []float32
 }
 
 type InternalConfig struct {
@@ -1083,8 +1084,8 @@ func NewInternalConfig() InternalConfig {
 	}
 }
 
-func NearRelayFilterRTT(routeState *RouteState, relayID uint64, rtt float32) float32 {
-	// Take the maximum RTT value seen for the near relay to improve the quality of RTT prediction.
+func NearRelayFilter(routeState *RouteState, relayID uint64, rtt float32, jitter float32) (float32, float32) {
+	// Take the maximum RTT and jitter values value seen for the near relay to improve routing quality
 	// IMPORTANT: this is incredibly slow O(n^2), just testing this out to see if it helps before optimizing!
 	found := false
 	for i := range routeState.NearRelayID {
@@ -1092,21 +1093,25 @@ func NearRelayFilterRTT(routeState *RouteState, relayID uint64, rtt float32) flo
 			found = true
 			if rtt > routeState.NearRelayRTT[i] {
 				routeState.NearRelayRTT[i] = rtt
+				if routeState.NearRelayRTT[i] > 255 {
+					routeState.NearRelayRTT[i] = 255
+				}
 			}
-
-			// Since we can only store near relay RTT as a byte in the session data,
-			// we need to clamp the near relay RTT to 255
-			if routeState.NearRelayRTT[i] > 255 {
-				routeState.NearRelayRTT[i] = 255
+			if jitter > routeState.NearRelayJitter[i] {
+				routeState.NearRelayJitter[i] = jitter
+				if routeState.NearRelayJitter[i] > 255 {
+					routeState.NearRelayJitter[i] = 255
+				}
 			}
-			return routeState.NearRelayRTT[i]
+			return routeState.NearRelayRTT[i], routeState.NearRelayJitter[i]
 		}
 	}
 	if !found {
 		routeState.NearRelayID = append(routeState.NearRelayID, relayID)
 		routeState.NearRelayRTT = append(routeState.NearRelayRTT, rtt)
+		routeState.NearRelayJitter = append(routeState.NearRelayJitter, jitter)
 	}
-	return rtt
+	return rtt, jitter
 }
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
