@@ -1375,6 +1375,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			NearRelayID:  []uint64{1},
 			NearRelayRTT: []float32{0},
+			NearRelayJitter: []float32{0},
 		},
 	}
 
@@ -1447,6 +1448,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			NearRelayID:  []uint64{1},
 			NearRelayRTT: []float32{0},
+			NearRelayJitter: []float32{0},
 		},
 	}
 
