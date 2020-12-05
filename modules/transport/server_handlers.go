@@ -540,7 +540,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 			// Initialize the near relay list
 			for i := int32(0); i < nearRelays.Count; i++ {
-				core.NearRelayFilterRTT(&sessionData.RouteState, nearRelays.IDs[i], 0)
+				core.NearRelayFilter(&sessionData.RouteState, nearRelays.IDs[i], 0, 0)
 			}
 
 		} else {
@@ -562,10 +562,22 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 						nearRelays.Names = append(nearRelays.Names, routeMatrix.RelayNames[relayIndex])
 						nearRelays.Addrs = append(nearRelays.Addrs, routeMatrix.RelayAddresses[relayIndex])
 
-						maxRTT := core.NearRelayFilterRTT(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j])
+						maxRTT, maxJitter := core.NearRelayFilter(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j], packet.NearRelayJitter[j])
 
 						nearRelays.RTTs = append(nearRelays.RTTs, int32(math.Ceil(float64(maxRTT))))
-						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(packet.NearRelayJitter[j]))))
+						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(maxJitter))))		// todo: should be int as well ryan
+
+						// todo: Ryan
+						// Here you must also track max direct jitter seen so far in the route state
+						// then, once you have max direct jitter, if it is less than 16, set it to 16 (temporarily, not in the max)
+						// this says that any amount of jitter less than 16ms is equivalent, which is appropriate, since jitter
+						// less than a frame time at 60fps, is basically zero.
+						// then, compare each near relay max jitter vs. the max jitter for direct
+						// if the near relay has higher jitter than direct (as integer), then for this iteration only
+						// set the packet loss for that near relay to 100%. this will exclude routes with obviously
+						// higher jitter than direct, by excluding the near relays that cause those routes to have high
+						// jitter for this slice. later on if direct jitter max goes high, these near relays will become available again.
+						// max sure to compare jitters as ints that have been ceil'd. there is no benefit calling 17.1ms jitter higher than 17.01
 
 						// Since we can only store near relay RTT as a byte in the session data,
 						// we need to treat any near relay with an RTT == 255 as unroutable (100% PL)
