@@ -313,6 +313,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		newSession := packet.SliceNumber == 0
 
+		if int(packet.NumNearRelays) != len(packet.NearRelayJitter) {
+			panic("jitter array is busted")
+		}
+
 		var sessionData SessionData
 		var prevSessionData SessionData
 
@@ -530,6 +534,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		var nearRelays routing.NearRelayResult
 
+		// todo: feels like this should just be a new function called "core.ReframeNearRelays" or something
 		if newSession {
 			nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, maxNearRelays)
 			if err != nil {
@@ -544,6 +549,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 		} else {
+			// todo: ryan, this for loop is really hard to read!
 			for i := 0; i < len(sessionData.RouteState.NearRelayID); i++ {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if sessionData.RouteState.NearRelayID[i] == clientNearRelayID {
@@ -562,7 +568,14 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 						nearRelays.Names = append(nearRelays.Names, routeMatrix.RelayNames[relayIndex])
 						nearRelays.Addrs = append(nearRelays.Addrs, routeMatrix.RelayAddresses[relayIndex])
 
-						maxRTT, maxJitter := core.NearRelayFilter(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j], packet.NearRelayJitter[j])
+						rtt := packet.NearRelayRTT[j]
+						jitter := packet.NearRelayJitter[j]
+
+						if len(sessionData.RouteState.NearRelayID) != len(sessionData.RouteState.NearRelayJitter) {
+							panic(fmt.Sprintf("jitter array is wrong ryan. expected length %d, got %d", len(sessionData.RouteState.NearRelayID), len(sessionData.RouteState.NearRelayJitter)))
+						}
+
+						maxRTT, maxJitter := core.NearRelayFilter(&sessionData.RouteState, clientNearRelayID, rtt, jitter)
 
 						nearRelays.RTTs = append(nearRelays.RTTs, int32(math.Ceil(float64(maxRTT))))
 						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(maxJitter))))		// todo: should be int as well ryan
