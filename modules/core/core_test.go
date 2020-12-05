@@ -5087,7 +5087,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayJitter))
 
-	// for the existing relays, make sure we still remember their rtts
+	// for the existing relays, make sure we still remember their rtt and jitter
 
 	for i := range relayIds {
 		rtt, jitter := NearRelayFilter(&routeState, relayIds[i], 50.0, 5.0)
