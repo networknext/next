@@ -5013,6 +5013,8 @@ func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
 
 // ------------------------------------------------
 
+// todo: not used anymore
+/*
 func TestNearRelayFilterRTT(t *testing.T) {
 
 	t.Parallel()
@@ -5100,6 +5102,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayJitter))
 
 }
+*/
 
 // -----------------------------------------------------------------------------
 
