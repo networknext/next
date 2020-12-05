@@ -1885,9 +1885,7 @@ func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
 	assert.Equal(t, int32(0), numRouteRelays)
 }
 
-
-
-// todo: test for reframe relays
+// todo: tests for reframe relays
 /*
 func TestReframeRelays(t *testing.T) {
 
@@ -3907,6 +3905,7 @@ func TestStayOnNetworkNext_ReduceLatency_NoRoute(t *testing.T) {
 	expectedRouteState.Committed = true
 	expectedRouteState.NoRoute = true
 	expectedRouteState.Veto = true
+	expectedRouteState.RouteLost = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }
@@ -3923,6 +3922,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 
 	env.SetCost("losangeles", "a", 1)
 	env.SetCost("a", "chicago", 1)
+	env.SetCost("losangeles", "chicago", 300)
 
 	costMatrix, numRelays := env.GetCostMatrix()
 
@@ -4818,6 +4818,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	expectedRouteState.Veto = true
 	expectedRouteState.NoRoute = true
 	expectedRouteState.Committed = true
+	expectedRouteState.RouteLost = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }
@@ -4830,8 +4831,11 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	env.AddRelay("losangeles", "10.0.0.1")
 	env.AddRelay("chicago", "10.0.0.2")
+	env.AddRelay("a", "10.0.0.3")
 
-	env.SetCost("losangeles", "chicago", 40)
+	env.SetCost("losangeles", "chicago", 400)
+	env.SetCost("losangeles", "a", 1)
+	env.SetCost("a", "chicago", 1)
 
 	costMatrix, numRelays := env.GetCostMatrix()
 
@@ -4839,18 +4843,18 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters)
 
 	directLatency := int32(30)
 
 	directPacketLoss := float32(0)
 
-	nextLatency := int32(60)
+	nextLatency := int32(1)
 
-	nextPacketLoss := float32(5)
+	nextPacketLoss := float32(0)
 
 	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
+	sourceRelayCosts := []int32{1}
 
 	destRelays := []int32{1}
 
@@ -4867,7 +4871,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	internal.ForceNext = true
 
 	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{1, 0}
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
 
 	routeState.Next = true
 	routeState.UserID = 100
@@ -4888,8 +4892,8 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(50+CostBias), routeCost)
-	assert.Equal(t, int32(2), routeNumRelays)
+	assert.Equal(t, int32(3+CostBias), routeCost)
+	assert.Equal(t, int32(3), routeNumRelays)
 }
 
 // -----------------------------------------------------------------------------

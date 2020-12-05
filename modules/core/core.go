@@ -853,12 +853,12 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	for i := range routeRelayIds {
 		relayIndex, ok := relayIDToIndex[routeRelayIds[i]]
 		if !ok {
-			routeState.RouteRelayWentAway = true
+			routeState.RelayWentAway = true
 			return false
 		}
 		out_routeRelays[i] = relayIndex
 	}
-	routeState.RouteRelayWentAway = false
+	routeState.RelayWentAway = false
 	return true
 }
 
@@ -1001,7 +1001,7 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, source
 	return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays, debug)
 }
 
-func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32, debug *string) bool {
+func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32, debug *string) (routeChanged bool, routeLost bool) {
 
 	// if the current route no longer exists, pick a new route
 
@@ -1016,7 +1016,9 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 			}
 		}		
 		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
-		return true
+		routeChanged = true
+		routeLost = true
+		return
 	}
 
 	// if the current route is no longer within threshold of the best route, pick a new the route
@@ -1028,7 +1030,8 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 			*debug += fmt.Sprintf("current route no longer within switch threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, switchThreshold)
 		}		
 		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
-		return true
+		routeChanged = true
+		return
 	}
 
 	// hold current route
@@ -1036,8 +1039,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 	*out_updatedRouteCost = currentRouteCost
 	*out_updatedRouteNumRelays = currentRouteNumRelays
 	copy(out_updatedRouteRelays[:], currentRouteRelays[:])
-
-	return false
+	return
 }
 
 type RouteShader struct {
@@ -1099,7 +1101,8 @@ type RouteState struct {
 	NearRelayID        []uint64
 	NearRelayRTT       []int32
 	NearRelayJitter    []int32
-	RouteRelayWentAway bool
+	RelayWentAway      bool
+	RouteLost          bool
 	DirectJitter       int32
 }
 
@@ -1352,8 +1355,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		}
 
 		// IMPORTANT: Here is where we abort the network next route if we see that we have
-		// made latency worse on the previous slice. Importantly, this is disabled while we
-		// are not committed, so we can properly evaluate the route in try before you buy.
+		// made latency worse on the previous slice. This is disabled while we are not committed, 
+		// so we can properly evaluate the route in try before you buy instead of vetoing it right away
 		if routeState.Committed && nextLatency > (directLatency-rttVeto) {
 			if debug != nil {
 				*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
@@ -1373,7 +1376,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
 	selectThreshold := int32(2)
 
-	routeSwitched := GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
+	routeSwitched, routeLost := GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
+
+	routeState.RouteLost = routeLost
 
 	// if we don't have a network next route, leave network next
 
