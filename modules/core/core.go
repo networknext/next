@@ -849,7 +849,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
-func ReframeRoute2(routeState *RouteState, relayIDToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
+func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
 	for i := range routeRelayIds {
 		relayIndex, ok := relayIDToIndex[routeRelayIds[i]]
 		if !ok {
@@ -862,16 +862,20 @@ func ReframeRoute2(routeState *RouteState, relayIDToIndex map[uint64]int32, rout
 	return true
 }
 
-// -------------------------------------------
-
-func ReframeRelays2(routeState *RouteState, relayIDToIndex map[uint64]int32, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if len(sourceRelayLatency) != len(routeState.NearRelayID) {
 		panic("source and route state near relays must match")
 		return
 	}
 
-	// todo: update direct jitter max here in route state, so we can use it below
+	if directJitter > 255 {
+		directJitter = 255
+	}
+
+	if directJitter > routeState.DirectJitter {
+		routeState.DirectJitter = directJitter
+	}
 
 	for i := range sourceRelayLatency {
 
@@ -916,8 +920,11 @@ func ReframeRelays2(routeState *RouteState, relayIDToIndex map[uint64]int32, sou
 		out_sourceRelayLatency[i] = routeState.NearRelayRTT[i]
 		out_sourceRelayJitter[i] = routeState.NearRelayJitter[i]
 
-		// todo: temporarily exclude any source relay with max jitter > direct max jitter
-
+		// IMPORTANT: If the source relay jitter is higher than the direct jitter
+		// make it unroutable for the next slice *only* by forcing latency to 255
+		if routeState.NearRelayJitter[i] > routeState.DirectJitter {
+			out_sourceRelayLatency[i] = 255			
+		}
 	}
 
 	// exclude any dest relays that no longer exist in the route matrix
@@ -935,59 +942,6 @@ func ReframeRelays2(routeState *RouteState, relayIDToIndex map[uint64]int32, sou
 
 	*out_numDestRelays = numDestRelays
 }
-
-// -------------------------------------------
-
-// todo: no longer used
-/*
-func ReframeRoute(relayIDToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
-	for i := range routeRelayIds {
-		relayIndex, ok := relayIDToIndex[routeRelayIds[i]]
-		if !ok {
-			return false
-		}
-		out_routeRelays[i] = relayIndex
-	}
-	return true
-}
-
-func ReframeRelays(relayIDToIndex map[uint64]int32, sourceRelayIds []uint64, sourceRelayLatency []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_numSourceRelays *int32, out_sourceRelays []int32, out_sourceRelayLatency []int32, out_numDestRelays *int32, out_destRelays []int32) {
-
-	numSourceRelays := int32(0)
-	numDestRelays := int32(0)
-
-	for i := range sourceRelayIds {
-		if sourceRelayLatency[i] <= 0 {
-			// you say your latency is 0ms? I don't believe you!
-			continue
-		}
-		if sourceRelayPacketLoss[i] > 50.0 {
-			// any source relay with > 50% PL in the last slice is bad news
-			continue
-		}
-		sourceRelayIndex, ok := relayIDToIndex[sourceRelayIds[i]]
-		if !ok {
-			// if the relay no longer exists, we can't use it as a source relay
-			continue
-		}
-		out_sourceRelays[numSourceRelays] = sourceRelayIndex
-		out_sourceRelayLatency[numSourceRelays] = sourceRelayLatency[i]
-		numSourceRelays++
-	}
-
-	for i := range destRelayIds {
-		destRelayIndex, ok := relayIDToIndex[destRelayIds[i]]
-		if !ok {
-			continue
-		}
-		out_destRelays[numDestRelays] = destRelayIndex
-		numDestRelays++
-	}
-
-	*out_numSourceRelays = numSourceRelays
-	*out_numDestRelays = numDestRelays
-}
-*/
 
 // ----------------------------------------------
 
@@ -1146,6 +1100,7 @@ type RouteState struct {
 	NearRelayRTT       []int32
 	NearRelayJitter    []int32
 	RouteRelayWentAway bool
+	DirectJitter       int32
 }
 
 type InternalConfig struct {
@@ -1179,39 +1134,6 @@ func NewInternalConfig() InternalConfig {
 		MaxRTT:                     300,
 	}
 }
-
-// todo: not used anymore
-/*
-func NearRelayFilter(routeState *RouteState, relayID uint64, rtt float32, jitter float32) (float32, float32) {
-	// Take the maximum RTT and jitter values value seen for the near relay to improve routing quality
-	// IMPORTANT: this is incredibly slow O(n^2), just testing this out to see if it helps before optimizing!
-	found := false
-	for i := range routeState.NearRelayID {
-		if routeState.NearRelayID[i] == relayID {
-			found = true
-			if rtt > routeState.NearRelayRTT[i] {
-				routeState.NearRelayRTT[i] = rtt
-				if routeState.NearRelayRTT[i] > 255 {
-					routeState.NearRelayRTT[i] = 255
-				}
-			}
-			if jitter > routeState.NearRelayJitter[i] {
-				routeState.NearRelayJitter[i] = jitter
-				if routeState.NearRelayJitter[i] > 255 {
-					routeState.NearRelayJitter[i] = 255
-				}
-			}
-			return routeState.NearRelayRTT[i], routeState.NearRelayJitter[i]
-		}
-	}
-	if !found {
-		routeState.NearRelayID = append(routeState.NearRelayID, relayID)
-		routeState.NearRelayRTT = append(routeState.NearRelayRTT, rtt)
-		routeState.NearRelayJitter = append(routeState.NearRelayJitter, jitter)
-	}
-	return rtt, jitter
-}
-*/
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
