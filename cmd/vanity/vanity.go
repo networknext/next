@@ -110,20 +110,39 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	var sd metrics.StackDriverHandler
-	if enableSDMetrics {
-		// Set up StackDriver metrics
-		sd = metrics.StackDriverHandler{
-			ProjectID:          gcpProjectID,
-			OverwriteFrequency: time.Second,
-			OverwriteTimeout:   10 * time.Second,
-		}
-
-		if err := sd.Open(ctx); err != nil {
-			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			return 1
-		}
+	// tsMetricsHandler, err := GetTSMetricsHandler(ctx, logger, gcpProjectID)
+	tsMetricsHandler, err := GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
+
+	sdwriteinterval := os.Getenv("FEATURE_VANITY_METRIC_WRITE_INTERVAL")
+	writeInterval, err := time.ParseDuration(sdwriteinterval)
+	if err != nil {
+		level.Error(logger).Log("envvar", "FEATURE_VANITY_METRIC_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+		return 1
+	}
+	
+	// Start the write loop for vanity metrics
+	go func() {
+		tsMetricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
+	}()
+
+	// var sd metrics.StackDriverHandler
+	// if enableSDMetrics {
+	// 	// Set up StackDriver metrics
+	// 	sd = metrics.StackDriverHandler{
+	// 		ProjectID:          gcpProjectID,
+	// 		OverwriteFrequency: time.Second,
+	// 		OverwriteTimeout:   10 * time.Second,
+	// 	}
+
+	// 	if err := sd.Open(ctx); err != nil {
+	// 		level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+	// 		return 1
+	// 	}
+	// }
 
 	// Get metrics for performance of vanity metric handler
 	metricsHandler, err := GetMetricsHandler(ctx, logger, gcpProjectID)
@@ -204,7 +223,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler = vanity.NewVanityMetricHandler(&sd, vanitySubscriber, vanityMetricMetrics, logger)
+	vanityMetricHandler = vanity.NewVanityMetricHandler(tsMetricsHandler, vanitySubscriber, vanityMetricMetrics, logger)
 
 	// Start the goroutines for receiving vanity metrics from the backend and writing to StackDriver
 	errChan := make(chan error, 1)

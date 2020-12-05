@@ -46,7 +46,8 @@ func (e *ErrUnmarshalMessage) Error() string {
 }
 
 type VanityMetricHandler struct {
-	handler 	  	*metrics.StackDriverHandler
+	// handler 	  	*metrics.TSMetricHandler
+	handler 		*metrics.MetricHandler
 	metrics 		*metrics.VanityMetricMetrics
 	subscriber		pubsub.Subscriber
 	logger 			log.Logger
@@ -58,13 +59,19 @@ type VanityMetrics struct {
 	NumSlicesPerCustomer	uint32
 	NumSessionsGlobal		uint32
 	NumSessionsPerCustomer	uint32
-	NumPlayHours			uint32
+	NumPlayHoursPerCustomer	uint32
 	RTTReduction			float32
 	PacketLossReduction		float32
 }
 
-func NewVanityMetricHandler(vanityHandler *metrics.StackDriverHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.Logger) VanityMetricHandler {
-	return &VanityMetricHandler{handler: vanityHandler, metrics: vanityMetricMetrics, subscriber: vanitySubscriber, logger: vanityLogger}
+// func NewVanityMetricHandler(vanityHandler *metrics.TSMetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.Logger) VanityMetricHandler {
+func NewVanityMetricHandler(vanityHandler *metrics.MetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.Logger) VanityMetricHandler {
+	return &VanityMetricHandler {
+				handler: 		vanityHandler,
+				metrics: 		vanityMetricMetrics,
+				subscriber: 	vanitySubscriber,
+				logger: 		vanityLogger,
+			}
 }
 
 func (v VanityMetrics) Size() uint64 {
@@ -167,7 +174,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityWriteGoroutin
 		}
 	}()
 
-	// Start the goroutines to write to StackDriver
+	// Start the goroutines for preparing the metrics for the write loop
 	for i := 0; i < numVanityWriteGoroutines; i++ {
 		wg.Add(1)
 		go func() {
@@ -238,10 +245,32 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 	}
 }
 
-// Writes messages to StackDriver
-func (vm *VanityMetricHandler) WriteToStackDriver(ctx context.Context, vanityMetricDataBuffer []VanityMetrics) error {
+// Updates the metrics per buyer
+func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDataBuffer []VanityMetrics) error {
+	for j := range vanityMetricDataBuffer {
+		buyerID := fmt.Sprintf("%016x", vanityMetricDataBuffer[j].BuyerID)
+		
+		// Creates counters / gauges / histograms per vanity metric for this buyer ID,
+		// or provides existing ones from a previous run
+		vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
+		if err != nil {
+			return err
+		}
 
+		// Update each metric
+		vanityMetricPerBuyer.NumSlicesGlobal.Add(vanityMetricDataBuffer[j].NumSlicesGlobal)
+		vanityMetricPerBuyer.NumSlicesPerCustomer.Add(vanityMetricDataBuffer[j].NumSlicesPerCustomer)
+		vanityMetricPerBuyer.NumSessionsGlobal.Add(vanityMetricDataBuffer[j].NumSessionsGlobal)
+		vanityMetricPerBuyer.NumSessionsPerCustomer.Add(vanityMetricDataBuffer[j].NumSessionsPerCustomer)
+		vanityMetricPerBuyer.NumPlayHoursPerCustomer.Add(vanityMetricDataBuffer[j].NumPlayHoursPerCustomer)
+		vanityMetricPerBuyer.RTTReduction.Add(vanityMetricDataBuffer[j].RTTReduction)
+		vanityMetricPerBuyer.PacketLossReduction.Add(vanityMetricDataBuffer[j].PacketLossReduction)
 
+		// Writing to stack driver is taken care of by the the WriteLoop() started in cmd/vanity/vanity.go
+	}
+
+	vanityMetricDataBuffer = vanityMetricDataBuffer[0:]
+	return nil
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct

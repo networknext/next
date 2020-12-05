@@ -310,16 +310,18 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 		index := (post.vanityPublisherIndex + i) % len(post.vanityPublishers)
 
 		for retryCount < post.vanityPublishMaxRetries+1 { // only retry so many times
-			byteCount, err = post.vanityPublishers[index].Publish(ctx, topic, data)
-			if err != nil {
-				switch err.(type) {
-				case *pubsub.ErrRetry:
-					retryCount++
-					continue
-				default:
-					return 0, err
+			for _, subData := range data:
+				subByteCount, err = post.vanityPublishers[index].Publish(ctx, topic, subData)
+				if err != nil {
+					switch err.(type) {
+					case *pubsub.ErrRetry:
+						retryCount++
+						continue
+					default:
+						return 0, err
+					}
 				}
-			}
+				byteCount += subByteCount
 
 			retryCount = -1
 			break

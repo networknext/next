@@ -220,6 +220,147 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 	}
 }
 
+// // TSWriteLoop is responsible for sending time series metrics per Buyer ID up to StackDriver. Call in a separate goroutine.
+// // Pass a duration in seconds to have the routine send metrics up to StackDriver periodically.
+// // If the duration is less than or equal to 0, a default of 1 minute is used.
+// // maxMetricsIncrement is the maximum number of metrics to send in one push to StackDriver. 200 is the maximum number of time series allowed in a single request.
+// func (handler *StackDriverHandler) TSWriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
+// 	if duration <= 0 {
+// 		duration = time.Minute
+// 	}
+
+// 	ticker := time.NewTicker(duration)
+
+// 	for {
+// 		select {
+// 		case <-ticker.C:
+// 			// Preprocess all metrics in the map to create time series objects
+// 			index := 0
+
+// 			handler.counterMapMutex.Lock()
+// 			handler.gaugeMapMutex.Lock()
+// 			handler.histogramMapMutex.Lock()
+
+// 			metricsCount := len(handler.counters) + len(handler.gauges) + len(handler.histograms)
+// 			timeSeries := make([]*monitoringpb.TimeSeries, metricsCount)
+
+// 			for _, mapData := range handler.counters {
+// 				labels := convertLabelValues(mapData.counter.LabelValues())
+
+// 				timeSeries[index] = &monitoringpb.TimeSeries{
+// 					Metric: &metricpb.Metric{
+// 						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
+// 						Labels: labels,
+// 					},
+// 					Resource: handler.getMonitoredResource(),
+// 					Points: []*monitoringpb.Point{
+// 						{
+// 							Interval: &monitoringpb.TimeInterval{
+// 								EndTime: &googlepb.Timestamp{
+// 									Seconds: time.Now().Unix(),
+// 								},
+// 							},
+// 							Value: &monitoringpb.TypedValue{
+// 								Value: &monitoringpb.TypedValue_Int64Value{
+// 									Int64Value: int64(math.Round(mapData.counter.ValueReset())),
+// 								},
+// 							},
+// 						},
+// 					},
+// 				}
+
+// 				index++
+// 			}
+
+// 			for _, mapData := range handler.gauges {
+// 				labels := convertLabelValues(mapData.gauge.LabelValues())
+
+// 				timeSeries[index] = &monitoringpb.TimeSeries{
+// 					Metric: &metricpb.Metric{
+// 						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
+// 						Labels: labels,
+// 					},
+// 					Resource: handler.getMonitoredResource(),
+// 					Points: []*monitoringpb.Point{
+// 						{
+// 							Interval: &monitoringpb.TimeInterval{
+// 								EndTime: &googlepb.Timestamp{
+// 									Seconds: time.Now().Unix(),
+// 								},
+// 							},
+// 							Value: &monitoringpb.TypedValue{
+// 								Value: &monitoringpb.TypedValue_DoubleValue{
+// 									DoubleValue: mapData.gauge.Value(),
+// 								},
+// 							},
+// 						},
+// 					},
+// 				}
+
+// 				mapData.gauge.Set(0)
+// 				index++
+// 			}
+
+// 			for _, mapData := range handler.histograms {
+// 				labels := convertLabelValues(mapData.histogram.LabelValues())
+// 				labels["p50"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.5))
+// 				labels["p90"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.9))
+// 				labels["p95"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.95))
+// 				labels["p99"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.99))
+
+// 				timeSeries[index] = &monitoringpb.TimeSeries{
+// 					Metric: &metricpb.Metric{
+// 						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
+// 						Labels: labels,
+// 					},
+// 					Resource: handler.getMonitoredResource(),
+// 					Points: []*monitoringpb.Point{
+// 						{
+// 							Interval: &monitoringpb.TimeInterval{
+// 								EndTime: &googlepb.Timestamp{
+// 									Seconds: time.Now().Unix(),
+// 								},
+// 							},
+// 							Value: &monitoringpb.TypedValue{
+// 								Value: &monitoringpb.TypedValue_DoubleValue{
+// 									DoubleValue: mapData.histogram.Quantile(0.5),
+// 								},
+// 							},
+// 						},
+// 					},
+// 				}
+
+// 				// Don't reset the histogram
+// 				index++
+// 			}
+
+// 			handler.counterMapMutex.Unlock()
+// 			handler.gaugeMapMutex.Unlock()
+// 			handler.histogramMapMutex.Unlock()
+
+// 			// Send the time series objects to StackDriver with a maximum send size to avoid overloading
+// 			for i := 0; i < metricsCount; i += maxMetricsIncrement {
+// 				// Calculate the number of metrics to process this iteration
+// 				e := i + maxMetricsIncrement
+// 				if e > metricsCount {
+// 					e = metricsCount
+// 				}
+
+// 				if err := handler.Client.CreateTimeSeries(ctx, &monitoringpb.CreateTimeSeriesRequest{
+// 					Name:       monitoring.MetricProjectPath(handler.ProjectID),
+// 					TimeSeries: timeSeries[i:e],
+// 				}); err != nil {
+// 					level.Error(logger).Log("msg", "Failed to write time series data", "err", err)
+// 				} else {
+// 					level.Debug(logger).Log("msg", "Metrics pushed to StackDriver")
+// 				}
+// 			}
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 	}
+// }
+
 // NewCounter creates a metric and returns a new counter to update it.
 // If the metric already exists, then the returned new counter updates the metric instead of any other existing counter.
 func (handler *StackDriverHandler) NewCounter(ctx context.Context, descriptor *Descriptor) (Counter, error) {
