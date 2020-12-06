@@ -231,9 +231,9 @@ type NextBackendSessionUpdatePacket struct {
 	NextPacketLoss                  float32
 	NumNearRelays                   int32
 	NearRelayIds                    []uint64
-	NearRelayRTT                    []float32
-	NearRelayJitter                 []float32
-	NearRelayPacketLoss             []float32
+	NearRelayRTT                    []int32
+	NearRelayJitter                 []int32
+	NearRelayPacketLoss             []int32
 	NextKbpsUp                      uint32
 	NextKbpsDown                    uint32
 	PacketsSentClientToServer       uint64
@@ -341,16 +341,16 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
 	if stream.IsReading() {
 		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayRTT = make([]float32, packet.NumNearRelays)
-		packet.NearRelayJitter = make([]float32, packet.NumNearRelays)
-		packet.NearRelayPacketLoss = make([]float32, packet.NumNearRelays)
+		packet.NearRelayRTT = make([]int32, packet.NumNearRelays)
+		packet.NearRelayJitter = make([]int32, packet.NumNearRelays)
+		packet.NearRelayPacketLoss = make([]int32, packet.NumNearRelays)
 	}
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeFloat32(&packet.NearRelayRTT[i])
-		stream.SerializeFloat32(&packet.NearRelayJitter[i])
-		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
+		stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+		stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+		stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
 	}
 
 	if packet.Next {
