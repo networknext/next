@@ -3139,6 +3139,7 @@ struct NextRouteUpdatePacket
     uint64_t sequence;
     bool multipath;
     bool committed;
+    bool near_relays_changed;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -3160,13 +3161,20 @@ struct NextRouteUpdatePacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, sequence );
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < num_near_relays; ++i )
+
+        serialize_bool( stream, near_relays_changed );
+        if ( near_relays_changed )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            serialize_address( stream, near_relay_addresses[i] );
+            serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+            for ( int i = 0; i < num_near_relays; ++i )
+            {
+                serialize_uint64( stream, near_relay_ids[i] );
+                serialize_address( stream, near_relay_addresses[i] );
+            }
         }
+        
         serialize_int( stream, update_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
+
         if ( update_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
@@ -3181,15 +3189,20 @@ struct NextRouteUpdatePacket
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
+
         serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
+
         serialize_uint64( stream, packets_out_of_order_client_to_server );
+
         serialize_float( stream, jitter_client_to_server );
+
         serialize_bool( stream, has_debug );
         if ( has_debug )
         {
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
+
         return true;
     }
 };
@@ -6633,7 +6646,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
             }
 
-            next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+            if ( packet.near_relays_changed )
+            {
+                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+            }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
             next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
@@ -9098,6 +9114,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
+    bool update_near_relays_changed;
     int update_num_near_relays;
 
     NEXT_DECLARE_SENTINEL(9)
@@ -9610,6 +9627,7 @@ struct NextBackendSessionResponsePacket
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     uint8_t response_type;
+    bool near_relays_changed;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -9639,11 +9657,16 @@ struct NextBackendSessionResponsePacket
 
         serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
 
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < num_near_relays; ++i )
+        serialize_bool( stream, near_relays_changed );
+
+        if ( near_relays_changed )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            serialize_address( stream, near_relay_addresses[i] );
+            serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+            for ( int i = 0; i < num_near_relays; ++i )
+            {
+                serialize_uint64( stream, near_relay_ids[i] );
+                serialize_address( stream, near_relay_addresses[i] );
+            }
         }
 
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
@@ -10473,9 +10496,13 @@ void next_server_internal_update_route( next_server_internal_t * server )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
-            packet.num_near_relays = entry->update_num_near_relays;
-            memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
-            memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
+            packet.near_relays_changed = entry->update_near_relays_changed;
+            if ( packet.near_relays_changed )
+            {
+                packet.num_near_relays = entry->update_num_near_relays;
+                memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
+                memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
+            }
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
             packet.committed = entry->committed;
@@ -10884,9 +10911,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
 
-            entry->update_num_near_relays = packet.num_near_relays;
-            memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
-            memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
+            entry->update_near_relays_changed = packet.near_relays_changed;
+            if ( packet.near_relays_changed )
+            {
+                entry->update_num_near_relays = packet.num_near_relays;
+                memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
+                memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
+            }
 
             entry->update_last_send_time = -1000.0;
 
@@ -14152,6 +14183,7 @@ static void test_packets()
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14178,6 +14210,7 @@ static void test_packets()
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14197,6 +14230,7 @@ static void test_packets()
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14225,6 +14259,7 @@ static void test_packets()
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14246,6 +14281,7 @@ static void test_packets()
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14271,6 +14307,7 @@ static void test_packets()
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14849,6 +14886,7 @@ static void test_backend_packets()
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14874,6 +14912,7 @@ static void test_backend_packets()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14894,6 +14933,7 @@ static void test_backend_packets()
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14921,6 +14961,7 @@ static void test_backend_packets()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14943,6 +14984,7 @@ static void test_backend_packets()
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14972,6 +15014,7 @@ static void test_backend_packets()
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
