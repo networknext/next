@@ -388,6 +388,7 @@ type NextBackendSessionResponsePacket struct {
 	SessionDataBytes   int32
 	SessionData        [NEXT_MAX_SESSION_DATA_BYTES]byte
 	RouteType          int32
+	NearRelaysChanged  bool
 	NumNearRelays      int32
 	NearRelayIds       []uint64
 	NearRelayAddresses []net.UDPAddr
@@ -413,16 +414,19 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 
 	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
 
-	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
+	stream.SerializeBool(&packet.NearRelaysChanged)
 
-	if stream.IsReading() {
-		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
-	}
-	var i int32
-	for i = 0; i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeAddress(&packet.NearRelayAddresses[i])
+	if packet.NearRelaysChanged {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
+		if stream.IsReading() {
+			packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
+			packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+		}
+		var i int32
+		for i = 0; i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIds[i])
+			stream.SerializeAddress(&packet.NearRelayAddresses[i])
+		}
 	}
 
 	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
@@ -2581,6 +2585,7 @@ func main() {
 					SessionId:          sessionUpdate.SessionId,
 					SliceNumber:        sessionUpdate.SliceNumber,
 					RouteType:          int32(NEXT_ROUTE_TYPE_DIRECT),
+					NearRelaysChanged:  true,
 					NumNearRelays:      int32(len(nearRelayIds)),
 					NearRelayIds:       nearRelayIds,
 					NearRelayAddresses: nearRelayAddresses,
@@ -2664,6 +2669,7 @@ func main() {
 				sessionResponse = &NextBackendSessionResponsePacket{
 					SliceNumber:        sessionUpdate.SliceNumber,
 					SessionId:          sessionUpdate.SessionId,
+					NearRelaysChanged:  true,
 					NumNearRelays:      int32(len(nearRelayIds)),
 					NearRelayIds:       nearRelayIds,
 					NearRelayAddresses: nearRelayAddresses,

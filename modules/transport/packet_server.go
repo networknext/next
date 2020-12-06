@@ -465,6 +465,7 @@ type SessionResponsePacket struct {
 	SessionDataBytes   int32
 	SessionData        [MaxSessionDataSize]byte
 	RouteType          int32
+	NearRelaysChanged  bool
 	NumNearRelays      int32
 	NearRelayIDs       []uint64
 	NearRelayAddresses []net.UDPAddr
@@ -489,16 +490,23 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
-	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
 
-	if stream.IsReading() {
-		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+	nearRelaysChanged := true
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
+		stream.SerializeBool(&packet.NearRelaysChanged)
+		nearRelaysChanged = packet.NearRelaysChanged
 	}
 
-	for i := int32(0); i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIDs[i])
-		stream.SerializeAddress(&packet.NearRelayAddresses[i])
+	if nearRelaysChanged {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+		if stream.IsReading() {
+			packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
+			packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+		}
+		for i := int32(0); i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIDs[i])
+			stream.SerializeAddress(&packet.NearRelayAddresses[i])
+		}
 	}
 
 	if packet.RouteType != routing.RouteTypeDirect {
