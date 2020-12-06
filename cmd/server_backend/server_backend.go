@@ -31,6 +31,7 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
@@ -547,7 +548,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	postVanityMetricPushDuration, err := envvar.GetDuration("FEATURE_VANITY_METRIC_PUSH_DURATION", 10 * time.Second)
+	postVanityMetricPushDuration, err := envvar.GetDuration("FEATURE_VANITY_METRIC_PUSH_DURATION", 5 * time.Second)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

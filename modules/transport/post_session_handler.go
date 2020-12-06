@@ -164,7 +164,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						if time.Since(pushTime) < post.vanityPushDuration {
 							continue
 						}
-						pushTime := time.Now()
+						pushTime = time.Now()
 
 						// Marshal the aggregate vanity metric per buyer
 						var aggregateBinary [][]byte
@@ -174,11 +174,11 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 								level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
 								post.metrics.VanityFailure.Add(1)
 							} 
-							append(aggregateBinary, metricBinary)
+							aggregateBinary = append(aggregateBinary, metricBinary)
 						}
 
 						// Push the data over ZeroMQ
-						aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityData, aggregateBinary)
+						aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityMetricData, aggregateBinary)
 						if err != nil {
 							level.Error(post.logger).Log("msg", "could not update vanity metrics", "err", err)
 							post.metrics.VanityFailure.Add(1)
@@ -232,6 +232,7 @@ func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEn
 	select {
 	case post.vanityMetricChannel <- billingEntry:
 		post.metrics.VanityMetricsSent.Add(1)
+		level.Debug(post.logger).Log("msg", "got billing entry", "VanityMetricsSent", post.metrics.VanityMetricsSent.Value())
 	default:
 		post.metrics.VanityBufferFull.Add(1)
 	}
@@ -299,19 +300,18 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 
 }
 
-func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic pubsub.Topic, data [][]byte) (int, error)) {
+func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic pubsub.Topic, data [][]byte) (int, error) {
 	var byteCount int
-	var err error
 
 	for i := range post.vanityPublishers {
 		var retryCount int
 
 		// Calculate the index of the vanity publisher to use for this iteration
 		index := (post.vanityPublisherIndex + i) % len(post.vanityPublishers)
-
-		for retryCount < post.vanityPublishMaxRetries+1 { // only retry so many times
-			for _, subData := range data:
-				subByteCount, err = post.vanityPublishers[index].Publish(ctx, topic, subData)
+		for _, subData := range data {
+			for retryCount < post.vanityPublishMaxRetries+1 { // only retry so many times
+			
+				subByteCount, err := post.vanityPublishers[index].Publish(ctx, topic, subData)
 				if err != nil {
 					switch err.(type) {
 					case *pubsub.ErrRetry:
@@ -321,10 +321,11 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 						return 0, err
 					}
 				}
+				retryCount = -1
 				byteCount += subByteCount
-
-			retryCount = -1
-			break
+				// Finished publishing this subdata, break out
+				break
+			}
 		}
 
 		// We published the message, break out
@@ -348,8 +349,21 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 // Aggregates vanity metrics per buyer
 func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.BillingEntry) error {
 	
-	AddFloat32(post.vanityAggregator[billingEntry.BuyerID].RTTReduction, billingEntry.RTTReduction)
-	AddFloat32(post.vanityAggregator[billingEntry.BuyerID].PacketLossReduction, billingEntry.PacketLossReduction)
+	rttReduced := billingEntry.NextPacketLoss - billingEntry.DirectPacketLoss
+	if rttReduced < 0 {
+		rttReduced = 0
+	}
+
+	packetLossReduced := billingEntry.NextPacketLoss - billingEntry.DirectPacketLoss
+	if packetLossReduced < 0 {
+		packetLossReduced = 0
+	}
+
+	vanityForBuyer := post.vanityAggregator[billingEntry.BuyerID]
+	AddFloat32(&vanityForBuyer.RTTReduction, rttReduced)
+	AddFloat32(&vanityForBuyer.PacketLossReduction, packetLossReduced)
+
+	return nil
 }
 
 // A version of AddUInt32 from sync/atomic for adding float32

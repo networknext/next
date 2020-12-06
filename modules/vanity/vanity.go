@@ -2,19 +2,22 @@ package vanity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 	"encoding/json"
 	"sync"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	// "github.com/go-kit/kit/log"
+	// "github.com/go-kit/kit/log/level"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/api/iterator"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/transport/pubsub"
+
 )
 
 type ErrReceiveMessage struct {
@@ -46,13 +49,18 @@ func (e *ErrUnmarshalMessage) Error() string {
 }
 
 type VanityMetricHandler struct {
-	// handler 	  	*metrics.TSMetricHandler
-	handler 		*metrics.MetricHandler
-	metrics 		*metrics.VanityMetricMetrics
-	subscriber		pubsub.Subscriber
-	logger 			log.Logger
+	// handler 	  			*metrics.TSMetricHandler
+	handler 				metrics.Handler
+	metrics 				*metrics.VanityMetricMetrics
+	vanityMetricDataChan 	chan *VanityMetrics
+	buyerMetricMap			map[string]*metrics.VanityMetric
+	mapMutex				sync.RWMutex
+	subscriber				pubsub.Subscriber
 }
 
+// VanityMetrics is the struct for all desired vanity metrics
+// passed internally before being written by the metrics handler.
+// The metric counterpart is located at modules/metrics/vanity_metric.go
 type VanityMetrics struct {
 	BuyerID					uint64
 	NumSlicesGlobal			uint32
@@ -64,40 +72,41 @@ type VanityMetrics struct {
 	PacketLossReduction		float32
 }
 
-// func NewVanityMetricHandler(vanityHandler *metrics.TSMetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.Logger) VanityMetricHandler {
-func NewVanityMetricHandler(vanityHandler *metrics.MetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.Logger) VanityMetricHandler {
+// func NewVanityMetricHandler(vanityHandler *metrics.TSMetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.logger) VanityMetricHandler {
+func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
 	return &VanityMetricHandler {
 				handler: 		vanityHandler,
 				metrics: 		vanityMetricMetrics,
+				buyerMetricMap:	make(map[string]*metrics.VanityMetric),
+				mapMutex:		sync.RWMutex{},
 				subscriber: 	vanitySubscriber,
-				logger: 		vanityLogger,
 			}
 }
 
 func (v VanityMetrics) Size() uint64 {
-	sum = 8 + // BuyerID
+	sum := 8 + // BuyerID
 		  4 + // NumSlicesGlobal
 		  4 + // NumSlicesPerCustomer 
 		  4 + // NumSessionsGlobal
 		  4 + // NumSessionsPerCustomer
-		  4 + // NumPlayHours
+		  4 + // NumPlayHoursPerCustomer
 		  4 + // RTTReduction
 		  4   // PacketLossReduction
 
-	return sum
+	return uint64(sum)
 }
 
 func (v VanityMetrics) MarshalBinary() ([]byte, error) {
 	data := make([]byte, v.Size())
 	index := 0
 
-	encoding.WriteUint64(data &index, v.BuyerID)
+	encoding.WriteUint64(data, &index, v.BuyerID)
 
 	encoding.WriteUint32(data, &index, v.NumSlicesGlobal)
 	encoding.WriteUint32(data, &index, v.NumSlicesPerCustomer)
 	encoding.WriteUint32(data, &index, v.NumSessionsGlobal)
 	encoding.WriteUint32(data, &index, v.NumSessionsPerCustomer)
-	encoding.WriteUint32(data, &index, v.NumPlayHours)
+	encoding.WriteUint32(data, &index, v.NumPlayHoursPerCustomer)
 
 	encoding.WriteFloat32(data, &index, v.RTTReduction)
 	encoding.WriteFloat32(data, &index, v.PacketLossReduction)
@@ -109,45 +118,45 @@ func (v VanityMetrics) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	if !encoding.ReadUint64(data, &index, &v.BuyerID) {
-		return erorrs.New("[VanityMetrics] invalid read at buyer ID")
-	
+		return errors.New("[VanityMetrics] invalid read at buyer ID")
+	}
 
 	if !encoding.ReadUint32(data, &index, &v.NumSlicesGlobal) {
-		return erorrs.New("[VanityMetrics] invalid read at num slices global")
+		return errors.New("[VanityMetrics] invalid read at num slices global")
 	}
 
 	if !encoding.ReadUint32(data, &index, &v.NumSlicesPerCustomer) {
-		return erorrs.New("[VanityMetrics] invalid read at num slices per customer")
+		return errors.New("[VanityMetrics] invalid read at num slices per customer")
 	}
 
 	if !encoding.ReadUint32(data, &index, &v.NumSessionsGlobal) {
-		return erorrs.New("[VanityMetrics] invalid read at num sessions global")
+		return errors.New("[VanityMetrics] invalid read at num sessions global")
 	}
 
 	if !encoding.ReadUint32(data, &index, &v.NumSessionsPerCustomer) {
-		return erorrs.New("[VanityMetrics] invalid read at num sesions per customer")
+		return errors.New("[VanityMetrics] invalid read at num sesions per customer")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumPlayHours) {
-		return erorrs.New("[VanityMetrics] invalid read at num play hours")
+	if !encoding.ReadUint32(data, &index, &v.NumPlayHoursPerCustomer) {
+		return errors.New("[VanityMetrics] invalid read at num play hours per customer")
 	}
 
 	if !encoding.ReadUint32(data, &index, &v.NumSlicesGlobal) {
-		return erorrs.New("[VanityMetrics] invalid read at num slices global")
+		return errors.New("[VanityMetrics] invalid read at num slices global")
 	}
 
 	if !encoding.ReadFloat32(data, &index, &v.RTTReduction) {
-		return erorrs.New("[VanityMetrics] invalid read at RTT reduction")
+		return errors.New("[VanityMetrics] invalid read at RTT reduction")
 	}
 
 	if !encoding.ReadFloat32(data, &index, &v.PacketLossReduction) {
-		return erorrs.New("[VanityMetrics] invalid read at packet loss reduction")
+		return errors.New("[VanityMetrics] invalid read at packet loss reduction")
 	}
 
 	return nil
 }
 
-func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityWriteGoroutines int) error {
+func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGoroutines int) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
@@ -174,14 +183,14 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityWriteGoroutin
 		}
 	}()
 
-	// Start the goroutines for preparing the metrics for the write loop
-	for i := 0; i < numVanityWriteGoroutines; i++ {
+	// Start the goroutines for preparing and updating the metrics for the write loop
+	for i := 0; i < numVanityUpdateGoroutines; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
 			// Each goroutine has its own buffer to avoid syncing
-			vanityMetricDataBuffer := make([]VanityMetrics, 0)
+			vanityMetricDataBuffer := make([]*VanityMetrics, 0)
 
 			for {
 				select {
@@ -189,7 +198,8 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityWriteGoroutin
 				case vanityData := <-vm.vanityMetricDataChan:
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
 
-					if err := vm.WriteToStackDriver(ctx, vanityMetricDataBuffer); err != nil {
+					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {
+						vm.metrics.UpdateVanityFailureCount.Add(1)
 						errChan <- err
 						return
 					}
@@ -219,6 +229,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		return ctx.Err()
 
 	case messageInfo := <-vm.subscriber.ReceiveMessage():
+		fmt.Println("Got a message") // DEBUG
 		vm.metrics.ReceivedVanityCount.Add(1)
 
 		if messageInfo.Err != nil {
@@ -226,7 +237,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		}
 
 		switch messageInfo.Topic {
-		case pubsub.TopicVanityData:
+		case pubsub.TopicVanityMetricData:
 			var vanityData VanityMetrics
 			if err := vanityData.UnmarshalBinary(messageInfo.Message); err != nil {
 				return &ErrUnmarshalMessage{err: err}
@@ -246,27 +257,41 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 }
 
 // Updates the metrics per buyer
-func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDataBuffer []VanityMetrics) error {
+func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDataBuffer []*VanityMetrics) error {
 	for j := range vanityMetricDataBuffer {
 		buyerID := fmt.Sprintf("%016x", vanityMetricDataBuffer[j].BuyerID)
 		
-		// Creates counters / gauges / histograms per vanity metric for this buyer ID,
-		// or provides existing ones from a previous run
-		vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
-		if err != nil {
-			return err
+		// Get the counters / gauges / histograms per vanity metric for this buyer ID
+		// Check the map first for quick look up
+		var vanityMetricPerBuyer *metrics.VanityMetric
+		var err error
+		vm.mapMutex.RLock()
+		if vanityMetricPerBuyer, ok := vm.buyerMetricMap[buyerID]; !ok {
+			// Creates counters / gauges / histograms per vanity metric for this buyer ID,
+			// or provides existing ones from a previous run
+			vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
+			if err != nil {
+				return err
+			}
+
+			// Store this vanity metric in the map for future look up
+			vm.mapMutex.Lock()
+			vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
+			vm.mapMutex.Unlock()
 		}
+		vm.mapMutex.RUnlock()
 
-		// Update each metric
-		vanityMetricPerBuyer.NumSlicesGlobal.Add(vanityMetricDataBuffer[j].NumSlicesGlobal)
-		vanityMetricPerBuyer.NumSlicesPerCustomer.Add(vanityMetricDataBuffer[j].NumSlicesPerCustomer)
-		vanityMetricPerBuyer.NumSessionsGlobal.Add(vanityMetricDataBuffer[j].NumSessionsGlobal)
-		vanityMetricPerBuyer.NumSessionsPerCustomer.Add(vanityMetricDataBuffer[j].NumSessionsPerCustomer)
-		vanityMetricPerBuyer.NumPlayHoursPerCustomer.Add(vanityMetricDataBuffer[j].NumPlayHoursPerCustomer)
-		vanityMetricPerBuyer.RTTReduction.Add(vanityMetricDataBuffer[j].RTTReduction)
-		vanityMetricPerBuyer.PacketLossReduction.Add(vanityMetricDataBuffer[j].PacketLossReduction)
-
+		// Update each metric's value
 		// Writing to stack driver is taken care of by the the WriteLoop() started in cmd/vanity/vanity.go
+		vanityMetricPerBuyer.NumSlicesGlobal.Add(float64(vanityMetricDataBuffer[j].NumSlicesGlobal))
+		vanityMetricPerBuyer.NumSlicesPerCustomer.Add(float64(vanityMetricDataBuffer[j].NumSlicesPerCustomer))
+		vanityMetricPerBuyer.NumSessionsGlobal.Add(float64(vanityMetricDataBuffer[j].NumSessionsGlobal))
+		vanityMetricPerBuyer.NumSessionsPerCustomer.Add(float64(vanityMetricDataBuffer[j].NumSessionsPerCustomer))
+		vanityMetricPerBuyer.NumPlayHoursPerCustomer.Add(float64(vanityMetricDataBuffer[j].NumPlayHoursPerCustomer))
+		vanityMetricPerBuyer.RTTReduction.Add(float64(vanityMetricDataBuffer[j].RTTReduction))
+		vanityMetricPerBuyer.PacketLossReduction.Add(float64(vanityMetricDataBuffer[j].PacketLossReduction))
+		
+		vm.metrics.UpdateVanitySuccessCount.Add(1)
 	}
 
 	vanityMetricDataBuffer = vanityMetricDataBuffer[0:]
@@ -277,7 +302,6 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 	ret_val, err := json.Marshal(&VanityMetrics{})
 	if err != nil {
-		level.Error(vm.Logger).Log("err", err)
 		return nil, err
 	}
 
@@ -285,13 +309,13 @@ func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 }
 
 // Returns a marshaled JSON of all custom metrics tracked through Stackdriver
-func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, error) {
+func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string) ([]byte, error) {
 	descFilter := `metric.type = starts_with("custom.googleapis.com/")`
 	descReq := &monitoringpb.ListMetricDescriptorsRequest{
-		Name: "projects/" + vm.Handler.ProjectID,
+		Name: 	fmt.Sprintf("projects/%s", gcpProjectID),
 		Filter: descFilter,
 	}
-	descIt := vm.Handler.Client.ListMetricDescriptors(ctx, descReq)
+	descIt := sd.Client.ListMetricDescriptors(ctx, descReq)
 
 	customMetrics := make(map[string]string)
 	for {
@@ -300,7 +324,6 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, e
 			break
 		}
 		if err != nil {
-			level.Error(vm.Logger).Log("err", err)
 			return nil, err
 		}
 		customMetrics[resp.DisplayName] = resp.Description
@@ -309,7 +332,6 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, e
 	// Encode the map of custom metric names to descriptions
 	ret_val, err := json.Marshal(customMetrics)
 	if err != nil {
-		level.Error(vm.Logger).Log("err", err)
 		return nil, err
 	}
 
@@ -319,18 +341,18 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context) ([]byte, e
 // Gets points for a metric for the last N duration
 // given a metricServiceName (i.e. server_backend)
 // and a metricID (i.e. session_update.latency_worse)
-func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, gcpProjectID string, metricServiceName string, metricID string, duration time.Duration) ([]byte, error) {
+func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, metricServiceName string, metricID string, duration time.Duration) ([]byte, error) {
 	filter := fmt.Sprintf(`metric.type = "custom.googleapis.com/%s/%s"`, metricServiceName, metricID)
 	name := fmt.Sprintf(`projects/%s/metricDescriptors/custom.googleapis.com/%s/%s`, gcpProjectID, metricServiceName, metricID)
 	startTime := timestamppb.New(time.Now().Add(duration))
 	req := &monitoringpb.ListTimeSeriesRequest{
-		Name: name,
-		Filter: filter,
-		Interval: &monitoringpb.TimeInterval{EndTime: timestamppb.Now(), StartTime: startTime},
-		View: monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
+		Name: 		name,
+		Filter: 	filter,
+		Interval: 	&monitoringpb.TimeInterval{EndTime: timestamppb.Now(), StartTime: startTime},
+		View: 		monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
 
 	}
-	it := vm.Handler.Client.ListTimeSeries(ctx, req)
+	it := sd.Client.ListTimeSeries(ctx, req)
 
 	metricDetails := make(map[string][]*monitoringpb.Point)
 	for {
@@ -339,7 +361,6 @@ func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, gcpProjectID
 			break
 		}
 		if err != nil {
-			level.Error(vm.Logger).Log("err", err)
 			return nil, err
 		}
 		metricDetails[resp.GetMetric().GetType()] = resp.GetPoints()		
@@ -348,7 +369,6 @@ func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, gcpProjectID
 	// Encode the map of custom metric names to descriptions
 	ret_val, err := json.Marshal(metricDetails)
 	if err != nil {
-		level.Error(vm.Logger).Log("err", err)
 		return nil, err
 	}
 

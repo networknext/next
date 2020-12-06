@@ -6,25 +6,22 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	// "encoding/binary"
-	// "expvar"
+
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net"
+
 	"net/http"
 	"runtime"
 	// "strings"
 	// "sync"
 	// "syscall"
+	// "strconv"
 	"time"
 
 	"os"
 	"os/signal"
 
-	"github.com/go-kit/kit/log"
+	// "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
@@ -81,8 +78,7 @@ func mainReturnWithCode() int {
 	if gcpOK {
 		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "Found GOOGLE_PROJECT_ID")
 	} else {
-		level.Error(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Cannot write vanity metrics.")
-		return 1
+		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Vanity Metrics will be written to local metrics.")
 	}
 
 	// StackDriver Logging
@@ -97,37 +93,32 @@ func mainReturnWithCode() int {
 	// on creation so we can use that for the default then
 	
 	// StackDriver Metrics
-	var enableSDMetrics bool
-	enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-	if ok {
-		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-			return 1
-		}
-	} else {
-		level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics.")
-		return 1
-	}
+	// var enableSDMetrics bool
+	// enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
+	// if ok {
+	// 	enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
+	// 	if err != nil {
+	// 		level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
+	// 		return 1
+	// 	} 
+	// } else {
+	// 	level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics.")
+	// 	return 1
+	// }
 
-	// tsMetricsHandler, err := GetTSMetricsHandler(ctx, logger, gcpProjectID)
-	tsMetricsHandler, err := GetMetricsHandler(ctx, logger, gcpProjectID)
+	tsMetricsHandler, err := backend.GetTSMetricsHandler(ctx, logger, gcpProjectID)
+	// tsMetricsHandler, err := backend.GetTSMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	sdwriteinterval := os.Getenv("FEATURE_VANITY_METRIC_WRITE_INTERVAL")
-	writeInterval, err := time.ParseDuration(sdwriteinterval)
-	if err != nil {
-		level.Error(logger).Log("envvar", "FEATURE_VANITY_METRIC_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-		return 1
-	}
-	
-	// Start the write loop for vanity metrics
-	go func() {
-		tsMetricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-	}()
+	// sdwriteinterval := os.Getenv("FEATURE_VANITY_METRIC_WRITE_INTERVAL")
+	// writeInterval, err := time.ParseDuration(sdwriteinterval)
+	// if err != nil {
+	// 	level.Error(logger).Log("envvar", "FEATURE_VANITY_METRIC_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+	// 	return 1
+	// }
 
 	// var sd metrics.StackDriverHandler
 	// if enableSDMetrics {
@@ -145,19 +136,19 @@ func mainReturnWithCode() int {
 	// }
 
 	// Get metrics for performance of vanity metric handler
-	metricsHandler, err := GetMetricsHandler(ctx, logger, gcpProjectID)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, metricsHandler)
+	// metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	// if err != nil {
+	// 	level.Error(logger).Log("err", err)
+	// 	return 1
+	// }
+	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
 		return 1
 	}
 
 	// StackDriver Profiler
-	if err = backend.InitStackDriverProfiler(gcpProjectID, "api", env); err != nil {
+	if err = backend.InitStackDriverProfiler(gcpProjectID, "vanity_metrics", env); err != nil {
 		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
 		return 1
 	}
@@ -177,13 +168,13 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		vanityMetricSubscriber, err := pubsub.NewVanityMetricPublisher(vanityPort, int(receiveBufferSize))
+		vanityMetricSubscriber, err := pubsub.NewVanityMetricSubscriber(vanityPort, int(receiveBufferSize))
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create vanity metric subscriber", "err", err)
 			return 1
 		}
 
-		if err := vanityMetricSubscriber.Subscribe(pubsub.TopicVanityData); err != nil {
+		if err := vanityMetricSubscriber.Subscribe(pubsub.TopicVanityMetricData); err != nil {
 			level.Error(logger).Log("msg", "could not subscribe to vanity metric data topic", "err", err)
 			return 1
 		}
@@ -215,6 +206,7 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d goroutines\n", int(vanityMetricMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", vanityMetricMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d messages received\n", int(vanityMetricMetrics.ReceivedVanityCount.Value()))
+				fmt.Printf("%d successful updates\n", int(vanityMetricMetrics.UpdateVanitySuccessCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -222,10 +214,15 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler = vanity.NewVanityMetricHandler(tsMetricsHandler, vanitySubscriber, vanityMetricMetrics, logger)
+	// Start the write loop for vanity metrics
+	// go func() {
+	// 	tsMetricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
+	// }()
 
-	// Start the goroutines for receiving vanity metrics from the backend and writing to StackDriver
+	// Get the vanity metric handler for writing to StackDriver
+	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, vanitySubscriber)
+
+	// Start the goroutines for receiving vanity metrics from the backend and updating metrics
 	errChan := make(chan error, 1)
 	go func() {
 		if err := vanityMetricHandler.Start(ctx, numVanityWriteGoroutines); err != nil {

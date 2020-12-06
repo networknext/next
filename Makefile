@@ -334,13 +334,6 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
-.PHONY: build-api
-build-api: dist
-	@printf "Building api... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
-	@printf "done\n"
-
-
 #######################
 
 .PHONY: dev-portal
@@ -408,6 +401,10 @@ dev-server: build-sdk build-server  ## runs a local server
 dev-api: build-api ## runs a local api endpoint service
 	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
 
+.PHONY: dev-vanity
+dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
+	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
+
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
@@ -461,6 +458,18 @@ build-server-backend:
 build-billing:
 	@printf "Building billing... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@printf "done\n"
+
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
+	@printf "done\n"
+
+.PHONY: build-vanity
+build-vanity: dist
+	@printf "Building vanity metrics ..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend-dev

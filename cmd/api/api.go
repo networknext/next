@@ -92,13 +92,25 @@ func main() {
 		}
 	}
 
+	// Create metric handler for tracking performance of api service
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
+		os.Exit(1)
+	}
+
 	// StackDriver Profiler
 	if err = backend.InitStackDriverProfiler(gcpProjectID, "api", env); err != nil {
 		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
 		os.Exit(1)
 	}
 
-	vanityMetrics = &vanity.VanityMetricHandler{Handler: &sd, Logger: logger}
+	vanityMetrics = vanity.NewVanityMetricHandler(&sd, vanityMetricMetrics, nil)
 
 	// Start HTTP server
 	{

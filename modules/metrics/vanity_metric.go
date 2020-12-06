@@ -1,6 +1,9 @@
 package metrics
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // VanityMetric defines the set of metrics for each vanity metric to be recorded.
 type VanityMetric struct {
@@ -26,7 +29,7 @@ var EmptyVanityMetric = VanityMetric{
 
 // NewVanityMetric creates the metrics the vanity metrics service will use.
 // User the buyerID as the service name 
-func NewVanityMetric(ctx context.Context, handler TSHandler, buyerID string) (*VanityMetric, error) {
+func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*VanityMetric, error) {
 	var err error
 	m := &VanityMetric{}
 
@@ -46,7 +49,7 @@ func NewVanityMetric(ctx context.Context, handler TSHandler, buyerID string) (*V
 		ServiceName: buyerID,
 		ID:          "vanity_metric.num_slices_per_customer",
 		Unit:        "slices",
-		Description: fmt.Sprintf("The total number of slices for customer %s" buyerID),
+		Description: fmt.Sprintf("The total number of slices for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
@@ -68,7 +71,7 @@ func NewVanityMetric(ctx context.Context, handler TSHandler, buyerID string) (*V
 		ServiceName: buyerID,
 		ID:          "vanity_metric.num_sessions_per_customer",
 		Unit:        "sessions",
-		Description: fmt.Sprintf("The total number of sessions for customer %s" buyerID),
+		Description: fmt.Sprintf("The total number of sessions for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
@@ -79,7 +82,7 @@ func NewVanityMetric(ctx context.Context, handler TSHandler, buyerID string) (*V
 		ServiceName: buyerID,
 		ID:          "vanity_metric.num_play_hours_per_customer",
 		Unit:        "hours",
-		Description: fmt.Sprintf("The total number of play hours for customer %s" buyerID),
+		Description: fmt.Sprintf("The total number of play hours for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
