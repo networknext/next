@@ -427,6 +427,14 @@ func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
 	return relayDatacenters
 }
 
+func (env *TestEnvironment) GetRelayIds() []uint64 {
+	relayIds := make([]uint64, len(env.relayArray))
+	for i := range env.relayArray {
+		relayIds[i] = uint64(env.relayArray[i].id)
+	}
+	return relayIds
+}
+
 func (env *TestEnvironment) GetRelayIdToIndex() map[uint64]int32 {
 	relayIdToIndex := make(map[uint64]int32)
 	for i := range env.relayArray {
@@ -5633,5 +5641,143 @@ func TestPredictedRTT(t *testing.T) {
 
 	assert.Equal(t, int32(20+CostBias), routeCost)
 }
+
+// -------------------------------------------------------------
+
+/*
+func TestNearRelayFilterRTT(t *testing.T) {
+
+	t.Parallel()
+
+	routeState := RouteState{}
+
+	assert.Equal(t, 0, len(routeState.NearRelayID))
+	assert.Equal(t, 0, len(routeState.NearRelayRTT))
+
+	// generate set of near relay ids (must be non-zero)
+
+	relayIds := make([]uint64, 32)
+	for i := range relayIds {
+		relayIds[i] = uint64(1000) - uint64(i)
+	}
+
+	// add a bunch of near relays at first at zero rtt
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 0.0)
+		assert.Equal(t, float32(0), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// now add the same near relays at 100ms RTT
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 100.0)
+		assert.Equal(t, float32(100), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// now add the same near relays at 50ms RTT, should still return 100ms (max)
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 50.0)
+		assert.Equal(t, float32(100), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// bump up to 110ms RTT
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 110.0)
+		assert.Equal(t, float32(110), rtt)
+	}
+
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+
+	// now add a random relay id 0, guaranteed unique @ 100ms
+
+	rtt := NearRelayFilterRTT(&routeState, 0, 100.0)
+	assert.Equal(t, float32(100), rtt)
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayID))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
+
+	// for the existing relays, make sure we still remember their rtts
+
+	for i := range relayIds {
+		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 50.0)
+		assert.Equal(t, float32(110), rtt)
+	}
+
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayID))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
+
+}
+*/
+
+func TestReframeRelays_NearRelayFilter(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+	
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	// start with a clean route state
+
+	routeState := RouteState{}
+
+	// next, pass in some near relay ids with initial rtt and jitter values
+
+	directJitter := int32(50)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{ 50, 50, 50, 50, 50 }
+	sourceRelayJitter := []int32{ 5, 5, 5, 5, 5 }
+	sourceRelayPacketLoss := []int32{ 0, 0, 0, 0, 0 }
+
+	destRelayIds := relayIds
+
+	out_sourceRelayLatency := []int32{0,0,0,0,0}
+	out_sourceRelayJitter := []int32{0,0,0,0,0}
+	out_numDestRelays := int32(0)
+	out_destRelays := []int32{0,0,0,0,0}
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, int32(5), out_numDestRelays)
+	
+	// now pass in some higher values and make sure they get picked up
+
+	// ...
+
+	// now pass in some lower values and make sure they get ignored
+
+	// ...
+}
+
+// todo: source relays filtered out with rtt 0
+
+// todo: source relays filtered out with PL > 50
+
+// todo: source relays filtered out if they no longer exist
+
+// todo: temporarily exclude source relays if jitter higher than direct jitter max
+
+// todo: dest relays filtered out if they don't exist
 
 // -------------------------------------------------------------

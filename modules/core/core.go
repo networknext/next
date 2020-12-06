@@ -18,6 +18,8 @@ import (
 
 const CostBias = 3
 
+const MaxNearRelays = 32
+
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
 const NEXT_ROUTE_TOKEN_BYTES = 76
@@ -862,12 +864,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
-
-	if len(sourceRelayLatency) != len(routeState.NearRelayRTT) {
-		panic("source and route state near relays must match")
-		return
-	}
+func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if directJitter > 255 {
 		directJitter = 255
@@ -1098,8 +1095,9 @@ type RouteState struct {
 	MultipathOverload  bool
 	NoRoute            bool
 	NextLatencyTooHigh bool
-	NearRelayRTT       []int32
-	NearRelayJitter    []int32
+	NumNearRelays      int32
+	NearRelayRTT       [MaxNearRelays]int32
+	NearRelayJitter    [MaxNearRelays]int32
 	RelayWentAway      bool
 	RouteLost          bool
 	DirectJitter       int32
