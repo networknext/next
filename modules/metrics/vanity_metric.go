@@ -7,28 +7,28 @@ import (
 
 // VanityMetric defines the set of metrics for each vanity metric to be recorded.
 type VanityMetric struct {
-	NumSlicesGlobal			Counter
-	NumSlicesPerCustomer	Counter
-	NumSessionsGlobal		Counter
-	NumSessionsPerCustomer	Counter
-	NumPlayHoursPerCustomer	Counter
-	RTTReduction			Gauge
-	PacketLossReduction		Counter
+	NumSlicesGlobal         Counter
+	NumSlicesPerCustomer    Counter
+	NumSessionsGlobal       Counter
+	NumSessionsPerCustomer  Counter
+	NumPlayHoursPerCustomer Counter
+	RTTReduction            Gauge
+	PacketLossReduction     Counter
 }
 
 // EmptyVanityMetric is used for testing when we want to pass in metrics but don't care about their value,
 var EmptyVanityMetric = VanityMetric{
-	NumSlicesGlobal:			&EmptyCounter{},
-	NumSlicesPerCustomer:		&EmptyCounter{},
-	NumSessionsGlobal:			&EmptyCounter{},
-	NumSessionsPerCustomer:		&EmptyCounter{},
-	NumPlayHoursPerCustomer:	&EmptyCounter{},
-	RTTReduction:				&EmptyGauge{},
-	PacketLossReduction:		&EmptyCounter{},
+	NumSlicesGlobal:         &EmptyCounter{},
+	NumSlicesPerCustomer:    &EmptyCounter{},
+	NumSessionsGlobal:       &EmptyCounter{},
+	NumSessionsPerCustomer:  &EmptyCounter{},
+	NumPlayHoursPerCustomer: &EmptyCounter{},
+	RTTReduction:            &EmptyGauge{},
+	PacketLossReduction:     &EmptyCounter{},
 }
 
 // NewVanityMetric creates the metrics the vanity metrics service will use.
-// User the buyerID as the service name 
+// User the buyerID as the service name
 func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*VanityMetric, error) {
 	var err error
 	m := &VanityMetric{}

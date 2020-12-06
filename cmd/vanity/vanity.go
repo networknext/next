@@ -12,32 +12,20 @@ import (
 
 	"net/http"
 	"runtime"
-	// "strings"
-	// "sync"
-	// "syscall"
-	// "strconv"
 	"time"
 
 	"os"
 	"os/signal"
 
-	// "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
-	// "github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/backend"
-	// "github.com/networknext/backend/modules/billing"
-	// "github.com/networknext/backend/modules/crypto"
-	// "github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	// "github.com/networknext/backend/modules/routing"
-	// "github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
 	"github.com/networknext/backend/modules/vanity"
-	// "golang.org/x/sys/unix"
 )
 
 var (
@@ -81,6 +69,10 @@ func mainReturnWithCode() int {
 		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Vanity Metrics will be written to local metrics.")
 	}
 
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+
 	// StackDriver Logging
 	logger, err = backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
@@ -88,68 +80,23 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	
-	// StackDriver Metrics
-	// var enableSDMetrics bool
-	// enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-	// if ok {
-	// 	enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-	// 	if err != nil {
-	// 		level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-	// 		return 1
-	// 	} 
-	// } else {
-	// 	level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics.")
-	// 	return 1
-	// }
+	// StackDriver Profiler
+	if err = backend.InitStackDriverProfiler(gcpProjectID, "vanity_metrics", env); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
+		return 1
+	}
 
+	// Get the time series metrics handler for vanity metrics
 	tsMetricsHandler, err := backend.GetTSMetricsHandler(ctx, logger, gcpProjectID)
-	// tsMetricsHandler, err := backend.GetTSMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	// sdwriteinterval := os.Getenv("FEATURE_VANITY_METRIC_WRITE_INTERVAL")
-	// writeInterval, err := time.ParseDuration(sdwriteinterval)
-	// if err != nil {
-	// 	level.Error(logger).Log("envvar", "FEATURE_VANITY_METRIC_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-	// 	return 1
-	// }
-
-	// var sd metrics.StackDriverHandler
-	// if enableSDMetrics {
-	// 	// Set up StackDriver metrics
-	// 	sd = metrics.StackDriverHandler{
-	// 		ProjectID:          gcpProjectID,
-	// 		OverwriteFrequency: time.Second,
-	// 		OverwriteTimeout:   10 * time.Second,
-	// 	}
-
-	// 	if err := sd.Open(ctx); err != nil {
-	// 		level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-	// 		return 1
-	// 	}
-	// }
-
-	// Get metrics for performance of vanity metric handler
-	// metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
-	// if err != nil {
-	// 	level.Error(logger).Log("err", err)
-	// 	return 1
-	// }
+	// Get metrics for evaluating the performance of vanity metrics
 	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
-		return 1
-	}
-
-	// StackDriver Profiler
-	if err = backend.InitStackDriverProfiler(gcpProjectID, "vanity_metrics", env); err != nil {
-		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
 		return 1
 	}
 
@@ -220,11 +167,6 @@ func mainReturnWithCode() int {
 			}
 		}()
 	}
-
-	// Start the write loop for vanity metrics
-	// go func() {
-	// 	tsMetricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-	// }()
 
 	// Get the vanity metric handler for writing to StackDriver
 	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber)

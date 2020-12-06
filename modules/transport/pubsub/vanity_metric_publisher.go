@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	TopicVanityMetricData   Topic = 1
+	TopicVanityMetricData Topic = 1
 )
 
 type VanityMetricPublisher struct {
