@@ -688,6 +688,10 @@ func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uin
 func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32) int32 {
 	bestRouteCost := int32(math.MaxInt32)
 	for i := range sourceRelays {
+		// IMPORTANT: RTT=255 is used to signal an unroutable source relay
+		if sourceRelayCost[i] >= 255 {
+			continue
+		}
 		sourceRelayIndex := sourceRelays[i]
 		for j := range destRelays {
 			destRelayIndex := destRelays[j]
@@ -755,7 +759,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 	}
 
 	// Find the cost to first relay in the route
-	// IMPORTANT: A cost of 255 means that the near relay is *not routable*
+	// IMPORTANT: A cost of 255 means that the source relay is not routable
 	sourceCost := int32(1000)
 	for i := range sourceRelays {
 		if routeRelays[0] == sourceRelays[i] {
@@ -819,6 +823,10 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 	numRoutes := 0
 	maxRoutes := len(bestRoutes)
 	for i := range sourceRelays {
+		// IMPORTANT: RTT = 255 signals the source relay is unroutable
+		if sourceRelayCost[i] >= 255 {
+			continue
+		}
 		for j := range destRelays {
 			sourceRelayIndex := sourceRelays[i]
 			destRelayIndex := destRelays[j]
@@ -866,6 +874,14 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 
 func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
+	if routeState.NumNearRelays == 0 {
+		routeState.NumNearRelays = int32(len(sourceRelayID))
+	}
+
+	if int(routeState.NumNearRelays) != len(sourceRelayID) {
+		panic("source relays must not change after initial slice")
+	}
+
 	if directJitter > 255 {
 		directJitter = 255
 	}
@@ -879,12 +895,14 @@ func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, dire
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {
 			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
 		// any source relay with > 50% PL in the last slice is bad news
-		if sourceRelayPacketLoss[i] > 50.0 {
+		if sourceRelayPacketLoss[i] > 50 {
 			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
@@ -892,6 +910,7 @@ func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, dire
 		_, ok := relayIDToIndex[sourceRelayID[i]]
 		if !ok {
 			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
@@ -918,7 +937,7 @@ func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, dire
 		out_sourceRelayJitter[i] = routeState.NearRelayJitter[i]
 
 		// IMPORTANT: If the source relay jitter is higher than the direct jitter
-		// make it unroutable for the next slice *only* by forcing latency to 255
+		// make it unroutable for the next slice *only* so it can recover from this
 		if routeState.NearRelayJitter[i] > routeState.DirectJitter {
 			out_sourceRelayLatency[i] = 255			
 		}
