@@ -117,9 +117,6 @@ func TestAddress(t *testing.T) {
 
 func TestRouteManager(t *testing.T) {
 
-	// todo: test has to be reworked. it's specific to MaxRoutesPerEntry being set to 8, now it's 64
-
-	/*
 	t.Parallel()
 
 	routeManager := RouteManager{}
@@ -145,10 +142,14 @@ func TestRouteManager(t *testing.T) {
 	routeManager.AddRoute(100, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
-	routeManager.AddRoute(200, 4, 4, 5, 6) // verify loops get filtered out
+	// verify loops get filtered out
+
+	routeManager.AddRoute(200, 4, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
-	routeManager.AddRoute(200, 4, 5, 254, 255) // verify routes with multiple relays in same datacenter get filtered out
+	// verify routes with multiple relays in same datacenter get filtered out
+
+	routeManager.AddRoute(200, 4, 5, 254, 255)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	routeManager.AddRoute(190, 5, 6, 7, 8, 9)
@@ -173,11 +174,19 @@ func TestRouteManager(t *testing.T) {
 		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
 	}
 
+	// fill up lots of extra routes to get to max routes
+
+	// ...
+
+	// make sure we can't add worse routes once we are at max routes
+
 	routeManager.AddRoute(1000, 12, 13, 14)
 	assert.Equal(t, routeManager.NumRoutes, 8)
 	for i := 0; i < routeManager.NumRoutes; i++ {
 		assert.True(t, routeManager.RouteCost[i] != 1000)
 	}
+
+	// make sure we can add better routes while at max routes
 
 	routeManager.AddRoute(177, 13, 14, 15, 16, 17)
 	assert.Equal(t, routeManager.NumRoutes, 8)
@@ -191,6 +200,8 @@ func TestRouteManager(t *testing.T) {
 		}
 	}
 	assert.True(t, found)
+
+	// check all the best routs are sorted and they have correct data
 
 	assert.Equal(t, int32(100), routeManager.RouteCost[0])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[0])
@@ -251,7 +262,10 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(8), routeManager.RouteRelays[7][3])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[7][4])
 	assert.Equal(t, RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[7])
-	*/
+
+	// make sure the remaining routes are filled as expected
+
+	// ...
 }
 
 func Analyze(numRelays int, routes []RouteEntry) []int {
