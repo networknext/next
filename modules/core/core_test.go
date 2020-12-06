@@ -365,14 +365,7 @@ func TestOptimize(t *testing.T) {
 	}
 }
 
-func GetTestRelayId(name string) uint32 {
-	hash := fnv.New32a()
-	hash.Write([]byte(name))
-	return hash.Sum32()
-}
-
 type TestRelayData struct {
-	id         uint32
 	name       string
 	address    *net.UDPAddr
 	publicKey  []byte
@@ -405,7 +398,6 @@ func (env *TestEnvironment) Clear() {
 
 func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
 	relay := &TestRelayData{}
-	relay.id = GetTestRelayId(relayName)
 	relay.name = relayName
 	relay.address = ParseAddress(relayAddress)
 	var err error
@@ -425,6 +417,14 @@ func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
 		relayDatacenters[i] = uint64(i)
 	}
 	return relayDatacenters
+}
+
+func (env *TestEnvironment) GetRelayIds() []uint64 {
+	relayIds := make([]uint64, len(env.relayArray))
+	for i := range env.relayArray {
+		relayIds[i] = RelayHash64(env.relayArray[i].name)
+	}
+	return relayIds
 }
 
 func (env *TestEnvironment) GetRelayIdToIndex() map[uint64]int32 {
@@ -637,13 +637,12 @@ func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [MaxRelaysP
 		id := RelayHash64(v.name)
 		relayIdToIndex[id] = int32(v.index)
 	}
+	routeState := RouteState{}
 	reframedRoute := [MaxRelaysPerRoute]int32{}
-	result := ReframeRoute(relayIdToIndex, route, &reframedRoute)
-	if !result {
-		return 0, reframedRoute
-	} else {
+	if ReframeRoute(&routeState, relayIdToIndex, route, &reframedRoute) {
 		return int32(len(route)), reframedRoute
 	}
+	return 0, reframedRoute
 }
 
 func (env *TestEnvironment) ReframeRoute(routeRelayNames []string) (int32, [MaxRelaysPerRoute]int32) {
@@ -1886,6 +1885,8 @@ func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
 	assert.Equal(t, int32(0), numRouteRelays)
 }
 
+// todo: tests for reframe relays
+/*
 func TestReframeRelays(t *testing.T) {
 
 	t.Parallel()
@@ -1955,6 +1956,7 @@ func TestReframeRelays(t *testing.T) {
 	assert.Equal(t, int32(2), out_destRelays[0])
 	assert.Equal(t, int32(3), out_destRelays[1])
 }
+*/
 
 func TestEarlyOutDirect(t *testing.T) {
 
@@ -3903,6 +3905,7 @@ func TestStayOnNetworkNext_ReduceLatency_NoRoute(t *testing.T) {
 	expectedRouteState.Committed = true
 	expectedRouteState.NoRoute = true
 	expectedRouteState.Veto = true
+	expectedRouteState.RouteLost = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }
@@ -3919,6 +3922,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 
 	env.SetCost("losangeles", "a", 1)
 	env.SetCost("a", "chicago", 1)
+	env.SetCost("losangeles", "chicago", 300)
 
 	costMatrix, numRelays := env.GetCostMatrix()
 
@@ -4814,6 +4818,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	expectedRouteState.Veto = true
 	expectedRouteState.NoRoute = true
 	expectedRouteState.Committed = true
+	expectedRouteState.RouteLost = true
 
 	assert.Equal(t, expectedRouteState, routeState)
 }
@@ -4826,8 +4831,11 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	env.AddRelay("losangeles", "10.0.0.1")
 	env.AddRelay("chicago", "10.0.0.2")
+	env.AddRelay("a", "10.0.0.3")
 
-	env.SetCost("losangeles", "chicago", 40)
+	env.SetCost("losangeles", "chicago", 400)
+	env.SetCost("losangeles", "a", 1)
+	env.SetCost("a", "chicago", 1)
 
 	costMatrix, numRelays := env.GetCostMatrix()
 
@@ -4835,18 +4843,18 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters)
 
 	directLatency := int32(30)
 
 	directPacketLoss := float32(0)
 
-	nextLatency := int32(60)
+	nextLatency := int32(1)
 
-	nextPacketLoss := float32(5)
+	nextPacketLoss := float32(0)
 
 	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
+	sourceRelayCosts := []int32{1}
 
 	destRelays := []int32{1}
 
@@ -4863,7 +4871,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	internal.ForceNext = true
 
 	currentRouteNumRelays := int32(2)
-	currentRouteRelays := [MaxRelaysPerRoute]int32{1, 0}
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
 
 	routeState.Next = true
 	routeState.UserID = 100
@@ -4884,8 +4892,8 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(50+CostBias), routeCost)
-	assert.Equal(t, int32(2), routeNumRelays)
+	assert.Equal(t, int32(3+CostBias), routeCost)
+	assert.Equal(t, int32(3), routeNumRelays)
 }
 
 // -----------------------------------------------------------------------------
@@ -5013,6 +5021,9 @@ func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
 
 // ------------------------------------------------
 
+// todo: not used anymore, but will be helpful when I write tests for reframe relays
+
+/*
 func TestNearRelayFilterRTT(t *testing.T) {
 
 	t.Parallel()
@@ -5021,6 +5032,7 @@ func TestNearRelayFilterRTT(t *testing.T) {
 
 	assert.Equal(t, 0, len(routeState.NearRelayID))
 	assert.Equal(t, 0, len(routeState.NearRelayRTT))
+	assert.Equal(t, 0, len(routeState.NearRelayJitter))
 
 	// generate set of near relay ids (must be non-zero)
 
@@ -5029,64 +5041,77 @@ func TestNearRelayFilterRTT(t *testing.T) {
 		relayIds[i] = uint64(1000) - uint64(i)
 	}
 
-	// add a bunch of near relays at first at zero rtt
+	// add a bunch of near relays at first at zero rtt and jitter
 
 	for i := range relayIds {
-		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 0.0)
+		rtt, jitter := NearRelayFilter(&routeState, relayIds[i], 0.0, 0.0)
 		assert.Equal(t, float32(0), rtt)
+		assert.Equal(t, float32(0), jitter)
 	}
 
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayJitter))
 
-	// now add the same near relays at 100ms RTT
+	// now add the same near relays at 100ms RTT, 10ms jitter
 
 	for i := range relayIds {
-		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 100.0)
+		rtt, jitter := NearRelayFilter(&routeState, relayIds[i], 100.0, 10.0)
 		assert.Equal(t, float32(100), rtt)
+		assert.Equal(t, float32(10), jitter)
 	}
 
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayJitter))
 
-	// now add the same near relays at 50ms RTT, should still return 100ms (max)
+	// now add the same near relays at 50ms RTT and 5ms jitter, should still return 100ms, 10ms (max)
 
 	for i := range relayIds {
-		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 50.0)
+		rtt, jitter := NearRelayFilter(&routeState, relayIds[i], 50.0, 5.0)
 		assert.Equal(t, float32(100), rtt)
+		assert.Equal(t, float32(10), jitter)
 	}
 
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayJitter))
 
-	// bump up to 110ms RTT
+	// bump up to 110ms RTT, 11ms jitter.
 
 	for i := range relayIds {
-		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 110.0)
+		rtt, jitter := NearRelayFilter(&routeState, relayIds[i], 110.0, 11.0)
 		assert.Equal(t, float32(110), rtt)
+		assert.Equal(t, float32(11), jitter)
 	}
 
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds), len(routeState.NearRelayRTT))
+	assert.Equal(t, len(relayIds), len(routeState.NearRelayJitter))
 
 	// now add a random relay id 0, guaranteed unique @ 100ms
 
-	rtt := NearRelayFilterRTT(&routeState, 0, 100.0)
+	rtt, jitter := NearRelayFilter(&routeState, 0, 100.0, 10.0)
 	assert.Equal(t, float32(100), rtt)
+	assert.Equal(t, float32(10), jitter)
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayJitter))
 
-	// for the existing relays, make sure we still remember their rtts
+	// for the existing relays, make sure we still remember their rtt and jitter
 
 	for i := range relayIds {
-		rtt := NearRelayFilterRTT(&routeState, relayIds[i], 50.0)
+		rtt, jitter := NearRelayFilter(&routeState, relayIds[i], 50.0, 5.0)
 		assert.Equal(t, float32(110), rtt)
+		assert.Equal(t, float32(11), jitter)
 	}
 
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayID))
 	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayRTT))
+	assert.Equal(t, len(relayIds)+1, len(routeState.NearRelayJitter))
 
 }
+*/
 
 // -----------------------------------------------------------------------------
 
@@ -5607,6 +5632,150 @@ func TestPredictedRTT(t *testing.T) {
 	assert.Equal(t, expectedRouteState, routeState)
 
 	assert.Equal(t, int32(20+CostBias), routeCost)
+}
+
+// -------------------------------------------------------------
+
+func TestReframeRelays_NearRelayFilter(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+	
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	// start with a clean route state
+
+	routeState := RouteState{}
+
+	// next, pass in some near relay ids with initial rtt and jitter values
+
+	directJitter := int32(5)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{ 50, 50, 50, 50, 50 }
+	sourceRelayJitter := []int32{ 5, 5, 5, 5, 5 }
+	sourceRelayPacketLoss := []int32{ 0, 0, 0, 0, 0 }
+
+	destRelayIds := relayIds
+
+	out_sourceRelayLatency := []int32{0,0,0,0,0}
+	out_sourceRelayJitter := []int32{0,0,0,0,0}
+	out_numDestRelays := int32(0)
+	out_destRelays := []int32{0,0,0,0,0}
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{50,50,50,50,50}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{5,5,5,5,5}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0,1,2,3,4}, out_destRelays)
+	
+	assert.Equal(t, int32(5), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{50,50,50,50,50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{5,5,5,5,5}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	
+	// now pass in some higher values and make sure they get picked up
+
+	directJitter = 10
+	sourceRelayLatency = []int32{ 100, 100, 100, 100, 100 }
+	sourceRelayJitter = []int32{ 10, 10, 10, 10, 10 }
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{100,100,100,100,100}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{10,10,10,10,10}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0,1,2,3,4}, out_destRelays)
+	
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{100,100,100,100,100}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{10,10,10,10,10}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// pass in some lower values and make sure they get ignored
+
+	directJitter = 9
+	sourceRelayLatency = []int32{ 99, 99, 99, 99, 99 }
+	sourceRelayJitter = []int32{ 9, 9, 9, 9, 9 }
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{100,100,100,100,100}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{10,10,10,10,10}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0,1,2,3,4}, out_destRelays)
+	
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{100,100,100,100,100}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{10,10,10,10,10}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// filter out the first source relay permanently by giving it high packet loss
+
+	sourceRelayPacketLoss = []int32{ 100, 0, 0, 0, 0 }
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{255,100,100,100,100}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{10,10,10,10,10}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0,1,2,3,4}, out_destRelays)
+	
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{255,100,100,100,100}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{10,10,10,10,10}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// filter out the second source relay permanently by having it report 0 RTT (impossible)
+
+	sourceRelayLatency = []int32{ 99, 0, 99, 99, 99 }
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{255,255,100,100,100}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{10,10,10,10,10}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0,1,2,3,4}, out_destRelays)
+	
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{255,255,100,100,100}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{10,10,10,10,10}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// filter out the third relay permanently by removing it from the set of relays
+
+	delete(relayIdToIndex, relayIds[2])
+
+	ReframeRelays(&routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{255,255,255,100,100}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{10,10,10,10,10}, out_sourceRelayJitter)
+	assert.Equal(t, int32(4), out_numDestRelays)
+	assert.Equal(t, []int32{0,1,3,4}, out_destRelays[:out_numDestRelays])
+	
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{255,255,255,100,100}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{10,10,10,10,10}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// temporary exclude source relay with higher jitter than direct
+
+	// ...
+
+	// increase direct jitter above source relays and verify they recover
+
+	// ...
+
 }
 
 // -------------------------------------------------------------
