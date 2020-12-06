@@ -17,8 +17,9 @@ import (
 )
 
 const CostBias = 3
-
 const MaxNearRelays = 32
+const MaxRelaysPerRoute = 5
+const MaxRoutesPerEntry = 64
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -120,9 +121,6 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
 }
 
 // ---------------------------------------------------
-
-const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 64
 
 type RouteManager struct {
 	NumRoutes       int

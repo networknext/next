@@ -176,20 +176,27 @@ func TestRouteManager(t *testing.T) {
 
 	// fill up lots of extra routes to get to max routes
 
-	// ...
+	numFillers := MaxRoutesPerEntry - routeManager.NumRoutes
+
+	for i := 0; i < numFillers; i++ {
+		routeManager.AddRoute(int32(1000+i), int32(100+i), int32(100+i+1), int32(100+i+2))
+		assert.Equal(t, 8+i+1, routeManager.NumRoutes)
+	}
+
+	assert.Equal(t, MaxRoutesPerEntry, routeManager.NumRoutes)
 
 	// make sure we can't add worse routes once we are at max routes
 
-	routeManager.AddRoute(1000, 12, 13, 14)
-	assert.Equal(t, routeManager.NumRoutes, 8)
+	routeManager.AddRoute(10000, 12, 13, 14)
+	assert.Equal(t, routeManager.NumRoutes, MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes; i++ {
-		assert.True(t, routeManager.RouteCost[i] != 1000)
+		assert.True(t, routeManager.RouteCost[i] != 10000)
 	}
 
 	// make sure we can add better routes while at max routes
 
 	routeManager.AddRoute(177, 13, 14, 15, 16, 17)
-	assert.Equal(t, routeManager.NumRoutes, 8)
+	assert.Equal(t, routeManager.NumRoutes, MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
 		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
 	}
@@ -201,7 +208,7 @@ func TestRouteManager(t *testing.T) {
 	}
 	assert.True(t, found)
 
-	// check all the best routs are sorted and they have correct data
+	// check all the best routes are sorted and they have correct data
 
 	assert.Equal(t, int32(100), routeManager.RouteCost[0])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[0])
@@ -262,10 +269,6 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(8), routeManager.RouteRelays[7][3])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[7][4])
 	assert.Equal(t, RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[7])
-
-	// make sure the remaining routes are filled as expected
-
-	// ...
 }
 
 func Analyze(numRelays int, routes []RouteEntry) []int {
