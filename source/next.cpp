@@ -3082,9 +3082,9 @@ struct NextClientStatsPacket
     float next_packet_loss;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_server_to_client;
@@ -3122,9 +3122,9 @@ struct NextClientStatsPacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_rtt[i] );
-            serialize_float( stream, near_relay_jitter[i] );
-            serialize_float( stream, near_relay_packet_loss[i] );
+            serialize_int( stream, near_relay_rtt[i], 0, 255 );
+            serialize_int( stream, near_relay_jitter[i], 0, 255 );
+            serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
         }
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
@@ -7057,9 +7057,23 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 packet.near_relay_ids[i] = client->near_relay_stats.relay_ids[i];
-                packet.near_relay_rtt[i] = client->near_relay_stats.relay_rtt[i];
-                packet.near_relay_jitter[i] = client->near_relay_stats.relay_jitter[i];
-                packet.near_relay_packet_loss[i] = client->near_relay_stats.relay_packet_loss[i];
+
+                int rtt = (int) ceil( client->near_relay_stats.relay_rtt[i] );
+                int jitter = (int) ceil( client->near_relay_stats.relay_jitter[i] );
+                int packet_loss = (int) ceil( client->near_relay_stats.relay_packet_loss[i] );
+
+                if ( rtt > 255 )
+                    rtt = 255;
+
+                if ( jitter > 255 )
+                    jitter = 255;
+
+                if ( packet_loss > 100 )
+                    packet_loss = 100;
+
+                packet.near_relay_rtt[i] = uint8_t( rtt );
+                packet.near_relay_jitter[i] = uint8_t( jitter );
+                packet.near_relay_packet_loss[i] = uint8_t( packet_loss );
             }
         }
 
