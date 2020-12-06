@@ -110,7 +110,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(&sd, vanityMetricMetrics, nil)
+	vanityMetrics = vanity.NewVanityMetricHandler(&sd, vanityMetricMetrics, 0, nil)
 
 	// Start HTTP server
 	{

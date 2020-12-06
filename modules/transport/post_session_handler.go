@@ -157,8 +157,19 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				for {
 					select {
 					case billingEntry := <-post.vanityMetricChannel:
+						// Check if buyer ID is in map
+						if _, ok := post.vanityAggregator[billingEntry.BuyerID]; !ok {
+						    // Create a vanity metric for this buyer ID
+						    post.vanityAggregator[billingEntry.BuyerID] = vanity.VanityMetrics{BuyerID: billingEntry.BuyerID}
+						}
+
 						// Aggregate elements of the billing entry to respective vanity metric per buyer
-						post.AggregateVanityMetrics(billingEntry)
+						err := post.AggregateVanityMetrics(billingEntry)
+						if err != nil {
+							level.Error(post.logger).Log("err", err)
+							post.metrics.VanityFailure.Add(1)
+							continue
+						}
 
 						// Early out if not enough time has passed since the last push to ZeroMQ
 						if time.Since(pushTime) < post.vanityPushDuration {
@@ -173,8 +184,9 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 							if err != nil {
 								level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
 								post.metrics.VanityFailure.Add(1)
-							} 
-							aggregateBinary = append(aggregateBinary, metricBinary)
+							} else {
+								aggregateBinary = append(aggregateBinary, metricBinary)
+							}
 						}
 
 						// Push the data over ZeroMQ
@@ -232,7 +244,7 @@ func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEn
 	select {
 	case post.vanityMetricChannel <- billingEntry:
 		post.metrics.VanityMetricsSent.Add(1)
-		level.Debug(post.logger).Log("msg", "got billing entry", "VanityMetricsSent", post.metrics.VanityMetricsSent.Value())
+		level.Info(post.logger).Log("msg", "sent vanity metric")
 	default:
 		post.metrics.VanityBufferFull.Add(1)
 	}
@@ -302,7 +314,7 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 
 func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic pubsub.Topic, data [][]byte) (int, error) {
 	var byteCount int
-
+	
 	for i := range post.vanityPublishers {
 		var retryCount int
 
@@ -349,20 +361,24 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 // Aggregates vanity metrics per buyer
 func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.BillingEntry) error {
 	
+	vanityForBuyer, ok := post.vanityAggregator[billingEntry.BuyerID]
+	if !ok {
+		errStr := fmt.Sprintf("Buyer ID %d does not exist in vanityAggregator map", billingEntry.BuyerID)
+		return errors.New(errStr)
+	}
+
 	rttReduced := billingEntry.NextPacketLoss - billingEntry.DirectPacketLoss
-	if rttReduced < 0 {
+	if rttReduced <= 0 {
 		rttReduced = 0
 	}
 
 	packetLossReduced := billingEntry.NextPacketLoss - billingEntry.DirectPacketLoss
-	if packetLossReduced < 0 {
+	if packetLossReduced <= 0 {
 		packetLossReduced = 0
 	}
 
-	vanityForBuyer := post.vanityAggregator[billingEntry.BuyerID]
 	AddFloat32(&vanityForBuyer.RTTReduction, rttReduced)
 	AddFloat32(&vanityForBuyer.PacketLossReduction, packetLossReduced)
-
 	return nil
 }
 

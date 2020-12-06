@@ -182,8 +182,15 @@ func mainReturnWithCode() int {
 		vanitySubscriber = vanityMetricSubscriber
 	}
 
-	// Get the number of goroutines for the vanity metric handler
-	numVanityWriteGoroutines, err := envvar.GetInt("FEATURE_VANITY_METRIC_GOROUTINE_COUNT", 2)
+	// Get the message size for internal storage
+	messageChanSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_MESSAGE_CHANNEL_SIZE", 10000000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get the number of update goroutines for the vanity metric handler
+	numVanityUpdateGoroutines, err := envvar.GetInt("FEATURE_VANITY_METRIC_GOROUTINE_COUNT", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -220,12 +227,12 @@ func mainReturnWithCode() int {
 	// }()
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, vanitySubscriber)
+	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber)
 
 	// Start the goroutines for receiving vanity metrics from the backend and updating metrics
 	errChan := make(chan error, 1)
 	go func() {
-		if err := vanityMetricHandler.Start(ctx, numVanityWriteGoroutines); err != nil {
+		if err := vanityMetricHandler.Start(ctx, numVanityUpdateGoroutines); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return

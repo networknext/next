@@ -73,13 +73,14 @@ type VanityMetrics struct {
 }
 
 // func NewVanityMetricHandler(vanityHandler *metrics.TSMetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.logger) VanityMetricHandler {
-func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
+func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *metrics.VanityMetricMetrics, chanBufferSize int, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
 	return &VanityMetricHandler {
-				handler: 		vanityHandler,
-				metrics: 		vanityMetricMetrics,
-				buyerMetricMap:	make(map[string]*metrics.VanityMetric),
-				mapMutex:		sync.RWMutex{},
-				subscriber: 	vanitySubscriber,
+				handler: 				vanityHandler,
+				metrics: 				vanityMetricMetrics,
+				vanityMetricDataChan:	make(chan *VanityMetrics, chanBufferSize),
+				buyerMetricMap:			make(map[string]*metrics.VanityMetric),
+				mapMutex:				sync.RWMutex{},
+				subscriber: 			vanitySubscriber,
 			}
 }
 
@@ -92,6 +93,7 @@ func (v VanityMetrics) Size() uint64 {
 		  4 + // NumPlayHoursPerCustomer
 		  4 + // RTTReduction
 		  4   // PacketLossReduction
+
 
 	return uint64(sum)
 }
@@ -141,10 +143,6 @@ func (v VanityMetrics) UnmarshalBinary(data []byte) error {
 		return errors.New("[VanityMetrics] invalid read at num play hours per customer")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumSlicesGlobal) {
-		return errors.New("[VanityMetrics] invalid read at num slices global")
-	}
-
 	if !encoding.ReadFloat32(data, &index, &v.RTTReduction) {
 		return errors.New("[VanityMetrics] invalid read at RTT reduction")
 	}
@@ -188,7 +186,6 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
 			// Each goroutine has its own buffer to avoid syncing
 			vanityMetricDataBuffer := make([]*VanityMetrics, 0)
 
@@ -203,10 +200,9 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 						errChan <- err
 						return
 					}
-
 				case <-ctx.Done():
 					return
-				}
+				}	
 			}
 		}()
 	}
@@ -229,7 +225,6 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		return ctx.Err()
 
 	case messageInfo := <-vm.subscriber.ReceiveMessage():
-		fmt.Println("Got a message") // DEBUG
 		vm.metrics.ReceivedVanityCount.Add(1)
 
 		if messageInfo.Err != nil {
@@ -265,8 +260,12 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		// Check the map first for quick look up
 		var vanityMetricPerBuyer *metrics.VanityMetric
 		var err error
+		
 		vm.mapMutex.RLock()
-		if vanityMetricPerBuyer, ok := vm.buyerMetricMap[buyerID]; !ok {
+		vanityMetricPerBuyer, exists := vm.buyerMetricMap[buyerID]
+		vm.mapMutex.RUnlock()
+		
+		if !exists {
 			// Creates counters / gauges / histograms per vanity metric for this buyer ID,
 			// or provides existing ones from a previous run
 			vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
@@ -279,7 +278,6 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 			vm.mapMutex.Unlock()
 		}
-		vm.mapMutex.RUnlock()
 
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the the WriteLoop() started in cmd/vanity/vanity.go
