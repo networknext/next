@@ -144,7 +144,7 @@ The client should connect to your server and exchange packets:
 	salsa20 -> avx2
 
 	0.010058: info: found valid customer public key
-	0.010086: info: client sdk version is 4.0.3
+	0.010086: info: client sdk version is 4.0.4
 	0.010204: info: client bound to 0.0.0.0:59617
 	0.010396: info: client increased thread priority
 	0.106846: info: client opened session to 173.255.241.176:50000
