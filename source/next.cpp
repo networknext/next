@@ -7060,7 +7060,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
                 int rtt = (int) ceil( client->near_relay_stats.relay_rtt[i] );
                 int jitter = (int) ceil( client->near_relay_stats.relay_jitter[i] );
-                int packet_loss = (int) ceil( client->near_relay_stats.relay_packet_loss[i] );
+                int packet_loss = (int) floor( client->near_relay_stats.relay_packet_loss[i] + 0.5f );
 
                 if ( rtt > 255 )
                     rtt = 255;
@@ -8856,9 +8856,9 @@ struct NextBackendSessionUpdatePacket
     float next_packet_loss;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint32_t next_kbps_up;
     uint32_t next_kbps_down;
     uint64_t packets_sent_client_to_server;
@@ -8975,9 +8975,9 @@ struct NextBackendSessionUpdatePacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_rtt[i] );
-            serialize_float( stream, near_relay_jitter[i] );
-            serialize_float( stream, near_relay_packet_loss[i] );
+            serialize_int( stream, near_relay_rtt[i], 0, 255 );
+            serialize_int( stream, near_relay_jitter[i], 0, 255 );
+            serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
         }
 
         if ( next )
@@ -9053,15 +9053,15 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    float stats_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    float stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(5)
 
-    float stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(6)
 
