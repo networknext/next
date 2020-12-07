@@ -1954,7 +1954,7 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
-	sql.Write([]byte("delete from internal_configs where where buyer_id = $1"))
+	sql.Write([]byte("delete from rs_internal_configs where buyer_id = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {

@@ -999,4 +999,14 @@ func TestInternalConfig(t *testing.T) {
 
 	})
 
+	t.Run("RemoveInternalConfig", func(t *testing.T) {
+
+		err := db.RemoveInternalConfig(context.Background(), outerBuyer.ID)
+		assert.NoError(t, err)
+
+		_, err = db.InternalConfig(outerBuyer.ID)
+		assert.Error(t, err)
+
+	})
+
 }
