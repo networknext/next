@@ -35,4 +35,8 @@ func main() {
 	fmt.Printf("This is your public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(customerPublicKey[:]))
 	fmt.Printf("This is your private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(customerPrivateKey[:]))
 	fmt.Printf("IMPORTANT: Save your private key in a secure place and don't share it with anybody, not even us!\n\n")
+
+	fmt.Printf("Press ENTER to continue\n")
+
+    fmt.Scanln()
 }
