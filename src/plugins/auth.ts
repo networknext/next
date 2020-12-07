@@ -33,11 +33,13 @@ export class AuthService {
       })
   }
 
-  public signUp () {
+  public signUp (email: string | undefined) {
+    const emailHint = email || ''
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
       redirect_uri: window.location.origin + '/?signup=true',
-      screen_hint: 'signup'
+      screen_hint: 'signup',
+      login_hint: emailHint
     })
   }
 

@@ -78,14 +78,20 @@ if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
   }, router)
 }
 
-const app = new Vue({
-  router,
-  store,
-  render: h => h(App)
-}).$mount('#app')
+// This is VERY hacky. It would be much better to do this within the router but going that route (no pun intended) mounts half the app before hitting the redirect which is funky
+// TODO: Look into a lifecycle hook that handles this better...
+if (window.location.pathname === '/get-access') {
+  Vue.prototype.$authService.signUp(window.location.search.split('?email=')[1])
+} else {
+  const app = new Vue({
+    router,
+    store,
+    render: h => h(App)
+  }).$mount('#app')
 
-const win: any = window
+  const win: any = window
 
-if (win.Cypress) {
-  win.app = app
+  if (win.Cypress) {
+    win.app = app
+  }
 }
