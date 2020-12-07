@@ -548,8 +548,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
-			Latitude:            r.Datacenter.Location.Latitude,
-			Longitude:           r.Datacenter.Location.Longitude,
+			Latitude:            float64(r.Datacenter.Location.Latitude),
+			Longitude:           float64(r.Datacenter.Location.Longitude),
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
 			ManagementAddr:      r.ManagementAddr,
@@ -827,8 +827,8 @@ type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
 	SignedID     int64   `json:"signed_id"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
+	Latitude     float32 `json:"latitude"`
+	Longitude    float32 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
 	SupplierName string  `json:"supplierName"`
 }
@@ -1025,8 +1025,8 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		Name:                routingRelay.Name,
 		Addr:                routingRelay.Addr.String(),
 		InternalAddr:        routingRelay.InternalAddr.String(),
-		Latitude:            routingRelay.Datacenter.Location.Latitude,
-		Longitude:           routingRelay.Datacenter.Location.Longitude,
+		Latitude:            float64(routingRelay.Datacenter.Location.Latitude),
+		Longitude:           float64(routingRelay.Datacenter.Location.Longitude),
 		NICSpeedMbps:        routingRelay.NICSpeedMbps,
 		IncludedBandwidthGB: routingRelay.IncludedBandwidthGB,
 		ManagementAddr:      routingRelay.ManagementAddr,

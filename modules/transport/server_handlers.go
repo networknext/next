@@ -1002,8 +1002,8 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 			OnNetworkNext:     packet.Next,
 		},
 		Point: SessionMapPoint{
-			Latitude:  sessionData.Location.Latitude,
-			Longitude: sessionData.Location.Longitude,
+			Latitude:  float64(sessionData.Location.Latitude),
+			Longitude: float64(sessionData.Location.Longitude),
 		},
 		LargeCustomer: buyer.InternalConfig.LargeCustomer,
 		EverOnNext:    sessionData.EverOnNext,
