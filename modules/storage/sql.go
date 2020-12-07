@@ -1865,6 +1865,14 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		return &AlreadyExistsError{resourceType: "InternalConfig", resourceRef: buyerID}
 	}
 
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
 	internalConfig := sqlInternalConfig{
 		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
 		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
@@ -1880,7 +1888,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		MaxRTT:                     int64(ic.MaxRTT),
 	}
 
-	sql.Write([]byte("insert into internal_configs "))
+	sql.Write([]byte("insert into rs_internal_configs "))
 	sql.Write([]byte("(max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
@@ -1906,7 +1914,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.ForceNext,
 		internalConfig.LargeCustomer,
 		internalConfig.Uncommitted,
-		buyerID,
+		buyer.DatabaseID,
 	)
 
 	if err != nil {
@@ -1996,7 +2004,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set route_select_threshold=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set route_select_threshold=$1 where buyer_id=$2"))
 		args = append(args, routeSelectThreshold, buyerID)
 		ic.RouteSelectThreshold = routeSelectThreshold
 	case "RouteSwitchThreshold":
@@ -2004,7 +2012,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set route_switch_threshold=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set route_switch_threshold=$1 where buyer_id=$2"))
 		args = append(args, routeSwitchThreshold, buyerID)
 		ic.RouteSwitchThreshold = routeSwitchThreshold
 	case "MaxLatencyTradeOff":
@@ -2012,7 +2020,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set max_latency_tradeoff=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set max_latency_tradeoff=$1 where buyer_id=$2"))
 		args = append(args, maxLatencyTradeOff, buyerID)
 		ic.MaxLatencyTradeOff = maxLatencyTradeOff
 	case "RTTVeto_Default":
@@ -2020,7 +2028,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set rtt_veto_default=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set rtt_veto_default=$1 where buyer_id=$2"))
 		args = append(args, rttVetoDefault, buyerID)
 		ic.RTTVeto_Default = rttVetoDefault
 	case "RTTVeto_PacketLoss":
@@ -2028,7 +2036,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set rtt_veto_packetloss=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set rtt_veto_packetloss=$1 where buyer_id=$2"))
 		args = append(args, rttVetoPacketLoss, buyerID)
 		ic.RTTVeto_PacketLoss = rttVetoPacketLoss
 	case "RTTVeto_Multipath":
@@ -2036,7 +2044,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set rtt_veto_multipath=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set rtt_veto_multipath=$1 where buyer_id=$2"))
 		args = append(args, rttVetoMultipath, buyerID)
 		ic.RTTVeto_Multipath = rttVetoMultipath
 	case "MultipathOverloadThreshold":
@@ -2044,7 +2052,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set multipath_overload_threshold=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set multipath_overload_threshold=$1 where buyer_id=$2"))
 		args = append(args, multipathOverloadThreshold, buyerID)
 		ic.MultipathOverloadThreshold = multipathOverloadThreshold
 	case "TryBeforeYouBuy":
@@ -2052,7 +2060,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set try_before_you_buy=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set try_before_you_buy=$1 where buyer_id=$2"))
 		args = append(args, tryBeforeYouBuy, buyerID)
 		ic.TryBeforeYouBuy = tryBeforeYouBuy
 	case "ForceNext":
@@ -2060,7 +2068,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("ForceNext: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set force_next=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set force_next=$1 where buyer_id=$2"))
 		args = append(args, forceNext, buyerID)
 		ic.ForceNext = forceNext
 	case "LargeCustomer":
@@ -2068,7 +2076,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set large_customer=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set large_customer=$1 where buyer_id=$2"))
 		args = append(args, largeCustomer, buyerID)
 		ic.LargeCustomer = largeCustomer
 	case "Uncommitted":
@@ -2076,7 +2084,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("Uncommitted: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set is_uncommitted=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set is_uncommitted=$1 where buyer_id=$2"))
 		args = append(args, uncommitted, buyerID)
 		ic.Uncommitted = uncommitted
 	case "MaxRTT":
@@ -2084,7 +2092,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("MaxRTT: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update internal_configs set set max_rtt=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update rs_internal_configs set set max_rtt=$1 where buyer_id=$2"))
 		args = append(args, maxRTT, buyerID)
 		ic.MaxRTT = maxRTT
 

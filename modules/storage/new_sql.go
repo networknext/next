@@ -517,9 +517,15 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyerIDs[buyer.DatabaseID] = buyer.ID
 
+		var rs0 core.RouteShader
 		rs, err := db.RouteShaders(buyer.ID)
 		if err != nil {
-			// level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
+		}
+
+		// TODO: fix routing.Buyer.RouteShader - should be a slice
+		if len(rs) > 0 {
+			rs0 = rs[0]
 		}
 
 		ic, err := db.InternalConfig(buyer.ID)
@@ -534,7 +540,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
 			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs[0], // TODO: fix routing.Buyer field
+			RouteShader:    rs0,
 			InternalConfig: ic,
 			CustomerID:     buyer.CustomerID,
 			DatabaseID:     buyer.DatabaseID,
