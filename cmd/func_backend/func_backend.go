@@ -187,8 +187,8 @@ func (backend *Backend) GetNearRelays() []routing.RelayData {
 	allRelayData := backend.relayMap.GetAllRelayData()
 	backend.mutex.Unlock()
 	sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
-	if len(allRelayData) > int(transport.MaxNearRelays) {
-		allRelayData = allRelayData[:transport.MaxNearRelays]
+	if len(allRelayData) > int(core.MaxNearRelays) {
+		allRelayData = allRelayData[:core.MaxNearRelays]
 	}
 	return allRelayData
 }

@@ -578,10 +578,6 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
-		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -746,10 +742,6 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 		SessionID:   1,
 		SliceNumber: 1,
 		Location:    routing.LocationNullIsland,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
-		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -842,10 +834,6 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 		SessionID:   1111,
 		SliceNumber: 1,
 		Location:    routing.LocationNullIsland,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
-		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -923,10 +911,6 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
-		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1000,15 +984,11 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	}
 
 	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
-		},
+		Version:          transport.SessionDataVersion,
+		SessionID:        requestPacket.SessionID,
+		SliceNumber:      requestPacket.SliceNumber + 1,
+		Location:         routing.LocationNullIsland,
+		ExpireTimestamp:  uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 		FellBackToDirect: true,
 	}
 
@@ -1038,87 +1018,6 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	assert.Equal(t, metrics.SessionUpdateMetrics.FallbackToDirectUnknownReason.Value(), 1.0)
 }
 
-func TestSessionUpdateHandlerNoNearRelays(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{},
-			NearRelayRTT: []float32{},
-		},
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.NearRelaysLocateFailure.Value(), 1.0)
-}
-
 func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
@@ -1145,6 +1044,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         10,
@@ -1163,6 +1063,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	assert.NoError(t, err)
 
 	routeMatrix := routing.RouteMatrix{
+		RelayIDsToIndices:  map[uint64]int32{1: 0},
 		RelayIDs:           []uint64{1},
 		RelayAddresses:     []net.UDPAddr{*relayAddr},
 		RelayNames:         []string{"test.relay"},
@@ -1181,12 +1082,14 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
+		Version:            requestPacket.Version,
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
 		NumNearRelays:      1,
 		NearRelayIDs:       []uint64{1},
 		NearRelayAddresses: []net.UDPAddr{*relayAddr},
+		NearRelaysChanged:  true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1196,8 +1099,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1},
-			NearRelayRTT: []float32{0},
+			NumNearRelays: 1,
 		},
 	}
 
@@ -1214,6 +1116,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -1249,10 +1152,6 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		SliceNumber:     1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1},
-			NearRelayRTT: []float32{0},
-		},
 	}
 
 	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
@@ -1309,10 +1208,6 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1},
-			NearRelayRTT: []float32{0},
-		},
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1372,11 +1267,6 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		SliceNumber:     1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
-		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1},
-			NearRelayRTT: []float32{0},
-			NearRelayJitter: []float32{0},
-		},
 	}
 
 	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
@@ -1386,6 +1276,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	copy(sessionDataArray[:], sessionDataSlice)
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         10,
@@ -1401,6 +1292,10 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		NearRelayPacketLoss:  []int32{0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var unmarshaled transport.SessionUpdatePacket
+	err = transport.UnmarshalPacket(&unmarshaled, requestData)
 	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
@@ -1431,12 +1326,10 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      1,
-		NearRelayIDs:       []uint64{1},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1446,9 +1339,9 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1},
-			NearRelayRTT: []float32{0},
-			NearRelayJitter: []float32{0},
+			NumNearRelays:   1,
+			NearRelayRTT:    [core.MaxNearRelays]int32{255},
+			NearRelayJitter: [core.MaxNearRelays]int32{0},
 		},
 	}
 
@@ -1465,6 +1358,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -1550,8 +1444,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1, 2},
-			NearRelayRTT: []float32{10, 15},
+			NearRelayRTT: [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -1565,6 +1458,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -1633,14 +1527,12 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
-		NumTokens:          4,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeNew,
+		NumTokens:   4,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1659,8 +1551,8 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -1678,6 +1570,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -1791,8 +1684,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1, 2},
-			NearRelayRTT: []float32{10, 15},
+			NearRelayRTT: [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -1808,6 +1700,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	assert.NoError(t, err)
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         12,
@@ -1901,14 +1794,12 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2External},
-		NumTokens:          5,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeNew,
+		NumTokens:   5,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1927,8 +1818,8 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -1946,6 +1837,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -2059,8 +1951,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1, 2},
-			NearRelayRTT: []float32{10, 15},
+			NearRelayRTT: [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -2076,6 +1967,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	assert.NoError(t, err)
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         12,
@@ -2169,14 +2061,12 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, *privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1External, *relayAddr2External},
-		NumTokens:          5,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeNew,
+		NumTokens:   5,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2195,8 +2085,8 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -2214,6 +2104,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -2324,8 +2215,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -2339,6 +2229,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -2404,14 +2295,12 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
 	core.WriteContinueTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionDataStruct.SessionVersion), 4, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeContinue,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
-		NumTokens:          4,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeContinue,
+		NumTokens:   4,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2430,8 +2319,8 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -2449,6 +2338,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -2541,8 +2431,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -2556,6 +2445,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -2625,14 +2515,12 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
-		NumTokens:          4,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeNew,
+		NumTokens:   4,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2651,8 +2539,9 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
+			RelayWentAway: true,
 		},
 		EverOnNext: true,
 	}
@@ -2670,6 +2559,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -2761,8 +2651,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -2776,6 +2665,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -2845,14 +2735,12 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
 	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
-		NumTokens:          4,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeNew,
+		NumTokens:   4,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2870,8 +2758,9 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
+			RouteLost:     true,
 		},
 		EverOnNext: true,
 	}
@@ -2889,6 +2778,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -2968,8 +2858,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -2983,6 +2872,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -3029,12 +2919,10 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -3050,8 +2938,9 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 			Veto:          true,
 			NoRoute:       true,
 			ReduceLatency: true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
+			RouteLost:     true,
 		},
 	}
 
@@ -3068,6 +2957,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -3150,8 +3040,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Multipath:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3165,6 +3054,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -3226,12 +3116,10 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -3248,8 +3136,8 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 			Multipath:         true,
 			MultipathOverload: true,
 			ReduceLatency:     true,
-			NearRelayID:       []uint64{1, 2},
-			NearRelayRTT:      []float32{10, 15},
+			NumNearRelays:     2,
+			NearRelayRTT:      [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3266,6 +3154,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -3347,8 +3236,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3362,6 +3250,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -3423,12 +3312,10 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -3445,8 +3332,8 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 			Committed:     true,
 			ReduceLatency: true,
 			LatencyWorse:  true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3463,6 +3350,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -3555,8 +3443,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			CommitCounter: 1,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3570,6 +3457,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -3637,14 +3525,12 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
 	core.WriteContinueTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionDataStruct.SessionVersion), 4, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeContinue,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
-		NumTokens:          4,
-		Tokens:             tokenData,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeContinue,
+		NumTokens:   4,
+		Tokens:      tokenData,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -3663,8 +3549,8 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			CommitCounter: 2,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -3682,6 +3568,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -3774,8 +3661,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			CommitCounter: 3,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3789,6 +3675,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 
 	requestPacket := transport.SessionUpdatePacket{
+		Version:              transport.SDKVersion{4, 0, 4},
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         11,
@@ -3850,12 +3737,10 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -3872,8 +3757,8 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 			ReduceLatency: true,
 			CommitCounter: 4,
 			CommitVeto:    true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -3890,6 +3775,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -3978,8 +3864,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1, 2},
-			NearRelayRTT: []float32{10, 15},
+			NearRelayRTT: [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -4077,8 +3962,8 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -4096,7 +3981,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -4184,8 +4069,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteState: core.RouteState{
-			NearRelayID:  []uint64{1, 2},
-			NearRelayRTT: []float32{10, 15},
+			NearRelayRTT: [core.MaxNearRelays]int32{10, 15},
 		},
 	}
 
@@ -4268,9 +4152,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 		RouteState: core.RouteState{
-			UserID:       requestPacket.UserHash,
-			NearRelayID:  []uint64{1, 2},
-			NearRelayRTT: []float32{10, 15},
+			UserID: requestPacket.UserHash,
 		},
 	}
 
@@ -4287,7 +4169,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -4375,8 +4257,7 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 			Next:          true,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
 		EverOnNext: true,
 	}
@@ -4456,8 +4337,8 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			ReduceLatency: true,
 			Committed:     true,
-			NearRelayID:   []uint64{1, 2},
-			NearRelayRTT:  []float32{10, 15},
+			NumNearRelays: 2,
+			NearRelayRTT:  [core.MaxNearRelays]int32{10, 255},
 		},
 		EverOnNext: true,
 	}
@@ -4475,7 +4356,7 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
+	responsePacket.Version = requestPacket.Version
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
