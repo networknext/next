@@ -5,6 +5,7 @@ package storage
 
 import (
 	"context"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	"sync"
 	"time"
@@ -32,8 +33,14 @@ var _ Storer = &StorerMock{}
 //             AddDatacenterMapFunc: func(ctx context.Context, dcMap routing.DatacenterMap) error {
 // 	               panic("mock out the AddDatacenterMap method")
 //             },
+//             AddInternalConfigFunc: func(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
+// 	               panic("mock out the AddInternalConfig method")
+//             },
 //             AddRelayFunc: func(ctx context.Context, relay routing.Relay) error {
 // 	               panic("mock out the AddRelay method")
+//             },
+//             AddRouteShaderFunc: func(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
+// 	               panic("mock out the AddRouteShader method")
 //             },
 //             AddSellerFunc: func(ctx context.Context, seller routing.Seller) error {
 // 	               panic("mock out the AddSeller method")
@@ -80,6 +87,9 @@ var _ Storer = &StorerMock{}
 //             IncrementSequenceNumberFunc: func(ctx context.Context) error {
 // 	               panic("mock out the IncrementSequenceNumber method")
 //             },
+//             InternalConfigFunc: func(buyerID uint64) (core.InternalConfig, error) {
+// 	               panic("mock out the InternalConfig method")
+//             },
 //             ListDatacenterMapsFunc: func(dcID uint64) map[uint64]routing.DatacenterMap {
 // 	               panic("mock out the ListDatacenterMaps method")
 //             },
@@ -104,11 +114,20 @@ var _ Storer = &StorerMock{}
 //             RemoveFeatureFlagByNameFunc: func(ctx context.Context, flagName string) error {
 // 	               panic("mock out the RemoveFeatureFlagByName method")
 //             },
+//             RemoveInternalConfigFunc: func(ctx context.Context, buyerID uint64) error {
+// 	               panic("mock out the RemoveInternalConfig method")
+//             },
 //             RemoveRelayFunc: func(ctx context.Context, id uint64) error {
 // 	               panic("mock out the RemoveRelay method")
 //             },
+//             RemoveRouteShaderFunc: func(ctx context.Context, buyerID uint64, index uint64) error {
+// 	               panic("mock out the RemoveRouteShader method")
+//             },
 //             RemoveSellerFunc: func(ctx context.Context, id string) error {
 // 	               panic("mock out the RemoveSeller method")
+//             },
+//             RouteShadersFunc: func(buyerID uint64) ([]core.RouteShader, error) {
+// 	               panic("mock out the RouteShaders method")
 //             },
 //             SellerFunc: func(id string) (routing.Seller, error) {
 // 	               panic("mock out the Seller method")
@@ -152,8 +171,14 @@ var _ Storer = &StorerMock{}
 //             SyncLoopFunc: func(ctx context.Context, c <-chan time.Time)  {
 // 	               panic("mock out the SyncLoop method")
 //             },
+//             UpdateInternalConfigFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+// 	               panic("mock out the UpdateInternalConfig method")
+//             },
 //             UpdateRelayFunc: func(ctx context.Context, relayID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateRelay method")
+//             },
+//             UpdateRouteShaderFunc: func(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+// 	               panic("mock out the UpdateRouteShader method")
 //             },
 //         }
 //
@@ -174,8 +199,14 @@ type StorerMock struct {
 	// AddDatacenterMapFunc mocks the AddDatacenterMap method.
 	AddDatacenterMapFunc func(ctx context.Context, dcMap routing.DatacenterMap) error
 
+	// AddInternalConfigFunc mocks the AddInternalConfig method.
+	AddInternalConfigFunc func(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error
+
 	// AddRelayFunc mocks the AddRelay method.
 	AddRelayFunc func(ctx context.Context, relay routing.Relay) error
+
+	// AddRouteShaderFunc mocks the AddRouteShader method.
+	AddRouteShaderFunc func(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error
 
 	// AddSellerFunc mocks the AddSeller method.
 	AddSellerFunc func(ctx context.Context, seller routing.Seller) error
@@ -222,6 +253,9 @@ type StorerMock struct {
 	// IncrementSequenceNumberFunc mocks the IncrementSequenceNumber method.
 	IncrementSequenceNumberFunc func(ctx context.Context) error
 
+	// InternalConfigFunc mocks the InternalConfig method.
+	InternalConfigFunc func(buyerID uint64) (core.InternalConfig, error)
+
 	// ListDatacenterMapsFunc mocks the ListDatacenterMaps method.
 	ListDatacenterMapsFunc func(dcID uint64) map[uint64]routing.DatacenterMap
 
@@ -246,11 +280,20 @@ type StorerMock struct {
 	// RemoveFeatureFlagByNameFunc mocks the RemoveFeatureFlagByName method.
 	RemoveFeatureFlagByNameFunc func(ctx context.Context, flagName string) error
 
+	// RemoveInternalConfigFunc mocks the RemoveInternalConfig method.
+	RemoveInternalConfigFunc func(ctx context.Context, buyerID uint64) error
+
 	// RemoveRelayFunc mocks the RemoveRelay method.
 	RemoveRelayFunc func(ctx context.Context, id uint64) error
 
+	// RemoveRouteShaderFunc mocks the RemoveRouteShader method.
+	RemoveRouteShaderFunc func(ctx context.Context, buyerID uint64, index uint64) error
+
 	// RemoveSellerFunc mocks the RemoveSeller method.
 	RemoveSellerFunc func(ctx context.Context, id string) error
+
+	// RouteShadersFunc mocks the RouteShaders method.
+	RouteShadersFunc func(buyerID uint64) ([]core.RouteShader, error)
 
 	// SellerFunc mocks the Seller method.
 	SellerFunc func(id string) (routing.Seller, error)
@@ -294,8 +337,14 @@ type StorerMock struct {
 	// SyncLoopFunc mocks the SyncLoop method.
 	SyncLoopFunc func(ctx context.Context, c <-chan time.Time)
 
+	// UpdateInternalConfigFunc mocks the UpdateInternalConfig method.
+	UpdateInternalConfigFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
+
 	// UpdateRelayFunc mocks the UpdateRelay method.
 	UpdateRelayFunc func(ctx context.Context, relayID uint64, field string, value interface{}) error
+
+	// UpdateRouteShaderFunc mocks the UpdateRouteShader method.
+	UpdateRouteShaderFunc func(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -327,12 +376,30 @@ type StorerMock struct {
 			// DcMap is the dcMap argument value.
 			DcMap routing.DatacenterMap
 		}
+		// AddInternalConfig holds details about calls to the AddInternalConfig method.
+		AddInternalConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InternalConfig is the internalConfig argument value.
+			InternalConfig core.InternalConfig
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+		}
 		// AddRelay holds details about calls to the AddRelay method.
 		AddRelay []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Relay is the relay argument value.
 			Relay routing.Relay
+		}
+		// AddRouteShader holds details about calls to the AddRouteShader method.
+		AddRouteShader []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// RouteShader is the routeShader argument value.
+			RouteShader core.RouteShader
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
 		}
 		// AddSeller holds details about calls to the AddSeller method.
 		AddSeller []struct {
@@ -405,6 +472,11 @@ type StorerMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// InternalConfig holds details about calls to the InternalConfig method.
+		InternalConfig []struct {
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+		}
 		// ListDatacenterMaps holds details about calls to the ListDatacenterMaps method.
 		ListDatacenterMaps []struct {
 			// DcID is the dcID argument value.
@@ -453,6 +525,13 @@ type StorerMock struct {
 			// FlagName is the flagName argument value.
 			FlagName string
 		}
+		// RemoveInternalConfig holds details about calls to the RemoveInternalConfig method.
+		RemoveInternalConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+		}
 		// RemoveRelay holds details about calls to the RemoveRelay method.
 		RemoveRelay []struct {
 			// Ctx is the ctx argument value.
@@ -460,12 +539,26 @@ type StorerMock struct {
 			// ID is the id argument value.
 			ID uint64
 		}
+		// RemoveRouteShader holds details about calls to the RemoveRouteShader method.
+		RemoveRouteShader []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// Index is the index argument value.
+			Index uint64
+		}
 		// RemoveSeller holds details about calls to the RemoveSeller method.
 		RemoveSeller []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID string
+		}
+		// RouteShaders holds details about calls to the RouteShaders method.
+		RouteShaders []struct {
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
 		}
 		// Seller holds details about calls to the Seller method.
 		Seller []struct {
@@ -563,6 +656,17 @@ type StorerMock struct {
 			// C is the c argument value.
 			C <-chan time.Time
 		}
+		// UpdateInternalConfig holds details about calls to the UpdateInternalConfig method.
+		UpdateInternalConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
 		// UpdateRelay holds details about calls to the UpdateRelay method.
 		UpdateRelay []struct {
 			// Ctx is the ctx argument value.
@@ -574,12 +678,27 @@ type StorerMock struct {
 			// Value is the value argument value.
 			Value interface{}
 		}
+		// UpdateRouteShader holds details about calls to the UpdateRouteShader method.
+		UpdateRouteShader []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// Index is the index argument value.
+			Index uint64
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
 	}
 	lockAddBuyer                  sync.RWMutex
 	lockAddCustomer               sync.RWMutex
 	lockAddDatacenter             sync.RWMutex
 	lockAddDatacenterMap          sync.RWMutex
+	lockAddInternalConfig         sync.RWMutex
 	lockAddRelay                  sync.RWMutex
+	lockAddRouteShader            sync.RWMutex
 	lockAddSeller                 sync.RWMutex
 	lockBuyer                     sync.RWMutex
 	lockBuyerIDFromCustomerName   sync.RWMutex
@@ -595,6 +714,7 @@ type StorerMock struct {
 	lockGetFeatureFlagByName      sync.RWMutex
 	lockGetFeatureFlags           sync.RWMutex
 	lockIncrementSequenceNumber   sync.RWMutex
+	lockInternalConfig            sync.RWMutex
 	lockListDatacenterMaps        sync.RWMutex
 	lockRelay                     sync.RWMutex
 	lockRelays                    sync.RWMutex
@@ -603,8 +723,11 @@ type StorerMock struct {
 	lockRemoveDatacenter          sync.RWMutex
 	lockRemoveDatacenterMap       sync.RWMutex
 	lockRemoveFeatureFlagByName   sync.RWMutex
+	lockRemoveInternalConfig      sync.RWMutex
 	lockRemoveRelay               sync.RWMutex
+	lockRemoveRouteShader         sync.RWMutex
 	lockRemoveSeller              sync.RWMutex
+	lockRouteShaders              sync.RWMutex
 	lockSeller                    sync.RWMutex
 	lockSellerIDFromCustomerName  sync.RWMutex
 	lockSellerWithCompanyCode     sync.RWMutex
@@ -619,7 +742,9 @@ type StorerMock struct {
 	lockSetSeller                 sync.RWMutex
 	lockSetSequenceNumber         sync.RWMutex
 	lockSyncLoop                  sync.RWMutex
+	lockUpdateInternalConfig      sync.RWMutex
 	lockUpdateRelay               sync.RWMutex
+	lockUpdateRouteShader         sync.RWMutex
 }
 
 // AddBuyer calls AddBuyerFunc.
@@ -762,6 +887,45 @@ func (mock *StorerMock) AddDatacenterMapCalls() []struct {
 	return calls
 }
 
+// AddInternalConfig calls AddInternalConfigFunc.
+func (mock *StorerMock) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
+	if mock.AddInternalConfigFunc == nil {
+		panic("StorerMock.AddInternalConfigFunc: method is nil but Storer.AddInternalConfig was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		InternalConfig core.InternalConfig
+		BuyerID        uint64
+	}{
+		Ctx:            ctx,
+		InternalConfig: internalConfig,
+		BuyerID:        buyerID,
+	}
+	mock.lockAddInternalConfig.Lock()
+	mock.calls.AddInternalConfig = append(mock.calls.AddInternalConfig, callInfo)
+	mock.lockAddInternalConfig.Unlock()
+	return mock.AddInternalConfigFunc(ctx, internalConfig, buyerID)
+}
+
+// AddInternalConfigCalls gets all the calls that were made to AddInternalConfig.
+// Check the length with:
+//     len(mockedStorer.AddInternalConfigCalls())
+func (mock *StorerMock) AddInternalConfigCalls() []struct {
+	Ctx            context.Context
+	InternalConfig core.InternalConfig
+	BuyerID        uint64
+} {
+	var calls []struct {
+		Ctx            context.Context
+		InternalConfig core.InternalConfig
+		BuyerID        uint64
+	}
+	mock.lockAddInternalConfig.RLock()
+	calls = mock.calls.AddInternalConfig
+	mock.lockAddInternalConfig.RUnlock()
+	return calls
+}
+
 // AddRelay calls AddRelayFunc.
 func (mock *StorerMock) AddRelay(ctx context.Context, relay routing.Relay) error {
 	if mock.AddRelayFunc == nil {
@@ -794,6 +958,45 @@ func (mock *StorerMock) AddRelayCalls() []struct {
 	mock.lockAddRelay.RLock()
 	calls = mock.calls.AddRelay
 	mock.lockAddRelay.RUnlock()
+	return calls
+}
+
+// AddRouteShader calls AddRouteShaderFunc.
+func (mock *StorerMock) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
+	if mock.AddRouteShaderFunc == nil {
+		panic("StorerMock.AddRouteShaderFunc: method is nil but Storer.AddRouteShader was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		RouteShader core.RouteShader
+		BuyerID     uint64
+	}{
+		Ctx:         ctx,
+		RouteShader: routeShader,
+		BuyerID:     buyerID,
+	}
+	mock.lockAddRouteShader.Lock()
+	mock.calls.AddRouteShader = append(mock.calls.AddRouteShader, callInfo)
+	mock.lockAddRouteShader.Unlock()
+	return mock.AddRouteShaderFunc(ctx, routeShader, buyerID)
+}
+
+// AddRouteShaderCalls gets all the calls that were made to AddRouteShader.
+// Check the length with:
+//     len(mockedStorer.AddRouteShaderCalls())
+func (mock *StorerMock) AddRouteShaderCalls() []struct {
+	Ctx         context.Context
+	RouteShader core.RouteShader
+	BuyerID     uint64
+} {
+	var calls []struct {
+		Ctx         context.Context
+		RouteShader core.RouteShader
+		BuyerID     uint64
+	}
+	mock.lockAddRouteShader.RLock()
+	calls = mock.calls.AddRouteShader
+	mock.lockAddRouteShader.RUnlock()
 	return calls
 }
 
@@ -1250,6 +1453,37 @@ func (mock *StorerMock) IncrementSequenceNumberCalls() []struct {
 	return calls
 }
 
+// InternalConfig calls InternalConfigFunc.
+func (mock *StorerMock) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+	if mock.InternalConfigFunc == nil {
+		panic("StorerMock.InternalConfigFunc: method is nil but Storer.InternalConfig was just called")
+	}
+	callInfo := struct {
+		BuyerID uint64
+	}{
+		BuyerID: buyerID,
+	}
+	mock.lockInternalConfig.Lock()
+	mock.calls.InternalConfig = append(mock.calls.InternalConfig, callInfo)
+	mock.lockInternalConfig.Unlock()
+	return mock.InternalConfigFunc(buyerID)
+}
+
+// InternalConfigCalls gets all the calls that were made to InternalConfig.
+// Check the length with:
+//     len(mockedStorer.InternalConfigCalls())
+func (mock *StorerMock) InternalConfigCalls() []struct {
+	BuyerID uint64
+} {
+	var calls []struct {
+		BuyerID uint64
+	}
+	mock.lockInternalConfig.RLock()
+	calls = mock.calls.InternalConfig
+	mock.lockInternalConfig.RUnlock()
+	return calls
+}
+
 // ListDatacenterMaps calls ListDatacenterMapsFunc.
 func (mock *StorerMock) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
 	if mock.ListDatacenterMapsFunc == nil {
@@ -1513,6 +1747,41 @@ func (mock *StorerMock) RemoveFeatureFlagByNameCalls() []struct {
 	return calls
 }
 
+// RemoveInternalConfig calls RemoveInternalConfigFunc.
+func (mock *StorerMock) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+	if mock.RemoveInternalConfigFunc == nil {
+		panic("StorerMock.RemoveInternalConfigFunc: method is nil but Storer.RemoveInternalConfig was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+	}
+	mock.lockRemoveInternalConfig.Lock()
+	mock.calls.RemoveInternalConfig = append(mock.calls.RemoveInternalConfig, callInfo)
+	mock.lockRemoveInternalConfig.Unlock()
+	return mock.RemoveInternalConfigFunc(ctx, buyerID)
+}
+
+// RemoveInternalConfigCalls gets all the calls that were made to RemoveInternalConfig.
+// Check the length with:
+//     len(mockedStorer.RemoveInternalConfigCalls())
+func (mock *StorerMock) RemoveInternalConfigCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+	}
+	mock.lockRemoveInternalConfig.RLock()
+	calls = mock.calls.RemoveInternalConfig
+	mock.lockRemoveInternalConfig.RUnlock()
+	return calls
+}
+
 // RemoveRelay calls RemoveRelayFunc.
 func (mock *StorerMock) RemoveRelay(ctx context.Context, id uint64) error {
 	if mock.RemoveRelayFunc == nil {
@@ -1548,6 +1817,45 @@ func (mock *StorerMock) RemoveRelayCalls() []struct {
 	return calls
 }
 
+// RemoveRouteShader calls RemoveRouteShaderFunc.
+func (mock *StorerMock) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+	if mock.RemoveRouteShaderFunc == nil {
+		panic("StorerMock.RemoveRouteShaderFunc: method is nil but Storer.RemoveRouteShader was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Index   uint64
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+		Index:   index,
+	}
+	mock.lockRemoveRouteShader.Lock()
+	mock.calls.RemoveRouteShader = append(mock.calls.RemoveRouteShader, callInfo)
+	mock.lockRemoveRouteShader.Unlock()
+	return mock.RemoveRouteShaderFunc(ctx, buyerID, index)
+}
+
+// RemoveRouteShaderCalls gets all the calls that were made to RemoveRouteShader.
+// Check the length with:
+//     len(mockedStorer.RemoveRouteShaderCalls())
+func (mock *StorerMock) RemoveRouteShaderCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+	Index   uint64
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Index   uint64
+	}
+	mock.lockRemoveRouteShader.RLock()
+	calls = mock.calls.RemoveRouteShader
+	mock.lockRemoveRouteShader.RUnlock()
+	return calls
+}
+
 // RemoveSeller calls RemoveSellerFunc.
 func (mock *StorerMock) RemoveSeller(ctx context.Context, id string) error {
 	if mock.RemoveSellerFunc == nil {
@@ -1580,6 +1888,37 @@ func (mock *StorerMock) RemoveSellerCalls() []struct {
 	mock.lockRemoveSeller.RLock()
 	calls = mock.calls.RemoveSeller
 	mock.lockRemoveSeller.RUnlock()
+	return calls
+}
+
+// RouteShaders calls RouteShadersFunc.
+func (mock *StorerMock) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+	if mock.RouteShadersFunc == nil {
+		panic("StorerMock.RouteShadersFunc: method is nil but Storer.RouteShaders was just called")
+	}
+	callInfo := struct {
+		BuyerID uint64
+	}{
+		BuyerID: buyerID,
+	}
+	mock.lockRouteShaders.Lock()
+	mock.calls.RouteShaders = append(mock.calls.RouteShaders, callInfo)
+	mock.lockRouteShaders.Unlock()
+	return mock.RouteShadersFunc(buyerID)
+}
+
+// RouteShadersCalls gets all the calls that were made to RouteShaders.
+// Check the length with:
+//     len(mockedStorer.RouteShadersCalls())
+func (mock *StorerMock) RouteShadersCalls() []struct {
+	BuyerID uint64
+} {
+	var calls []struct {
+		BuyerID uint64
+	}
+	mock.lockRouteShaders.RLock()
+	calls = mock.calls.RouteShaders
+	mock.lockRouteShaders.RUnlock()
 	return calls
 }
 
@@ -2068,6 +2407,49 @@ func (mock *StorerMock) SyncLoopCalls() []struct {
 	return calls
 }
 
+// UpdateInternalConfig calls UpdateInternalConfigFunc.
+func (mock *StorerMock) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	if mock.UpdateInternalConfigFunc == nil {
+		panic("StorerMock.UpdateInternalConfigFunc: method is nil but Storer.UpdateInternalConfig was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Field   string
+		Value   interface{}
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	mock.lockUpdateInternalConfig.Lock()
+	mock.calls.UpdateInternalConfig = append(mock.calls.UpdateInternalConfig, callInfo)
+	mock.lockUpdateInternalConfig.Unlock()
+	return mock.UpdateInternalConfigFunc(ctx, buyerID, field, value)
+}
+
+// UpdateInternalConfigCalls gets all the calls that were made to UpdateInternalConfig.
+// Check the length with:
+//     len(mockedStorer.UpdateInternalConfigCalls())
+func (mock *StorerMock) UpdateInternalConfigCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+	Field   string
+	Value   interface{}
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Field   string
+		Value   interface{}
+	}
+	mock.lockUpdateInternalConfig.RLock()
+	calls = mock.calls.UpdateInternalConfig
+	mock.lockUpdateInternalConfig.RUnlock()
+	return calls
+}
+
 // UpdateRelay calls UpdateRelayFunc.
 func (mock *StorerMock) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 	if mock.UpdateRelayFunc == nil {
@@ -2108,5 +2490,52 @@ func (mock *StorerMock) UpdateRelayCalls() []struct {
 	mock.lockUpdateRelay.RLock()
 	calls = mock.calls.UpdateRelay
 	mock.lockUpdateRelay.RUnlock()
+	return calls
+}
+
+// UpdateRouteShader calls UpdateRouteShaderFunc.
+func (mock *StorerMock) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+	if mock.UpdateRouteShaderFunc == nil {
+		panic("StorerMock.UpdateRouteShaderFunc: method is nil but Storer.UpdateRouteShader was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Index   uint64
+		Field   string
+		Value   interface{}
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+		Index:   index,
+		Field:   field,
+		Value:   value,
+	}
+	mock.lockUpdateRouteShader.Lock()
+	mock.calls.UpdateRouteShader = append(mock.calls.UpdateRouteShader, callInfo)
+	mock.lockUpdateRouteShader.Unlock()
+	return mock.UpdateRouteShaderFunc(ctx, buyerID, index, field, value)
+}
+
+// UpdateRouteShaderCalls gets all the calls that were made to UpdateRouteShader.
+// Check the length with:
+//     len(mockedStorer.UpdateRouteShaderCalls())
+func (mock *StorerMock) UpdateRouteShaderCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+	Index   uint64
+	Field   string
+	Value   interface{}
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Index   uint64
+		Field   string
+		Value   interface{}
+	}
+	mock.lockUpdateRouteShader.RLock()
+	calls = mock.calls.UpdateRouteShader
+	mock.lockUpdateRouteShader.RUnlock()
 	return calls
 }
