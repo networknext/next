@@ -1272,9 +1272,9 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 		NumNearRelays:        1,
 		NearRelayIDs:         []uint64{1},
-		NearRelayRTT:         []float32{0},
-		NearRelayJitter:      []float32{0},
-		NearRelayPacketLoss:  []float32{0},
+		NearRelayRTT:         []int32{0},
+		NearRelayJitter:      []int32{0},
+		NearRelayPacketLoss:  []int32{0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -1396,9 +1396,9 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 		NumNearRelays:        1,
 		NearRelayIDs:         []uint64{1},
-		NearRelayRTT:         []float32{0},
-		NearRelayJitter:      []float32{0},
-		NearRelayPacketLoss:  []float32{0},
+		NearRelayRTT:         []int32{0},
+		NearRelayJitter:      []int32{0},
+		NearRelayPacketLoss:  []int32{0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -1578,9 +1578,9 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -1821,9 +1821,9 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -2089,9 +2089,9 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -2352,9 +2352,9 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -2570,9 +2570,9 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -2790,9 +2790,9 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -2996,9 +2996,9 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -3180,9 +3180,9 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 		Next:                 true,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -3377,9 +3377,9 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 		NextRTT:              80,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -3585,9 +3585,9 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 		NextRTT:              62,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -3804,9 +3804,9 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 		NextRTT:              62,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -4007,9 +4007,9 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		DirectRTT:            80,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -4053,15 +4053,12 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		Version:            requestPacket.Version,
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeNew,
-		NumNearRelays:      2,
-		NearRelayIDs:       []uint64{1, 2},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1, *relayAddr2},
-		NumTokens:          4,
-		HasDebug:           true,
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeNew,
+		NumTokens:   4,
+		HasDebug:    true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -4257,12 +4254,10 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		Version:            requestPacket.Version,
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -4412,9 +4407,9 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 		NextRTT:              60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []float32{10, 15},
-		NearRelayJitter:      []float32{0, 0},
-		NearRelayPacketLoss:  []float32{0, 0},
+		NearRelayRTT:         []int32{10, 15},
+		NearRelayJitter:      []int32{0, 0},
+		NearRelayPacketLoss:  []int32{0, 0},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -4444,13 +4439,10 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedResponse := transport.SessionResponsePacket{
-		Version:            requestPacket.Version,
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      1,
-		NearRelayIDs:       []uint64{1},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr1},
+		Version:     requestPacket.Version,
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber,
+		RouteType:   routing.RouteTypeDirect,
 	}
 
 	expectedSessionData := transport.SessionData{

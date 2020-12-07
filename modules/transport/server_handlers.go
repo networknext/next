@@ -463,6 +463,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.ClientLocateFailure.Add(1)
 				return
 			}
+
 		} else {
 			err := UnmarshalSessionData(&prevSessionData, packet.SessionData[:])
 			sessionData.CopyFrom(&prevSessionData) // Have an extra copy of the session data so we can use the unmodified one in the post session
@@ -548,6 +549,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				core.NearRelayFilter(&sessionData.RouteState, nearRelays.IDs[i], 0, 0)
 			}
 
+			response.NearRelaysChanged = true
+
 		} else {
 			// todo: ryan, this for loop is really hard to read!
 			for i := 0; i < len(sessionData.RouteState.NearRelayID); i++ {
@@ -578,7 +581,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 						maxRTT, maxJitter := core.NearRelayFilter(&sessionData.RouteState, clientNearRelayID, rtt, jitter)
 
 						nearRelays.RTTs = append(nearRelays.RTTs, int32(math.Ceil(float64(maxRTT))))
-						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(maxJitter))))		// todo: should be int as well ryan
+						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(maxJitter)))) // todo: should be int as well ryan
 
 						// todo: Ryan
 						// Here you must also track max direct jitter seen so far in the route state
