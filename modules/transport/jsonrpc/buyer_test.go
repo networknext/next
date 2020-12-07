@@ -590,8 +590,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 3, reply.Next)
-		assert.Equal(t, 51, reply.Direct)
+		assert.Equal(t, 8, reply.Next)
+		assert.Equal(t, 250, reply.Direct)
 	})
 
 	t.Run("filtered - sameBuyer - !admin", func(t *testing.T) {
