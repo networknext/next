@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/stretchr/testify/assert"
@@ -816,5 +817,80 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(25000), checkRelay.IncludedBandwidthGB)
 
+	})
+}
+
+func TestInternalConfig(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	var outerCustomer routing.Customer
+	// var outerBuyer routing.Buyer
+
+	t.Run("AddInternalConfig", func(t *testing.T) {
+
+		customerCode := "Compcode"
+		customer := routing.Customer{
+			Active:                 true,
+			Code:                   customerCode,
+			Name:                   "Company, Ltd.",
+			AutomaticSignInDomains: "fredscuttle.com",
+		}
+
+		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+
+		outerCustomer, err = db.Customer(customerCode)
+		assert.NoError(t, err)
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err := rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
+		buyer := routing.Buyer{
+			ShortName:   outerCustomer.Code,
+			CompanyCode: outerCustomer.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		// outerBuyer, err = db.Buyer(internalID)
+		// assert.NoError(t, err)
+
+		internalConfig := core.InternalConfig{
+			RouteSelectThreshold:       2,
+			RouteSwitchThreshold:       5,
+			MaxLatencyTradeOff:         10,
+			RTTVeto_Default:            -10,
+			RTTVeto_PacketLoss:         -20,
+			RTTVeto_Multipath:          -20,
+			MultipathOverloadThreshold: 500,
+			TryBeforeYouBuy:            true,
+			ForceNext:                  true,
+			LargeCustomer:              true,
+			Uncommitted:                true,
+			MaxRTT:                     300,
+		}
+
+		err = db.AddInternalConfig(ctx, internalConfig, internalID)
+		assert.NoError(t, err)
 	})
 }
