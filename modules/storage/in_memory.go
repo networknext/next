@@ -563,3 +563,7 @@ func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, index 
 func (m *InMemory) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
 	return fmt.Errorf("RemoveRouteSHader not yet impemented in InMemory storer")
 }
+
+func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+}

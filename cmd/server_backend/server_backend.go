@@ -70,8 +70,8 @@ func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
 	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
 	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
 
-	lat := (float64(latBits)) / 0xFFFFFFFF
-	long := (float64(longBits)) / 0xFFFFFFFF
+	lat := (float32(latBits)) / 0xFFFFFFFF
+	long := (float32(longBits)) / 0xFFFFFFFF
 
 	return routing.Location{
 		Latitude:  (-90.0 + lat*180.0) * 0.5,

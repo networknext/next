@@ -174,6 +174,9 @@ var _ Storer = &StorerMock{}
 //             UpdateInternalConfigFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateInternalConfig method")
 //             },
+//             UpdateRelayFunc: func(ctx context.Context, relayID uint64, field string, value interface{}) error {
+// 	               panic("mock out the UpdateRelay method")
+//             },
 //             UpdateRouteShaderFunc: func(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateRouteShader method")
 //             },
@@ -336,6 +339,9 @@ type StorerMock struct {
 
 	// UpdateInternalConfigFunc mocks the UpdateInternalConfig method.
 	UpdateInternalConfigFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
+
+	// UpdateRelayFunc mocks the UpdateRelay method.
+	UpdateRelayFunc func(ctx context.Context, relayID uint64, field string, value interface{}) error
 
 	// UpdateRouteShaderFunc mocks the UpdateRouteShader method.
 	UpdateRouteShaderFunc func(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error
@@ -661,6 +667,17 @@ type StorerMock struct {
 			// Value is the value argument value.
 			Value interface{}
 		}
+		// UpdateRelay holds details about calls to the UpdateRelay method.
+		UpdateRelay []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// RelayID is the relayID argument value.
+			RelayID uint64
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
 		// UpdateRouteShader holds details about calls to the UpdateRouteShader method.
 		UpdateRouteShader []struct {
 			// Ctx is the ctx argument value.
@@ -726,6 +743,7 @@ type StorerMock struct {
 	lockSetSequenceNumber         sync.RWMutex
 	lockSyncLoop                  sync.RWMutex
 	lockUpdateInternalConfig      sync.RWMutex
+	lockUpdateRelay               sync.RWMutex
 	lockUpdateRouteShader         sync.RWMutex
 }
 
@@ -2429,6 +2447,49 @@ func (mock *StorerMock) UpdateInternalConfigCalls() []struct {
 	mock.lockUpdateInternalConfig.RLock()
 	calls = mock.calls.UpdateInternalConfig
 	mock.lockUpdateInternalConfig.RUnlock()
+	return calls
+}
+
+// UpdateRelay calls UpdateRelayFunc.
+func (mock *StorerMock) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	if mock.UpdateRelayFunc == nil {
+		panic("StorerMock.UpdateRelayFunc: method is nil but Storer.UpdateRelay was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		RelayID uint64
+		Field   string
+		Value   interface{}
+	}{
+		Ctx:     ctx,
+		RelayID: relayID,
+		Field:   field,
+		Value:   value,
+	}
+	mock.lockUpdateRelay.Lock()
+	mock.calls.UpdateRelay = append(mock.calls.UpdateRelay, callInfo)
+	mock.lockUpdateRelay.Unlock()
+	return mock.UpdateRelayFunc(ctx, relayID, field, value)
+}
+
+// UpdateRelayCalls gets all the calls that were made to UpdateRelay.
+// Check the length with:
+//     len(mockedStorer.UpdateRelayCalls())
+func (mock *StorerMock) UpdateRelayCalls() []struct {
+	Ctx     context.Context
+	RelayID uint64
+	Field   string
+	Value   interface{}
+} {
+	var calls []struct {
+		Ctx     context.Context
+		RelayID uint64
+		Field   string
+		Value   interface{}
+	}
+	mock.lockUpdateRelay.RLock()
+	calls = mock.calls.UpdateRelay
+	mock.lockUpdateRelay.RUnlock()
 	return calls
 }
 

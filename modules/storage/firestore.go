@@ -93,8 +93,8 @@ type relay struct {
 type datacenter struct {
 	Name         string  `firestore:"name"`
 	Enabled      bool    `firestore:"enabled"`
-	Latitude     float64 `firestore:"latitude"`
-	Longitude    float64 `firestore:"longitude"`
+	Latitude     float32 `firestore:"latitude"`
+	Longitude    float32 `firestore:"longitude"`
 	SupplierName string  `firestore:"supplierName"`
 }
 
@@ -1774,8 +1774,8 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 			Name:    d.Name,
 			Enabled: d.Enabled,
 			Location: routing.Location{
-				Latitude:  float64(d.Latitude),
-				Longitude: float64(d.Longitude),
+				Latitude:  d.Latitude,
+				Longitude: d.Longitude,
 			},
 			SupplierName: d.SupplierName,
 		}
@@ -2356,4 +2356,8 @@ func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, inde
 
 func (fs *Firestore) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
 	return fmt.Errorf("RemoveRouteSHader not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
 }

@@ -173,4 +173,6 @@ type Storer interface {
 
 	// RemoveInternalConfig removes a record from the InternalConfigs table
 	RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error
+	// UpdateRelay updates a single field in a relay record
+	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error
 }
