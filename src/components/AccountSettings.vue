@@ -7,7 +7,7 @@
       Update user account profile.
     </p>
     <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
-    <form @submit.prevent="updateCompanyInformation()">
+    <form @submit.prevent="updateAccountSettings()">
       <div class="form-group">
         <label for="companyName">
           Company Name
@@ -34,13 +34,21 @@
           <br/>
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validCompanyInfo">
+      <div class="form-group">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent"/>
+          <small>
+            I would like to receive the Network Next newsletter
+          </small>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">
         Update Company Settings
       </button>
       <p class="text-muted text-small mt-2"></p>
     </form>
-    <form @submit.prevent="updateAccountSettings()">
-      <div class="form-group" v-if="false">
+    <form v-if="false">
+      <div class="form-group">
         <label for="newPassword">
           Update Password
         </label>
@@ -61,12 +69,6 @@
         <small v-for="(error, index) in confirmPasswordErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
-        </small>
-      </div>
-      <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="updateAccountSettings()"/>
-        <small>
-          I would like to receive the Network Next newsletter
         </small>
       </div>
       <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
@@ -243,12 +245,25 @@ export default class AccountSettings extends Vue {
     }
   }
 
-  private updateCompanyInformation () {
-    this.$apiService
-      .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
-      .then((response: any) => {
-        this.$authService.refreshToken()
-        this.message = 'Company name updated successfully'
+  private updateAccountSettings () {
+    const promises = []
+    // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
+    if (this.validCompanyInfo && this.$store.getters.userProfile.companyName !== this.companyName && this.$store.getters.userProfile.companyCode !== this.companyCode) {
+      promises.push(
+        this.$apiService
+          .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
+      )
+    }
+
+    promises.push(this.$apiService
+      .updateAccountSettings({ newsletter: this.newsletterConsent }))
+
+    Promise.all(promises)
+      .then((responses: Array<any>) => {
+        if (this.validCompanyInfo) {
+          this.$authService.refreshToken()
+        }
+        this.message = 'Account settings updated successfully'
         this.alertType = AlertTypes.SUCCESS
         setTimeout(() => {
           this.message = ''
@@ -260,29 +275,7 @@ export default class AccountSettings extends Vue {
         console.log(error)
         this.companyName = this.$store.getters.userProfile.companyName
         this.companyCode = this.$store.getters.userProfile.companyCode
-        this.message = 'Failed to update company name'
-        this.alertType = AlertTypes.ERROR
-        setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
-        }, 5000)
-      })
-  }
-
-  private updateAccountSettings () {
-    this.$apiService
-      .updateAccountSettings({ newsletter: this.newsletterConsent })
-      .then((response: any) => {
-        this.message = 'Account settings updated successfully'
-        this.alertType = AlertTypes.SUCCESS
-        setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
-        }, 5000)
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong updating the account settings')
-        console.log(error)
+        this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
         this.message = 'Failed to update account settings'
         this.alertType = AlertTypes.ERROR
         setTimeout(() => {

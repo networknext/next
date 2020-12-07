@@ -88,6 +88,10 @@ const routes: Array<RouteConfig> = [
     ]
   },
   {
+    path: '/get-access',
+    name: 'get-access'
+  },
+  {
     path: '/explore',
     name: 'explore',
     component: Explore
