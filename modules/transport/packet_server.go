@@ -288,9 +288,9 @@ type SessionUpdatePacket struct {
 	NextPacketLoss                  float32
 	NumNearRelays                   int32
 	NearRelayIDs                    []uint64
-	NearRelayRTT                    []float32
-	NearRelayJitter                 []float32
-	NearRelayPacketLoss             []float32
+	NearRelayRTT                    []int32
+	NearRelayJitter                 []int32
+	NearRelayPacketLoss             []int32
 	NextKbpsUp                      uint32
 	NextKbpsDown                    uint32
 	PacketsSentClientToServer       uint64
@@ -411,16 +411,27 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	if stream.IsReading() {
 		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayRTT = make([]float32, packet.NumNearRelays)
-		packet.NearRelayJitter = make([]float32, packet.NumNearRelays)
-		packet.NearRelayPacketLoss = make([]float32, packet.NumNearRelays)
+		packet.NearRelayRTT = make([]int32, packet.NumNearRelays)
+		packet.NearRelayJitter = make([]int32, packet.NumNearRelays)
+		packet.NearRelayPacketLoss = make([]int32, packet.NumNearRelays)
 	}
 
 	for i := int32(0); i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIDs[i])
-		stream.SerializeFloat32(&packet.NearRelayRTT[i])
-		stream.SerializeFloat32(&packet.NearRelayJitter[i])
-		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
+		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 4) {
+			// SDK 4.0.4 optimized transmission of near relay rtt, jitter and packet loss
+			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+		} else {
+			var rtt, jitter, packetLoss float32
+			stream.SerializeFloat32(&rtt)
+			stream.SerializeFloat32(&jitter)
+			stream.SerializeFloat32(&packetLoss)
+			packet.NearRelayRTT[i] = int32(math.Ceil(float64(rtt)))
+			packet.NearRelayJitter[i] = int32(math.Ceil(float64(jitter)))
+			packet.NearRelayPacketLoss[i] = int32(math.Floor(float64(packetLoss + 0.5)))
+		}
 	}
 
 	if packet.Next {
@@ -454,6 +465,7 @@ type SessionResponsePacket struct {
 	SessionDataBytes   int32
 	SessionData        [MaxSessionDataSize]byte
 	RouteType          int32
+	NearRelaysChanged  bool
 	NumNearRelays      int32
 	NearRelayIDs       []uint64
 	NearRelayAddresses []net.UDPAddr
@@ -478,16 +490,23 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
-	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
 
-	if stream.IsReading() {
-		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+	nearRelaysChanged := true
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
+		stream.SerializeBool(&packet.NearRelaysChanged)
+		nearRelaysChanged = packet.NearRelaysChanged
 	}
 
-	for i := int32(0); i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIDs[i])
-		stream.SerializeAddress(&packet.NearRelayAddresses[i])
+	if nearRelaysChanged {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+		if stream.IsReading() {
+			packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
+			packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+		}
+		for i := int32(0); i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIDs[i])
+			stream.SerializeAddress(&packet.NearRelayAddresses[i])
+		}
 	}
 
 	if packet.RouteType != routing.RouteTypeDirect {
@@ -557,9 +576,6 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
-	// todo: we need to do better than this, otherwise our deploys will be disruptive when we change session data.
-	// instead, we need to actually make our code compatible to read the session data from old session data
-	// so we can smoothly transition from old session data -> new session data with in flight sessions!
 	stream.SerializeBits(&sessionData.Version, 8)
 	if stream.IsReading() && sessionData.Version > SessionDataVersion {
 		return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
