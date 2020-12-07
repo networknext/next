@@ -165,14 +165,15 @@ type Storer interface {
 	// RouteShaders returns a slice of route shaders for the given buyer ID
 	RouteShaders(buyerID uint64) ([]core.RouteShader, error)
 
-	// AddRouteShader adds the provided InternalConfig to the database
+	// AddRouteShader adds the provided RouteShader to the database
 	AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error
 
-	// UpdateInternalConfig updates the specified field in an InternalConfig record
+	// UpdateRouteShader updates the specified field in an RouteShader record
 	UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error
 
-	// RemoveInternalConfig removes a record from the InternalConfigs table
-	RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error
+	// RemoveRouteShader removes a record from the RouteShaders table
+	RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error
+
 	// UpdateRelay updates a single field in a relay record
 	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error
 }

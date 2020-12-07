@@ -2166,6 +2166,6 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint
 	return fmt.Errorf("UpdateRouteShader not yet impemented in SQL storer")
 }
 
-func (db *SQL) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
-	return fmt.Errorf("RemoveRouteSHader not yet impemented in SQL storer")
+func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+	return fmt.Errorf("RemoveRouteShader not yet impemented in SQL storer")
 }

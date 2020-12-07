@@ -2354,8 +2354,8 @@ func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, inde
 	return fmt.Errorf("UpdateRouteShader not yet impemented in Firestore storer")
 }
 
-func (fs *Firestore) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
-	return fmt.Errorf("RemoveRouteSHader not yet impemented in Firestore storer")
+func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+	return fmt.Errorf("RemoveRouteShader not yet impemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
