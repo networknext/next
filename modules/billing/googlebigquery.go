@@ -232,5 +232,14 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		}
 	}
 
+	e["relayWentAway"] = entry.RelayWentAway
+	e["routeLost"] = entry.RouteLost
+
+	tags := make([]bigquery.Value, entry.NumTags)
+	for i := 0; i < int(entry.NumTags); i++ {
+		tags[i] = int(entry.Tags[i])
+	}
+	e["tags"] = tags
+
 	return e, "", nil
 }

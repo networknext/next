@@ -907,6 +907,22 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		debugString = *debug
 	}
 
+	var numNearRelays uint8
+	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
+	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
+
+	if buyer.Debug {
+		numNearRelays = uint8(nearRelays.Count)
+		for i := uint8(0); i < numNearRelays; i++ {
+			nearRelayIDs[i] = nearRelays.IDs[i]
+			nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
+			nearRelayJitters[i] = float32(nearRelays.Jitters[i])
+			nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
+		}
+	}
+
 	billingEntry := &billing.BillingEntry{
 		Timestamp:                       uint64(time.Now().Unix()),
 		BuyerID:                         packet.CustomerID,
@@ -958,16 +974,15 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		PacketsOutOfOrderServerToClient: packet.PacketsOutOfOrderServerToClient,
 		JitterClientToServer:            packet.JitterClientToServer,
 		JitterServerToClient:            packet.JitterServerToClient,
-	}
-
-	if buyer.Debug {
-		billingEntry.NumNearRelays = uint8(nearRelays.Count)
-		for i := int32(0); i < nearRelays.Count; i++ {
-			billingEntry.NearRelayIDs[i] = nearRelays.IDs[i]
-			billingEntry.NearRelayRTTs[i] = float32(nearRelays.RTTs[i])
-			billingEntry.NearRelayJitters[i] = float32(nearRelays.Jitters[i])
-			billingEntry.NearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
-		}
+		NumNearRelays:                   numNearRelays,
+		NearRelayIDs:                    nearRelayIDs,
+		NearRelayRTTs:                   nearRelayRTTs,
+		NearRelayJitters:                nearRelayJitters,
+		NearRelayPacketLosses:           nearRelayPacketLosses,
+		RelayWentAway:                   sessionData.RouteState.RelayWentAway,
+		RouteLost:                       sessionData.RouteState.RouteLost,
+		NumTags:                         uint8(packet.NumTags),
+		Tags:                            packet.Tags,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
