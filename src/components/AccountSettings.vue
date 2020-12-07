@@ -260,9 +260,7 @@ export default class AccountSettings extends Vue {
 
     Promise.all(promises)
       .then((responses: Array<any>) => {
-        if (this.validCompanyInfo) {
-          this.$authService.refreshToken()
-        }
+        this.$authService.refreshToken()
         this.message = 'Account settings updated successfully'
         this.alertType = AlertTypes.SUCCESS
         setTimeout(() => {
