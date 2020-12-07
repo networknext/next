@@ -7,7 +7,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,7 +65,7 @@ func TestRouteMatrixSerialize(t *testing.T) {
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
-	nearRelays, err := routeMatrix.GetNearRelays(0, 0, transport.MaxNearRelays)
+	nearRelays, err := routeMatrix.GetNearRelays(0, 0, core.MaxNearRelays)
 	assert.EqualError(t, err, "no near relays")
 	assert.Empty(t, nearRelays)
 }
@@ -74,17 +73,9 @@ func TestRouteMatrixNoNearRelays(t *testing.T) {
 func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expected := routing.NearRelayResult{
-		Count:        2,
-		IDs:          routeMatrix.RelayIDs,
-		Addrs:        routeMatrix.RelayAddresses,
-		Names:        routeMatrix.RelayNames,
-		RTTs:         []int32{0, 0},
-		Jitters:      []float32{0, 0},
-		PacketLosses: []float32{0, 0},
-	}
+	expected := routeMatrix.RelayIDs
 
-	actual, err := routeMatrix.GetNearRelays(0, 0, transport.MaxNearRelays)
+	actual, err := routeMatrix.GetNearRelays(0, 0, core.MaxNearRelays)
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected, actual)
@@ -93,15 +84,7 @@ func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 func TestRouteMatrixGetNearRelaysSuccessWithMax(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expected := routing.NearRelayResult{
-		Count:        1,
-		IDs:          []uint64{routeMatrix.RelayIDs[0]},
-		Addrs:        []net.UDPAddr{routeMatrix.RelayAddresses[0]},
-		Names:        []string{routeMatrix.RelayNames[0]},
-		RTTs:         []int32{0},
-		Jitters:      []float32{0},
-		PacketLosses: []float32{0},
-	}
+	expected := routeMatrix.RelayIDs[:1]
 
 	actual, err := routeMatrix.GetNearRelays(0, 0, 1)
 	assert.NoError(t, err)

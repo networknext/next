@@ -16,7 +16,7 @@ func TestInternal(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
-	assert.Equal(t, "3.3.2", transport.SDKVersionMin.String())
+	assert.Equal(t, "4.0.0", transport.SDKVersionMin.String())
 }
 
 func TestCompare(t *testing.T) {
