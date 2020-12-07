@@ -86,17 +86,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-type NearRelayResult struct {
-	Count        int32
-	IDs          []uint64
-	Addrs        []net.UDPAddr
-	Names        []string
-	RTTs         []int32
-	Jitters      []float32
-	PacketLosses []float32
-}
-
-func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNearRelays int) (NearRelayResult, error) {
+func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNearRelays int) ([]uint64, error) {
 	// Work with the near relays as an array of structs first for easier sorting
 	type NearRelayData struct {
 		ID       uint64
@@ -131,33 +121,23 @@ func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNear
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
-	if len(nearRelayData) > maxNearRelays {
+	numNearRelays := len(nearRelayData)
+
+	if numNearRelays == 0 {
+		return nil, errors.New("no near relays")
+	}
+
+	if numNearRelays > maxNearRelays {
 		nearRelayData = nearRelayData[:maxNearRelays]
+		numNearRelays = maxNearRelays
 	}
 
-	// Convert the near relay data to a structure of arrays for easier use in the session update handler
-	numNearRelays := int32(len(nearRelayData))
-	result := NearRelayResult{
-		Count:        numNearRelays,
-		IDs:          make([]uint64, numNearRelays),
-		Addrs:        make([]net.UDPAddr, numNearRelays),
-		Names:        make([]string, numNearRelays),
-		RTTs:         make([]int32, numNearRelays),
-		Jitters:      make([]float32, numNearRelays),
-		PacketLosses: make([]float32, numNearRelays),
+	nearRelayIDs := make([]uint64, numNearRelays)
+	for i := 0; i < numNearRelays; i++ {
+		nearRelayIDs[i] = nearRelayData[i].ID
 	}
 
-	if result.Count == 0 {
-		return NearRelayResult{}, errors.New("no near relays")
-	}
-
-	for i := int32(0); i < result.Count; i++ {
-		result.IDs[i] = nearRelayData[i].ID
-		result.Addrs[i] = nearRelayData[i].Addr
-		result.Names[i] = nearRelayData[i].Name
-	}
-
-	return result, nil
+	return nearRelayIDs, nil
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
