@@ -29,8 +29,13 @@ var (
 	vanityMetrics *vanity.VanityMetricHandler
 )
 
-
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func main() {
+	os.Exit(mainReturnWithCode())
+}
+
+func mainReturnWithCode() int {
 	fmt.Printf("api: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
@@ -40,7 +45,7 @@ func main() {
 	env, err := backend.GetEnv()
 	if err != nil {
 		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
+		return 1
 	}
 
 	gcpProjectID = backend.GetGCPProjectID()
@@ -49,14 +54,14 @@ func main() {
 		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "Found GOOGLE_PROJECT_ID")
 	} else {
 		level.Error(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Cannot get vanity metrics.")
-		os.Exit(1)
+		return 1
 	}
 
 	// StackDriver Logging
 	logger, err = backend.GetLogger(ctx, gcpProjectID, "api")
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
@@ -70,11 +75,11 @@ func main() {
 		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
 		if err != nil {
 			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-			os.Exit(1)
+			return 1
 		}
 	} else {
 		level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics.")
-		os.Exit(1)
+		return 1
 	}
 
 	var sd metrics.StackDriverHandler
@@ -88,7 +93,7 @@ func main() {
 
 		if err := sd.Open(ctx); err != nil {
 			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			os.Exit(1)
+			return 1
 		}
 	}
 
@@ -96,18 +101,18 @@ func main() {
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		return 1
 	}
 	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// StackDriver Profiler
 	if err = backend.InitStackDriverProfiler(gcpProjectID, "api", env); err != nil {
 		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	vanityMetrics = vanity.NewVanityMetricHandler(&sd, vanityMetricMetrics, 0, nil)
@@ -123,7 +128,7 @@ func main() {
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var PORT must be set")
-				os.Exit(1)
+				return 1
 			}
 
 			serviceName := ""
@@ -132,7 +137,7 @@ func main() {
 			err := http.ListenAndServe(serviceName+":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				os.Exit(1)
+				return 1
 			}
 
 		}()

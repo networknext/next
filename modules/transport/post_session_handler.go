@@ -197,6 +197,12 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 							continue
 						}
 
+
+						// Reset the map for the buyer IDs
+						for buyerID, _ := range post.vanityAggregator {
+							post.vanityAggregator[buyerID] = vanity.VanityMetrics{BuyerID: buyerID}
+						}
+
 						level.Debug(post.logger).Log("type", "vanity metrics", "msg", fmt.Sprintf("published %d bytes to vanity metrics", aggregateBytes))
 						post.metrics.VanityMetricsFinished.Add(1)
 					case <-ctx.Done():
