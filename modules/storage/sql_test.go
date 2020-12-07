@@ -838,6 +838,7 @@ func TestInternalConfig(t *testing.T) {
 
 	var outerCustomer routing.Customer
 	var outerBuyer routing.Buyer
+	var outerInternalConfig core.InternalConfig
 
 	t.Run("AddInternalConfig", func(t *testing.T) {
 
@@ -892,5 +893,33 @@ func TestInternalConfig(t *testing.T) {
 
 		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
 		assert.NoError(t, err)
+
+		outerInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int32(2), outerInternalConfig.RouteSelectThreshold)
+		assert.Equal(t, int32(5), outerInternalConfig.RouteSwitchThreshold)
+		assert.Equal(t, int32(10), outerInternalConfig.MaxLatencyTradeOff)
+		assert.Equal(t, int32(-10), outerInternalConfig.RTTVeto_Default)
+		assert.Equal(t, int32(-20), outerInternalConfig.RTTVeto_PacketLoss)
+		assert.Equal(t, int32(-20), outerInternalConfig.RTTVeto_Multipath)
+		assert.Equal(t, int32(500), outerInternalConfig.MultipathOverloadThreshold)
+		assert.Equal(t, true, outerInternalConfig.TryBeforeYouBuy)
+		assert.Equal(t, true, outerInternalConfig.ForceNext)
+		assert.Equal(t, true, outerInternalConfig.LargeCustomer)
+		assert.Equal(t, true, outerInternalConfig.Uncommitted)
+		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
 	})
+
+	// t.Run("UpdateInternalConfig", func(t *testing.T) {
+
+	// 	// RouteSelectThreshold
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSelectThreshold", "local.2")
+	// 	assert.NoError(t, err)
+	// 	checkRelay, err := db.Relay(rid)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, "local.2", checkRelay.Name)
+
+	// })
+
 }
