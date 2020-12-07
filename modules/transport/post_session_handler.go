@@ -365,6 +365,7 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 }
 
 // Aggregates vanity metrics per buyer
+// Each billing entry is after a slice
 func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.BillingEntry) error {
 	
 	vanityForBuyer, ok := post.vanityAggregator[billingEntry.BuyerID]
@@ -373,18 +374,34 @@ func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.Bil
 		return errors.New(errStr)
 	}
 
-	rttReduced := billingEntry.NextPacketLoss - billingEntry.DirectPacketLoss
-	if rttReduced <= 0 {
-		rttReduced = 0
+	slicesAccelerated := 0
+	if billingEntry.Next {
+		slicesAccelerated = 1
 	}
 
-	packetLossReduced := billingEntry.NextPacketLoss - billingEntry.DirectPacketLoss
-	if packetLossReduced <= 0 {
-		packetLossReduced = 0
+	latencyReduced := 0
+	if billingEntry.Next && billingEntry.RTTReduction {
+		latencyReduced = 1
 	}
 
-	AddFloat32(&vanityForBuyer.RTTReduction, rttReduced)
-	AddFloat32(&vanityForBuyer.PacketLossReduction, packetLossReduced)
+	packetLossReduced := 0
+	if billingEntry.Next && billingEntry.PacketLossReduction {
+		packetLossReduced = 1
+	}
+	
+	// Jitter is continuous so safe to determine jitter reduction using values
+	jitterReduced := 0
+	if billingEntry.Next && billingEntry.NextJitter - billingEntry.DirectJitter < 0 {
+		jitterReduced = 1
+	}
+
+	// TODO: sessionsAccelerated
+
+
+	atomic.AddUint64(&vanityForBuyer.SlicesAccelerated, uint64(slicesAccelerated))
+	atomic.AddUint64(&vanityForBuyer.SlicesLatencyReduced, uint64(latencyReduced))
+	atomic.AddUint64(&vanityForBuyer.SlicesPacketLossReduced, uint64(packetLossReduced))
+	atomic.AddUint64(&vanityForBuyer.SlicesJitterReduced, uint64(jitterReduced))
 	return nil
 }
 

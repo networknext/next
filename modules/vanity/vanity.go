@@ -60,13 +60,11 @@ type VanityMetricHandler struct {
 // Aggregation of vanity metrics takes place in AggregateVanityMetrics() in modules/transport/post_session_handler.go
 type VanityMetrics struct {
 	BuyerID                 uint64
-	NumSlicesGlobal         uint32
-	NumSlicesPerCustomer    uint32
-	NumSessionsGlobal       uint32
-	NumSessionsPerCustomer  uint32
-	NumPlayHoursPerCustomer uint32
-	RTTReduction            float32
-	PacketLossReduction     float32
+	SlicesAccelerated       uint64
+	SlicesLatencyReduced    uint64
+	SlicesPacketLossReduced uint64
+	SlicesJitterReduced 	uint64
+	SessionsAccelerated 	uint64
 }
 
 // func NewVanityMetricHandler(vanityHandler *metrics.TSMetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.logger) VanityMetricHandler {
@@ -83,13 +81,11 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *
 
 func (v VanityMetrics) Size() uint64 {
 	sum := 8 + // BuyerID
-		4 + // NumSlicesGlobal
-		4 + // NumSlicesPerCustomer
-		4 + // NumSessionsGlobal
-		4 + // NumSessionsPerCustomer
-		4 + // NumPlayHoursPerCustomer
-		4 + // RTTReduction
-		4 // PacketLossReduction
+		8 + // SlicesAccelerated
+		8 + // SlicesLatencyReduced
+		8 + // SlicesPacketLossReduced
+		8 + // SlicesJitterReduced
+		8   // SessionsAccelerated
 
 	return uint64(sum)
 }
@@ -100,14 +96,11 @@ func (v VanityMetrics) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint64(data, &index, v.BuyerID)
 
-	encoding.WriteUint32(data, &index, v.NumSlicesGlobal)
-	encoding.WriteUint32(data, &index, v.NumSlicesPerCustomer)
-	encoding.WriteUint32(data, &index, v.NumSessionsGlobal)
-	encoding.WriteUint32(data, &index, v.NumSessionsPerCustomer)
-	encoding.WriteUint32(data, &index, v.NumPlayHoursPerCustomer)
-
-	encoding.WriteFloat32(data, &index, v.RTTReduction)
-	encoding.WriteFloat32(data, &index, v.PacketLossReduction)
+	encoding.WriteUint64(data, &index, v.SlicesAccelerated)
+	encoding.WriteUint64(data, &index, v.SlicesLatencyReduced)
+	encoding.WriteUint64(data, &index, v.SlicesPacketLossReduced)
+	encoding.WriteUint64(data, &index, v.SlicesJitterReduced)
+	encoding.WriteUint64(data, &index, v.SessionsAccelerated)
 
 	return data, nil
 }
@@ -119,32 +112,24 @@ func (v VanityMetrics) UnmarshalBinary(data []byte) error {
 		return errors.New("[VanityMetrics] invalid read at buyer ID")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumSlicesGlobal) {
-		return errors.New("[VanityMetrics] invalid read at num slices global")
+	if !encoding.ReadUint64(data, &index, &v.SlicesAccelerated) {
+		return errors.New("[VanityMetrics] invalid read at slices accelerated")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumSlicesPerCustomer) {
-		return errors.New("[VanityMetrics] invalid read at num slices per customer")
+	if !encoding.ReadUint64(data, &index, &v.SlicesLatencyReduced) {
+		return errors.New("[VanityMetrics] invalid read at slices latency reduced")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumSessionsGlobal) {
-		return errors.New("[VanityMetrics] invalid read at num sessions global")
+	if !encoding.ReadUint64(data, &index, &v.SlicesPacketLossReduced) {
+		return errors.New("[VanityMetrics] invalid read at slices packet loss reduced")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumSessionsPerCustomer) {
-		return errors.New("[VanityMetrics] invalid read at num sesions per customer")
+	if !encoding.ReadUint64(data, &index, &v.SlicesJitterReduced) {
+		return errors.New("[VanityMetrics] invalid read at slices jitter reduced")
 	}
 
-	if !encoding.ReadUint32(data, &index, &v.NumPlayHoursPerCustomer) {
-		return errors.New("[VanityMetrics] invalid read at num play hours per customer")
-	}
-
-	if !encoding.ReadFloat32(data, &index, &v.RTTReduction) {
-		return errors.New("[VanityMetrics] invalid read at RTT reduction")
-	}
-
-	if !encoding.ReadFloat32(data, &index, &v.PacketLossReduction) {
-		return errors.New("[VanityMetrics] invalid read at packet loss reduction")
+	if !encoding.ReadUint64(data, &index, &v.SessionsAccelerated) {
+		return errors.New("[VanityMetrics] invalid read at sessions accelerated")
 	}
 
 	return nil
@@ -277,13 +262,11 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the the WriteLoop() started in cmd/vanity/vanity.go
-		vanityMetricPerBuyer.NumSlicesGlobal.Add(float64(vanityMetricDataBuffer[j].NumSlicesGlobal))
-		vanityMetricPerBuyer.NumSlicesPerCustomer.Add(float64(vanityMetricDataBuffer[j].NumSlicesPerCustomer))
-		vanityMetricPerBuyer.NumSessionsGlobal.Add(float64(vanityMetricDataBuffer[j].NumSessionsGlobal))
-		vanityMetricPerBuyer.NumSessionsPerCustomer.Add(float64(vanityMetricDataBuffer[j].NumSessionsPerCustomer))
-		vanityMetricPerBuyer.NumPlayHoursPerCustomer.Add(float64(vanityMetricDataBuffer[j].NumPlayHoursPerCustomer))
-		vanityMetricPerBuyer.RTTReduction.Add(float64(vanityMetricDataBuffer[j].RTTReduction))
-		vanityMetricPerBuyer.PacketLossReduction.Add(float64(vanityMetricDataBuffer[j].PacketLossReduction))
+		vanityMetricPerBuyer.SlicesAccelerated.Add(float64(vanityMetricDataBuffer[j].SlicesAccelerated))
+		vanityMetricPerBuyer.SlicesLatencyReduced.Add(float64(vanityMetricDataBuffer[j].SlicesLatencyReduced))
+		vanityMetricPerBuyer.SlicesPacketLossReduced.Add(float64(vanityMetricDataBuffer[j].SlicesPacketLossReduced))
+		vanityMetricPerBuyer.SlicesJitterReduced.Add(float64(vanityMetricDataBuffer[j].SlicesJitterReduced))
+		vanityMetricPerBuyer.SessionsAccelerated.Add(float64(vanityMetricDataBuffer[j].SessionsAccelerated))
 
 		vm.metrics.UpdateVanitySuccessCount.Add(1)
 	}

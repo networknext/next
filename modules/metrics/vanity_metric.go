@@ -7,24 +7,20 @@ import (
 
 // VanityMetric defines the set of metrics for each vanity metric to be recorded.
 type VanityMetric struct {
-	NumSlicesGlobal         Counter
-	NumSlicesPerCustomer    Counter
-	NumSessionsGlobal       Counter
-	NumSessionsPerCustomer  Counter
-	NumPlayHoursPerCustomer Counter
-	RTTReduction            Gauge
-	PacketLossReduction     Counter
+	SlicesAccelerated       Counter
+	SlicesLatencyReduced    Counter
+	SlicesPacketLossReduced Counter
+	SlicesJitterReduced 	Counter
+	SessionsAccelerated 	Counter
 }
 
 // EmptyVanityMetric is used for testing when we want to pass in metrics but don't care about their value,
 var EmptyVanityMetric = VanityMetric{
-	NumSlicesGlobal:         &EmptyCounter{},
-	NumSlicesPerCustomer:    &EmptyCounter{},
-	NumSessionsGlobal:       &EmptyCounter{},
-	NumSessionsPerCustomer:  &EmptyCounter{},
-	NumPlayHoursPerCustomer: &EmptyCounter{},
-	RTTReduction:            &EmptyGauge{},
-	PacketLossReduction:     &EmptyCounter{},
+	SlicesAccelerated: 			&EmptyCounter{},
+	SlicesLatencyReduced:   	&EmptyCounter{},
+	SlicesPacketLossReduced: 	&EmptyCounter{},
+	SlicesJitterReduced: 		&EmptyCounter{},
+	SessionsAccelerated: 		&EmptyCounter{},
 }
 
 // NewVanityMetric creates the metrics the vanity metrics service will use.
@@ -33,78 +29,56 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	var err error
 	m := &VanityMetric{}
 
-	m.NumSlicesGlobal, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Num Slices Global",
+	m.SlicesAccelerated, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metric Slices Accelerated",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.num_slices_global",
+		ID:          "vanity_metric.slices_accelerated",
 		Unit:        "slices",
-		Description: "The total number of slices through Network Next",
+		Description: fmt.Sprintf("The number of slices that have been accelerated for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.NumSlicesPerCustomer, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Num Slices Per Customer",
+	m.SlicesLatencyReduced, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metric Slices Latency Reduced",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.num_slices_per_customer",
+		ID:          "vanity_metric.slices_latency_reduced",
 		Unit:        "slices",
-		Description: fmt.Sprintf("The total number of slices for customer %s", buyerID),
+		Description: fmt.Sprintf("The number of slices where latency was reduced over Network Next for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.NumSessionsGlobal, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Num Sessions Global",
+	m.SlicesPacketLossReduced, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metric Slices Packet Loss Reduced",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.num_sessions_global",
+		ID:          "vanity_metric.slices_packet_loss_reduced",
+		Unit:        "slices",
+		Description: fmt.Sprintf("The number of slices where packet loss was reduced over Network Next for customer %s", buyerID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SlicesJitterReduced, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metric Slices Jitter Reduced",
+		ServiceName: buyerID,
+		ID:          "vanity_metric.slices_jitter_reduced",
+		Unit:        "slices",
+		Description: fmt.Sprintf("The number of slices where jitter was reduced over Network Next for customer %s", buyerID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SessionsAccelerated, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metric Sessions Accelerated",
+		ServiceName: buyerID,
+		ID:          "vanity_metric.sessions_accelerated",
 		Unit:        "sessions",
-		Description: "The total number of sessions through Network Next",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.NumSessionsPerCustomer, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Num Sessions Per Customer",
-		ServiceName: buyerID,
-		ID:          "vanity_metric.num_sessions_per_customer",
-		Unit:        "sessions",
-		Description: fmt.Sprintf("The total number of sessions for customer %s", buyerID),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.NumPlayHoursPerCustomer, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Num Play Hours Per Customer",
-		ServiceName: buyerID,
-		ID:          "vanity_metric.num_play_hours_per_customer",
-		Unit:        "hours",
-		Description: fmt.Sprintf("The total number of play hours for customer %s", buyerID),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.RTTReduction, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Vanity Metric RTT Reduction",
-		ServiceName: buyerID,
-		ID:          "vanity_metric.rtt_reduction",
-		Unit:        "ms",
-		Description: "The ms of RTT that have been reduced through Network Next.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.PacketLossReduction, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Packet Loss Reduction",
-		ServiceName: buyerID,
-		ID:          "vanity_metric.packet_loss_reduction",
-		Unit:        "packets",
-		Description: "The number of packets that have not been lost due to Network Next.",
+		Description: fmt.Sprintf("The number of sessions that have been accelerated for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
