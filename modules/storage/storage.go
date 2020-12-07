@@ -5,12 +5,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 )
 
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
+	// TODO: chopping block (unused)
 	CustomerWithName(name string) (routing.Customer, error)
 
 	Customers() []routing.Customer
@@ -67,6 +69,7 @@ type Storer interface {
 	SellerWithCompanyCode(code string) (routing.Seller, error)
 
 	// SetCustomerLink update the customer's buyer and seller references.
+	// TODO: chopping block (handled/required by database)
 	SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error
 
 	// Relay gets a copy of a relay with the specified relay ID
@@ -83,6 +86,7 @@ type Storer interface {
 	RemoveRelay(ctx context.Context, id uint64) error
 
 	// SetRelay updates the relay in storage with the provided copy and returns an error if the relay could not be updated.
+	// TODO: chopping block (obsoleted by UpdateRelay, and broken anyway)
 	SetRelay(ctx context.Context, relay routing.Relay) error
 
 	// Datacenter gets a copy of a datacenter with the specified datacenter ID
@@ -99,6 +103,7 @@ type Storer interface {
 	RemoveDatacenter(ctx context.Context, id uint64) error
 
 	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
+	// TODO: replace with UpdateDatacenter
 	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
 
 	// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
@@ -116,6 +121,7 @@ type Storer interface {
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 
 	// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
+	// TODO: chopping block (obsoleted by UpdateRelay)
 	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 
 	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
@@ -144,6 +150,29 @@ type Storer interface {
 	// RemoveFeatureFlagByName removes an existing flag from storage
 	RemoveFeatureFlagByName(ctx context.Context, flagName string) error
 
+	// InternalConfig returns the internal config for the given buyer ID
+	InternalConfig(buyerID uint64) (core.InternalConfig, error)
+
+	// AddInternalConfig adds the provided InternalConfig to the database
+	AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error
+
+	// UpdateInternalConfig updates the specified field in an InternalConfig record
+	UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error
+
+	// RemoveInternalConfig removes a record from the InternalConfigs table
+	RemoveInternalConfig(ctx context.Context, buyerID uint64) error
+
+	// RouteShaders returns a slice of route shaders for the given buyer ID
+	RouteShaders(buyerID uint64) ([]core.RouteShader, error)
+
+	// AddRouteShader adds the provided InternalConfig to the database
+	AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error
+
+	// UpdateInternalConfig updates the specified field in an InternalConfig record
+	UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error
+
+	// RemoveInternalConfig removes a record from the InternalConfigs table
+	RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error
 	// UpdateRelay updates a single field in a relay record
 	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error
 }
