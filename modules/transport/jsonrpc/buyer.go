@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -220,6 +221,13 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 	}
 
+	var ghostArmyNextScaler uint64 = 5
+	if v, ok := os.LookupEnv("GHOST_ARMY_NEXT_SCALER"); ok {
+		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
+			ghostArmyNextScaler = v
+		}
+	}
+
 	switch args.CompanyCode {
 	case "":
 		buyers := s.Storage.Buyers()
@@ -254,13 +262,14 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
-					ghostArmyNextCount = firstCount
+					ghostArmyNextCount = firstCount*int(ghostArmyNextScaler) + rand.Intn(39)
 				} else {
-					ghostArmyNextCount = secondCount
+					ghostArmyNextCount = secondCount*int(ghostArmyNextScaler) + rand.Intn(39)
 				}
+				firstNextCount += ghostArmyNextCount
+				secondNextCount += ghostArmyNextCount
 			}
 		}
-
 		reply.Next = firstNextCount
 		if secondNextCount > firstNextCount {
 			reply.Next = secondNextCount
@@ -316,8 +325,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if buyer.ID == ghostArmyBuyerID {
 				// scale by next values because ghost army data contains 0 direct
 				// if ghost army is turned off then this number will be 0 and have no effect
-				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + rand.Intn(ghostArmyNextCount)
+				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + rand.Intn(ghostArmyNextCount)
 			}
 		}
 

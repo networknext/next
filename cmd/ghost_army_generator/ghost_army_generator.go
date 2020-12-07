@@ -5,10 +5,11 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,16 +32,42 @@ func (self sortableEntries) Less(i, j int) bool {
 	return self[i].Timestamp < self[j].Timestamp
 }
 
+type muxSessionMap struct {
+	mux      *sync.RWMutex
+	sessions map[int64]bool
+}
+
+func NewMuxSessionMap() muxSessionMap {
+	return muxSessionMap{
+		mux:      new(sync.RWMutex),
+		sessions: make(map[int64]bool),
+	}
+}
+
+func (m *muxSessionMap) Add(id int64) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	m.sessions[id] = true
+}
+
+func (m *muxSessionMap) Exists(id int64) bool {
+	m.mux.RLock()
+	defer m.mux.RUnlock()
+	_, exists := m.sessions[id]
+	return exists
+}
+
+func (m *muxSessionMap) Length() int {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	return len(m.sessions)
+}
+
 // Input files can be in any order
 
-const (
-	maxRTT = 300.0
-	maxPL  = 0.10
-)
-
 func main() {
-	if len(os.Args) < 6 {
-		fmt.Println("you must supply at least 5 arguments: <processing threads> <datacenter csv> <ISPs file> <output file> <input file name(s)>")
+	if len(os.Args) < 8 {
+		fmt.Println("you must supply at least 5 arguments: <processing threads> <max rtt> <max packet loss> <datacenter csv> <ISPs file> <output file> <input file name(s)>")
 		os.Exit(1)
 	}
 
@@ -50,115 +77,212 @@ func main() {
 	} else {
 		fmt.Printf("could not parse processing thread count '%s': %v\n", os.Args[1], err)
 	}
+
+	var maxRTT float64
+	if v, err := strconv.ParseFloat(os.Args[2], 64); err == nil {
+		maxRTT = v
+	} else {
+		fmt.Printf("could not parse max RTT '%s': %v\n", os.Args[2], err)
+	}
+
+	var maxPL float64
+	if v, err := strconv.ParseFloat(os.Args[3], 64); err == nil {
+		maxPL = v
+	} else {
+		fmt.Printf("could not parse max PL '%s': %v\n", os.Args[3], err)
+	}
 	fmt.Printf("%d\n", processingThreads)
-	dcmap := parseDatacenterCSV(os.Args[2])
-	isps := parseISPCSV(os.Args[3])
-	outfile := os.Args[4]
-	infiles := os.Args[5:]
+	dcmap := parseDatacenterCSV(os.Args[4])
+	isps := parseISPCSV(os.Args[5])
+	outfile := os.Args[6]
+	infiles := os.Args[7:]
 
-	// convert to binary
-
-	var entryMutex sync.Mutex
-	var entries = make(sortableEntries, 0)
-	deleteSessionMap := make(map[int64]bool)
-
-	var wg sync.WaitGroup
-	wg.Add(len(infiles))
-
-	processedFiles := uint64(0)
-	for i := uint64(0); i < processingThreads; i++ {
-		go func(processedFiles *uint64) {
-			index := atomic.AddUint64(processedFiles, 1) - 1
-			for index < uint64(len(infiles)) {
-				localentries := make(sortableEntries, 0)
-				infile := infiles[index]
-
-				fmt.Printf("reading %s\n", infile)
-				inputfile, err := os.Open(infile)
-				if err != nil {
-					fmt.Printf("could not open '%s': %v\n", infile, err)
-					os.Exit(1)
-				}
-
-				lines, err := csv.NewReader(inputfile).ReadAll()
-				if err != nil {
-					fmt.Printf("could not read csv data: %v\n", err)
-					os.Exit(1)
-				}
-
-				inputfile.Close()
-
-				for lineNum, line := range lines {
-					if lineNum == 0 {
-						continue
-					}
-					var entry ghostarmy.Entry
-					parseLine(line, lineNum, &entry, dcmap, isps)
-
-					//skip bad session entry and add a delete to the
-					if entry.NextRTT >= maxRTT || entry.NextPacketLoss >= maxPL {
-						deleteSessionMap[entry.SessionID] = true
-						continue
-					}
-
-					//skip known bad sessions
-					if _, exists := deleteSessionMap[entry.SessionID]; exists {
-						continue
-					}
-					localentries = append(localentries, entry)
-				}
-
-				entryMutex.Lock()
-				entries = append(entries, localentries...)
-				entryMutex.Unlock()
-				index = atomic.AddUint64(processedFiles, 1) - 1
-				wg.Done()
-			}
-		}(&processedFiles)
+	//fileMap stores the files by int hour
+	fileMap := make(map[int][]string)
+	for i := 0; i < 24; i++ {
+		fileMap[i] = make([]string, 0)
 	}
 
-	wg.Wait()
-
-	//check entries for sessions that should be deleted
-	for i := 0; i < len(entries); i++ {
-		if _, exists := deleteSessionMap[entries[i].SessionID]; exists {
-			entries[i] = entries[len(entries)-1]
-			entries[len(entries)-1] = ghostarmy.Entry{}
-			entries = entries[:len(entries)-1]
-			i--
-		}
-	}
-
-	// sort on timestamp
-	fmt.Printf("sorting %d entries...\n", len(entries))
-	sort.Sort(entries)
-
-	// encode to binary format
-	fmt.Println("encoding to buffer...")
-	index := 0
-
-	bin := make([]byte, 8)
-	encoding.WriteUint64(bin, &index, uint64(len(entries)))
-	for _, entry := range entries {
-		dat, err := entry.MarshalBinary()
+	for i := 0; i < len(infiles); i++ {
+		parts := strings.Split(infiles[i], "_")
+		hrIndex, err := strconv.Atoi(parts[5])
 		if err != nil {
-			fmt.Printf("unable to marshal binary for session %d: %v\n", entry.SessionID, err)
+			fmt.Printf("unable to parse filename %s \n", infiles[i])
 			continue
 		}
-
-		bin = append(bin, dat...)
+		fileMap[hrIndex] = append(fileMap[hrIndex], infiles[i])
 	}
 
-	entries = nil // free the data buffer now that it's unused
-
-	// export
-
-	fmt.Println("writing to file...")
-	err := ioutil.WriteFile(outfile, bin, 0644)
+	//open output file
+	output, err := os.OpenFile(outfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Printf("could not create output file '%s': %v\n", outfile, err)
+
+		log.Fatalf("could not create output file '%s': %v\n", outfile, err)
+	}
+	defer func() {
+		if err := output.Close(); err != nil {
+			log.Fatal("error", err)
+		}
+	}()
+
+	//metrics
+	var totalNumEntries uint64
+	var remainingEntries uint64
+	var removedPL uint64
+	var removedRTT uint64
+
+	// convert to binary
+	var entryMutex sync.Mutex
+	var entries = make(sortableEntries, 0)
+
+	thisDeleteSessionMap := NewMuxSessionMap()
+	lastDeleteSessionMap := NewMuxSessionMap()
+	sessionList := NewMuxSessionMap()
+
+	//set segments in first output to file
+	bin := make([]byte, 8)
+	binIndex := 0
+	encoding.WriteUint64(bin, &binIndex, 24)
+
+	//process by hr to save ram usage
+	for hr := 0; hr < 24; hr++ {
+		filesInHrArr := fileMap[hr]
+		numFiles := uint64(len(filesInHrArr))
+
+		segments := numFiles / processingThreads
+		if numFiles%processingThreads != 0 {
+			segments++
+		}
+
+		processedFiles := uint64(0)
+		for s := uint64(0); s < segments; s++ {
+			filesToProcess := processingThreads
+			if processedFiles+processingThreads > numFiles {
+				filesToProcess = numFiles % processingThreads
+			}
+			var wg sync.WaitGroup
+			for i := uint64(0); i < filesToProcess; i++ {
+				wg.Add(1)
+				var index uint64
+				index = atomic.AddUint64(&processedFiles, 1) - 1
+
+				go func() {
+					localEntries := make(sortableEntries, 0)
+					infile := filesInHrArr[index]
+
+					fmt.Printf("reading %s\n", infile)
+					inputfile, err := os.Open(infile)
+					if err != nil {
+						fmt.Printf("could not open '%s': %v\n", infile, err)
+						os.Exit(1)
+					}
+
+					lines, err := csv.NewReader(inputfile).ReadAll()
+					if err != nil {
+						fmt.Printf("could not read csv data: %v\n", err)
+						os.Exit(1)
+					}
+
+					inputfile.Close()
+
+					for lineNum, line := range lines {
+						if lineNum == 0 {
+							continue
+						}
+						var entry ghostarmy.Entry
+						atomic.AddUint64(&totalNumEntries, 1)
+
+						parseLine(line, lineNum, &entry, dcmap, isps)
+
+						//skip known bad sessions
+						if exists := thisDeleteSessionMap.Exists(entry.SessionID); exists {
+							continue
+						}
+						if exists := lastDeleteSessionMap.Exists(entry.SessionID); exists {
+							continue
+						}
+
+						//skip bad session entry and add a delete to the
+						if entry.NextRTT >= maxRTT {
+							atomic.AddUint64(&removedRTT, 1)
+							thisDeleteSessionMap.Add(entry.SessionID)
+							continue
+						}
+
+						if entry.NextPacketLoss >= maxPL {
+							atomic.AddUint64(&removedPL, 1)
+							thisDeleteSessionMap.Add(entry.SessionID)
+							continue
+						}
+
+						if exists := sessionList.Exists(entry.SessionID); !exists {
+							sessionList.Add(entry.SessionID)
+						}
+
+						localEntries = append(localEntries, entry)
+					}
+
+					entryMutex.Lock()
+					entries = append(entries, localEntries...)
+					entryMutex.Unlock()
+					wg.Done()
+
+				}()
+			}
+			wg.Wait()
+		}
+
+		//check entries for sessions that should be deleted
+		for i := 0; i < len(entries); i++ {
+			//only check thisDeleteSessionMap as lastDeleteSessionMap is already checked
+			if exists := thisDeleteSessionMap.Exists(entries[i].SessionID); exists {
+				entries[i] = entries[len(entries)-1]
+				entries[len(entries)-1] = ghostarmy.Entry{}
+				entries = entries[:len(entries)-1]
+				i--
+			}
+		}
+		atomic.AddUint64(&remainingEntries, uint64(len(entries)))
+
+		// sort on timestamp
+		fmt.Printf("sorting %d entries...\n", len(entries))
+		sort.Sort(entries)
+
+		// encode to binary format
+		fmt.Println("encoding to buffer...")
+		index := 0
+
+		entriesBin := make([]byte, 8)
+		encoding.WriteUint64(entriesBin, &index, uint64(len(entries)))
+		for _, entry := range entries {
+			dat, err := entry.MarshalBinary()
+			if err != nil {
+				fmt.Printf("unable to marshal binary for session %d: %v\n", entry.SessionID, err)
+				continue
+			}
+
+			entriesBin = append(entriesBin, dat...)
+		}
+		bin = append(bin, entriesBin...)
+
+		// export
+		fmt.Println("writing to file...")
+		if _, err := output.Write(bin); err != nil {
+			log.Fatal(err)
+		}
+
+		//clean up memory between runs
+		entries = nil // free the data buffer now that it's unused
+		bin = make([]byte, 0)
+		lastDeleteSessionMap = thisDeleteSessionMap
+		thisDeleteSessionMap = NewMuxSessionMap()
 	}
 
+	fmt.Printf("Total entries: %v \n", totalNumEntries)
+	fmt.Printf("Remaining entries: %v \n", remainingEntries)
+	fmt.Printf("Total sessions: %v \n", sessionList.Length())
+	fmt.Printf("Sessions removed RTT: %v \n", removedRTT)
+	fmt.Printf("Sessions removed PL: %v \n", removedPL)
 	fmt.Println("done!")
 }
 
