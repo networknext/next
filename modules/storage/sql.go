@@ -1979,6 +1979,147 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 	return nil
 }
 
+func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	ic, err := db.InternalConfig(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	switch field {
+	case "RouteSelectThreshold":
+		routeSelectThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set route_select_threshold=$1 where buyer_id=$2"))
+		args = append(args, routeSelectThreshold, buyerID)
+		ic.RouteSelectThreshold = routeSelectThreshold
+	case "RouteSwitchThreshold":
+		routeSwitchThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set route_switch_threshold=$1 where buyer_id=$2"))
+		args = append(args, routeSwitchThreshold, buyerID)
+		ic.RouteSwitchThreshold = routeSwitchThreshold
+	case "MaxLatencyTradeOff":
+		maxLatencyTradeOff, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set max_latency_tradeoff=$1 where buyer_id=$2"))
+		args = append(args, maxLatencyTradeOff, buyerID)
+		ic.MaxLatencyTradeOff = maxLatencyTradeOff
+	case "RTTVeto_Default":
+		rttVetoDefault, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set rtt_veto_default=$1 where buyer_id=$2"))
+		args = append(args, rttVetoDefault, buyerID)
+		ic.RTTVeto_Default = rttVetoDefault
+	case "RTTVeto_PacketLoss":
+		rttVetoPacketLoss, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set rtt_veto_packetloss=$1 where buyer_id=$2"))
+		args = append(args, rttVetoPacketLoss, buyerID)
+		ic.RTTVeto_PacketLoss = rttVetoPacketLoss
+	case "RTTVeto_Multipath":
+		rttVetoMultipath, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set rtt_veto_multipath=$1 where buyer_id=$2"))
+		args = append(args, rttVetoMultipath, buyerID)
+		ic.RTTVeto_Multipath = rttVetoMultipath
+	case "MultipathOverloadThreshold":
+		multipathOverloadThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set multipath_overload_threshold=$1 where buyer_id=$2"))
+		args = append(args, multipathOverloadThreshold, buyerID)
+		ic.MultipathOverloadThreshold = multipathOverloadThreshold
+	case "TryBeforeYouBuy":
+		tryBeforeYouBuy, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set try_before_you_buy=$1 where buyer_id=$2"))
+		args = append(args, tryBeforeYouBuy, buyerID)
+		ic.TryBeforeYouBuy = tryBeforeYouBuy
+	case "ForceNext":
+		forceNext, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ForceNext: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set force_next=$1 where buyer_id=$2"))
+		args = append(args, forceNext, buyerID)
+		ic.ForceNext = forceNext
+	case "LargeCustomer":
+		largeCustomer, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set large_customer=$1 where buyer_id=$2"))
+		args = append(args, largeCustomer, buyerID)
+		ic.LargeCustomer = largeCustomer
+	case "Uncommitted":
+		uncommitted, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Uncommitted: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set is_uncommitted=$1 where buyer_id=$2"))
+		args = append(args, uncommitted, buyerID)
+		ic.Uncommitted = uncommitted
+	case "MaxRTT":
+		maxRTT, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MaxRTT: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update internal_configs set set max_rtt=$1 where buyer_id=$2"))
+		args = append(args, maxRTT, buyerID)
+		ic.MaxRTT = maxRTT
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
+		return err
+	}
+
+	// fmt.Println("--> UpdateInternalConfig() stmt.Exec()")
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying internal_config record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.internalConfigMutex.Lock()
+	db.internalConfigs[buyerID] = ic
+	db.internalConfigMutex.Unlock()
+
+	return nil
+}
+
 type featureFlag struct {
 	Name        string
 	Description string
@@ -1999,10 +2140,6 @@ func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVa
 
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
-}
-
-func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateInternalConfig not yet impemented in SQL storer")
 }
 
 func (db *SQL) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
