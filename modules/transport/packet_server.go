@@ -428,9 +428,9 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 			stream.SerializeFloat32(&rtt)
 			stream.SerializeFloat32(&jitter)
 			stream.SerializeFloat32(&packetLoss)
-			packet.NearRelayRTT[i] = math.Ceil(rtt)
-			packet.NearRelayJitter[i] = math.Ceil(jitter)
-			packet.NearRelayPacketLoss[i] = math.Floor(packetLoss + 0.5)
+			packet.NearRelayRTT[i] = int32(math.Ceil(float64(rtt)))
+			packet.NearRelayJitter[i] = int32(math.Ceil(float64(jitter)))
+			packet.NearRelayPacketLoss[i] = int32(math.Floor(float64(packetLoss + 0.5)))
 		}
 	}
 
@@ -576,9 +576,6 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
-	// todo: we need to do better than this, otherwise our deploys will be disruptive when we change session data.
-	// instead, we need to actually make our code compatible to read the session data from old session data
-	// so we can smoothly transition from old session data -> new session data with in flight sessions!
 	stream.SerializeBits(&sessionData.Version, 8)
 	if stream.IsReading() && sessionData.Version > SessionDataVersion {
 		return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
