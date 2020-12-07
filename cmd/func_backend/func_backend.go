@@ -323,7 +323,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
 		for i := 0; i <= int(sessionUpdate.NumNearRelays); i++ {
-			fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %d\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
+			fmt.Printf("near relay: id = %x, rtt = %f, jitter = %f, packet loss = %f\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
 		}
 	}
 

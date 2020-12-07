@@ -459,7 +459,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.ClientLocateFailure.Add(1)
 				return
 			}
-
 		} else {
 			err := UnmarshalSessionData(&prevSessionData, packet.SessionData[:])
 			sessionData.CopyFrom(&prevSessionData) // Have an extra copy of the session data so we can use the unmodified one in the post session
@@ -544,8 +543,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				core.NearRelayFilterRTT(&sessionData.RouteState, nearRelays.IDs[i], 0)
 			}
 
-			response.NearRelaysChanged = true
-
 		} else {
 			for i := 0; i < len(sessionData.RouteState.NearRelayID); i++ {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
@@ -565,7 +562,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 						nearRelays.Names = append(nearRelays.Names, routeMatrix.RelayNames[relayIndex])
 						nearRelays.Addrs = append(nearRelays.Addrs, routeMatrix.RelayAddresses[relayIndex])
 
-						maxRTT := core.NearRelayFilterRTT(&sessionData.RouteState, clientNearRelayID, float32(packet.NearRelayRTT[j]))
+						maxRTT := core.NearRelayFilterRTT(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j])
 
 						nearRelays.RTTs = append(nearRelays.RTTs, int32(math.Ceil(float64(maxRTT))))
 						nearRelays.Jitters = append(nearRelays.Jitters, float32(math.Ceil(float64(packet.NearRelayJitter[j]))))
