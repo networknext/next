@@ -837,7 +837,7 @@ func TestInternalConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	var outerCustomer routing.Customer
-	// var outerBuyer routing.Buyer
+	var outerBuyer routing.Buyer
 
 	t.Run("AddInternalConfig", func(t *testing.T) {
 
@@ -872,8 +872,8 @@ func TestInternalConfig(t *testing.T) {
 		err = db.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
 
-		// outerBuyer, err = db.Buyer(internalID)
-		// assert.NoError(t, err)
+		outerBuyer, err = db.Buyer(internalID)
+		assert.NoError(t, err)
 
 		internalConfig := core.InternalConfig{
 			RouteSelectThreshold:       2,
@@ -890,7 +890,7 @@ func TestInternalConfig(t *testing.T) {
 			MaxRTT:                     300,
 		}
 
-		err = db.AddInternalConfig(ctx, internalConfig, internalID)
+		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
 		assert.NoError(t, err)
 	})
 }
