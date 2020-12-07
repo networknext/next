@@ -120,8 +120,8 @@ var _ Storer = &StorerMock{}
 //             RemoveRelayFunc: func(ctx context.Context, id uint64) error {
 // 	               panic("mock out the RemoveRelay method")
 //             },
-//             RemoveRouteSHaderFunc: func(ctx context.Context, buyerID uint64, index uint64) error {
-// 	               panic("mock out the RemoveRouteSHader method")
+//             RemoveRouteShaderFunc: func(ctx context.Context, buyerID uint64, index uint64) error {
+// 	               panic("mock out the RemoveRouteShader method")
 //             },
 //             RemoveSellerFunc: func(ctx context.Context, id string) error {
 // 	               panic("mock out the RemoveSeller method")
@@ -286,8 +286,8 @@ type StorerMock struct {
 	// RemoveRelayFunc mocks the RemoveRelay method.
 	RemoveRelayFunc func(ctx context.Context, id uint64) error
 
-	// RemoveRouteSHaderFunc mocks the RemoveRouteSHader method.
-	RemoveRouteSHaderFunc func(ctx context.Context, buyerID uint64, index uint64) error
+	// RemoveRouteShaderFunc mocks the RemoveRouteShader method.
+	RemoveRouteShaderFunc func(ctx context.Context, buyerID uint64, index uint64) error
 
 	// RemoveSellerFunc mocks the RemoveSeller method.
 	RemoveSellerFunc func(ctx context.Context, id string) error
@@ -539,8 +539,8 @@ type StorerMock struct {
 			// ID is the id argument value.
 			ID uint64
 		}
-		// RemoveRouteSHader holds details about calls to the RemoveRouteSHader method.
-		RemoveRouteSHader []struct {
+		// RemoveRouteShader holds details about calls to the RemoveRouteShader method.
+		RemoveRouteShader []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// BuyerID is the buyerID argument value.
@@ -725,7 +725,7 @@ type StorerMock struct {
 	lockRemoveFeatureFlagByName   sync.RWMutex
 	lockRemoveInternalConfig      sync.RWMutex
 	lockRemoveRelay               sync.RWMutex
-	lockRemoveRouteSHader         sync.RWMutex
+	lockRemoveRouteShader         sync.RWMutex
 	lockRemoveSeller              sync.RWMutex
 	lockRouteShaders              sync.RWMutex
 	lockSeller                    sync.RWMutex
@@ -1817,10 +1817,10 @@ func (mock *StorerMock) RemoveRelayCalls() []struct {
 	return calls
 }
 
-// RemoveRouteSHader calls RemoveRouteSHaderFunc.
-func (mock *StorerMock) RemoveRouteSHader(ctx context.Context, buyerID uint64, index uint64) error {
-	if mock.RemoveRouteSHaderFunc == nil {
-		panic("StorerMock.RemoveRouteSHaderFunc: method is nil but Storer.RemoveRouteSHader was just called")
+// RemoveRouteShader calls RemoveRouteShaderFunc.
+func (mock *StorerMock) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+	if mock.RemoveRouteShaderFunc == nil {
+		panic("StorerMock.RemoveRouteShaderFunc: method is nil but Storer.RemoveRouteShader was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
@@ -1831,16 +1831,16 @@ func (mock *StorerMock) RemoveRouteSHader(ctx context.Context, buyerID uint64, i
 		BuyerID: buyerID,
 		Index:   index,
 	}
-	mock.lockRemoveRouteSHader.Lock()
-	mock.calls.RemoveRouteSHader = append(mock.calls.RemoveRouteSHader, callInfo)
-	mock.lockRemoveRouteSHader.Unlock()
-	return mock.RemoveRouteSHaderFunc(ctx, buyerID, index)
+	mock.lockRemoveRouteShader.Lock()
+	mock.calls.RemoveRouteShader = append(mock.calls.RemoveRouteShader, callInfo)
+	mock.lockRemoveRouteShader.Unlock()
+	return mock.RemoveRouteShaderFunc(ctx, buyerID, index)
 }
 
-// RemoveRouteSHaderCalls gets all the calls that were made to RemoveRouteSHader.
+// RemoveRouteShaderCalls gets all the calls that were made to RemoveRouteShader.
 // Check the length with:
-//     len(mockedStorer.RemoveRouteSHaderCalls())
-func (mock *StorerMock) RemoveRouteSHaderCalls() []struct {
+//     len(mockedStorer.RemoveRouteShaderCalls())
+func (mock *StorerMock) RemoveRouteShaderCalls() []struct {
 	Ctx     context.Context
 	BuyerID uint64
 	Index   uint64
@@ -1850,9 +1850,9 @@ func (mock *StorerMock) RemoveRouteSHaderCalls() []struct {
 		BuyerID uint64
 		Index   uint64
 	}
-	mock.lockRemoveRouteSHader.RLock()
-	calls = mock.calls.RemoveRouteSHader
-	mock.lockRemoveRouteSHader.RUnlock()
+	mock.lockRemoveRouteShader.RLock()
+	calls = mock.calls.RemoveRouteShader
+	mock.lockRemoveRouteShader.RUnlock()
 	return calls
 }
 
