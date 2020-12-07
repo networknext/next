@@ -1998,102 +1998,110 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		return &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
 	switch field {
 	case "RouteSelectThreshold":
 		routeSelectThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set route_select_threshold=$1 where buyer_id=$2"))
-		args = append(args, routeSelectThreshold, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id=$2"))
+		args = append(args, routeSelectThreshold, buyer.DatabaseID)
 		ic.RouteSelectThreshold = routeSelectThreshold
 	case "RouteSwitchThreshold":
 		routeSwitchThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set route_switch_threshold=$1 where buyer_id=$2"))
-		args = append(args, routeSwitchThreshold, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id=$2"))
+		args = append(args, routeSwitchThreshold, buyer.DatabaseID)
 		ic.RouteSwitchThreshold = routeSwitchThreshold
 	case "MaxLatencyTradeOff":
 		maxLatencyTradeOff, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set max_latency_tradeoff=$1 where buyer_id=$2"))
-		args = append(args, maxLatencyTradeOff, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id=$2"))
+		args = append(args, maxLatencyTradeOff, buyer.DatabaseID)
 		ic.MaxLatencyTradeOff = maxLatencyTradeOff
 	case "RTTVeto_Default":
 		rttVetoDefault, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set rtt_veto_default=$1 where buyer_id=$2"))
-		args = append(args, rttVetoDefault, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id=$2"))
+		args = append(args, rttVetoDefault, buyer.DatabaseID)
 		ic.RTTVeto_Default = rttVetoDefault
 	case "RTTVeto_PacketLoss":
 		rttVetoPacketLoss, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set rtt_veto_packetloss=$1 where buyer_id=$2"))
-		args = append(args, rttVetoPacketLoss, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id=$2"))
+		args = append(args, rttVetoPacketLoss, buyer.DatabaseID)
 		ic.RTTVeto_PacketLoss = rttVetoPacketLoss
 	case "RTTVeto_Multipath":
 		rttVetoMultipath, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set rtt_veto_multipath=$1 where buyer_id=$2"))
-		args = append(args, rttVetoMultipath, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id=$2"))
+		args = append(args, rttVetoMultipath, buyer.DatabaseID)
 		ic.RTTVeto_Multipath = rttVetoMultipath
 	case "MultipathOverloadThreshold":
 		multipathOverloadThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set multipath_overload_threshold=$1 where buyer_id=$2"))
-		args = append(args, multipathOverloadThreshold, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id=$2"))
+		args = append(args, multipathOverloadThreshold, buyer.DatabaseID)
 		ic.MultipathOverloadThreshold = multipathOverloadThreshold
 	case "TryBeforeYouBuy":
 		tryBeforeYouBuy, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set try_before_you_buy=$1 where buyer_id=$2"))
-		args = append(args, tryBeforeYouBuy, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id=$2"))
+		args = append(args, tryBeforeYouBuy, buyer.DatabaseID)
 		ic.TryBeforeYouBuy = tryBeforeYouBuy
 	case "ForceNext":
 		forceNext, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ForceNext: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set force_next=$1 where buyer_id=$2"))
-		args = append(args, forceNext, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id=$2"))
+		args = append(args, forceNext, buyer.DatabaseID)
 		ic.ForceNext = forceNext
 	case "LargeCustomer":
 		largeCustomer, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set large_customer=$1 where buyer_id=$2"))
-		args = append(args, largeCustomer, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id=$2"))
+		args = append(args, largeCustomer, buyer.DatabaseID)
 		ic.LargeCustomer = largeCustomer
 	case "Uncommitted":
 		uncommitted, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("Uncommitted: %v is not a valid boolean type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set is_uncommitted=$1 where buyer_id=$2"))
-		args = append(args, uncommitted, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id=$2"))
+		args = append(args, uncommitted, buyer.DatabaseID)
 		ic.Uncommitted = uncommitted
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MaxRTT: %v is not a valid int32 type", value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set set max_rtt=$1 where buyer_id=$2"))
-		args = append(args, maxRTT, buyerID)
+		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id=$2"))
+		args = append(args, maxRTT, buyer.DatabaseID)
 		ic.MaxRTT = maxRTT
 
 	}

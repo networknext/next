@@ -911,15 +911,92 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
 	})
 
-	// t.Run("UpdateInternalConfig", func(t *testing.T) {
+	t.Run("UpdateInternalConfig", func(t *testing.T) {
 
-	// 	// RouteSelectThreshold
-	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSelectThreshold", "local.2")
-	// 	assert.NoError(t, err)
-	// 	checkRelay, err := db.Relay(rid)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, "local.2", checkRelay.Name)
+		// RouteSelectThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSelectThreshold", int32(1))
+		assert.NoError(t, err)
+		checkInternalConfig, err := db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), checkInternalConfig.RouteSelectThreshold)
 
-	// })
+		// RouteSwitchThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSwitchThreshold", int32(4))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(4), checkInternalConfig.RouteSwitchThreshold)
+
+		// MaxLatencyTradeOff
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MaxLatencyTradeOff", int32(11))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(11), checkInternalConfig.MaxLatencyTradeOff)
+
+		// RTTVeto_Default
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_Default", int32(-20))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(-20), checkInternalConfig.RTTVeto_Default)
+
+		// RTTVeto_PacketLoss
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_PacketLoss", int32(-30))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(-30), checkInternalConfig.RTTVeto_PacketLoss)
+
+		// RTTVeto_Multipath
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_Multipath", int32(-40))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(-40), checkInternalConfig.RTTVeto_Multipath)
+
+		// MultipathOverloadThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MultipathOverloadThreshold", int32(600))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(600), checkInternalConfig.MultipathOverloadThreshold)
+
+		// TryBeforeYouBuy
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "TryBeforeYouBuy", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.TryBeforeYouBuy)
+
+		// ForceNext
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "ForceNext", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.ForceNext)
+
+		// LargeCustomer
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "LargeCustomer", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.LargeCustomer)
+
+		// Uncommitted
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "Uncommitted", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.Uncommitted)
+
+		// MaxRTT
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MaxRTT", int32(400))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(400), checkInternalConfig.MaxRTT)
+
+	})
 
 }
