@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -262,9 +261,9 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
-					ghostArmyNextCount = firstCount*int(ghostArmyNextScaler) + rand.Intn(39)
+					ghostArmyNextCount = firstCount * int(ghostArmyNextScaler)
 				} else {
-					ghostArmyNextCount = secondCount*int(ghostArmyNextScaler) + rand.Intn(39)
+					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
 				firstNextCount += ghostArmyNextCount
 				secondNextCount += ghostArmyNextCount
@@ -325,8 +324,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if buyer.ID == ghostArmyBuyerID {
 				// scale by next values because ghost army data contains 0 direct
 				// if ghost army is turned off then this number will be 0 and have no effect
-				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + rand.Intn(ghostArmyNextCount)
-				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + rand.Intn(ghostArmyNextCount)
+				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 			}
 		}
 

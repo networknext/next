@@ -587,9 +587,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		//randomizing the ghost army next and total breaks this assert
-		//assert.Equal(t, 25, reply.Next)
-		//assert.Equal(t, 1091, reply.Direct)
+		assert.Equal(t, 8, reply.Next)
+		assert.Equal(t, 250, reply.Direct)
 	})
 
 	t.Run("filtered - sameBuyer - !admin", func(t *testing.T) {
