@@ -127,7 +127,7 @@ export class AuthService {
           console.log(error)
         })
       this.processAuthentication()
-      router.push('/')
+      router.push('/map')
       return
     }
     // TODO: There should be a better way to access the Vue instance rather than through the router object
