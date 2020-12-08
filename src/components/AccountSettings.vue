@@ -84,7 +84,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
 import { AlertType } from './types/AlertTypes'
 import { UserProfile } from './types/AuthTypes'
-import { JSONRPCError } from './types/JSONRPCTypes'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -271,13 +270,13 @@ export default class AccountSettings extends Vue {
           this.alertType = AlertType.DEFAULT
         }, 5000)
       })
-      .catch((error: JSONRPCError) => {
+      .catch((error: Error) => {
         console.log('Something went wrong updating the account settings')
         console.log(error)
         this.companyName = this.$store.getters.userProfile.companyName
         this.companyCode = this.$store.getters.userProfile.companyCode
         this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
-        this.message = error.message
+        this.message = 'Failed to update account settings'
         this.alertType = AlertType.ERROR
         setTimeout(() => {
           this.message = ''
