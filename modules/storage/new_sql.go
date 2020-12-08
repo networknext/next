@@ -517,15 +517,9 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyerIDs[buyer.DatabaseID] = buyer.ID
 
-		var rs0 core.RouteShader
-		rs, err := db.RouteShaders(buyer.ID)
+		rs, err := db.RouteShader(buyer.ID)
 		if err != nil {
 			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
-		}
-
-		// TODO: fix routing.Buyer.RouteShader - should be a slice
-		if len(rs) > 0 {
-			rs0 = rs[0]
 		}
 
 		ic, err := db.InternalConfig(buyer.ID)
@@ -540,7 +534,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
 			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs0,
+			RouteShader:    rs,
 			InternalConfig: ic,
 			CustomerID:     buyer.CustomerID,
 			DatabaseID:     buyer.DatabaseID,
@@ -832,7 +826,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 	var sql bytes.Buffer
 	var sqlRS sqlRouteShader
 
-	routeShaders := make(map[uint64][]core.RouteShader)
+	routeShaders := make(map[uint64]core.RouteShader)
 
 	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
@@ -880,11 +874,11 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			AcceptablePacketLoss:      float32(sqlRS.AcceptablePacketLoss),
 			BandwidthEnvelopeUpKbps:   int32(sqlRS.BandwidthEnvelopeUpKbps),
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
-			// BannedUsers
+			// TODO: add BannedUsers
 		}
 
 		id := db.buyerIDs[buyerID]
-		routeShaders[id] = append(routeShaders[id], routeShader)
+		routeShaders[id] = routeShader
 	}
 
 	db.routeShaderMutex.Lock()

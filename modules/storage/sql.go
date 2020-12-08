@@ -45,7 +45,7 @@ type SQL struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
-	routeShaders    map[uint64][]core.RouteShader  // index: buyer ID
+	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -1826,16 +1826,16 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 }
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
-func (db *SQL) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
 	db.routeShaderMutex.RLock()
 	defer db.routeShaderMutex.RUnlock()
 
-	routeShaders, found := db.routeShaders[buyerID]
+	routeShader, found := db.routeShaders[buyerID]
 	if !found {
-		return []core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
 	}
 
-	return routeShaders, nil
+	return routeShader, nil
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
