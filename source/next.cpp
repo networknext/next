@@ -4224,7 +4224,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
 
     if ( num_jitter_samples > 0 )
     {
-        stats->jitter = 3.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
+        stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples );
     }
 
     next_ping_history_verify_sentinels( history );
