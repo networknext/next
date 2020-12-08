@@ -397,7 +397,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NearRelayIDs",
 		"NearRelayRTTs",
 		"NearRelayJitters",
-		"NnearRelayPacketLosses",
+		"NearRelayPacketLosses",
+		"RelayWentAway",
+		"RouteLost",
+		"Tags",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {
@@ -624,7 +627,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		nearRelayIDs := ""
 		if len(billingEntry.NearRelayIDs) > 0 {
 			for _, relayID := range billingEntry.NearRelayIDs {
-				nearRelayIDs += fmt.Sprintf("%d", relayID) + ", "
+				nearRelayIDs += fmt.Sprintf("%016x", uint64(relayID)) + ", "
 			}
 			nearRelayIDs = strings.TrimSuffix(nearRelayIDs, ", ")
 		}
@@ -651,6 +654,24 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 				nearRelayPacketLosses += fmt.Sprintf("%5.5f", relayID) + ", "
 			}
 			nearRelayPacketLosses = strings.TrimSuffix(nearRelayPacketLosses, ", ")
+		}
+		// RelayWentAway
+		relayWentAway := ""
+		if billingEntry.RelayWentAway.Valid {
+			relayWentAway = strconv.FormatBool(billingEntry.RelayWentAway.Bool)
+		}
+		// RouteLost
+		routeLost := ""
+		if billingEntry.RouteLost.Valid {
+			routeLost = strconv.FormatBool(billingEntry.RouteLost.Bool)
+		}
+		// Tags
+		tags := ""
+		if len(billingEntry.Tags) > 0 {
+			for _, tag := range billingEntry.Tags {
+				tags += fmt.Sprintf("%016x", uint64(tag)) + ", "
+			}
+			tags = strings.TrimSuffix(tags, ", ")
 		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
@@ -706,6 +727,9 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nearRelayRTTs,
 			nearRelayJitters,
 			nearRelayPacketLosses,
+			relayWentAway,
+			routeLost,
+			tags,
 		})
 	}
 

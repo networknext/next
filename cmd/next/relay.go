@@ -130,7 +130,6 @@ type relayInfo struct {
 	sshPort     string
 	publicAddr  string
 	publicKey   string
-	updateKey   string
 	nicSpeed    string
 	firestoreID string
 	state       string
@@ -159,7 +158,6 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []
 			sshPort:     fmt.Sprintf("%d", r.SSHPort),
 			publicAddr:  r.Addr,
 			publicKey:   r.PublicKey,
-			updateKey:   r.UpdateKey,
 			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
 			firestoreID: r.FirestoreID,
 			state:       r.State,
@@ -548,26 +546,27 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	fmt.Printf("NIC speed set for %s\n", info.name)
 }
 
+// TODO modify to use the OpsService.UpdateRelay endpoint
 func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
 
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, oldName); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, oldName); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	var reply localjsonrpc.RelayNameUpdateReply
-	args := localjsonrpc.RelayNameUpdateArgs{
-		RelayID:   relay.ID,
-		RelayName: newName,
+	var reply localjsonrpc.UpdateRelayReply
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "Name",
+		Value:   newName,
 	}
 
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		fmt.Printf("error renaming relay: %v\n", (err))
 	} else {
 		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
-
 	}
 
 }

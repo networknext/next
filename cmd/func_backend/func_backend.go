@@ -187,8 +187,8 @@ func (backend *Backend) GetNearRelays() []routing.RelayData {
 	allRelayData := backend.relayMap.GetAllRelayData()
 	backend.mutex.Unlock()
 	sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
-	if len(allRelayData) > int(transport.MaxNearRelays) {
-		allRelayData = allRelayData[:transport.MaxNearRelays]
+	if len(allRelayData) > int(core.MaxNearRelays) {
+		allRelayData = allRelayData[:core.MaxNearRelays]
 	}
 	return allRelayData
 }
@@ -323,7 +323,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
 		for i := 0; i <= int(sessionUpdate.NumNearRelays); i++ {
-			fmt.Printf("near relay: id = %x, rtt = %f, jitter = %f, packet loss = %f\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
+			fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %d\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
 		}
 	}
 

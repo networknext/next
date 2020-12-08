@@ -7,13 +7,14 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(17)
+	BillingEntryVersion = uint8(18)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
 	BillingEntryMaxSDKVersionLength = 11
 	BillingEntryMaxDebugLength      = 2048
 	BillingEntryMaxNearRelays       = 32
+	BillingEntryMaxTags             = 8
 
 	MaxBillingEntryBytes = 1 + // Version
 		8 + // Timestamp
@@ -69,7 +70,11 @@ const (
 		BillingEntryMaxNearRelays*8 + // NearRelayIDs
 		BillingEntryMaxNearRelays*4 + // NearRelayRTTs
 		BillingEntryMaxNearRelays*4 + // NearRelayJitters
-		BillingEntryMaxNearRelays*4 // NearRelayPacketLosses
+		BillingEntryMaxNearRelays*4 + // NearRelayPacketLosses
+		1 + // RelayWentAway
+		1 + // RouteLost
+		1 + // NumTags
+		BillingEntryMaxTags*8 // Tags
 )
 
 type BillingEntry struct {
@@ -129,6 +134,10 @@ type BillingEntry struct {
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]float32
 	NearRelayJitters                [BillingEntryMaxNearRelays]float32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]float32
+	RelayWentAway                   bool
+	RouteLost                       bool
+	NumTags                         uint8
+	Tags                            [BillingEntryMaxTags]uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -155,7 +164,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.NextJitter)
 		encoding.WriteFloat32(data, &index, entry.NextPacketLoss)
 		encoding.WriteUint8(data, &index, entry.NumNextRelays)
-		for i := 0; i < int(entry.NumNextRelays); i++ {
+		for i := uint8(0); i < entry.NumNextRelays; i++ {
 			encoding.WriteUint64(data, &index, entry.NextRelays[i])
 		}
 		encoding.WriteUint64(data, &index, entry.TotalPrice)
@@ -185,7 +194,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		encoding.WriteBool(data, &index, entry.PacketLossReduction)
 
 		encoding.WriteUint8(data, &index, entry.NumNextRelays)
-		for i := 0; i < int(entry.NumNextRelays); i++ {
+		for i := uint8(0); i < entry.NumNextRelays; i++ {
 			encoding.WriteUint64(data, &index, entry.NextRelaysPrice[i])
 		}
 	}
@@ -220,11 +229,19 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteFloat32(data, &index, entry.JitterServerToClient)
 
 	encoding.WriteUint8(data, &index, entry.NumNearRelays)
-	for i := 0; i < BillingEntryMaxNearRelays; i++ {
+	for i := uint8(0); i < entry.NumNearRelays; i++ {
 		encoding.WriteUint64(data, &index, entry.NearRelayIDs[i])
 		encoding.WriteFloat32(data, &index, entry.NearRelayRTTs[i])
 		encoding.WriteFloat32(data, &index, entry.NearRelayJitters[i])
 		encoding.WriteFloat32(data, &index, entry.NearRelayPacketLosses[i])
+	}
+
+	encoding.WriteBool(data, &index, entry.RelayWentAway)
+	encoding.WriteBool(data, &index, entry.RouteLost)
+
+	encoding.WriteUint8(data, &index, entry.NumTags)
+	for i := uint8(0); i < entry.NumTags; i++ {
+		encoding.WriteUint64(data, &index, entry.Tags[i])
 	}
 
 	return data[:index]
@@ -503,7 +520,14 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			return false
 		}
 
-		for i := 0; i < BillingEntryMaxNearRelays; i++ {
+		var numNearRelays int
+		if entry.Version >= 18 {
+			numNearRelays = int(entry.NumNearRelays)
+		} else {
+			numNearRelays = BillingEntryMaxNearRelays
+		}
+
+		for i := 0; i < numNearRelays; i++ {
 			if !encoding.ReadUint64(data, &index, &entry.NearRelayIDs[i]) {
 				return false
 			}
@@ -517,6 +541,26 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			}
 
 			if !encoding.ReadFloat32(data, &index, &entry.NearRelayPacketLosses[i]) {
+				return false
+			}
+		}
+	}
+
+	if entry.Version >= 18 {
+		if !encoding.ReadBool(data, &index, &entry.RelayWentAway) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.RouteLost) {
+			return false
+		}
+
+		if !encoding.ReadUint8(data, &index, &entry.NumTags) {
+			return false
+		}
+
+		for i := uint8(0); i < entry.NumTags; i++ {
+			if !encoding.ReadUint64(data, &index, &entry.Tags[i]) {
 				return false
 			}
 		}
