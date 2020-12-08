@@ -590,8 +590,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 3, reply.Next)
-		assert.Equal(t, 51, reply.Direct)
+		assert.Equal(t, 8, reply.Next)
+		assert.Equal(t, 250, reply.Direct)
 	})
 
 	t.Run("filtered - sameBuyer - !admin", func(t *testing.T) {
@@ -1685,6 +1685,13 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, float64(5.43), reply.SessionBillingInfo[0].NearRelayPacketLosses[0])
 		assert.Equal(t, float64(4.32), reply.SessionBillingInfo[0].NearRelayPacketLosses[1])
 		assert.Equal(t, float64(3.21), reply.SessionBillingInfo[0].NearRelayPacketLosses[2])
+
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RelayWentAway)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RouteLost)
+
+		assert.Equal(t, int64(1141867895387079451), reply.SessionBillingInfo[0].Tags[0])
+		assert.Equal(t, int64(-7664475006302134894), reply.SessionBillingInfo[0].Tags[1])
+		assert.Equal(t, int64(-6848787315892866519), reply.SessionBillingInfo[0].Tags[2])
 
 	})
 }

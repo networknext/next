@@ -109,25 +109,34 @@ func main() {
 	// unmarshal
 	index := 0
 
-	var count uint64
-	if !encoding.ReadUint64(bin, &index, &count) {
-		fmt.Println("could not read count")
+	var numSegments uint64
+	if !encoding.ReadUint64(bin, &index, &numSegments) {
+		fmt.Println("could not read num segments")
 	}
 
-	fmt.Printf("reading in %d entries\n", count)
-
-	slices := make([]transport.SessionPortalData, count)
-	for i := uint64(0); i < count; i++ {
-		var entry ghostarmy.Entry
-		if !entry.ReadFrom(bin, &index) {
-			fmt.Printf("can't read entry at index %d\n", i)
+	slices := make([]transport.SessionPortalData, 0)
+	entityIndex := 0
+	for s := uint64(0); s < numSegments; s++ {
+		var count uint64
+		if !encoding.ReadUint64(bin, &index, &count) {
+			fmt.Println("could not read count")
 		}
 
-		entry.Into(&slices[i], dcmap, buyerID)
+		newSlice := make([]transport.SessionPortalData, count)
+		slices = append(slices, newSlice...)
+		fmt.Printf("reading in %d entries\n", count)
+
+		for i := uint64(0); i < count; i++ {
+			var entry ghostarmy.Entry
+			if !entry.ReadFrom(bin, &index) {
+				fmt.Printf("can't read entry at index %d\n", i)
+			}
+
+			entry.Into(&slices[entityIndex], dcmap, buyerID)
+			entityIndex++
+		}
 	}
-
 	bin = nil
-
 	// publish to zero mq, sleep for 10 seconds, repeat
 
 	publishChan := make(chan transport.SessionPortalData)

@@ -220,6 +220,13 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 	}
 
+	var ghostArmyNextScaler uint64 = 5
+	if v, ok := os.LookupEnv("GHOST_ARMY_NEXT_SCALER"); ok {
+		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
+			ghostArmyNextScaler = v
+		}
+	}
+
 	switch args.CompanyCode {
 	case "":
 		buyers := s.Storage.Buyers()
@@ -254,13 +261,14 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
-					ghostArmyNextCount = firstCount
+					ghostArmyNextCount = firstCount * int(ghostArmyNextScaler)
 				} else {
-					ghostArmyNextCount = secondCount
+					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
+				firstNextCount += ghostArmyNextCount
+				secondNextCount += ghostArmyNextCount
 			}
 		}
-
 		reply.Next = firstNextCount
 		if secondNextCount > firstNextCount {
 			reply.Next = secondNextCount
@@ -1498,7 +1506,10 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	nearRelayIDs,
 	nearRelayRTTs,
 	nearRelayJitters,
-	nearRelayPacketLosses
+	nearRelayPacketLosses,
+	relayWentAway,
+	routeLost,
+	tags
     from `))
 
 	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
