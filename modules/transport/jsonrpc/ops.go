@@ -512,6 +512,7 @@ type relay struct {
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
+	InternalAddr        string                `json:"internalAddr"`
 	Latitude            float64               `json:"latitude"`
 	Longitude           float64               `json:"longitude"`
 	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
@@ -523,7 +524,6 @@ type relay struct {
 	SSHPort             int64                 `json:"ssh_port"`
 	MaxSessionCount     uint32                `json:"maxSessionCount"`
 	PublicKey           string                `json:"public_key"`
-	UpdateKey           string                `json:"update_key"`
 	FirestoreID         string                `json:"firestore_id"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
@@ -537,6 +537,8 @@ type relay struct {
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
+	DatabaseID          int64
+	DatacenterID        uint64
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -546,8 +548,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
-			Latitude:            r.Datacenter.Location.Latitude,
-			Longitude:           r.Datacenter.Location.Longitude,
+			Latitude:            float64(r.Datacenter.Location.Latitude),
+			Longitude:           float64(r.Datacenter.Location.Longitude),
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
 			ManagementAddr:      r.ManagementAddr,
@@ -556,7 +558,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			State:               r.State.String(),
 			LastUpdateTime:      r.LastUpdateTime,
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
-			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
@@ -567,6 +568,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
 			Type:                r.Type,
+			DatabaseID:          r.DatabaseID,
 		}
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
@@ -825,8 +827,8 @@ type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
 	SignedID     int64   `json:"signed_id"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
+	Latitude     float32 `json:"latitude"`
+	Longitude    float32 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
 	SupplierName string  `json:"supplierName"`
 }
@@ -953,26 +955,24 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	return nil
 }
 
-type RelayMetadataArgs struct {
-	Relay routing.Relay
-}
+// type RelayMetadataArgs struct {
+// 	Relay routing.Relay
+// }
 
-type RelayMetadataReply struct {
-	Ok           bool
-	ErrorMessage string
-}
+// type RelayMetadataReply struct {
+// 	Ok           bool
+// 	ErrorMessage string
+// }
 
-func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+// func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
 
-	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
-	if err != nil {
-		return err // TODO detail
-	}
+// 	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+// 	if err != nil {
+// 		return err // TODO detail
+// 	}
 
-	return nil
-}
-
-// used in routes.go
+// 	return nil
+// }
 
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
@@ -985,70 +985,70 @@ type RouteSelectionReply struct {
 	Routes []routing.Route `json:"routes"`
 }
 
-// func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, reply *RouteSelectionReply) error {
-// 	relays := s.Storage.Relays()
+type UpdateRelayArgs struct {
+	RelayID uint64
+	Field   string
+	Value   interface{}
+}
 
-// 	var srcrelays []routing.Relay
-// 	for _, relay := range relays {
-// 		for _, srcrelay := range args.SourceRelays {
-// 			if relay.Name == srcrelay {
-// 				srcrelays = append(srcrelays, relay)
-// 			}
-// 		}
-// 	}
-// 	if len(srcrelays) == 0 {
-// 		srcrelays = relays
-// 	}
+type UpdateRelayReply struct{}
 
-// 	var destrelays []routing.Relay
-// 	for _, relay := range relays {
-// 		for _, destrelay := range args.DestinationRelays {
-// 			if relay.Name == destrelay {
-// 				destrelays = append(destrelays, relay)
-// 			}
-// 		}
-// 	}
-// 	if len(destrelays) == 0 {
-// 		destrelays = relays
-// 	}
+func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
+	err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+	if err != nil {
+		err = fmt.Errorf("UpdateRelay() failed to modify relay record for field %s with value %v: %w", args.Field, args.Value, err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	return nil
+}
 
-// 	var selectors []routing.SelectorFunc
-// 	selectors = append(selectors, routing.SelectUnencumberedRoutes(0.8))
+type GetRelayArgs struct {
+	RelayID uint64
+}
 
-// 	if args.RTT > 0 {
-// 		selectors = append(selectors, routing.SelectAcceptableRoutesFromBestRTT(args.RTT))
-// 	}
+type GetRelayReply struct {
+	Relay relay
+}
 
-// 	if args.RouteHash > 0 {
-// 		selectors = append(selectors, routing.SelectContainsRouteHash(args.RouteHash))
-// 	}
+func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRelayReply) error {
+	routingRelay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("Error retrieving relay ID %016x: %v", args.RelayID, err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
-// 	// todo: fill in source relay costs here
-// 	sourceRelayCosts := make([]int, len(srcrelays))
+	relay := relay{
+		ID:                  routingRelay.ID,
+		SignedID:            routingRelay.SignedID,
+		Name:                routingRelay.Name,
+		Addr:                routingRelay.Addr.String(),
+		InternalAddr:        routingRelay.InternalAddr.String(),
+		Latitude:            float64(routingRelay.Datacenter.Location.Latitude),
+		Longitude:           float64(routingRelay.Datacenter.Location.Longitude),
+		NICSpeedMbps:        routingRelay.NICSpeedMbps,
+		IncludedBandwidthGB: routingRelay.IncludedBandwidthGB,
+		ManagementAddr:      routingRelay.ManagementAddr,
+		SSHUser:             routingRelay.SSHUser,
+		SSHPort:             routingRelay.SSHPort,
+		State:               routingRelay.State.String(),
+		LastUpdateTime:      routingRelay.LastUpdateTime,
+		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
+		MaxSessionCount:     routingRelay.MaxSessions,
+		SellerName:          routingRelay.Seller.Name,
+		MRC:                 routingRelay.MRC,
+		Overage:             routingRelay.Overage,
+		BWRule:              routingRelay.BWRule,
+		ContractTerm:        routingRelay.ContractTerm,
+		StartDate:           routingRelay.StartDate,
+		EndDate:             routingRelay.EndDate,
+		Type:                routingRelay.Type,
+		DatabaseID:          routingRelay.DatabaseID,
+		DatacenterID:        routingRelay.Datacenter.ID,
+	}
 
-// 	routes, err := s.RouteMatrix.Routes(srcrelays, sourceRelayCosts, destrelays, selectors...)
-// 	if err != nil {
-// 		err = fmt.Errorf("RouteSelection() Routes error: %w", err)
-// 		s.Logger.Log("err", err)
-// 		return err
-// 	}
+	reply.Relay = relay
 
-// 	for routeidx := range routes {
-// 		for relayidx := range routes[routeidx].Relays {
-// 			routes[routeidx].Relays[relayidx], err = s.Storage.Relay(routes[routeidx].Relays[relayidx].ID)
-// 			if err != nil {
-// 				err = fmt.Errorf("RouteSelection() Relays error: %w", err)
-// 				s.Logger.Log("err", err)
-// 				return err
-// 			}
-// 		}
-// 	}
-
-// 	sort.Slice(routes, func(i int, j int) bool {
-// 		return routes[i].Stats.RTT < routes[j].Stats.RTT && routes[i].Relays[0].Name < routes[j].Relays[0].Name
-// 	})
-
-// 	reply.Routes = routes
-
-// 	return nil
-// }
+	return nil
+}
