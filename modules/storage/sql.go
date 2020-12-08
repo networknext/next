@@ -1829,7 +1829,7 @@ func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
 
 	routeShader, found := db.routeShaders[buyerID]
 	if !found {
-		return core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%x", buyerID)}
 	}
 
 	return routeShader, nil
