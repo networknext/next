@@ -55,7 +55,7 @@
 #define NEXT_REPLAY_PROTECTION_BUFFER_SIZE                            256
 #define NEXT_PING_HISTORY_ENTRY_COUNT                                 256
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
-#define NEXT_PING_SAFETY                                             10.0
+#define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                          5.0
 #define NEXT_CLIENT_SESSION_TIMEOUT                                   5.0
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
@@ -4141,6 +4141,25 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     stats->jitter = 0.0f;
     stats->packet_loss = 0.0f;
 
+    // find the most recent pong received and subtract ping safety from this to find range to search for packet loss
+
+    double most_recent_ping_that_received_pong_time = 0.0;
+
+    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
+    {
+        const next_ping_history_entry_t * entry = &history->entries[i];
+
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end && entry->time_pong_received >= entry->time_ping_sent )
+        {
+            if ( entry->time_pong_received > most_recent_ping_that_received_pong_time )
+            {
+                most_recent_ping_that_received_pong_time = entry->time_pong_received;
+            }
+        }
+    }
+
+    double ping_end = most_recent_ping_that_received_pong_time - ping_safety;
+
     // calculate packet loss
 
     int num_pings_sent = 0;
@@ -4150,7 +4169,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     {
         const next_ping_history_entry_t * entry = &history->entries[i];
 
-        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end - ping_safety )
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= ping_end )
         {
             num_pings_sent++;
 
@@ -13521,7 +13540,7 @@ static void test_ping_stats()
 
         next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.jitter, 0.0f ) );
-        next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 0.25f ) );
+        next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 1.0f ) );
     }
 }
 
