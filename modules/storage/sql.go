@@ -2256,7 +2256,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "AcceptablePacketLoss":
 		acceptablePacketLoss, ok := value.(float32)
 		if !ok {
-			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid int32 type", value)
+			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type", value)
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id=$2"))
 		args = append(args, acceptablePacketLoss, buyer.DatabaseID)
