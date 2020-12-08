@@ -2420,14 +2420,118 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 // AddBannedUser adds a user to the banned_user table
 func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 
-	// var sql bytes.Buffer
+	var sql bytes.Buffer
 
-	return fmt.Errorf(("AddBannedUser not yet impemented in SQL storer"))
+	db.bannedUserMutex.RLock()
+	bannedUserList, ok := db.bannedUsers[buyerID]
+	db.bannedUserMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "BannedUser Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	if bannedUserList[userID] {
+		return &AlreadyExistsError{resourceType: "Banned User", resourceRef: userID}
+	}
+
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, $2)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(int64(userID), buyer.DatabaseID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding banned user", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	// TODO: attach new BannedUsers list to the RouteShader for the buyer
+	// db.routeShaderMutex.Lock()
+	// db.routeShaders[buyerID].BannedUsers =
+	// db.routeShaderMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+
 }
 
 // RemoveBannedUser removes a user from the banned_user table
 func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("RemoveBannedUser not yet impemented in SQL storer"))
+	var sql bytes.Buffer
+
+	db.bannedUserMutex.RLock()
+	bannedUserList, ok := db.bannedUsers[buyerID]
+	db.bannedUserMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "BannedUser Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	if bannedUserList[userID] {
+		return &AlreadyExistsError{resourceType: "Banned User", resourceRef: userID}
+	}
+
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = $2"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(int64(userID), buyer.DatabaseID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing banned user", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	// TODO: attach new BannedUsers list to the RouteShader for the buyer
+	// db.routeShaderMutex.Lock()
+	// db.routeShaders[buyerID].BannedUsers =
+	// db.routeShaderMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+
 }
 
 // BannedUsers returns the set of banned users for the specified buyer ID
