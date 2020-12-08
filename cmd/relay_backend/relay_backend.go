@@ -10,11 +10,13 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -381,6 +383,43 @@ func mainReturnWithCode() int {
 
 	}
 
+	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
+	{
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					return 1
+				}
+
+				relayNamesHashPublisher = pubsub
+			}
+		}
+	}
+
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if err != nil {
@@ -423,23 +462,32 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 			// For now, exclude all valve relays
-			relayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
+			baseRelayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
 
-			numRelays := len(relayIDs)
+			namesMap := make(map[string]routing.Relay)
+			numRelays := len(baseRelayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
 			relayNames := make([]string, numRelays)
 			relayLatitudes := make([]float32, numRelays)
 			relayLongitudes := make([]float32, numRelays)
 			relayDatacenterIDs := make([]uint64, numRelays)
+			relayIDs := make([]uint64, numRelays)
 
-			for i, relayID := range relayIDs {
+			for i, relayID := range baseRelayIDs {
 				relay, err := storer.Relay(relayID)
 				if err != nil {
 					continue
 				}
 
-				relayAddresses[i] = relay.Addr
 				relayNames[i] = relay.Name
+				namesMap[relay.Name] = relay
+			}
+			//sort relay names then populate other arrays
+			sort.Strings(relayNames)
+			for i, relayName := range relayNames {
+				relay := namesMap[relayName]
+				relayIDs[i] = relay.ID
+				relayAddresses[i] = relay.Addr
 				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
 				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 				relayDatacenterIDs[i] = relay.Datacenter.ID
@@ -589,6 +637,24 @@ func mainReturnWithCode() int {
 					continue
 				}
 			}
+
+			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if hashing {
+				timestamp := time.Now().UTC().Unix()
+				relayHash := fnv.New64a()
+				for _, name := range relayNames {
+					relayHash.Write([]byte(name))
+				}
+				hash := relayHash.Sum64()
+				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
+				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				}
+			}
 		}
 	}()
 
@@ -601,23 +667,32 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 			// All relays included
-			relayIDs := relayMap.GetAllRelayIDs([]string{})
+			baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
 
-			numRelays := len(relayIDs)
+			namesMap := make(map[string]routing.Relay)
+			numRelays := len(baseRelayIDs)
 			relayAddresses := make([]net.UDPAddr, numRelays)
 			relayNames := make([]string, numRelays)
 			relayLatitudes := make([]float32, numRelays)
 			relayLongitudes := make([]float32, numRelays)
 			relayDatacenterIDs := make([]uint64, numRelays)
+			relayIDs := make([]uint64, numRelays)
 
-			for i, relayID := range relayIDs {
+			for i, relayID := range baseRelayIDs {
 				relay, err := storer.Relay(relayID)
 				if err != nil {
 					continue
 				}
 
-				relayAddresses[i] = relay.Addr
 				relayNames[i] = relay.Name
+				namesMap[relay.Name] = relay
+			}
+			//sort relay names then populate other arrays
+			sort.Strings(relayNames)
+			for i, relayName := range relayNames {
+				relay := namesMap[relayName]
+				relayIDs[i] = relay.ID
+				relayAddresses[i] = relay.Addr
 				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
 				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 				relayDatacenterIDs[i] = relay.Datacenter.ID

@@ -161,14 +161,9 @@ func TestIPLocator(t *testing.T) {
 
 		{
 			expected := routing.Location{
-				Continent:   "Europe",
-				Country:     "United Kingdom",
-				CountryCode: "GB",
-				Region:      "England",
-				City:        "London",
-				Latitude:    51.5142,
-				Longitude:   -0.0931,
-				ISP:         "Andrews & Arnold Ltd",
+				Latitude:  51.5142,
+				Longitude: -0.0931,
+				ISP:       "Andrews & Arnold Ltd",
 			}
 
 			actual, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))

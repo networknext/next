@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -72,7 +73,160 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	return nil
 }
 
-func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+type ErrDatacenterNotFound struct {
+	buyer          uint64
+	datacenter     uint64
+	datacenterName string
+}
+
+func (e ErrDatacenterNotFound) Error() string {
+	if e.datacenterName != "" {
+		return fmt.Sprintf("datacenter %s for buyer %016x not found", e.datacenterName, e.buyer)
+	}
+
+	return fmt.Sprintf("datacenter %016x for buyer %016x not found", e.datacenter, e.buyer)
+}
+
+type ErrDatacenterMapMisconfigured struct {
+	buyer         uint64
+	datacenterMap routing.DatacenterMap
+}
+
+func (e ErrDatacenterMapMisconfigured) Error() string {
+	return fmt.Sprintf("datacenter alias %s misconfigured for buyer %016x: mapped to datacenter \"%016x\" which doesn't exist", e.datacenterMap.Alias, e.buyer, e.datacenterMap.DatacenterID)
+}
+
+type ErrDatacenterNotAllowed struct {
+	buyer          uint64
+	datacenter     uint64
+	datacenterName string
+}
+
+func (e ErrDatacenterNotAllowed) Error() string {
+	if e.datacenterName != "" {
+		return fmt.Sprintf("buyer %016x tried to use datacenter %s when they are not configured to do so", e.buyer, e.datacenterName)
+	}
+
+	return fmt.Sprintf("buyer %016x tried to use datacenter %016x when they are not configured to do so", e.buyer, e.datacenter)
+}
+
+func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
+	// enforce that whatever datacenter the server says it's in, we have a mapping for it
+	datacenterAliases := storer.GetDatacenterMapsForBuyer(buyerID)
+	for _, dcMap := range datacenterAliases {
+		if datacenterID == dcMap.DatacenterID {
+			// We found the datacenter
+			datacenter, err := storer.Datacenter(datacenterID)
+			if err != nil {
+				// The datacenter map is misconfigured in our database
+				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
+			}
+
+			return datacenter, nil
+		}
+
+		if datacenterID == crypto.HashID(dcMap.Alias) {
+			// We found the datacenter from the mapped alias
+			datacenter, err := storer.Datacenter(dcMap.DatacenterID)
+			if err != nil {
+				// The datacenter map is misconfigured in our database
+				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
+			}
+
+			datacenter.AliasName = dcMap.Alias
+			return datacenter, nil
+		}
+	}
+
+	// We couldn't find the datacenter, check if it is a datacenter that we have in our database
+	_, err := storer.Datacenter(datacenterID)
+	if err != nil {
+		// This isn't a datacenter we know about. It's either brand new and not configured yet
+		// or there is a typo in the server's integration of the SDK
+		return routing.UnknownDatacenter, ErrDatacenterNotFound{buyerID, datacenterID, datacenterName}
+	}
+
+	// This is a datacenter we know about, but the buyer isn't configured to use it
+	return routing.UnknownDatacenter, ErrDatacenterNotAllowed{buyerID, datacenterID, datacenterName}
+}
+
+type nearRelayGroup struct {
+	Count        int32
+	IDs          []uint64
+	Addrs        []net.UDPAddr
+	Names        []string
+	RTTs         []int32
+	Jitters      []int32
+	PacketLosses []int32
+}
+
+func newNearRelayGroup(count int32) nearRelayGroup {
+	return nearRelayGroup{
+		Count:        count,
+		IDs:          make([]uint64, count),
+		Addrs:        make([]net.UDPAddr, count),
+		Names:        make([]string, count),
+		RTTs:         make([]int32, count),
+		Jitters:      make([]int32, count),
+		PacketLosses: make([]int32, count),
+	}
+}
+
+func (n nearRelayGroup) Copy(other *nearRelayGroup) {
+	other.Count = n.Count
+	other.IDs = make([]uint64, n.Count)
+	other.Addrs = make([]net.UDPAddr, n.Count)
+	other.Names = make([]string, n.Count)
+	other.RTTs = make([]int32, n.Count)
+	other.Jitters = make([]int32, n.Count)
+	other.PacketLosses = make([]int32, n.Count)
+
+	copy(other.IDs, n.IDs)
+	copy(other.Addrs, n.Addrs)
+	copy(other.Names, n.Names)
+	copy(other.RTTs, n.RTTs)
+	copy(other.Jitters, n.Jitters)
+	copy(other.PacketLosses, n.PacketLosses)
+}
+
+func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelays nearRelayGroup, routeState *core.RouteState, newSession bool, clientLat float32, clientLong float32, maxNearRelays int, directJitter int32, destRelayIDs []uint64) (bool, nearRelayGroup, []int32, error) {
+	var nearRelaysChanged bool
+
+	if newSession {
+		nearRelaysChanged = true
+
+		nearRelayIDs, err := routeMatrix.GetNearRelays(clientLat, clientLong, maxNearRelays)
+		if err != nil {
+			return nearRelaysChanged, nearRelayGroup{}, nil, err
+		}
+
+		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
+		for i := int32(0); i < nearRelays.Count; i++ {
+			relayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelayIDs[i]]
+			if !ok {
+				continue
+			}
+
+			nearRelays.IDs[i] = nearRelayIDs[i]
+			nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+			nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+		}
+
+		routeState.NumNearRelays = nearRelays.Count
+		return nearRelaysChanged, nearRelays, nil, nil
+	}
+
+	var nearRelays nearRelayGroup
+	incomingNearRelays.Copy(&nearRelays)
+
+	var numDestRelays int32
+	reframedDestRelays := make([]int32, len(destRelayIDs))
+
+	core.ReframeRelays(routeState, routeMatrix.RelayIDsToIndices, directJitter, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
+}
+
+func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -118,45 +272,25 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterT
 			return
 		}
 
-		datacenter, err := storer.Datacenter(packet.DatacenterID)
+		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, packet.DatacenterName); err != nil {
+			level.Error(logger).Log("handler", "server_init", "err", err)
 
-		// If we can't find a datacenter or alias for this customer, send an OK response
-		// and track the datacenter so we can work with them and add it to our database.
-
-		defer func() {
-			if datacenter.ID == routing.UnknownDatacenter.ID {
-				level.Warn(logger).Log("err", "received server init request with unknown datacenter", "datacenter", packet.DatacenterName)
+			switch err.(type) {
+			case ErrDatacenterNotFound:
 				metrics.DatacenterNotFound.Add(1)
 
-				datacenterTracker.AddUnknownDatacenterName(packet.DatacenterName)
+			case ErrDatacenterMapMisconfigured:
+				metrics.MisconfiguredDatacenterAlias.Add(1)
+
+			case ErrDatacenterNotAllowed:
+				metrics.DatacenterNotAllowed.Add(1)
 			}
-		}()
 
-		if err != nil {
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-
-					// If the customer does have a datacenter alias set up but its misconfigured
-					// in our database, then send an unknown datacenter response back.
-
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterName)
-
-						if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
-							level.Error(logger).Log("msg", "failed to write server init response", "err", err)
-							metrics.WriteResponseFailure.Add(1)
-						}
-
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					break
-				}
+			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
+				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
 			}
+			return
 		}
 
 		if err := writeServerInitResponse(w, &packet, InitResponseOK); err != nil {
@@ -169,7 +303,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, datacenterT
 	}
 }
 
-func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -203,35 +337,21 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, datacente
 			return
 		}
 
-		datacenter, err := storer.Datacenter(packet.DatacenterID)
+		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
+			level.Error(logger).Log("handler", "server_update", "err", err)
 
-		// If we can't find a datacenter or alias for this customer,
-		// track the datacenter so we can work with them and add it to our database.
-
-		defer func() {
-			if datacenter.ID == routing.UnknownDatacenter.ID {
-				level.Warn(logger).Log("err", "received server update request with unknown datacenter", "datacenter", packet.DatacenterID)
+			switch err.(type) {
+			case ErrDatacenterNotFound:
 				metrics.DatacenterNotFound.Add(1)
 
-				datacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
-			}
-		}()
+			case ErrDatacenterMapMisconfigured:
+				metrics.MisconfiguredDatacenterAlias.Add(1)
 
-		if err != nil {
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					break
-				}
+			case ErrDatacenterNotAllowed:
+				metrics.DatacenterNotAllowed.Add(1)
 			}
+
+			return
 		}
 
 		// Send the number of sessions on the server to the portal cruncher
@@ -304,9 +424,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				return
 			}
 
-			// Rebuild the arrays of relay names and sellers from the previous session data
-			routeRelayNames := [5]string{}
-			routeRelaySellers := [5]routing.Seller{}
+			// Rebuild the arrays of route relay names and sellers from the previous session data
+			routeRelayNames := [core.MaxRelaysPerRoute]string{}
+			routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
 			for i := int32(0); i < prevSessionData.RouteNumRelays; i++ {
 				relay, err := storer.Relay(prevSessionData.RouteRelayIDs[i])
 				if err != nil {
@@ -318,22 +438,32 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			}
 
 			// Rebuild the near relays from the previous session data
-			nearRelays := make([]routing.NearRelayData, len(prevSessionData.RouteState.NearRelayID))
-			for i := 0; i < len(nearRelays); i++ {
-				nearRelays[i].ID = prevSessionData.RouteState.NearRelayID[i]
-				relayIndex := routeMatrix.RelayIDsToIndices[nearRelays[i].ID]
+			nearRelays := newNearRelayGroup(prevSessionData.RouteState.NumNearRelays)
+			for i := int32(0); i < nearRelays.Count; i++ {
 
-				nearRelays[i].Name = routeMatrix.RelayNames[relayIndex]
-				nearRelays[i].Addr = routeMatrix.RelayAddresses[relayIndex]
-				nearRelays[i].ClientStats.RTT = math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i]))
+				// Since we now guarantee that the near relay IDs reported up from the SDK each slice don't change,
+				// we can use the packet's near relay IDs here instead of storing the near relay IDs in the session data
+				relayID := packet.NearRelayIDs[i]
 
-				// We don't actually store the jitter or packet loss in the session data, so just use the
-				// values from the session update packet
-				nearRelays[i].ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[i]))
-				nearRelays[i].ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[i]))
+				// Make sure to check if the relay exists in case the near relays are gone
+				// this slice compared to the previous slice
+				relayIndex, ok := routeMatrix.RelayIDsToIndices[relayID]
+				if !ok {
+					continue
+				}
 
-				if nearRelays[i].ClientStats.RTT == 255 {
-					nearRelays[i].ClientStats.PacketLoss = 100
+				nearRelays.IDs[i] = relayID
+				nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+				nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+				nearRelays.RTTs[i] = int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i])))
+				nearRelays.Jitters[i] = int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayJitter[i])))
+
+				// We don't actually store the packet loss in the session data, so just use the
+				// values from the session update packet (no max history)
+				if nearRelays.RTTs[i] >= 255 {
+					nearRelays.PacketLosses[i] = 100
+				} else {
+					nearRelays.PacketLosses[i] = int32(math.Ceil(float64(packet.NearRelayPacketLoss[i])))
 				}
 			}
 
@@ -358,31 +488,21 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			debug = new(string)
 		}
 
-		datacenter, err = storer.Datacenter(packet.DatacenterID)
-		if err != nil {
-			aliasFound := false
+		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
+			level.Error(logger).Log("handler", "session_update", "err", err)
 
-			// search the list of aliases created by/for this buyer
-			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = storer.Datacenter(dcMap.DatacenterID)
-					if err != nil {
-						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
-						return
-					}
-
-					datacenter.AliasName = dcMap.Alias
-					aliasFound = true
-					break
-				}
-			}
-
-			if !aliasFound {
-				level.Error(logger).Log("msg", "datacenter not found", "err", err)
+			switch err.(type) {
+			case ErrDatacenterNotFound:
 				metrics.DatacenterNotFound.Add(1)
-				return
+
+			case ErrDatacenterMapMisconfigured:
+				metrics.MisconfiguredDatacenterAlias.Add(1)
+
+			case ErrDatacenterNotAllowed:
+				metrics.DatacenterNotAllowed.Add(1)
 			}
+
+			return
 		}
 
 		if newSession {
@@ -398,9 +518,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.ClientLocateFailure.Add(1)
 				return
 			}
+
 		} else {
-			err := UnmarshalSessionData(&prevSessionData, packet.SessionData[:])
-			sessionData.CopyFrom(&prevSessionData) // Have an extra copy of the session data so we can use the unmodified one in the post session
+			err := UnmarshalSessionData(&sessionData, packet.SessionData[:])
+			prevSessionData = sessionData // Have an extra copy of the session data so we can use the unmodified one in the post session
 
 			if err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
@@ -467,90 +588,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
-		// todo: clean up this near relay stuff
-
-		var nearRelays []routing.NearRelayData
-		var numNearRelays int32
-		var nearRelayIDs []uint64
-		var nearRelayAddresses []net.UDPAddr
-		var nearRelayCosts []int32
-		var nearRelayPacketLoss []float32
-
-		if newSession {
-			nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, maxNearRelays)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
-				metrics.NearRelaysLocateFailure.Add(1)
-				return
-			}
-
-			numNearRelays = int32(len(nearRelays))
-			nearRelayIDs = make([]uint64, numNearRelays)
-			nearRelayAddresses = make([]net.UDPAddr, numNearRelays)
-			nearRelayCosts = make([]int32, numNearRelays)
-			nearRelayPacketLoss = make([]float32, numNearRelays)
-
-			// Initialize the near relay list
-			for i := int32(0); i < numNearRelays; i++ {
-				core.NearRelayFilterRTT(&sessionData.RouteState, nearRelays[i].ID, 0)
-			}
-
-		} else {
-			numNearRelays = int32(len(sessionData.RouteState.NearRelayID))
-			nearRelayIDs = make([]uint64, numNearRelays)
-			nearRelayAddresses = make([]net.UDPAddr, numNearRelays)
-			nearRelayCosts = make([]int32, numNearRelays)
-			nearRelayPacketLoss = make([]float32, numNearRelays)
-
-			nearRelays = make([]routing.NearRelayData, numNearRelays)
-
-			for i := int32(0); i < numNearRelays; i++ {
-				for j, clientNearRelayID := range packet.NearRelayIDs {
-					if sessionData.RouteState.NearRelayID[i] == clientNearRelayID {
-						nearRelays[i].ID = clientNearRelayID
-
-						// Retrieve the relay's name and address from the route matrix since they're constant.
-						// We don't need to store them in the session data.
-						relayIndex := routeMatrix.RelayIDsToIndices[clientNearRelayID]
-						nearRelays[i].Name = routeMatrix.RelayNames[relayIndex]
-						nearRelays[i].Addr = routeMatrix.RelayAddresses[relayIndex]
-
-						maxRTT := core.NearRelayFilterRTT(&sessionData.RouteState, clientNearRelayID, packet.NearRelayRTT[j])
-
-						nearRelays[i].ClientStats.RTT = math.Ceil(float64(maxRTT))
-						nearRelays[i].ClientStats.Jitter = math.Ceil(float64(packet.NearRelayJitter[j]))
-						nearRelays[i].ClientStats.PacketLoss = math.Ceil(float64(packet.NearRelayPacketLoss[j]))
-
-						// Since we can only store near relay RTT as a byte in the session data,
-						// we need to treat any near relay with an RTT == 255 as unroutable (100% PL)
-						// Once we further optimize the amount of session data we carry, we might be able to remove this
-						if maxRTT == 255 {
-							nearRelays[i].ClientStats.PacketLoss = 100
-						}
-					}
-				}
-			}
-		}
-
-		for i := int32(0); i < numNearRelays; i++ {
-			nearRelay := &nearRelays[i]
-
-			nearRelayIDs[i] = nearRelay.ID
-			nearRelayAddresses[i] = nearRelay.Addr
-			nearRelayCosts[i] = int32(nearRelay.ClientStats.RTT)
-			nearRelayPacketLoss[i] = float32(nearRelay.ClientStats.PacketLoss)
-		}
-
-		response.NumNearRelays = numNearRelays
-		response.NearRelayIDs = nearRelayIDs
-		response.NearRelayAddresses = nearRelayAddresses
-
-		// First slice always direct
-		if newSession {
-			level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
-			return
-		}
-
 		destRelayIDs := routeMatrix.GetDatacenterRelayIDs(datacenter.ID)
 		if len(destRelayIDs) == 0 {
 			level.Error(logger).Log("msg", "failed to get dest relays")
@@ -558,15 +595,53 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			return
 		}
 
-		reframedNearRelays := make([]int32, numNearRelays)
-		reframedNearRelayCosts := make([]int32, numNearRelays)
-		var numDestRelays int32
-		reframedDestRelays := make([]int32, len(destRelayIDs))
-		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, reframedNearRelayCosts, &numDestRelays, reframedDestRelays)
+		incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
+		for i := int32(0); i < incomingNearRelays.Count; i++ {
+			incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
 
-		reframedNearRelays = reframedNearRelays[:numNearRelays]
-		reframedNearRelayCosts = reframedNearRelayCosts[:numNearRelays]
-		reframedDestRelays = reframedDestRelays[:numDestRelays]
+			incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
+			incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
+			incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+
+			// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
+			relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
+			if !ok {
+				continue
+			}
+
+			incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+			incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+		}
+
+		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
+			routeMatrix,
+			incomingNearRelays,
+			&sessionData.RouteState,
+			newSession,
+			sessionData.Location.Latitude,
+			sessionData.Location.Longitude,
+			maxNearRelays,
+			int32(math.Ceil(float64(packet.DirectJitter))),
+			destRelayIDs,
+		)
+
+		response.NearRelaysChanged = nearRelaysChanged
+
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to get near relays", "err", err)
+			metrics.NearRelaysLocateFailure.Add(1)
+			return
+		}
+
+		response.NumNearRelays = nearRelays.Count
+		response.NearRelayIDs = nearRelays.IDs
+		response.NearRelayAddresses = nearRelays.Addrs
+
+		// First slice always direct
+		if newSession {
+			level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
+			return
+		}
 
 		var routeCost int32
 		routeRelays := [core.MaxRelaysPerRoute]int32{}
@@ -581,26 +656,38 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			"selection_percent", buyer.RouteShader.SelectionPercent,
 			"route_switch_threshold", buyer.InternalConfig.RouteSwitchThreshold)
 
+		nearRelayIndices := make([]int32, nearRelays.Count)
+		nearRelayCosts := make([]int32, nearRelays.Count)
+		for i := int32(0); i < nearRelays.Count; i++ {
+			nearRelayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
+			if !ok {
+				continue
+			}
+
+			nearRelayIndices[i] = nearRelayIndex
+			nearRelayCosts[i] = nearRelays.RTTs[i]
+		}
+
 		var routeNumRelays int32
 		var routeRelayNames [core.MaxRelaysPerRoute]string
 		var routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
 			}
 		} else {
-			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
+			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
 
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
 				metrics.RouteDoesNotExist.Add(1)
 
-				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
+				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
 				}
 			} else {
-				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, reframedNearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
 					// Continue token
 
 					// Check if the route has changed
@@ -763,7 +850,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [core.MaxRelaysPerRoute]string, routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, debug *string) {
+func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [core.MaxRelaysPerRoute]string, routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller, nearRelays nearRelayGroup, datacenter *routing.Datacenter, debug *string) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -807,9 +894,9 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 
 	var nearRelayRTT float32
 	if sessionData.RouteNumRelays > 0 {
-		for i := range nearRelays {
-			if nearRelays[i].ID == sessionData.RouteRelayIDs[0] {
-				nearRelayRTT = float32(nearRelays[i].ClientStats.RTT)
+		for i, nearRelayID := range nearRelays.IDs {
+			if nearRelayID == sessionData.RouteRelayIDs[0] {
+				nearRelayRTT = float32(nearRelays.RTTs[i])
 				break
 			}
 		}
@@ -827,13 +914,12 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
 
 	if buyer.Debug {
-		numNearRelays = uint8(len(nearRelays))
-
+		numNearRelays = uint8(nearRelays.Count)
 		for i := uint8(0); i < numNearRelays; i++ {
-			nearRelayIDs[i] = nearRelays[i].ID
-			nearRelayRTTs[i] = float32(math.Ceil(nearRelays[i].ClientStats.RTT))
-			nearRelayJitters[i] = float32(math.Ceil(nearRelays[i].ClientStats.Jitter))
-			nearRelayPacketLosses[i] = float32(math.Ceil(nearRelays[i].ClientStats.PacketLoss))
+			nearRelayIDs[i] = nearRelays.IDs[i]
+			nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
+			nearRelayJitters[i] = float32(nearRelays.Jitters[i])
+			nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
 		}
 	}
 
@@ -893,6 +979,10 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		NearRelayRTTs:                   nearRelayRTTs,
 		NearRelayJitters:                nearRelayJitters,
 		NearRelayPacketLosses:           nearRelayPacketLosses,
+		RelayWentAway:                   sessionData.RouteState.RelayWentAway,
+		RouteLost:                       sessionData.RouteState.RouteLost,
+		NumTags:                         uint8(packet.NumTags),
+		Tags:                            packet.Tags,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
@@ -905,14 +995,23 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		}
 	}
 
-	nearRelayPortalData := make([]NearRelayPortalData, len(nearRelays))
+	nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
 	for i := range nearRelayPortalData {
 		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:          nearRelays[i].ID,
-			Name:        nearRelays[i].Name,
-			ClientStats: nearRelays[i].ClientStats,
+			ID:   nearRelays.IDs[i],
+			Name: nearRelays.Names[i],
+			ClientStats: routing.Stats{
+				RTT:        float64(nearRelays.RTTs[i]),
+				Jitter:     float64(nearRelays.Jitters[i]),
+				PacketLoss: float64(nearRelays.PacketLosses[i]),
+			},
 		}
 	}
+
+	// Sort the near relays for display purposes
+	sort.Slice(nearRelayPortalData, func(i, j int) bool {
+		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
+	})
 
 	var deltaRTT float32
 	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
@@ -966,8 +1065,8 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 			OnNetworkNext:     packet.Next,
 		},
 		Point: SessionMapPoint{
-			Latitude:  sessionData.Location.Latitude,
-			Longitude: sessionData.Location.Longitude,
+			Latitude:  float64(sessionData.Location.Latitude),
+			Longitude: float64(sessionData.Location.Longitude),
 		},
 		LargeCustomer: buyer.InternalConfig.LargeCustomer,
 		EverOnNext:    sessionData.EverOnNext,

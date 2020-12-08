@@ -291,8 +291,8 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 		meta.DeltaRTT = deltaRTT
 
 		meta.Location = routing.Location{
-			Latitude:  self.Latitude,
-			Longitude: self.Longitude,
+			Latitude:  float32(self.Latitude),
+			Longitude: float32(self.Longitude),
 			ISP:       self.ISP,
 		}
 
