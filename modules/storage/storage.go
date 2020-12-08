@@ -85,6 +85,9 @@ type Storer interface {
 	// RemoveRelay removes a relay with the provided relay ID from storage and returns an error if the relay could not be removed.
 	RemoveRelay(ctx context.Context, id uint64) error
 
+	// UpdateRelay updates a single field in a relay record
+	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error
+
 	// SetRelay updates the relay in storage with the provided copy and returns an error if the relay could not be updated.
 	// TODO: chopping block (obsoleted by UpdateRelay, and broken anyway)
 	SetRelay(ctx context.Context, relay routing.Relay) error
@@ -174,6 +177,9 @@ type Storer interface {
 	// RemoveRouteShader removes a record from the RouteShaders table
 	RemoveRouteShader(ctx context.Context, buyerID uint64) error
 
-	// UpdateRelay updates a single field in a relay record
-	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error
+	// AddBannedUser adds a user to the banned_user table
+	AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error
+
+	// RemoveBannedUser removes a user from the banned_user table
+	RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error
 }

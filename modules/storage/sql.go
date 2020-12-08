@@ -2415,6 +2415,16 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 	return nil
 }
 
+// AddBannedUser adds a user to the banned_user table
+func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("AddBannedUser not yet impemented in SQL storer"))
+}
+
+// RemoveBannedUser removes a user from the banned_user table
+func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("RemoveBannedUser not yet impemented in SQL storer"))
+}
+
 type featureFlag struct {
 	Name        string
 	Description string

@@ -21,6 +21,9 @@ var _ Storer = &StorerMock{}
 //
 //         // make and configure a mocked Storer
 //         mockedStorer := &StorerMock{
+//             AddBannedUserFunc: func(ctx context.Context, buyerID uint64, userID uint64) error {
+// 	               panic("mock out the AddBannedUser method")
+//             },
 //             AddBuyerFunc: func(ctx context.Context, buyer routing.Buyer) error {
 // 	               panic("mock out the AddBuyer method")
 //             },
@@ -98,6 +101,9 @@ var _ Storer = &StorerMock{}
 //             },
 //             RelaysFunc: func() []routing.Relay {
 // 	               panic("mock out the Relays method")
+//             },
+//             RemoveBannedUserFunc: func(ctx context.Context, buyerID uint64, userID uint64) error {
+// 	               panic("mock out the RemoveBannedUser method")
 //             },
 //             RemoveBuyerFunc: func(ctx context.Context, id uint64) error {
 // 	               panic("mock out the RemoveBuyer method")
@@ -187,6 +193,9 @@ var _ Storer = &StorerMock{}
 //
 //     }
 type StorerMock struct {
+	// AddBannedUserFunc mocks the AddBannedUser method.
+	AddBannedUserFunc func(ctx context.Context, buyerID uint64, userID uint64) error
+
 	// AddBuyerFunc mocks the AddBuyer method.
 	AddBuyerFunc func(ctx context.Context, buyer routing.Buyer) error
 
@@ -264,6 +273,9 @@ type StorerMock struct {
 
 	// RelaysFunc mocks the Relays method.
 	RelaysFunc func() []routing.Relay
+
+	// RemoveBannedUserFunc mocks the RemoveBannedUser method.
+	RemoveBannedUserFunc func(ctx context.Context, buyerID uint64, userID uint64) error
 
 	// RemoveBuyerFunc mocks the RemoveBuyer method.
 	RemoveBuyerFunc func(ctx context.Context, id uint64) error
@@ -348,6 +360,15 @@ type StorerMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AddBannedUser holds details about calls to the AddBannedUser method.
+		AddBannedUser []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// UserID is the userID argument value.
+			UserID uint64
+		}
 		// AddBuyer holds details about calls to the AddBuyer method.
 		AddBuyer []struct {
 			// Ctx is the ctx argument value.
@@ -489,6 +510,15 @@ type StorerMock struct {
 		}
 		// Relays holds details about calls to the Relays method.
 		Relays []struct {
+		}
+		// RemoveBannedUser holds details about calls to the RemoveBannedUser method.
+		RemoveBannedUser []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// UserID is the userID argument value.
+			UserID uint64
 		}
 		// RemoveBuyer holds details about calls to the RemoveBuyer method.
 		RemoveBuyer []struct {
@@ -688,6 +718,7 @@ type StorerMock struct {
 			Value interface{}
 		}
 	}
+	lockAddBannedUser             sync.RWMutex
 	lockAddBuyer                  sync.RWMutex
 	lockAddCustomer               sync.RWMutex
 	lockAddDatacenter             sync.RWMutex
@@ -714,6 +745,7 @@ type StorerMock struct {
 	lockListDatacenterMaps        sync.RWMutex
 	lockRelay                     sync.RWMutex
 	lockRelays                    sync.RWMutex
+	lockRemoveBannedUser          sync.RWMutex
 	lockRemoveBuyer               sync.RWMutex
 	lockRemoveCustomer            sync.RWMutex
 	lockRemoveDatacenter          sync.RWMutex
@@ -741,6 +773,45 @@ type StorerMock struct {
 	lockUpdateInternalConfig      sync.RWMutex
 	lockUpdateRelay               sync.RWMutex
 	lockUpdateRouteShader         sync.RWMutex
+}
+
+// AddBannedUser calls AddBannedUserFunc.
+func (mock *StorerMock) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	if mock.AddBannedUserFunc == nil {
+		panic("StorerMock.AddBannedUserFunc: method is nil but Storer.AddBannedUser was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+		UserID  uint64
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+		UserID:  userID,
+	}
+	mock.lockAddBannedUser.Lock()
+	mock.calls.AddBannedUser = append(mock.calls.AddBannedUser, callInfo)
+	mock.lockAddBannedUser.Unlock()
+	return mock.AddBannedUserFunc(ctx, buyerID, userID)
+}
+
+// AddBannedUserCalls gets all the calls that were made to AddBannedUser.
+// Check the length with:
+//     len(mockedStorer.AddBannedUserCalls())
+func (mock *StorerMock) AddBannedUserCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+	UserID  uint64
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+		UserID  uint64
+	}
+	mock.lockAddBannedUser.RLock()
+	calls = mock.calls.AddBannedUser
+	mock.lockAddBannedUser.RUnlock()
+	return calls
 }
 
 // AddBuyer calls AddBuyerFunc.
@@ -1565,6 +1636,45 @@ func (mock *StorerMock) RelaysCalls() []struct {
 	mock.lockRelays.RLock()
 	calls = mock.calls.Relays
 	mock.lockRelays.RUnlock()
+	return calls
+}
+
+// RemoveBannedUser calls RemoveBannedUserFunc.
+func (mock *StorerMock) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	if mock.RemoveBannedUserFunc == nil {
+		panic("StorerMock.RemoveBannedUserFunc: method is nil but Storer.RemoveBannedUser was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+		UserID  uint64
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+		UserID:  userID,
+	}
+	mock.lockRemoveBannedUser.Lock()
+	mock.calls.RemoveBannedUser = append(mock.calls.RemoveBannedUser, callInfo)
+	mock.lockRemoveBannedUser.Unlock()
+	return mock.RemoveBannedUserFunc(ctx, buyerID, userID)
+}
+
+// RemoveBannedUserCalls gets all the calls that were made to RemoveBannedUser.
+// Check the length with:
+//     len(mockedStorer.RemoveBannedUserCalls())
+func (mock *StorerMock) RemoveBannedUserCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+	UserID  uint64
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+		UserID  uint64
+	}
+	mock.lockRemoveBannedUser.RLock()
+	calls = mock.calls.RemoveBannedUser
+	mock.lockRemoveBannedUser.RUnlock()
 	return calls
 }
 

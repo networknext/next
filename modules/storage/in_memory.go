@@ -567,3 +567,11 @@ func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error 
 func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
 }
+
+func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("AddBannedUser not yet impemented in InMemory storer"))
+}
+
+func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("RemoveBannedUser not yet impemented in InMemory storer"))
+}

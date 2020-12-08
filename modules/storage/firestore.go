@@ -2361,3 +2361,11 @@ func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64) erro
 func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
 }
+
+func (fs *Firestore) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("AddBannedUser not yet impemented in Firestore storer"))
+}
+
+func (fs *Firestore) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("RemoveBannedUser not yet impemented in Firestore storer"))
+}
