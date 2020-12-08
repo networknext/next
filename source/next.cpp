@@ -4130,7 +4130,7 @@ void next_ping_history_pong_received( next_ping_history_t * history, uint64_t se
     }
 }
 
-void next_route_stats_from_ping_history( const next_ping_history_t * history, double start, double end, next_route_stats_t * stats, double ping_safety )
+void next_route_stats_from_ping_history( const next_ping_history_t * history, double start, double end, next_route_stats_t * stats, double ping_safety, double optional_route_changed_time = -1.0 )
 {
     next_ping_history_verify_sentinels( history );
 
@@ -4141,7 +4141,10 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     stats->jitter = 0.0f;
     stats->packet_loss = 0.0f;
 
-    // find the most recent pong received and subtract ping safety from this to find range to search for packet loss
+    // IMPORTANT: Instead of searching across the whole range then considering any ping with a pong older than ping safety 
+    // (typically one second) to be lost, look for the time of the most recent ping that has received a pong, subtract ping
+    // safety from this, and then look for packet loss only in this range. This avoids turning every ping that receives a
+    // pong more than 1 second later as packet loss, which was behavior we saw with previous versions of this code.
 
     double most_recent_ping_that_received_pong_time = 0.0;
 
@@ -4181,6 +4184,15 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     if ( num_pings_sent > 0 )
     {
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+
+    // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
+    // before the route change and some after the route change. Fix this by (optionally) only looking for RTT 
+    // and jitter back to the last point we switched routes.
+
+    if ( optional_route_changed_time > start )
+    {
+        start = optional_route_changed_time;
     }
 
     // calculate min/max/mean RTT
@@ -5704,6 +5716,7 @@ struct next_client_internal_t
     double last_direct_pong_time;
     double last_stats_update_time;
     double last_stats_report_time;
+    double last_route_switch_time;
     double route_update_timeout_time;
     uint64_t route_update_sequence;
 
@@ -6363,6 +6376,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
 
+        client->last_route_switch_time = next_time();
+
         const bool route_established = route_manager->route_data.current_route;
 
         const int route_kbps_up = route_manager->route_data.current_route_kbps_up;
@@ -6858,6 +6873,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_direct_pong_time = 0.0;
                 client->last_stats_update_time = 0.0;
                 client->last_stats_report_time = 0.0;
+                client->last_route_switch_time = 0.0;
                 client->route_update_timeout_time = 0.0;
                 client->route_update_sequence = 0;
                 client->sending_upgrade_response = false;
@@ -6976,7 +6992,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.connection_type = next_platform_connection_type();
 
         next_route_stats_t next_route_stats;
-        next_route_stats_from_ping_history( &client->next_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &next_route_stats, NEXT_PING_SAFETY );
+        next_route_stats_from_ping_history( &client->next_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &next_route_stats, NEXT_PING_SAFETY, client->last_route_switch_time );
 
         next_route_stats_t direct_route_stats;
         next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &direct_route_stats, NEXT_PING_SAFETY );
