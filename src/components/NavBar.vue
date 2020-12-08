@@ -8,7 +8,7 @@
     <ul class="navbar-nav px-3 w-100 mr-auto">
       <li class="nav-item text-nowrap">
         <router-link
-          to="/"
+          to="/map"
           class="nav-link"
           v-bind:class="{ active: $store.getters.currentPage == 'map' }"
           data-test="mapLink"

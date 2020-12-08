@@ -29,7 +29,7 @@ export class AuthService {
     this.authClient
       .loginWithRedirect({
         connection: 'Username-Password-Authentication',
-        redirect_uri: window.location.origin
+        redirect_uri: window.location.origin + '/map'
       })
   }
 
@@ -37,7 +37,7 @@ export class AuthService {
     const emailHint = email || ''
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin + '/?signup=true',
+      redirect_uri: window.location.origin + '/map?signup=true',
       screen_hint: 'signup',
       login_hint: emailHint
     })
@@ -106,10 +106,6 @@ export class AuthService {
               avatar: authResult.picture,
               company: companyCode
             })
-          }
-
-          if (query.includes('signup=true')) {
-            store.commit('UPDATE_IS_SIGNUP', true)
           }
 
           store.commit('UPDATE_USER_PROFILE', userProfile)
