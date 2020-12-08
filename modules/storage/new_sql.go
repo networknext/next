@@ -228,6 +228,8 @@ func (db *SQL) Sync(ctx context.Context) error {
 	// 	4 Datacenters
 	// 	5 DatacenterMaps
 	//	6 Relays
+	//  7 InternalConfigs
+	//  8 RouteShaders
 
 	if err := db.syncCustomers(ctx); err != nil {
 		return fmt.Errorf("failed to sync customers: %v", err)
@@ -879,6 +881,17 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
 		id := db.buyerIDs[buyerID]
 		routeShaders[id] = routeShader
+	}
+
+	for buyerID, rs := range routeShaders {
+		bannedUserList, err := db.BannedUsers(buyerID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error retrieving BannedUsers list", "err", err)
+			return err
+		}
+		if len(bannedUserList) > 0 {
+			rs.BannedUsers = bannedUserList
+		}
 	}
 
 	db.routeShaderMutex.Lock()
