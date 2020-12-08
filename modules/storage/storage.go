@@ -162,8 +162,8 @@ type Storer interface {
 	// RemoveInternalConfig removes a record from the InternalConfigs table
 	RemoveInternalConfig(ctx context.Context, buyerID uint64) error
 
-	// RouteShaders returns a slice of route shaders for the given buyer ID
-	RouteShaders(buyerID uint64) ([]core.RouteShader, error)
+	// RouteShader returns a slice of route shaders for the given buyer ID
+	RouteShader(buyerID uint64) (core.RouteShader, error)
 
 	// AddRouteShader adds the provided RouteShader to the database
 	AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error
