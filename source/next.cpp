@@ -14877,7 +14877,7 @@ static void test_backend_packets()
         }
     }
 
-    // session response packet (direct)
+    // session response packet (direct, near relays changed)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -14924,7 +14924,7 @@ static void test_backend_packets()
         next_check( strcmp( in.debug, out.debug ) == 0 );
     }
 
-    // session response packet (route)
+    // session response packet (route, near relays changed)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -14975,7 +14975,7 @@ static void test_backend_packets()
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
     }
 
-    // session response packet (continue)
+    // session response packet (continue, near relays changed)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -15021,6 +15021,107 @@ static void test_backend_packets()
             next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
             next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
+        next_check( in.response_type == out.response_type );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
+    }
+
+    // session response packet (direct, near relays not changed)
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.response_type = NEXT_UPDATE_TYPE_DIRECT;
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+        in.has_debug = true;
+        strcpy( in.debug, "hello session" );
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+
+        next_check( in.slice_number == out.slice_number );
+        next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.response_type == out.response_type );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
+    }
+
+    // session response packet (route, near relays not changed)
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.response_type = NEXT_UPDATE_TYPE_ROUTE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+
+        next_check( in.slice_number == out.slice_number );
+        next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.response_type == out.response_type );
+        next_check( in.multipath == out.multipath );
+        next_check( in.committed == out.committed );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
+    }
+
+    // session response packet (continue, near relays not changed)
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+
+        next_check( in.slice_number == out.slice_number );
+        next_check( in.session_id == out.session_id );
+        next_check( in.multipath == out.multipath );
+        next_check( in.committed == out.committed );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
