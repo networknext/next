@@ -388,6 +388,19 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"FallbackToDirect",
 		"ClientFlags",
 		"UserFlags",
+		"NearRelayRTT",
+		"PacketsOutOfOrderClientToServer",
+		"PacketsOutOfOrderServerToClient",
+		"JitterClientToServer",
+		"JitterServerToClient",
+		"NumNearRelays",
+		"NearRelayIDs",
+		"NearRelayRTTs",
+		"NearRelayJitters",
+		"NearRelayPacketLosses",
+		"RelayWentAway",
+		"RouteLost",
+		"Tags",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {
@@ -580,6 +593,86 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.UserFlags.Valid {
 			userFlags = "0b" + strconv.FormatInt(billingEntry.UserFlags.Int64, 2)
 		}
+		// NearRelayRTT
+		nearRelayRTT := ""
+		if billingEntry.NearRelayRTT.Valid {
+			nearRelayRTT = fmt.Sprintf("%5.2f", billingEntry.NearRelayRTT.Float64)
+		}
+		// PacketsOutOfOrderClientToServer
+		packetsOutOfOrderClientToServer := ""
+		if billingEntry.PacketsOutOfOrderClientToServer.Valid {
+			packetsOutOfOrderClientToServer = fmt.Sprintf("%d", billingEntry.PacketsOutOfOrderClientToServer.Int64)
+		}
+		// PacketsOutOfOrderServerToClient
+		packetsOutOfOrderServerToClient := ""
+		if billingEntry.PacketsOutOfOrderServerToClient.Valid {
+			packetsOutOfOrderServerToClient = fmt.Sprintf("%d", billingEntry.PacketsOutOfOrderServerToClient.Int64)
+		}
+		// JitterClientToServer
+		jitterClientToServer := ""
+		if billingEntry.JitterClientToServer.Valid {
+			jitterClientToServer = fmt.Sprintf("%5.2f", billingEntry.JitterClientToServer.Float64)
+		}
+		// JitterServerToClient
+		jitterServerToClient := ""
+		if billingEntry.JitterServerToClient.Valid {
+			jitterServerToClient = fmt.Sprintf("%5.2f", billingEntry.JitterServerToClient.Float64)
+		}
+		// NumNearRelays
+		numNearRelays := ""
+		if billingEntry.NumNearRelays.Valid {
+			numNearRelays = fmt.Sprintf("%d", billingEntry.NumNearRelays.Int64)
+		}
+		// NearRelayIDs
+		nearRelayIDs := ""
+		if len(billingEntry.NearRelayIDs) > 0 {
+			for _, relayID := range billingEntry.NearRelayIDs {
+				nearRelayIDs += fmt.Sprintf("%016x", uint64(relayID)) + ", "
+			}
+			nearRelayIDs = strings.TrimSuffix(nearRelayIDs, ", ")
+		}
+		// NearRelayRTTs
+		nearRelayRTTs := ""
+		if len(billingEntry.NearRelayRTTs) > 0 {
+			for _, relayID := range billingEntry.NearRelayRTTs {
+				nearRelayRTTs += fmt.Sprintf("%5.5f", relayID) + ", "
+			}
+			nearRelayRTTs = strings.TrimSuffix(nearRelayRTTs, ", ")
+		}
+		// NearRelayJitters
+		nearRelayJitters := ""
+		if len(billingEntry.NearRelayJitters) > 0 {
+			for _, relayID := range billingEntry.NearRelayJitters {
+				nearRelayJitters += fmt.Sprintf("%5.5f", relayID) + ", "
+			}
+			nearRelayJitters = strings.TrimSuffix(nearRelayJitters, ", ")
+		}
+		// NearRelayPacketLosses
+		nearRelayPacketLosses := ""
+		if len(billingEntry.NearRelayPacketLosses) > 0 {
+			for _, relayID := range billingEntry.NearRelayPacketLosses {
+				nearRelayPacketLosses += fmt.Sprintf("%5.5f", relayID) + ", "
+			}
+			nearRelayPacketLosses = strings.TrimSuffix(nearRelayPacketLosses, ", ")
+		}
+		// RelayWentAway
+		relayWentAway := ""
+		if billingEntry.RelayWentAway.Valid {
+			relayWentAway = strconv.FormatBool(billingEntry.RelayWentAway.Bool)
+		}
+		// RouteLost
+		routeLost := ""
+		if billingEntry.RouteLost.Valid {
+			routeLost = strconv.FormatBool(billingEntry.RouteLost.Bool)
+		}
+		// Tags
+		tags := ""
+		if len(billingEntry.Tags) > 0 {
+			for _, tag := range billingEntry.Tags {
+				tags += fmt.Sprintf("%016x", uint64(tag)) + ", "
+			}
+			tags = strings.TrimSuffix(tags, ", ")
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -624,6 +717,19 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			fallbackToDirect,
 			clientFlags,
 			userFlags,
+			nearRelayRTT,
+			packetsOutOfOrderClientToServer,
+			packetsOutOfOrderServerToClient,
+			jitterClientToServer,
+			jitterServerToClient,
+			numNearRelays,
+			nearRelayIDs,
+			nearRelayRTTs,
+			nearRelayJitters,
+			nearRelayPacketLosses,
+			relayWentAway,
+			routeLost,
+			tags,
 		})
 	}
 

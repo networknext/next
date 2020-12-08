@@ -203,6 +203,28 @@ Simultaneously you will see the terminal with the relays logging `session create
 
 NOTE: It will take 5 minutes before sessions are served network next routes. Until then, you will only see `(direct route)`.
 
+## SQL Storers and the Happy Path
+
+The `FEATURE_POSTGRESQL` environment variable is used to setup SQL storers. If this variable is unset a Firestore or in_memory storer will be used instead.
+
+### SQLite3
+
+Set the feature environment variable `FEATURE_POSTGRESQL=false` to use sqlite3 as a storer database. The `testdata/sqlite3-empty.sql` file will be loaded by the `NewSQLite3()` function and the `SeedSQLStorage()` function will sideload the database with all the data required to run the Happy Path.
+
+### PostgreSQL
+
+For a more functional test, set the feature environment variable `FEATURE_POSTGRESQL=true` to use PostgreSQL as a storer database. The `SeedSQLStorage()` function will not be used to sideload Happy Path data in this case. There are 2 SQL files in the `testdata` directory which can be used to sideload all the data _prior_ to running the Happy Path. Log into your local PostgreSQL server with `psql` and load the SQL files:
+
+```
+postgres=> drop database nn; -- if it already exists - this is critical!
+postgres=> create database nn;
+postgres=> \c nn
+nn=> \i pgsql-empty.sql
+nn=> \i hp-pgsql-seed.sql
+```
+
+At this point your local PostgreSQL server is ready to go. Note: installing and setting up a local PostgreSQL server is beyond the scope of this document.  
+
 ## Local Billing
 
 It is also possible to locally debug what data is being sent to the `billing` service. To verify that the data being sent to `billing` is correct:

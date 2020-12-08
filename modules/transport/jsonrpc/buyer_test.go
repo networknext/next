@@ -590,8 +590,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 3, reply.Next)
-		assert.Equal(t, 51, reply.Direct)
+		assert.Equal(t, 8, reply.Next)
+		assert.Equal(t, 250, reply.Direct)
 	})
 
 	t.Run("filtered - sameBuyer - !admin", func(t *testing.T) {
@@ -1662,6 +1662,36 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].FallbackToDirect)
 		assert.Equal(t, bigquery.NullInt64{Int64: 8, Valid: true}, reply.SessionBillingInfo[0].ClientFlags)
 		assert.Equal(t, bigquery.NullInt64{Int64: 6, Valid: true}, reply.SessionBillingInfo[0].UserFlags)
+
+		assert.Equal(t, bigquery.NullFloat64{Float64: 31.8623, Valid: true}, reply.SessionBillingInfo[0].NearRelayRTT)
+		assert.Equal(t, bigquery.NullInt64{Int64: 5, Valid: true}, reply.SessionBillingInfo[0].PacketsOutOfOrderClientToServer)
+		assert.Equal(t, bigquery.NullInt64{Int64: 15, Valid: true}, reply.SessionBillingInfo[0].PacketsOutOfOrderServerToClient)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 64.328, Valid: true}, reply.SessionBillingInfo[0].JitterClientToServer)
+		assert.Equal(t, bigquery.NullFloat64{Float64: 75.764, Valid: true}, reply.SessionBillingInfo[0].JitterServerToClient)
+		assert.Equal(t, bigquery.NullInt64{Int64: 5, Valid: true}, reply.SessionBillingInfo[0].NumNearRelays)
+
+		assert.Equal(t, int64(1141867895387079451), reply.SessionBillingInfo[0].NearRelayIDs[0])
+		assert.Equal(t, int64(-7664475006302134894), reply.SessionBillingInfo[0].NearRelayIDs[1])
+		assert.Equal(t, int64(-6848787315892866519), reply.SessionBillingInfo[0].NearRelayIDs[2])
+
+		assert.Equal(t, float64(12.345), reply.SessionBillingInfo[0].NearRelayRTTs[0])
+		assert.Equal(t, float64(23.456), reply.SessionBillingInfo[0].NearRelayRTTs[1])
+		assert.Equal(t, float64(34.567), reply.SessionBillingInfo[0].NearRelayRTTs[2])
+
+		assert.Equal(t, float64(1.23), reply.SessionBillingInfo[0].NearRelayJitters[0])
+		assert.Equal(t, float64(2.34), reply.SessionBillingInfo[0].NearRelayJitters[1])
+		assert.Equal(t, float64(3.45), reply.SessionBillingInfo[0].NearRelayJitters[2])
+
+		assert.Equal(t, float64(5.43), reply.SessionBillingInfo[0].NearRelayPacketLosses[0])
+		assert.Equal(t, float64(4.32), reply.SessionBillingInfo[0].NearRelayPacketLosses[1])
+		assert.Equal(t, float64(3.21), reply.SessionBillingInfo[0].NearRelayPacketLosses[2])
+
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RelayWentAway)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RouteLost)
+
+		assert.Equal(t, int64(1141867895387079451), reply.SessionBillingInfo[0].Tags[0])
+		assert.Equal(t, int64(-7664475006302134894), reply.SessionBillingInfo[0].Tags[1])
+		assert.Equal(t, int64(-6848787315892866519), reply.SessionBillingInfo[0].Tags[2])
 
 	})
 }
