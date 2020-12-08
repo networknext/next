@@ -48,6 +48,9 @@ var _ Storer = &StorerMock{}
 //             AddSellerFunc: func(ctx context.Context, seller routing.Seller) error {
 // 	               panic("mock out the AddSeller method")
 //             },
+//             BannedUsersFunc: func(buyerID uint64) (map[uint64]bool, error) {
+// 	               panic("mock out the BannedUsers method")
+//             },
 //             BuyerFunc: func(id uint64) (routing.Buyer, error) {
 // 	               panic("mock out the Buyer method")
 //             },
@@ -219,6 +222,9 @@ type StorerMock struct {
 
 	// AddSellerFunc mocks the AddSeller method.
 	AddSellerFunc func(ctx context.Context, seller routing.Seller) error
+
+	// BannedUsersFunc mocks the BannedUsers method.
+	BannedUsersFunc func(buyerID uint64) (map[uint64]bool, error)
 
 	// BuyerFunc mocks the Buyer method.
 	BuyerFunc func(id uint64) (routing.Buyer, error)
@@ -428,6 +434,11 @@ type StorerMock struct {
 			Ctx context.Context
 			// Seller is the seller argument value.
 			Seller routing.Seller
+		}
+		// BannedUsers holds details about calls to the BannedUsers method.
+		BannedUsers []struct {
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
 		}
 		// Buyer holds details about calls to the Buyer method.
 		Buyer []struct {
@@ -727,6 +738,7 @@ type StorerMock struct {
 	lockAddRelay                  sync.RWMutex
 	lockAddRouteShader            sync.RWMutex
 	lockAddSeller                 sync.RWMutex
+	lockBannedUsers               sync.RWMutex
 	lockBuyer                     sync.RWMutex
 	lockBuyerIDFromCustomerName   sync.RWMutex
 	lockBuyerWithCompanyCode      sync.RWMutex
@@ -1099,6 +1111,37 @@ func (mock *StorerMock) AddSellerCalls() []struct {
 	mock.lockAddSeller.RLock()
 	calls = mock.calls.AddSeller
 	mock.lockAddSeller.RUnlock()
+	return calls
+}
+
+// BannedUsers calls BannedUsersFunc.
+func (mock *StorerMock) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+	if mock.BannedUsersFunc == nil {
+		panic("StorerMock.BannedUsersFunc: method is nil but Storer.BannedUsers was just called")
+	}
+	callInfo := struct {
+		BuyerID uint64
+	}{
+		BuyerID: buyerID,
+	}
+	mock.lockBannedUsers.Lock()
+	mock.calls.BannedUsers = append(mock.calls.BannedUsers, callInfo)
+	mock.lockBannedUsers.Unlock()
+	return mock.BannedUsersFunc(buyerID)
+}
+
+// BannedUsersCalls gets all the calls that were made to BannedUsers.
+// Check the length with:
+//     len(mockedStorer.BannedUsersCalls())
+func (mock *StorerMock) BannedUsersCalls() []struct {
+	BuyerID uint64
+} {
+	var calls []struct {
+		BuyerID uint64
+	}
+	mock.lockBannedUsers.RLock()
+	calls = mock.calls.BannedUsers
+	mock.lockBannedUsers.RUnlock()
 	return calls
 }
 

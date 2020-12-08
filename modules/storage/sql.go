@@ -46,6 +46,7 @@ type SQL struct {
 
 	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
 	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
+	bannedUsers     map[uint64]map[uint64]bool     // index: buyer ID, user ID
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -56,6 +57,7 @@ type SQL struct {
 	sequenceNumberMutex sync.RWMutex
 	internalConfigMutex sync.RWMutex
 	routeShaderMutex    sync.RWMutex
+	bannedUserMutex     sync.RWMutex
 
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
@@ -2417,12 +2419,20 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 
 // AddBannedUser adds a user to the banned_user table
 func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+
+	// var sql bytes.Buffer
+
 	return fmt.Errorf(("AddBannedUser not yet impemented in SQL storer"))
 }
 
 // RemoveBannedUser removes a user from the banned_user table
 func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 	return fmt.Errorf(("RemoveBannedUser not yet impemented in SQL storer"))
+}
+
+// BannedUsers returns the set of banned users for the specified buyer ID
+func (db *SQL) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in SQL storer"))
 }
 
 type featureFlag struct {

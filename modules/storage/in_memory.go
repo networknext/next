@@ -575,3 +575,7 @@ func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uin
 func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 	return fmt.Errorf(("RemoveBannedUser not yet impemented in InMemory storer"))
 }
+
+func (m *InMemory) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in InMemory storer"))
+}

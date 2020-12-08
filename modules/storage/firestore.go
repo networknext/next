@@ -2369,3 +2369,7 @@ func (fs *Firestore) AddBannedUser(ctx context.Context, buyerID uint64, userID u
 func (fs *Firestore) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 	return fmt.Errorf(("RemoveBannedUser not yet impemented in Firestore storer"))
 }
+
+func (fs *Firestore) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in Firestore storer"))
+}

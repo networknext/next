@@ -182,4 +182,7 @@ type Storer interface {
 
 	// RemoveBannedUser removes a user from the banned_user table
 	RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error
+
+	// BannedUsers returns the set of banned users for the specified buyer ID
+	BannedUsers(buyerID uint64) (map[uint64]bool, error)
 }
