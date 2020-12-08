@@ -536,8 +536,8 @@ func (m *InMemory) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
 	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in InMemory storer"))
 }
 
-func (m *InMemory) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
-	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
+func (m *InMemory) RouteShader(buyerID uint64) (core.RouteShader, error) {
+	return core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
 }
 
 func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
