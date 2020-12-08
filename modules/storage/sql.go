@@ -45,7 +45,7 @@ type SQL struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
-	routeShaders    map[uint64][]core.RouteShader  // index: buyer ID
+	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -1002,8 +1002,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 	}
 
-	// fmt.Printf("--> updateSQL: %s\n", updateSQL.String())
-
 	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
@@ -1626,7 +1624,6 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-	// return fmt.Errorf("SetRelayMetadata() not implemented in SQL Storer")
 	fmt.Printf("SetRelayMetadata(): %s\n", relay.String())
 	err := db.SetRelay(ctx, relay)
 	return err
@@ -1826,16 +1823,16 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 }
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
-func (db *SQL) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
 	db.routeShaderMutex.RLock()
 	defer db.routeShaderMutex.RUnlock()
 
-	routeShaders, found := db.routeShaders[buyerID]
+	routeShader, found := db.routeShaders[buyerID]
 	if !found {
-		return []core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%x", buyerID)}
 	}
 
-	return routeShaders, nil
+	return routeShader, nil
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
@@ -1951,14 +1948,14 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 
 	buyer, err := db.Buyer(buyerID)
 	if err != nil {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	sql.Write([]byte("delete from rs_internal_configs where buyer_id = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveRelay SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveInternalConfig SQL", "err", err)
 		return err
 	}
 
@@ -2108,11 +2105,10 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 
 	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing UpdateInternalConfig SQL", "err", err)
 		return err
 	}
 
-	// fmt.Println("--> UpdateInternalConfig() stmt.Exec()")
 	result, err := stmt.Exec(args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying internal_config record", "err", err)
@@ -2132,6 +2128,289 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	db.internalConfigMutex.Lock()
 	db.internalConfigs[buyerID] = ic
 	db.internalConfigMutex.Unlock()
+
+	return nil
+}
+
+func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID uint64) error {
+
+	var sql bytes.Buffer
+
+	db.routeShaderMutex.RLock()
+	_, ok := db.routeShaders[buyerID]
+	db.routeShaderMutex.RUnlock()
+
+	if ok {
+		return &AlreadyExistsError{resourceType: "RouteShader", resourceRef: buyerID}
+	}
+
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	routeShader := sqlRouteShader{
+		ABTest:                    rs.ABTest,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		DisableNetworkNext:        rs.DisableNetworkNext,
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		Multipath:                 rs.Multipath,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		SelectionPercent:          int64(rs.SelectionPercent),
+	}
+
+	sql.Write([]byte("insert into route_shaders ("))
+	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, selection_percent, buyer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		routeShader.ABTest,
+		routeShader.AcceptableLatency,
+		routeShader.AcceptablePacketLoss,
+		routeShader.BandwidthEnvelopeDownKbps,
+		routeShader.BandwidthEnvelopeUpKbps,
+		routeShader.DisableNetworkNext,
+		routeShader.LatencyThreshold,
+		routeShader.Multipath,
+		routeShader.ProMode,
+		routeShader.ReduceLatency,
+		routeShader.ReducePacketLoss,
+		routeShader.SelectionPercent,
+		buyer.DatabaseID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding route shader", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncRouteShaders(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+
+}
+
+func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	rs, err := db.RouteShader(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	switch field {
+	case "ABTest":
+		abTest, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ABTest: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set ab_test=$1 where buyer_id=$2"))
+		args = append(args, abTest, buyer.DatabaseID)
+		rs.ABTest = abTest
+	case "AcceptableLatency":
+		acceptableLatency, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("AcceptableLatency: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set acceptable_latency=$1 where buyer_id=$2"))
+		args = append(args, acceptableLatency, buyer.DatabaseID)
+		rs.AcceptableLatency = acceptableLatency
+	case "AcceptablePacketLoss":
+		acceptablePacketLoss, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id=$2"))
+		args = append(args, acceptablePacketLoss, buyer.DatabaseID)
+		rs.AcceptablePacketLoss = acceptablePacketLoss
+	case "BandwidthEnvelopeDownKbps":
+		bandwidthEnvelopeDownKbps, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("BandwidthEnvelopeDownKbps: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set bw_envelope_down_kbps=$1 where buyer_id=$2"))
+		args = append(args, bandwidthEnvelopeDownKbps, buyer.DatabaseID)
+		rs.BandwidthEnvelopeDownKbps = bandwidthEnvelopeDownKbps
+	case "BandwidthEnvelopeUpKbps":
+		bandwidthEnvelopeUpKbps, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("BandwidthEnvelopeUpKbps: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set bw_envelope_up_kbps=$1 where buyer_id=$2"))
+		args = append(args, bandwidthEnvelopeUpKbps, buyer.DatabaseID)
+		rs.BandwidthEnvelopeUpKbps = bandwidthEnvelopeUpKbps
+	case "DisableNetworkNext":
+		disableNetworkNext, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("DisableNetworkNext: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set disable_network_next=$1 where buyer_id=$2"))
+		args = append(args, disableNetworkNext, buyer.DatabaseID)
+		rs.DisableNetworkNext = disableNetworkNext
+	case "LatencyThreshold":
+		latencyThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("LatencyThreshold: %v is not a valid int32 type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set latency_threshold=$1 where buyer_id=$2"))
+		args = append(args, latencyThreshold, buyer.DatabaseID)
+		rs.LatencyThreshold = latencyThreshold
+	case "Multipath":
+		multipath, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Multipath: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id=$2"))
+		args = append(args, multipath, buyer.DatabaseID)
+		rs.Multipath = multipath
+	case "ProMode":
+		proMode, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ProMode: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id=$2"))
+		args = append(args, proMode, buyer.DatabaseID)
+		rs.ProMode = proMode
+	case "ReduceLatency":
+		reduceLatency, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReduceLatency: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set reduce_latency=$1 where buyer_id=$2"))
+		args = append(args, reduceLatency, buyer.DatabaseID)
+		rs.ReduceLatency = reduceLatency
+	case "ReducePacketLoss":
+		reducePacketLoss, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReducePacketLoss: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id=$2"))
+		args = append(args, reducePacketLoss, buyer.DatabaseID)
+		rs.ReducePacketLoss = reducePacketLoss
+	case "SelectionPercent":
+		selectionPercent, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("SelectionPercent: %v is not a valid int type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
+		args = append(args, selectionPercent, buyer.DatabaseID)
+		rs.SelectionPercent = selectionPercent
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateRouteShader SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying route_shader record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.routeShaderMutex.Lock()
+	db.routeShaders[buyerID] = rs
+	db.routeShaderMutex.Unlock()
+
+	return nil
+
+}
+
+func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
+	var sql bytes.Buffer
+
+	db.routeShaderMutex.RLock()
+	_, ok := db.routeShaders[buyerID]
+	db.routeShaderMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	buyer, err := db.Buyer(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	sql.Write([]byte("delete from route_shaders where buyer_id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveRouteShader SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(buyer.DatabaseID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing route shader", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.routeShaderMutex.Lock()
+	delete(db.routeShaders, buyerID)
+	db.routeShaderMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
@@ -2156,16 +2435,4 @@ func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVa
 
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
-}
-
-func (db *SQL) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	return fmt.Errorf("AddRouteShader not yet impemented in SQL storer")
-}
-
-func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateRouteShader not yet impemented in SQL storer")
-}
-
-func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
-	return fmt.Errorf("RemoveRouteShader not yet impemented in SQL storer")
 }
