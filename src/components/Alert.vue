@@ -22,12 +22,12 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
  *  Similar idea to the sessions count component
  */
 
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
 
 @Component
 export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: '' }) message!: string
-  @Prop({ required: false, type: String, default: AlertTypes.DEFAULT }) alertType!: string
+  @Prop({ required: false, type: String, default: AlertType.DEFAULT }) alertType!: string
 
   get alertMessage (): string {
     return this.currentMessage
@@ -67,7 +67,7 @@ export default class Alert extends Vue {
         this.showSlots = false
         this.currentMessage =
           'Verification email was sent successfully. Please check your email for futher instructions.'
-        this.currentClass = AlertTypes.SUCCESS
+        this.currentClass = AlertType.SUCCESS
         setTimeout(() => {
           this.currentMessage = this.givenMessage
           this.currentClass = this.givenClass
@@ -80,7 +80,7 @@ export default class Alert extends Vue {
         console.log(error)
         this.currentMessage =
           'Something went wrong sending the verification email. Please try again later.'
-        this.currentClass = AlertTypes.ERROR
+        this.currentClass = AlertType.ERROR
         setTimeout(() => {
           this.currentMessage = this.givenMessage
           this.currentClass = this.givenClass

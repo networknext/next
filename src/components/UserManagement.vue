@@ -157,7 +157,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
 import Alert from './Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 import { cloneDeep } from 'lodash'
 import { UserProfile } from './types/AuthTypes'
 
@@ -271,7 +271,7 @@ export default class UserManagement extends Vue {
       .then((response: any) => {
         this.userProfile.domains = domains
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertTypes.autoDomains = AlertTypes.SUCCESS
+        this.alertTypes.autoDomains = AlertType.SUCCESS
         this.messages.autoDomains = 'Successfully update signup domains'
         setTimeout(() => {
           this.messages.autoDomains = ''
@@ -280,7 +280,7 @@ export default class UserManagement extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong adding auto signup domains')
         console.log(error)
-        this.alertTypes.autoDomains = AlertTypes.ERROR
+        this.alertTypes.autoDomains = AlertType.ERROR
         this.messages.autoDomains = 'Failed to edit user account'
         setTimeout(() => {
           this.messages.autoDomains = ''
@@ -295,7 +295,7 @@ export default class UserManagement extends Vue {
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
-          this.alertTypes.editUser = AlertTypes.SUCCESS
+          this.alertTypes.editUser = AlertType.SUCCESS
           this.messages.editUser = 'User account edited successfully'
           setTimeout(() => {
             this.messages.editUser = ''
@@ -304,7 +304,7 @@ export default class UserManagement extends Vue {
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
-          this.alertTypes.editUser = AlertTypes.ERROR
+          this.alertTypes.editUser = AlertType.ERROR
           this.messages.editUser = 'Failed to edit user account'
           setTimeout(() => {
             this.messages.editUser = ''
@@ -322,7 +322,7 @@ export default class UserManagement extends Vue {
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
-          this.alertTypes.editUser = AlertTypes.SUCCESS
+          this.alertTypes.editUser = AlertType.SUCCESS
           this.messages.editUser = 'User account deleted successfully'
           setTimeout(() => {
             this.messages.editUser = ''
@@ -331,7 +331,7 @@ export default class UserManagement extends Vue {
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
-          this.alertTypes.newUsers = AlertTypes.ERROR
+          this.alertTypes.newUsers = AlertType.ERROR
           this.messages.newUsers = 'Failed to delete user account'
           setTimeout(() => {
             this.messages.newUsers = ''
@@ -375,7 +375,7 @@ export default class UserManagement extends Vue {
         })
 
         this.companyUsers = this.companyUsers.concat(newAccounts)
-        this.alertTypes.newUsers = AlertTypes.SUCCESS
+        this.alertTypes.newUsers = AlertType.SUCCESS
         this.messages.newUsers = 'User account(s) added successfully'
         setTimeout(() => {
           this.messages.newUsers = ''
@@ -384,7 +384,7 @@ export default class UserManagement extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong creating new users')
         console.log(error)
-        this.alertTypes.newUsers = AlertTypes.ERROR
+        this.alertTypes.newUsers = AlertType.ERROR
         this.messages.newUsers = 'Failed to add user account(s)'
         setTimeout(() => {
           this.messages.newUsers = ''

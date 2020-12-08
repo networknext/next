@@ -14,8 +14,8 @@
       >{{ this.totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
     <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
-      <Alert :message="alertMessage" :alertType="alertType" v-if="message !== ''" ref="alert">
-        <a href="#" @click="$refs.alert.resendVerificationEmail()">
+      <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.WARNING" ref="verifyAlert">
+        <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
           Resend email
         </a>
       </Alert>
@@ -44,7 +44,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 
 /**
@@ -69,17 +69,10 @@ interface TotalSessionsReply {
   }
 })
 export default class SessionCounts extends Vue {
-  get alertMessage () {
-    return this.message
-  }
-
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
   private countLoop: any
-  private message: string
-  private alertType: string
-  private vueInstance: any
-  private unwatch: any
+  private AlertType: any
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
@@ -101,21 +94,7 @@ export default class SessionCounts extends Vue {
       onNN: 0
     }
     this.showCount = false
-    this.alertType = AlertTypes.INFO
-    this.vueInstance = Vue
-    this.message = ''
-    this.unwatch = this.$store.watch(
-      (_, getters: any) => getters.isAnonymousPlus,
-      (showAlert: boolean) => {
-        // Not sure why this is necessary but Watch seems to need a function call
-        this.updateAlert(showAlert)
-      }
-    )
-  }
-
-  // Not sure why this is necessary but Vue is ignoring all updates to message
-  private updateAlert (showAlert: boolean) {
-    this.message = showAlert ? `Please confirm your email address: ${this.$store.getters.userProfile.email}` : ''
+    this.AlertType = AlertType
   }
 
   private mounted () {
@@ -124,7 +103,6 @@ export default class SessionCounts extends Vue {
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
-    this.unwatch()
   }
 
   private fetchSessionCounts () {

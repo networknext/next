@@ -15,8 +15,12 @@
       <h1 class="h2">
         Session Tool
       </h1>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
-        <div class="mr-auto"></div>
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
+        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.WARNING" ref="verifyAlert">
+          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
+            Resend email
+          </a>
+        </Alert>
       </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchSessionDetails()">
@@ -51,7 +55,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
 
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
 /**
  * This component holds the workspace elements related to the session tool in the Portal
  */
@@ -69,13 +73,15 @@ export default class SessionToolWorkspace extends Vue {
   private alertType: string
   private message: string
   private searchID: string
+  private AlertType: any
 
   constructor () {
     super()
     this.alertType = ''
     this.searchID = ''
     this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
-    this.alertType = AlertTypes.INFO
+    this.alertType = AlertType.INFO
+    this.AlertType = AlertType
   }
 
   private created () {
@@ -85,7 +91,7 @@ export default class SessionToolWorkspace extends Vue {
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
     this.searchID = this.$route.params.pathMatch || ''
     this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
-    this.alertType = AlertTypes.INFO
+    this.alertType = AlertType.INFO
     next()
   }
 

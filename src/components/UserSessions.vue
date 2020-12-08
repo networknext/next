@@ -71,7 +71,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 import { JSONRPCError } from './types/JSONRPCTypes'
 
 /**
@@ -96,7 +96,7 @@ export default class UserSessions extends Vue {
     this.showSessions = false
     this.sessionLoop = null
     this.message = 'Failed to fetch user sessions'
-    this.alertType = AlertTypes.ERROR
+    this.alertType = AlertType.ERROR
   }
 
   private mounted () {

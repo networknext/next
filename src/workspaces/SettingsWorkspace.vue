@@ -14,8 +14,12 @@
       <h1 class="h2">
         Settings
       </h1>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
-        <div class="mr-auto"></div>
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
+        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.WARNING" ref="verifyAlert">
+          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
+            Resend email
+          </a>
+        </Alert>
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
@@ -41,6 +45,8 @@
 </template>
 
 <script lang="ts">
+import Alert from '@/components/Alert.vue'
+import { AlertType } from '@/components/types/AlertTypes'
 import { Component, Vue } from 'vue-property-decorator'
 import { FeatureEnum } from '../components/types/FeatureTypes'
 
@@ -52,15 +58,21 @@ import { FeatureEnum } from '../components/types/FeatureTypes'
  * TODO: Make this a View
  */
 
-@Component
+@Component({
+  components: {
+    Alert
+  }
+})
 export default class SettingsWorkspace extends Vue {
   // Empty for now
   private featureEnums: any
+  private AlertType: any
 
   constructor () {
     super()
     // TODO: This probably shouldn't be necessary?
     this.featureEnums = FeatureEnum
+    this.AlertType = AlertType
   }
 }
 </script>
