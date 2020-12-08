@@ -63,4 +63,7 @@ type BigQueryBillingEntry struct {
 	NearRelayRTTs                   []float64
 	NearRelayJitters                []float64
 	NearRelayPacketLosses           []float64
+	RelayWentAway                   bigquery.NullBool
+	RouteLost                       bigquery.NullBool
+	Tags                            []int64
 }
