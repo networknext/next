@@ -27,6 +27,8 @@ var (
 	tag           string
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
+	sd 			  *metrics.StackDriverHandler
+	logger 		  log.Logger
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -40,7 +42,7 @@ func mainReturnWithCode() int {
 
 	ctx := context.Background()
 
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger = log.NewLogfmtLogger(os.Stdout)
 
 	env, err := backend.GetEnv()
 	if err != nil {
@@ -82,19 +84,20 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	var sd metrics.StackDriverHandler
 	if enableSDMetrics {
 		// Set up StackDriver metrics
-		sd = metrics.StackDriverHandler{
+		sdHandler := metrics.StackDriverHandler{
 			ProjectID:          gcpProjectID,
 			OverwriteFrequency: time.Second,
 			OverwriteTimeout:   10 * time.Second,
 		}
 
-		if err := sd.Open(ctx); err != nil {
+		if err := sdHandler.Open(ctx); err != nil {
 			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 			return 1
 		}
+
+		sd = &sdHandler
 	}
 
 	// Create metric handler for tracking performance of api service
@@ -115,8 +118,9 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(&sd, vanityMetricMetrics, 0, nil)
+	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityMetricMetrics, 0, nil)
 
+	errChan := make(chan error, 1)
 	// Start HTTP server
 	{
 		go func() {
@@ -128,7 +132,8 @@ func mainReturnWithCode() int {
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var PORT must be set")
-				return 1
+				errChan <- err
+				return
 			}
 
 			serviceName := ""
@@ -137,7 +142,8 @@ func mainReturnWithCode() int {
 			err := http.ListenAndServe(serviceName+":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				return 1
+				errChan <- err
+				return
 			}
 
 		}()
@@ -146,21 +152,31 @@ func mainReturnWithCode() int {
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+
+	select {
+	case <-sigint:
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		return 1
+	}
 }
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request){
-		dummyData, err := vanityMetrics.GetEmptyMetrics()
-		// dummyData, err := vanityMetrics.ListCustomMetrics(context.Background())
-		// dummyData, err := vanityMetrics.GetPointDetails(context.Background(), gcpProjectID, "server_backend", "session_update.latency_worse", -10 * time.Minute)
+		// data, err := vanityMetrics.GetEmptyMetrics()
+		// data, err := vanityMetrics.ListCustomMetrics(context.Background(), sd, gcpProjectID, "server_backend")
+		buyerID := fmt.Sprintf("%016x", uint64(5679615698061453368))
+		endTime := time.Now()
+		startTime := endTime.Add(100* time.Hour)
+		data, err := vanityMetrics.GetVanityMetricJSON(context.Background(), sd, gcpProjectID, buyerID, startTime, endTime)
 		if err != nil {
+			level.Error(logger).Log("err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(dummyData)
+		w.Write(data)
 		return
 	}
 }

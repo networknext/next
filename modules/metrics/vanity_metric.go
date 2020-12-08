@@ -24,13 +24,13 @@ var EmptyVanityMetric = VanityMetric{
 }
 
 // NewVanityMetric creates the metrics the vanity metrics service will use.
-// User the buyerID as the service name
+// Uses the buyerID as the service name
 func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*VanityMetric, error) {
 	var err error
 	m := &VanityMetric{}
 
 	m.SlicesAccelerated, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Slices Accelerated",
+		DisplayName: "Slices Accelerated",
 		ServiceName: buyerID,
 		ID:          "vanity_metric.slices_accelerated",
 		Unit:        "slices",
@@ -41,7 +41,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	}
 
 	m.SlicesLatencyReduced, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Slices Latency Reduced",
+		DisplayName: "Slices Latency Reduced",
 		ServiceName: buyerID,
 		ID:          "vanity_metric.slices_latency_reduced",
 		Unit:        "slices",
@@ -52,7 +52,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	}
 
 	m.SlicesPacketLossReduced, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Slices Packet Loss Reduced",
+		DisplayName: "Slices Packet Loss Reduced",
 		ServiceName: buyerID,
 		ID:          "vanity_metric.slices_packet_loss_reduced",
 		Unit:        "slices",
@@ -63,7 +63,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	}
 
 	m.SlicesJitterReduced, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Slices Jitter Reduced",
+		DisplayName: "Slices Jitter Reduced",
 		ServiceName: buyerID,
 		ID:          "vanity_metric.slices_jitter_reduced",
 		Unit:        "slices",
@@ -74,7 +74,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	}
 
 	m.SessionsAccelerated, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Vanity Metric Sessions Accelerated",
+		DisplayName: "Sessions Accelerated",
 		ServiceName: buyerID,
 		ID:          "vanity_metric.sessions_accelerated",
 		Unit:        "sessions",

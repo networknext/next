@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"math"
 
 	"google.golang.org/api/iterator"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
@@ -52,6 +54,8 @@ type VanityMetricHandler struct {
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
 	subscriber           pubsub.Subscriber
+	hourMetricsMap		 map[string]bool
+	displayMap 			 map[string]string
 }
 
 // VanityMetrics is the struct for all desired vanity metrics
@@ -69,6 +73,21 @@ type VanityMetrics struct {
 
 // func NewVanityMetricHandler(vanityHandler *metrics.TSMetricHandler, vanityMetricMetrics *metrics.VanityMetricMetrics, vanitySubscriber pubsub.Subscriber, vanityLogger log.logger) VanityMetricHandler {
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *metrics.VanityMetricMetrics, chanBufferSize int, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
+	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
+	vanityHourMetricsMap := map[string]bool{
+		"Slices Latency Reduced": true,
+		"Slices Packet Loss Reduced": true,
+		"Slices Jitter Reduced": true,
+	}
+	// Map of internal vanity metric Display Name to actual name shown to customers
+	vanityDisplayMap := map[string]string{
+		"Slices Accelerated": "Hours Accelerated",
+		"Slices Latency Reduced": "Hours Latency Reduced",
+		"Slices Packet Loss Reduced": "Hours Packet Loss Reduced",
+		"Slices Jitter Reduced": "Hours Jitter Reduced",
+		"Sessions Accelerated": "Sessions Accelerated",
+	}
+
 	return &VanityMetricHandler{
 		handler:              vanityHandler,
 		metrics:              vanityMetricMetrics,
@@ -76,6 +95,8 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
 		subscriber:           vanitySubscriber,
+		hourMetricsMap:		  vanityHourMetricsMap,
+		displayMap: 		  vanityDisplayMap,
 	}
 }
 
@@ -286,8 +307,8 @@ func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 }
 
 // Returns a marshaled JSON of all custom metrics tracked through Stackdriver
-func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string) ([]byte, error) {
-	descFilter := `metric.type = starts_with("custom.googleapis.com/")`
+func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, serviceName string) ([]byte, error) {
+	descFilter := fmt.Sprintf(`metric.type = starts_with("custom.googleapis.com/%s")`, serviceName)
 	descReq := &monitoringpb.ListMetricDescriptorsRequest{
 		Name:   fmt.Sprintf("projects/%s", gcpProjectID),
 		Filter: descFilter,
@@ -303,7 +324,7 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metric
 		if err != nil {
 			return nil, err
 		}
-		customMetrics[resp.DisplayName] = resp.Description
+		customMetrics[resp.DisplayName] = resp.Type
 	}
 
 	// Encode the map of custom metric names to descriptions
@@ -315,22 +336,110 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metric
 	return ret_val, nil
 }
 
-// Gets points for a metric for the last N duration
-// given a metricServiceName (i.e. server_backend)
-// and a metricID (i.e. session_update.latency_worse)
-func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, metricServiceName string, metricID string, duration time.Duration) ([]byte, error) {
-	filter := fmt.Sprintf(`metric.type = "custom.googleapis.com/%s/%s"`, metricServiceName, metricID)
-	name := fmt.Sprintf(`projects/%s/metricDescriptors/custom.googleapis.com/%s/%s`, gcpProjectID, metricServiceName, metricID)
-	startTime := timestamppb.New(time.Now().Add(duration))
+// Returns a map of display name to metric type for a custom service tracked through Stackdriver
+// Example: {"Route Matrix Bytes": `custom.googleapis.com/server_backend/route_matrix_update.bytes"`}
+func (vm *VanityMetricHandler) GetCustomMetricTypes(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, serviceName string) (map[string]string, error) {
+	descFilter := fmt.Sprintf(`metric.type = starts_with("custom.googleapis.com/%s")`, serviceName)
+	descReq := &monitoringpb.ListMetricDescriptorsRequest{
+		Name:   fmt.Sprintf("projects/%s", gcpProjectID),
+		Filter: descFilter,
+	}
+	descIt := sd.Client.ListMetricDescriptors(ctx, descReq)
+
+	customMetrics := make(map[string]string)
+	for {
+		resp, err := descIt.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		customMetrics[resp.DisplayName] = resp.Type
+	}
+
+	return customMetrics, nil
+}
+
+func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, buyerID string, startTime time.Time, endTime time.Time) ([]byte, error) {
+    // Create a interval and duration for all vanity metrics
+    tsInterval := &monitoringpb.TimeInterval{EndTime: timestamppb.New(endTime), StartTime: timestamppb.New(startTime)}
+    duration := endTime.Sub(startTime)
+    
+    // Create max aggregation (used for Counters)
+    maxAgg := &monitoringpb.Aggregation{
+        AlignmentPeriod:    durationpb.New(duration),
+        PerSeriesAligner:   monitoringpb.Aggregation_Aligner(11), 	// Get max values per alignment period 
+        CrossSeriesReducer: monitoringpb.Aggregation_Reducer(3), 	// Get single max value across alignment periods
+    }
+
+    // Create the final returned map
+   	metricsMap := make(map[string]float64)
+
+   	// Get all vanity metric names for the buyer ID
+   	vanityMetricTypes, err := vm.GetCustomMetricTypes(ctx, sd, gcpProjectID, buyerID)
+   	if err != nil {
+   		return nil, err
+   	}
+
+   	// Get the values for each vanity metric
+   	for displayName, metricType := range vanityMetricTypes {
+   		// Ensure the metric is a vanity metric to show the customer
+   		if _, ok := vm.displayMap[displayName]; !ok {
+   			continue
+   		}
+
+   		tsFilter := vm.GetTimeSeriesFilter(metricType)
+   		tsName := vm.GetTimeSeriesName(gcpProjectID, metricType)
+   		pointsList, err := vm.GetPointDetails(ctx, sd, tsName, tsFilter, tsInterval, maxAgg)
+   		if err != nil {
+   			errStr := fmt.Sprintf("Could not get point details for %s (%s)", displayName, metricType)
+   			return nil, errors.New(errStr)
+   		}
+
+   		// Extract the max point value from the list of points
+   		var maxPointVal float64
+   		for _, points := range pointsList {
+   			for _, point := range points {
+   				if point.Value.GetDoubleValue() > maxPointVal {
+   					maxPointVal = point.Value.GetDoubleValue()
+   				}
+   			}	
+   		}
+
+   		// Check if the metric needs hours calculated
+   		if vm.hourMetricsMap[displayName] {
+   			seconds := time.Second * time.Duration(10 * maxPointVal)
+   			hours := seconds.Hours()
+   			// Round to 3 decimal places
+   			maxPointVal = math.Round(hours * 1000) / 1000
+   		}
+
+   		// Add metric value to the final map
+   		metricsMap[vm.displayMap[displayName]] = maxPointVal
+   	}
+
+   	// Encode the map of vanity metric names to their values
+	ret_val, err := json.Marshal(metricsMap)
+	if err != nil {
+		return nil, err
+	}
+
+   	return ret_val, nil
+}
+
+// Gets lists of points for a time series request
+func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, sd *metrics.StackDriverHandler, name string, filter string, interval *monitoringpb.TimeInterval, aggregation *monitoringpb.Aggregation) ([][]*monitoringpb.Point, error) {
 	req := &monitoringpb.ListTimeSeriesRequest{
-		Name:     name,
-		Filter:   filter,
-		Interval: &monitoringpb.TimeInterval{EndTime: timestamppb.Now(), StartTime: startTime},
-		View:     monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
+		Name:     		name,
+		Filter:   		filter,
+		Interval: 		interval,
+		Aggregation: 	aggregation,
+		View:     		monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
 	}
 	it := sd.Client.ListTimeSeries(ctx, req)
 
-	metricDetails := make(map[string][]*monitoringpb.Point)
+	var pointSeries [][]*monitoringpb.Point
 	for {
 		resp, err := it.Next()
 		if err == iterator.Done {
@@ -339,14 +448,16 @@ func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, sd *metrics.
 		if err != nil {
 			return nil, err
 		}
-		metricDetails[resp.GetMetric().GetType()] = resp.GetPoints()
+		pointSeries = append(pointSeries, resp.GetPoints())
 	}
 
-	// Encode the map of custom metric names to descriptions
-	ret_val, err := json.Marshal(metricDetails)
-	if err != nil {
-		return nil, err
-	}
+	return pointSeries, nil
+}
 
-	return ret_val, nil
+func (vm *VanityMetricHandler) GetTimeSeriesFilter(metricType string) string {
+	return fmt.Sprintf(`metric.type = "%s"`, metricType)
+}
+
+func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType string) string {
+	return fmt.Sprintf(`projects/%s/metricDescriptors/%s`, gcpProjectID, metricType)
 }
