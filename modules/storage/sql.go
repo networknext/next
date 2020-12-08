@@ -2172,8 +2172,8 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
-	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps "))
-	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath "))
+	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
 	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, selection_percent, buyer_id"))
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
 

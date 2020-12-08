@@ -1010,3 +1010,194 @@ func TestInternalConfig(t *testing.T) {
 	})
 
 }
+
+func TestRouteShaders(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	var outerCustomer routing.Customer
+	var outerBuyer routing.Buyer
+	var outerRouteShader core.RouteShader
+
+	t.Run("AddRouteShader", func(t *testing.T) {
+
+		customerCode := "Compcode"
+		customer := routing.Customer{
+			Active:                 true,
+			Code:                   customerCode,
+			Name:                   "Company, Ltd.",
+			AutomaticSignInDomains: "fredscuttle.com",
+		}
+
+		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+
+		outerCustomer, err = db.Customer(customerCode)
+		assert.NoError(t, err)
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err := rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
+		buyer := routing.Buyer{
+			ShortName:   outerCustomer.Code,
+			CompanyCode: outerCustomer.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		outerBuyer, err = db.Buyer(internalID)
+		assert.NoError(t, err)
+
+		routeShader := core.RouteShader{
+			ABTest:                    true,
+			AcceptableLatency:         int32(25),
+			AcceptablePacketLoss:      float32(1),
+			BandwidthEnvelopeDownKbps: int32(1200),
+			BandwidthEnvelopeUpKbps:   int32(500),
+			DisableNetworkNext:        true,
+			LatencyThreshold:          int32(5),
+			Multipath:                 true,
+			ProMode:                   true,
+			ReduceLatency:             true,
+			ReducePacketLoss:          true,
+			SelectionPercent:          int(100),
+		}
+
+		err = db.AddRouteShader(ctx, routeShader, outerBuyer.ID)
+		assert.NoError(t, err)
+
+		outerRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, true, outerRouteShader.ABTest)
+		assert.Equal(t, int32(25), outerRouteShader.AcceptableLatency)
+		assert.Equal(t, float32(1), outerRouteShader.AcceptablePacketLoss)
+		assert.Equal(t, int32(1200), outerRouteShader.BandwidthEnvelopeDownKbps)
+		assert.Equal(t, int32(500), outerRouteShader.BandwidthEnvelopeUpKbps)
+		assert.Equal(t, true, outerRouteShader.DisableNetworkNext)
+		assert.Equal(t, int32(5), outerRouteShader.LatencyThreshold)
+		assert.Equal(t, true, outerRouteShader.Multipath)
+		assert.Equal(t, true, outerRouteShader.ProMode)
+		assert.Equal(t, true, outerRouteShader.ReduceLatency)
+		assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
+		assert.Equal(t, int(100), outerRouteShader.SelectionPercent)
+	})
+
+	// t.Run("UpdateInternalConfig", func(t *testing.T) {
+
+	// 	// RouteSelectThreshold
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSelectThreshold", int32(1))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err := db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(1), checkInternalConfig.RouteSelectThreshold)
+
+	// 	// RouteSwitchThreshold
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSwitchThreshold", int32(4))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(4), checkInternalConfig.RouteSwitchThreshold)
+
+	// 	// MaxLatencyTradeOff
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MaxLatencyTradeOff", int32(11))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(11), checkInternalConfig.MaxLatencyTradeOff)
+
+	// 	// RTTVeto_Default
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_Default", int32(-20))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(-20), checkInternalConfig.RTTVeto_Default)
+
+	// 	// RTTVeto_PacketLoss
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_PacketLoss", int32(-30))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(-30), checkInternalConfig.RTTVeto_PacketLoss)
+
+	// 	// RTTVeto_Multipath
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_Multipath", int32(-40))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(-40), checkInternalConfig.RTTVeto_Multipath)
+
+	// 	// MultipathOverloadThreshold
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MultipathOverloadThreshold", int32(600))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(600), checkInternalConfig.MultipathOverloadThreshold)
+
+	// 	// TryBeforeYouBuy
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "TryBeforeYouBuy", false)
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, false, checkInternalConfig.TryBeforeYouBuy)
+
+	// 	// ForceNext
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "ForceNext", false)
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, false, checkInternalConfig.ForceNext)
+
+	// 	// LargeCustomer
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "LargeCustomer", false)
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, false, checkInternalConfig.LargeCustomer)
+
+	// 	// Uncommitted
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "Uncommitted", false)
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, false, checkInternalConfig.Uncommitted)
+
+	// 	// MaxRTT
+	// 	err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MaxRTT", int32(400))
+	// 	assert.NoError(t, err)
+	// 	checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, int32(400), checkInternalConfig.MaxRTT)
+
+	// })
+
+	// t.Run("RemoveInternalConfig", func(t *testing.T) {
+
+	// 	err := db.RemoveInternalConfig(context.Background(), outerBuyer.ID)
+	// 	assert.NoError(t, err)
+
+	// 	_, err = db.InternalConfig(outerBuyer.ID)
+	// 	assert.Error(t, err)
+
+	// })
+
+}
