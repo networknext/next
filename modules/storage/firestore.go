@@ -2309,8 +2309,8 @@ func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error)
 	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in Firestore storer"))
 }
 
-func (fs *Firestore) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
-	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in Firestore storer"))
+func (fs *Firestore) RouteShader(buyerID uint64) (core.RouteShader, error) {
+	return core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in Firestore storer"))
 }
 
 func (fs *Firestore) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
@@ -2329,14 +2329,26 @@ func (fs *Firestore) AddRouteShader(ctx context.Context, routeShader core.RouteS
 	return fmt.Errorf("AddRouteShader not yet impemented in Firestore storer")
 }
 
-func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateRouteShader not yet impemented in Firestore storer")
 }
 
-func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 	return fmt.Errorf("RemoveRouteShader not yet impemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("AddBannedUser not yet impemented in Firestore storer"))
+}
+
+func (fs *Firestore) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+	return fmt.Errorf(("RemoveBannedUser not yet impemented in Firestore storer"))
+}
+
+func (fs *Firestore) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in Firestore storer"))
 }
