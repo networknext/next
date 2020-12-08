@@ -147,13 +147,13 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 	}
 
 	if post.useVanityMetrics {
-		pushTime := time.Now()
 
 		for i := 0; i < post.numGoroutines; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-
+				pushTime := time.Now()
+				
 				for {
 					select {
 					case billingEntry := <-post.vanityMetricChannel:
