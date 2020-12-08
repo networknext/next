@@ -1191,8 +1191,7 @@ func TestRouteShaders(t *testing.T) {
 
 	})
 
-	t.Run("AddBannedUser", func(t *testing.T) {
-
+	t.Run("BannedUser tests", func(t *testing.T) {
 		// random user IDs scraped from the portal
 		userID1, err := strconv.ParseUint("77c556007df7c02e", 16, 64)
 		assert.NoError(t, err)
@@ -1215,10 +1214,17 @@ func TestRouteShaders(t *testing.T) {
 		assert.True(t, bannedUserList[userID2])
 		assert.True(t, bannedUserList[userID3])
 
+		err = db.RemoveBannedUser(ctx, outerBuyer.ID, userID1)
+		assert.NoError(t, err)
+
+		bannedUserList2, err := db.BannedUsers(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.False(t, bannedUserList2[userID1])
+
 	})
 
 	t.Run("RemoveRouteShader", func(t *testing.T) {
-
+		t.Skip()
 		err := db.RemoveRouteShader(context.Background(), outerBuyer.ID)
 		assert.NoError(t, err)
 

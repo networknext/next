@@ -46,7 +46,6 @@ type SQL struct {
 
 	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
 	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
-	bannedUsers     map[uint64]map[uint64]bool     // index: buyer ID, user ID
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -57,7 +56,6 @@ type SQL struct {
 	sequenceNumberMutex sync.RWMutex
 	internalConfigMutex sync.RWMutex
 	routeShaderMutex    sync.RWMutex
-	bannedUserMutex     sync.RWMutex
 
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
@@ -2421,21 +2419,6 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 
 	var sql bytes.Buffer
-	var bannedUserList map[uint64]bool
-	var ok bool
-
-	db.bannedUserMutex.RLock()
-	bannedUserList, ok = db.bannedUsers[buyerID]
-	db.bannedUserMutex.RUnlock()
-
-	// banned user list may not exist yet
-	if ok {
-		if bannedUserList[userID] {
-			return &AlreadyExistsError{resourceType: "Banned User", resourceRef: userID}
-		}
-	} else {
-		bannedUserList = make(map[uint64]bool)
-	}
 
 	db.buyerMutex.RLock()
 	buyer, err := db.Buyer(buyerID)
@@ -2449,8 +2432,14 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 	rs, ok := db.routeShaders[buyerID]
 	db.routeShaderMutex.RUnlock()
 
-	if !ok {
-		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	// banned user list may not exist yet
+	if ok {
+		if rs.BannedUsers[userID] {
+			return &AlreadyExistsError{resourceType: "route shader", resourceRef: userID}
+		}
+		if len(rs.BannedUsers) == 0 {
+			rs.BannedUsers = make(map[uint64]bool)
+		}
 	}
 
 	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, $2)"))
@@ -2476,8 +2465,7 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 		return err
 	}
 
-	bannedUserList[userID] = true
-	rs.BannedUsers = bannedUserList
+	rs.BannedUsers[userID] = true
 
 	db.routeShaderMutex.Lock()
 	db.routeShaders[buyerID] = rs
@@ -2491,25 +2479,15 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 
 // RemoveBannedUser removes a user from the banned_user table
 func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+
 	var sql bytes.Buffer
-
-	db.bannedUserMutex.RLock()
-	bannedUserList, ok := db.bannedUsers[buyerID]
-	db.bannedUserMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "BannedUser Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	if bannedUserList[userID] {
-		return &AlreadyExistsError{resourceType: "Banned User", resourceRef: userID}
-	}
 
 	db.buyerMutex.RLock()
 	buyer, err := db.Buyer(buyerID)
 	db.buyerMutex.RUnlock()
 
 	if err != nil {
+		fmt.Printf("error: %v\n", err)
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2519,6 +2497,8 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 
 	if !ok {
 		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	} else if !rs.BannedUsers[userID] {
+		return &DoesNotExistError{resourceType: "Banned User", resourceRef: fmt.Sprintf("%016x", userID)}
 	}
 
 	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = $2"))
@@ -2544,8 +2524,7 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 		return err
 	}
 
-	delete(bannedUserList, userID)
-	rs.BannedUsers = bannedUserList
+	delete(rs.BannedUsers, userID)
 
 	db.routeShaderMutex.Lock()
 	db.routeShaders[buyerID] = rs
@@ -2557,7 +2536,8 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 
 }
 
-// BannedUsers returns the set of banned users for the specified buyer ID
+// BannedUsers returns the set of banned users for the specified buyer ID. This method
+// is designed to be used by syncRouteShaders() though it can be used by client code.
 func (db *SQL) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
 
 	var sql bytes.Buffer
