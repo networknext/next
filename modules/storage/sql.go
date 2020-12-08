@@ -45,7 +45,7 @@ type SQL struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
-	routeShaders    map[uint64][]core.RouteShader  // index: buyer ID
+	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -1826,16 +1826,16 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 }
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
-func (db *SQL) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
 	db.routeShaderMutex.RLock()
 	defer db.routeShaderMutex.RUnlock()
 
-	routeShaders, found := db.routeShaders[buyerID]
+	routeShader, found := db.routeShaders[buyerID]
 	if !found {
-		return []core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "route shaders", resourceRef: fmt.Sprintf("%x", buyerID)}
 	}
 
-	return routeShaders, nil
+	return routeShader, nil
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
@@ -2136,6 +2136,91 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	return nil
 }
 
+func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID uint64) error {
+
+	var sql bytes.Buffer
+
+	db.routeShaderMutex.RLock()
+	_, ok := db.routeShaders[buyerID]
+	db.routeShaderMutex.RUnlock()
+
+	if ok {
+		return &AlreadyExistsError{resourceType: "RouteShader", resourceRef: buyerID}
+	}
+
+	db.buyerMutex.RLock()
+	buyer, err := db.Buyer(buyerID)
+	db.buyerMutex.RUnlock()
+
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	routeShader := sqlRouteShader{
+		ABTest:                    rs.ABTest,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		DisableNetworkNext:        rs.DisableNetworkNext,
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		Multipath:                 rs.Multipath,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		SelectionPercent:          int64(rs.SelectionPercent),
+	}
+
+	sql.Write([]byte("insert into route_shaders ("))
+	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, selection_percent, buyer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		routeShader.ABTest,
+		routeShader.AcceptableLatency,
+		routeShader.AcceptablePacketLoss,
+		routeShader.BandwidthEnvelopeDownKbps,
+		routeShader.BandwidthEnvelopeUpKbps,
+		routeShader.DisableNetworkNext,
+		routeShader.LatencyThreshold,
+		routeShader.Multipath,
+		routeShader.ProMode,
+		routeShader.ReduceLatency,
+		routeShader.ReducePacketLoss,
+		routeShader.SelectionPercent,
+		buyer.DatabaseID,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding route shader", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.syncRouteShaders(ctx)
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+
+}
+
 type featureFlag struct {
 	Name        string
 	Description string
@@ -2156,10 +2241,6 @@ func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVa
 
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
-}
-
-func (db *SQL) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	return fmt.Errorf("AddRouteShader not yet impemented in SQL storer")
 }
 
 func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
