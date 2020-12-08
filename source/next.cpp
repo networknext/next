@@ -55,7 +55,7 @@
 #define NEXT_REPLAY_PROTECTION_BUFFER_SIZE                            256
 #define NEXT_PING_HISTORY_ENTRY_COUNT                                 256
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
-#define NEXT_PING_SAFETY                                              1.0
+#define NEXT_PING_SAFETY                                             10.0
 #define NEXT_UPGRADE_TIMEOUT                                          5.0
 #define NEXT_CLIENT_SESSION_TIMEOUT                                   5.0
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
