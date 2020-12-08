@@ -28,7 +28,6 @@ var (
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
 	sd 			  *metrics.StackDriverHandler
-	logger 		  log.Logger
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -42,7 +41,7 @@ func mainReturnWithCode() int {
 
 	ctx := context.Background()
 
-	logger = log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewLogfmtLogger(os.Stdout)
 
 	env, err := backend.GetEnv()
 	if err != nil {
@@ -165,12 +164,53 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request){
 		// data, err := vanityMetrics.GetEmptyMetrics()
 		// data, err := vanityMetrics.ListCustomMetrics(context.Background(), sd, gcpProjectID, "server_backend")
-		buyerID := fmt.Sprintf("%016x", uint64(5679615698061453368))
-		endTime := time.Now()
-		startTime := endTime.Add(100* time.Hour)
+		rawBuyerID, ok := r.URL.Query()["id"]
+		if !ok {
+			http.Error(w, "id is missing", http.StatusInternalServerError)
+			return
+		}
+		buyerID := rawBuyerID[0]
+		// buyerID := fmt.Sprintf("%016x", uint64(5679615698061453368))
+
+		// Get start time
+		rawStartTime, ok := r.URL.Query()["start"]
+		if !ok {
+			http.Error(w, "start is missing", http.StatusInternalServerError)
+			return
+		}
+		// Parse the start time
+		startTime, err := time.Parse(time.RFC3339, rawStartTime[0])
+		if err != nil {
+			errStr := fmt.Sprintf("could not parse start=%s as RFC3339 format (i.e. 2006-01-02T15:04:05%%2b07:00): %v", rawStartTime[0], err)
+			http.Error(w, errStr, http.StatusInternalServerError)
+			return
+		}
+
+		// Get end time
+		var endTime time.Time
+		rawEndTime, ok := r.URL.Query()["end"]
+		if !ok {
+			// No end time provided, use time.Now()
+			endTime = time.Now()
+		} else {
+			// Parse the end time
+			endTime, err = time.Parse(time.RFC3339, rawEndTime[0])
+			if err != nil {
+				errStr := fmt.Sprintf("could not parse end=%s as RFC3339 format (i.e. 2006-01-02T15:04:05%%2b07:00): %v", rawEndTime[0], err)
+				http.Error(w, errStr, http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Check if end time is before start time
+		if endTime.Before(startTime) {
+			errStr := fmt.Sprintf("end time %v is before start time %v", endTime, startTime)
+			http.Error(w, errStr, http.StatusInternalServerError)
+			return
+		}
+
 		data, err := vanityMetrics.GetVanityMetricJSON(context.Background(), sd, gcpProjectID, buyerID, startTime, endTime)
 		if err != nil {
-			level.Error(logger).Log("err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
