@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -1187,6 +1188,32 @@ func TestRouteShaders(t *testing.T) {
 		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, int(90), checkRouteShader.SelectionPercent)
+
+	})
+
+	t.Run("AddBannedUser", func(t *testing.T) {
+
+		// random user IDs scraped from the portal
+		userID1, err := strconv.ParseUint("77c556007df7c02e", 16, 64)
+		assert.NoError(t, err)
+		userID2, err := strconv.ParseUint("a731e14c521514a4", 16, 64)
+		assert.NoError(t, err)
+		userID3, err := strconv.ParseUint("fb6fa90ad67bc76a", 16, 64)
+		assert.NoError(t, err)
+
+		err = db.AddBannedUser(ctx, outerBuyer.ID, userID1)
+		assert.NoError(t, err)
+		err = db.AddBannedUser(ctx, outerBuyer.ID, userID2)
+		assert.NoError(t, err)
+		err = db.AddBannedUser(ctx, outerBuyer.ID, userID3)
+		assert.NoError(t, err)
+
+		bannedUserList, err := db.BannedUsers(outerBuyer.ID)
+		assert.NoError(t, err)
+
+		assert.True(t, bannedUserList[userID1])
+		assert.True(t, bannedUserList[userID2])
+		assert.True(t, bannedUserList[userID3])
 
 	})
 

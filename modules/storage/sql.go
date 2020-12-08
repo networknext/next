@@ -2421,17 +2421,20 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 
 	var sql bytes.Buffer
+	var bannedUserList map[uint64]bool
+	var ok bool
 
 	db.bannedUserMutex.RLock()
-	bannedUserList, ok := db.bannedUsers[buyerID]
+	bannedUserList, ok = db.bannedUsers[buyerID]
 	db.bannedUserMutex.RUnlock()
 
-	if !ok {
-		return &DoesNotExistError{resourceType: "BannedUser Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	if bannedUserList[userID] {
-		return &AlreadyExistsError{resourceType: "Banned User", resourceRef: userID}
+	// banned user list may not exist yet
+	if ok {
+		if bannedUserList[userID] {
+			return &AlreadyExistsError{resourceType: "Banned User", resourceRef: userID}
+		}
+	} else {
+		bannedUserList = make(map[uint64]bool)
 	}
 
 	db.buyerMutex.RLock()
