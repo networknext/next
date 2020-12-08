@@ -737,6 +737,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		}
 
 		response.Committed = sessionData.RouteState.Committed
+		response.Multipath = sessionData.RouteState.Multipath
 
 		// Store the route back into the session data
 		sessionData.RouteNumRelays = routeNumRelays

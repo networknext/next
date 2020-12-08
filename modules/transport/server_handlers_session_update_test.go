@@ -41,10 +41,13 @@ func assertResponseEqual(t *testing.T, expectedResponse transport.SessionRespons
 	assert.Equal(t, expectedResponse.SessionID, actualResponse.SessionID)
 	assert.Equal(t, expectedResponse.SliceNumber, actualResponse.SliceNumber)
 	assert.Equal(t, expectedResponse.RouteType, actualResponse.RouteType)
+	assert.Equal(t, expectedResponse.NearRelaysChanged, actualResponse.NearRelaysChanged)
 	assert.Equal(t, expectedResponse.NumNearRelays, actualResponse.NumNearRelays)
 	assert.Equal(t, expectedResponse.NearRelayIDs, actualResponse.NearRelayIDs)
 	assert.Equal(t, expectedResponse.NearRelayAddresses, actualResponse.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, actualResponse.NumTokens)
+	assert.Equal(t, expectedResponse.Committed, actualResponse.Committed)
+	assert.Equal(t, expectedResponse.Multipath, actualResponse.Multipath)
 	assert.Equal(t, expectedResponse.HasDebug, actualResponse.HasDebug)
 
 	if expectedResponse.HasDebug {
@@ -1533,6 +1536,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1800,6 +1804,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   5,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2067,6 +2072,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   5,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2301,6 +2307,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		RouteType:   routing.RouteTypeContinue,
 		NumTokens:   4,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2521,6 +2528,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -3943,6 +3951,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		SliceNumber: requestPacket.SliceNumber,
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
+		Committed:   true,
 		HasDebug:    true,
 	}
 
@@ -4533,6 +4542,8 @@ func TestSessionUpdateHandlerESLProMode(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
+		Multipath:   true,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
