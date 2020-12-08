@@ -1002,8 +1002,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 	}
 
-	// fmt.Printf("--> updateSQL: %s\n", updateSQL.String())
-
 	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
@@ -1626,7 +1624,6 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-	// return fmt.Errorf("SetRelayMetadata() not implemented in SQL Storer")
 	fmt.Printf("SetRelayMetadata(): %s\n", relay.String())
 	err := db.SetRelay(ctx, relay)
 	return err
@@ -2112,7 +2109,6 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		return err
 	}
 
-	// fmt.Println("--> UpdateInternalConfig() stmt.Exec()")
 	result, err := stmt.Exec(args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying internal_config record", "err", err)
@@ -2346,7 +2342,6 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 		return err
 	}
 
-	// fmt.Println("--> UpdateInternalConfig() stmt.Exec()")
 	result, err := stmt.Exec(args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying route_shader record", "err", err)
