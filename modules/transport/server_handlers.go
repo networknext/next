@@ -189,7 +189,7 @@ func (n nearRelayGroup) Copy(other *nearRelayGroup) {
 	copy(other.PacketLosses, n.PacketLosses)
 }
 
-func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelays nearRelayGroup, routeState *core.RouteState, newSession bool, clientLat float32, clientLong float32, maxNearRelays int, directJitter int32, destRelayIDs []uint64) (bool, nearRelayGroup, []int32, error) {
+func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelays nearRelayGroup, routeShader *core.RouteShader, routeState *core.RouteState, newSession bool, clientLat float32, clientLong float32, maxNearRelays int, directJitter int32, destRelayIDs []uint64) (bool, nearRelayGroup, []int32, error) {
 	var nearRelaysChanged bool
 
 	if newSession {
@@ -222,7 +222,7 @@ func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelay
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
-	core.ReframeRelays(routeState, routeMatrix.RelayIDsToIndices, directJitter, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directJitter, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
 	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
@@ -616,6 +616,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
 			routeMatrix,
 			incomingNearRelays,
+			&buyer.RouteShader,
 			&sessionData.RouteState,
 			newSession,
 			sessionData.Location.Latitude,
