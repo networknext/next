@@ -104,36 +104,13 @@ type datacenterMap struct {
 	Buyer      string `firestore:"Buyer"`
 }
 
-type routingRulesSettings struct {
-	DisplayName                  string          `firestore:"displayName"`
-	EnvelopeKbpsUp               int64           `firestore:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64           `firestore:"envelopeKbpsDown"`
-	Mode                         int64           `firestore:"mode"`
-	MaxPricePerGBNibblins        int64           `firestore:"maxPricePerGBNibblins"`
-	AcceptableLatency            float32         `firestore:"acceptableLatency"`
-	RTTEpsilon                   float32         `firestore:"rttRouteSwitch"`
-	RTTThreshold                 float32         `firestore:"rttThreshold"`
-	RTTHysteresis                float32         `firestore:"rttHysteresis"`
-	RTTVeto                      float32         `firestore:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool            `firestore:"youOnlyLiveOnce"`
-	EnablePacketLossSafety       bool            `firestore:"packetLossSafety"`
-	EnableMultipathForPacketLoss bool            `firestore:"packetLossMultipath"`
-	MultipathPacketLossThreshold float32         `firestore:"multipathPacketLossThreshold"`
-	EnableMultipathForJitter     bool            `firestore:"jitterMultipath"`
-	EnableMultipathForRTT        bool            `firestore:"rttMultipath"`
-	EnableABTest                 bool            `firestore:"abTest"`
-	EnableTryBeforeYouBuy        bool            `firestore:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8            `firestore:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64           `firestore:"selectionPercentage"`
-	ExcludedUserHashes           map[string]bool `firestore:"excludedUserHashes"`
-}
-
 type routeShader struct {
 	DisableNetworkNext        bool            `firestore:"disableNetworkNext"`
 	SelectionPercent          int             `firestore:"selectionPercent"`
 	ABTest                    bool            `firestore:"abTest"`
 	ProMode                   bool            `firestore:"proMode"`
 	ReduceLatency             bool            `firestore:"reduceLatency"`
+	ReduceJitter              bool            `firestore:"reduceJitter"`
 	ReducePacketLoss          bool            `firestore:"reducePacketLoss"`
 	Multipath                 bool            `firestore:"multipath"`
 	AcceptableLatency         int32           `firestore:"acceptableLatency"`
@@ -2205,6 +2182,7 @@ func (fs *Firestore) GetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 	rs.ABTest = tempRS.ABTest
 	rs.ProMode = tempRS.ProMode
 	rs.ReduceLatency = tempRS.ReduceLatency
+	rs.ReduceJitter = tempRS.ReduceJitter
 	rs.ReducePacketLoss = tempRS.ReducePacketLoss
 	rs.Multipath = tempRS.Multipath
 	rs.AcceptableLatency = tempRS.AcceptableLatency
@@ -2242,6 +2220,7 @@ func (fs *Firestore) SetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 		"abTest":                    routeShader.ABTest,
 		"proMode":                   routeShader.ProMode,
 		"reduceLatency":             routeShader.ReduceLatency,
+		"reduceJitter":              routeShader.ReduceJitter,
 		"reducePacketLoss":          routeShader.ReducePacketLoss,
 		"multipath":                 routeShader.Multipath,
 		"acceptableLatency":         routeShader.AcceptableLatency,
