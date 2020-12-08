@@ -1498,7 +1498,10 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	nearRelayIDs,
 	nearRelayRTTs,
 	nearRelayJitters,
-	nearRelayPacketLosses
+	nearRelayPacketLosses,
+	relayWentAway,
+	routeLost,
+	tags
     from `))
 
 	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
