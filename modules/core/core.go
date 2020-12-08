@@ -870,7 +870,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayID))
@@ -938,6 +938,32 @@ func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, dire
 		// make it unroutable for the next slice *only* so it can recover from this
 		if routeState.NearRelayJitter[i] > routeState.DirectJitter {
 			out_sourceRelayLatency[i] = 255			
+		}
+	}
+
+	// reduce jitter by preferring near relays with equal to or better than average jitter
+
+	if routeShader.ReduceJitter {
+
+		count := 0
+		totalJitter := 0.0
+		for i := range sourceRelayLatency {
+			if out_sourceRelayLatency[i] != 255 {
+				totalJitter += float64(out_sourceRelayJitter[i])
+				count++
+			}
+		}
+
+		if count > 0 {
+			averageJitter := int32(math.Ceil(totalJitter / float64(count)))
+			for i := range sourceRelayLatency {
+				if out_sourceRelayLatency[i] == 255 {
+					continue
+				}
+				if out_sourceRelayJitter[i] > averageJitter {
+					out_sourceRelayLatency[i] = 255
+				}
+			}
 		}
 	}
 
@@ -1062,6 +1088,7 @@ type RouteShader struct {
 	ABTest                    bool
 	ProMode                   bool
 	ReduceLatency             bool
+	ReduceJitter              bool
 	ReducePacketLoss          bool
 	Multipath                 bool
 	AcceptableLatency         int32
@@ -1078,6 +1105,7 @@ func NewRouteShader() RouteShader {
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
+		ReduceJitter:              false,
 		ReducePacketLoss:          true,
 		Multipath:                 false,
 		ProMode:                   false,
