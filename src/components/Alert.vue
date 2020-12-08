@@ -1,7 +1,7 @@
 <template>
   <div :class="[{'alert': true}, className]" role="alert">
     {{ alertMessage }}
-    <slot></slot>
+    <slot v-if="showSlots"></slot>
   </div>
 </template>
 
@@ -30,11 +30,63 @@ export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: AlertTypes.DEFAULT }) alertType!: string
 
   get alertMessage (): string {
-    return this.message
+    return this.currentMessage
   }
 
   get className (): string {
-    return this.alertType
+    return this.currentClass
+  }
+
+  private givenMessage: string
+  private givenClass: string
+  private currentMessage: string
+  private currentClass: string
+  private showSlots: boolean
+
+  constructor () {
+    super()
+    this.givenMessage = this.message
+    this.givenClass = this.alertType
+    this.currentMessage = this.givenMessage
+    this.currentClass = this.givenClass
+    this.showSlots = true
+  }
+
+  public resendVerificationEmail () {
+    const userId = this.$store.getters.userProfile.auth0ID
+    const email = this.$store.getters.userProfile.email
+
+    this.$apiService
+      .resendVerificationEmail({
+        user_id: userId,
+        user_email: email,
+        redirect: window.location.origin,
+        connection: 'Username-Password-Authentication'
+      })
+      .then((response: any) => {
+        this.showSlots = false
+        this.currentMessage =
+          'Verification email was sent successfully. Please check your email for futher instructions.'
+        this.currentClass = AlertTypes.SUCCESS
+        setTimeout(() => {
+          this.currentMessage = this.givenMessage
+          this.currentClass = this.givenClass
+          this.showSlots = true
+        }, 5000)
+      })
+      .catch((error: Error) => {
+        this.showSlots = false
+        console.log('something went wrong with resending verification email')
+        console.log(error)
+        this.currentMessage =
+          'Something went wrong sending the verification email. Please try again later.'
+        this.currentClass = AlertTypes.ERROR
+        setTimeout(() => {
+          this.currentMessage = this.givenMessage
+          this.currentClass = this.givenClass
+          this.showSlots = true
+        }, 5000)
+      })
   }
 }
 

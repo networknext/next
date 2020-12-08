@@ -72,6 +72,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
 import { AlertTypes } from './types/AlertTypes'
+import { JSONRPCError } from './types/JSONRPCTypes'
 
 /**
  * This component displays all of the information related to the user
@@ -135,16 +136,15 @@ export default class UserSessions extends Vue {
         this.sessions = response.sessions || []
         this.showSessions = true
       })
-      .catch((error: Error) => {
+      .catch((error: JSONRPCError) => {
         if (this.sessionLoop) {
           clearInterval(this.sessionLoop)
         }
         if (this.sessions.length === 0) {
-          this.message = 'Failed to fetch session details'
+          this.message = error.message
           console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
           console.log(error)
         }
-        console.log(error)
       })
   }
 }
