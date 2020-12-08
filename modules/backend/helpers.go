@@ -138,7 +138,7 @@ func GetTSMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID st
 				return tsMetricsHandler, fmt.Errorf("failed to create Time Series StackDriver metrics client: %v", err)
 			}
 
-			sdWriteInterval, err := envvar.GetDuration("FEATURE_VANITY_METRIC_WRITE_INTERVAL", time.Second)
+			sdWriteInterval, err := envvar.GetDuration("FEATURE_VANITY_METRIC_WRITE_INTERVAL", time.Second*5)
 			if err != nil {
 				return tsMetricsHandler, err
 			}

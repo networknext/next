@@ -548,7 +548,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	postVanityMetricPushDuration, err := envvar.GetDuration("FEATURE_VANITY_METRIC_PUSH_DURATION", 5 * time.Second)
+	postVanityMetricPushDuration, err := envvar.GetDuration("FEATURE_VANITY_METRIC_PUSH_DURATION", time.Second*5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
