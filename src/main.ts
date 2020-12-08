@@ -74,7 +74,7 @@ if (useAPI) {
 
 if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
   Vue.use(VueGtag, {
-    config: { id: 'UA-141272717-2' }
+    config: { id: 'UA-141272717-1' }
   }, router)
 }
 
