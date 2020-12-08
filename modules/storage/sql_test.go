@@ -1010,3 +1010,194 @@ func TestInternalConfig(t *testing.T) {
 	})
 
 }
+
+func TestRouteShaders(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	var outerCustomer routing.Customer
+	var outerBuyer routing.Buyer
+	var outerRouteShader core.RouteShader
+
+	t.Run("AddRouteShader", func(t *testing.T) {
+
+		customerCode := "Compcode"
+		customer := routing.Customer{
+			Active:                 true,
+			Code:                   customerCode,
+			Name:                   "Company, Ltd.",
+			AutomaticSignInDomains: "fredscuttle.com",
+		}
+
+		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+
+		outerCustomer, err = db.Customer(customerCode)
+		assert.NoError(t, err)
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err := rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
+		buyer := routing.Buyer{
+			ShortName:   outerCustomer.Code,
+			CompanyCode: outerCustomer.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		outerBuyer, err = db.Buyer(internalID)
+		assert.NoError(t, err)
+
+		routeShader := core.RouteShader{
+			ABTest:                    true,
+			AcceptableLatency:         int32(25),
+			AcceptablePacketLoss:      float32(1),
+			BandwidthEnvelopeDownKbps: int32(1200),
+			BandwidthEnvelopeUpKbps:   int32(500),
+			DisableNetworkNext:        true,
+			LatencyThreshold:          int32(5),
+			Multipath:                 true,
+			ProMode:                   true,
+			ReduceLatency:             true,
+			ReducePacketLoss:          true,
+			SelectionPercent:          int(100),
+		}
+
+		err = db.AddRouteShader(ctx, routeShader, outerBuyer.ID)
+		assert.NoError(t, err)
+
+		outerRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, true, outerRouteShader.ABTest)
+		assert.Equal(t, int32(25), outerRouteShader.AcceptableLatency)
+		assert.Equal(t, float32(1), outerRouteShader.AcceptablePacketLoss)
+		assert.Equal(t, int32(1200), outerRouteShader.BandwidthEnvelopeDownKbps)
+		assert.Equal(t, int32(500), outerRouteShader.BandwidthEnvelopeUpKbps)
+		assert.Equal(t, true, outerRouteShader.DisableNetworkNext)
+		assert.Equal(t, int32(5), outerRouteShader.LatencyThreshold)
+		assert.Equal(t, true, outerRouteShader.Multipath)
+		assert.Equal(t, true, outerRouteShader.ProMode)
+		assert.Equal(t, true, outerRouteShader.ReduceLatency)
+		assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
+		assert.Equal(t, int(100), outerRouteShader.SelectionPercent)
+	})
+
+	t.Run("UpdateRouteShader", func(t *testing.T) {
+
+		// ABTest
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ABTest", false)
+		assert.NoError(t, err)
+		checkRouteShader, err := db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.ABTest)
+
+		// AcceptableLatency
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "AcceptableLatency", int32(35))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(35), checkRouteShader.AcceptableLatency)
+
+		// AcceptablePacketLoss
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "AcceptablePacketLoss", float32(10))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, float32(10), checkRouteShader.AcceptablePacketLoss)
+
+		// BandwidthEnvelopeDownKbps
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "BandwidthEnvelopeDownKbps", int32(1000))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1000), checkRouteShader.BandwidthEnvelopeDownKbps)
+
+		// BandwidthEnvelopeUpKbps
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "BandwidthEnvelopeUpKbps", int32(400))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(400), checkRouteShader.BandwidthEnvelopeUpKbps)
+
+		// DisableNetworkNext
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "DisableNetworkNext", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.DisableNetworkNext)
+
+		// LatencyThreshold
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "LatencyThreshold", int32(15))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(15), checkRouteShader.LatencyThreshold)
+
+		// Multipath
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "Multipath", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.Multipath)
+
+		// ProMode
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ProMode", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.ProMode)
+
+		// ReduceLatency
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ReduceLatency", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.ReduceLatency)
+
+		// ReducePacketLoss
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ReducePacketLoss", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.ReducePacketLoss)
+
+		// SelectionPercent
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "SelectionPercent", int(90))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int(90), checkRouteShader.SelectionPercent)
+
+	})
+
+	t.Run("RemoveRouteShader", func(t *testing.T) {
+
+		err := db.RemoveRouteShader(context.Background(), outerBuyer.ID)
+		assert.NoError(t, err)
+
+		_, err = db.RouteShader(outerBuyer.ID)
+		assert.Error(t, err)
+
+	})
+
+}
