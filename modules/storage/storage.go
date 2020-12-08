@@ -169,10 +169,10 @@ type Storer interface {
 	AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error
 
 	// UpdateRouteShader updates the specified field in an RouteShader record
-	UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error
+	UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error
 
 	// RemoveRouteShader removes a record from the RouteShaders table
-	RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error
+	RemoveRouteShader(ctx context.Context, buyerID uint64) error
 
 	// UpdateRelay updates a single field in a relay record
 	UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error

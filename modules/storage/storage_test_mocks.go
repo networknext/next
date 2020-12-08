@@ -120,7 +120,7 @@ var _ Storer = &StorerMock{}
 //             RemoveRelayFunc: func(ctx context.Context, id uint64) error {
 // 	               panic("mock out the RemoveRelay method")
 //             },
-//             RemoveRouteShaderFunc: func(ctx context.Context, buyerID uint64, index uint64) error {
+//             RemoveRouteShaderFunc: func(ctx context.Context, buyerID uint64) error {
 // 	               panic("mock out the RemoveRouteShader method")
 //             },
 //             RemoveSellerFunc: func(ctx context.Context, id string) error {
@@ -177,7 +177,7 @@ var _ Storer = &StorerMock{}
 //             UpdateRelayFunc: func(ctx context.Context, relayID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateRelay method")
 //             },
-//             UpdateRouteShaderFunc: func(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+//             UpdateRouteShaderFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateRouteShader method")
 //             },
 //         }
@@ -287,7 +287,7 @@ type StorerMock struct {
 	RemoveRelayFunc func(ctx context.Context, id uint64) error
 
 	// RemoveRouteShaderFunc mocks the RemoveRouteShader method.
-	RemoveRouteShaderFunc func(ctx context.Context, buyerID uint64, index uint64) error
+	RemoveRouteShaderFunc func(ctx context.Context, buyerID uint64) error
 
 	// RemoveSellerFunc mocks the RemoveSeller method.
 	RemoveSellerFunc func(ctx context.Context, id string) error
@@ -344,7 +344,7 @@ type StorerMock struct {
 	UpdateRelayFunc func(ctx context.Context, relayID uint64, field string, value interface{}) error
 
 	// UpdateRouteShaderFunc mocks the UpdateRouteShader method.
-	UpdateRouteShaderFunc func(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error
+	UpdateRouteShaderFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -545,8 +545,6 @@ type StorerMock struct {
 			Ctx context.Context
 			// BuyerID is the buyerID argument value.
 			BuyerID uint64
-			// Index is the index argument value.
-			Index uint64
 		}
 		// RemoveSeller holds details about calls to the RemoveSeller method.
 		RemoveSeller []struct {
@@ -684,8 +682,6 @@ type StorerMock struct {
 			Ctx context.Context
 			// BuyerID is the buyerID argument value.
 			BuyerID uint64
-			// Index is the index argument value.
-			Index uint64
 			// Field is the field argument value.
 			Field string
 			// Value is the value argument value.
@@ -1818,23 +1814,21 @@ func (mock *StorerMock) RemoveRelayCalls() []struct {
 }
 
 // RemoveRouteShader calls RemoveRouteShaderFunc.
-func (mock *StorerMock) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+func (mock *StorerMock) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 	if mock.RemoveRouteShaderFunc == nil {
 		panic("StorerMock.RemoveRouteShaderFunc: method is nil but Storer.RemoveRouteShader was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
 		BuyerID uint64
-		Index   uint64
 	}{
 		Ctx:     ctx,
 		BuyerID: buyerID,
-		Index:   index,
 	}
 	mock.lockRemoveRouteShader.Lock()
 	mock.calls.RemoveRouteShader = append(mock.calls.RemoveRouteShader, callInfo)
 	mock.lockRemoveRouteShader.Unlock()
-	return mock.RemoveRouteShaderFunc(ctx, buyerID, index)
+	return mock.RemoveRouteShaderFunc(ctx, buyerID)
 }
 
 // RemoveRouteShaderCalls gets all the calls that were made to RemoveRouteShader.
@@ -1843,12 +1837,10 @@ func (mock *StorerMock) RemoveRouteShader(ctx context.Context, buyerID uint64, i
 func (mock *StorerMock) RemoveRouteShaderCalls() []struct {
 	Ctx     context.Context
 	BuyerID uint64
-	Index   uint64
 } {
 	var calls []struct {
 		Ctx     context.Context
 		BuyerID uint64
-		Index   uint64
 	}
 	mock.lockRemoveRouteShader.RLock()
 	calls = mock.calls.RemoveRouteShader
@@ -2494,27 +2486,25 @@ func (mock *StorerMock) UpdateRelayCalls() []struct {
 }
 
 // UpdateRouteShader calls UpdateRouteShaderFunc.
-func (mock *StorerMock) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+func (mock *StorerMock) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	if mock.UpdateRouteShaderFunc == nil {
 		panic("StorerMock.UpdateRouteShaderFunc: method is nil but Storer.UpdateRouteShader was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
 		BuyerID uint64
-		Index   uint64
 		Field   string
 		Value   interface{}
 	}{
 		Ctx:     ctx,
 		BuyerID: buyerID,
-		Index:   index,
 		Field:   field,
 		Value:   value,
 	}
 	mock.lockUpdateRouteShader.Lock()
 	mock.calls.UpdateRouteShader = append(mock.calls.UpdateRouteShader, callInfo)
 	mock.lockUpdateRouteShader.Unlock()
-	return mock.UpdateRouteShaderFunc(ctx, buyerID, index, field, value)
+	return mock.UpdateRouteShaderFunc(ctx, buyerID, field, value)
 }
 
 // UpdateRouteShaderCalls gets all the calls that were made to UpdateRouteShader.
@@ -2523,14 +2513,12 @@ func (mock *StorerMock) UpdateRouteShader(ctx context.Context, buyerID uint64, i
 func (mock *StorerMock) UpdateRouteShaderCalls() []struct {
 	Ctx     context.Context
 	BuyerID uint64
-	Index   uint64
 	Field   string
 	Value   interface{}
 } {
 	var calls []struct {
 		Ctx     context.Context
 		BuyerID uint64
-		Index   uint64
 		Field   string
 		Value   interface{}
 	}

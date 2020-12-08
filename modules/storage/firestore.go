@@ -2350,11 +2350,11 @@ func (fs *Firestore) AddRouteShader(ctx context.Context, routeShader core.RouteS
 	return fmt.Errorf("AddRouteShader not yet impemented in Firestore storer")
 }
 
-func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateRouteShader not yet impemented in Firestore storer")
 }
 
-func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 	return fmt.Errorf("RemoveRouteShader not yet impemented in Firestore storer")
 }
 

@@ -1951,14 +1951,14 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 
 	buyer, err := db.Buyer(buyerID)
 	if err != nil {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	sql.Write([]byte("delete from rs_internal_configs where buyer_id = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveRelay SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing RemoveInternalConfig SQL", "err", err)
 		return err
 	}
 
@@ -2221,6 +2221,55 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 
 }
 
+func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
+	var sql bytes.Buffer
+
+	db.routeShaderMutex.RLock()
+	_, ok := db.routeShaders[buyerID]
+	db.routeShaderMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	buyer, err := db.Buyer(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	sql.Write([]byte("delete from route_shaders where buyer_id = $1"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveRouteShader SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(buyer.DatabaseID)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing route shader", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.routeShaderMutex.Lock()
+	delete(db.routeShaders, buyerID)
+	db.routeShaderMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+}
+
 type featureFlag struct {
 	Name        string
 	Description string
@@ -2243,10 +2292,6 @@ func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) err
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
 }
 
-func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateRouteShader not yet impemented in SQL storer")
-}
-
-func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
-	return fmt.Errorf("RemoveRouteShader not yet impemented in SQL storer")
 }

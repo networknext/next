@@ -556,11 +556,11 @@ func (m *InMemory) AddRouteShader(ctx context.Context, routeShader core.RouteSha
 	return fmt.Errorf("AddRouteShader not yet impemented in InMemory storer")
 }
 
-func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateRouteShader not yet impemented in InMemory storer")
 }
 
-func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 	return fmt.Errorf("RemoveRouteShader not yet impemented in InMemory storer")
 }
 

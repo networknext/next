@@ -1190,14 +1190,14 @@ func TestRouteShaders(t *testing.T) {
 
 	// })
 
-	// t.Run("RemoveInternalConfig", func(t *testing.T) {
+	t.Run("RemoveRouteShader", func(t *testing.T) {
 
-	// 	err := db.RemoveInternalConfig(context.Background(), outerBuyer.ID)
-	// 	assert.NoError(t, err)
+		err := db.RemoveRouteShader(context.Background(), outerBuyer.ID)
+		assert.NoError(t, err)
 
-	// 	_, err = db.InternalConfig(outerBuyer.ID)
-	// 	assert.Error(t, err)
+		_, err = db.RouteShader(outerBuyer.ID)
+		assert.Error(t, err)
 
-	// })
+	})
 
 }
