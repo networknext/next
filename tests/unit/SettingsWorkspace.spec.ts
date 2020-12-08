@@ -46,6 +46,7 @@ describe('SettingsWorkspace.vue', () => {
       userProfile: (state: any) => state.userProfile,
       isAdmin: () => false,
       isOwner: () => false,
+      isAnonymousPlus: () => false,
       registeredToCompany: () => false
     }
   })

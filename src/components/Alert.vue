@@ -30,10 +30,18 @@ export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: AlertType.DEFAULT }) alertType!: string
 
   get alertMessage (): string {
+    if (this.message !== this.givenMessage) {
+      this.givenMessage = this.message
+      return this.givenMessage
+    }
     return this.currentMessage
   }
 
   get className (): string {
+    if (this.alertType !== this.givenClass) {
+      this.givenClass = this.alertType
+      return this.givenClass
+    }
     return this.currentClass
   }
 
