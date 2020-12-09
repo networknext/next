@@ -767,7 +767,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 	}
 	if sourceCost >= 255 {
 		if debug != nil {
-			*debug += "can't find source relay for route\n"
+			*debug += "source relay for route is no longer routable\n"
 		}
 		return -1
 	}
@@ -941,7 +941,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 	}
 
-	// reduce jitter by preferring near relays with equal to or better than average jitter
+	// reduce jitter by preferring near relays with equal to or lower than average jitter
 
 	if routeShader.ReduceJitter {
 
@@ -1107,7 +1107,7 @@ func NewRouteShader() RouteShader {
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
-		ReduceJitter:              false,
+		ReduceJitter:              true,
 		ReducePacketLoss:          true,
 		Multipath:                 false,
 		ProMode:                   false,
