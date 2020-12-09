@@ -182,7 +182,6 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 
 	postgresOK := envvar.Exists("FEATURE_POSTGRESQL")
 
-	fmt.Printf("GetStorer() postgresOK: %v\n", postgresOK)
 	if postgresOK {
 		// returns a pointer to the storage solution specified for the provide environment. The
 		// database targets are currently gcp/Firestore but will move to gcp/PostgreSQL
@@ -215,9 +214,21 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		}
 
 		if pgsql {
-			// TODO: the cloud version of PostgreSQL will require gcpProjectID, etc.
+			pgsqlHostIP := envvar.Get("POSTGRESQL_HOST_IP", "")
+			if pgsqlHostIP == "" {
+				return nil, fmt.Errorf("could not parse FEATURE_POSTGRESQL string: %v", err)
+			}
+			pgsqlUserName := envvar.Get("POSTGRESQL_USER_NAME", "")
+			if pgsqlUserName == "" {
+				return nil, fmt.Errorf("could not parse POSTGRESQL_USER_NAME string: %v", err)
+			}
+			pgsqlPassword := envvar.Get("POSTGRESQL_PASSWORD", "")
+			if pgsqlPassword == "" {
+				return nil, fmt.Errorf("could not parse POSTGRESQL_PASSWORD string: %v", err)
+			}
+
 			level.Info(logger).Log("msg", "Setting up PostgreSQL storage")
-			db, err = storage.NewPostgreSQL(ctx, logger)
+			db, err = storage.NewPostgreSQL(ctx, logger, pgsqlHostIP, pgsqlUserName, pgsqlPassword)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err

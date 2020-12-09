@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,6 @@ func SetupEnv() {
 
 func TestInsertSQL(t *testing.T) {
 
-	t.Skip()
 	SetupEnv()
 
 	ctx := context.Background()
@@ -185,7 +185,7 @@ func TestInsertSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
-		internalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
 		assert.NoError(t, err)
 
 		rid := crypto.HashID(addr.String())
@@ -234,7 +234,6 @@ func TestInsertSQL(t *testing.T) {
 
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
-		assert.Equal(t, relay.InternalAddr, checkRelay.InternalAddr)
 		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)
 		assert.Equal(t, relay.SSHPort, checkRelay.SSHPort)
 		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
@@ -272,8 +271,6 @@ func TestInsertSQL(t *testing.T) {
 }
 
 func TestDeleteSQL(t *testing.T) {
-
-	t.Skip()
 
 	SetupEnv()
 
@@ -381,7 +378,7 @@ func TestDeleteSQL(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
-		internalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
+		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
 		assert.NoError(t, err)
 
 		rid := crypto.HashID(addr.String())
@@ -474,8 +471,6 @@ func TestDeleteSQL(t *testing.T) {
 }
 
 func TestUpdateSQL(t *testing.T) {
-
-	t.Skip()
 
 	SetupEnv()
 
@@ -639,93 +634,379 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
 	})
 
-	t.Run("SetRelay", func(t *testing.T) {
+	t.Run("UpdateRelay", func(t *testing.T) {
 
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
-		internalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
-		assert.NoError(t, err)
-
 		rid := crypto.HashID(addr.String())
+
+		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
+		assert.NoError(t, err)
 
 		publicKey := make([]byte, crypto.KeySize)
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
 		relay := routing.Relay{
-			ID:             rid,
-			Name:           "local.1",
-			Addr:           *addr,
-			InternalAddr:   *internalAddr,
-			ManagementAddr: "1.2.3.4",
-			SSHPort:        22,
-			SSHUser:        "fred",
-			MaxSessions:    1000,
-			PublicKey:      publicKey,
-			Datacenter:     datacenterWithID,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
-			StartDate:      time.Now(),
-			EndDate:        time.Now(),
-			Type:           routing.BareMetal,
-			State:          routing.RelayStateMaintenance,
+			ID:                  rid,
+			Name:                "local.1",
+			Addr:                *addr,
+			InternalAddr:        *internalAddr,
+			ManagementAddr:      "1.2.3.4",
+			SSHPort:             22,
+			SSHUser:             "fred",
+			MaxSessions:         1000,
+			PublicKey:           publicKey,
+			Datacenter:          datacenterWithID,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			NICSpeedMbps:        1000,
+			IncludedBandwidthGB: 10000,
+			ContractTerm:        12,
+			StartDate:           time.Now(),
+			EndDate:             time.Now(),
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
 		}
 
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
+		_, err = db.Relay(rid)
+		assert.NoError(t, err)
+
+		// relay.Name
+		err = db.UpdateRelay(ctx, rid, "Name", "local.2")
+		assert.NoError(t, err)
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
+		assert.Equal(t, "local.2", checkRelay.Name)
 
-		// set some modifications
+		// relay.Addr
 		newAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")
 		assert.NoError(t, err)
-
-		newInternalAddr, err := net.ResolveUDPAddr("udp", "192.168.0.4:40000")
+		err = db.UpdateRelay(ctx, rid, "Addr", "192.168.0.1:40000")
 		assert.NoError(t, err)
-
-		checkRelay.Name = "local.2"
-		checkRelay.Addr = *newAddr
-		checkRelay.InternalAddr = *newInternalAddr
-		checkRelay.ManagementAddr = "9.8.7.6"
-		checkRelay.SSHPort = 13
-		checkRelay.SSHUser = "Fred"
-		checkRelay.MaxSessions = 10000
-		checkRelay.PublicKey = []byte("public key")
-		// checkRelay.Datacenter = only one datacenter available...
-		checkRelay.MRC = 197
-		checkRelay.Overage = 260
-		checkRelay.BWRule = routing.BWRuleFlat
-		checkRelay.ContractTerm = 1
-		checkRelay.StartDate = time.Now()
-		checkRelay.EndDate = time.Now()
-		checkRelay.Type = routing.VirtualMachine
-		checkRelay.State = routing.RelayStateEnabled
-
-		err = db.SetRelay(ctx, checkRelay)
+		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
+		assert.Equal(t, *newAddr, checkRelay.Addr)
 
-		checkModifiedRelay, err := db.Relay(rid)
+		// relay.Addr
+		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
 		assert.NoError(t, err)
-		assert.Equal(t, checkModifiedRelay.Name, checkRelay.Name)
-		assert.Equal(t, checkModifiedRelay.Addr, checkRelay.Addr)
-		assert.Equal(t, checkModifiedRelay.InternalAddr, checkRelay.InternalAddr)
-		assert.Equal(t, checkModifiedRelay.ManagementAddr, checkRelay.ManagementAddr)
-		assert.Equal(t, checkModifiedRelay.SSHPort, checkRelay.SSHPort)
-		assert.Equal(t, checkModifiedRelay.SSHUser, checkRelay.SSHUser)
-		assert.Equal(t, checkModifiedRelay.MaxSessions, checkRelay.MaxSessions)
-		assert.Equal(t, checkModifiedRelay.PublicKey, checkRelay.PublicKey)
-		assert.Equal(t, checkModifiedRelay.MRC, checkRelay.MRC)
-		assert.Equal(t, checkModifiedRelay.Overage, checkRelay.Overage)
-		assert.Equal(t, checkModifiedRelay.BWRule, checkRelay.BWRule)
-		assert.Equal(t, checkModifiedRelay.ContractTerm, checkRelay.ContractTerm)
-		assert.Equal(t, checkModifiedRelay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
-		assert.Equal(t, checkModifiedRelay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
-		assert.Equal(t, checkModifiedRelay.Type, checkRelay.Type)
-		assert.Equal(t, checkModifiedRelay.State, checkRelay.State)
+		err = db.UpdateRelay(ctx, rid, "Addr", "192.168.0.2:40000")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, *intAddr, checkRelay.Addr)
+
+		// relay.ManagementAddr
+		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "9.8.7.6", checkRelay.ManagementAddr)
+
+		// relay.SSHPort
+		// Note: ints in json are unmarshalled as float64
+		err = db.UpdateRelay(ctx, rid, "SSHPort", float64(13))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(13), checkRelay.SSHPort)
+
+		// checkRelay.SSHUser
+		err = db.UpdateRelay(ctx, rid, "SSHUser", "Abercrombie")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "Abercrombie", checkRelay.SSHUser)
+
+		// relay.MaxSessions
+		err = db.UpdateRelay(ctx, rid, "MaxSessions", float64(25000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(25000), checkRelay.MaxSessions)
+
+		// relay.PublicKey
+		err = db.UpdateRelay(ctx, rid, "PublicKey", []byte("public key"))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("public key"), checkRelay.PublicKey)
+
+		// relay.Datacenter = only one datacenter available...
+
+		// relay.MRC
+		err = db.UpdateRelay(ctx, rid, "MRC", float64(397))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.Nibblin(39700000000000), checkRelay.MRC)
+
+		// relay.Overage
+		err = db.UpdateRelay(ctx, rid, "Overage", float64(260))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.Nibblin(26000000000000), checkRelay.Overage)
+
+		// relay.BWRule
+		err = db.UpdateRelay(ctx, rid, "BWRule", float64(3))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.BWRulePool, checkRelay.BWRule)
+
+		// relay.ContractTerm
+		err = db.UpdateRelay(ctx, rid, "ContractTerm", float64(1))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), checkRelay.ContractTerm)
+
+		// relay.StartDate
+		// We use a string as type-switching (in UpdateRelay()) doesn't work with a time.Time type
+		startDate := "July 7, 2023"
+		err = db.UpdateRelay(ctx, rid, "StartDate", startDate)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		startDateFormatted, err := time.Parse("January 2, 2006", startDate)
+		assert.NoError(t, err)
+		assert.Equal(t, startDateFormatted, checkRelay.StartDate)
+
+		// relay.EndDate
+		endDate := "July 7, 2025"
+		err = db.UpdateRelay(ctx, rid, "EndDate", endDate)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		endDateFormatted, err := time.Parse("January 2, 2006", endDate)
+		assert.NoError(t, err)
+		assert.Equal(t, endDateFormatted, checkRelay.EndDate)
+
+		// relay.Type
+		err = db.UpdateRelay(ctx, rid, "Type", float64(2))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.VirtualMachine, checkRelay.Type)
+
+		// relay.State
+		err = db.UpdateRelay(ctx, rid, "State", float64(0))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.RelayStateEnabled, checkRelay.State)
+
+		// relay.NICSpeedMbps
+		err = db.UpdateRelay(ctx, rid, "NICSpeedMbps", float64(20000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(20000), checkRelay.NICSpeedMbps)
+
+		// relay.IncludedBandwidthGB
+		err = db.UpdateRelay(ctx, rid, "IncludedBandwidthGB", float64(25000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(25000), checkRelay.IncludedBandwidthGB)
 
 	})
+}
+
+func TestInternalConfig(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	var outerCustomer routing.Customer
+	var outerBuyer routing.Buyer
+	var outerInternalConfig core.InternalConfig
+
+	t.Run("AddInternalConfig", func(t *testing.T) {
+
+		customerCode := "Compcode"
+		customer := routing.Customer{
+			Active:                 true,
+			Code:                   customerCode,
+			Name:                   "Company, Ltd.",
+			AutomaticSignInDomains: "fredscuttle.com",
+		}
+
+		err = db.AddCustomer(ctx, customer)
+		assert.NoError(t, err)
+
+		outerCustomer, err = db.Customer(customerCode)
+		assert.NoError(t, err)
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err := rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+
+		buyer := routing.Buyer{
+			ShortName:   outerCustomer.Code,
+			CompanyCode: outerCustomer.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		outerBuyer, err = db.Buyer(internalID)
+		assert.NoError(t, err)
+
+		internalConfig := core.InternalConfig{
+			RouteSelectThreshold:       2,
+			RouteSwitchThreshold:       5,
+			MaxLatencyTradeOff:         10,
+			RTTVeto_Default:            -10,
+			RTTVeto_PacketLoss:         -20,
+			RTTVeto_Multipath:          -20,
+			MultipathOverloadThreshold: 500,
+			TryBeforeYouBuy:            true,
+			ForceNext:                  true,
+			LargeCustomer:              true,
+			Uncommitted:                true,
+			MaxRTT:                     300,
+		}
+
+		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
+		assert.NoError(t, err)
+
+		outerInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int32(2), outerInternalConfig.RouteSelectThreshold)
+		assert.Equal(t, int32(5), outerInternalConfig.RouteSwitchThreshold)
+		assert.Equal(t, int32(10), outerInternalConfig.MaxLatencyTradeOff)
+		assert.Equal(t, int32(-10), outerInternalConfig.RTTVeto_Default)
+		assert.Equal(t, int32(-20), outerInternalConfig.RTTVeto_PacketLoss)
+		assert.Equal(t, int32(-20), outerInternalConfig.RTTVeto_Multipath)
+		assert.Equal(t, int32(500), outerInternalConfig.MultipathOverloadThreshold)
+		assert.Equal(t, true, outerInternalConfig.TryBeforeYouBuy)
+		assert.Equal(t, true, outerInternalConfig.ForceNext)
+		assert.Equal(t, true, outerInternalConfig.LargeCustomer)
+		assert.Equal(t, true, outerInternalConfig.Uncommitted)
+		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
+	})
+
+	t.Run("UpdateInternalConfig", func(t *testing.T) {
+
+		// RouteSelectThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSelectThreshold", int32(1))
+		assert.NoError(t, err)
+		checkInternalConfig, err := db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), checkInternalConfig.RouteSelectThreshold)
+
+		// RouteSwitchThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSwitchThreshold", int32(4))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(4), checkInternalConfig.RouteSwitchThreshold)
+
+		// MaxLatencyTradeOff
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MaxLatencyTradeOff", int32(11))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(11), checkInternalConfig.MaxLatencyTradeOff)
+
+		// RTTVeto_Default
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_Default", int32(-20))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(-20), checkInternalConfig.RTTVeto_Default)
+
+		// RTTVeto_PacketLoss
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_PacketLoss", int32(-30))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(-30), checkInternalConfig.RTTVeto_PacketLoss)
+
+		// RTTVeto_Multipath
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RTTVeto_Multipath", int32(-40))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(-40), checkInternalConfig.RTTVeto_Multipath)
+
+		// MultipathOverloadThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MultipathOverloadThreshold", int32(600))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(600), checkInternalConfig.MultipathOverloadThreshold)
+
+		// TryBeforeYouBuy
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "TryBeforeYouBuy", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.TryBeforeYouBuy)
+
+		// ForceNext
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "ForceNext", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.ForceNext)
+
+		// LargeCustomer
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "LargeCustomer", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.LargeCustomer)
+
+		// Uncommitted
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "Uncommitted", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.Uncommitted)
+
+		// MaxRTT
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MaxRTT", int32(400))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(400), checkInternalConfig.MaxRTT)
+
+	})
+
+	t.Run("RemoveInternalConfig", func(t *testing.T) {
+
+		err := db.RemoveInternalConfig(context.Background(), outerBuyer.ID)
+		assert.NoError(t, err)
+
+		_, err = db.InternalConfig(outerBuyer.ID)
+		assert.Error(t, err)
+
+	})
+
 }

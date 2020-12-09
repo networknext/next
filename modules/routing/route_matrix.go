@@ -86,15 +86,15 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-type NearRelayData struct {
-	ID          uint64
-	Addr        net.UDPAddr
-	Name        string
-	Distance    int
-	ClientStats Stats
-}
+func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNearRelays int) ([]uint64, error) {
+	// Work with the near relays as an array of structs first for easier sorting
+	type NearRelayData struct {
+		ID       uint64
+		Addr     net.UDPAddr
+		Name     string
+		Distance int
+	}
 
-func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]NearRelayData, error) {
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
 	// IMPORTANT: Truncate the lat/long values to nearest integer.
@@ -121,15 +121,23 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
-	if len(nearRelayData) > maxNearRelays {
-		nearRelayData = nearRelayData[:maxNearRelays]
-	}
+	numNearRelays := len(nearRelayData)
 
-	if len(nearRelayData) == 0 {
+	if numNearRelays == 0 {
 		return nil, errors.New("no near relays")
 	}
 
-	return nearRelayData, nil
+	if numNearRelays > maxNearRelays {
+		nearRelayData = nearRelayData[:maxNearRelays]
+		numNearRelays = maxNearRelays
+	}
+
+	nearRelayIDs := make([]uint64, numNearRelays)
+	for i := 0; i < numNearRelays; i++ {
+		nearRelayIDs[i] = nearRelayData[i].ID
+	}
+
+	return nearRelayIDs, nil
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {

@@ -7,12 +7,14 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(16)
+	BillingEntryVersion = uint8(18)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
 	BillingEntryMaxSDKVersionLength = 11
 	BillingEntryMaxDebugLength      = 2048
+	BillingEntryMaxNearRelays       = 32
+	BillingEntryMaxTags             = 8
 
 	MaxBillingEntryBytes = 1 + // Version
 		8 + // Timestamp
@@ -54,60 +56,88 @@ const (
 		4 + // PacketLoss
 		4 + // PredictedNextRTT
 		1 + // MultipathVetoed
+		1 + // UseDebug
 		4 + BillingEntryMaxDebugLength + // Debug
 		1 + // FallbackToDirect
 		4 + // ClientFlags
 		8 + // UserFlags
-		4 // NearRelayRTT
+		4 + // NearRelayRTT
+		8 + // PacketsOutOfOrderClientToServer
+		8 + // PacketsOutOfOrderServerToClient
+		4 + // JitterClientToServer
+		4 + // JitterServerToClient
+		1 + // NumNearRelays
+		BillingEntryMaxNearRelays*8 + // NearRelayIDs
+		BillingEntryMaxNearRelays*4 + // NearRelayRTTs
+		BillingEntryMaxNearRelays*4 + // NearRelayJitters
+		BillingEntryMaxNearRelays*4 + // NearRelayPacketLosses
+		1 + // RelayWentAway
+		1 + // RouteLost
+		1 + // NumTags
+		BillingEntryMaxTags*8 // Tags
 )
 
 type BillingEntry struct {
-	Version                   uint8
-	Timestamp                 uint64
-	BuyerID                   uint64
-	UserHash                  uint64
-	SessionID                 uint64
-	SliceNumber               uint32
-	DirectRTT                 float32
-	DirectJitter              float32
-	DirectPacketLoss          float32
-	Next                      bool
-	NextRTT                   float32
-	NextJitter                float32
-	NextPacketLoss            float32
-	NumNextRelays             uint8
-	NextRelays                [BillingEntryMaxRelays]uint64
-	TotalPrice                uint64
-	ClientToServerPacketsLost uint64
-	ServerToClientPacketsLost uint64
-	Committed                 bool
-	Flagged                   bool
-	Multipath                 bool
-	Initial                   bool
-	NextBytesUp               uint64
-	NextBytesDown             uint64
-	EnvelopeBytesUp           uint64
-	EnvelopeBytesDown         uint64
-	DatacenterID              uint64
-	RTTReduction              bool
-	PacketLossReduction       bool
-	NextRelaysPrice           [BillingEntryMaxRelays]uint64
-	Latitude                  float32
-	Longitude                 float32
-	ISP                       string
-	ABTest                    bool
-	RouteDecision             uint64 // Deprecated with server_backend4
-	ConnectionType            uint8
-	PlatformType              uint8
-	SDKVersion                string
-	PacketLoss                float32
-	PredictedNextRTT          float32
-	MultipathVetoed           bool
-	Debug                     string
-	FallbackToDirect          bool
-	ClientFlags               uint32
-	UserFlags                 uint64
-	NearRelayRTT              float32
+	Version                         uint8
+	Timestamp                       uint64
+	BuyerID                         uint64
+	UserHash                        uint64
+	SessionID                       uint64
+	SliceNumber                     uint32
+	DirectRTT                       float32
+	DirectJitter                    float32
+	DirectPacketLoss                float32
+	Next                            bool
+	NextRTT                         float32
+	NextJitter                      float32
+	NextPacketLoss                  float32
+	NumNextRelays                   uint8
+	NextRelays                      [BillingEntryMaxRelays]uint64
+	TotalPrice                      uint64
+	ClientToServerPacketsLost       uint64
+	ServerToClientPacketsLost       uint64
+	Committed                       bool
+	Flagged                         bool
+	Multipath                       bool
+	Initial                         bool
+	NextBytesUp                     uint64
+	NextBytesDown                   uint64
+	EnvelopeBytesUp                 uint64
+	EnvelopeBytesDown               uint64
+	DatacenterID                    uint64
+	RTTReduction                    bool
+	PacketLossReduction             bool
+	NextRelaysPrice                 [BillingEntryMaxRelays]uint64
+	Latitude                        float32
+	Longitude                       float32
+	ISP                             string
+	ABTest                          bool
+	RouteDecision                   uint64 // Deprecated with server_backend4
+	ConnectionType                  uint8
+	PlatformType                    uint8
+	SDKVersion                      string
+	PacketLoss                      float32
+	PredictedNextRTT                float32
+	MultipathVetoed                 bool
+	UseDebug                        bool
+	Debug                           string
+	FallbackToDirect                bool
+	ClientFlags                     uint32
+	UserFlags                       uint64
+	NearRelayRTT                    float32
+	PacketsOutOfOrderClientToServer uint64
+	PacketsOutOfOrderServerToClient uint64
+	JitterClientToServer            float32
+	JitterServerToClient            float32
+	NumNearRelays                   uint8
+	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
+	NearRelayRTTs                   [BillingEntryMaxNearRelays]float32
+	NearRelayJitters                [BillingEntryMaxNearRelays]float32
+	NearRelayPacketLosses           [BillingEntryMaxNearRelays]float32
+	RelayWentAway                   bool
+	RouteLost                       bool
+	NumTags                         uint8
+	Tags                            [BillingEntryMaxTags]uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -134,7 +164,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.NextJitter)
 		encoding.WriteFloat32(data, &index, entry.NextPacketLoss)
 		encoding.WriteUint8(data, &index, entry.NumNextRelays)
-		for i := 0; i < int(entry.NumNextRelays); i++ {
+		for i := uint8(0); i < entry.NumNextRelays; i++ {
 			encoding.WriteUint64(data, &index, entry.NextRelays[i])
 		}
 		encoding.WriteUint64(data, &index, entry.TotalPrice)
@@ -164,7 +194,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		encoding.WriteBool(data, &index, entry.PacketLossReduction)
 
 		encoding.WriteUint8(data, &index, entry.NumNextRelays)
-		for i := 0; i < int(entry.NumNextRelays); i++ {
+		for i := uint8(0); i < entry.NumNextRelays; i++ {
 			encoding.WriteUint64(data, &index, entry.NextRelaysPrice[i])
 		}
 	}
@@ -183,6 +213,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteFloat32(data, &index, entry.PredictedNextRTT)
 
 	encoding.WriteBool(data, &index, entry.MultipathVetoed)
+
+	encoding.WriteBool(data, &index, entry.UseDebug)
 	encoding.WriteString(data, &index, entry.Debug, BillingEntryMaxDebugLength)
 
 	encoding.WriteBool(data, &index, entry.FallbackToDirect)
@@ -190,6 +222,27 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteUint64(data, &index, entry.UserFlags)
 
 	encoding.WriteFloat32(data, &index, entry.NearRelayRTT)
+
+	encoding.WriteUint64(data, &index, entry.PacketsOutOfOrderClientToServer)
+	encoding.WriteUint64(data, &index, entry.PacketsOutOfOrderServerToClient)
+	encoding.WriteFloat32(data, &index, entry.JitterClientToServer)
+	encoding.WriteFloat32(data, &index, entry.JitterServerToClient)
+
+	encoding.WriteUint8(data, &index, entry.NumNearRelays)
+	for i := uint8(0); i < entry.NumNearRelays; i++ {
+		encoding.WriteUint64(data, &index, entry.NearRelayIDs[i])
+		encoding.WriteFloat32(data, &index, entry.NearRelayRTTs[i])
+		encoding.WriteFloat32(data, &index, entry.NearRelayJitters[i])
+		encoding.WriteFloat32(data, &index, entry.NearRelayPacketLosses[i])
+	}
+
+	encoding.WriteBool(data, &index, entry.RelayWentAway)
+	encoding.WriteBool(data, &index, entry.RouteLost)
+
+	encoding.WriteUint8(data, &index, entry.NumTags)
+	for i := uint8(0); i < entry.NumTags; i++ {
+		encoding.WriteUint64(data, &index, entry.Tags[i])
+	}
 
 	return data[:index]
 }
@@ -415,6 +468,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	}
 
 	if entry.Version >= 14 {
+		if entry.Version >= 17 {
+			if !encoding.ReadBool(data, &index, &entry.UseDebug) {
+				return false
+			}
+		}
+
 		if !encoding.ReadString(data, &index, &entry.Debug, BillingEntryMaxDebugLength) {
 			return false
 		}
@@ -437,6 +496,73 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if entry.Version >= 16 {
 		if !encoding.ReadFloat32(data, &index, &entry.NearRelayRTT) {
 			return false
+		}
+	}
+
+	if entry.Version >= 17 {
+		if !encoding.ReadUint64(data, &index, &entry.PacketsOutOfOrderClientToServer) {
+			return false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.PacketsOutOfOrderServerToClient) {
+			return false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.JitterClientToServer) {
+			return false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.JitterServerToClient) {
+			return false
+		}
+
+		if !encoding.ReadUint8(data, &index, &entry.NumNearRelays) {
+			return false
+		}
+
+		var numNearRelays int
+		if entry.Version >= 18 {
+			numNearRelays = int(entry.NumNearRelays)
+		} else {
+			numNearRelays = BillingEntryMaxNearRelays
+		}
+
+		for i := 0; i < numNearRelays; i++ {
+			if !encoding.ReadUint64(data, &index, &entry.NearRelayIDs[i]) {
+				return false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.NearRelayRTTs[i]) {
+				return false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.NearRelayJitters[i]) {
+				return false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.NearRelayPacketLosses[i]) {
+				return false
+			}
+		}
+	}
+
+	if entry.Version >= 18 {
+		if !encoding.ReadBool(data, &index, &entry.RelayWentAway) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.RouteLost) {
+			return false
+		}
+
+		if !encoding.ReadUint8(data, &index, &entry.NumTags) {
+			return false
+		}
+
+		for i := uint8(0); i < entry.NumTags; i++ {
+			if !encoding.ReadUint64(data, &index, &entry.Tags[i]) {
+				return false
+			}
 		}
 	}
 

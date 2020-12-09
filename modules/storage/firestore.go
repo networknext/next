@@ -93,8 +93,8 @@ type relay struct {
 type datacenter struct {
 	Name         string  `firestore:"name"`
 	Enabled      bool    `firestore:"enabled"`
-	Latitude     float64 `firestore:"latitude"`
-	Longitude    float64 `firestore:"longitude"`
+	Latitude     float32 `firestore:"latitude"`
+	Longitude    float32 `firestore:"longitude"`
 	SupplierName string  `firestore:"supplierName"`
 }
 
@@ -104,36 +104,13 @@ type datacenterMap struct {
 	Buyer      string `firestore:"Buyer"`
 }
 
-type routingRulesSettings struct {
-	DisplayName                  string          `firestore:"displayName"`
-	EnvelopeKbpsUp               int64           `firestore:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64           `firestore:"envelopeKbpsDown"`
-	Mode                         int64           `firestore:"mode"`
-	MaxPricePerGBNibblins        int64           `firestore:"maxPricePerGBNibblins"`
-	AcceptableLatency            float32         `firestore:"acceptableLatency"`
-	RTTEpsilon                   float32         `firestore:"rttRouteSwitch"`
-	RTTThreshold                 float32         `firestore:"rttThreshold"`
-	RTTHysteresis                float32         `firestore:"rttHysteresis"`
-	RTTVeto                      float32         `firestore:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool            `firestore:"youOnlyLiveOnce"`
-	EnablePacketLossSafety       bool            `firestore:"packetLossSafety"`
-	EnableMultipathForPacketLoss bool            `firestore:"packetLossMultipath"`
-	MultipathPacketLossThreshold float32         `firestore:"multipathPacketLossThreshold"`
-	EnableMultipathForJitter     bool            `firestore:"jitterMultipath"`
-	EnableMultipathForRTT        bool            `firestore:"rttMultipath"`
-	EnableABTest                 bool            `firestore:"abTest"`
-	EnableTryBeforeYouBuy        bool            `firestore:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8            `firestore:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64           `firestore:"selectionPercentage"`
-	ExcludedUserHashes           map[string]bool `firestore:"excludedUserHashes"`
-}
-
 type routeShader struct {
 	DisableNetworkNext        bool            `firestore:"disableNetworkNext"`
 	SelectionPercent          int             `firestore:"selectionPercent"`
 	ABTest                    bool            `firestore:"abTest"`
 	ProMode                   bool            `firestore:"proMode"`
 	ReduceLatency             bool            `firestore:"reduceLatency"`
+	ReduceJitter              bool            `firestore:"reduceJitter"`
 	ReducePacketLoss          bool            `firestore:"reducePacketLoss"`
 	Multipath                 bool            `firestore:"multipath"`
 	AcceptableLatency         int32           `firestore:"acceptableLatency"`
@@ -1774,8 +1751,8 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 			Name:    d.Name,
 			Enabled: d.Enabled,
 			Location: routing.Location{
-				Latitude:  float64(d.Latitude),
-				Longitude: float64(d.Longitude),
+				Latitude:  d.Latitude,
+				Longitude: d.Longitude,
 			},
 			SupplierName: d.SupplierName,
 		}
@@ -2205,6 +2182,7 @@ func (fs *Firestore) GetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 	rs.ABTest = tempRS.ABTest
 	rs.ProMode = tempRS.ProMode
 	rs.ReduceLatency = tempRS.ReduceLatency
+	rs.ReduceJitter = tempRS.ReduceJitter
 	rs.ReducePacketLoss = tempRS.ReducePacketLoss
 	rs.Multipath = tempRS.Multipath
 	rs.AcceptableLatency = tempRS.AcceptableLatency
@@ -2242,6 +2220,7 @@ func (fs *Firestore) SetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 		"abTest":                    routeShader.ABTest,
 		"proMode":                   routeShader.ProMode,
 		"reduceLatency":             routeShader.ReduceLatency,
+		"reduceJitter":              routeShader.ReduceJitter,
 		"reducePacketLoss":          routeShader.ReducePacketLoss,
 		"multipath":                 routeShader.Multipath,
 		"acceptableLatency":         routeShader.AcceptableLatency,
@@ -2324,4 +2303,40 @@ func (fs *Firestore) SetFeatureFlagByName(ctx context.Context, flagName string, 
 
 func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) RouteShaders(buyerID uint64) ([]core.RouteShader, error) {
+	return []core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
+	return fmt.Errorf("AddInternalConfig not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateInternalConfig not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+	return fmt.Errorf("RemoveInternalConfig not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
+	return fmt.Errorf("AddRouteShader not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, index uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateRouteShader not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64, index uint64) error {
+	return fmt.Errorf("RemoveRouteShader not yet impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
 }
