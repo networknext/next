@@ -1677,3 +1677,27 @@ func slicesAreEqual(a, b []int64) bool {
 	}
 	return true
 }
+
+type GetInternalConfigArg struct {
+	BuyerID uint64
+}
+
+type GetInternalConfigReply struct {
+	InternalConfig core.InternalConfig
+}
+
+func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfigArg, reply *GetInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	ic, err := s.Storage.InternalConfig(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetInternalConfig() error retrieving config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	reply.InternalConfig = ic
+	return nil
+}
