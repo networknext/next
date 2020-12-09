@@ -162,15 +162,12 @@ func mainReturnWithCode() int {
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// data, err := vanityMetrics.GetEmptyMetrics()
-		// data, err := vanityMetrics.ListCustomMetrics(context.Background(), sd, gcpProjectID, "server_backend")
 		rawBuyerID, ok := r.URL.Query()["id"]
 		if !ok {
 			http.Error(w, "id is missing", http.StatusInternalServerError)
 			return
 		}
 		buyerID := rawBuyerID[0]
-		// buyerID := fmt.Sprintf("%016x", uint64(5679615698061453368))
 
 		// Get start time
 		rawStartTime, ok := r.URL.Query()["start"]
