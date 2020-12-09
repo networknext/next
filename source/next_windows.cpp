@@ -137,9 +137,8 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    // todo
-    (void)thread;
-    return false;
+    next_assert( thread );
+    return SetThreadPriority( thread->handle, THREAD_PRIORITY_TIME_CRITICAL );
 }
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )
