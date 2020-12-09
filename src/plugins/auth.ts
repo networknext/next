@@ -22,7 +22,9 @@ export class AuthService {
   }
 
   public logout () {
-    this.authClient.logout()
+    this.authClient.logout({
+      returnTo: window.location.origin + '/map'
+    })
   }
 
   public login () {
