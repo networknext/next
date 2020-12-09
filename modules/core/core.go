@@ -1107,7 +1107,7 @@ func NewRouteShader() RouteShader {
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
-		ReduceJitter:              false,
+		ReduceJitter:              true,
 		ReducePacketLoss:          true,
 		Multipath:                 false,
 		ProMode:                   false,
