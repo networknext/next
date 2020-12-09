@@ -1016,7 +1016,13 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	}
 
 	if debug != nil {
-		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d]\n", numBestRoutes, bestRouteCost, bestRouteCost + threshold)
+		numNearRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numNearRelays++
+			}
+		}
+		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost + threshold, numNearRelays, len(sourceRelays))
 	}
 
 	randomIndex := rand.Intn(numBestRoutes)
@@ -1049,11 +1055,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 
 	if currentRouteCost < 0 {
 		if debug != nil {
-			if RouteExists(routeMatrix, currentRouteNumRelays, currentRouteRelays, debug) {
-				*debug += "current route still exists, but we couldn't get a cost for it?! - picking a new random route\n"
-			} else {
-				*debug += "current route no longer exists. picking a new random route\n"
-			}
+			*debug += "current route no longer exists. picking a new random route\n"
 		}		
 		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
@@ -1105,7 +1107,7 @@ func NewRouteShader() RouteShader {
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
-		ReduceJitter:              false,
+		ReduceJitter:              true,
 		ReducePacketLoss:          true,
 		Multipath:                 false,
 		ProMode:                   false,
