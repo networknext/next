@@ -150,9 +150,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 					select {
 					case billingEntry := <-post.vanityMetricChannel:
 						// Extract the vanity metrics from the billingEntry
-						extractedMetrics := post.ExtractVanityMetrics(billingEntry)
-
-						if extractedMetrics == nil {
+						extractedMetrics, onNext := post.ExtractVanityMetrics(billingEntry)
+						if !onNext {
 							// If the billingEntry was not on Next, no need to send it
 							level.Debug(post.logger).Log("type", "vanity metrics", "msg", "billingEntry not on next, not sending vanity metric")
 							continue
@@ -333,7 +332,7 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 	return byteCount, nil
 }
 
-func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry) *vanity.VanityMetrics {
+func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry) (vanity.VanityMetrics, bool) {
 	if billingEntry.Next {
 		latencyReduced := 0
 		if billingEntry.RTTReduction {
@@ -350,7 +349,7 @@ func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.Billi
 			jitterReduced = 1
 		}
 
-		return &vanity.VanityMetrics{
+		vm := vanity.VanityMetrics{
 			BuyerID:                 billingEntry.BuyerID,
 			UserHash:                billingEntry.UserHash,
 			SessionID:               billingEntry.SessionID,
@@ -360,7 +359,9 @@ func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.Billi
 			SlicesPacketLossReduced: uint64(packetLossReduced),
 			SlicesJitterReduced:     uint64(jitterReduced),
 		}
+
+		return vm, true
 	}
 
-	return nil
+	return vanity.VanityMetrics{}, false
 }
