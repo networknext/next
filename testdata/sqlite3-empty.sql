@@ -60,8 +60,9 @@ create table route_shaders (
   pro_mode boolean not null,
   reduce_latency boolean not null,
   reduce_packet_loss boolean not null,
+  reduce_jitter boolean not null,
   selection_percent integer not null,
-  buyer_id integer not null,
+  buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
 
@@ -79,13 +80,13 @@ create table rs_internal_configs (
   force_next boolean not null,
   large_customer boolean not null,
   is_uncommitted boolean not null,
-  buyer_id integer not null,
+  buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
 
 create table banned_users (
   id integer primary key autoincrement,
-  user_id bytea not null,
+  user_id integer not null unique,
   buyer_id integer not null,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
@@ -133,7 +134,7 @@ create table relays (
 
 -- datacenter_maps is a junction table between dcs and buyers
 create table datacenter_maps (
-  alias varchar not null,
+  alias varchar,
   buyer_id integer not null,
   datacenter_id integer not null,
   primary key (buyer_id, datacenter_id),
@@ -145,7 +146,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/12/02 13:38:30
+-- File generation: 2020/12/09 12:01:23
 
 -- machine_types
 insert into machine_types values (0, 'none');
