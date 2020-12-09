@@ -547,3 +547,47 @@ func getInternalConfig(
 
 	return nil
 }
+
+func getRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+	var reply localjsonrpc.GetRouteShaderReply
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	arg := localjsonrpc.GetRouteShaderArg{
+		BuyerID: buyerID,
+	}
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetRouteShader", arg); err != nil {
+		fmt.Println("No RouteShader stored for this buyer (they use the defaults).")
+		return nil
+	}
+
+	fmt.Printf("RouteShader for buyer %s:\n", buyerName)
+	fmt.Printf("  DisableNetworkNext       : %t\n", reply.RouteShader.DisableNetworkNext)
+	fmt.Printf("  SelectionPercent         : %d\n", reply.RouteShader.SelectionPercent)
+	fmt.Printf("  ABTest                   : %t\n", reply.RouteShader.ABTest)
+	fmt.Printf("  ProMode                  : %t\n", reply.RouteShader.ProMode)
+	fmt.Printf("  ReduceLatency            : %t\n", reply.RouteShader.ReduceLatency)
+	fmt.Printf("  ReduceJitter             : %t\n", reply.RouteShader.ReduceJitter)
+	fmt.Printf("  ReducePacketLoss         : %t\n", reply.RouteShader.ReducePacketLoss)
+	fmt.Printf("  Multipath                : %t\n", reply.RouteShader.Multipath)
+	fmt.Printf("  AcceptableLatency        : %d\n", reply.RouteShader.AcceptableLatency)
+	fmt.Printf("  LatencyThreshold         : %d\n", reply.RouteShader.LatencyThreshold)
+	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
+	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
+	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
+	fmt.Printf("  BannedUsers              :")
+	if len(reply.RouteShader.BannedUsers) == 0 {
+		fmt.Printf(" none\n")
+	} else {
+		fmt.Println()
+		for userID := range reply.RouteShader.BannedUsers {
+			fmt.Printf("\t%016x", userID)
+		}
+	}
+
+	return nil
+}

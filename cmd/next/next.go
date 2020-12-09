@@ -1713,7 +1713,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					},
 				},
 			},
-			{ // internal configs
+			{ // internal config
 				Name:       "config",
 				ShortUsage: "next buyer config (buyer name or substring)",
 				ShortHelp:  "Return the internal config stored for a buyer",
@@ -1725,6 +1725,21 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					getInternalConfig(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{ // route shader
+				Name:       "shader",
+				ShortUsage: "next buyer shader (buyer name or substring)",
+				ShortHelp:  "Return the route shader stored for a buyer",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring"), 0)
+					} else if len(args) > 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
+					}
+
+					getRouteShader(rpcClient, env, args[0])
 					return nil
 				},
 			},
