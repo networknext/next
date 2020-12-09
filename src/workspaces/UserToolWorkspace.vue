@@ -17,7 +17,7 @@
         User Tool
       </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
-        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.WARNING" ref="verifyAlert">
+        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.INFO" ref="verifyAlert">
           <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
             Resend email
           </a>
