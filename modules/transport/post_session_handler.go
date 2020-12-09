@@ -415,7 +415,7 @@ func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.Bil
 
 	// Jitter is continuous so safe to determine jitter reduction using values
 	jitterReduced := 0
-	if billingEntry.Next && billingEntry.NextJitter-billingEntry.DirectJitter < 0 {
+	if billingEntry.Next && billingEntry.DirectJitter-billingEntry.NextJitter > 0 {
 		jitterReduced = 1
 	}
 
