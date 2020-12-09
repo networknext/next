@@ -125,7 +125,7 @@ Modify the client source code to open a session to your server IP address:
 
 .. code-block:: c++
 
-        const char * server_address = "173.255.241.176:50000";
+    const char * server_address = "173.255.241.176:50000";
 
 Then build and run the client. 
 
