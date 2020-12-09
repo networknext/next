@@ -1715,21 +1715,16 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 			},
 			{ // internal configs
 				Name:       "config",
-				ShortUsage: "next buyer config",
+				ShortUsage: "next buyer config (buyer name or substring)",
 				ShortHelp:  "Return the internal config stored for a buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintf("Please provide the buyer ID in hex", args[0]), 0)
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring"), 0)
 					} else if len(args) > 1 {
-						handleRunTimeError(fmt.Sprintf("Please provide only the buyer ID in hex", args[0]), 0)
+						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
 					}
 
-					buyerID, err := strconv.ParseUint(args[0], 16, 64)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Error parsing the provided buyer ID (should be in hex): %v", err), 0)
-					}
-
-					getInternalConfig(rpcClient, env, buyerID)
+					getInternalConfig(rpcClient, env, args[0])
 					return nil
 				},
 			},

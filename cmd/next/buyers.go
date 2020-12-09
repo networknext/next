@@ -477,12 +477,51 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 
 }
 
+func buyerIDFromName(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) (string, uint64) {
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	var filtered []string
+	var buyerID uint64
+
+	r := regexp.MustCompile("(?i)" + buyerRegex) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.CompanyName) {
+			filtered = append(filtered, buyer.CompanyName)
+			buyerID = buyer.ID
+		}
+	}
+
+	if len(filtered) == 0 {
+		handleRunTimeError(fmt.Sprintf("No buyer matches found for '%s'", buyerRegex), 0)
+	}
+
+	if len(filtered) > 1 {
+		fmt.Printf("Found several  matches for '%s'", buyerRegex)
+		for _, match := range filtered {
+			fmt.Printf("\t%s\n", match)
+		}
+		handleRunTimeError(fmt.Sprintln("Please be more specific."), 0)
+	}
+
+	return filtered[0], buyerID
+}
+
 func getInternalConfig(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
-	buyerID uint64,
+	buyerRegex string,
 ) error {
 	var reply localjsonrpc.GetInternalConfigReply
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
 	arg := localjsonrpc.GetInternalConfigArg{
 		BuyerID: buyerID,
@@ -492,7 +531,7 @@ func getInternalConfig(
 		return nil
 	}
 
-	fmt.Println("InternalConfig:")
+	fmt.Printf("InternalConfig for buyer %s:\n", buyerName)
 	fmt.Printf("  RouteSelectThreshold      : %d\n", reply.InternalConfig.RouteSelectThreshold)
 	fmt.Printf("  RouteSwitchThreshold      : %d\n", reply.InternalConfig.RouteSwitchThreshold)
 	fmt.Printf("  MaxLatencyTradeOff        : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
