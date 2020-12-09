@@ -12,10 +12,10 @@ type PostSessionMetrics struct {
 	PortalEntriesFinished  Counter
 	PortalBufferLength     Gauge
 	PortalBufferFull       Counter
-	VanityMetricsSent	   Counter
+	VanityMetricsSent      Counter
 	VanityMetricsFinished  Counter
-	VanityBufferLength	   Gauge
-	VanityBufferFull	   Counter
+	VanityBufferLength     Gauge
+	VanityBufferFull       Counter
 
 	BillingFailure Counter
 	PortalFailure  Counter
@@ -32,13 +32,13 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 	PortalEntriesFinished:  &EmptyCounter{},
 	PortalBufferLength:     &EmptyGauge{},
 	PortalBufferFull:       &EmptyCounter{},
-	VanityMetricsSent:		&EmptyCounter{},
-	VanityMetricsFinished:	&EmptyCounter{},
-	VanityBufferLength:		&EmptyGauge{},
-	VanityBufferFull:		&EmptyCounter{},
+	VanityMetricsSent:      &EmptyCounter{},
+	VanityMetricsFinished:  &EmptyCounter{},
+	VanityBufferLength:     &EmptyGauge{},
+	VanityBufferFull:       &EmptyCounter{},
 	BillingFailure:         &EmptyCounter{},
 	PortalFailure:          &EmptyCounter{},
-	VanityFailure:			&EmptyCounter{},
+	VanityFailure:          &EmptyCounter{},
 }
 
 // NewPostSessionMetrics creates the metrics the post session processor will use.

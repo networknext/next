@@ -10,17 +10,17 @@ type VanityMetric struct {
 	SlicesAccelerated       Counter
 	SlicesLatencyReduced    Counter
 	SlicesPacketLossReduced Counter
-	SlicesJitterReduced 	Counter
-	SessionsAccelerated 	Counter
+	SlicesJitterReduced     Counter
+	SessionsAccelerated     Counter
 }
 
 // EmptyVanityMetric is used for testing when we want to pass in metrics but don't care about their value,
 var EmptyVanityMetric = VanityMetric{
-	SlicesAccelerated: 			&EmptyCounter{},
-	SlicesLatencyReduced:   	&EmptyCounter{},
-	SlicesPacketLossReduced: 	&EmptyCounter{},
-	SlicesJitterReduced: 		&EmptyCounter{},
-	SessionsAccelerated: 		&EmptyCounter{},
+	SlicesAccelerated:       &EmptyCounter{},
+	SlicesLatencyReduced:    &EmptyCounter{},
+	SlicesPacketLossReduced: &EmptyCounter{},
+	SlicesJitterReduced:     &EmptyCounter{},
+	SessionsAccelerated:     &EmptyCounter{},
 }
 
 // NewVanityMetric creates the metrics the vanity metrics service will use.

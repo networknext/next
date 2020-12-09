@@ -266,23 +266,23 @@ var EmptyBigTableMetrics = BigTableMetrics{
 }
 
 type VanityMetricMetrics struct {
-	Goroutines 					Gauge
-	MemoryAllocated				Gauge
-	ReceivedVanityCount			Counter
-	UpdateVanitySuccessCount	Counter
-	UpdateVanityFailureCount	Counter
-	ReadVanitySuccessCount		Counter
-	ReadVanityFailureCount		Counter
+	Goroutines               Gauge
+	MemoryAllocated          Gauge
+	ReceivedVanityCount      Counter
+	UpdateVanitySuccessCount Counter
+	UpdateVanityFailureCount Counter
+	ReadVanitySuccessCount   Counter
+	ReadVanityFailureCount   Counter
 }
 
 var EmptyVanityMetricMetrics = VanityMetricMetrics{
-	Goroutines: 				&EmptyGauge{},
-	MemoryAllocated: 			&EmptyGauge{},
-	ReceivedVanityCount:		&EmptyCounter{},
-	UpdateVanitySuccessCount:  	&EmptyCounter{},
-	UpdateVanityFailureCount:  	&EmptyCounter{},
-	ReadVanitySuccessCount:		&EmptyCounter{},
-	ReadVanityFailureCount:		&EmptyCounter{},
+	Goroutines:               &EmptyGauge{},
+	MemoryAllocated:          &EmptyGauge{},
+	ReceivedVanityCount:      &EmptyCounter{},
+	UpdateVanitySuccessCount: &EmptyCounter{},
+	UpdateVanityFailureCount: &EmptyCounter{},
+	ReadVanitySuccessCount:   &EmptyCounter{},
+	ReadVanityFailureCount:   &EmptyCounter{},
 }
 
 func NewVanityMetricMetrics(ctx context.Context, metricsHandler Handler) (*VanityMetricMetrics, error) {

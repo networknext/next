@@ -17,13 +17,13 @@ import (
 )
 
 type UserSession struct {
-	sessionID	uint64
-	timestamp	int64
+	sessionID uint64
+	timestamp int64
 }
 
 type UserSessionMap struct {
-	m 		map[uint64]*UserSession
-	lock 	sync.RWMutex
+	m    map[uint64]*UserSession
+	lock sync.RWMutex
 }
 
 type PostSessionHandler struct {
@@ -31,42 +31,42 @@ type PostSessionHandler struct {
 	postSessionBillingChannel  chan *billing.BillingEntry
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
-	vanityMetricChannel		   chan *billing.BillingEntry
+	vanityMetricChannel        chan *billing.BillingEntry
 	portalPublishers           []pubsub.Publisher
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
-	vanityPublishers		   []pubsub.Publisher
-	vanityPublisherIndex	   int
-	vanityPublishMaxRetries	   int
-	vanityAggregator	   	   map[uint64]vanity.VanityMetrics
-	vanityAggregatorMutex	   sync.RWMutex
-	vanityUserSessionMap	   *UserSessionMap
-	vanityPushDuration		   time.Duration
-	useVanityMetrics 		   bool
+	vanityPublishers           []pubsub.Publisher
+	vanityPublisherIndex       int
+	vanityPublishMaxRetries    int
+	vanityAggregator           map[uint64]vanity.VanityMetrics
+	vanityAggregatorMutex      sync.RWMutex
+	vanityUserSessionMap       *UserSessionMap
+	vanityPushDuration         time.Duration
+	useVanityMetrics           bool
 	biller                     billing.Biller
 	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, vanityMaxUserIdleTime time.Duration, 
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, vanityMaxUserIdleTime time.Duration,
 	vanityExpirationFrequencyCheck time.Duration, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
-	
+
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
-		vanityMetricChannel:		make(chan *billing.BillingEntry, chanBufferSize),
+		vanityMetricChannel:        make(chan *billing.BillingEntry, chanBufferSize),
 		portalPublishers:           portalPublishers,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
-		vanityPublishers:			vanityPublishers,
-		vanityPublishMaxRetries:	vanityPublishMaxRetries,
-		vanityAggregator:	   	    make(map[uint64]vanity.VanityMetrics),
-		vanityAggregatorMutex:		sync.RWMutex{},
-		vanityUserSessionMap:		NewUserSessionMap(vanityMaxUserIdleTime, vanityExpirationFrequencyCheck),
-		vanityPushDuration:		   	vanityPushDuration,
-		useVanityMetrics:			useVanityMetrics,
+		vanityPublishers:           vanityPublishers,
+		vanityPublishMaxRetries:    vanityPublishMaxRetries,
+		vanityAggregator:           make(map[uint64]vanity.VanityMetrics),
+		vanityAggregatorMutex:      sync.RWMutex{},
+		vanityUserSessionMap:       NewUserSessionMap(vanityMaxUserIdleTime, vanityExpirationFrequencyCheck),
+		vanityPushDuration:         vanityPushDuration,
+		useVanityMetrics:           useVanityMetrics,
 		biller:                     biller,
 		logger:                     logger,
 		metrics:                    metrics,
@@ -176,10 +176,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						_, ok := post.vanityAggregator[billingEntry.BuyerID]
 						post.vanityAggregatorMutex.RUnlock()
 						if !ok {
-						    // Create a vanity metric for this buyer ID
-						    post.vanityAggregatorMutex.Lock()
-						    post.vanityAggregator[billingEntry.BuyerID] = vanity.VanityMetrics{BuyerID: billingEntry.BuyerID}
-						    post.vanityAggregatorMutex.Unlock()
+							// Create a vanity metric for this buyer ID
+							post.vanityAggregatorMutex.Lock()
+							post.vanityAggregator[billingEntry.BuyerID] = vanity.VanityMetrics{BuyerID: billingEntry.BuyerID}
+							post.vanityAggregatorMutex.Unlock()
 						}
 
 						// Aggregate elements of the billing entry to respective vanity metric per buyer
@@ -220,7 +220,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 						// Reset the map for the buyer IDs
 						post.vanityAggregatorMutex.Lock()
-						for buyerID, _ := range post.vanityAggregator {
+						for buyerID := range post.vanityAggregator {
 							post.vanityAggregator[buyerID] = vanity.VanityMetrics{BuyerID: buyerID}
 						}
 						post.vanityAggregatorMutex.Unlock()
@@ -342,7 +342,7 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 
 func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic pubsub.Topic, data [][]byte) (int, error) {
 	var byteCount int
-	
+
 	for i := range post.vanityPublishers {
 		var retryCount int
 
@@ -350,7 +350,7 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 		index := (post.vanityPublisherIndex + i) % len(post.vanityPublishers)
 		for _, subData := range data {
 			for retryCount < post.vanityPublishMaxRetries+1 { // only retry so many times
-			
+
 				subByteCount, err := post.vanityPublishers[index].Publish(ctx, topic, subData)
 				if err != nil {
 					switch err.(type) {
@@ -412,10 +412,10 @@ func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.Bil
 	if billingEntry.Next && billingEntry.PacketLossReduction {
 		packetLossReduced = 1
 	}
-	
+
 	// Jitter is continuous so safe to determine jitter reduction using values
 	jitterReduced := 0
-	if billingEntry.Next && billingEntry.NextJitter - billingEntry.DirectJitter < 0 {
+	if billingEntry.Next && billingEntry.NextJitter-billingEntry.DirectJitter < 0 {
 		jitterReduced = 1
 	}
 
@@ -446,17 +446,16 @@ func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.Bil
 	return nil
 }
 
-
 // Creates a new UserSessionMap, which maps a userHash to a userID
 // Keys expire after they have not been accessed for maxUserIdleTime
 // Key expiration is checked at every expirationFrequencyCheckInterval
 func NewUserSessionMap(maxUserIdleTime time.Duration, expirationFrequencyCheck time.Duration) *UserSessionMap {
 	m := &UserSessionMap{
-		m: make(map[uint64]*UserSession), 
+		m:    make(map[uint64]*UserSession),
 		lock: sync.RWMutex{},
 	}
 	go func() {
-		for _ = range time.Tick(expirationFrequencyCheck) {
+		for range time.Tick(expirationFrequencyCheck) {
 			m.lock.Lock()
 			for key, session := range m.m {
 				if time.Since(time.Unix(session.timestamp, 0)) > maxUserIdleTime {
@@ -487,7 +486,7 @@ func (m *UserSessionMap) Put(userHash uint64, sessionID uint64) {
 		m.m[userHash] = session
 		m.lock.Unlock()
 	}
-	
+
 	m.lock.Lock()
 	session.timestamp = time.Now().Unix()
 	m.lock.Unlock()

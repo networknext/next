@@ -10,8 +10,8 @@ import (
 	"time"
 
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/backend"
@@ -25,7 +25,7 @@ import (
 
 func getTestVanityData(buyerID uint64) vanity.VanityMetrics {
 	return vanity.VanityMetrics{
-		BuyerID:				 buyerID,
+		BuyerID:                 buyerID,
 		SlicesAccelerated:       uint64(5),
 		SlicesLatencyReduced:    uint64(5),
 		SlicesPacketLossReduced: uint64(5),
@@ -59,8 +59,8 @@ func (mock *BadMockSubscriber) ReceiveMessage() <-chan pubsub.MessageInfo {
 }
 
 type SimpleMockSubscriber struct {
-	topic       pubsub.Topic
-	vanityData  []byte
+	topic      pubsub.Topic
+	vanityData []byte
 }
 
 func (mock *SimpleMockSubscriber) Subscribe(topic pubsub.Topic) error {
@@ -96,9 +96,9 @@ func (mock *SimpleMockSubscriber) ReceiveMessage() <-chan pubsub.MessageInfo {
 type MockSubscriber struct {
 	topics []pubsub.Topic
 
-	expire  bool
+	expire bool
 
-	vanityData   [][]byte
+	vanityData [][]byte
 
 	receiveCount int
 	maxMessages  int
@@ -149,7 +149,6 @@ func (mock *MockSubscriber) ReceiveMessage() <-chan pubsub.MessageInfo {
 		return resultChan
 	}
 }
-
 
 func TestNewVanityMetrics(t *testing.T) {
 	ctx := context.Background()
@@ -264,7 +263,7 @@ func TestUpdateMetrics(t *testing.T) {
 	})
 }
 
-// Requires environment to not be local and for StackDriver 
+// Requires environment to not be local and for StackDriver
 func TestReadingMetrics(t *testing.T) {
 	ctx, cancelWriteLoop := context.WithCancel(context.Background())
 
@@ -279,7 +278,7 @@ func TestReadingMetrics(t *testing.T) {
 	if ok {
 		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
 		assert.NoError(t, err)
-	} 
+	}
 
 	if !enableSDMetrics {
 		t.Skip()
@@ -294,7 +293,7 @@ func TestReadingMetrics(t *testing.T) {
 			OverwriteTimeout:   10 * time.Second,
 		}
 
-		err := sdHandler.Open(ctx);
+		err := sdHandler.Open(ctx)
 		assert.NoError(t, err)
 
 		sd = &sdHandler
@@ -321,7 +320,6 @@ func TestReadingMetrics(t *testing.T) {
 
 	endTime := time.Now()
 
-
 	t.Run("get custom metric types success", func(t *testing.T) {
 		customMetrics, err := vanityMetrics.GetCustomMetricTypes(ctx, sd, gcpProjectID, "server_backend")
 		assert.NoError(t, err)
@@ -335,18 +333,18 @@ func TestReadingMetrics(t *testing.T) {
 
 		metricType, ok := customMetrics["Server Backend Billing Entries Queued"]
 		assert.Equal(t, true, ok)
-		
+
 		tsFilter := vanityMetrics.GetTimeSeriesFilter(metricType)
 		tsName := vanityMetrics.GetTimeSeriesName(gcpProjectID, metricType)
 
 		tsInterval := &monitoringpb.TimeInterval{EndTime: timestamppb.New(endTime), StartTime: timestamppb.New(startTime)}
-	    duration := endTime.Sub(startTime)
-	    
-	    maxAgg := &monitoringpb.Aggregation{
-	        AlignmentPeriod:    durationpb.New(duration),
-	        PerSeriesAligner:   monitoringpb.Aggregation_Aligner(11), 	// Get max values per alignment period 
-	        CrossSeriesReducer: monitoringpb.Aggregation_Reducer(3), 	// Get single max value across alignment periods
-	    }
+		duration := endTime.Sub(startTime)
+
+		maxAgg := &monitoringpb.Aggregation{
+			AlignmentPeriod:    durationpb.New(duration),
+			PerSeriesAligner:   monitoringpb.Aggregation_Aligner(11), // Get max values per alignment period
+			CrossSeriesReducer: monitoringpb.Aggregation_Reducer(3),  // Get single max value across alignment periods
+		}
 
 		pointsList, err := vanityMetrics.GetPointDetails(ctx, sd, tsName, tsFilter, tsInterval, maxAgg)
 		assert.NoError(t, err)

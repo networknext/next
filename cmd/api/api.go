@@ -27,7 +27,7 @@ var (
 	tag           string
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
-	sd 			  *metrics.StackDriverHandler
+	sd            *metrics.StackDriverHandler
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -68,7 +68,7 @@ func mainReturnWithCode() int {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	
+
 	// StackDriver Metrics
 	var enableSDMetrics bool
 	enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
@@ -161,7 +161,7 @@ func mainReturnWithCode() int {
 }
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request) {
 		// data, err := vanityMetrics.GetEmptyMetrics()
 		// data, err := vanityMetrics.ListCustomMetrics(context.Background(), sd, gcpProjectID, "server_backend")
 		rawBuyerID, ok := r.URL.Query()["id"]
@@ -214,7 +214,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
 		return
