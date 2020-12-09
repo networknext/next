@@ -36,6 +36,10 @@ blocks:
           commands:
             - make build-api-artifacts-prod
             - make publish-api-artifacts-prod
+        - name: API
+          commands:
+            - make build-vanity-artifacts-prod
+            - make publish-vanity-artifacts-prod
         - name: Portal
           commands:
             - make build-portal-artifacts-prod

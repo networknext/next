@@ -523,6 +523,10 @@ build-analytics-artifacts-dev: build-analytics
 build-api-artifacts-dev: build-api
 	./deploy/build-artifacts.sh -e dev -s api
 
+.PHONY: build-vanity-artifacts-dev
+build-vanity-artifacts-dev: build-vanity
+	./deploy/build-artifacts.sh -e dev -s vanity
+
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
@@ -559,6 +563,10 @@ build-analytics-artifacts-staging: build-analytics
 build-api-artifacts-staging: build-api
 	./deploy/build-artifacts.sh -e staging -s api
 
+.PHONY: build-vanity-artifacts-staging
+build-vanity-artifacts-staging: build-vanity
+	./deploy/build-artifacts.sh -e staging -s vanity
+
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
@@ -591,6 +599,10 @@ build-analytics-artifacts-prod: build-analytics
 build-api-artifacts-prod: build-api
 	./deploy/build-artifacts.sh -e prod -s api
 
+.PHONY: build-vanity-artifacts-prod
+build-vanity-artifacts-prod: build-vanity
+	./deploy/build-artifacts.sh -e prod -s vanity
+
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
@@ -622,6 +634,10 @@ publish-analytics-artifacts-dev:
 .PHONY: publish-api-artifacts-dev
 publish-api-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s api
+
+.PHONY: publish-vanity-artifacts-dev
+publish-vanity-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s vanity
 
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
@@ -658,6 +674,10 @@ publish-analytics-artifacts-staging:
 .PHONY: publish-api-artifacts-staging
 publish-api-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s api
+
+.PHONY: publish-vanity-artifacts-staging
+publish-vanity-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s vanity
 
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
@@ -698,6 +718,10 @@ publish-billing-artifacts-prod:
 .PHONY: publish-api-artifacts-prod
 publish-api-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s api
+
+.PHONY: publish-vanity-artifacts-prod
+publish-vanity-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s vanity
 
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
@@ -1021,7 +1045,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
