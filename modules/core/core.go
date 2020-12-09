@@ -767,7 +767,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 	}
 	if sourceCost >= 255 {
 		if debug != nil {
-			*debug += "can't find source relay for route\n"
+			*debug += "source relay for route is no longer routable\n"
 		}
 		return -1
 	}
