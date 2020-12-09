@@ -71,7 +71,7 @@ In the *upgraded_client.cpp* example, replace the test customer public key with 
 
 The server needs your private key to link with your account. It's very important that nobody outside your company knows your private key.
 
-Change the code in the *upgraded_server.cpp* example so set your private key:
+Change the code in the *upgraded_server.cpp* example to set your private key:
 
 .. code-block:: c++
 
