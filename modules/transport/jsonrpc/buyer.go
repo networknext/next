@@ -1677,3 +1677,51 @@ func slicesAreEqual(a, b []int64) bool {
 	}
 	return true
 }
+
+type GetInternalConfigArg struct {
+	BuyerID uint64
+}
+
+type GetInternalConfigReply struct {
+	InternalConfig core.InternalConfig
+}
+
+func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfigArg, reply *GetInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	ic, err := s.Storage.InternalConfig(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetInternalConfig() error retrieving config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	reply.InternalConfig = ic
+	return nil
+}
+
+type GetRouteShaderArg struct {
+	BuyerID uint64
+}
+
+type GetRouteShaderReply struct {
+	RouteShader core.RouteShader
+}
+
+func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	rs, err := s.Storage.RouteShader(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	reply.RouteShader = rs
+	return nil
+}
