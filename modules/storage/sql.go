@@ -1930,6 +1930,11 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 
 	db.syncInternalConfigs(ctx)
 
+	buyer.InternalConfig = ic
+	db.buyerMutex.Lock()
+	db.buyers[buyer.ID] = buyer
+	db.buyerMutex.Unlock()
+
 	db.IncrementSequenceNumber(ctx)
 
 	return nil
@@ -2210,6 +2215,11 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 	}
 
 	db.syncRouteShaders(ctx)
+
+	buyer.RouteShader = rs
+	db.buyerMutex.Lock()
+	db.buyers[buyer.ID] = buyer
+	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 

@@ -223,16 +223,24 @@ func (db *SQL) Sync(ctx context.Context) error {
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
 	// 	1 Customers
-	//	2 Buyers
-	//	3 Sellers
-	// 	4 Datacenters
-	// 	5 DatacenterMaps
-	//	6 Relays
-	//  7 InternalConfigs
-	//  8 RouteShaders
+	//  2 InternalConfigs
+	//  3 RouteShaders
+	//	4 Buyers
+	//	5 Sellers
+	// 	6 Datacenters
+	// 	7 DatacenterMaps
+	//	8 Relays
 
 	if err := db.syncCustomers(ctx); err != nil {
 		return fmt.Errorf("failed to sync customers: %v", err)
+	}
+
+	if err := db.syncInternalConfigs(ctx); err != nil {
+		return fmt.Errorf("failed to sync internal configs: %v", err)
+	}
+
+	if err := db.syncRouteShaders(ctx); err != nil {
+		return fmt.Errorf("failed to sync route shaders: %v", err)
 	}
 
 	if err := db.syncBuyers(ctx); err != nil {
@@ -253,14 +261,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 	if err := db.syncRelays(ctx); err != nil {
 		return fmt.Errorf("failed to sync relays: %v", err)
-	}
-
-	if err := db.syncInternalConfigs(ctx); err != nil {
-		return fmt.Errorf("failed to sync internal configs: %v", err)
-	}
-
-	if err := db.syncRouteShaders(ctx); err != nil {
-		return fmt.Errorf("failed to sync route shaders: %v", err)
 	}
 
 	return nil
@@ -521,12 +521,12 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		rs, err := db.RouteShader(buyer.ID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %016x, some fields will have default values", buyer.ID), "err", err)
 		}
 
 		ic, err := db.InternalConfig(buyer.ID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %016x, some fields will have default values", buyer.ID), "err", err)
 		}
 
 		b := routing.Buyer{
