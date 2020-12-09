@@ -870,7 +870,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayID))
@@ -941,6 +941,32 @@ func ReframeRelays(routeState *RouteState, relayIDToIndex map[uint64]int32, dire
 		}
 	}
 
+	// reduce jitter by preferring near relays with equal to or better than average jitter
+
+	if routeShader.ReduceJitter {
+
+		count := 0
+		totalJitter := 0.0
+		for i := range sourceRelayLatency {
+			if out_sourceRelayLatency[i] != 255 {
+				totalJitter += float64(out_sourceRelayJitter[i])
+				count++
+			}
+		}
+
+		if count > 0 {
+			averageJitter := int32(math.Ceil(totalJitter / float64(count)))
+			for i := range sourceRelayLatency {
+				if out_sourceRelayLatency[i] == 255 {
+					continue
+				}
+				if out_sourceRelayJitter[i] > averageJitter {
+					out_sourceRelayLatency[i] = 255
+				}
+			}
+		}
+	}
+
 	// exclude any dest relays that no longer exist in the route matrix
 
 	numDestRelays := int32(0)
@@ -990,7 +1016,13 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	}
 
 	if debug != nil {
-		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d]\n", numBestRoutes, bestRouteCost, bestRouteCost + threshold)
+		numNearRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numNearRelays++
+			}
+		}
+		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost + threshold, numNearRelays, len(sourceRelays))
 	}
 
 	randomIndex := rand.Intn(numBestRoutes)
@@ -1023,11 +1055,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 
 	if currentRouteCost < 0 {
 		if debug != nil {
-			if RouteExists(routeMatrix, currentRouteNumRelays, currentRouteRelays, debug) {
-				*debug += "current route still exists, but we couldn't get a cost for it?! - picking a new random route\n"
-			} else {
-				*debug += "current route no longer exists. picking a new random route\n"
-			}
+			*debug += "current route no longer exists. picking a new random route\n"
 		}		
 		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
@@ -1062,6 +1090,7 @@ type RouteShader struct {
 	ABTest                    bool
 	ProMode                   bool
 	ReduceLatency             bool
+	ReduceJitter              bool
 	ReducePacketLoss          bool
 	Multipath                 bool
 	AcceptableLatency         int32
@@ -1078,6 +1107,7 @@ func NewRouteShader() RouteShader {
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
+		ReduceJitter:              true,
 		ReducePacketLoss:          true,
 		Multipath:                 false,
 		ProMode:                   false,

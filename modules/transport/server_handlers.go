@@ -189,7 +189,7 @@ func (n nearRelayGroup) Copy(other *nearRelayGroup) {
 	copy(other.PacketLosses, n.PacketLosses)
 }
 
-func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelays nearRelayGroup, routeState *core.RouteState, newSession bool, clientLat float32, clientLong float32, maxNearRelays int, directJitter int32, destRelayIDs []uint64) (bool, nearRelayGroup, []int32, error) {
+func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelays nearRelayGroup, routeShader *core.RouteShader, routeState *core.RouteState, newSession bool, clientLat float32, clientLong float32, maxNearRelays int, directJitter int32, destRelayIDs []uint64) (bool, nearRelayGroup, []int32, error) {
 	var nearRelaysChanged bool
 
 	if newSession {
@@ -222,7 +222,7 @@ func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelay
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
-	core.ReframeRelays(routeState, routeMatrix.RelayIDsToIndices, directJitter, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directJitter, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
 	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
@@ -488,6 +488,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 			debug = new(string)
 		}
 
+		// Hack to support ESL - if a player has a "pro" tag, use pro mode in the route shader
+		// Do this for ESL or local, for testing
+		if buyer.ID == 0x1e4e8804454033c8 || buyer.ID == 0xbdbebdbf0f7be395 {
+			if packet.NumTags > 0 {
+				for i := int32(0); i < packet.NumTags; i++ {
+					if packet.Tags[i] == crypto.HashID("pro") {
+						buyer.RouteShader.ProMode = true
+						break
+					}
+				}
+			}
+		}
+
 		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
 			level.Error(logger).Log("handler", "session_update", "err", err)
 
@@ -616,6 +629,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
 			routeMatrix,
 			incomingNearRelays,
+			&buyer.RouteShader,
 			&sessionData.RouteState,
 			newSession,
 			sessionData.Location.Latitude,
@@ -723,6 +737,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		}
 
 		response.Committed = sessionData.RouteState.Committed
+		response.Multipath = sessionData.RouteState.Multipath
 
 		// Store the route back into the session data
 		sessionData.RouteNumRelays = routeNumRelays
