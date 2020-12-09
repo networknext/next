@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"math"
-	"unsafe"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -17,6 +15,16 @@ import (
 	"github.com/networknext/backend/modules/transport/pubsub"
 	"github.com/networknext/backend/modules/vanity"
 )
+
+type UserSession struct {
+	sessionID	uint64
+	timestamp	int64
+}
+
+type UserSessionMap struct {
+	m 		map[uint64]*UserSession
+	lock 	sync.RWMutex
+}
 
 type PostSessionHandler struct {
 	numGoroutines              int
@@ -31,6 +39,8 @@ type PostSessionHandler struct {
 	vanityPublisherIndex	   int
 	vanityPublishMaxRetries	   int
 	vanityAggregator	   	   map[uint64]vanity.VanityMetrics
+	vanityAggregatorMutex	   sync.RWMutex
+	vanityUserSessionMap	   *UserSessionMap
 	vanityPushDuration		   time.Duration
 	useVanityMetrics 		   bool
 	biller                     billing.Biller
@@ -39,7 +49,9 @@ type PostSessionHandler struct {
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, vanityPushDuration time.Duration, vanityMaxUserIdleTime time.Duration, 
+	vanityExpirationFrequencyCheck time.Duration, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
@@ -51,6 +63,8 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		vanityPublishers:			vanityPublishers,
 		vanityPublishMaxRetries:	vanityPublishMaxRetries,
 		vanityAggregator:	   	    make(map[uint64]vanity.VanityMetrics),
+		vanityAggregatorMutex:		sync.RWMutex{},
+		vanityUserSessionMap:		NewUserSessionMap(vanityMaxUserIdleTime, vanityExpirationFrequencyCheck),
 		vanityPushDuration:		   	vanityPushDuration,
 		useVanityMetrics:			useVanityMetrics,
 		biller:                     biller,
@@ -153,14 +167,19 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			go func() {
 				defer wg.Done()
 				pushTime := time.Now()
-				
+
 				for {
 					select {
 					case billingEntry := <-post.vanityMetricChannel:
 						// Check if buyer ID is in map
-						if _, ok := post.vanityAggregator[billingEntry.BuyerID]; !ok {
+						post.vanityAggregatorMutex.RLock()
+						_, ok := post.vanityAggregator[billingEntry.BuyerID]
+						post.vanityAggregatorMutex.RUnlock()
+						if !ok {
 						    // Create a vanity metric for this buyer ID
+						    post.vanityAggregatorMutex.Lock()
 						    post.vanityAggregator[billingEntry.BuyerID] = vanity.VanityMetrics{BuyerID: billingEntry.BuyerID}
+						    post.vanityAggregatorMutex.Unlock()
 						}
 
 						// Aggregate elements of the billing entry to respective vanity metric per buyer
@@ -179,6 +198,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 						// Marshal the aggregate vanity metric per buyer
 						var aggregateBinary [][]byte
+						post.vanityAggregatorMutex.RLock()
 						for _, metric := range post.vanityAggregator {
 							metricBinary, err := metric.MarshalBinary()
 							if err != nil {
@@ -188,6 +208,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 								aggregateBinary = append(aggregateBinary, metricBinary)
 							}
 						}
+						post.vanityAggregatorMutex.RUnlock()
 
 						// Push the data over ZeroMQ
 						aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityMetricData, aggregateBinary)
@@ -197,11 +218,12 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 							continue
 						}
 
-
 						// Reset the map for the buyer IDs
+						post.vanityAggregatorMutex.Lock()
 						for buyerID, _ := range post.vanityAggregator {
 							post.vanityAggregator[buyerID] = vanity.VanityMetrics{BuyerID: buyerID}
 						}
+						post.vanityAggregatorMutex.Unlock()
 
 						level.Debug(post.logger).Log("type", "vanity metrics", "msg", fmt.Sprintf("published %d bytes to vanity metrics", aggregateBytes))
 						post.metrics.VanityMetricsFinished.Add(1)
@@ -367,12 +389,14 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 // Aggregates vanity metrics per buyer
 // Each billing entry is after a slice
 func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.BillingEntry) error {
-	
+	post.vanityAggregatorMutex.RLock()
 	vanityForBuyer, ok := post.vanityAggregator[billingEntry.BuyerID]
 	if !ok {
+		post.vanityAggregatorMutex.RUnlock()
 		errStr := fmt.Sprintf("Buyer ID %d does not exist in vanityAggregator map", billingEntry.BuyerID)
 		return errors.New(errStr)
 	}
+	post.vanityAggregatorMutex.RUnlock()
 
 	slicesAccelerated := 0
 	if billingEntry.Next {
@@ -395,29 +419,91 @@ func (post *PostSessionHandler) AggregateVanityMetrics(billingEntry *billing.Bil
 		jitterReduced = 1
 	}
 
-	// TODO: sessionsAccelerated
-
+	sessionsAccelerated := 0
+	if billingEntry.Next {
+		// There is only at most one active session per userHash,
+		// so if the latest session is different than the last one, then increment the counter
+		if sessionID, ok := post.vanityUserSessionMap.Get(billingEntry.UserHash); ok {
+			// Verify if the session is different
+			if sessionID != billingEntry.SessionID {
+				// Update the map with the latest session
+				post.vanityUserSessionMap.Put(billingEntry.UserHash, billingEntry.SessionID)
+				sessionsAccelerated = 1
+			}
+		} else {
+			// First session for this userHash
+			post.vanityUserSessionMap.Put(billingEntry.UserHash, billingEntry.SessionID)
+			sessionsAccelerated = 1
+		}
+	}
 
 	atomic.AddUint64(&vanityForBuyer.SlicesAccelerated, uint64(slicesAccelerated))
 	atomic.AddUint64(&vanityForBuyer.SlicesLatencyReduced, uint64(latencyReduced))
 	atomic.AddUint64(&vanityForBuyer.SlicesPacketLossReduced, uint64(packetLossReduced))
 	atomic.AddUint64(&vanityForBuyer.SlicesJitterReduced, uint64(jitterReduced))
+	atomic.AddUint64(&vanityForBuyer.SessionsAccelerated, uint64(sessionsAccelerated))
+
 	return nil
 }
 
-// A version of AddUInt32 from sync/atomic for adding float32
-// Adapted from: https://stackoverflow.com/questions/27492349/go-atomic-addfloat32
-func AddFloat32(val *float32, delta float32) (new float32) {
-    for {
-        old := *val
-        new = old + delta
-        if atomic.CompareAndSwapUint32(
-            (*uint32)(unsafe.Pointer(val)),
-            math.Float32bits(old),
-            math.Float32bits(new),
-        ) {
-            break
-        }
-    }
-    return
+
+// Creates a new UserSessionMap, which maps a userHash to a userID
+// Keys expire after they have not been accessed for maxUserIdleTime
+// Key expiration is checked at every expirationFrequencyCheckInterval
+func NewUserSessionMap(maxUserIdleTime time.Duration, expirationFrequencyCheck time.Duration) *UserSessionMap {
+	m := &UserSessionMap{
+		m: make(map[uint64]*UserSession), 
+		lock: sync.RWMutex{},
+	}
+	go func() {
+		for _ = range time.Tick(expirationFrequencyCheck) {
+			m.lock.Lock()
+			for key, session := range m.m {
+				if time.Since(time.Unix(session.timestamp, 0)) > maxUserIdleTime {
+					delete(m.m, key)
+				}
+			}
+			m.lock.Unlock()
+		}
+	}()
+
+	return m
+}
+
+// Gets the length of the UserSessionMap
+func (m *UserSessionMap) Len() int {
+	return len(m.m)
+}
+
+// Inserts a (userHash, sessionID) pair in the UserSessionMap
+// and refreshes the last accessed timestamp
+func (m *UserSessionMap) Put(userHash uint64, sessionID uint64) {
+	m.lock.RLock()
+	session, ok := m.m[userHash]
+	m.lock.RUnlock()
+	if !ok {
+		session = &UserSession{sessionID: sessionID}
+		m.lock.Lock()
+		m.m[userHash] = session
+		m.lock.Unlock()
+	}
+	
+	m.lock.Lock()
+	session.timestamp = time.Now().Unix()
+	m.lock.Unlock()
+}
+
+// Gets the sessionID for a userHash from the UserSessionmap
+// and refreshes the last accessed timestamp
+func (m *UserSessionMap) Get(userHash uint64) (uint64, bool) {
+	m.lock.Lock()
+	if session, ok := m.m[userHash]; ok {
+		sessionID := session.sessionID
+		session.timestamp = time.Now().Unix()
+		m.lock.Unlock()
+
+		return sessionID, true
+	}
+	m.lock.Unlock()
+	return 0, false
 }

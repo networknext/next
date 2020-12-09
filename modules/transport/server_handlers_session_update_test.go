@@ -250,7 +250,7 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -318,7 +318,7 @@ func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -387,7 +387,7 @@ func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -467,7 +467,7 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -538,7 +538,7 @@ func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -633,7 +633,7 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -728,7 +728,7 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -808,7 +808,7 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -890,7 +890,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -970,7 +970,7 @@ func TestSessionUpdateHandlerNoNearRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -1077,7 +1077,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -1201,7 +1201,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -1334,7 +1334,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -1540,7 +1540,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -1802,7 +1802,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -2060,7 +2060,7 @@ func TestSessionUpdateHandlerNextRouteInternalIPs(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, *privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{"seller_name"}, true)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -2288,7 +2288,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -2502,7 +2502,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -2715,7 +2715,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -2888,7 +2888,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -3080,7 +3080,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -3270,7 +3270,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -3482,7 +3482,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -3683,7 +3683,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -3885,7 +3885,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics, []string{}, false)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
