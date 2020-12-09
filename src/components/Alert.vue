@@ -1,7 +1,7 @@
 <template>
   <div :class="[{'alert': true}, className]" role="alert">
     {{ alertMessage }}
-    <slot></slot>
+    <slot v-if="showSlots"></slot>
   </div>
 </template>
 
@@ -22,19 +22,79 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
  *  Similar idea to the sessions count component
  */
 
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
 
 @Component
 export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: '' }) message!: string
-  @Prop({ required: false, type: String, default: AlertTypes.DEFAULT }) alertType!: string
+  @Prop({ required: false, type: String, default: AlertType.DEFAULT }) alertType!: string
 
   get alertMessage (): string {
-    return this.message
+    if (this.message !== this.givenMessage) {
+      this.givenMessage = this.message
+      return this.givenMessage
+    }
+    return this.currentMessage
   }
 
   get className (): string {
-    return this.alertType
+    if (this.alertType !== this.givenClass) {
+      this.givenClass = this.alertType
+      return this.givenClass
+    }
+    return this.currentClass
+  }
+
+  private givenMessage: string
+  private givenClass: string
+  private currentMessage: string
+  private currentClass: string
+  private showSlots: boolean
+
+  constructor () {
+    super()
+    this.givenMessage = this.message
+    this.givenClass = this.alertType
+    this.currentMessage = this.givenMessage
+    this.currentClass = this.givenClass
+    this.showSlots = true
+  }
+
+  public resendVerificationEmail () {
+    const userId = this.$store.getters.userProfile.auth0ID
+    const email = this.$store.getters.userProfile.email
+
+    this.$apiService
+      .resendVerificationEmail({
+        user_id: userId,
+        user_email: email,
+        redirect: window.location.origin,
+        connection: 'Username-Password-Authentication'
+      })
+      .then((response: any) => {
+        this.showSlots = false
+        this.currentMessage =
+          'Verification email was sent successfully. Please check your email for futher instructions.'
+        this.currentClass = AlertType.SUCCESS
+        setTimeout(() => {
+          this.currentMessage = this.givenMessage
+          this.currentClass = this.givenClass
+          this.showSlots = true
+        }, 5000)
+      })
+      .catch((error: Error) => {
+        this.showSlots = false
+        console.log('something went wrong with resending verification email')
+        console.log(error)
+        this.currentMessage =
+          'Something went wrong sending the verification email. Please try again later.'
+        this.currentClass = AlertType.ERROR
+        setTimeout(() => {
+          this.currentMessage = this.givenMessage
+          this.currentClass = this.givenClass
+          this.showSlots = true
+        }, 5000)
+      })
   }
 }
 

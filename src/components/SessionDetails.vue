@@ -260,7 +260,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 // import data1 from '../../test_data/session_details.json'
 
 /**
@@ -314,7 +314,7 @@ export default class SessionDetails extends Vue {
     super()
     this.searchID = ''
     this.message = ''
-    this.alertType = AlertTypes.ERROR
+    this.alertType = AlertType.ERROR
     // this.slices = (data1 as any).result.slices
     // this.meta = (data1 as any).result.meta
   }

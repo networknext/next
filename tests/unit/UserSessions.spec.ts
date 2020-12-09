@@ -4,9 +4,11 @@ import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import VueRouter from 'vue-router'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { waitFor } from './utils'
+import Vuex from 'vuex'
 
 describe('UserSessions.vue no sessions', () => {
   const localVue = createLocalVue()
+  localVue.use(Vuex)
 
   const defaultRouter = new VueRouter({
     routes: [

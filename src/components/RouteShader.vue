@@ -100,7 +100,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { cloneDeep } from 'lodash'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 /**
@@ -138,7 +138,7 @@ export default class RouteShader extends Vue {
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertTypes.SUCCESS
+        this.alertType = AlertType.SUCCESS
         this.message = 'Updated route shader successfully'
         setTimeout(() => {
           this.message = ''
@@ -147,7 +147,7 @@ export default class RouteShader extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong updating the route shader')
         console.log(error)
-        this.alertType = AlertTypes.ERROR
+        this.alertType = AlertType.ERROR
         this.message = 'Failed to update router shader'
         setTimeout(() => {
           this.message = ''

@@ -82,7 +82,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 import { UserProfile } from './types/AuthTypes'
 
 /**
@@ -121,11 +121,12 @@ export default class AccountSettings extends Vue {
   private companyCodeErrors: Array<string>
   private confirmPasswordErrors: Array<string>
   private newsletterConsent: boolean
+  private AlertType: any
 
   constructor () {
     super()
     this.message = ''
-    this.alertType = AlertTypes.DEFAULT
+    this.alertType = AlertType.DEFAULT
     this.companyName = ''
     this.companyCode = ''
     this.newPassword = ''
@@ -141,6 +142,7 @@ export default class AccountSettings extends Vue {
     this.companyCodeErrors = []
     this.confirmPasswordErrors = []
     this.newsletterConsent = false
+    this.AlertType = AlertType
   }
 
   private mounted () {
@@ -262,10 +264,10 @@ export default class AccountSettings extends Vue {
       .then((responses: Array<any>) => {
         this.$authService.refreshToken()
         this.message = 'Account settings updated successfully'
-        this.alertType = AlertTypes.SUCCESS
+        this.alertType = AlertType.SUCCESS
         setTimeout(() => {
           this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          this.alertType = AlertType.DEFAULT
         }, 5000)
       })
       .catch((error: Error) => {
@@ -275,10 +277,10 @@ export default class AccountSettings extends Vue {
         this.companyCode = this.$store.getters.userProfile.companyCode
         this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
         this.message = 'Failed to update account settings'
-        this.alertType = AlertTypes.ERROR
+        this.alertType = AlertType.ERROR
         setTimeout(() => {
           this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          this.alertType = AlertType.DEFAULT
         }, 5000)
       })
   }

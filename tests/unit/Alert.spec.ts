@@ -1,6 +1,6 @@
 import { shallowMount } from '@vue/test-utils'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
 
 describe('Alert.vue', () => {
   it('mounts an alert successfully', () => {
@@ -19,7 +19,7 @@ describe('Alert.vue', () => {
     expect(wrapper.exists()).toBe(true)
     // TODO combine these some how
     expect(wrapper.find('div').classes('alert')).toBe(true)
-    expect(wrapper.find('div').classes(AlertTypes.DEFAULT)).toBe(true)
+    expect(wrapper.find('div').classes(AlertType.DEFAULT)).toBe(true)
     // ^^^
     expect(wrapper.find('div').text()).toBe('This is a test')
     wrapper.destroy()
@@ -29,12 +29,12 @@ describe('Alert.vue', () => {
     const wrapper = shallowMount(Alert, {
       propsData: {
         message: 'This is still a test',
-        alertType: AlertTypes.SUCCESS
+        alertType: AlertType.SUCCESS
       }
     })
     // TODO combine these some how
     expect(wrapper.find('div').classes('alert')).toBe(true)
-    expect(wrapper.find('div').classes(AlertTypes.SUCCESS)).toBe(true)
+    expect(wrapper.find('div').classes(AlertType.SUCCESS)).toBe(true)
     // ^^^
     expect(wrapper.find('div').text()).toBe('This is still a test')
     wrapper.destroy()
@@ -44,7 +44,7 @@ describe('Alert.vue', () => {
     const wrapper = shallowMount(Alert, {
       propsData: {
         message: 'This is a test with a link: ',
-        alertType: AlertTypes.INFO
+        alertType: AlertType.INFO
       },
       slots: {
         default: '<a>I am a link!</a>'
@@ -58,7 +58,7 @@ describe('Alert.vue', () => {
 
   it('tests computed properties', () => {
     let message = 'This is a test'
-    let alertType = AlertTypes.ERROR
+    let alertType = AlertType.ERROR
     const wrapper = shallowMount(Alert, {
       propsData: {
         message: message,
@@ -70,7 +70,7 @@ describe('Alert.vue', () => {
     expect((wrapper.vm as any).className).toBe(alertType)
 
     message = 'This is also a test'
-    alertType = AlertTypes.SUCCESS
+    alertType = AlertType.SUCCESS
 
     wrapper.setProps({
       message: message,
