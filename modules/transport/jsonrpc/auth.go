@@ -985,31 +985,41 @@ type AccountSettingsReply struct {
 }
 
 func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettingsArgs, reply *AccountSettingsReply) error {
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
-		err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
+	var errorResponse error
+
+	if VerifyAnyRole(r, AnonymousRole) {
+		err := fmt.Errorf("UpdateAccountSettings(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INSUFFICIENT_PRIVILEGES.ToString())
+		return errorResponse
 	}
 
 	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateAccountSettings() unable to parse user from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 
 	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
 		err := fmt.Errorf("UpdateAccountSettings() unable to parse id from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 
 	userAccount, err := s.UserManager.Read(requestID)
 	if err != nil {
 		err := fmt.Errorf("UpdateAccountSettings() failed to fetch user account")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	if args.Password != "" {
@@ -1024,7 +1034,9 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 	if err != nil {
 		err = fmt.Errorf("UpdateAccountSettings() failed to update user: %v", err)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	return nil
@@ -1039,12 +1051,15 @@ type VerifyEmailReply struct {
 }
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+	var errorResponse error
 	reply.Sent = false
 
 	if !VerifyAllRoles(r, UnverifiedRole) {
-		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: already verified")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(ALREADY_VERIFIED.ToString())
+		return errorResponse
 	}
 
 	job := &management.Job{
@@ -1055,7 +1070,9 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 	if err != nil {
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", err)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	reply.Sent = true
@@ -1098,22 +1115,29 @@ type UpdateDomainsReply struct {
 }
 
 func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomainsArgs, reply *UpdateDomainsReply) error {
+	var errorResponse error
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INSUFFICIENT_PRIVILEGES.ToString())
+		return errorResponse
 	}
 
 	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(UNASSIGNED.ToString())
+		return errorResponse
 	}
 	if companyCode == "" {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to parse company code")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 	ctx := context.Background()
 
@@ -1121,7 +1145,9 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	if err != nil {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to get request company")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	company.AutomaticSignInDomains = strings.Join(args.Domains, ", ")
@@ -1130,7 +1156,9 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	if err != nil {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to update company")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	return nil
