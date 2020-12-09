@@ -136,6 +136,20 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Get the max idle time for a userHash in the in-memory map
+	maxUserIdleTime, err := envvar.GetDuration("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", time.Minute*30)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get the frequency for removing unused userHashes from the in-memory map
+	expirationFrequencyCheck, err := envvar.GetDuration("FEATURE_VANITY_METRIC_EXPIRATION_FREQUENCY_CHECK", time.Minute*5)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	// Get the number of update goroutines for the vanity metric handler
 	numVanityUpdateGoroutines, err := envvar.GetInt("FEATURE_VANITY_METRIC_GOROUTINE_COUNT", 5)
 	if err != nil {
@@ -161,6 +175,7 @@ func mainReturnWithCode() int {
 				fmt.Printf("%.2f mb allocated\n", vanityMetricMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d messages received\n", int(vanityMetricMetrics.ReceivedVanityCount.Value()))
 				fmt.Printf("%d successful updates\n", int(vanityMetricMetrics.UpdateVanitySuccessCount.Value()))
+				fmt.Printf("%d failed updates\n", int(vanityMetricMetrics.UpdateVanityFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -169,7 +184,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber)
+	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber, maxUserIdleTime, expirationFrequencyCheck)
 
 	// Start the goroutines for receiving vanity metrics from the backend and updating metrics
 	errChan := make(chan error, 1)

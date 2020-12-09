@@ -47,12 +47,24 @@ func (e *ErrUnmarshalMessage) Error() string {
 	return fmt.Sprintf("could not unmarshal message: %v", e.err)
 }
 
+type UserSession struct {
+	sessionID    uint64
+	lastAccessed int64
+	timestamp    uint64
+}
+
+type UserSessionMap struct {
+	m    map[uint64]*UserSession
+	lock sync.RWMutex
+}
+
 type VanityMetricHandler struct {
 	handler              metrics.Handler
 	metrics              *metrics.VanityServiceMetrics
 	vanityMetricDataChan chan *VanityMetrics
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
+	userSessionMap       *UserSessionMap
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
@@ -64,6 +76,9 @@ type VanityMetricHandler struct {
 // Aggregation of vanity metrics takes place in AggregateVanityMetrics() in modules/transport/post_session_handler.go
 type VanityMetrics struct {
 	BuyerID                 uint64
+	UserHash                uint64
+	SessionID               uint64
+	Timestamp               uint64
 	SlicesAccelerated       uint64
 	SlicesLatencyReduced    uint64
 	SlicesPacketLossReduced uint64
@@ -71,7 +86,8 @@ type VanityMetrics struct {
 	SessionsAccelerated     uint64
 }
 
-func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
+func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
+	vanitySubscriber pubsub.Subscriber, vanityMaxUserIdleTime time.Duration, vanityExpirationFrequencyCheck time.Duration) *VanityMetricHandler {
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
 		"Slices Latency Reduced":     true,
@@ -93,6 +109,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		vanityMetricDataChan: make(chan *VanityMetrics, chanBufferSize),
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
+		userSessionMap:       NewUserSessionMap(vanityMaxUserIdleTime, vanityExpirationFrequencyCheck),
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
@@ -101,6 +118,9 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 
 func (v VanityMetrics) Size() uint64 {
 	sum := 8 + // BuyerID
+		8 + // UserHash
+		8 + // SessionID
+		8 + // Timestamp
 		8 + // SlicesAccelerated
 		8 + // SlicesLatencyReduced
 		8 + // SlicesPacketLossReduced
@@ -115,6 +135,9 @@ func (v VanityMetrics) MarshalBinary() ([]byte, error) {
 	index := 0
 
 	encoding.WriteUint64(data, &index, v.BuyerID)
+	encoding.WriteUint64(data, &index, v.UserHash)
+	encoding.WriteUint64(data, &index, v.SessionID)
+	encoding.WriteUint64(data, &index, v.Timestamp)
 
 	encoding.WriteUint64(data, &index, v.SlicesAccelerated)
 	encoding.WriteUint64(data, &index, v.SlicesLatencyReduced)
@@ -132,6 +155,17 @@ func (v VanityMetrics) UnmarshalBinary(data []byte) error {
 		return errors.New("[VanityMetrics] invalid read at buyer ID")
 	}
 
+	if !encoding.ReadUint64(data, &index, &v.UserHash) {
+		return errors.New("[VanityMetrics] invalid read at user hash")
+	}
+
+	if !encoding.ReadUint64(data, &index, &v.SessionID) {
+		return errors.New("[VanityMetrics] invalid read at session ID")
+	}
+
+	if !encoding.ReadUint64(data, &index, &v.Timestamp) {
+		return errors.New("[VanityMetrics] invalid read at timestamp")
+	}
 	if !encoding.ReadUint64(data, &index, &v.SlicesAccelerated) {
 		return errors.New("[VanityMetrics] invalid read at slices accelerated")
 	}
@@ -280,6 +314,11 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vm.mapMutex.Unlock()
 		}
 
+		// Calculate sessionsAccelerated
+		if vm.IsNewSession(vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp) {
+			vanityMetricDataBuffer[j].SessionsAccelerated = 1
+		}
+
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
 		vanityMetricPerBuyer.SlicesAccelerated.Add(float64(vanityMetricDataBuffer[j].SlicesAccelerated))
@@ -293,6 +332,24 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 
 	vanityMetricDataBuffer = vanityMetricDataBuffer[0:]
 	return nil
+}
+
+// Checks if a userHash has moved onto a new sessionID at a later point in time
+func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, timestamp uint64) bool {
+
+	userSession, userTimestamp, exists := vm.userSessionMap.Get(userHash)
+	if !exists {
+		// Add the new userHash to the map
+		vm.userSessionMap.Put(userHash, sessionID, timestamp)
+		return true
+	}
+
+	// Check if this is a different sessionID and the timestamp is later
+	if userSession != sessionID && timestamp > userTimestamp {
+		return true
+	}
+
+	return false
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct
@@ -459,4 +516,66 @@ func (vm *VanityMetricHandler) GetTimeSeriesFilter(metricType string) string {
 
 func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType string) string {
 	return fmt.Sprintf(`projects/%s/metricDescriptors/%s`, gcpProjectID, metricType)
+}
+
+// Creates a new UserSessionMap, which maps a userHash to a sessionID
+// Keys expire after they have not been accessed for maxUserIdleTime
+// Key expiration is checked at every expirationFrequencyCheckInterval
+func NewUserSessionMap(maxUserIdleTime time.Duration, expirationFrequencyCheck time.Duration) *UserSessionMap {
+	m := &UserSessionMap{
+		m:    make(map[uint64]*UserSession),
+		lock: sync.RWMutex{},
+	}
+	go func() {
+		for range time.Tick(expirationFrequencyCheck) {
+			m.lock.Lock()
+			for key, session := range m.m {
+				if time.Since(time.Unix(session.lastAccessed, 0)) > maxUserIdleTime {
+					delete(m.m, key)
+				}
+			}
+			m.lock.Unlock()
+		}
+	}()
+
+	return m
+}
+
+// Gets the length of the UserSessionMap
+func (m *UserSessionMap) Len() int {
+	return len(m.m)
+}
+
+// Inserts a (userHash, sessionID) pair in the UserSessionMap
+// and refreshes the last accessed timestamp
+func (m *UserSessionMap) Put(userHash uint64, sessionID uint64, timestamp uint64) {
+	m.lock.RLock()
+	session, ok := m.m[userHash]
+	m.lock.RUnlock()
+	if !ok {
+		session = &UserSession{sessionID: sessionID, timestamp: timestamp}
+		m.lock.Lock()
+		m.m[userHash] = session
+		m.lock.Unlock()
+	}
+
+	m.lock.Lock()
+	session.lastAccessed = time.Now().Unix()
+	m.lock.Unlock()
+}
+
+// Gets the sessionID and timestamp for a userHash from the UserSessionMap
+// and refreshes the last accessed timestamp
+func (m *UserSessionMap) Get(userHash uint64) (sessionID uint64, timestamp uint64, exists bool) {
+	m.lock.Lock()
+	if session, ok := m.m[userHash]; ok {
+		sessionID := session.sessionID
+		timestamp := session.timestamp
+		session.lastAccessed = time.Now().Unix()
+		m.lock.Unlock()
+
+		return sessionID, timestamp, true
+	}
+	m.lock.Unlock()
+	return 0, 0, false
 }

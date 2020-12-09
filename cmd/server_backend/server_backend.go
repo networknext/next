@@ -529,28 +529,10 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	postVanityMetricPushDuration, err := envvar.GetDuration("FEATURE_VANITY_METRIC_PUSH_DURATION", time.Second*5)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	postVanityMetricMaxUserIdleTime, err := envvar.GetDuration("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", time.Minute*30)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	postVanityMetricExpirationFrequencyCheck, err := envvar.GetDuration("FEATURE_VANITY_METRIC_EXPIRATION_FREQUENCY_CHECK", time.Minute*5)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, postVanityMetricPushDuration, postVanityMetricMaxUserIdleTime, postVanityMetricExpirationFrequencyCheck, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis

@@ -17,11 +17,10 @@ type PostSessionMetrics struct {
 	VanityBufferLength     Gauge
 	VanityBufferFull       Counter
 
-	BillingFailure         Counter
-	PortalFailure          Counter
-	VanityAggregateFailure Counter
-	VanityMarshalFailure   Counter
-	VanityTransmitFailure  Counter
+	BillingFailure        Counter
+	PortalFailure         Counter
+	VanityMarshalFailure  Counter
+	VanityTransmitFailure Counter
 }
 
 // EmptyPostSessionMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -40,7 +39,6 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 	VanityBufferFull:       &EmptyCounter{},
 	BillingFailure:         &EmptyCounter{},
 	PortalFailure:          &EmptyCounter{},
-	VanityAggregateFailure: &EmptyCounter{},
 	VanityMarshalFailure:   &EmptyCounter{},
 	VanityTransmitFailure:  &EmptyCounter{},
 }
@@ -199,17 +197,6 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		ID:          "post_session_update.vanity_buffer_full",
 		Unit:        "entries",
 		Description: "The number of billing entries dropped because the vanity queue was full.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityAggregateFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Aggregate Failure",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_aggregate_failure",
-		Unit:        "errors",
-		Description: "The number of billing entries for vanity metrics that failed to be aggregated.",
 	})
 	if err != nil {
 		return nil, err

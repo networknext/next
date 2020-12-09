@@ -23,9 +23,11 @@ import (
 	vanity "github.com/networknext/backend/modules/vanity"
 )
 
-func getTestVanityData(buyerID uint64) vanity.VanityMetrics {
+func getTestVanityData(buyerID uint64, sessionID uint64, timestamp uint64) vanity.VanityMetrics {
 	return vanity.VanityMetrics{
 		BuyerID:                 buyerID,
+		SessionID:               sessionID,
+		Timestamp:               timestamp,
 		SlicesAccelerated:       uint64(5),
 		SlicesLatencyReduced:    uint64(5),
 		SlicesPacketLossReduced: uint64(5),
@@ -160,7 +162,7 @@ func TestNewVanityMetrics(t *testing.T) {
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil)
+	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, time.Second*1, time.Hour*24)
 	assert.NotNil(t, vanityMetrics)
 }
 
@@ -177,65 +179,55 @@ func TestReceiveMessage(t *testing.T) {
 	t.Run("receive error", func(t *testing.T) {
 		subscriber := &BadMockSubscriber{}
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, time.Second*1, time.Hour*24)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.EqualError(t, err, "error receiving message: bad data")
 	})
 
-	t.Run("count data unmarshal failure", func(t *testing.T) {
+	t.Run("vanity data unmarshal failure", func(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, time.Second*1, time.Hour*24)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Contains(t, err.Error(), "could not unmarshal message: ")
 	})
 
 	t.Run("vanity data channel full", func(t *testing.T) {
-		vanityData := getTestVanityData(rand.Uint64())
+		vanityData := getTestVanityData(rand.Uint64(), rand.Uint64(), rand.Uint64())
 		vanityDataBytes, err := vanityData.MarshalBinary()
 		assert.NoError(t, err)
 
 		subscriber := &SimpleMockSubscriber{vanityData: vanityDataBytes}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 0, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 0, subscriber, time.Second*1, time.Hour*24)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Equal(t, err, &vanity.ErrChannelFull{})
 	})
 
 	t.Run("vanity data success", func(t *testing.T) {
-		vanityData := getTestVanityData(rand.Uint64())
+		vanityData := getTestVanityData(rand.Uint64(), rand.Uint64(), rand.Uint64())
 		vanityDataBytes, err := vanityData.MarshalBinary()
 		assert.NoError(t, err)
 
 		subscriber := &SimpleMockSubscriber{vanityData: vanityDataBytes}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, time.Second*5, time.Second*5)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.NoError(t, err)
-	})
-
-	t.Run("vanity data unmarshal failure", func(t *testing.T) {
-		subscriber := &SimpleMockSubscriber{vanityData: []byte("bad data")}
-		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
-
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
-
-		err = vanityMetrics.ReceiveMessage(ctx)
-		assert.Contains(t, err.Error(), "could not unmarshal message: ")
 	})
 
 	t.Run("unknown message", func(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{}
 		subscriber.Subscribe(0)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, time.Second*1, time.Hour*24)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Equal(t, &vanity.ErrUnknownMessage{}, err)
@@ -253,9 +245,9 @@ func TestUpdateMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("vanity data update metric success", func(t *testing.T) {
-		vanityData := getTestVanityData(rand.Uint64())
+		vanityData := getTestVanityData(rand.Uint64(), rand.Uint64(), rand.Uint64())
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, time.Second*10, time.Hour*10)
 
 		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
 		assert.NoError(t, err)
@@ -313,7 +305,7 @@ func TestReadingMetrics(t *testing.T) {
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil)
+	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, time.Minute*30, time.Minute*5)
 
 	startTime, err := time.Parse(time.RFC3339, "2020-12-01T15:04:05+07:00")
 	assert.NoError(t, err)
@@ -353,7 +345,10 @@ func TestReadingMetrics(t *testing.T) {
 
 	t.Run("get vanity metrics json success", func(t *testing.T) {
 		buyerID := rand.Uint64()
-		vanityData := getTestVanityData(buyerID)
+		sessionID := rand.Uint64()
+		timestamp := rand.Uint64()
+
+		vanityData := getTestVanityData(buyerID, sessionID, timestamp)
 
 		err := vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
 		assert.NoError(t, err)

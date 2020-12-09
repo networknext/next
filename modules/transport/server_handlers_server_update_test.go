@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"testing"
-	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/crypto"
@@ -23,7 +22,7 @@ func TestServerUpdateHandlerReadPacketFailure(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
@@ -45,7 +44,7 @@ func TestServerUpdateHandlerBuyerNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -75,7 +74,7 @@ func TestServerUpdateHandlerSDKTooOld(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -113,7 +112,7 @@ func TestServerUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -144,7 +143,7 @@ func TestServerUpdateHandlerDatacenterNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -180,7 +179,7 @@ func TestServerUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -224,7 +223,7 @@ func TestServerUpdateHandlerSuccess(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -269,7 +268,7 @@ func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, time.Second, time.Minute*30, time.Minute*5, false, nil, logger, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
 	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
