@@ -36,11 +36,6 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
-		routeShader := core.NewRouteShader()
-
-		internalConfig := core.NewInternalConfig()
-		internalConfig.ForceNext = true
-
 		// Add customers
 		// fmt.Println("Adding customers")
 		if err := db.AddCustomer(ctx, routing.Customer{
@@ -84,14 +79,12 @@ func SeedSQLStorage(
 		// Add buyers
 		// fmt.Println("Adding buyers")
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:             customerID,
-			ShortName:      "local",
-			CompanyCode:    localCust.Code,
-			Live:           true,
-			PublicKey:      customerPublicKey,
-			RouteShader:    routeShader,
-			InternalConfig: internalConfig,
-			CustomerID:     localCust.DatabaseID,
+			ID:          customerID,
+			ShortName:   "local",
+			CompanyCode: localCust.Code,
+			Live:        true,
+			PublicKey:   customerPublicKey,
+			CustomerID:  localCust.DatabaseID,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -104,14 +97,12 @@ func SeedSQLStorage(
 		internalBuyerIDGhost := binary.LittleEndian.Uint64(publicKey[:8])
 
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:             internalBuyerIDGhost,
-			ShortName:      "ghost-army",
-			CompanyCode:    ghostCust.Code,
-			Live:           true,
-			PublicKey:      publicKey,
-			RouteShader:    routeShader,
-			InternalConfig: internalConfig,
-			CustomerID:     ghostCust.DatabaseID,
+			ID:          internalBuyerIDGhost,
+			ShortName:   "ghost-army",
+			CompanyCode: ghostCust.Code,
+			Live:        true,
+			PublicKey:   publicKey,
+			CustomerID:  ghostCust.DatabaseID,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -179,7 +170,7 @@ func SeedSQLStorage(
 				Longitude: 120.5,
 			},
 			StreetAddress: "Somewhere, USA",
-			SupplierName:  "supplier.local.name",
+			SupplierName:  "usw2-az4",
 			SellerID:      localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
@@ -187,7 +178,7 @@ func SeedSQLStorage(
 		}
 
 		localDCID = crypto.HashID("local.locale.name")
-		localDatacenter = routing.Datacenter{
+		localDatacenter2 := routing.Datacenter{
 			ID:      localDCID,
 			Name:    "local.locale.name",
 			Enabled: true,
@@ -199,7 +190,7 @@ func SeedSQLStorage(
 			SupplierName:  "supplier.local.name",
 			SellerID:      localSeller.DatabaseID,
 		}
-		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
+		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
 
@@ -233,7 +224,7 @@ func SeedSQLStorage(
 		// add datacenter maps
 		// fmt.Println("Adding datacenter_maps")
 		localDcMap := routing.DatacenterMap{
-			Alias:        "local.map",
+			Alias:        "local aliased",
 			BuyerID:      localBuyer.ID,
 			DatacenterID: localDatacenter.ID,
 		}
@@ -355,6 +346,111 @@ func SeedSQLStorage(
 				time.Sleep(time.Millisecond * 500)
 			}
 		}
+
+		// add InternalConfigs, RouteShaders and BannedUsers
+
+		// fmt.Printf("localBuyer ID: %016x\n", localBuyer.ID)
+		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
+
+		internalConfig := core.InternalConfig{
+			RouteSelectThreshold:       2,
+			RouteSwitchThreshold:       5,
+			MaxLatencyTradeOff:         10,
+			RTTVeto_Default:            -10,
+			RTTVeto_PacketLoss:         -20,
+			RTTVeto_Multipath:          -20,
+			MultipathOverloadThreshold: 500,
+			TryBeforeYouBuy:            false,
+			ForceNext:                  true,
+			LargeCustomer:              false,
+			Uncommitted:                false,
+			MaxRTT:                     300,
+		}
+
+		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)
+		if err != nil {
+			return fmt.Errorf("Error adding InternalConfig for local buyer: %v", err)
+		}
+
+		err = db.AddInternalConfig(ctx, internalConfig, ghostBuyer.ID)
+		if err != nil {
+			return fmt.Errorf("Error adding InternalConfig for local buyer: %v", err)
+		}
+
+		localRouteShader := core.RouteShader{
+			ABTest:                    false,
+			AcceptableLatency:         int32(25),
+			AcceptablePacketLoss:      float32(1),
+			BandwidthEnvelopeDownKbps: int32(1200),
+			BandwidthEnvelopeUpKbps:   int32(500),
+			DisableNetworkNext:        false,
+			LatencyThreshold:          int32(5),
+			Multipath:                 false,
+			ProMode:                   false,
+			ReduceLatency:             true,
+			ReducePacketLoss:          true,
+			SelectionPercent:          int(100),
+		}
+
+		gaRouteShader := core.RouteShader{
+			ABTest:                    false,
+			AcceptableLatency:         int32(25),
+			AcceptablePacketLoss:      float32(1),
+			BandwidthEnvelopeDownKbps: int32(1200),
+			BandwidthEnvelopeUpKbps:   int32(500),
+			DisableNetworkNext:        false,
+			LatencyThreshold:          int32(5),
+			Multipath:                 false,
+			ProMode:                   false,
+			ReduceLatency:             true,
+			ReducePacketLoss:          true,
+			SelectionPercent:          int(100),
+		}
+
+		err = db.AddRouteShader(ctx, localRouteShader, localBuyer.ID)
+		if err != nil {
+			return fmt.Errorf("Error adding RouteShader for local buyer: %v", err)
+		}
+
+		err = db.AddRouteShader(ctx, gaRouteShader, ghostBuyer.ID)
+		if err != nil {
+			return fmt.Errorf("Error adding RouteShader for ghost army buyer: %v", err)
+		}
+
+		userID1 := rand.Uint64()
+		userID2 := rand.Uint64()
+		userID3 := rand.Uint64()
+
+		err = db.AddBannedUser(ctx, localBuyer.ID, userID1)
+		if err != nil {
+			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		err = db.AddBannedUser(ctx, localBuyer.ID, userID2)
+		if err != nil {
+			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		err = db.AddBannedUser(ctx, localBuyer.ID, userID3)
+		if err != nil {
+			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID1)
+		if err != nil {
+			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID2)
+		if err != nil {
+			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID3)
+		if err != nil {
+			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
 	}
 
 	return nil
