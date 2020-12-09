@@ -114,6 +114,46 @@ func GetMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID stri
 	return metricsHandler, nil
 }
 
+// GetTSMetricsHandler returns a time series metrics handler for the backend service to use for data related to the Buyer ID.
+// It is guaranteed to always return at least a local metrics handler, even if an error is returned.
+// If a gcp project ID is specified, it will return a StackDriver metrics handler.
+// It differs from GetMetricsHandler() based on how frequently it writes to StackDriver
+func GetTSMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID string) (metrics.Handler, error) {
+	var tsMetricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	if gcpProjectID != "" {
+		enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
+		if err != nil {
+			return tsMetricsHandler, err
+		}
+
+		if enableSDMetrics {
+			sd := metrics.StackDriverHandler{
+				ProjectID:          gcpProjectID,
+				OverwriteFrequency: time.Second,
+				OverwriteTimeout:   10 * time.Second,
+			}
+
+			if err := sd.Open(ctx); err != nil {
+				return tsMetricsHandler, fmt.Errorf("failed to create Time Series StackDriver metrics client: %v", err)
+			}
+
+			sdWriteInterval, err := envvar.GetDuration("FEATURE_VANITY_METRIC_WRITE_INTERVAL", time.Second*5)
+			if err != nil {
+				return tsMetricsHandler, err
+			}
+
+			go func() {
+				tsMetricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
+			}()
+
+			tsMetricsHandler = &sd
+		}
+	}
+
+	return tsMetricsHandler, nil
+}
+
 func InitStackDriverProfiler(gcpProjectID string, serviceName string, env string) error {
 	enableSDProfiler, err := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
 	if err != nil {
