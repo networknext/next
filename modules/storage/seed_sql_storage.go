@@ -36,7 +36,6 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
-		fmt.Println("--> Entering SeedSQLStorage()")
 		// Add customers
 		// fmt.Println("Adding customers")
 		if err := db.AddCustomer(ctx, routing.Customer{
@@ -350,8 +349,8 @@ func SeedSQLStorage(
 
 		// add InternalConfigs, RouteShaders and BannedUsers
 
-		fmt.Printf("localBuyer ID: %016x\n", localBuyer.ID)
-		fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
+		// fmt.Printf("localBuyer ID: %016x\n", localBuyer.ID)
+		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
 			RouteSelectThreshold:       2,
@@ -418,10 +417,9 @@ func SeedSQLStorage(
 			return fmt.Errorf("Error adding RouteShader for ghost army buyer: %v", err)
 		}
 
-		// random user IDs scraped from the portal
-		userID1, _ := strconv.ParseUint("77c556007df7c02e", 16, 64)
-		userID2, _ := strconv.ParseUint("a731e14c521514a4", 16, 64)
-		userID3, _ := strconv.ParseUint("fb6fa90ad67bc76a", 16, 64)
+		userID1 := rand.Uint64()
+		userID2 := rand.Uint64()
+		userID3 := rand.Uint64()
 
 		err = db.AddBannedUser(ctx, localBuyer.ID, userID1)
 		if err != nil {

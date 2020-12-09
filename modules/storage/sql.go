@@ -2169,14 +2169,15 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 		ProMode:                   rs.ProMode,
 		ReduceLatency:             rs.ReduceLatency,
 		ReducePacketLoss:          rs.ReducePacketLoss,
+		ReduceJitter:              rs.ReduceJitter,
 		SelectionPercent:          int64(rs.SelectionPercent),
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
 	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
-	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, selection_percent, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2196,6 +2197,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 		routeShader.ProMode,
 		routeShader.ReduceLatency,
 		routeShader.ReducePacketLoss,
+		routeShader.ReduceJitter,
 		routeShader.SelectionPercent,
 		buyer.DatabaseID,
 	)
@@ -2335,6 +2337,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id=$2"))
 		args = append(args, reducePacketLoss, buyer.DatabaseID)
 		rs.ReducePacketLoss = reducePacketLoss
+	case "ReduceJitter":
+		reduceJitter, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReduceJitter: %v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update route_shaders set reduce_jitter=$1 where buyer_id=$2"))
+		args = append(args, reduceJitter, buyer.DatabaseID)
+		rs.ReduceJitter = reduceJitter
 	case "SelectionPercent":
 		selectionPercent, ok := value.(int)
 		if !ok {

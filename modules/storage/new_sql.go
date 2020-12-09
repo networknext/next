@@ -28,39 +28,39 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	var sqlite3 *sql.DB
 
 	fmt.Println("Creating SQLite3 Storer.")
-	pwd, _ := os.Getwd()
-	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
+	// pwd, _ := os.Getwd()
+	// fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 
 	// remove the old db file if it exists (SQLite3 saves one by default when exiting)
-	fmt.Println("--> Attempting to remove db file")
+	// fmt.Println("--> Attempting to remove db file")
 	if _, err := os.Stat("testdata/sqlite3-empty.sql"); err == nil || os.IsExist(err) { // happy path
-		fmt.Println("--> Removing testdata/network_next.db")
+		// fmt.Println("--> Removing testdata/network_next.db")
 		err = os.Remove("testdata/network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
 			// return nil, err
 		}
-		fmt.Println("--> Removed testdata/network_next.db")
+		// fmt.Println("--> Removed testdata/network_next.db")
 		sqlite3, err = sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 			return nil, err
 		}
-		fmt.Println("--> opened testdata/network_next.db")
+		// fmt.Println("--> opened testdata/network_next.db")
 	} else if _, err := os.Stat("../../testdata/sqlite3-empty.sql"); err == nil || os.IsExist(err) { // unit test
-		fmt.Println("--> Removing ../../testdata/network_next.db")
+		// fmt.Println("--> Removing ../../testdata/network_next.db")
 		err = os.Remove("../../testdata/network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
 			// return nil, err
 		}
-		fmt.Println("--> Removed ../../testdata/network_next.db")
+		// fmt.Println("--> Removed ../../testdata/network_next.db")
 		sqlite3, err = sql.Open("sqlite3", "file:../../testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 			return nil, err
 		}
-		fmt.Println("--> opened ../../testdata/network_next.db")
+		// fmt.Println("--> opened ../../testdata/network_next.db")
 	} else {
 		fmt.Println("--> did not find db file?")
 		os.Exit(0)
@@ -819,6 +819,7 @@ type sqlRouteShader struct {
 	ProMode                   bool
 	ReduceLatency             bool
 	ReducePacketLoss          bool
+	ReduceJitter              bool
 	SelectionPercent          int64
 }
 
@@ -832,7 +833,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
 	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
-	sql.Write([]byte("reduce_latency, reduce_packet_loss, selection_percent, buyer_id from route_shaders "))
+	sql.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id from route_shaders "))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -855,6 +856,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			&sqlRS.ProMode,
 			&sqlRS.ReduceLatency,
 			&sqlRS.ReducePacketLoss,
+			&sqlRS.ReduceJitter,
 			&sqlRS.SelectionPercent,
 			&buyerID,
 		)
@@ -870,6 +872,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			ProMode:                   sqlRS.ProMode,
 			ReduceLatency:             sqlRS.ReduceLatency,
 			ReducePacketLoss:          sqlRS.ReducePacketLoss,
+			ReduceJitter:              sqlRS.ReduceJitter,
 			Multipath:                 sqlRS.Multipath,
 			AcceptableLatency:         int32(sqlRS.AcceptableLatency),
 			LatencyThreshold:          int32(sqlRS.LatencyThreshold),

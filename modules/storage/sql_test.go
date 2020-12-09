@@ -1080,6 +1080,7 @@ func TestRouteShaders(t *testing.T) {
 			ProMode:                   true,
 			ReduceLatency:             true,
 			ReducePacketLoss:          true,
+			ReduceJitter:              true,
 			SelectionPercent:          int(100),
 		}
 
@@ -1100,6 +1101,7 @@ func TestRouteShaders(t *testing.T) {
 		assert.Equal(t, true, outerRouteShader.ProMode)
 		assert.Equal(t, true, outerRouteShader.ReduceLatency)
 		assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
+		assert.Equal(t, true, outerRouteShader.ReduceJitter)
 		assert.Equal(t, int(100), outerRouteShader.SelectionPercent)
 	})
 
@@ -1181,6 +1183,13 @@ func TestRouteShaders(t *testing.T) {
 		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, false, checkRouteShader.ReducePacketLoss)
+
+		// ReduceJitter
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ReduceJitter", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.ReduceJitter)
 
 		// SelectionPercent
 		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "SelectionPercent", int(90))
