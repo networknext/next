@@ -88,7 +88,7 @@ Or pass it in with an environment variable:
 
 Follow :doc:`building_the_sdk` to build the example programs.
 
-IMPORTANT: Make sure to run the server on a public IP address somewhere because the server won't work if it's behind NAT.
+IMPORTANT: Make sure to run the server on a public IP address somewhere because it won't work if it's behind NAT.
 
 The server output should look like this:
 
@@ -107,7 +107,7 @@ The server output should look like this:
 	0.000317: info: customer private key override
 	0.000342: info: found valid customer private key
 	0.000347: info: override next hostname: 'prod.spacecats.net'
-	0.000368: info: server sdk version is 4.0.2
+	0.000368: info: server sdk version is 4.0.4
 	0.000377: info: server address override: '173.255.241.176:50000'
 	0.000387: info: server datacenter is 'linode.fremont'
 	0.000419: info: server bound to 0.0.0.0:50000
@@ -180,6 +180,6 @@ Click on your session id to drill in and see your latency, jitter and packet los
 Welcome to Network Next!
 ------------------------
 
-Congratulations, your account is now fully setup. We look forward to working with you!
+Congratulations, your account is now fully setup.
 
-Please reach out to support@networknext.com and we'll guide you the rest of the way.
+Please reach out to support@networknext.com and we'll get your sessions accelerated!
