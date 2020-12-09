@@ -941,7 +941,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 	}
 
-	// reduce jitter by preferring near relays with equal to or better than average jitter
+	// reduce jitter by preferring near relays with equal to or lower than average jitter
 
 	if routeShader.ReduceJitter {
 
