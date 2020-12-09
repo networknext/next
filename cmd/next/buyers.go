@@ -476,3 +476,35 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	return nil
 
 }
+
+func getInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerID uint64,
+) error {
+	var reply localjsonrpc.GetInternalConfigReply
+
+	arg := localjsonrpc.GetInternalConfigArg{
+		BuyerID: buyerID,
+	}
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetInternalConfig", arg); err != nil {
+		fmt.Println("No InternalConfig stored for this buyer (they use the defaults).")
+		return nil
+	}
+
+	fmt.Println("InternalConfig:")
+	fmt.Printf("  RouteSelectThreshold      : %d\n", reply.InternalConfig.RouteSelectThreshold)
+	fmt.Printf("  RouteSwitchThreshold      : %d\n", reply.InternalConfig.RouteSwitchThreshold)
+	fmt.Printf("  MaxLatencyTradeOff        : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
+	fmt.Printf("  RTTVeto_Default           : %d\n", reply.InternalConfig.RTTVeto_Default)
+	fmt.Printf("  RTTVeto_PacketLoss        : %d\n", reply.InternalConfig.RTTVeto_PacketLoss)
+	fmt.Printf("  RTTVeto_Multipath         : %d\n", reply.InternalConfig.RTTVeto_Multipath)
+	fmt.Printf("  MultipathOverloadThreshold: %d\n", reply.InternalConfig.MultipathOverloadThreshold)
+	fmt.Printf("  TryBeforeYouBuy           : %t\n", reply.InternalConfig.TryBeforeYouBuy)
+	fmt.Printf("  ForceNext                 : %t\n", reply.InternalConfig.ForceNext)
+	fmt.Printf("  LargeCustomer             : %t\n", reply.InternalConfig.LargeCustomer)
+	fmt.Printf("  Uncommitted               : %t\n", reply.InternalConfig.Uncommitted)
+	fmt.Printf("  MaxRTT                    : %d\n", reply.InternalConfig.MaxRTT)
+
+	return nil
+}
