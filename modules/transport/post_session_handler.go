@@ -186,7 +186,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						err := post.AggregateVanityMetrics(billingEntry)
 						if err != nil {
 							level.Error(post.logger).Log("err", err)
-							post.metrics.VanityFailure.Add(1)
+							post.metrics.VanityAggregateFailure.Add(1)
 							continue
 						}
 
@@ -203,7 +203,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 							metricBinary, err := metric.MarshalBinary()
 							if err != nil {
 								level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
-								post.metrics.VanityFailure.Add(1)
+								post.metrics.VanityMarshalFailure.Add(1)
 							} else {
 								aggregateBinary = append(aggregateBinary, metricBinary)
 							}
@@ -214,7 +214,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						aggregateBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityMetricData, aggregateBinary)
 						if err != nil {
 							level.Error(post.logger).Log("msg", "could not update vanity metrics", "err", err)
-							post.metrics.VanityFailure.Add(1)
+							post.metrics.VanityTransmitFailure.Add(1)
 							continue
 						}
 

@@ -463,7 +463,16 @@ func TestPostSessionHandlerStartProcessingBillingSuccess(t *testing.T) {
 	assert.Equal(t, 0.0, metrics.BillingFailure.Value())
 }
 
-func TestPostSessionHandlerStartProcessingVanityFailure(t *testing.T) {
+func TestPostSessionHandlerVanityAggregateFailure(t *testing.T) {
+	publisher := &retryPublisher{}
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, time.Second, time.Minute*30, time.Minute*5, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	err := postSessionHandler.AggregateVanityMetrics(testBillingEntry())
+
+	assert.Contains(t, err.Error(), "does not exist in vanityAggregator map")
+}
+
+func TestPostSessionHandlerStartProcessingVanityTransmitFailure(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
@@ -492,7 +501,9 @@ func TestPostSessionHandlerStartProcessingVanityFailure(t *testing.T) {
 	ctxCancelFunc()
 	wg.Wait()
 
-	assert.Equal(t, 1.0, metrics.VanityFailure.Value())
+	assert.Equal(t, 1.0, metrics.VanityTransmitFailure.Value())
+	assert.Equal(t, 0.0, metrics.VanityAggregateFailure.Value())
+	assert.Equal(t, 0.0, metrics.VanityMarshalFailure.Value())
 	assert.Equal(t, 0.0, metrics.VanityMetricsFinished.Value())
 }
 
@@ -526,7 +537,9 @@ func TestPostSessionHandlerStartProcessingVanitySuccess(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, 1.0, metrics.VanityMetricsFinished.Value())
-	assert.Equal(t, 0.0, metrics.VanityFailure.Value())
+	assert.Equal(t, 0.0, metrics.VanityAggregateFailure.Value())
+	assert.Equal(t, 0.0, metrics.VanityMarshalFailure.Value())
+	assert.Equal(t, 0.0, metrics.VanityTransmitFailure.Value())
 }
 
 func TestPostSessionHandlerStartProcessingPortalCountFailure(t *testing.T) {

@@ -17,9 +17,11 @@ type PostSessionMetrics struct {
 	VanityBufferLength     Gauge
 	VanityBufferFull       Counter
 
-	BillingFailure Counter
-	PortalFailure  Counter
-	VanityFailure  Counter
+	BillingFailure         Counter
+	PortalFailure          Counter
+	VanityAggregateFailure Counter
+	VanityMarshalFailure   Counter
+	VanityTransmitFailure  Counter
 }
 
 // EmptyPostSessionMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -38,7 +40,9 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 	VanityBufferFull:       &EmptyCounter{},
 	BillingFailure:         &EmptyCounter{},
 	PortalFailure:          &EmptyCounter{},
-	VanityFailure:          &EmptyCounter{},
+	VanityAggregateFailure: &EmptyCounter{},
+	VanityMarshalFailure:   &EmptyCounter{},
+	VanityTransmitFailure:  &EmptyCounter{},
 }
 
 // NewPostSessionMetrics creates the metrics the post session processor will use.
@@ -200,12 +204,34 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		return nil, err
 	}
 
-	m.VanityFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Failure",
+	m.VanityAggregateFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Vanity Aggregate Failure",
 		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_failure",
+		ID:          "post_session_update.vanity_aggregate_failure",
 		Unit:        "errors",
-		Description: "The number of billing entries for vanity metrics that failed to be pushed onto ZeroMQ.",
+		Description: "The number of billing entries for vanity metrics that failed to be aggregated.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.VanityMarshalFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Vanity Marshal Failure",
+		ServiceName: serviceName,
+		ID:          "post_session_update.vanity_marshal_failure",
+		Unit:        "errors",
+		Description: "The number of aggregated entries for vanity metrics that failed to be marshaled.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.VanityTransmitFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Vanity Transmit Failure",
+		ServiceName: serviceName,
+		ID:          "post_session_update.vanity_transmit_failure",
+		Unit:        "errors",
+		Description: "The number of marshaled vanity metrics that failed to be pushed onto ZeroMQ.",
 	})
 	if err != nil {
 		return nil, err
