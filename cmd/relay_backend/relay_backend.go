@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -768,13 +767,6 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
-	enableInternalIPs, err := envvar.GetBool("ENABLE_INTERNAL_IPS", false)
-	if err != nil {
-		level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
-		return 1
-	}
-
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
 		Storer:           storer,
@@ -783,12 +775,10 @@ func mainReturnWithCode() int {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap:          relayMap,
-		StatsDB:           statsdb,
-		Metrics:           relayUpdateMetrics,
-		Storer:            storer,
-		InternalIPSellers: internalIPSellers,
-		EnableInternalIPs: enableInternalIPs,
+		RelayMap: relayMap,
+		StatsDB:  statsdb,
+		Metrics:  relayUpdateMetrics,
+		Storer:   storer,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
