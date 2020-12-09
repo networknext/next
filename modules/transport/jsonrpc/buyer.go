@@ -117,7 +117,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	if args.UserID == "" {
 		err := fmt.Errorf("UserSessions() user id is required")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		response := fmt.Errorf(INVALID_EMPTY.ToString())
+		return response
 	}
 	reply.Sessions = make([]transport.SessionMeta, 0)
 	sessionIDs := make([]string, 0)

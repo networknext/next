@@ -23,6 +23,7 @@ import (
 
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
+	ErrUnverified             = errors.New("unverified")
 )
 
 type contextKeys struct {
@@ -608,10 +609,22 @@ type CompanyNameReply struct {
 }
 
 func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNameArgs, reply *CompanyNameReply) error {
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
+	var errorResponse error
+
+	if VerifyAnyRole(r, UnverifiedRole) {
+		err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrUnverified)
+		s.Logger.Log("err", err)
+
+		errorResponse = fmt.Errorf(NOT_VERIFIED.ToString())
+		return errorResponse
+	}
+
+	if VerifyAnyRole(r, AnonymousRole) {
 		err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INSUFFICIENT_PRIVILEGES.ToString())
+		return errorResponse
 	}
 
 	newCompanyCode := args.CompanyCode
@@ -619,7 +632,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	if newCompanyCode == "" {
 		err := fmt.Errorf("UpdateCompanyInformation() new company code is required")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_EMPTY.ToString())
+		return errorResponse
 	}
 
 	oldCompanyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
@@ -632,7 +647,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateCompanyInformation() unable to parse user from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 
 	// get request user ID for role assignment
@@ -640,7 +657,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	if !ok {
 		err := fmt.Errorf("UpdateCompanyInformation() unable to parse id from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 
 	// parse request email for domain
@@ -648,7 +667,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	if !ok {
 		err := fmt.Errorf("UpdateCompanyInformation() unable to parse email from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 	requestEmailParts := strings.Split(requestEmail, "@")
 	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
@@ -664,7 +685,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			if args.CompanyName == "" {
 				err := fmt.Errorf("UpdateCompanyInformation() new company name is required")
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(INVALID_EMPTY.ToString())
+				return errorResponse
 			}
 			if err := s.Storage.AddCustomer(ctx, routing.Customer{
 				Code: newCompanyCode,
@@ -672,7 +695,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			}); err != nil {
 				err = fmt.Errorf("UpdateCompanyInformation() failed to create new company: %v", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(FAILURE.ToString())
+				return errorResponse
 			}
 			roles = []*management.Role{
 				{
@@ -702,7 +727,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				// the company exists and the new user is not part of the auto signup
 				err = fmt.Errorf("UpdateCompanyInformation() email domain is not part of auto signup for this company")
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(fmt.Sprintf("%s %s. Please contact the owner of the company to proceed.", INVALID_DOMAIN.ToString(), company.Code))
+				return errorResponse
 			}
 		}
 
@@ -712,8 +739,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			},
 		}); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
-			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(TOKEN_UPDATE.ToString())
+			return errorResponse
 		}
 
 		if !VerifyAllRoles(r, AdminRole) {
@@ -731,12 +759,16 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			}...); err != nil {
 				err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(AUTH0_FAILURE.ToString())
+				return errorResponse
 			}
 			if err = s.UserManager.AssignRoles(requestID, roles...); err != nil {
 				err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(AUTH0_FAILURE.ToString())
+				return errorResponse
 			}
 			reply.NewRoles = roles
 		}
@@ -750,7 +782,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			if args.CompanyName == "" {
 				err := fmt.Errorf("UpdateCompanyInformation() new company name is required")
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(INVALID_EMPTY.ToString())
+				return errorResponse
 			}
 			if err := s.Storage.AddCustomer(ctx, routing.Customer{
 				Code: newCompanyCode,
@@ -758,7 +792,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			}); err != nil {
 				err = fmt.Errorf("UpdateCompanyInformation() failed to create new company: %v", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(FAILURE.ToString())
+				return errorResponse
 			}
 			roles := []*management.Role{
 				{
@@ -779,7 +815,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			}); err != nil {
 				err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(TOKEN_UPDATE.ToString())
+				return errorResponse
 			}
 
 			if !VerifyAllRoles(r, AdminRole) {
@@ -797,12 +835,16 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				}...); err != nil {
 					err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
 					s.Logger.Log("err", err)
-					return err
+
+					errorResponse = fmt.Errorf(AUTH0_FAILURE.ToString())
+					return errorResponse
 				}
 				if err := s.UserManager.AssignRoles(requestID, roles...); err != nil {
 					err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
 					s.Logger.Log("err", err)
-					return err
+
+					errorResponse = fmt.Errorf(AUTH0_FAILURE.ToString())
+					return errorResponse
 				}
 				reply.NewRoles = roles
 			}
@@ -813,14 +855,18 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		if err == nil {
 			err = fmt.Errorf("UpdateCompanyInformation() company already exists")
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(COMPANY_ALREADY_EXISTS.ToString())
+			return errorResponse
 		}
 
 		oldCompany, err := s.Storage.Customer(oldCompanyCode)
 		if err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch company: %v", err)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(FAILURE.ToString())
+			return errorResponse
 		}
 
 		companyName := args.CompanyName
@@ -843,7 +889,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			if err := s.Storage.SetBuyer(ctx, buyer); err != nil {
 				err = fmt.Errorf("UpdateCompanyInformation() failed to update buyer: %v", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(FAILURE.ToString())
+				return errorResponse
 			}
 		}
 		seller, err := s.Storage.SellerWithCompanyCode(oldCompanyCode)
@@ -852,19 +900,25 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			if err := s.Storage.SetSeller(ctx, seller); err != nil {
 				err = fmt.Errorf("UpdateCompanyInformation() failed to update seller: %v", err)
 				s.Logger.Log("err", err)
-				return err
+
+				errorResponse = fmt.Errorf(FAILURE.ToString())
+				return errorResponse
 			}
 		}
 		if err := s.Storage.RemoveCustomer(ctx, oldCompanyCode); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to remove old customer: %v", err)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(FAILURE.ToString())
+			return errorResponse
 		}
 
 		if err := s.Storage.AddCustomer(ctx, newCompany); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to add new customer: %v", err)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(FAILURE.ToString())
+			return errorResponse
 		}
 
 		if err = s.UserManager.Update(requestID, &management.User{
@@ -874,7 +928,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		}); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(AUTH0_FAILURE.ToString())
+			return errorResponse
 		}
 		return nil
 	}
@@ -884,20 +940,26 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 			err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(INSUFFICIENT_PRIVILEGES.ToString())
+			return errorResponse
 		}
 
 		if args.CompanyName == "" {
 			err := fmt.Errorf("UpdateCompanyInformation() new company code is required")
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(INVALID_EMPTY.ToString())
+			return errorResponse
 		}
 
 		company, err := s.Storage.Customer(oldCompanyCode)
 		if err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch company: %v", err)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(FAILURE.ToString())
+			return errorResponse
 		}
 
 		company.Name = args.CompanyName
@@ -905,7 +967,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 		if err := s.Storage.SetCustomer(ctx, company); err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to update company: %v", err)
 			s.Logger.Log("err", err)
-			return err
+
+			errorResponse = fmt.Errorf(FAILURE.ToString())
+			return errorResponse
 		}
 		return nil
 	}
@@ -921,31 +985,41 @@ type AccountSettingsReply struct {
 }
 
 func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettingsArgs, reply *AccountSettingsReply) error {
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
-		err := fmt.Errorf("UpdateCompanyInformation(): %v", ErrInsufficientPrivileges)
+	var errorResponse error
+
+	if VerifyAnyRole(r, AnonymousRole) {
+		err := fmt.Errorf("UpdateAccountSettings(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INSUFFICIENT_PRIVILEGES.ToString())
+		return errorResponse
 	}
 
 	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateAccountSettings() unable to parse user from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 
 	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
 		err := fmt.Errorf("UpdateAccountSettings() unable to parse id from token")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 
 	userAccount, err := s.UserManager.Read(requestID)
 	if err != nil {
 		err := fmt.Errorf("UpdateAccountSettings() failed to fetch user account")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	if args.Password != "" {
@@ -960,7 +1034,9 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 	if err != nil {
 		err = fmt.Errorf("UpdateAccountSettings() failed to update user: %v", err)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	return nil
@@ -975,12 +1051,15 @@ type VerifyEmailReply struct {
 }
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+	var errorResponse error
 	reply.Sent = false
 
 	if !VerifyAllRoles(r, UnverifiedRole) {
-		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: already verified")
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(ALREADY_VERIFIED.ToString())
+		return errorResponse
 	}
 
 	job := &management.Job{
@@ -991,7 +1070,9 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 	if err != nil {
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", err)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	reply.Sent = true
@@ -1034,22 +1115,29 @@ type UpdateDomainsReply struct {
 }
 
 func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomainsArgs, reply *UpdateDomainsReply) error {
+	var errorResponse error
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INSUFFICIENT_PRIVILEGES.ToString())
+		return errorResponse
 	}
 
 	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(UNASSIGNED.ToString())
+		return errorResponse
 	}
 	if companyCode == "" {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to parse company code")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(INVALID_TOKEN.ToString())
+		return errorResponse
 	}
 	ctx := context.Background()
 
@@ -1057,7 +1145,9 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	if err != nil {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to get request company")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	company.AutomaticSignInDomains = strings.Join(args.Domains, ", ")
@@ -1066,7 +1156,9 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	if err != nil {
 		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to update company")
 		level.Error(s.Logger).Log("err", err)
-		return err
+
+		errorResponse = fmt.Errorf(FAILURE.ToString())
+		return errorResponse
 	}
 
 	return nil
