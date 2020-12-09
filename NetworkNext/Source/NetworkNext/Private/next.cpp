@@ -172,6 +172,8 @@
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
+#define NEXT_MAX_SESSION_DEBUG                                       1024
+
 static uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -3080,9 +3082,9 @@ struct NextClientStatsPacket
     float next_packet_loss;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_server_to_client;
@@ -3120,9 +3122,9 @@ struct NextClientStatsPacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_rtt[i] );
-            serialize_float( stream, near_relay_jitter[i] );
-            serialize_float( stream, near_relay_packet_loss[i] );
+            serialize_int( stream, near_relay_rtt[i], 0, 255 );
+            serialize_int( stream, near_relay_jitter[i], 0, 255 );
+            serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
         }
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
@@ -3137,6 +3139,7 @@ struct NextRouteUpdatePacket
     uint64_t sequence;
     bool multipath;
     bool committed;
+    bool near_relays_changed;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -3147,6 +3150,8 @@ struct NextRouteUpdatePacket
     uint64_t packets_lost_client_to_server;
     uint64_t packets_out_of_order_client_to_server;
     float jitter_client_to_server;
+    bool has_debug;
+    char debug[NEXT_MAX_SESSION_DEBUG];
 
     NextRouteUpdatePacket()
     {
@@ -3156,13 +3161,20 @@ struct NextRouteUpdatePacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, sequence );
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < num_near_relays; ++i )
+
+        serialize_bool( stream, near_relays_changed );
+        if ( near_relays_changed )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            serialize_address( stream, near_relay_addresses[i] );
+            serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+            for ( int i = 0; i < num_near_relays; ++i )
+            {
+                serialize_uint64( stream, near_relay_ids[i] );
+                serialize_address( stream, near_relay_addresses[i] );
+            }
         }
+        
         serialize_int( stream, update_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
+
         if ( update_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
@@ -3177,10 +3189,20 @@ struct NextRouteUpdatePacket
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
+
         serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
+
         serialize_uint64( stream, packets_out_of_order_client_to_server );
+
         serialize_float( stream, jitter_client_to_server );
+
+        serialize_bool( stream, has_debug );
+        if ( has_debug )
+        {
+            serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
+        }
+
         return true;
     }
 };
@@ -4108,7 +4130,7 @@ void next_ping_history_pong_received( next_ping_history_t * history, uint64_t se
     }
 }
 
-void next_route_stats_from_ping_history( const next_ping_history_t * history, double start, double end, next_route_stats_t * stats, double ping_safety )
+void next_route_stats_from_ping_history( const next_ping_history_t * history, double start, double end, next_route_stats_t * stats, double ping_safety, double optional_route_changed_time = -1.0 )
 {
     next_ping_history_verify_sentinels( history );
 
@@ -4119,6 +4141,28 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     stats->jitter = 0.0f;
     stats->packet_loss = 0.0f;
 
+    // IMPORTANT: Instead of searching across the whole range then considering any ping with a pong older than ping safety 
+    // (typically one second) to be lost, look for the time of the most recent ping that has received a pong, subtract ping
+    // safety from this, and then look for packet loss only in this range. This avoids turning every ping that receives a
+    // pong more than 1 second later as packet loss, which was behavior we saw with previous versions of this code.
+
+    double most_recent_ping_that_received_pong_time = 0.0;
+
+    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
+    {
+        const next_ping_history_entry_t * entry = &history->entries[i];
+
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end && entry->time_pong_received >= entry->time_ping_sent )
+        {
+            if ( entry->time_pong_received > most_recent_ping_that_received_pong_time )
+            {
+                most_recent_ping_that_received_pong_time = entry->time_pong_received;
+            }
+        }
+    }
+
+    double ping_end = most_recent_ping_that_received_pong_time - ping_safety;
+
     // calculate packet loss
 
     int num_pings_sent = 0;
@@ -4128,7 +4172,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     {
         const next_ping_history_entry_t * entry = &history->entries[i];
 
-        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end - ping_safety )
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= ping_end )
         {
             num_pings_sent++;
 
@@ -4140,6 +4184,15 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     if ( num_pings_sent > 0 )
     {
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+
+    // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
+    // before the route change and some after the route change. Fix this by (optionally) only looking for RTT 
+    // and jitter back to the last point we switched routes.
+
+    if ( optional_route_changed_time > start )
+    {
+        start = optional_route_changed_time;
     }
 
     // calculate min/max/mean RTT
@@ -4202,7 +4255,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
 
     if ( num_jitter_samples > 0 )
     {
-        stats->jitter = 3.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
+        stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples );
     }
 
     next_ping_history_verify_sentinels( history );
@@ -5663,6 +5716,7 @@ struct next_client_internal_t
     double last_direct_pong_time;
     double last_stats_update_time;
     double last_stats_report_time;
+    double last_route_switch_time;
     double route_update_timeout_time;
     uint64_t route_update_sequence;
 
@@ -6322,6 +6376,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
 
+        client->last_route_switch_time = next_time();
+
         const bool route_established = route_manager->route_data.current_route;
 
         const int route_kbps_up = route_manager->route_data.current_route_kbps_up;
@@ -6619,7 +6675,15 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet from server" );
 
-            next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+            if ( packet.has_debug )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
+            }
+
+            if ( packet.near_relays_changed )
+            {
+                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+            }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
             next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
@@ -6809,6 +6873,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_direct_pong_time = 0.0;
                 client->last_stats_update_time = 0.0;
                 client->last_stats_report_time = 0.0;
+                client->last_route_switch_time = 0.0;
                 client->route_update_timeout_time = 0.0;
                 client->route_update_sequence = 0;
                 client->sending_upgrade_response = false;
@@ -6927,7 +6992,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.connection_type = next_platform_connection_type();
 
         next_route_stats_t next_route_stats;
-        next_route_stats_from_ping_history( &client->next_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &next_route_stats, NEXT_PING_SAFETY );
+        next_route_stats_from_ping_history( &client->next_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &next_route_stats, NEXT_PING_SAFETY, client->last_route_switch_time );
 
         next_route_stats_t direct_route_stats;
         next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &direct_route_stats, NEXT_PING_SAFETY );
@@ -7043,9 +7108,23 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 packet.near_relay_ids[i] = client->near_relay_stats.relay_ids[i];
-                packet.near_relay_rtt[i] = client->near_relay_stats.relay_rtt[i];
-                packet.near_relay_jitter[i] = client->near_relay_stats.relay_jitter[i];
-                packet.near_relay_packet_loss[i] = client->near_relay_stats.relay_packet_loss[i];
+
+                int rtt = (int) ceil( client->near_relay_stats.relay_rtt[i] );
+                int jitter = (int) ceil( client->near_relay_stats.relay_jitter[i] );
+                int packet_loss = (int) floor( client->near_relay_stats.relay_packet_loss[i] + 0.5f );
+
+                if ( rtt > 255 )
+                    rtt = 255;
+
+                if ( jitter > 255 )
+                    jitter = 255;
+
+                if ( packet_loss > 100 )
+                    packet_loss = 100;
+
+                packet.near_relay_rtt[i] = uint8_t( rtt );
+                packet.near_relay_jitter[i] = uint8_t( jitter );
+                packet.near_relay_packet_loss[i] = uint8_t( packet_loss );
             }
         }
 
@@ -8088,6 +8167,23 @@ bool next_address_equal( const next_address_t * a, const next_address_t * b )
     return true;
 }
 
+void next_address_anonymize( next_address_t * address )
+{
+    next_assert( address );
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        address->data.ipv4[3] = 0;
+    }
+    else
+    {
+        address->data.ipv6[4] = 0;
+        address->data.ipv6[5] = 0;
+        address->data.ipv6[6] = 0;
+        address->data.ipv6[7] = 0;
+    }
+    address->port = 0;
+}
+
 // ---------------------------------------------------------------
 
 struct next_pending_session_entry_t
@@ -8097,7 +8193,8 @@ struct next_pending_session_entry_t
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
-    uint64_t tag;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
     double upgrade_time;
     double last_packet_send_time;
     uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
@@ -8798,7 +8895,8 @@ struct NextBackendSessionUpdatePacket
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
     bool client_ping_timed_out;
-    uint64_t tag;
+    int num_tags;
+    uint64_t tags[NEXT_MAX_TAGS];
     uint64_t flags;
     uint64_t user_flags;
     float direct_rtt;
@@ -8809,9 +8907,9 @@ struct NextBackendSessionUpdatePacket
     float next_packet_loss;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint32_t next_kbps_up;
     uint32_t next_kbps_down;
     uint64_t packets_sent_client_to_server;
@@ -8853,6 +8951,14 @@ struct NextBackendSessionUpdatePacket
             serialize_bytes( stream, session_data, session_data_bytes );
         }
 
+        // IMPORTANT: Anonymize the client address before sending it up to our backend
+        // This ensures that we are fully compliant with the GDRP and there is zero risk
+        // the address will be accidentally stored or intecepted in transit
+        if ( Stream::IsWriting )
+        {
+            next_address_anonymize( &client_address );
+        }
+
         serialize_address( stream, client_address );
         serialize_address( stream, server_address );
 
@@ -8873,21 +8979,25 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
 
-        bool has_tag = Stream::IsWriting && tag != 0;
+        bool has_tags = Stream::IsWriting && num_tags > 0;
         bool has_flags = Stream::IsWriting && flags != 0;
         bool has_user_flags = Stream::IsWriting && user_flags != 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
-        serialize_bool( stream, has_tag );
+        serialize_bool( stream, has_tags );
         serialize_bool( stream, has_flags );
         serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
 
-        if ( has_tag )
+        if ( has_tags )
         {
-            serialize_uint64( stream, tag );
+            serialize_int( stream, num_tags, 0, NEXT_MAX_TAGS );
+            for ( int i = 0; i < num_tags; ++i )
+            {
+                serialize_uint64( stream, tags[i] );
+            }
         }
 
         if ( has_flags )
@@ -8916,9 +9026,9 @@ struct NextBackendSessionUpdatePacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_rtt[i] );
-            serialize_float( stream, near_relay_jitter[i] );
-            serialize_float( stream, near_relay_packet_loss[i] );
+            serialize_int( stream, near_relay_rtt[i], 0, 255 );
+            serialize_int( stream, near_relay_jitter[i], 0, 255 );
+            serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
         }
 
         if ( next )
@@ -8962,7 +9072,8 @@ struct next_session_entry_t
     uint64_t internal_send_sequence;
     uint64_t stats_sequence;
     uint64_t user_hash;
-    uint64_t tag;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
     uint8_t client_open_session_sequence;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -8993,15 +9104,15 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    float stats_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    float stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(5)
 
-    float stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(6)
 
@@ -9038,6 +9149,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
+    bool update_near_relays_changed;
     int update_num_near_relays;
 
     NEXT_DECLARE_SENTINEL(9)
@@ -9142,6 +9254,11 @@ struct next_session_entry_t
     double last_client_next_ping;
 
     NEXT_DECLARE_SENTINEL(26)
+
+    bool has_debug;
+    char debug[NEXT_MAX_SESSION_DEBUG];
+
+    NEXT_DECLARE_SENTINEL(27)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9175,6 +9292,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
     NEXT_INITIALIZE_SENTINEL( entry, 26 )
+    NEXT_INITIALIZE_SENTINEL( entry, 27 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9208,6 +9326,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
     NEXT_VERIFY_SENTINEL( entry, 26 )
+    NEXT_VERIFY_SENTINEL( entry, 27 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -9384,13 +9503,14 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     entry->last_client_next_ping = current_time;
 }
 
-next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token )
+next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token, const uint64_t * tags, int num_tags )
 {
     next_session_manager_verify_sentinels( session_manager );
 
     next_assert( session_id != 0 );
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
+    next_assert( num_tags == 0 || tags );
 
     // first scan existing entries and see if we can insert there
 
@@ -9406,6 +9526,11 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
             next_clear_session_entry( entry, address, session_id );
             memcpy( entry->ephemeral_private_key, ephemeral_private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
             memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+            entry->num_tags = num_tags;
+            for ( int j = 0; j < num_tags; ++j )
+            {
+                entry->tags[j] = tags[j];
+            }
             if ( i > session_manager->max_entry_index )
             {
                 session_manager->max_entry_index = i;
@@ -9427,6 +9552,11 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
     next_clear_session_entry( entry, address, session_id );
     memcpy( entry->ephemeral_private_key, ephemeral_private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+    entry->num_tags = num_tags;
+    for ( int j = 0; j < num_tags; ++j )
+    {
+        entry->tags[j] = tags[j];
+    }
 
     next_session_manager_verify_sentinels( session_manager );
 
@@ -9532,6 +9662,7 @@ struct NextBackendSessionResponsePacket
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     uint8_t response_type;
+    bool near_relays_changed;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -9539,6 +9670,8 @@ struct NextBackendSessionResponsePacket
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     bool multipath;
     bool committed;
+    bool has_debug;
+    char debug[NEXT_MAX_SESSION_DEBUG];
 
     NextBackendSessionResponsePacket()
     {
@@ -9559,11 +9692,16 @@ struct NextBackendSessionResponsePacket
 
         serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
 
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < num_near_relays; ++i )
+        serialize_bool( stream, near_relays_changed );
+
+        if ( near_relays_changed )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            serialize_address( stream, near_relay_addresses[i] );
+            serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+            for ( int i = 0; i < num_near_relays; ++i )
+            {
+                serialize_uint64( stream, near_relay_ids[i] );
+                serialize_address( stream, near_relay_addresses[i] );
+            }
         }
 
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
@@ -9581,6 +9719,12 @@ struct NextBackendSessionResponsePacket
         if ( response_type == NEXT_UPDATE_TYPE_CONTINUE )
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+        }
+
+        serialize_bool( stream, has_debug );
+        if ( has_debug )
+        {
+            serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
         
         return true;
@@ -9803,7 +9947,8 @@ struct next_server_command_upgrade_session_t : public next_server_command_t
 struct next_server_command_tag_session_t : public next_server_command_t
 {
     next_address_t address;
-    uint64_t tag;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
 };
 
 struct next_server_command_destroy_t : public next_server_command_t
@@ -9847,7 +9992,6 @@ struct next_server_notify_session_upgraded_t : public next_server_notify_t
 {
     next_address_t address;
     uint64_t session_id;
-    uint64_t tag;
 };
 
 struct next_server_notify_session_timed_out_t : public next_server_notify_t
@@ -10387,9 +10531,13 @@ void next_server_internal_update_route( next_server_internal_t * server )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
-            packet.num_near_relays = entry->update_num_near_relays;
-            memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
-            memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
+            packet.near_relays_changed = entry->update_near_relays_changed;
+            if ( packet.near_relays_changed )
+            {
+                packet.num_near_relays = entry->update_num_near_relays;
+                memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
+                memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
+            }
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
             packet.committed = entry->committed;
@@ -10409,6 +10557,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
             next_platform_mutex_release( &server->session_mutex );
+
+            packet.has_debug = entry->has_debug;
+            memcpy( packet.debug, entry->debug, NEXT_MAX_SESSION_DEBUG );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
 
@@ -10795,9 +10946,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
 
-            entry->update_num_near_relays = packet.num_near_relays;
-            memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
-            memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
+            entry->update_near_relays_changed = packet.near_relays_changed;
+            if ( packet.near_relays_changed )
+            {
+                entry->update_num_near_relays = packet.num_near_relays;
+                memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
+                memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
+            }
 
             entry->update_last_send_time = -1000.0;
 
@@ -10826,6 +10981,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                     memcpy( entry->previous_route_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
                 }
             }
+
+            entry->has_debug = packet.has_debug;
+            memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
@@ -10924,7 +11082,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // add to established sessions
 
             next_platform_mutex_acquire( &server->session_mutex );
-            next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token );
+            next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token, pending_entry->tags, pending_entry->num_tags );
             next_platform_mutex_release( &server->session_mutex );
             if ( entry == NULL )
             {
@@ -10938,7 +11096,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->client_route_public_key, packet.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             entry->last_client_stats_update = next_time();
             entry->user_hash = pending_entry->user_hash;
-            entry->tag = pending_entry->tag;
             entry->client_open_session_sequence = packet.client_open_session_sequence;
             entry->stats_platform_id = packet.platform_id;
             entry->stats_connection_type = packet.connection_type;
@@ -10950,7 +11107,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->type = NEXT_SERVER_NOTIFY_SESSION_UPGRADED;
             notify->address = entry->address;
             notify->session_id = entry->session_id;
-            notify->tag = entry->tag;
             {
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );            
@@ -11485,7 +11641,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     entry->user_hash = user_hash;
 }
 
-void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, uint64_t tag )
+void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, const uint64_t * tags, int num_tags )
 {
     next_assert( server );
     next_assert( address );
@@ -11498,21 +11654,49 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %x (internal)", pending_entry->session_id, tag );
-        pending_entry->tag = tag;
+        if ( num_tags > 0 )
+        {
+            memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
+            for ( int i = 0; i < num_tags; ++i )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %" PRIx64 " (internal)", pending_entry->session_id, tags[i] );
+                pending_entry->tags[i] = tags[i];
+            }
+            pending_entry->num_tags = num_tags;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server clears tags on pending session entry %" PRIx64 " (internal)", pending_entry->session_id );
+            memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
+            pending_entry->num_tags = 0;
+        }
         return;
     }
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
     if ( entry )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %x (internal)", entry->session_id, tag );
-        entry->tag = tag;
+        if ( num_tags > 0 )
+        {
+            memset( entry->tags, 0, sizeof(entry->tags) );
+            for ( int i = 0; i < num_tags; ++i )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %" PRIx64 " (internal)", entry->session_id, tags[i] );
+                entry->tags[i] = tags[i];
+            }
+            entry->num_tags = num_tags;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server clears tags on session entry %" PRIx64 " (internal)", entry->session_id );
+            memset( entry->tags, 0, sizeof(entry->tags) );
+            entry->num_tags = 0;
+        }
         return;
     }
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s. please call next_upgrade_session before next_tag_session", next_address_to_string( address, buffer ) );    
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s. please call next_upgrade_session before you tag a session", next_address_to_string( address, buffer ) );    
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
@@ -11544,7 +11728,7 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             case NEXT_SERVER_COMMAND_TAG_SESSION:
             {
                 next_server_command_tag_session_t * tag_session = (next_server_command_tag_session_t*) command;
-                next_server_internal_tag_session( server, &tag_session->address, tag_session->tag );
+                next_server_internal_tag_session( server, &tag_session->address, tag_session->tags, tag_session->num_tags );
             }
             break;
 
@@ -11814,7 +11998,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.slice_number = session->update_sequence++;
             packet.platform_id = session->stats_platform_id;
             packet.user_hash = session->user_hash;
-            packet.tag = session->tag;
+            packet.num_tags = session->num_tags;
+            for ( int j = 0; j < session->num_tags; ++j )
+            {
+                packet.tags[j] = session->tags[j];
+            }
             packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
@@ -12274,10 +12462,27 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
 void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag )
 {
+    if ( tag[0] != '\0' )
+    {
+        // one tag
+        const char ** tags = &tag;
+        next_server_tag_session_multiple( server, address, tags, 1 );
+    }
+    else
+    {
+        // clear tags
+        next_server_tag_session_multiple( server, address, NULL, 0 );
+    }
+}
+
+void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags )
+{
     next_server_verify_sentinels( server );
 
     next_assert( server->internal );
-    
+    next_assert( num_tags >= 0 );
+    next_assert( num_tags <= NEXT_MAX_TAGS );
+
     // don't tag sessions in direct only mode
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
@@ -12301,17 +12506,22 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
         return;
     }
 
-    uint64_t tag_id = next_tag_id( tag );
-    
-    if ( tag_id != 0 )
-    {
-        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged %s as '%s' [%" PRIx64 "]", next_address_to_string( address, address_string ), tag, tag_id );
-    }
-
     command->type = NEXT_SERVER_COMMAND_TAG_SESSION;
     command->address = *address;
-    command->tag = tag_id;
+    memset( command->tags, 0, sizeof(command->tags) );
+    for ( int i = 0; i < num_tags; ++i )
+    {
+        uint64_t tag_id = next_tag_id( tags[i] );
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged %s as '%s' [%" PRIx64 "]", next_address_to_string( address, address_string ), tags[i], tag_id );
+        command->tags[i] = next_tag_id( tags[i] );
+    }
+    command->num_tags = num_tags;
+    if ( num_tags == 0 )
+    {
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_INFO, "server cleared tags for %s", next_address_to_string( address, address_string ) );
+    }
 
     {    
         next_platform_mutex_guard( &server->internal->command_mutex );
@@ -12505,6 +12715,51 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     buffer[0] = 0;
     memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
+}
+
+bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
+{
+    next_assert( server );
+    next_assert( address );
+    next_assert( stats );
+
+    next_platform_mutex_guard( &server->internal->session_mutex );
+
+    next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
+    if ( !entry )
+        return false;
+
+    stats->address = *address;
+    stats->session_id = entry->session_id; 
+    stats->user_hash = entry->user_hash;
+    stats->platform_id = entry->stats_platform_id;
+    stats->connection_type = entry->stats_connection_type;
+    stats->next = entry->stats_next;
+    stats->committed = entry->stats_committed;
+    stats->multipath = entry->stats_multipath;
+    stats->reported = entry->stats_reported;
+    stats->fallback_to_direct = entry->stats_fallback_to_direct;
+    stats->direct_rtt = entry->stats_direct_rtt;
+    stats->direct_jitter = entry->stats_direct_jitter;
+    stats->direct_packet_loss = entry->stats_direct_packet_loss;    
+    stats->next_rtt = entry->stats_next_rtt;
+    stats->next_jitter = entry->stats_next_jitter;
+    stats->next_packet_loss = entry->stats_next_packet_loss;    
+    stats->next_kbps_up = entry->stats_next_kbps_up;
+    stats->next_kbps_down = entry->stats_next_kbps_down;
+    stats->packets_sent_client_to_server = entry->stats_packets_sent_client_to_server;
+    stats->packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+    stats->packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
+    stats->packets_lost_server_to_client = entry->stats_packets_lost_server_to_client;
+    stats->packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
+    stats->packets_out_of_order_server_to_client = entry->stats_packets_out_of_order_server_to_client;
+    stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
+    stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
+    stats->user_flags = entry->stats_user_flags;
+    stats->num_tags = entry->num_tags;
+    memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
+
+    return true;
 }
 
 // ---------------------------------------------------------------
@@ -13301,7 +13556,7 @@ static void test_ping_stats()
 
         next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.jitter, 0.0f ) );
-        next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 0.25f ) );
+        next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 1.0f ) );
     }
 }
 
@@ -13963,6 +14218,7 @@ static void test_packets()
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -13978,6 +14234,8 @@ static void test_packets()
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
         in.jitter_client_to_server = 0.1f;
+        in.has_debug = true;
+        strcpy( in.debug, "debug time" );
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -13987,6 +14245,7 @@ static void test_packets()
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -13998,12 +14257,15 @@ static void test_packets()
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
     }
 
     // route update packet (route)
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14032,6 +14294,7 @@ static void test_packets()
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14053,6 +14316,7 @@ static void test_packets()
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14078,6 +14342,7 @@ static void test_packets()
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14389,7 +14654,7 @@ static void test_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
+        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NULL, 0 );
         next_check( entry );
         next_check( entry->session_id == uint64_t(i) + 1000 );
         next_check( next_address_equal( &address, &entry->address ) == 1 );
@@ -14560,7 +14825,9 @@ static void test_backend_packets()
         in.session_id = 1234342431431LL;
         in.user_hash = 11111111;
         in.platform_id = 3;
-        in.tag = 0x1231314141;
+        in.num_tags = 2;
+        in.tags[0] = 0x1231314141;
+        in.tags[1] = 0x3344556677;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT;
         in.reported = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
@@ -14605,7 +14872,11 @@ static void test_backend_packets()
         next_check( in.session_id == out.session_id );
         next_check( in.user_hash == out.user_hash );
         next_check( in.platform_id == out.platform_id );
-        next_check( in.tag == out.tag );
+        next_check( in.num_tags == out.num_tags );
+        for ( int i = 0; i < in.num_tags; ++i )
+        {
+            next_check( in.tags[i] == out.tags[i] );
+        }
         next_check( in.flags == out.flags );
         next_check( in.reported == out.reported );
         next_check( in.connection_type == out.connection_type );
@@ -14641,7 +14912,7 @@ static void test_backend_packets()
         }
     }
 
-    // session response packet (direct)
+    // session response packet (direct, near relays changed)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -14650,6 +14921,7 @@ static void test_backend_packets()
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14666,6 +14938,8 @@ static void test_backend_packets()
         {
             in.session_data[i] = uint8_t(i);
         }
+        in.has_debug = true;
+        strcpy( in.debug, "hello session" );
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14673,6 +14947,7 @@ static void test_backend_packets()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14680,9 +14955,11 @@ static void test_backend_packets()
             next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
         next_check( in.response_type == out.response_type );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
     }
 
-    // session response packet (route)
+    // session response packet (route, near relays changed)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -14691,6 +14968,7 @@ static void test_backend_packets()
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14718,6 +14996,7 @@ static void test_backend_packets()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14731,7 +15010,7 @@ static void test_backend_packets()
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
     }
 
-    // session response packet (continue)
+    // session response packet (continue, near relays changed)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -14740,6 +15019,7 @@ static void test_backend_packets()
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
+        in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14769,12 +15049,114 @@ static void test_backend_packets()
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
             next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
+        next_check( in.response_type == out.response_type );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
+    }
+
+    // session response packet (direct, near relays not changed)
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.response_type = NEXT_UPDATE_TYPE_DIRECT;
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+        in.has_debug = true;
+        strcpy( in.debug, "hello session" );
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+
+        next_check( in.slice_number == out.slice_number );
+        next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.response_type == out.response_type );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
+    }
+
+    // session response packet (route, near relays not changed)
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.response_type = NEXT_UPDATE_TYPE_ROUTE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+
+        next_check( in.slice_number == out.slice_number );
+        next_check( in.session_id == out.session_id );
+        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.response_type == out.response_type );
+        next_check( in.multipath == out.multipath );
+        next_check( in.committed == out.committed );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
+    }
+
+    // session response packet (continue, near relays not changed)
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+
+        next_check( in.slice_number == out.slice_number );
+        next_check( in.session_id == out.session_id );
+        next_check( in.multipath == out.multipath );
+        next_check( in.committed == out.committed );
+        next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
@@ -15385,6 +15767,62 @@ static void test_wake_up()
     next_check( server_woke_up );
 }
 
+void test_anonymize_address_ipv4()
+{
+    next_address_t address;
+    next_address_parse( &address, "1.2.3.4:5" );
+
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    next_check( address.data.ipv4[0] == 1 );    
+    next_check( address.data.ipv4[1] == 2 );    
+    next_check( address.data.ipv4[2] == 3 );    
+    next_check( address.data.ipv4[3] == 4 );    
+    next_check( address.port == 5 );
+
+    next_address_anonymize( &address );
+
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    next_check( address.data.ipv4[0] == 1 );    
+    next_check( address.data.ipv4[1] == 2 );    
+    next_check( address.data.ipv4[2] == 3 );    
+    next_check( address.data.ipv4[3] == 0 );    
+    next_check( address.port == 0 );
+}
+
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+
+void test_anonymize_address_ipv6()
+{
+    next_address_t address;
+    next_address_parse( &address, "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:40000" );
+
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    next_check( address.data.ipv6[0] == 0x2001 );
+    next_check( address.data.ipv6[1] == 0x0db8 );
+    next_check( address.data.ipv6[2] == 0x85a3 );
+    next_check( address.data.ipv6[3] == 0x0000 );
+    next_check( address.data.ipv6[4] == 0x0000 );
+    next_check( address.data.ipv6[5] == 0x8a2e );
+    next_check( address.data.ipv6[6] == 0x0370 );
+    next_check( address.data.ipv6[7] == 0x7334 );
+    next_check( address.port == 40000 );
+
+    next_address_anonymize( &address );
+
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    next_check( address.data.ipv6[0] == 0x2001 );
+    next_check( address.data.ipv6[1] == 0x0db8 );
+    next_check( address.data.ipv6[2] == 0x85a3 );
+    next_check( address.data.ipv6[3] == 0x0000 );
+    next_check( address.data.ipv6[4] == 0x0000 );
+    next_check( address.data.ipv6[5] == 0x0000 );
+    next_check( address.data.ipv6[6] == 0x0000 );
+    next_check( address.data.ipv6[7] == 0x0000 );
+    next_check( address.port == 0 );
+}
+
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -15443,6 +15881,10 @@ void next_test()
     RUN_TEST( test_out_of_order_tracker );
     RUN_TEST( test_jitter_tracker );
     RUN_TEST( test_wake_up );
+    RUN_TEST( test_anonymize_address_ipv4 );
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+    RUN_TEST( test_anonymize_address_ipv6 );
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 }
 
 #ifdef _MSC_VER

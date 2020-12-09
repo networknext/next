@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "4.0.2"
+#define NEXT_VERSION_FULL                                   "4.0.4"
 #define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                    2
+#define NEXT_VERSION_PATCH_INT                                    4
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                  255
@@ -78,6 +78,8 @@
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_MAX                                         7
+
+#define NEXT_MAX_TAGS                                             8
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -189,6 +191,8 @@ NEXT_EXPORT_FUNC const char * next_address_to_string( const next_address_t * add
 
 NEXT_EXPORT_FUNC bool next_address_equal( const next_address_t * a, const next_address_t * b );
 
+NEXT_EXPORT_FUNC void next_address_anonymize( next_address_t * address );
+
 // -----------------------------------------
 
 struct next_client_stats_t
@@ -260,6 +264,39 @@ NEXT_EXPORT_FUNC const next_address_t * next_client_server_address( next_client_
 
 // -----------------------------------------
 
+struct next_server_stats_t
+{
+    next_address_t address;
+    uint64_t session_id;
+    uint64_t user_hash;
+    int platform_id;
+    int connection_type;
+    bool next;
+    bool committed;
+    bool multipath;
+    bool reported;
+    bool fallback_to_direct;
+    float direct_rtt;
+    float direct_jitter;
+    float direct_packet_loss;
+    float next_rtt;
+    float next_jitter;
+    float next_packet_loss;
+    float next_kbps_up;
+    float next_kbps_down;
+    uint64_t packets_sent_client_to_server;
+    uint64_t packets_sent_server_to_client;
+    uint64_t packets_lost_client_to_server;
+    uint64_t packets_lost_server_to_client;
+    uint64_t packets_out_of_order_client_to_server;
+    uint64_t packets_out_of_order_server_to_client;
+    float jitter_client_to_server;
+    float jitter_server_to_client;
+    uint64_t user_flags;
+    uint64_t tags[NEXT_MAX_TAGS];
+    int num_tags;
+};
+
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
 #define NEXT_SERVER_STATE_RESOLVING_HOSTNAME        1
 #define NEXT_SERVER_STATE_INITIALIZING              2
@@ -281,11 +318,15 @@ NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, c
 
 NEXT_EXPORT_FUNC void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
 
+NEXT_EXPORT_FUNC void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags );
+
 NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
+
+NEXT_EXPORT_FUNC bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats );
 
 // -----------------------------------------
 
