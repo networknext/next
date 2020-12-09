@@ -27,15 +27,6 @@ type Handler interface {
 	Close() error
 }
 
-// type TSHandler interface {
-// 	Open(ctx context.Context) error
-// 	WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int)
-// 	NewCounter(ctx context.Context, descriptor *Descriptor) (Counter, error)
-// 	NewGauge(ctx context.Context, descriptor *Descriptor) (Gauge, error)
-// 	NewHistogram(ctx context.Context, descriptor *Descriptor, buckets int) (Histogram, error)
-// 	Close() error
-// }
-
 type Valuer interface {
 	Value() float64
 }
