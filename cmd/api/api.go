@@ -164,7 +164,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rawBuyerID, ok := r.URL.Query()["id"]
 		if !ok {
-			http.Error(w, "id is missing", http.StatusInternalServerError)
+			http.Error(w, "id is missing", http.StatusBadRequest)
 			return
 		}
 		buyerID := rawBuyerID[0]
@@ -172,14 +172,14 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 		// Get start time
 		rawStartTime, ok := r.URL.Query()["start"]
 		if !ok {
-			http.Error(w, "start is missing", http.StatusInternalServerError)
+			http.Error(w, "start is missing", http.StatusBadRequest)
 			return
 		}
 		// Parse the start time
 		startTime, err := time.Parse(time.RFC3339, rawStartTime[0])
 		if err != nil {
 			errStr := fmt.Sprintf("could not parse start=%s as RFC3339 format (i.e. 2006-01-02T15:04:05%%2b07:00): %v", rawStartTime[0], err)
-			http.Error(w, errStr, http.StatusInternalServerError)
+			http.Error(w, errStr, http.StatusBadRequest)
 			return
 		}
 
@@ -194,7 +194,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			endTime, err = time.Parse(time.RFC3339, rawEndTime[0])
 			if err != nil {
 				errStr := fmt.Sprintf("could not parse end=%s as RFC3339 format (i.e. 2006-01-02T15:04:05%%2b07:00): %v", rawEndTime[0], err)
-				http.Error(w, errStr, http.StatusInternalServerError)
+				http.Error(w, errStr, http.StatusBadRequest)
 				return
 			}
 		}
@@ -202,7 +202,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 		// Check if end time is before start time
 		if endTime.Before(startTime) {
 			errStr := fmt.Sprintf("end time %v is before start time %v", endTime, startTime)
-			http.Error(w, errStr, http.StatusInternalServerError)
+			http.Error(w, errStr, http.StatusBadRequest)
 			return
 		}
 
