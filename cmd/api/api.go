@@ -105,7 +105,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, metricsHandler)
+	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
 		return 1
@@ -117,7 +117,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityMetricMetrics, 0, nil)
+	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil)
 
 	errChan := make(chan error, 1)
 	// Start HTTP server

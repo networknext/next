@@ -94,7 +94,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get metrics for evaluating the performance of vanity metrics
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
+	vanityMetricMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
 		return 1

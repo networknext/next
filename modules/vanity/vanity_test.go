@@ -157,10 +157,10 @@ func TestNewVanityMetrics(t *testing.T) {
 	tsMetricsHandler := &metrics.LocalHandler{}
 
 	// Get metrics for evaluating the performance of vanity metrics
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
+	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, nil)
+	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil)
 	assert.NotNil(t, vanityMetrics)
 }
 
@@ -171,13 +171,13 @@ func TestReceiveMessage(t *testing.T) {
 	tsMetricsHandler := &metrics.LocalHandler{}
 
 	// Get metrics for evaluating the performance of vanity metrics
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
+	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
 	t.Run("receive error", func(t *testing.T) {
 		subscriber := &BadMockSubscriber{}
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.EqualError(t, err, "error receiving message: bad data")
@@ -187,7 +187,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Contains(t, err.Error(), "could not unmarshal message: ")
@@ -201,7 +201,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: vanityDataBytes}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 0, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 0, subscriber)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Equal(t, err, &vanity.ErrChannelFull{})
@@ -215,7 +215,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: vanityDataBytes}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.NoError(t, err)
@@ -225,7 +225,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Contains(t, err.Error(), "could not unmarshal message: ")
@@ -235,7 +235,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{}
 		subscriber.Subscribe(0)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, subscriber)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
 		assert.Equal(t, &vanity.ErrUnknownMessage{}, err)
@@ -249,17 +249,17 @@ func TestUpdateMetrics(t *testing.T) {
 	tsMetricsHandler := &metrics.LocalHandler{}
 
 	// Get metrics for evaluating the performance of vanity metrics
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
+	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
 	t.Run("vanity data update metric success", func(t *testing.T) {
 		vanityData := getTestVanityData(rand.Uint64())
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, nil)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil)
 
 		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
 		assert.NoError(t, err)
-		assert.Equal(t, 1.0, vanityMetricMetrics.UpdateVanitySuccessCount.Value())
+		assert.Equal(t, 1.0, vanityServiceMetrics.UpdateVanitySuccessCount.Value())
 	})
 }
 
@@ -310,10 +310,10 @@ func TestReadingMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Get metrics for evaluating the performance of vanity metrics
-	vanityMetricMetrics, err := metrics.NewVanityMetricMetrics(ctx, tsMetricsHandler)
+	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, 1, nil)
+	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil)
 
 	startTime, err := time.Parse(time.RFC3339, "2020-12-01T15:04:05+07:00")
 	assert.NoError(t, err)

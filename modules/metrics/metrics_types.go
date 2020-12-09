@@ -265,7 +265,7 @@ var EmptyBigTableMetrics = BigTableMetrics{
 	ReadSliceFailureCount:  &EmptyCounter{},
 }
 
-type VanityMetricMetrics struct {
+type VanityServiceMetrics struct {
 	Goroutines               Gauge
 	MemoryAllocated          Gauge
 	ReceivedVanityCount      Counter
@@ -275,7 +275,7 @@ type VanityMetricMetrics struct {
 	ReadVanityFailureCount   Counter
 }
 
-var EmptyVanityMetricMetrics = VanityMetricMetrics{
+var EmptyVanityServiceMetrics = VanityServiceMetrics{
 	Goroutines:               &EmptyGauge{},
 	MemoryAllocated:          &EmptyGauge{},
 	ReceivedVanityCount:      &EmptyCounter{},
@@ -285,10 +285,10 @@ var EmptyVanityMetricMetrics = VanityMetricMetrics{
 	ReadVanityFailureCount:   &EmptyCounter{},
 }
 
-func NewVanityMetricMetrics(ctx context.Context, metricsHandler Handler) (*VanityMetricMetrics, error) {
+func NewVanityServiceMetrics(ctx context.Context, metricsHandler Handler) (*VanityServiceMetrics, error) {
 	var err error
 
-	vanityMetrics := VanityMetricMetrics{}
+	vanityMetrics := VanityServiceMetrics{}
 
 	vanityMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Vanity Metrics Goroutine Count",

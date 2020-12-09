@@ -49,7 +49,7 @@ func (e *ErrUnmarshalMessage) Error() string {
 
 type VanityMetricHandler struct {
 	handler              metrics.Handler
-	metrics              *metrics.VanityMetricMetrics
+	metrics              *metrics.VanityServiceMetrics
 	vanityMetricDataChan chan *VanityMetrics
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
@@ -71,7 +71,7 @@ type VanityMetrics struct {
 	SessionsAccelerated     uint64
 }
 
-func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *metrics.VanityMetricMetrics, chanBufferSize int, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
+func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int, vanitySubscriber pubsub.Subscriber) *VanityMetricHandler {
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
 		"Slices Latency Reduced":     true,
@@ -89,7 +89,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityMetricMetrics *
 
 	return &VanityMetricHandler{
 		handler:              vanityHandler,
-		metrics:              vanityMetricMetrics,
+		metrics:              vanityServiceMetrics,
 		vanityMetricDataChan: make(chan *VanityMetrics, chanBufferSize),
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
