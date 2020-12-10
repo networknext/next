@@ -80,7 +80,8 @@ const (
 		1 + // LatencyWorse
 		1 + // NoRoute
 		1 + // NextLatencyTooHigh
-		1 // RouteChanged
+		1 + // RouteChanged
+		1 // CommitVeto
 )
 
 type BillingEntry struct {
@@ -150,6 +151,7 @@ type BillingEntry struct {
 	NoRoute                         bool
 	NextLatencyTooHigh              bool
 	RouteChanged                    bool
+	CommitVeto                      bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -263,6 +265,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.NoRoute)
 	encoding.WriteBool(data, &index, entry.NextLatencyTooHigh)
 	encoding.WriteBool(data, &index, entry.RouteChanged)
+	encoding.WriteBool(data, &index, entry.CommitVeto)
 
 	return data[:index]
 }
@@ -610,6 +613,10 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.RouteChanged) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.CommitVeto) {
 			return false
 		}
 	}

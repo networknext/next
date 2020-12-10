@@ -1072,6 +1072,7 @@ func PostSessionUpdate(
 		NoRoute:                         sessionData.RouteState.NoRoute,
 		NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
 		RouteChanged:                    sessionData.RouteChanged,
+		CommitVeto:                      sessionData.RouteState.CommitVeto,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
