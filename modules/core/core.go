@@ -982,6 +982,12 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		threshold := samples / 2
 
+		if directPacketLoss > 0 {
+			routeState.DirectPLHistory |= (1<<index)
+		} else {
+			routeState.DirectPLHistory &= ^(1<<index)
+		}
+
 		for i := range sourceRelayPacketLoss {
 
 			if sourceRelayPacketLoss[i] > directPacketLoss {
@@ -989,6 +995,8 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 			} else {
 				routeState.NearRelayPLHistory[i] &= ^(1<<index)
 			}
+
+			// exclude near relays with a history of worse packet loss
 
 			plCount := int32(0)
 			for j := 0; j < int(samples); j++ {
@@ -999,6 +1007,14 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 			if plCount > threshold {
 				out_sourceRelayLatency[i] = 255
+				continue
+			}
+
+			// if direct has no history of packet loss, exclude near relays with packet loss
+
+			if routeState.DirectPLHistory == 0 && routeState.NearRelayPLHistory[i] != 0 {
+				out_sourceRelayLatency[i] = 255
+				continue
 			}
 		}
 
@@ -1184,6 +1200,7 @@ type RouteState struct {
 	NearRelayRTT       [MaxNearRelays]int32
 	NearRelayJitter    [MaxNearRelays]int32
 	NearRelayPLHistory [MaxNearRelays]uint32
+	DirectPLHistory    uint32
 	PLHistoryIndex     int32
 	PLHistorySamples   int32
 	RelayWentAway      bool
