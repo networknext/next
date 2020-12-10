@@ -665,6 +665,9 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddCustomer(ctx, expectedCustomer)
 			assert.Error(t, err)
 
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
+
 			assert.Equal(t, expected, actual)
 
 			// Check that the customer exists and is properly linked to the buyer
@@ -863,6 +866,10 @@ func TestFirestore(t *testing.T) {
 
 			assert.NotEqual(t, expected, actual)
 			actual.Live = false
+
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
+
 			assert.Equal(t, expected, actual)
 		})
 	})
