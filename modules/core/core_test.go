@@ -5574,7 +5574,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	// filter out the first source relay permanently by giving it high packet loss
 
-	sourceRelayPacketLoss = []int32{ 100, 0, 0, 0, 0 }
+	sourceRelayPacketLoss = []int32{ 10, 0, 0, 0, 0 }
 
 	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 

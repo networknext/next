@@ -897,8 +897,8 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 			continue
 		}
 
-		// any source relay with > 50% PL in the last slice is bad news
-		if sourceRelayPacketLoss[i] > 50 {
+		// any source relay with >= 10% PL in the last slice is bad news
+		if sourceRelayPacketLoss[i] >= 10 {
 			routeState.NearRelayRTT[i] = 255
 			out_sourceRelayLatency[i] = 255
 			continue
