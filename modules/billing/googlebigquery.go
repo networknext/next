@@ -246,5 +246,11 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["mispredicted"] = entry.Mispredicted
 	e["vetoed"] = entry.Vetoed
 
+	e["latencyWorse"] = entry.LatencyWorse
+	e["noRoute"] = entry.NoRoute
+	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
+	e["routeChanged"] = entry.RouteChanged
+	e["commitVeto"] = entry.CommitVeto
+
 	return e, "", nil
 }
