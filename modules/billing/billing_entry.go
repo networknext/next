@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(18)
+	BillingEntryVersion = uint8(19)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -74,7 +74,9 @@ const (
 		1 + // RelayWentAway
 		1 + // RouteLost
 		1 + // NumTags
-		BillingEntryMaxTags*8 // Tags
+		BillingEntryMaxTags*8 + // Tags
+		1 + // Mispredicted
+		1 // Vetoed
 )
 
 type BillingEntry struct {
@@ -138,6 +140,8 @@ type BillingEntry struct {
 	RouteLost                       bool
 	NumTags                         uint8
 	Tags                            [BillingEntryMaxTags]uint64
+	Mispredicted                    bool
+	Vetoed                          bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -243,6 +247,9 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	for i := uint8(0); i < entry.NumTags; i++ {
 		encoding.WriteUint64(data, &index, entry.Tags[i])
 	}
+
+	encoding.WriteBool(data, &index, entry.Mispredicted)
+	encoding.WriteBool(data, &index, entry.Vetoed)
 
 	return data[:index]
 }
@@ -563,6 +570,16 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			if !encoding.ReadUint64(data, &index, &entry.Tags[i]) {
 				return false
 			}
+		}
+	}
+
+	if entry.Version >= 19 {
+		if !encoding.ReadBool(data, &index, &entry.Mispredicted) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.Vetoed) {
+			return false
 		}
 	}
 
