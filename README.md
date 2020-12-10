@@ -4,19 +4,4 @@
 
 # Unreal Engine 4 Plugin
 
-This repository contains the UE4 plugin for Network Next. 
-
-It's currently tested to work with Unreal Engine version 4.16. We welcome PRs to upgrade it to more recent versions of UE4.
-
-To install the plugin:
-
-1. Copy plugin `NetworkNext` directory to your game plugins directory, such that `<project root>/Plugins/NetworkNext/NetworkNext.uplugin` exists
-
-2. Edit DefaultConfig.ini to add the following lines
-```
-[/Script/Engine.Engine]
-!NetDriverDefinitions=ClearArray
-+NetDriverDefinitions=(DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="OnlineSubsystemUtils.IpNetDriver")
-```
-
-3. Welcome to __awesometown__.
+This repository contains the UE4 plugin for Network Next.
