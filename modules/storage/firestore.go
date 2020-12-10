@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/google/go-cmp/cmp"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
@@ -506,9 +507,17 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &FirestoreError{err: err}
 	}
 
+	if cmp.Equal(b.RouteShader, core.RouteShader{}) {
+		b.RouteShader = core.NewRouteShader()
+	}
+
 	// Add the buyer's route shader to remote storage
 	if err := fs.SetRouteShaderForBuyerID(ctx, ref.ID, company.Name, b.RouteShader); err != nil {
 		return &FirestoreError{err: err}
+	}
+
+	if cmp.Equal(b.InternalConfig, core.InternalConfig{}) {
+		b.InternalConfig = core.NewInternalConfig()
 	}
 
 	// Add the buyer's internal config to remote storage
