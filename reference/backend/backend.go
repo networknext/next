@@ -305,18 +305,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
 	if hasTags {
-		if ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, 4, 0, 3) {
-			// multiple tags
-			stream.SerializeInteger(&packet.NumTags, 0, NEXT_MAX_TAGS)
-			for i := 0; i < int(packet.NumTags); i++ {
-				stream.SerializeUint64(&packet.Tags[i])
-			}
-		} else {
-			// single tag
-			stream.SerializeUint64(&packet.Tags[0])
-			if stream.IsWriting() {
-				packet.NumTags = 1
-			}
+		stream.SerializeInteger(&packet.NumTags, 0, NEXT_MAX_TAGS)
+		for i := 0; i < int(packet.NumTags); i++ {
+			stream.SerializeUint64(&packet.Tags[i])
 		}
 	}
 
@@ -449,11 +440,11 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		stream.SerializeBytes(packet.Tokens)
 	}
 
-	if ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, 4, 0, 4) {
-		stream.SerializeBool(&packet.HasDebug)
+	stream.SerializeBool(&packet.HasDebug)
+	if packet.HasDebug {
 		stream.SerializeString(&packet.Debug, NEXT_MAX_SESSION_DEBUG)
 	}
-
+	
 	return stream.Error()
 }
 
