@@ -652,8 +652,21 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
 		if sessionData.Version >= 1 {
-			stream.SerializeUint32(&sessionData.RouteState.NearRelayPLHistory[i])
+			if sessionData.Version >= 2 {
+				nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
+				stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
+				sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
+			} else {
+				stream.SerializeUint32(&sessionData.RouteState.NearRelayPLHistory[i])
+			}
+
 		}
+	}
+
+	if sessionData.Version >= 2 {
+		directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
+		stream.SerializeInteger(&directPLHistory, 0, 255)
+		sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
 	}
 
 	if sessionData.Version >= 1 {
