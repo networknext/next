@@ -285,6 +285,29 @@ func TestUpdateMetrics(t *testing.T) {
 		assert.Equal(t, &userSession, recvSession)
 	})
 
+	t.Run("check user hash expiration in redis", func(t *testing.T) {
+		userHash := rand.Uint64()
+		sessionID := rand.Uint64()
+		timestamp := rand.Uint64()
+
+		userSession := vanity.UserSession{SessionID: fmt.Sprintf("%016x", sessionID), Timestamp: fmt.Sprintf("%016x", timestamp)}
+
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, 1)
+		key := fmt.Sprintf("uh-%s", fmt.Sprintf("%016x", userHash))
+		err := vanityMetrics.PutUserSession(key, &userSession)
+		assert.NoError(t, err)
+
+		// Sleep for 3 seconds to let the userHash expire
+		time.Sleep(3)
+
+		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
+		defer conn.Close()
+
+		ttl, err := conn.Do("TTL", redis.Args{}.Add(key))
+		assert.NoError(t, err)
+		assert.Equal(t, int64(-2), ttl) // -2 indicates key does not exist
+	})
+
 	t.Run("vanity data update metric success", func(t *testing.T) {
 		vanityData := getTestVanityData(rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64())
 
