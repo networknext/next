@@ -86,7 +86,7 @@ create table rs_internal_configs (
 
 create table banned_users (
   id integer primary key autoincrement,
-  user_id integer not null unique,
+  user_id integer not null,
   buyer_id integer not null,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
@@ -146,7 +146,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/12/09 12:01:23
+-- File generation: 2020/12/09 16:16:17
 
 -- machine_types
 insert into machine_types values (0, 'none');
