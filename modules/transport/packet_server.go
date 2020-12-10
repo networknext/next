@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 2
+	SessionDataVersion = 3
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -545,6 +545,7 @@ type SessionData struct {
 	ExpireTimestamp  uint64
 	Initial          bool
 	Location         routing.Location
+	RouteChanged     bool
 	RouteNumRelays   int32
 	RouteCost        int32
 	RouteRelayIDs    [core.MaxRelaysPerRoute]uint64
@@ -604,6 +605,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 			return err
 		}
 		stream.SerializeBytes(locationBytes)
+	}
+
+	if sessionData.Version >= 3 {
+		stream.SerializeBool(&sessionData.RouteChanged)
 	}
 
 	hasRoute := sessionData.RouteNumRelays > 0
