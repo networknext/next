@@ -57,890 +57,551 @@ func assertResponseEqual(t *testing.T, expectedResponse transport.SessionRespons
 	}
 }
 
-// todo: these should be their own type/file and not tested alongside the session update handler
-func TestGetRouteAddressesAndPublicKeysFailure(t *testing.T) {
-	ctx := context.Background()
-
-	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
-	assert.NoError(t, err)
-	clientPublicKey := make([]byte, crypto.KeySize)
-	core.RandomBytes(clientPublicKey)
-
-	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-	assert.NoError(t, err)
-	serverPublicKey := make([]byte, crypto.KeySize)
-	core.RandomBytes(serverPublicKey)
-
-	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
-	assert.NoError(t, err)
-	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
-	assert.NoError(t, err)
-	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
-	assert.NoError(t, err)
-
-	relayPublicKey1 := make([]byte, crypto.KeySize)
-	core.RandomBytes(relayPublicKey1)
-	relayPublicKey2 := make([]byte, crypto.KeySize)
-	core.RandomBytes(relayPublicKey2)
-	relayPublicKey3 := make([]byte, crypto.KeySize)
-	core.RandomBytes(relayPublicKey3)
-
-	seller := routing.Seller{ID: "seller"}
-	datacenter := routing.Datacenter{ID: crypto.HashID("local"), Name: "local"}
-
-	storer := &storage.InMemory{}
-
-	err = storer.AddSeller(ctx, seller)
-	assert.NoError(t, err)
-	err = storer.AddDatacenter(ctx, datacenter)
-	assert.NoError(t, err)
-
-	err = storer.AddRelay(ctx, routing.Relay{ID: crypto.HashID(relayAddr1.String()), Addr: *relayAddr1, PublicKey: relayPublicKey1, Seller: seller, Datacenter: datacenter})
-	assert.NoError(t, err)
-	err = storer.AddRelay(ctx, routing.Relay{ID: crypto.HashID(relayAddr2.String()), Addr: *relayAddr2, PublicKey: relayPublicKey2, Seller: seller, Datacenter: datacenter})
-	assert.NoError(t, err)
-
-	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
-	routeRelays := []int32{1, 0, 2}
-
-	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, storer)
-	assert.Nil(t, routeAddresses)
-	assert.Nil(t, routePublicKeys)
-}
-
-func TestGetRouteAddressesAndPublicKeysSuccess(t *testing.T) {
-	ctx := context.Background()
-
-	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
-	assert.NoError(t, err)
-	clientPublicKey := make([]byte, crypto.KeySize)
-	core.RandomBytes(clientPublicKey)
-
-	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-	assert.NoError(t, err)
-	serverPublicKey := make([]byte, crypto.KeySize)
-	core.RandomBytes(serverPublicKey)
-
-	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
-	assert.NoError(t, err)
-	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
-	assert.NoError(t, err)
-	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
-	assert.NoError(t, err)
-
-	relayPublicKey1 := make([]byte, crypto.KeySize)
-	core.RandomBytes(relayPublicKey1)
-	relayPublicKey2 := make([]byte, crypto.KeySize)
-	core.RandomBytes(relayPublicKey2)
-	relayPublicKey3 := make([]byte, crypto.KeySize)
-	core.RandomBytes(relayPublicKey3)
-
-	seller := routing.Seller{ID: "seller"}
-	datacenter := routing.Datacenter{ID: crypto.HashID("local"), Name: "local"}
-
-	storer := &storage.InMemory{}
-
-	err = storer.AddSeller(ctx, seller)
-	assert.NoError(t, err)
-	err = storer.AddDatacenter(ctx, datacenter)
-	assert.NoError(t, err)
-
-	err = storer.AddRelay(ctx, routing.Relay{ID: crypto.HashID(relayAddr1.String()), Addr: *relayAddr1, PublicKey: relayPublicKey1, Seller: seller, Datacenter: datacenter})
-	assert.NoError(t, err)
-	err = storer.AddRelay(ctx, routing.Relay{ID: crypto.HashID(relayAddr2.String()), Addr: *relayAddr2, PublicKey: relayPublicKey2, Seller: seller, Datacenter: datacenter})
-	assert.NoError(t, err)
-	err = storer.AddRelay(ctx, routing.Relay{ID: crypto.HashID(relayAddr3.String()), Addr: *relayAddr3, PublicKey: relayPublicKey3, Seller: seller, Datacenter: datacenter})
-	assert.NoError(t, err)
-
-	expectedRouteAddresses := []*net.UDPAddr{clientAddr, relayAddr2, relayAddr1, relayAddr3, serverAddr}
-	expectedRoutePublicKeys := [][]byte{clientPublicKey, relayPublicKey2, relayPublicKey1, relayPublicKey3, serverPublicKey}
-
-	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
-	routeRelays := []int32{1, 0, 2}
-
-	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, storer)
-	assert.Equal(t, expectedRouteAddresses, routeAddresses)
-	assert.Equal(t, expectedRoutePublicKeys, routePublicKeys)
-}
-
-func TestSessionUpdateHandlerReadPacketFailure(t *testing.T) {
+func runSessionUpdateTest(
+	t *testing.T,
+	sdkVersion transport.SDKVersion,
+	sessionID uint64,
+	sliceNumber uint32,
+	buyerID uint64,
+	datacenterID uint64,
+	clientPingTimedOut bool,
+	sessionData *transport.SessionData,
+	ipLocator routing.IPLocator,
+	buyers []routing.Buyer,
+	datacenters []routing.Datacenter,
+	datacenterMaps []routing.DatacenterMap,
+) (*transport.SessionResponsePacket, *transport.SessionData, *metrics.SessionUpdateMetrics) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.SessionUpdateHandlerFunc(logger, nil, nil, nil, nil, 32, [crypto.KeySize]byte{}, nil, metrics.SessionUpdateMetrics)
+	serverBackendMetrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+
+	var sessionDataBytes int32
+	var requestSessionData [transport.MaxSessionDataSize]byte
+	if sessionData != nil {
+		sessionDataSlice, err := transport.MarshalSessionData(sessionData)
+		assert.NoError(t, err)
+
+		sessionDataBytes = int32(len(sessionDataSlice))
+		copy(requestSessionData[:], sessionDataSlice)
+	}
+
+	requestPacket := transport.SessionUpdatePacket{
+		Version:              sdkVersion,
+		SessionID:            sessionID,
+		UserHash:             12345,
+		CustomerID:           buyerID,
+		DatacenterID:         datacenterID,
+		SliceNumber:          sliceNumber,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+		ClientPingTimedOut:   clientPingTimedOut,
+		SessionDataBytes:     sessionDataBytes,
+		SessionData:          requestSessionData,
+	}
+
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	storer := &storage.InMemory{}
+
+	for _, buyer := range buyers {
+		err := storer.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+	}
+
+	for _, datacenter := range datacenters {
+		err := storer.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+	}
+
+	for _, datacenterMap := range datacenterMaps {
+		err := storer.AddDatacenterMap(ctx, datacenterMap)
+		assert.NoError(t, err)
+	}
+
+	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return ipLocator
+	}
+
+	var routeMatrix routing.RouteMatrix
+	routeMatrixFunc := func() *routing.RouteMatrix {
+		return &routeMatrix
+	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
+	responseBuffer := &bytes.Buffer{}
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, serverBackendMetrics.PostSessionMetrics)
+
+	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, serverBackendMetrics.SessionUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	if len(responseBuffer.Bytes()) == 0 {
+		return nil, nil, serverBackendMetrics.SessionUpdateMetrics
+	}
+
+	var responsePacket transport.SessionResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var actualSessionData transport.SessionData
+	err = transport.UnmarshalSessionData(&actualSessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	return &responsePacket, &actualSessionData, serverBackendMetrics.SessionUpdateMetrics
+}
+
+func sessionData(sessionID uint64, sliceNumber uint32, userID uint64, routeType int32) *transport.SessionData {
+	var expireTimestamp uint64
+	if routeType == routing.RouteTypeNew {
+		expireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2
+	} else {
+		expireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+	}
+
+	return &transport.SessionData{
+		Version:         transport.SessionDataVersion,
+		SessionID:       sessionID,
+		SliceNumber:     sliceNumber + 1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: expireTimestamp,
+		RouteState: core.RouteState{
+			UserID: userID,
+		},
+	}
+}
+
+func directResponse(t *testing.T, sessionID uint64, sliceNumber uint32, nearRelayIDs []uint64, nearRelayAddresses []uint64, sessionData *transport.SessionData) *transport.SessionResponsePacket {
+	sessionDataSlice, err := transport.MarshalSessionData(sessionData)
+	assert.NoError(t, err)
+
+	response := &transport.SessionResponsePacket{
+		SessionID:          sessionID,
+		SliceNumber:        sliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       []uint64{},
+		NearRelayAddresses: []net.UDPAddr{},
+		SessionDataBytes:   int32(len(sessionDataSlice)),
+	}
+
+	copy(response.SessionData[:], sessionDataSlice)
+	return response
+}
+
+func validateSessionUpdateTest(
+	t *testing.T,
+	sessionID uint64,
+	sliceNumber uint32,
+	expectedRouteType int32,
+	expectedSessionData transport.SessionData,
+	responsePacket transport.SessionResponsePacket,
+	actualSessionData transport.SessionData,
+) {
+	var expectedResponse transport.SessionResponsePacket
+	if expectedRouteType == routing.RouteTypeDirect {
+		expectedResponse = *directResponse(t, sessionID, sliceNumber, nearRelayIDs, nearRelayAddresses, &expectedSessionData)
+	}
+
+	assert.Equal(t, expectedSessionData, actualSessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+}
+
+/// -------- ERROR TESTS-------------
+
+// These tests check each error case of the session update handler
+// and validate that direct slice is returned
+
+// We have to do this test a bit manually since the server backend won't respond on a packet read failure
+func TestSessionUpdateHandlerReadPacketFailure(t *testing.T) {
+	metricsHandler := metrics.LocalHandler{}
+
+	serverBackendMetrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+
+	responseBuffer := &bytes.Buffer{}
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), nil, nil, nil, nil, 0, [crypto.KeySize]byte{}, nil, serverBackendMetrics.SessionUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
 
-	assert.Nil(t, responseBuffer.Bytes())
-	assert.Equal(t, metrics.SessionUpdateMetrics.ReadPacketFailure.Value(), 1.0)
+	assert.Len(t, responseBuffer.Bytes(), 0)
+
+	assert.Equal(t, 1.0, serverBackendMetrics.SessionUpdateMetrics.ReadPacketFailure.Value())
 }
 
 func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := true
+	var sessionData *transport.SessionData
 
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersion{4, 0, 2}, // can only be true in 4.0.2 or higher
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-		ClientPingTimedOut:   true,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	var goodIPLocator goodIPLocator
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersion{4, 0, 2},
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		nil,
+		nil,
+		nil,
+	)
 
-	var badIPLocator badIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &badIPLocator
-	}
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
-	}
-
-	expectedSessionData := transport.SessionData{}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.ClientPingTimedOut.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.ClientPingTimedOut.Value())
 }
 
 func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	var sessionData *transport.SessionData
 
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	var goodIPLocator goodIPLocator
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		nil,
+		nil,
+		nil,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	var badIPLocator badIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &badIPLocator
-	}
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
-	}
-
-	expectedSessionData := transport.SessionData{}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.BuyerNotFound.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.BuyerNotFound.Value())
 }
 
 func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	var sessionData *transport.SessionData
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		nil,
+		nil,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData{}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.DatacenterNotFound.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.DatacenterNotFound.Value())
 }
 
 func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
-
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
 	datacenterAlias := "alias"
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{Alias: datacenterAlias})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		DatacenterID:         crypto.HashID(datacenterAlias),
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	datacenterID := crypto.HashID(datacenterAlias)
+	clientPingTimedOut := false
+	var sessionData *transport.SessionData
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, Alias: "alias"}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		nil,
+		datacenterMaps,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData{}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.MisconfiguredDatacenterAlias.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.MisconfiguredDatacenterAlias.Value())
 }
 
 func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
-
-	datacenterName := "datacenter.name"
-	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: crypto.HashID(datacenterName)})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		DatacenterID:         crypto.HashID(datacenterName),
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	var sessionData *transport.SessionData
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		datacenters,
+		nil,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData{}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.DatacenterNotAllowed.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.DatacenterNotAllowed.Value())
 }
 
 func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	var sessionData *transport.SessionData
 
 	var badIPLocator badIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &badIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&badIPLocator,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := false
+	sessionDataExpectOnlySessionID := false
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.ClientLocateFailure.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.ClientLocateFailure.Value())
 }
 
 func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		SliceNumber:          1,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	sessionID := uint64(1111)
+	sliceNumber := uint32(1)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	var sessionData *transport.SessionData
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData{}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.ReadSessionDataFailure.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.ReadSessionDataFailure.Value())
 }
 
 func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
-
-	sessionDataStruct := transport.SessionData{
-		Version:     transport.SessionDataVersion,
-		SessionID:   1,
-		SliceNumber: 1,
-		Location:    routing.LocationNullIsland,
-	}
-
-	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
-	assert.NoError(t, err)
-
-	sessionDataArray := [transport.MaxSessionDataSize]byte{}
-	copy(sessionDataArray[:], sessionDataSlice)
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		SliceNumber:          1,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          sessionDataArray,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
+	sessionID := uint64(1111)
+	sliceNumber := uint32(1)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	sessionData := &transport.SessionData{}
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := true
+	sessionDataExpectOnlySessionID := false
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:     transport.SessionDataVersion,
-		SessionID:   1,
-		SliceNumber: 1,
-		Location:    routing.LocationNullIsland,
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.BadSessionID.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.BadSessionID.Value())
 }
 
 func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
-
-	sessionDataStruct := transport.SessionData{
-		Version:     transport.SessionDataVersion,
-		SessionID:   1111,
-		SliceNumber: 1,
-		Location:    routing.LocationNullIsland,
+	sessionID := uint64(1111)
+	sliceNumber := uint32(1)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	sessionData := &transport.SessionData{
+		SessionID: 1111,
 	}
-
-	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
-	assert.NoError(t, err)
-
-	sessionDataArray := [transport.MaxSessionDataSize]byte{}
-	copy(sessionDataArray[:], sessionDataSlice)
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		SliceNumber:          2,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          sessionDataArray,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
 
 	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := false
+	sessionDataExpectOnlySessionID := true
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:     transport.SessionDataVersion,
-		SessionID:   1111,
-		SliceNumber: 1,
-		Location:    routing.LocationNullIsland,
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.BadSliceNumber.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.BadSliceNumber.Value())
 }
 
 func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{})
-
-	requestPacket := transport.SessionUpdatePacket{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var ipLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &ipLocator
+	sessionID := uint64(1111)
+	sliceNumber := uint32(1)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	clientPingTimedOut := false
+	sessionData := &transport.SessionData{
+		SessionID: 1111,
 	}
 
-	var routeMatrix routing.RouteMatrix
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
+	var goodIPLocator goodIPLocator
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
+	buyers := []routing.Buyer{{ID: 123, Live: false}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
+	responsePacket, sessionData, metrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		clientPingTimedOut,
+		sessionData,
+		&goodIPLocator,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+	expectEmptySessionData := false
+	sessionDataExpectOnlySessionID := false
 
-	expectedResponse := transport.SessionResponsePacket{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
-	}
+	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, expectEmptySessionData, sessionDataExpectOnlySessionID, responsePacket, sessionData)
 
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.SessionUpdateMetrics.BuyerNotLive.Value(), 1.0)
+	assert.Equal(t, 1.0, metrics.BuyerNotLive.Value())
 }
+
+/// -------- END ERROR TESTS-------------
 
 func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	logger := log.NewNopLogger()
