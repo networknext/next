@@ -19,7 +19,7 @@ type PostSessionHandler struct {
 	postSessionBillingChannel  chan *billing.BillingEntry
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
-	vanityMetricChannel        chan *billing.BillingEntry
+	vanityMetricChannel        chan vanity.VanityMetrics
 	portalPublishers           []pubsub.Publisher
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
@@ -40,7 +40,7 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
-		vanityMetricChannel:        make(chan *billing.BillingEntry, chanBufferSize),
+		vanityMetricChannel:        make(chan vanity.VanityMetrics, chanBufferSize),
 		portalPublishers:           portalPublishers,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
 		vanityPublishers:           vanityPublishers,
@@ -148,11 +148,11 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 				for {
 					select {
-					case billingEntry := <-post.vanityMetricChannel:
-						// Extract the vanity metrics from the billingEntry
-						extractedMetrics, onNext := post.ExtractVanityMetrics(billingEntry)
-						if !onNext {
-							// If the billingEntry was not on Next, no need to send it
+					case extractedMetrics := <-post.vanityMetricChannel:
+						// Check if received empty struct (signifies not on Next)
+						emptyVanity := vanity.VanityMetrics{}
+						if extractedMetrics == emptyVanity {
+							// If not on Next, no need to send the metric
 							level.Debug(post.logger).Log("type", "vanity metrics", "msg", "billingEntry not on next, not sending vanity metric")
 							continue
 						}
@@ -218,7 +218,7 @@ func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalD
 
 func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry) {
 	select {
-	case post.vanityMetricChannel <- billingEntry:
+	case post.vanityMetricChannel <- post.ExtractVanityMetrics(billingEntry):
 		post.metrics.VanityMetricsSent.Add(1)
 		level.Info(post.logger).Log("msg", "sent vanity metric")
 	default:
@@ -332,7 +332,7 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 	return byteCount, nil
 }
 
-func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry) (vanity.VanityMetrics, bool) {
+func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry) vanity.VanityMetrics {
 	if billingEntry.Next {
 		latencyReduced := 0
 		if billingEntry.RTTReduction {
@@ -360,8 +360,8 @@ func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.Billi
 			SlicesJitterReduced:     uint64(jitterReduced),
 		}
 
-		return vm, true
+		return vm
 	}
 
-	return vanity.VanityMetrics{}, false
+	return vanity.VanityMetrics{}
 }
