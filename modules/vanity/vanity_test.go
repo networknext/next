@@ -30,7 +30,7 @@ import (
 func getTestVanityData(buyerID uint64, userHash uint64, sessionID uint64, timestamp uint64) vanity.VanityMetrics {
 	return vanity.VanityMetrics{
 		BuyerID:                 buyerID,
-		UserHash:				 userHash,
+		UserHash:                userHash,
 		SessionID:               sessionID,
 		Timestamp:               timestamp,
 		SlicesAccelerated:       uint64(5),
@@ -252,31 +252,30 @@ func TestUpdateMetrics(t *testing.T) {
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	t.Run("put user session in redis", func (t *testing.T) {
+	t.Run("put user session in redis", func(t *testing.T) {
 		userHash := rand.Uint64()
 		sessionID := rand.Uint64()
 		timestamp := rand.Uint64()
-		
+
 		userSession := vanity.UserSession{SessionID: fmt.Sprintf("%016x", sessionID), Timestamp: fmt.Sprintf("%016x", timestamp)}
-		
+
 		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, 15)
 		err := vanityMetrics.PutUserSession(fmt.Sprintf("%016x", userHash), &userSession)
 		assert.NoError(t, err)
 	})
 
-	t.Run("get user session from redis", func (t *testing.T) {
+	t.Run("get user session from redis", func(t *testing.T) {
 		userHash := rand.Uint64()
 		sessionID := rand.Uint64()
 		timestamp := rand.Uint64()
 
 		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
-		
 
 		userSession := vanity.UserSession{SessionID: fmt.Sprintf("%016x", sessionID), Timestamp: fmt.Sprintf("%016x", timestamp)}
 		key := fmt.Sprintf("uh-%s", fmt.Sprintf("%016x", userHash))
 		_, err := conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(&userSession)...)
 		assert.NoError(t, err)
-		
+
 		conn.Close()
 
 		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, 15)
@@ -306,7 +305,7 @@ func TestReadingMetrics(t *testing.T) {
 		t.Skip() // Skip the test if GCP project ID isn't set
 	}
 
-	redisServer, _ := miniredis.Run()	
+	redisServer, _ := miniredis.Run()
 
 	var enableSDMetrics bool
 	var err error

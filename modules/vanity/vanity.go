@@ -51,8 +51,8 @@ func (e *ErrUnmarshalMessage) Error() string {
 }
 
 type UserSession struct {
-	SessionID 	string `redis:"sessionID"`
-	Timestamp 	string `redis:"timestamp"`
+	SessionID string `redis:"sessionID"`
+	Timestamp string `redis:"timestamp"`
 }
 
 type VanityMetricHandler struct {
@@ -62,7 +62,7 @@ type VanityMetricHandler struct {
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
 	redisUserSessionsMap *redis.Pool
-	maxUserIdleTime 	 int
+	maxUserIdleTime      int
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
@@ -86,7 +86,7 @@ type VanityMetrics struct {
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
 	vanitySubscriber pubsub.Subscriber, redisUserSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int, vanityMaxUserIdleTimeSeconds int) *VanityMetricHandler {
-	
+
 	// Create Redis client for userHash -> sessionID, timestamp map
 	vanityUserSessions := storage.NewRedisPool(redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections)
 
@@ -112,7 +112,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
 		redisUserSessionsMap: vanityUserSessions,
-		maxUserIdleTime:	  vanityMaxUserIdleTimeSeconds,
+		maxUserIdleTime:      vanityMaxUserIdleTimeSeconds,
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
@@ -200,7 +200,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -224,7 +224,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			
+
 			// Each goroutine has its own buffer to avoid syncing
 			vanityMetricDataBuffer := make([]*VanityMetrics, 0)
 
@@ -322,7 +322,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp)
 		if err != nil {
 			return err
-		}	
+		}
 		if newSession {
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
@@ -347,7 +347,7 @@ func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, t
 	userHashStr := fmt.Sprintf("%016x", userHash)
 	sessionIDStr := fmt.Sprintf("%016x", sessionID)
 	timestampStr := fmt.Sprintf("%016x", timestamp)
-	
+
 	// See if userHash is in redis
 	userSession, exists, err := vm.GetUserSession(userHashStr)
 	if err != nil {
@@ -357,7 +357,7 @@ func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, t
 	newSession := false
 
 	// See if this is a new session for an existing userHash
-	if exists && sessionIDStr != userSession.SessionID && timestampStr > userSession.Timestamp{
+	if exists && sessionIDStr != userSession.SessionID && timestampStr > userSession.Timestamp {
 		newSession = true
 	}
 
@@ -581,7 +581,7 @@ func (vm *VanityMetricHandler) GetUserSession(userHash string) (userSession *Use
 	return session, true, nil
 }
 
-// Puts a userHash -> UserSession struct in Redis 
+// Puts a userHash -> UserSession struct in Redis
 func (vm *VanityMetricHandler) PutUserSession(userHash string, userSession *UserSession) error {
 	conn := vm.redisUserSessionsMap.Get()
 	defer conn.Close()
