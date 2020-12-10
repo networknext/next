@@ -1223,6 +1223,13 @@ func TestRouteShaders(t *testing.T) {
 		assert.True(t, bannedUserList[userID2])
 		assert.True(t, bannedUserList[userID3])
 
+		checkRouteShader, err := db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.True(t, len(checkRouteShader.BannedUsers) > 0)
+		assert.True(t, checkRouteShader.BannedUsers[userID1])
+		assert.True(t, checkRouteShader.BannedUsers[userID2])
+		assert.True(t, checkRouteShader.BannedUsers[userID3])
+
 		err = db.RemoveBannedUser(ctx, outerBuyer.ID, userID1)
 		assert.NoError(t, err)
 

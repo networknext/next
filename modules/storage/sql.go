@@ -46,6 +46,7 @@ type SQL struct {
 
 	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
 	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
+	bannedUsers     map[uint64]map[uint64]bool     // index: buyerID
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -56,6 +57,7 @@ type SQL struct {
 	sequenceNumberMutex sync.RWMutex
 	internalConfigMutex sync.RWMutex
 	routeShaderMutex    sync.RWMutex
+	bannedUserMutex     sync.RWMutex
 
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
@@ -387,7 +389,20 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
+	// get the DatabaseID loaded
 	db.syncBuyers(ctx)
+
+	db.buyerMutex.RLock()
+	newBuyer := db.buyers[internalID]
+	db.buyerMutex.RUnlock()
+
+	newBuyer.RouteShader = core.NewRouteShader()
+	newBuyer.InternalConfig = core.NewInternalConfig()
+
+	// update local fields
+	db.buyerMutex.Lock()
+	db.buyers[internalID] = newBuyer
+	db.buyerMutex.Unlock()
 
 	db.customerMutex.Lock()
 	db.customers[c.Code] = c
@@ -2216,7 +2231,9 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 		return err
 	}
 
-	db.syncRouteShaders(ctx)
+	db.routeShaderMutex.Lock()
+	db.routeShaders[buyerID] = rs
+	db.routeShaderMutex.Unlock()
 
 	buyer.RouteShader = rs
 	db.buyerMutex.Lock()
@@ -2448,25 +2465,19 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
-	db.routeShaderMutex.RLock()
-	rs, ok := db.routeShaders[buyerID]
-	db.routeShaderMutex.RUnlock()
+	db.bannedUserMutex.RLock()
+	_, ok := db.bannedUsers[buyerID][userID]
+	db.bannedUserMutex.RUnlock()
 
-	// banned user list may not exist yet
 	if ok {
-		if rs.BannedUsers[userID] {
-			return &AlreadyExistsError{resourceType: "route shader", resourceRef: userID}
-		}
-		if len(rs.BannedUsers) == 0 {
-			rs.BannedUsers = make(map[uint64]bool)
-		}
+		return &AlreadyExistsError{resourceType: "banned user", resourceRef: fmt.Sprintf("%016x", userID)}
 	}
 
 	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, $2)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
+		level.Error(db.Logger).Log("during", "error preparing AddBannedUser SQL", "err", err)
 		return err
 	}
 
@@ -2485,11 +2496,33 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 		return err
 	}
 
-	rs.BannedUsers[userID] = true
+	db.bannedUserMutex.Lock()
+	if _, ok := db.bannedUsers[buyerID]; !ok {
+		bannedUsers := make(map[uint64]bool)
+		db.bannedUsers[buyerID] = bannedUsers
+	}
+	db.bannedUsers[buyerID][userID] = true
+	db.bannedUserMutex.Unlock()
 
+	// we need to handle the case where the buyer is using the default
+	// route shader (and therefore does not have an entry in db.routeShaders)
+	var rs core.RouteShader
 	db.routeShaderMutex.Lock()
+	if rs, ok = db.routeShaders[buyerID]; !ok {
+		rs = core.NewRouteShader()
+	}
+
+	if len(rs.BannedUsers) == 0 {
+		rs.BannedUsers = make(map[uint64]bool)
+	}
+	rs.BannedUsers[userID] = true
 	db.routeShaders[buyerID] = rs
 	db.routeShaderMutex.Unlock()
+
+	buyer.RouteShader = rs
+	db.buyerMutex.Lock()
+	db.buyers[buyerID] = buyer
+	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
 
@@ -2544,8 +2577,11 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 		return err
 	}
 
-	delete(rs.BannedUsers, userID)
+	db.bannedUserMutex.Lock()
+	delete(db.bannedUsers[buyerID], userID)
+	db.bannedUserMutex.Unlock()
 
+	delete(rs.BannedUsers, userID)
 	db.routeShaderMutex.Lock()
 	db.routeShaders[buyerID] = rs
 	db.routeShaderMutex.Unlock()
@@ -2556,39 +2592,17 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 
 }
 
-// BannedUsers returns the set of banned users for the specified buyer ID. This method
-// is designed to be used by syncRouteShaders() though it can be used by client code.
+// BannedUsers returns the set of banned users for the specified buyer ID.
 func (db *SQL) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+	db.bannedUserMutex.RLock()
+	bannedUsers, found := db.bannedUsers[buyerID]
+	db.bannedUserMutex.RUnlock()
 
-	var sql bytes.Buffer
-	bannedUserList := make(map[uint64]bool)
-
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
-		return map[uint64]bool{}, &DoesNotExistError{resourceType: "BannedUser Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	if !found {
+		return map[uint64]bool{}, &DoesNotExistError{resourceType: "banned user", resourceRef: fmt.Sprintf("%x", buyerID)}
 	}
 
-	sql.Write([]byte("select user_id from banned_users where buyer_id = $1"))
-
-	rows, err := db.Client.QueryContext(context.Background(), sql.String(), buyer.DatabaseID)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-		return map[uint64]bool{}, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var userID int64
-		err := rows.Scan(&userID)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
-			return map[uint64]bool{}, err
-		}
-		bannedUserList[uint64(userID)] = true
-	}
-
-	return bannedUserList, nil
-
+	return bannedUsers, nil
 }
 
 type featureFlag struct {
