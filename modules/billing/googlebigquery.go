@@ -243,5 +243,8 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["tags"] = tags
 	}
 
+	e["mispredicted"] = entry.Mispredicted
+	e["vetoed"] = entry.Vetoed
+
 	return e, "", nil
 }

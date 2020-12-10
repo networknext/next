@@ -1062,6 +1062,8 @@ func PostSessionUpdate(
 		RouteLost:                       sessionData.RouteState.RouteLost,
 		NumTags:                         uint8(packet.NumTags),
 		Tags:                            packet.Tags,
+		Mispredicted:                    sessionData.RouteState.Mispredict,
+		Vetoed:                          sessionData.RouteState.Veto,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
