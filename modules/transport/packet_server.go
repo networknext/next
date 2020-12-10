@@ -653,8 +653,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	}
 
 	if sessionData.Version >= 1 {
-		stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 255)
-		stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 255)
+		stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
+		stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
 	}
 
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
