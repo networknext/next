@@ -855,6 +855,9 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddBuyer(ctx, expected)
 			assert.NoError(t, err)
 
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
+
 			actual := expected
 			actual.Live = true
 
@@ -866,9 +869,6 @@ func TestFirestore(t *testing.T) {
 
 			assert.NotEqual(t, expected, actual)
 			actual.Live = false
-
-			expected.RouteShader = core.NewRouteShader()
-			expected.InternalConfig = core.NewInternalConfig()
 
 			assert.Equal(t, expected, actual)
 		})
