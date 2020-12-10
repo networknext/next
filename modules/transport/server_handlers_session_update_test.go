@@ -2866,7 +2866,8 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			PLHistoryIndex:   1,
 			PLHistorySamples: 1,
 		},
-		EverOnNext: true,
+		EverOnNext:   true,
+		RouteChanged: true,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
