@@ -25,6 +25,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
