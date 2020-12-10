@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 0
+	SessionDataVersion = 1
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -647,6 +647,14 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
+		if sessionData.Version >= 1 {
+			stream.SerializeUint32(&sessionData.RouteState.NearRelayPLHistory[i])
+		}
+	}
+
+	if sessionData.Version >= 1 {
+		stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
+		stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
 	}
 
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)

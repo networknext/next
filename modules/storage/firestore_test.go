@@ -505,6 +505,9 @@ func TestFirestore(t *testing.T) {
 			actual, err := fs.Buyer(expected.ID)
 			assert.NoError(t, err)
 
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
+
 			assert.Equal(t, expected, actual)
 		})
 	})
@@ -552,9 +555,13 @@ func TestFirestore(t *testing.T) {
 		for i := 0; i < len(expected); i++ {
 			err = fs.AddBuyer(ctx, expected[i])
 			assert.NoError(t, err)
+
+			expected[i].RouteShader = core.NewRouteShader()
+			expected[i].InternalConfig = core.NewInternalConfig()
 		}
 
 		actual := fs.Buyers()
+
 		assert.Equal(t, expected, actual)
 	})
 
@@ -588,6 +595,9 @@ func TestFirestore(t *testing.T) {
 
 			actual, err := fs.Buyer(expected.ID)
 			assert.NoError(t, err)
+
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
 
 			assert.Equal(t, expected, actual)
 
@@ -654,6 +664,9 @@ func TestFirestore(t *testing.T) {
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
 			assert.Error(t, err)
+
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
 
 			assert.Equal(t, expected, actual)
 
@@ -842,6 +855,9 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddBuyer(ctx, expected)
 			assert.NoError(t, err)
 
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
+
 			actual := expected
 			actual.Live = true
 
@@ -853,6 +869,7 @@ func TestFirestore(t *testing.T) {
 
 			assert.NotEqual(t, expected, actual)
 			actual.Live = false
+
 			assert.Equal(t, expected, actual)
 		})
 	})

@@ -767,7 +767,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 	}
 	if sourceCost >= 255 {
 		if debug != nil {
-			*debug += "can't find source relay for route\n"
+			*debug += "source relay for route is no longer routable\n"
 		}
 		return -1
 	}
@@ -870,7 +870,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, directPacketLoss int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayID))
@@ -897,8 +897,8 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 			continue
 		}
 
-		// any source relay with > 50% PL in the last slice is bad news
-		if sourceRelayPacketLoss[i] > 50 {
+		// any source relay with >= 50% PL in the last slice is bad news
+		if sourceRelayPacketLoss[i] >= 50 {
 			routeState.NearRelayRTT[i] = 255
 			out_sourceRelayLatency[i] = 255
 			continue
@@ -941,7 +941,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 	}
 
-	// reduce jitter by preferring near relays with equal to or better than average jitter
+	// reduce jitter by excluding near relays with higher jitter than average
 
 	if routeShader.ReduceJitter {
 
@@ -965,6 +965,44 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 				}
 			}
 		}
+	}
+
+	// reduce packet loss by excluding any near relays wih historically higher packet loss than direct
+
+	if routeShader.ReducePacketLoss {
+
+		routeState.PLHistorySamples++
+		if routeState.PLHistorySamples > 8 {
+			routeState.PLHistorySamples = 8
+		}
+
+		index := routeState.PLHistoryIndex
+
+		samples := routeState.PLHistorySamples	
+
+		threshold := samples / 2
+
+		for i := range sourceRelayPacketLoss {
+
+			if sourceRelayPacketLoss[i] > directPacketLoss {
+				routeState.NearRelayPLHistory[i] |= (1<<index)
+			} else {
+				routeState.NearRelayPLHistory[i] &= ^(1<<index)
+			}
+
+			plCount := int32(0)
+			for j := 0; j < int(samples); j++ {
+				if ( routeState.NearRelayPLHistory[i] & (1<<j) ) != 0 {
+					plCount++
+				}
+			}
+
+			if plCount > threshold {
+				out_sourceRelayLatency[i] = 255
+			}
+		}
+
+		routeState.PLHistoryIndex = ( routeState.PLHistoryIndex + 1 ) % 8
 	}
 
 	// exclude any dest relays that no longer exist in the route matrix
@@ -1145,6 +1183,9 @@ type RouteState struct {
 	NumNearRelays      int32
 	NearRelayRTT       [MaxNearRelays]int32
 	NearRelayJitter    [MaxNearRelays]int32
+	NearRelayPLHistory [MaxNearRelays]uint32
+	PLHistoryIndex     int32
+	PLHistorySamples   int32
 	RelayWentAway      bool
 	RouteLost          bool
 	DirectJitter       int32
