@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 1
+	SessionDataVersion = 2
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -637,6 +637,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
+
+	if sessionData.Version >= 2 {
+		stream.SerializeBool(&sessionData.RouteState.Mispredict)
+	}
 
 	stream.SerializeBool(&sessionData.EverOnNext)
 
