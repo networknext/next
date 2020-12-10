@@ -18,74 +18,56 @@
               </span>
             </th>
             <th>
-              <span>Session ID</span>
-              <font-awesome-icon
-                icon="question-circle"
-                class="fa-w-16 fa-fw"
-                style="margin-left: 10px;"
+              <span
                 data-toggle="tooltip"
                 data-placement="right"
-                title="Unique ID of the session"
-              />
+                title="Unique ID of the session">Session ID</span>
             </th>
             <th v-if="$store.getters.isAdmin">
-              <span>User Hash</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Hash of the unique user ID">User Hash</span>
             </th>
             <th>
-              <span>ISP</span>
-              <font-awesome-icon
-                icon="question-circle"
-                class="fa-w-16 fa-fw"
-                style="margin-left: 10px;"
+              <span
                 data-toggle="tooltip"
                 data-placement="right"
-                title="Internet service provider"
-              />
+                title="Internet service provider">
+                  ISP
+              </span>
             </th>
-            <th v-if="$store.getters.isAdmin">Customer</th>
+            <th v-if="$store.getters.isAdmin">
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Customer name">
+                Customer
+              </span>
+            </th>
             <th>
-              <span>Datacenter</span>
-              <font-awesome-icon
-                icon="question-circle"
-                class="fa-w-16 fa-fw"
-                style="margin-left: 10px;"
+              <span
                 data-toggle="tooltip"
                 data-placement="right"
-                title="The datacenter of the game server this session is connected to"
-              />
+                title="The datacenter of the game server this session is connected to">Datacenter</span>
             </th>
             <th class="text-right">
-              <span>Direct RTT</span>
-              <font-awesome-icon
-                icon="question-circle"
-                class="fa-w-16 fa-fw"
-                style="margin-left: 10px;"
+              <span
                 data-toggle="tooltip"
                 data-placement="right"
-                title="Round trip time of the session over the public internet"
-              />
+                title="Round trip time of the session over the public internet">Direct RTT</span>
             </th>
             <th class="text-right">
-              <span>Next RTT</span>
-              <font-awesome-icon
-                icon="question-circle"
-                class="fa-w-16 fa-fw"
-                style="margin-left: 10px;"
+              <span
                 data-toggle="tooltip"
                 data-placement="right"
-                title="Round trip time of the session over Network Next"
-              />
+                title="Round trip time of the session over Network Next">Next RTT</span>
             </th>
             <th class="text-right">
-              <span>Improvement</span>
-              <font-awesome-icon
-                icon="question-circle"
-                class="fa-w-16 fa-fw"
-                style="margin-left: 10px;"
+              <span
                 data-toggle="tooltip"
                 data-placement="right"
-                title="Difference in round trip time between the public internet and Network Next (Direct - Next)"
-              />
+                title="Difference in round trip time between the public internet and Network Next (Direct - Next)">Improvement</span>
             </th>
           </tr>
         </thead>
