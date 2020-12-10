@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(19)
+	BillingEntryVersion = uint8(20)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -76,7 +76,11 @@ const (
 		1 + // NumTags
 		BillingEntryMaxTags*8 + // Tags
 		1 + // Mispredicted
-		1 // Vetoed
+		1 + // Vetoed
+		1 + // LatencyWorse
+		1 + // NoRoute
+		1 + // NextLatencyTooHigh
+		1 // RouteChanged
 )
 
 type BillingEntry struct {
@@ -142,6 +146,10 @@ type BillingEntry struct {
 	Tags                            [BillingEntryMaxTags]uint64
 	Mispredicted                    bool
 	Vetoed                          bool
+	LatencyWorse                    bool
+	NoRoute                         bool
+	NextLatencyTooHigh              bool
+	RouteChanged                    bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -250,6 +258,11 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 
 	encoding.WriteBool(data, &index, entry.Mispredicted)
 	encoding.WriteBool(data, &index, entry.Vetoed)
+
+	encoding.WriteBool(data, &index, entry.LatencyWorse)
+	encoding.WriteBool(data, &index, entry.NoRoute)
+	encoding.WriteBool(data, &index, entry.NextLatencyTooHigh)
+	encoding.WriteBool(data, &index, entry.RouteChanged)
 
 	return data[:index]
 }
@@ -579,6 +592,24 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.Vetoed) {
+			return false
+		}
+	}
+
+	if entry.Version >= 20 {
+		if !encoding.ReadBool(data, &index, &entry.LatencyWorse) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.NoRoute) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.NextLatencyTooHigh) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.RouteChanged) {
 			return false
 		}
 	}
