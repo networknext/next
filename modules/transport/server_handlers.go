@@ -856,7 +856,7 @@ func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRel
 			if prevRelayIndex < totalNumRelays {
 				prevID := allRelayIDs[prevRelayIndex]
 				prev, err := storer.Relay(prevID)
-				if err == nil && prev.Seller.ID == relay.Seller.ID && relay.InternalAddr.String() != ":0" {
+				if err == nil && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
 					routeAddresses[index+1] = &relay.InternalAddr
 				}
 			}

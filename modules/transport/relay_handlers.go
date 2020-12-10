@@ -322,7 +322,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 				if otherRelay.State == routing.RelayStateEnabled {
 					var address string
-					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && otherRelay.InternalAddr.String() != ":0" {
+					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && relay.InternalAddr.String() != ":0" && otherRelay.InternalAddr.String() != ":0" {
 						address = otherRelay.InternalAddr.String()
 					} else {
 						address = v.Addr.String()
