@@ -14,8 +14,11 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/gomodule/redigo/redis"
+
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/pubsub"
 )
 
@@ -48,14 +51,8 @@ func (e *ErrUnmarshalMessage) Error() string {
 }
 
 type UserSession struct {
-	sessionID    uint64
-	lastAccessed int64
-	timestamp    uint64
-}
-
-type UserSessionMap struct {
-	m    map[uint64]*UserSession
-	lock sync.RWMutex
+	SessionID 	string `redis:"sessionID"`
+	Timestamp 	string `redis:"timestamp"`
 }
 
 type VanityMetricHandler struct {
@@ -64,7 +61,8 @@ type VanityMetricHandler struct {
 	vanityMetricDataChan chan *VanityMetrics
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
-	userSessionMap       *UserSessionMap
+	redisUserSessionsMap *redis.Pool
+	maxUserIdleTime 	 int
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
@@ -73,7 +71,7 @@ type VanityMetricHandler struct {
 // VanityMetrics is the struct for all desired vanity metrics
 // passed internally before being written by the metrics handler.
 // The metric counterpart is located at modules/metrics/vanity_metric.go
-// Aggregation of vanity metrics takes place in AggregateVanityMetrics() in modules/transport/post_session_handler.go
+// Metrics are derived from the billingEntry in ExtractVanityMetrics() in modules/transport/post_session_handler.go
 type VanityMetrics struct {
 	BuyerID                 uint64
 	UserHash                uint64
@@ -87,7 +85,11 @@ type VanityMetrics struct {
 }
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
-	vanitySubscriber pubsub.Subscriber, vanityMaxUserIdleTime time.Duration, vanityExpirationFrequencyCheck time.Duration) *VanityMetricHandler {
+	vanitySubscriber pubsub.Subscriber, redisUserSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int, vanityMaxUserIdleTimeSeconds int) *VanityMetricHandler {
+	
+	// Create Redis client for userHash -> sessionID, timestamp map
+	vanityUserSessions := storage.NewRedisPool(redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections)
+
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
 		"Slices Latency Reduced":     true,
@@ -109,7 +111,8 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		vanityMetricDataChan: make(chan *VanityMetrics, chanBufferSize),
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
-		userSessionMap:       NewUserSessionMap(vanityMaxUserIdleTime, vanityExpirationFrequencyCheck),
+		redisUserSessionsMap: vanityUserSessions,
+		maxUserIdleTime:	  vanityMaxUserIdleTimeSeconds,
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
@@ -197,7 +200,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
+		
 		for {
 			select {
 			case <-ctx.Done():
@@ -221,6 +224,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			
 			// Each goroutine has its own buffer to avoid syncing
 			vanityMetricDataBuffer := make([]*VanityMetrics, 0)
 
@@ -315,7 +319,11 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		}
 
 		// Calculate sessionsAccelerated
-		if vm.IsNewSession(vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp) {
+		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp)
+		if err != nil {
+			return err
+		}	
+		if newSession {
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
 
@@ -335,21 +343,35 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 }
 
 // Checks if a userHash has moved onto a new sessionID at a later point in time
-func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, timestamp uint64) bool {
-
-	userSession, userTimestamp, exists := vm.userSessionMap.Get(userHash)
-	if !exists {
-		// Add the new userHash to the map
-		vm.userSessionMap.Put(userHash, sessionID, timestamp)
-		return true
+func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, timestamp uint64) (bool, error) {
+	userHashStr := fmt.Sprintf("%016x", userHash)
+	sessionIDStr := fmt.Sprintf("%016x", sessionID)
+	timestampStr := fmt.Sprintf("%016x", timestamp)
+	
+	// See if userHash is in redis
+	userSession, exists, err := vm.GetUserSession(userHashStr)
+	if err != nil {
+		return false, err
 	}
 
-	// Check if this is a different sessionID and the timestamp is later
-	if userSession != sessionID && timestamp > userTimestamp {
-		return true
+	newSession := false
+
+	// See if this is a new session for an existing userHash
+	if exists && sessionIDStr != userSession.SessionID && timestampStr > userSession.Timestamp{
+		newSession = true
 	}
 
-	return false
+	if !exists || newSession {
+		// Update redis with the latest info for the userHash
+		newUserSession := &UserSession{SessionID: sessionIDStr, Timestamp: timestampStr}
+		err = vm.PutUserSession(userHashStr, newUserSession)
+		if err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct
@@ -518,64 +540,67 @@ func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType
 	return fmt.Sprintf(`projects/%s/metricDescriptors/%s`, gcpProjectID, metricType)
 }
 
-// Creates a new UserSessionMap, which maps a userHash to a sessionID
-// Keys expire after they have not been accessed for maxUserIdleTime
-// Key expiration is checked at every expirationFrequencyCheckInterval
-func NewUserSessionMap(maxUserIdleTime time.Duration, expirationFrequencyCheck time.Duration) *UserSessionMap {
-	m := &UserSessionMap{
-		m:    make(map[uint64]*UserSession),
-		lock: sync.RWMutex{},
+// Gets a UserSession struct from Redis for a given userHash
+func (vm *VanityMetricHandler) GetUserSession(userHash string) (userSession *UserSession, exists bool, err error) {
+	conn := vm.redisUserSessionsMap.Get()
+	defer conn.Close()
+	session := &UserSession{}
+
+	// Check if key exists
+	key := fmt.Sprintf("uh-%s", userHash)
+	exists, err = redis.Bool(conn.Do("EXISTS", key))
+	if err != nil {
+		return session, false, err
 	}
-	go func() {
-		for range time.Tick(expirationFrequencyCheck) {
-			m.lock.Lock()
-			for key, session := range m.m {
-				if time.Since(time.Unix(session.lastAccessed, 0)) > maxUserIdleTime {
-					delete(m.m, key)
-				}
-			}
-			m.lock.Unlock()
-		}
-	}()
-
-	return m
-}
-
-// Gets the length of the UserSessionMap
-func (m *UserSessionMap) Len() int {
-	return len(m.m)
-}
-
-// Inserts a (userHash, sessionID) pair in the UserSessionMap
-// and refreshes the last accessed timestamp
-func (m *UserSessionMap) Put(userHash uint64, sessionID uint64, timestamp uint64) {
-	m.lock.RLock()
-	session, ok := m.m[userHash]
-	m.lock.RUnlock()
-	if !ok {
-		session = &UserSession{sessionID: sessionID, timestamp: timestamp}
-		m.lock.Lock()
-		m.m[userHash] = session
-		m.lock.Unlock()
+	if !exists {
+		return session, false, nil
 	}
 
-	m.lock.Lock()
-	session.lastAccessed = time.Now().Unix()
-	m.lock.Unlock()
+	// Get the session and time
+	replies, err := conn.Do("HGETALL", key)
+	if err != nil {
+		return session, true, err
+	}
+
+	// Parse the reply into a UserSession struct
+	err = redis.ScanStruct(replies.([]interface{}), session)
+	if err != nil {
+		return session, true, err
+	}
+
+	// Refresh the expire time
+	resp, err := conn.Do("EXPIRE", key, vm.maxUserIdleTime)
+	if err != nil {
+		return session, true, err
+	}
+	if resp != int64(1) {
+		errorStr := fmt.Sprintf("Could not reset expire time for userHash %s; response %d", userHash, resp)
+		return session, true, errors.New(errorStr)
+	}
+
+	return session, true, nil
 }
 
-// Gets the sessionID and timestamp for a userHash from the UserSessionMap
-// and refreshes the last accessed timestamp
-func (m *UserSessionMap) Get(userHash uint64) (sessionID uint64, timestamp uint64, exists bool) {
-	m.lock.Lock()
-	if session, ok := m.m[userHash]; ok {
-		sessionID := session.sessionID
-		timestamp := session.timestamp
-		session.lastAccessed = time.Now().Unix()
-		m.lock.Unlock()
+// Puts a userHash -> UserSession struct in Redis 
+func (vm *VanityMetricHandler) PutUserSession(userHash string, userSession *UserSession) error {
+	conn := vm.redisUserSessionsMap.Get()
+	defer conn.Close()
 
-		return sessionID, timestamp, true
+	// Set the userHash -> UserSession in redis
+	key := fmt.Sprintf("uh-%s", userHash)
+	if _, err := conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(userSession)...); err != nil {
+		return err
 	}
-	m.lock.Unlock()
-	return 0, 0, false
+
+	// Refresh the expire time
+	resp, err := conn.Do("EXPIRE", key, vm.maxUserIdleTime)
+	if err != nil {
+		return err
+	}
+	if resp != int64(1) {
+		errorStr := fmt.Sprintf("Could not reset expire time for userHash %s; response %d", userHash, resp)
+		return errors.New(errorStr)
+	}
+
+	return nil
 }

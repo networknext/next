@@ -207,7 +207,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		ServiceName: serviceName,
 		ID:          "post_session_update.vanity_marshal_failure",
 		Unit:        "errors",
-		Description: "The number of aggregated entries for vanity metrics that failed to be marshaled.",
+		Description: "The number of entries for vanity metrics that failed to be marshaled.",
 	})
 	if err != nil {
 		return nil, err

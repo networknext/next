@@ -136,15 +136,25 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Get the max idle time for a userHash in the in-memory map
-	maxUserIdleTime, err := envvar.GetDuration("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", time.Minute*30)
+	// Get the redis host for the user session map
+	redisUserSessions := envvar.Get("FEATURE_VANITY_METRIC_REDIS_HOST_USER_SESSIONS_MAP", "127.0.0.1:6379")
+
+	// Get the max idle time (seconds) for a userHash in the redis
+	vanityMaxUserIdleTime, err := envvar.GetInt("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", 60*30)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	// Get the frequency for removing unused userHashes from the in-memory map
-	expirationFrequencyCheck, err := envvar.GetDuration("FEATURE_VANITY_METRIC_EXPIRATION_FREQUENCY_CHECK", time.Minute*5)
+	// Get the max idle connections for redis
+	redisMaxIdleConnections, err := envvar.GetInt("FEATURE_VANITY_METRIC_REDIS_MAX_IDLE_CONNECTIONS", 5)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get the max active connections for redis
+	redisMaxActiveConnections, err := envvar.GetInt("FEATURE_VANITY_METRIC_REDIS_MAX_ACTIVE_CONNECTIONS", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -184,7 +194,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber, maxUserIdleTime, expirationFrequencyCheck)
+	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime)
 
 	// Start the goroutines for receiving vanity metrics from the backend and updating metrics
 	errChan := make(chan error, 1)
