@@ -1677,6 +1677,7 @@ func slicesAreEqual(a, b []int64) bool {
 	return true
 }
 
+// InternalConfig CRUD endpoints
 type GetInternalConfigArg struct {
 	BuyerID uint64
 }
@@ -1743,6 +1744,7 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 	return nil
 }
 
+// RouteShader CRUD endpoints
 type GetRouteShaderArg struct {
 	BuyerID uint64
 }
@@ -1809,3 +1811,77 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 
 	return nil
 }
+
+// BannedUser CRUD endpoints
+type GetBannedUserArg struct {
+	BuyerID uint64
+}
+
+type GetBannedUserReply struct {
+	BannedUsers []string // hex strings
+}
+
+func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, reply *GetBannedUserReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	var userList []string
+
+	bannedUsers, err := s.Storage.BannedUsers(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetBannedUsers() error retrieving banned users for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	for userID := range bannedUsers {
+		userList = append(userList, fmt.Sprintf("%016x", userID))
+	}
+
+	reply.BannedUsers = userList
+	return nil
+}
+
+type AddBannedUserArgs struct {
+	BuyerID uint64
+	UserID  uint64
+}
+
+type AddBannedUserReply struct{}
+
+func (s *BuyersService) AddBannedUser(r *http.Request, arg *AddBannedUserArgs, reply *AddBannedUserReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.AddBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	if err != nil {
+		err = fmt.Errorf("AddBannedUser() error adding banned user for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+// type RemoveRouteShaderArg struct {
+// 	BuyerID uint64
+// }
+
+// type RemoveRouteShaderReply struct{}
+
+// func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
+// 	if VerifyAllRoles(r, AnonymousRole) {
+// 		return nil
+// 	}
+
+// 	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
+// 	if err != nil {
+// 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
+// 		level.Error(s.Logger).Log("err", err)
+// 		return err
+// 	}
+
+// 	return nil
+// }

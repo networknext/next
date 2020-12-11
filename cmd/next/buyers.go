@@ -675,3 +675,54 @@ func removeRouteShader(
 	fmt.Printf("RouteShader for %s removed successfully.\n", buyerName)
 	return nil
 }
+
+func getBannedUsers(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	reply := localjsonrpc.GetBannedUserReply{}
+
+	args := localjsonrpc.GetBannedUserArg{
+		BuyerID: buyerID,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetBannedUsers", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Banned users for buyer %s:\n", buyerName)
+	for _, userID := range reply.BannedUsers {
+		fmt.Printf("  %s\n", userID)
+	}
+	return nil
+}
+
+func addBannedUser(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	userID uint64,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.AddBannedUserReply{}
+
+	args := localjsonrpc.AddBannedUserArgs{
+		BuyerID: buyerID,
+		UserID:  userID,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddBannedUser", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Banned user %016x added for buyer %s successfully.\n", userID, buyerName)
+	return nil
+}

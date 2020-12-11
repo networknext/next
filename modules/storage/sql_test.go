@@ -1209,10 +1209,13 @@ func TestRouteShaders(t *testing.T) {
 		userID3, err := strconv.ParseUint("fb6fa90ad67bc76a", 16, 64)
 		assert.NoError(t, err)
 
+		fmt.Println("--> sql_test AddBannedUser()  1")
 		err = db.AddBannedUser(ctx, outerBuyer.ID, userID1)
 		assert.NoError(t, err)
+		fmt.Println("--> sql_test AddBannedUser()  2")
 		err = db.AddBannedUser(ctx, outerBuyer.ID, userID2)
 		assert.NoError(t, err)
+		fmt.Println("--> sql_test AddBannedUser()  3")
 		err = db.AddBannedUser(ctx, outerBuyer.ID, userID3)
 		assert.NoError(t, err)
 
