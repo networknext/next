@@ -1700,30 +1700,6 @@ func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfi
 	return nil
 }
 
-type GetRouteShaderArg struct {
-	BuyerID uint64
-}
-
-type GetRouteShaderReply struct {
-	RouteShader core.RouteShader
-}
-
-func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
-		return nil
-	}
-
-	rs, err := s.Storage.RouteShader(arg.BuyerID)
-	if err != nil {
-		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	reply.RouteShader = rs
-	return nil
-}
-
 type AddInternalConfigArgs struct {
 	BuyerID        uint64
 	InternalConfig core.InternalConfig
@@ -1760,6 +1736,73 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 	err := s.Storage.RemoveInternalConfig(context.Background(), arg.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type GetRouteShaderArg struct {
+	BuyerID uint64
+}
+
+type GetRouteShaderReply struct {
+	RouteShader core.RouteShader
+}
+
+func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	rs, err := s.Storage.RouteShader(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	reply.RouteShader = rs
+	return nil
+}
+
+type AddRouteShaderArgs struct {
+	BuyerID     uint64
+	RouteShader core.RouteShader
+}
+
+type AddRouteShaderReply struct{}
+
+func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs, reply *AddRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.AddRouteShader(context.Background(), arg.RouteShader, arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RemoveRouteShaderArg struct {
+	BuyerID uint64
+}
+
+type RemoveRouteShaderReply struct{}
+
+func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}

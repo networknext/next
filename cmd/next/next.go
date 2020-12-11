@@ -1830,6 +1830,56 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					getRouteShader(rpcClient, env, args[0])
 					return nil
 				},
+				Subcommands: []*ffcli.Command{
+					{ // add shader
+						Name:       "add",
+						ShortUsage: "next buyer shader add (internalconfig json)",
+						ShortHelp:  "Add a route shader for the specified buyer.",
+						LongHelp:   nextBuyerShaderAddJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("RouteShader", args)
+
+							// Unmarshal the JSON and create the Buyer struct
+							var rs routeShader
+							if err := json.Unmarshal(jsonData, &rs); err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not unmarshal route shader: %v\n", err), 1)
+							}
+
+							buyerID, err := strconv.ParseUint(rs.BuyerID, 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", rs.BuyerID, err), 0)
+							}
+
+							addRouteShader(rpcClient, env, buyerID, core.RouteShader{
+								DisableNetworkNext:        rs.DisableNetworkNext,
+								SelectionPercent:          int(rs.SelectionPercent),
+								ABTest:                    rs.ABTest,
+								ProMode:                   rs.ProMode,
+								ReduceLatency:             rs.ReduceLatency,
+								ReduceJitter:              rs.ReduceJitter,
+								ReducePacketLoss:          rs.ReducePacketLoss,
+								Multipath:                 rs.Multipath,
+								AcceptableLatency:         int32(rs.AcceptableLatency),
+								LatencyThreshold:          int32(rs.LatencyThreshold),
+								AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
+								BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
+								BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
+							})
+
+							return nil
+						},
+					},
+					{ // remove shader
+						Name:       "remove",
+						ShortUsage: "next buyer shader remove (buyer name or substring)",
+						ShortHelp:  "Remove the route shader for the specified buyer.",
+						Exec: func(_ context.Context, args []string) error {
+
+							removeRouteShader(rpcClient, env, args[0])
+							return nil
+						},
+					},
+				},
 			},
 		},
 	}
@@ -2457,4 +2507,31 @@ must be in a json file of the form:
 
 A valid BuyerID (in hex) is required. Any other missing fields
 will be assigned the zero value for that type (0 or false).
+`
+
+var nextBuyerShaderAddJSONLongHelp = `
+Add an route shader for the specified buyer. The shader
+must be in a json file of the form:
+
+{
+	"DisableNetworkNext": false
+	"SelectionPercent": 100
+	"ABTest": false
+	"ProMode": false
+	"ReduceLatency": true
+	"ReduceJitter": false
+	"ReducePacketLoss": true
+	"Multipath": false
+	"AcceptableLatency": 25
+	"LatencyThreshold": 5
+	"AcceptablePacketLoss": 1.00000
+	"BandwidthEnvelopeUpKbps": 500
+	"BandwidthEnvelopeDownKbps": 1200,
+	"BuyerID": "205cca7361c2ae96"
+}
+
+A valid BuyerID (in hex) is required. Any other missing fields
+will be assigned the zero value for that type (0 or false).
+
+Note: Banned users are managed separately (e.g. next buyer banneduser add/remove...).
 `

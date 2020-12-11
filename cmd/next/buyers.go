@@ -580,15 +580,6 @@ func getRouteShader(
 	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
 	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
 	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
-	fmt.Printf("  BannedUsers:")
-	if len(reply.RouteShader.BannedUsers) == 0 {
-		fmt.Printf("\tnone\n")
-	} else {
-		fmt.Println()
-		for userID := range reply.RouteShader.BannedUsers {
-			fmt.Printf("\t%016x\n", userID)
-		}
-	}
 
 	return nil
 }
@@ -636,5 +627,51 @@ func removeInternalConfig(
 	}
 
 	fmt.Printf("InternalConfig for %s removed successfully.\n", buyerName)
+	return nil
+}
+
+func addRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerID uint64,
+	rs core.RouteShader,
+) error {
+
+	emptyReply := localjsonrpc.AddRouteShaderReply{}
+
+	args := localjsonrpc.AddRouteShaderArgs{
+		BuyerID:     buyerID,
+		RouteShader: rs,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddRouteShader", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Println("RouteShader added successfully.")
+	return nil
+}
+
+func removeRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.RemoveRouteShaderReply{}
+
+	args := localjsonrpc.RemoveRouteShaderArg{
+		BuyerID: buyerID,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("RouteShader for %s removed successfully.\n", buyerName)
 	return nil
 }
