@@ -1865,22 +1865,75 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 type UpdateRouteShaderArgs struct {
 	BuyerID uint64
 	Field   string
-	Value   interface{}
+	Value   string
 }
 
 type UpdateRouteShaderReply struct{}
 
-// sending numeric types over the wire as interface{} fields doesn't work so we need an endpoint for each type (bools and strings work fine)
 func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShaderArgs, reply *UpdateRouteShaderReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, args.Value)
-	if err != nil {
-		err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
-		level.Error(s.Logger).Log("err", err)
-		return err
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
+		"BandwidthEnvelopeDownKbps":
+		newInt, err := strconv.ParseInt(args.Value, 10, 32)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
+		}
+		newInt32 := int32(newInt)
+		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newInt32)
+		if err != nil {
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	case "SelectionPercent":
+		newInt, err := strconv.ParseInt(args.Value, 10, 64) // 64 bits is a guess, should be
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
+		}
+		newInteger := int(newInt)
+		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newInteger)
+		if err != nil {
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	case "AcceptablePacketLoss":
+		newFloat, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)
+		}
+		newFloat32 := float32(newFloat)
+		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newFloat32)
+		if err != nil {
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	case "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+		"ReduceJitter", "ReducePacketLoss", "Multipath":
+		newValue, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid boolean type", args.Value)
+		}
+
+		fmt.Printf("newValue: %T\n", newValue)
+		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", args.Field)
 	}
 
 	return nil

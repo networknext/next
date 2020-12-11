@@ -700,6 +700,32 @@ func removeRouteShader(
 	return nil
 }
 
+func updateRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	field string,
+	value string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.UpdateRouteShaderReply{}
+
+	args := localjsonrpc.UpdateRouteShaderArgs{
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateRouteShader", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("RouteShader for %s updated successfully.\n", buyerName)
+	return nil
+}
+
 func getBannedUsers(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,

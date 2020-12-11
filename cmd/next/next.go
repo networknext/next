@@ -1887,6 +1887,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							return nil
 						},
 					},
+					{ // update shader
+						Name:       "update",
+						ShortUsage: "next buyer shader update (buyer name or substring) (field name) (value)",
+						ShortHelp:  "Update the route shader for the specified buyer.",
+						LongHelp:   nextBuyerShaderUpdateJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 3 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
+							}
+
+							updateRouteShader(rpcClient, env, args[0], args[1], args[2])
+							return nil
+						},
+					},
 				},
 			},
 			{ // banned users
@@ -2625,20 +2639,20 @@ var nextBuyerShaderUpdateJSONLongHelp = `
 Update one field in the route shader for the specified buyer. The field
 must be one of the following and is case-sensitive:
 
-	DisableNetworkNext        bool
-	SelectionPercent          integer
-	ABTest                    bool
-	ProMode                   bool
-	ReduceLatency             bool
-	ReduceJitter              bool
-	ReducePacketLoss          bool
-	Multipath                 bool
-	AcceptableLatency         integer
-	LatencyThreshold          integer
-	AcceptablePacketLoss      float
-	BandwidthEnvelopeUpKbps   integer
-	BandwidthEnvelopeDownKbps integer
-    MaxRTT                    integer
+  DisableNetworkNext        bool
+  SelectionPercent          integer
+  ABTest                    bool
+  ProMode                   bool
+  ReduceLatency             bool
+  ReduceJitter              bool
+  ReducePacketLoss          bool
+  Multipath                 bool
+  AcceptableLatency         integer
+  LatencyThreshold          integer
+  AcceptablePacketLoss      float
+  BandwidthEnvelopeUpKbps   integer
+  BandwidthEnvelopeDownKbps integer
+  MaxRTT                    integer
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.

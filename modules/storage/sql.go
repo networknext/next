@@ -2025,7 +2025,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "RouteSelectThreshold":
 		routeSelectThreshold, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type", value)
+			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id=$2"))
 		args = append(args, routeSelectThreshold, buyer.DatabaseID)
@@ -2033,7 +2033,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "RouteSwitchThreshold":
 		routeSwitchThreshold, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type", value)
+			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id=$2"))
 		args = append(args, routeSwitchThreshold, buyer.DatabaseID)
@@ -2041,7 +2041,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "MaxLatencyTradeOff":
 		maxLatencyTradeOff, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type", value)
+			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id=$2"))
 		args = append(args, maxLatencyTradeOff, buyer.DatabaseID)
@@ -2049,7 +2049,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "RTTVeto_Default":
 		rttVetoDefault, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type", value)
+			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id=$2"))
 		args = append(args, rttVetoDefault, buyer.DatabaseID)
@@ -2057,7 +2057,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "RTTVeto_PacketLoss":
 		rttVetoPacketLoss, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type", value)
+			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id=$2"))
 		args = append(args, rttVetoPacketLoss, buyer.DatabaseID)
@@ -2065,7 +2065,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "RTTVeto_Multipath":
 		rttVetoMultipath, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type", value)
+			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id=$2"))
 		args = append(args, rttVetoMultipath, buyer.DatabaseID)
@@ -2073,7 +2073,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "MultipathOverloadThreshold":
 		multipathOverloadThreshold, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type", value)
+			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id=$2"))
 		args = append(args, multipathOverloadThreshold, buyer.DatabaseID)
@@ -2081,7 +2081,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "TryBeforeYouBuy":
 		tryBeforeYouBuy, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type", value)
+			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id=$2"))
 		args = append(args, tryBeforeYouBuy, buyer.DatabaseID)
@@ -2089,7 +2089,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "ForceNext":
 		forceNext, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("ForceNext: %v is not a valid boolean type", value)
+			return fmt.Errorf("ForceNext: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id=$2"))
 		args = append(args, forceNext, buyer.DatabaseID)
@@ -2097,7 +2097,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "LargeCustomer":
 		largeCustomer, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type", value)
+			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id=$2"))
 		args = append(args, largeCustomer, buyer.DatabaseID)
@@ -2105,7 +2105,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "Uncommitted":
 		uncommitted, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("Uncommitted: %v is not a valid boolean type", value)
+			return fmt.Errorf("Uncommitted: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id=$2"))
 		args = append(args, uncommitted, buyer.DatabaseID)
@@ -2113,7 +2113,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("MaxRTT: %v is not a valid int32 type", value)
+			return fmt.Errorf("MaxRTT: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id=$2"))
 		args = append(args, maxRTT, buyer.DatabaseID)
@@ -2268,7 +2268,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "ABTest":
 		abTest, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("ABTest: %v is not a valid boolean type", value)
+			return fmt.Errorf("ABTest: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set ab_test=$1 where buyer_id=$2"))
 		args = append(args, abTest, buyer.DatabaseID)
@@ -2276,7 +2276,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "AcceptableLatency":
 		acceptableLatency, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("AcceptableLatency: %v is not a valid int32 type", value)
+			return fmt.Errorf("AcceptableLatency: %v is not a valid int32 type ( %T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_latency=$1 where buyer_id=$2"))
 		args = append(args, acceptableLatency, buyer.DatabaseID)
@@ -2284,7 +2284,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "AcceptablePacketLoss":
 		acceptablePacketLoss, ok := value.(float32)
 		if !ok {
-			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type", value)
+			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id=$2"))
 		args = append(args, acceptablePacketLoss, buyer.DatabaseID)
@@ -2292,7 +2292,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("BandwidthEnvelopeDownKbps: %v is not a valid int32 type", value)
+			return fmt.Errorf("BandwidthEnvelopeDownKbps: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set bw_envelope_down_kbps=$1 where buyer_id=$2"))
 		args = append(args, bandwidthEnvelopeDownKbps, buyer.DatabaseID)
@@ -2300,7 +2300,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "BandwidthEnvelopeUpKbps":
 		bandwidthEnvelopeUpKbps, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("BandwidthEnvelopeUpKbps: %v is not a valid int32 type", value)
+			return fmt.Errorf("BandwidthEnvelopeUpKbps: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set bw_envelope_up_kbps=$1 where buyer_id=$2"))
 		args = append(args, bandwidthEnvelopeUpKbps, buyer.DatabaseID)
@@ -2308,7 +2308,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "DisableNetworkNext":
 		disableNetworkNext, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("DisableNetworkNext: %v is not a valid boolean type", value)
+			return fmt.Errorf("DisableNetworkNext: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set disable_network_next=$1 where buyer_id=$2"))
 		args = append(args, disableNetworkNext, buyer.DatabaseID)
@@ -2316,7 +2316,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "LatencyThreshold":
 		latencyThreshold, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("LatencyThreshold: %v is not a valid int32 type", value)
+			return fmt.Errorf("LatencyThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set latency_threshold=$1 where buyer_id=$2"))
 		args = append(args, latencyThreshold, buyer.DatabaseID)
@@ -2324,7 +2324,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "Multipath":
 		multipath, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("Multipath: %v is not a valid boolean type", value)
+			return fmt.Errorf("Multipath: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id=$2"))
 		args = append(args, multipath, buyer.DatabaseID)
@@ -2332,7 +2332,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "ProMode":
 		proMode, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("ProMode: %v is not a valid boolean type", value)
+			return fmt.Errorf("ProMode: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id=$2"))
 		args = append(args, proMode, buyer.DatabaseID)
@@ -2340,7 +2340,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "ReduceLatency":
 		reduceLatency, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("ReduceLatency: %v is not a valid boolean type", value)
+			return fmt.Errorf("ReduceLatency: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_latency=$1 where buyer_id=$2"))
 		args = append(args, reduceLatency, buyer.DatabaseID)
@@ -2348,7 +2348,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "ReducePacketLoss":
 		reducePacketLoss, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("ReducePacketLoss: %v is not a valid boolean type", value)
+			return fmt.Errorf("ReducePacketLoss: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id=$2"))
 		args = append(args, reducePacketLoss, buyer.DatabaseID)
@@ -2356,7 +2356,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "ReduceJitter":
 		reduceJitter, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("ReduceJitter: %v is not a valid boolean type", value)
+			return fmt.Errorf("ReduceJitter: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_jitter=$1 where buyer_id=$2"))
 		args = append(args, reduceJitter, buyer.DatabaseID)
@@ -2364,7 +2364,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	case "SelectionPercent":
 		selectionPercent, ok := value.(int)
 		if !ok {
-			return fmt.Errorf("SelectionPercent: %v is not a valid int type", value)
+			return fmt.Errorf("SelectionPercent: %v is not a valid int type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
 		args = append(args, selectionPercent, buyer.DatabaseID)
