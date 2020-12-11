@@ -1693,5 +1693,13 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, int64(-7664475006302134894), reply.SessionBillingInfo[0].Tags[1])
 		assert.Equal(t, int64(-6848787315892866519), reply.SessionBillingInfo[0].Tags[2])
 
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Mispredicted)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Vetoed)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].LatencyWorse)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].NoRoute)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].NextLatencyTooHigh)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RouteChanged)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].CommitVeto)
+
 	})
 }
