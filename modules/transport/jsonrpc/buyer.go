@@ -1507,6 +1507,13 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	nearRelayPacketLosses,
 	relayWentAway,
 	routeLost,
+	mispredicted,
+	vetoed,
+	latencyWorse,
+	noRoute,
+	nextLatencyTooHigh,
+	routeChanged,
+	commitVeto,
 	tags
     from `))
 
