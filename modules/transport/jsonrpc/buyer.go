@@ -1843,14 +1843,14 @@ func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, r
 	return nil
 }
 
-type AddBannedUserArgs struct {
+type BannedUserArgs struct {
 	BuyerID uint64
 	UserID  uint64
 }
 
-type AddBannedUserReply struct{}
+type BannedUserReply struct{}
 
-func (s *BuyersService) AddBannedUser(r *http.Request, arg *AddBannedUserArgs, reply *AddBannedUserReply) error {
+func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
@@ -1865,23 +1865,17 @@ func (s *BuyersService) AddBannedUser(r *http.Request, arg *AddBannedUserArgs, r
 	return nil
 }
 
-// type RemoveRouteShaderArg struct {
-// 	BuyerID uint64
-// }
+func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
 
-// type RemoveRouteShaderReply struct{}
+	err := s.Storage.RemoveBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	if err != nil {
+		err = fmt.Errorf("RemoveBannedUser() error removing banned user for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
 
-// func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
-// 	if VerifyAllRoles(r, AnonymousRole) {
-// 		return nil
-// 	}
-
-// 	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
-// 	if err != nil {
-// 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
-// 		level.Error(s.Logger).Log("err", err)
-// 		return err
-// 	}
-
-// 	return nil
-// }
+	return nil
+}

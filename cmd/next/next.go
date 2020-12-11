@@ -1917,7 +1917,16 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							if len(args) != 2 {
 								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring and the user ID in hex"), 0)
 							}
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring and the user ID in hex"), 0)
+							}
 
+							userID, err := strconv.ParseUint(args[1], 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal user ID %s into a uint64: %v", args[1], err), 0)
+							}
+
+							removeBannedUser(rpcClient, env, args[0], userID)
 							return nil
 						},
 					},

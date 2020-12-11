@@ -711,9 +711,9 @@ func addBannedUser(
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
-	emptyReply := localjsonrpc.AddBannedUserReply{}
+	emptyReply := localjsonrpc.BannedUserReply{}
 
-	args := localjsonrpc.AddBannedUserArgs{
+	args := localjsonrpc.BannedUserArgs{
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
@@ -724,5 +724,30 @@ func addBannedUser(
 	}
 
 	fmt.Printf("Banned user %016x added for buyer %s successfully.\n", userID, buyerName)
+	return nil
+}
+
+func removeBannedUser(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	userID uint64,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.BannedUserReply{}
+
+	args := localjsonrpc.BannedUserArgs{
+		BuyerID: buyerID,
+		UserID:  userID,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveBannedUser", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Banned user %016x successfully removed  for buyer %s.\n", userID, buyerName)
 	return nil
 }
