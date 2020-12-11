@@ -82,6 +82,9 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		customers:          make(map[string]routing.Customer),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
 		SyncSequenceNumber: -1,
 	}
 
@@ -165,6 +168,9 @@ func NewPostgreSQL(
 		customerIDs:        make(map[int64]string),
 		buyerIDs:           make(map[int64]uint64),
 		sellerIDs:          make(map[int64]string),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
 		SyncSequenceNumber: -1,
 	}
 
@@ -224,12 +230,13 @@ func (db *SQL) Sync(ctx context.Context) error {
 	// be synced in this order:
 	// 	1 Customers
 	//  2 InternalConfigs
-	//  3 RouteShaders
-	//	4 Buyers
-	//	5 Sellers
-	// 	6 Datacenters
-	// 	7 DatacenterMaps
-	//	8 Relays
+	//  3 BannedUsers
+	//  4 RouteShaders
+	//	5 Buyers
+	//	6 Sellers
+	// 	7 Datacenters
+	// 	8 DatacenterMaps
+	//	9 Relays
 
 	if err := db.syncCustomers(ctx); err != nil {
 		return fmt.Errorf("failed to sync customers: %v", err)
@@ -237,6 +244,10 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 	if err := db.syncInternalConfigs(ctx); err != nil {
 		return fmt.Errorf("failed to sync internal configs: %v", err)
+	}
+
+	if err := db.syncBannedUsers(ctx); err != nil {
+		return fmt.Errorf("failed to sync banned users: %v", err)
 	}
 
 	if err := db.syncRouteShaders(ctx); err != nil {
@@ -519,14 +530,16 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyerIDs[buyer.DatabaseID] = buyer.ID
 
+		// apply default values if a custom RouteShader or InternalConfig
+		// is not saved for the buyer
 		rs, err := db.RouteShader(buyer.ID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %016x, some fields will have default values", buyer.ID), "err", err)
+			rs = core.NewRouteShader()
 		}
 
 		ic, err := db.InternalConfig(buyer.ID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %016x, some fields will have default values", buyer.ID), "err", err)
+			ic = core.NewInternalConfig()
 		}
 
 		b := routing.Buyer{
@@ -823,7 +836,6 @@ type sqlRouteShader struct {
 	SelectionPercent          int64
 }
 
-// TODO: add banned users
 func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
 	var sql bytes.Buffer
@@ -879,20 +891,18 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			AcceptablePacketLoss:      float32(sqlRS.AcceptablePacketLoss),
 			BandwidthEnvelopeUpKbps:   int32(sqlRS.BandwidthEnvelopeUpKbps),
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
-			// TODO: add BannedUsers
 		}
 
 		id := db.buyerIDs[buyerID]
+		if bannedUsers, ok := db.bannedUsers[id]; ok {
+			routeShader.BannedUsers = bannedUsers
+		}
 		routeShaders[id] = routeShader
 	}
 
 	for buyerID, rs := range routeShaders {
-		bannedUserList, err := db.BannedUsers(buyerID)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "error retrieving BannedUsers list", "err", err)
-			return err
-		}
-		if len(bannedUserList) > 0 {
+		bannedUserList, ok := db.bannedUsers[buyerID]
+		if ok {
 			rs.BannedUsers = bannedUserList
 		}
 	}
@@ -901,4 +911,46 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 	db.routeShaders = routeShaders
 	db.routeShaderMutex.Unlock()
 	return nil
+}
+
+func (db *SQL) syncBannedUsers(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	bannedUserList := make(map[uint64]map[uint64]bool)
+
+	sql.Write([]byte("select user_id, buyer_id from banned_users order by buyer_id asc"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID, dbBuyerID int64
+		err := rows.Scan(&userID, &dbBuyerID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+			return err
+		}
+
+		buyerID := db.buyerIDs[dbBuyerID]
+
+		bannedUser := make(map[uint64]bool)
+		bannedUser[uint64(userID)] = true
+		if _, ok := bannedUserList[uint64(buyerID)]; !ok {
+			bannedUserList[uint64(buyerID)] = make(map[uint64]bool)
+			bannedUserList[uint64(buyerID)] = bannedUser
+		} else {
+			bannedUserList[uint64(buyerID)][uint64(userID)] = true
+		}
+	}
+
+	db.bannedUserMutex.Lock()
+	db.bannedUsers = bannedUserList
+	db.bannedUserMutex.Unlock()
+
+	return nil
+
 }

@@ -139,12 +139,10 @@ func SeedSQLStorage(
 		}
 
 		if err := db.AddSeller(ctx, localSeller); err != nil {
-			fmt.Printf("AddSeller() err adding localSeller: %v", err)
 			return fmt.Errorf("AddSeller() err adding localSeller: %w", err)
 		}
 
 		if err := db.AddSeller(ctx, ghostSeller); err != nil {
-			fmt.Printf("AddSeller() err adding ghostSeller: %v", err)
 			return fmt.Errorf("AddSeller() err adding ghostSeller: %w", err)
 		}
 
