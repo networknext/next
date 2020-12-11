@@ -405,6 +405,24 @@ func directResponse(t *testing.T, sessionID uint64, sliceNumber uint32, nearRela
 	return response
 }
 
+func nextResponse(t *testing.T, routeType int32, sessionID uint64, sliceNumber uint32, nearRelays relayGroup, sessionData transport.SessionData) transport.SessionResponsePacket {
+	sessionDataSlice, err := transport.MarshalSessionData(&sessionData)
+	assert.NoError(t, err)
+
+	response := transport.SessionResponsePacket{
+		SessionID:          sessionID,
+		SliceNumber:        sliceNumber,
+		RouteType:          routeType,
+		NumNearRelays:      int32(nearRelays.Count),
+		NearRelayIDs:       nearRelays.IDs,
+		NearRelayAddresses: nearRelays.Addresses,
+		SessionDataBytes:   int32(len(sessionDataSlice)),
+	}
+
+	copy(response.SessionData[:], sessionDataSlice)
+	return response
+}
+
 func validateSessionUpdateTest(
 	t *testing.T,
 	sessionID uint64,
@@ -420,6 +438,8 @@ func validateSessionUpdateTest(
 	var expectedResponse transport.SessionResponsePacket
 	if expectedRouteType == routing.RouteTypeDirect {
 		expectedResponse = directResponse(t, sessionID, sliceNumber, nearRelays, expectedSessionData)
+	} else {
+		expectedResponse = nextResponse(t, expectedRouteType, sessionID, sliceNumber, nearRelays, expectedSessionData)
 	}
 
 	assert.Equal(t, expectedSessionData, actualSessionData)
