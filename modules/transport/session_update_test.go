@@ -5,6 +5,7 @@ import (
 	"context"
 	crand "crypto/rand"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net"
 	"testing"
@@ -57,6 +58,66 @@ func assertResponseEqual(t *testing.T, expectedResponse transport.SessionRespons
 	}
 }
 
+func getBlankServerBackendMetrics(t *testing.T) *metrics.ServerBackendMetrics {
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+
+	return metrics
+}
+
+type relayGroup struct {
+	Count        int
+	IDs          []uint64
+	Addresses    []net.UDPAddr
+	RTTs         []int32
+	Jitters      []int32
+	PacketLosses []int32
+}
+
+type rttType int
+
+const (
+	noRTT   rttType = 0
+	badRTT  rttType = 1
+	goodRTT rttType = 2
+)
+
+func getRelays(t *testing.T, numRelays int, rttType rttType) relayGroup {
+	near := relayGroup{
+		Count:        numRelays,
+		IDs:          make([]uint64, 0),
+		Addresses:    make([]net.UDPAddr, 0),
+		RTTs:         make([]int32, 0),
+		Jitters:      make([]int32, 0),
+		PacketLosses: make([]int32, 0),
+	}
+
+	for i := 0; i < numRelays; i++ {
+		relayAddress, err := net.ResolveUDPAddr("udp", "127.0.0.1:4000"+fmt.Sprintf("%d", i))
+		assert.NoError(t, err)
+
+		near.IDs = append(near.IDs, uint64(i)+1)
+		near.Addresses = append(near.Addresses, *relayAddress)
+
+		switch rttType {
+		case noRTT:
+			near.RTTs = append(near.RTTs, 0)
+
+		case badRTT:
+			near.RTTs = append(near.RTTs, int32(100+i*5))
+
+		case goodRTT:
+			near.RTTs = append(near.RTTs, int32(20+i*5))
+		}
+
+		near.Jitters = append(near.Jitters, 0)
+		near.PacketLosses = append(near.PacketLosses, 0)
+	}
+
+	return near
+}
+
 func runSessionUpdateTest(
 	t *testing.T,
 	sdkVersion transport.SDKVersion,
@@ -67,23 +128,20 @@ func runSessionUpdateTest(
 	userHash uint64,
 	clientPingTimedOut bool,
 	fallbackToDirect bool,
-	nearRelayIDs []uint64,
-	nearRelayRTTs []int32,
-	nearRelayJitters []int32,
-	nearRelayPacketLosses []int32,
+	nearRelays relayGroup,
 	sessionData *transport.SessionData,
 	ipLocator routing.IPLocator,
+	numRouteMatrixRelays int,
 	buyers []routing.Buyer,
 	datacenters []routing.Datacenter,
 	datacenterMaps []routing.DatacenterMap,
-) (transport.SessionResponsePacket, transport.SessionData, *metrics.SessionUpdateMetrics) {
+) (transport.SessionResponsePacket, transport.SessionData, *routing.RouteMatrix, *metrics.SessionUpdateMetrics) {
 	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
 
-	serverBackendMetrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
+	serverBackendMetrics := getBlankServerBackendMetrics(t)
 
 	var sessionDataSlice []byte
+	var err error
 	if sessionData != nil {
 		sessionDataSlice, err = transport.MarshalSessionData(sessionData)
 		assert.NoError(t, err)
@@ -104,11 +162,11 @@ func runSessionUpdateTest(
 		ClientPingTimedOut:   clientPingTimedOut,
 		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          requestSessionData,
-		NumNearRelays:        int32(len(nearRelayIDs)),
-		NearRelayIDs:         nearRelayIDs,
-		NearRelayRTT:         nearRelayRTTs,
-		NearRelayJitter:      nearRelayJitters,
-		NearRelayPacketLoss:  nearRelayPacketLosses,
+		NumNearRelays:        int32(nearRelays.Count),
+		NearRelayIDs:         nearRelays.IDs,
+		NearRelayRTT:         nearRelays.RTTs,
+		NearRelayJitter:      nearRelays.Jitters,
+		NearRelayPacketLoss:  nearRelays.PacketLosses,
 		FallbackToDirect:     fallbackToDirect,
 	}
 
@@ -137,7 +195,26 @@ func runSessionUpdateTest(
 		return ipLocator
 	}
 
+	relays := getRelays(t, numRouteMatrixRelays, goodRTT)
+
 	var routeMatrix routing.RouteMatrix
+	for i := 0; i < numRouteMatrixRelays; i++ {
+		relayIndex := int32(i)
+		relayName := "test.relay." + fmt.Sprintf("%d", i+1)
+
+		if routeMatrix.RelayIDsToIndices == nil {
+			routeMatrix.RelayIDsToIndices = make(map[uint64]int32)
+		}
+
+		routeMatrix.RelayIDsToIndices[relays.IDs[i]] = relayIndex
+		routeMatrix.RelayIDs = append(routeMatrix.RelayIDs, relays.IDs[i])
+		routeMatrix.RelayAddresses = append(routeMatrix.RelayAddresses, relays.Addresses[i])
+		routeMatrix.RelayNames = append(routeMatrix.RelayNames, relayName)
+		routeMatrix.RelayLatitudes = append(routeMatrix.RelayLatitudes, float32(0+i*5))
+		routeMatrix.RelayLongitudes = append(routeMatrix.RelayLongitudes, float32(45+i*10))
+		routeMatrix.RelayDatacenterIDs = append(routeMatrix.RelayDatacenterIDs, datacenterID+uint64(i))
+	}
+
 	routeMatrixFunc := func() *routing.RouteMatrix {
 		return &routeMatrix
 	}
@@ -164,51 +241,55 @@ func runSessionUpdateTest(
 	err = transport.UnmarshalSessionData(&actualSessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	return responsePacket, actualSessionData, serverBackendMetrics.SessionUpdateMetrics
+	return responsePacket, actualSessionData, &routeMatrix, serverBackendMetrics.SessionUpdateMetrics
 }
 
 func getExpectedSessionData(
+	startTime uint64,
 	sessionID uint64,
 	sliceNumber uint32,
 	userID uint64,
 	routeType int32,
 	fallbackToDirect bool,
-	numNearRelays int32,
-	nearRelayRTTs [core.MaxNearRelays]int32,
-	nearRelayJitters [core.MaxNearRelays]int32,
-	nearRelayPacketLosses [core.MaxNearRelays]int32,
+	nearRelays relayGroup,
+	notSelected bool,
 ) transport.SessionData {
 	var expireTimestamp uint64
 	if routeType == routing.RouteTypeNew {
-		expireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2
+		expireTimestamp = startTime + billing.BillingSliceSeconds*2
 	} else {
-		expireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+		expireTimestamp = startTime + billing.BillingSliceSeconds
 	}
 
-	// convert near relay packet losses from []int32 to []uint32
-	nearRelayPLHistory := [core.MaxNearRelays]uint32{}
-	for i := int32(0); i < numNearRelays; i++ {
-		nearRelayPLHistory[i] = uint32(nearRelayPacketLosses[i])
-	}
-
-	return transport.SessionData{
+	sessionData := transport.SessionData{
 		Version:         transport.SessionDataVersion,
 		SessionID:       sessionID,
 		SliceNumber:     sliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: expireTimestamp,
 		RouteState: core.RouteState{
-			UserID:             userID,
-			NumNearRelays:      numNearRelays,
-			NearRelayRTT:       nearRelayRTTs,
-			NearRelayJitter:    nearRelayJitters,
-			NearRelayPLHistory: nearRelayPLHistory,
+			UserID:        userID,
+			NumNearRelays: int32(nearRelays.Count),
+			NotSelected:   notSelected,
 		},
 		FellBackToDirect: fallbackToDirect,
 	}
+
+	copy(sessionData.RouteState.NearRelayRTT[:], nearRelays.RTTs)
+	copy(sessionData.RouteState.NearRelayJitter[:], nearRelays.Jitters)
+
+	// Convert the near relay PL history from []int32 to []uint32
+	nearRelayPLHistory := make([]uint32, nearRelays.Count)
+	for i := 0; i < nearRelays.Count; i++ {
+		nearRelayPLHistory[i] = uint32(nearRelays.PacketLosses[i])
+	}
+
+	copy(sessionData.RouteState.NearRelayPLHistory[:], nearRelayPLHistory)
+
+	return sessionData
 }
 
-func directResponse(t *testing.T, sessionID uint64, sliceNumber uint32, nearRelayIDs []uint64, nearRelayAddresses []net.UDPAddr, sessionData transport.SessionData) transport.SessionResponsePacket {
+func directResponse(t *testing.T, sessionID uint64, sliceNumber uint32, nearRelays relayGroup, sessionData transport.SessionData) transport.SessionResponsePacket {
 	sessionDataSlice, err := transport.MarshalSessionData(&sessionData)
 	assert.NoError(t, err)
 
@@ -216,8 +297,9 @@ func directResponse(t *testing.T, sessionID uint64, sliceNumber uint32, nearRela
 		SessionID:          sessionID,
 		SliceNumber:        sliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       nearRelayIDs,
-		NearRelayAddresses: nearRelayAddresses,
+		NumNearRelays:      int32(nearRelays.Count),
+		NearRelayIDs:       nearRelays.IDs,
+		NearRelayAddresses: nearRelays.Addresses,
 		SessionDataBytes:   int32(len(sessionDataSlice)),
 	}
 
@@ -230,22 +312,25 @@ func validateSessionUpdateTest(
 	sessionID uint64,
 	sliceNumber uint32,
 	expectedRouteType int32,
-	nearRelayIDs []uint64,
-	nearRelayAddresses []net.UDPAddr,
+	nearRelays relayGroup,
 	expectedSessionData transport.SessionData,
 	responsePacket transport.SessionResponsePacket,
 	actualSessionData transport.SessionData,
+	expectedMetrics *metrics.SessionUpdateMetrics,
+	actualMetrics *metrics.SessionUpdateMetrics,
 ) {
 	var expectedResponse transport.SessionResponsePacket
 	if expectedRouteType == routing.RouteTypeDirect {
-		expectedResponse = directResponse(t, sessionID, sliceNumber, nearRelayIDs, nearRelayAddresses, expectedSessionData)
+		expectedResponse = directResponse(t, sessionID, sliceNumber, nearRelays, expectedSessionData)
 	}
 
 	assert.Equal(t, expectedSessionData, actualSessionData)
 	assert.Equal(t, expectedResponse, responsePacket)
+
+	assertAllMetricsEqual(t, *expectedMetrics, *actualMetrics)
 }
 
-/// -------- ERROR TESTS-------------
+/// -------- ERROR TESTS ------------
 
 // These tests check each error case of the session update handler
 // and validate that direct slice is returned
@@ -280,16 +365,13 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	numRouteMatrixRelays := 0
+
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersion{4, 0, 2},
 		sessionID,
@@ -299,24 +381,37 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		nil,
 		nil,
 		nil,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.ClientPingTimedOut.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.ClientPingTimedOut.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
@@ -330,16 +425,13 @@ func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
 
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	numRouteMatrixRelays := 0
+
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -349,24 +441,37 @@ func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		nil,
 		nil,
 		nil,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.BuyerNotFound.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.BuyerNotFound.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
@@ -380,18 +485,15 @@ func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
 
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
+
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -401,24 +503,37 @@ func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		nil,
 		nil,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.DatacenterNotFound.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.DatacenterNotFound.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
@@ -433,19 +548,16 @@ func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, Alias: "alias"}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -455,24 +567,37 @@ func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		nil,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.MisconfiguredDatacenterAlias.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.MisconfiguredDatacenterAlias.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
@@ -486,19 +611,16 @@ func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -508,24 +630,37 @@ func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		nil,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.DatacenterNotAllowed.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.DatacenterNotAllowed.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
@@ -537,22 +672,23 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	clientPingTimedOut := false
 	fallbackToDirect := false
 
+	notSelected := false
+
+	startTime := uint64(time.Now().Unix())
+
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var badIPLocator badIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -562,24 +698,44 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&badIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.ClientLocateFailure.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := getExpectedSessionData(sessionID, sliceNumber, userHash, expectedResponseType, fallbackToDirect, numNearRelays, nearRelayRTTs, nearRelayJitters, nearRelayPacketLosses)
+	expectedSessionData := getExpectedSessionData(
+		startTime,
+		sessionID,
+		sliceNumber,
+		userHash,
+		expectedResponseType,
+		fallbackToDirect,
+		startingNearRelays,
+		notSelected,
+	)
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.ClientLocateFailure.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
@@ -593,20 +749,17 @@ func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
 
 	var initialSessionData *transport.SessionData
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -616,24 +769,37 @@ func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.ReadSessionDataFailure.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.ReadSessionDataFailure.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
@@ -647,20 +813,17 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 
 	initialSessionData := &transport.SessionData{}
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -670,24 +833,37 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.BadSessionID.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.BadSessionID.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
@@ -703,20 +879,17 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 		SessionID: sessionID,
 	}
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -726,26 +899,38 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.BadSliceNumber.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
 	expectedSessionData := transport.SessionData{
+		Version:   transport.SessionDataVersion,
 		SessionID: sessionID,
 	}
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.BadSliceNumber.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
@@ -757,25 +942,31 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	clientPingTimedOut := false
 	fallbackToDirect := false
 
+	notSelected := false
+
+	startTime := uint64(time.Now().Unix())
+
 	initialSessionData := &transport.SessionData{
-		SessionID:   sessionID,
-		SliceNumber: sliceNumber,
+		SessionID:       sessionID,
+		SliceNumber:     sliceNumber,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: startTime,
+		RouteState: core.RouteState{
+			UserID: userHash,
+		},
 	}
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: false}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: false}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -785,24 +976,44 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.BuyerNotLive.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := getExpectedSessionData(sessionID, sliceNumber, userHash, expectedResponseType, fallbackToDirect, numNearRelays, nearRelayRTTs, nearRelayJitters, nearRelayPacketLosses)
+	expectedSessionData := getExpectedSessionData(
+		startTime,
+		sessionID,
+		sliceNumber,
+		userHash,
+		expectedResponseType,
+		fallbackToDirect,
+		startingNearRelays,
+		notSelected,
+	)
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.BuyerNotLive.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
@@ -814,25 +1025,31 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	clientPingTimedOut := false
 	fallbackToDirect := true
 
+	notSelected := false
+
+	startTime := uint64(time.Now().Unix())
+
 	initialSessionData := &transport.SessionData{
-		SessionID:   sessionID,
-		SliceNumber: sliceNumber,
+		SessionID:       sessionID,
+		SliceNumber:     sliceNumber,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: startTime,
+		RouteState: core.RouteState{
+			UserID: userHash,
+		},
 	}
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -842,24 +1059,44 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.FallbackToDirectUnknownReason.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := getExpectedSessionData(sessionID, sliceNumber, userHash, expectedResponseType, fallbackToDirect, numNearRelays, nearRelayRTTs, nearRelayJitters, nearRelayPacketLosses)
+	expectedSessionData := getExpectedSessionData(
+		startTime,
+		sessionID,
+		sliceNumber,
+		userHash,
+		expectedResponseType,
+		fallbackToDirect,
+		startingNearRelays,
+		notSelected,
+	)
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.FallbackToDirectUnknownReason.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
@@ -871,25 +1108,31 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	clientPingTimedOut := false
 	fallbackToDirect := false
 
+	notSelected := false
+
+	startTime := uint64(time.Now().Unix())
+
 	initialSessionData := &transport.SessionData{
-		SessionID:   sessionID,
-		SliceNumber: sliceNumber,
+		SessionID:       sessionID,
+		SliceNumber:     sliceNumber,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: startTime,
+		RouteState: core.RouteState{
+			UserID: userHash,
+		},
 	}
 
-	numNearRelays := int32(0)
-	nearRelayIDs := [core.MaxNearRelays]uint64{}
-	nearRelayAddresses := [core.MaxNearRelays]net.UDPAddr{}
-	nearRelayRTTs := [core.MaxNearRelays]int32{}
-	nearRelayJitters := [core.MaxNearRelays]int32{}
-	nearRelayPacketLosses := [core.MaxNearRelays]int32{}
+	startingNearRelays := getRelays(t, 0, noRTT)
 
 	var goodIPLocator goodIPLocator
 
-	buyers := []routing.Buyer{{ID: 123, Live: true}}
+	numRouteMatrixRelays := 0
+
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
 	datacenters := []routing.Datacenter{{ID: datacenterID}}
 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	responsePacket, sessionData, metrics := runSessionUpdateTest(
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
 		t,
 		transport.SDKVersionMin,
 		sessionID,
@@ -899,276 +1142,223 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 		userHash,
 		clientPingTimedOut,
 		fallbackToDirect,
-		nearRelayIDs[:numNearRelays],
-		nearRelayRTTs[:numNearRelays],
-		nearRelayJitters[:numNearRelays],
-		nearRelayPacketLosses[:numNearRelays],
+		startingNearRelays,
 		initialSessionData,
 		&goodIPLocator,
+		numRouteMatrixRelays,
 		buyers,
 		datacenters,
 		datacenterMaps,
 	)
 
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.NoRelaysInDatacenter.Add(1)
+
 	expectedResponseType := int32(routing.RouteTypeDirect)
 
-	expectedSessionData := getExpectedSessionData(sessionID, sliceNumber, userHash, expectedResponseType, fallbackToDirect, numNearRelays, nearRelayRTTs, nearRelayJitters, nearRelayPacketLosses)
+	expectedSessionData := getExpectedSessionData(
+		startTime,
+		sessionID,
+		sliceNumber,
+		userHash,
+		expectedResponseType,
+		fallbackToDirect,
+		startingNearRelays,
+		notSelected,
+	)
 
-	validateSessionUpdateTest(t, sessionID, sliceNumber, expectedResponseType, nearRelayIDs[:numNearRelays], nearRelayAddresses[:numNearRelays], expectedSessionData, responsePacket, sessionData)
-
-	assert.Equal(t, 1.0, metrics.NoRelaysInDatacenter.Value())
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		startingNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
-/// -------- END ERROR TESTS-------------
+/// -------- END ERROR TESTS ------------
 
+/// -------- SCENARIO TESTS -------------
+
+// These tests check different scenarios where we need to make sure
+// that we return a response with the correct values
+
+// The first slice of any session should always return a direct route
+// with a set of near relays populated in the response packet
 func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
+	sessionID := uint64(1111)
+	sliceNumber := uint32(0)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	userHash := uint64(12345)
+	clientPingTimedOut := false
+	fallbackToDirect := false
 
-	expectedMetrics := metrics.EmptyServerBackendMetrics
-	var err error
-	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics.DirectSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
-	assert.NoError(t, err)
-	expectedMetrics.SessionUpdateMetrics.DirectSlices.Add(1)
+	notSelected := false
 
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:             100,
-		Live:           true,
-		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
-	})
-	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
+	startTime := uint64(time.Now().Unix())
 
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersion{4, 0, 4},
-		SessionID:            1111,
-		CustomerID:           100,
-		DatacenterID:         10,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	assert.NoError(t, err)
-
-	routeMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0},
-		RelayIDs:           []uint64{1},
-		RelayAddresses:     []net.UDPAddr{*relayAddr},
-		RelayNames:         []string{"test.relay"},
-		RelayLatitudes:     []float32{90},
-		RelayLongitudes:    []float32{180},
-		RelayDatacenterIDs: []uint64{10},
-	}
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expectedResponse := transport.SessionResponsePacket{
-		Version:            requestPacket.Version,
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      1,
-		NearRelayIDs:       []uint64{1},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr},
-		NearRelaysChanged:  true,
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
+	initialSessionData := &transport.SessionData{
+		SessionID:       sessionID,
+		SliceNumber:     sliceNumber,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		ExpireTimestamp: startTime,
 		RouteState: core.RouteState{
-			NumNearRelays: 1,
+			UserID: userHash,
 		},
 	}
 
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
+	startingNearRelays := getRelays(t, 0, noRTT)
 
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+	var goodIPLocator goodIPLocator
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
+	numRouteMatrixRelays := 1
 
-	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Do this as a sort of hack to read in the debug values just like SDK 4.0.4 does
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		userHash,
+		clientPingTimedOut,
+		fallbackToDirect,
+		startingNearRelays,
+		initialSessionData,
+		&goodIPLocator,
+		numRouteMatrixRelays,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
 
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
 
-	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+
+	expectedNearRelays := getRelays(t, numRouteMatrixRelays, noRTT)
+
+	expectedSessionData := getExpectedSessionData(
+		startTime,
+		sessionID,
+		sliceNumber,
+		userHash,
+		expectedResponseType,
+		fallbackToDirect,
+		expectedNearRelays,
+		notSelected,
+	)
+
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		expectedNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
+// The core routing logic has decided that we can't improve this session,
+// so send back a direct route with the same near relays
 func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
+	sessionID := uint64(1111)
+	sliceNumber := uint32(1)
+	buyerID := uint64(123)
+	datacenterID := uint64(456)
+	userHash := uint64(12345)
+	clientPingTimedOut := false
+	fallbackToDirect := false
 
-	expectedMetrics := metrics.EmptyServerBackendMetrics
-	var err error
-	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics.DirectSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
-	assert.NoError(t, err)
-	expectedMetrics.SessionUpdateMetrics.DirectSlices.Add(1)
+	notSelected := true
 
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:             100,
-		Live:           true,
-		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
-	})
-	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
-	storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 10})
+	startTime := uint64(time.Now().Unix())
 
-	sessionDataStruct := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       1111,
-		SliceNumber:     1,
+	initialSessionData := &transport.SessionData{
+		SessionID:       sessionID,
+		SliceNumber:     sliceNumber,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
-	}
-
-	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
-	assert.NoError(t, err)
-
-	sessionDataArray := [transport.MaxSessionDataSize]byte{}
-	copy(sessionDataArray[:], sessionDataSlice)
-
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersion{4, 0, 4},
-		SessionID:            1111,
-		CustomerID:           100,
-		DatacenterID:         10,
-		SliceNumber:          1,
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          sessionDataArray,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-		NumNearRelays:        1,
-		NearRelayIDs:         []uint64{1},
-		NearRelayRTT:         []int32{0},
-		NearRelayJitter:      []int32{0},
-		NearRelayPacketLoss:  []int32{0},
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var unmarshaled transport.SessionUpdatePacket
-	err = transport.UnmarshalPacket(&unmarshaled, requestData)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	assert.NoError(t, err)
-
-	routeMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0},
-		RelayIDs:           []uint64{1},
-		RelayAddresses:     []net.UDPAddr{*relayAddr},
-		RelayNames:         []string{"test.relay"},
-		RelayLatitudes:     []float32{90},
-		RelayLongitudes:    []float32{180},
-		RelayDatacenterIDs: []uint64{10},
-	}
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expectedResponse := transport.SessionResponsePacket{
-		Version:     requestPacket.Version,
-		SessionID:   requestPacket.SessionID,
-		SliceNumber: requestPacket.SliceNumber,
-		RouteType:   routing.RouteTypeDirect,
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		ExpireTimestamp: startTime,
 		RouteState: core.RouteState{
-			NumNearRelays:    1,
-			NearRelayRTT:     [core.MaxNearRelays]int32{255},
-			NearRelayJitter:  [core.MaxNearRelays]int32{0},
-			PLHistoryIndex:   1,
-			PLHistorySamples: 1,
+			UserID: userHash,
 		},
 	}
 
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
+	startingNearRelays := getRelays(t, 2, badRTT)
 
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+	var goodIPLocator goodIPLocator
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, [crypto.KeySize]byte{}, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
+	numRouteMatrixRelays := 2
 
-	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
+	buyers := []routing.Buyer{{ID: buyerID, Live: true}}
+	datacenters := []routing.Datacenter{{ID: datacenterID}}
+	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
 
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
+	responsePacket, sessionData, _, actualMetrics := runSessionUpdateTest(
+		t,
+		transport.SDKVersionMin,
+		sessionID,
+		sliceNumber,
+		buyerID,
+		datacenterID,
+		userHash,
+		clientPingTimedOut,
+		fallbackToDirect,
+		startingNearRelays,
+		initialSessionData,
+		&goodIPLocator,
+		numRouteMatrixRelays,
+		buyers,
+		datacenters,
+		datacenterMaps,
+	)
 
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
+	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
+	expectedMetrics.DirectSlices.Add(1)
 
-	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
+	expectedResponseType := int32(routing.RouteTypeDirect)
+
+	expectedNearRelays := getRelays(t, numRouteMatrixRelays, badRTT)
+
+	expectedSessionData := getExpectedSessionData(
+		startTime,
+		sessionID,
+		sliceNumber,
+		userHash,
+		expectedResponseType,
+		fallbackToDirect,
+		expectedNearRelays,
+		notSelected,
+	)
+
+	validateSessionUpdateTest(
+		t,
+		sessionID,
+		sliceNumber,
+		expectedResponseType,
+		expectedNearRelays,
+		expectedSessionData,
+		responsePacket,
+		sessionData,
+		expectedMetrics,
+		actualMetrics,
+	)
 }
 
 func TestSessionUpdateHandlerNextRoute(t *testing.T) {
