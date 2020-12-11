@@ -401,6 +401,13 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"RelayWentAway",
 		"RouteLost",
 		"Tags",
+		"Mispredicted",
+		"Vetoed",
+		"LatencyWorse",
+		"NoRoute",
+		"NextLatencyTooHigh",
+		"RouteChanged",
+		"CommitVeto",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {
@@ -673,6 +680,41 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			}
 			tags = strings.TrimSuffix(tags, ", ")
 		}
+		// Mispredicted
+		mispredicted := ""
+		if billingEntry.Mispredicted.Valid {
+			mispredicted = strconv.FormatBool(billingEntry.Mispredicted.Bool)
+		}
+		// Vetoed
+		vetoed := ""
+		if billingEntry.Vetoed.Valid {
+			vetoed = strconv.FormatBool(billingEntry.Vetoed.Bool)
+		}
+		// LatencyWorse
+		latencyWorse := ""
+		if billingEntry.LatencyWorse.Valid {
+			latencyWorse = strconv.FormatBool(billingEntry.LatencyWorse.Bool)
+		}
+		// NoRoute
+		noRoute := ""
+		if billingEntry.NoRoute.Valid {
+			noRoute = strconv.FormatBool(billingEntry.NoRoute.Bool)
+		}
+		// NextLatencyTooHigh
+		nextLatencyTooHigh := ""
+		if billingEntry.NextLatencyTooHigh.Valid {
+			nextLatencyTooHigh = strconv.FormatBool(billingEntry.NextLatencyTooHigh.Bool)
+		}
+		// RouteChanged
+		routeChanged := ""
+		if billingEntry.RouteChanged.Valid {
+			routeChanged = strconv.FormatBool(billingEntry.RouteChanged.Bool)
+		}
+		// CommitVeto
+		commitVeto := ""
+		if billingEntry.CommitVeto.Valid {
+			commitVeto = strconv.FormatBool(billingEntry.CommitVeto.Bool)
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -730,6 +772,13 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			relayWentAway,
 			routeLost,
 			tags,
+			mispredicted,
+			vetoed,
+			latencyWorse,
+			noRoute,
+			nextLatencyTooHigh,
+			routeChanged,
+			commitVeto,
 		})
 	}
 

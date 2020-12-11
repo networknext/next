@@ -66,4 +66,11 @@ type BigQueryBillingEntry struct {
 	RelayWentAway                   bigquery.NullBool
 	RouteLost                       bigquery.NullBool
 	Tags                            []int64
+	Mispredicted                    bigquery.NullBool
+	Vetoed                          bigquery.NullBool
+	LatencyWorse                    bigquery.NullBool
+	NoRoute                         bigquery.NullBool
+	NextLatencyTooHigh              bigquery.NullBool
+	RouteChanged                    bigquery.NullBool
+	CommitVeto                      bigquery.NullBool
 }
