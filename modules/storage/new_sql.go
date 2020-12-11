@@ -246,12 +246,10 @@ func (db *SQL) Sync(ctx context.Context) error {
 		return fmt.Errorf("failed to sync internal configs: %v", err)
 	}
 
-	fmt.Println("--> Sync()")
 	if err := db.syncBannedUsers(ctx); err != nil {
 		return fmt.Errorf("failed to sync banned users: %v", err)
 	}
 
-	fmt.Println("--> Sync()")
 	if err := db.syncRouteShaders(ctx); err != nil {
 		return fmt.Errorf("failed to sync route shaders: %v", err)
 	}
@@ -840,7 +838,6 @@ type sqlRouteShader struct {
 
 func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
-	fmt.Println("--> syncRouteShaders()")
 	var sql bytes.Buffer
 	var sqlRS sqlRouteShader
 
@@ -908,9 +905,6 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 		if ok {
 			rs.BannedUsers = bannedUserList
 		}
-		// if len(bannedUserList) > 0 {
-		// 	rs.BannedUsers = bannedUserList
-		// }
 	}
 
 	db.routeShaderMutex.Lock()
@@ -920,8 +914,6 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 }
 
 func (db *SQL) syncBannedUsers(ctx context.Context) error {
-
-	fmt.Println("--> syncBannedUsers()")
 
 	var sql bytes.Buffer
 	bannedUserList := make(map[uint64]map[uint64]bool)
@@ -948,11 +940,9 @@ func (db *SQL) syncBannedUsers(ctx context.Context) error {
 		bannedUser := make(map[uint64]bool)
 		bannedUser[uint64(userID)] = true
 		if _, ok := bannedUserList[uint64(buyerID)]; !ok {
-			fmt.Printf("----> syncBannedUsers() creating map, buyerID: %016x\n", uint64(buyerID))
 			bannedUserList[uint64(buyerID)] = make(map[uint64]bool)
 			bannedUserList[uint64(buyerID)] = bannedUser
 		} else {
-			fmt.Printf("----> syncBannedUsers() assigning map, buyerID: %016x\n", uint64(buyerID))
 			bannedUserList[uint64(buyerID)][uint64(userID)] = true
 		}
 	}

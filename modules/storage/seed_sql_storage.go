@@ -139,12 +139,10 @@ func SeedSQLStorage(
 		}
 
 		if err := db.AddSeller(ctx, localSeller); err != nil {
-			fmt.Printf("AddSeller() err adding localSeller: %v", err)
 			return fmt.Errorf("AddSeller() err adding localSeller: %w", err)
 		}
 
 		if err := db.AddSeller(ctx, ghostSeller); err != nil {
-			fmt.Printf("AddSeller() err adding ghostSeller: %v", err)
 			return fmt.Errorf("AddSeller() err adding ghostSeller: %w", err)
 		}
 
@@ -349,8 +347,8 @@ func SeedSQLStorage(
 
 		// add InternalConfigs, RouteShaders and BannedUsers
 
-		fmt.Printf("localBuyer ID: %016x\n", localBuyer.ID)
-		fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
+		// fmt.Printf("localBuyer ID: %016x\n", localBuyer.ID)
+		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
 			RouteSelectThreshold:       2,
@@ -421,37 +419,31 @@ func SeedSQLStorage(
 		userID2 := rand.Uint64()
 		userID3 := rand.Uint64()
 
-		fmt.Println("--> SeedSQLStorage() AddBannedUser() local 1")
 		err = db.AddBannedUser(ctx, localBuyer.ID, userID1)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
 		}
 
-		fmt.Println("--> SeedSQLStorage() AddBannedUser() local 2")
 		err = db.AddBannedUser(ctx, localBuyer.ID, userID2)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
 		}
 
-		fmt.Println("--> SeedSQLStorage() AddBannedUser() local 3")
 		err = db.AddBannedUser(ctx, localBuyer.ID, userID3)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
 		}
 
-		fmt.Println("--> SeedSQLStorage() AddBannedUser() ghost 1")
 		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID1)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
 		}
 
-		fmt.Println("--> SeedSQLStorage() AddBannedUser() ghost 2")
 		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID2)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
 		}
 
-		fmt.Println("--> SeedSQLStorage() AddBannedUser() ghost 3")
 		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID3)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)

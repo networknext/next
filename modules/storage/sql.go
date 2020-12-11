@@ -1023,7 +1023,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		return err
 	}
 
-	// fmt.Println("--> UpdateRelay() stmt.Exec()")
 	result, err := stmt.Exec(args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
@@ -1639,7 +1638,6 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-	fmt.Printf("SetRelayMetadata(): %s\n", relay.String())
 	err := db.SetRelay(ctx, relay)
 	return err
 }
@@ -2455,7 +2453,6 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 // AddBannedUser adds a user to the banned_user table
 func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
 
-	fmt.Printf("--> AddBannedUser() buyerID: %016x\n", buyerID)
 	var sql bytes.Buffer
 
 	db.buyerMutex.RLock()
@@ -2527,25 +2524,12 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 
 	db.IncrementSequenceNumber(ctx)
 
-	for checkID := range db.bannedUsers[buyerID] {
-		fmt.Printf("--> AddBannedUser() buyerID: %016x, userID: %016x\n", buyerID, checkID)
-	}
-	fmt.Println()
-
-	for checkBuyerID, userMap := range db.bannedUsers {
-		fmt.Printf("----> checkBuyerID: %016x\n", checkBuyerID)
-		for checkUserID, value := range userMap {
-			fmt.Printf("------> checkUserID: %016x, value: %t\n", checkUserID, value)
-		}
-	}
-	fmt.Println()
 	return nil
 
 }
 
 // RemoveBannedUser removes a user from the banned_user table
 func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	fmt.Printf("--> RemoveBannedUser() buyerID: %016x\n", buyerID)
 
 	var sql bytes.Buffer
 
@@ -2554,7 +2538,6 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 	db.buyerMutex.RUnlock()
 
 	if err != nil {
-		fmt.Printf("error: %v\n", err)
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2608,16 +2591,6 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 
 // BannedUsers returns the set of banned users for the specified buyer ID.
 func (db *SQL) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
-	fmt.Printf("--> BannedUsers() buyerID: %016x\n", buyerID)
-
-	for checkBuyerID, userMap := range db.bannedUsers {
-		fmt.Printf("----> checkBuyerID: %016x\n", checkBuyerID)
-		for checkUserID, value := range userMap {
-			fmt.Printf("------> checkUserID: %016x, value: %t\n", checkUserID, value)
-		}
-	}
-
-	// fmt.Printf("--> %v", db.bannedUsers)
 
 	db.bannedUserMutex.RLock()
 	bannedUsers, found := db.bannedUsers[buyerID]
