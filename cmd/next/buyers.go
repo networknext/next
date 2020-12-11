@@ -630,6 +630,32 @@ func removeInternalConfig(
 	return nil
 }
 
+func updateInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	field string,
+	value string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.UpdateInternalConfigReply{}
+
+	args := localjsonrpc.UpdateInternalConfigArgs{
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateInternalConfig", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("InternalConfig for %s updated successfully.\n", buyerName)
+	return nil
+}
+
 func addRouteShader(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
@@ -643,7 +669,6 @@ func addRouteShader(
 		BuyerID:     buyerID,
 		RouteShader: rs,
 	}
-	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
@@ -666,7 +691,6 @@ func removeRouteShader(
 	args := localjsonrpc.RemoveRouteShaderArg{
 		BuyerID: buyerID,
 	}
-	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
@@ -689,7 +713,6 @@ func getBannedUsers(
 	args := localjsonrpc.GetBannedUserArg{
 		BuyerID: buyerID,
 	}
-	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&reply, "BuyersService.GetBannedUsers", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
@@ -717,7 +740,6 @@ func addBannedUser(
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
-	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddBannedUser", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
@@ -742,7 +764,6 @@ func removeBannedUser(
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
-	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveBannedUser", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil

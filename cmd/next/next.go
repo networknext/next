@@ -1809,7 +1809,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							return nil
 						},
 					},
-				},
+					{ // update config
+						Name:       "update",
+						ShortUsage: "next buyer config update (buyer name or substring) (field name) (value)",
+						ShortHelp:  "Update the internal config for the specified buyer.",
+						LongHelp:   nextBuyerConfigUpdateJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 3 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
+							}
+
+							updateInternalConfig(rpcClient, env, args[0], args[1], args[2])
+							return nil
+						},
+					}},
 			},
 			{ // route shader
 				Name:       "shader",
@@ -1891,7 +1904,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
-					{ // add shader
+					{ // add banned user
 						Name:       "add",
 						ShortUsage: "next buyer bannedusers add (buyer name or substring) (user ID in hex)",
 						ShortHelp:  "Add a banned user to the list for the specified buyer.",
@@ -1909,7 +1922,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							return nil
 						},
 					},
-					{ // remove shader
+					{ // remove banned user
 						Name:       "remove",
 						ShortUsage: "next buyer bannedusers remove (buyer name or substring) (user ID in hex)",
 						ShortHelp:  "Remove a banned user from the list for the specified buyer.",
@@ -2585,4 +2598,48 @@ A valid BuyerID (in hex) is required. Any other missing fields
 will be assigned the zero value for that type (0 or false).
 
 Note: Banned users are managed separately (e.g. next buyer banneduser add/remove...).
+`
+
+var nextBuyerConfigUpdateJSONLongHelp = `
+Update one field in the internal config for the specified buyer. The field
+must be one of the following and is case-sensitive:
+
+  RouteSelectThreshold       integer
+  RouteSwitchThreshold       integer
+  MaxLatencyTradeOff         integer
+  RTTVeto_Default            integer
+  RTTVeto_PacketLoss         integer
+  RTTVeto_Multipath          integer
+  MultipathOverloadThreshold integer
+  TryBeforeYouBuy            boolean
+  ForceNext                  boolean
+  LargeCustomer              boolean
+  Uncommitted                boolean
+  MaxRTT                     integer
+
+The value should be whatever type is appropriate for the field
+as defined above. A valid BuyerID (in hex) is required.
+`
+
+var nextBuyerShaderUpdateJSONLongHelp = `
+Update one field in the route shader for the specified buyer. The field
+must be one of the following and is case-sensitive:
+
+	DisableNetworkNext        bool
+	SelectionPercent          integer
+	ABTest                    bool
+	ProMode                   bool
+	ReduceLatency             bool
+	ReduceJitter              bool
+	ReducePacketLoss          bool
+	Multipath                 bool
+	AcceptableLatency         integer
+	LatencyThreshold          integer
+	AcceptablePacketLoss      float
+	BandwidthEnvelopeUpKbps   integer
+	BandwidthEnvelopeDownKbps integer
+    MaxRTT                    integer
+
+The value should be whatever type is appropriate for the field
+as defined above. A valid BuyerID (in hex) is required.
 `

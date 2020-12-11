@@ -1723,6 +1723,56 @@ func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfi
 	return nil
 }
 
+type UpdateInternalConfigArgs struct {
+	BuyerID uint64
+	Field   string
+	Value   string
+}
+
+type UpdateInternalConfigReply struct{}
+
+func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
+		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
+		"MultipathOverloadThreshold", "MaxRTT":
+		newInt, err := strconv.ParseInt(args.Value, 10, 32)
+		if err != nil {
+			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
+		}
+		newInt32 := int32(newInt)
+		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newInt32)
+		if err != nil {
+			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted":
+		newValue, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
+		}
+
+		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", args.Field)
+	}
+
+	return nil
+}
+
 type RemoveInternalConfigArg struct {
 	BuyerID uint64
 }
@@ -1805,6 +1855,30 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type UpdateRouteShaderArgs struct {
+	BuyerID uint64
+	Field   string
+	Value   interface{}
+}
+
+type UpdateRouteShaderReply struct{}
+
+// sending numeric types over the wire as interface{} fields doesn't work so we need an endpoint for each type (bools and strings work fine)
+func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShaderArgs, reply *UpdateRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, args.Value)
+	if err != nil {
+		err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}

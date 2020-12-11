@@ -1013,7 +1013,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		relay.Type, _ = routing.GetMachineTypeSQL(int64(machineType))
 
 	default:
-		return fmt.Errorf("Field %v not available for update (not part of schema)", value)
+		return fmt.Errorf("Field '%v' does not exist on the routing.Relay type", field)
 
 	}
 
@@ -2118,7 +2118,8 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id=$2"))
 		args = append(args, maxRTT, buyer.DatabaseID)
 		ic.MaxRTT = maxRTT
-
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}
 
 	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
@@ -2368,6 +2369,8 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
 		args = append(args, selectionPercent, buyer.DatabaseID)
 		rs.SelectionPercent = selectionPercent
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 
 	}
 
