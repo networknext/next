@@ -1723,3 +1723,46 @@ func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, 
 	reply.RouteShader = rs
 	return nil
 }
+
+type AddInternalConfigArgs struct {
+	BuyerID        uint64
+	InternalConfig core.InternalConfig
+}
+
+type AddInternalConfigReply struct{}
+
+func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RemoveInternalConfigArg struct {
+	BuyerID uint64
+}
+
+type RemoveInternalConfigReply struct{}
+
+func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInternalConfigArg, reply *RemoveInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.RemoveInternalConfig(context.Background(), arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}

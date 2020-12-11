@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/modood/table"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -579,15 +580,61 @@ func getRouteShader(
 	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
 	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
 	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
-	fmt.Printf("  BannedUsers              :")
+	fmt.Printf("  BannedUsers:")
 	if len(reply.RouteShader.BannedUsers) == 0 {
-		fmt.Printf(" none\n")
+		fmt.Printf("\tnone\n")
 	} else {
 		fmt.Println()
 		for userID := range reply.RouteShader.BannedUsers {
-			fmt.Printf("\t%016x", userID)
+			fmt.Printf("\t%016x\n", userID)
 		}
 	}
 
+	return nil
+}
+
+func addInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerID uint64,
+	ic core.InternalConfig,
+) error {
+
+	emptyReply := localjsonrpc.AddInternalConfigReply{}
+
+	args := localjsonrpc.AddInternalConfigArgs{
+		BuyerID:        buyerID,
+		InternalConfig: ic,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddInternalConfig", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Println("InternalConfig added successfully.")
+	return nil
+}
+
+func removeInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.RemoveInternalConfigReply{}
+
+	args := localjsonrpc.RemoveInternalConfigArg{
+		BuyerID: buyerID,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveInternalConfig", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("InternalConfig for %s removed successfully.\n", buyerName)
 	return nil
 }

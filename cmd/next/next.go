@@ -29,6 +29,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
@@ -314,6 +315,44 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 	}
 	os.Exit(1)
 
+}
+
+type internalConfig struct {
+	RouteSelectThreshold       int32
+	RouteSwitchThreshold       int32
+	MaxLatencyTradeOff         int32
+	RTTVeto_Default            int32
+	RTTVeto_PacketLoss         int32
+	RTTVeto_Multipath          int32
+	MultipathOverloadThreshold int32
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int32
+	BuyerID                    string
+}
+
+type routeShader struct {
+	DisableNetworkNext        bool
+	SelectionPercent          int
+	ABTest                    bool
+	ProMode                   bool
+	ReduceLatency             bool
+	ReduceJitter              bool
+	ReducePacketLoss          bool
+	Multipath                 bool
+	AcceptableLatency         int32
+	LatencyThreshold          int32
+	AcceptablePacketLoss      float32
+	BandwidthEnvelopeUpKbps   int32
+	BandwidthEnvelopeDownKbps int32
+	BuyerID                   string
+}
+
+type bannedUser struct {
+	UserID  string
+	BuyerID string
 }
 
 type buyer struct {
@@ -1727,6 +1766,55 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					getInternalConfig(rpcClient, env, args[0])
 					return nil
 				},
+				Subcommands: []*ffcli.Command{
+					{ // add config
+						Name:       "add",
+						ShortUsage: "next buyer config add (internalconfig json)",
+						ShortHelp:  "Add an internal config for the specified buyer.",
+						LongHelp:   nextBuyerConfigAddJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("InternalConfig", args)
+
+							// Unmarshal the JSON and create the Buyer struct
+							var ic internalConfig
+							if err := json.Unmarshal(jsonData, &ic); err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not unmarshal internal config: %v\n", err), 1)
+							}
+
+							buyerID, err := strconv.ParseUint(ic.BuyerID, 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", ic.BuyerID, err), 0)
+							}
+
+							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
+								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:            int32(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+								ForceNext:                  ic.ForceNext,
+								LargeCustomer:              ic.LargeCustomer,
+								Uncommitted:                ic.Uncommitted,
+								MaxRTT:                     int32(ic.MaxLatencyTradeOff),
+							})
+
+							return nil
+						},
+					},
+					{ // remove config
+						Name:       "remove",
+						ShortUsage: "next buyer config remove (buyer name or substring)",
+						ShortHelp:  "Remove the internal config for the specified buyer.",
+						Exec: func(_ context.Context, args []string) error {
+
+							removeInternalConfig(rpcClient, env, args[0])
+							return nil
+						},
+					},
+				},
 			},
 			{ // route shader
 				Name:       "shader",
@@ -2346,3 +2434,27 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 	fmt.Printf("\n")
 }
+
+var nextBuyerConfigAddJSONLongHelp = `
+Add an internal config for the specified buyer. The config
+must be in a json file of the form:
+
+{
+  "RouteSelectThreshold": 2,
+  "RouteSwitchThreshold": 5,
+  "MaxLatencyTradeOff": 10,
+  "RTTVeto_Default": -10,
+  "RTTVeto_PacketLoss": -20,
+  "RTTVeto_Multipath": -20,
+  "MultipathOverloadThreshold": 500,
+  "TryBeforeYouBuy": false,
+  "ForceNext": true,
+  "LargeCustomer": false,
+  "Uncommitted": false,
+  "MaxRTT": 300,
+  "BuyerID": "205cca7361c2ae96"
+}
+
+A valid BuyerID (in hex) is required. Any other missing fields
+will be assigned the zero value for that type (0 or false).
+`
