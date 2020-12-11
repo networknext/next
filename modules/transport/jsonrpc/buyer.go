@@ -25,6 +25,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
@@ -1683,4 +1684,281 @@ func slicesAreEqual(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+// InternalConfig CRUD endpoints
+type GetInternalConfigArg struct {
+	BuyerID uint64
+}
+
+type GetInternalConfigReply struct {
+	InternalConfig core.InternalConfig
+}
+
+func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfigArg, reply *GetInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	ic, err := s.Storage.InternalConfig(arg.BuyerID)
+	if err != nil {
+		// no InternalConfig stored for the buyer
+		return err
+	}
+
+	reply.InternalConfig = ic
+	return nil
+}
+
+type AddInternalConfigArgs struct {
+	BuyerID        uint64
+	InternalConfig core.InternalConfig
+}
+
+type AddInternalConfigReply struct{}
+
+func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type UpdateInternalConfigArgs struct {
+	BuyerID uint64
+	Field   string
+	Value   string
+}
+
+type UpdateInternalConfigReply struct{}
+
+func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
+		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
+		"MultipathOverloadThreshold", "MaxRTT":
+		newInt, err := strconv.ParseInt(args.Value, 10, 32)
+		if err != nil {
+			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
+		}
+		newInt32 := int32(newInt)
+		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newInt32)
+		if err != nil {
+			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted":
+		newValue, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
+		}
+
+		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", args.Field)
+	}
+
+	return nil
+}
+
+type RemoveInternalConfigArg struct {
+	BuyerID uint64
+}
+
+type RemoveInternalConfigReply struct{}
+
+func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInternalConfigArg, reply *RemoveInternalConfigReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.RemoveInternalConfig(context.Background(), arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+// RouteShader CRUD endpoints
+type GetRouteShaderArg struct {
+	BuyerID uint64
+}
+
+type GetRouteShaderReply struct {
+	RouteShader core.RouteShader
+}
+
+func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	rs, err := s.Storage.RouteShader(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	reply.RouteShader = rs
+	return nil
+}
+
+type AddRouteShaderArgs struct {
+	BuyerID     uint64
+	RouteShader core.RouteShader
+}
+
+type AddRouteShaderReply struct{}
+
+func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs, reply *AddRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.AddRouteShader(context.Background(), arg.RouteShader, arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RemoveRouteShaderArg struct {
+	BuyerID uint64
+}
+
+type RemoveRouteShaderReply struct{}
+
+func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type UpdateRouteShaderArgs struct {
+	BuyerID uint64
+	Field   string
+	Value   interface{}
+}
+
+type UpdateRouteShaderReply struct{}
+
+// sending numeric types over the wire as interface{} fields doesn't work so we need an endpoint for each type (bools and strings work fine)
+func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShaderArgs, reply *UpdateRouteShaderReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, args.Value)
+	if err != nil {
+		err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+// BannedUser CRUD endpoints
+type GetBannedUserArg struct {
+	BuyerID uint64
+}
+
+type GetBannedUserReply struct {
+	BannedUsers []string // hex strings
+}
+
+func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, reply *GetBannedUserReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	var userList []string
+
+	bannedUsers, err := s.Storage.BannedUsers(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("GetBannedUsers() error retrieving banned users for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	for userID := range bannedUsers {
+		userList = append(userList, fmt.Sprintf("%016x", userID))
+	}
+
+	reply.BannedUsers = userList
+	return nil
+}
+
+type BannedUserArgs struct {
+	BuyerID uint64
+	UserID  uint64
+}
+
+type BannedUserReply struct{}
+
+func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.AddBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	if err != nil {
+		err = fmt.Errorf("AddBannedUser() error adding banned user for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	err := s.Storage.RemoveBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	if err != nil {
+		err = fmt.Errorf("RemoveBannedUser() error removing banned user for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	return nil
 }
