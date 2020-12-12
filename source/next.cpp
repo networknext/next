@@ -405,6 +405,9 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
+// todo: turn off post testing
+#define NEXT_ENABLE_MEMORY_CHECKS 1
+
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
@@ -3152,6 +3155,8 @@ struct NextRouteUpdatePacket
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
+    bool exclude_near_relays;
+    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
 
     NextRouteUpdatePacket()
     {
@@ -3201,6 +3206,15 @@ struct NextRouteUpdatePacket
         if ( has_debug )
         {
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
+        }
+
+        serialize_bool( stream, exclude_near_relays );
+        if ( exclude_near_relays )
+        {
+            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+            {
+                serialize_bool( stream, near_relay_excluded[i] );
+            }
         }
 
         return true;
@@ -9259,6 +9273,11 @@ struct next_session_entry_t
     char debug[NEXT_MAX_SESSION_DEBUG];
 
     NEXT_DECLARE_SENTINEL(27)
+
+    bool exclude_near_relays;
+    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(28)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9293,6 +9312,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
     NEXT_INITIALIZE_SENTINEL( entry, 26 )
     NEXT_INITIALIZE_SENTINEL( entry, 27 )
+    NEXT_INITIALIZE_SENTINEL( entry, 28 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9327,6 +9347,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 25 )
     NEXT_VERIFY_SENTINEL( entry, 26 )
     NEXT_VERIFY_SENTINEL( entry, 27 )
+    NEXT_VERIFY_SENTINEL( entry, 28 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -10572,6 +10593,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.has_debug = entry->has_debug;
             memcpy( packet.debug, entry->debug, NEXT_MAX_SESSION_DEBUG );
 
+            packet.exclude_near_relays = entry->exclude_near_relays;
+            memcpy( packet.near_relay_excluded, entry->near_relay_excluded, sizeof( packet.near_relay_excluded ) );
+
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
 
             entry->update_last_send_time = current_time;
@@ -10995,6 +11019,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             entry->has_debug = packet.has_debug;
             memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
+
+            entry->exclude_near_relays = packet.exclude_near_relays;
+            memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
