@@ -15371,8 +15371,6 @@ static void test_relay_manager()
         }
     }
 
-    // exclude a near relay and 
-
     next_relay_manager_destroy( manager );
 }
 
