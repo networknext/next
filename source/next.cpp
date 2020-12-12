@@ -4349,13 +4349,17 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(4)
 
-    next_ping_history_t * relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+    bool relay_excluded[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(5)
 
-    next_ping_history_t ping_history_array[NEXT_MAX_NEAR_RELAYS];
+    next_ping_history_t * relay_ping_history[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(6)
+
+    next_ping_history_t ping_history_array[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(7)
 };
 
 void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
@@ -4371,6 +4375,7 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
     NEXT_INITIALIZE_SENTINEL( manager, 4 )
     NEXT_INITIALIZE_SENTINEL( manager, 5 )
     NEXT_INITIALIZE_SENTINEL( manager, 6 )
+    NEXT_INITIALIZE_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_initialize_sentinels( &manager->ping_history_array[i] );
@@ -4387,6 +4392,7 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 4 )
     NEXT_VERIFY_SENTINEL( manager, 5 )
     NEXT_VERIFY_SENTINEL( manager, 6 )
+    NEXT_VERIFY_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->ping_history_array[i] );
@@ -4420,8 +4426,9 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
     memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
+    memset( manager->relay_excluded, 0, sizeof(manager->relay_excluded) );
     memset( manager->relay_ping_history, 0, sizeof(manager->relay_ping_history) );
-    
+
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
         next_ping_history_clear( &manager->ping_history_array[i] );
@@ -4553,6 +4560,17 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     next_relay_manager_verify_sentinels( manager );
 }
 
+void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_relay_excluded )
+{
+    next_relay_manager_verify_sentinels( manager );
+
+    next_assert( near_relay_excluded );
+
+    // todo
+    (void) manager;
+    (void) near_relay_excluded;
+}
+
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id )
 {
     next_relay_manager_verify_sentinels( manager );
@@ -4567,6 +4585,9 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
+        if ( manager->relay_excluded[i] )
+            continue;
+
         if ( manager->relay_last_ping_time[i] + NEXT_RELAY_PING_TIME <= current_time )
         {
             uint64_t ping_sequence = next_ping_history_ping_sent( manager->relay_ping_history[i], next_time() );
@@ -4598,6 +4619,9 @@ bool next_relay_manager_process_pong( next_relay_manager_t * manager, const next
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
+        if ( manager->relay_excluded[i] )
+            continue;
+
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
             next_ping_history_pong_received( manager->relay_ping_history[i], sequence, next_time() );
@@ -4622,14 +4646,24 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
     
     for ( int i = 0; i < stats->num_relays; ++i )
     {        
-        next_route_stats_t route_stats;
-        
-        next_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
-        
-        stats->relay_ids[i] = manager->relay_ids[i];
-        stats->relay_rtt[i] = route_stats.rtt;
-        stats->relay_jitter[i] = route_stats.jitter;
-        stats->relay_packet_loss[i] = route_stats.packet_loss;
+        if ( !manager->relay_excluded[i] )
+        {
+            next_route_stats_t route_stats;
+            
+            next_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
+            
+            stats->relay_ids[i] = manager->relay_ids[i];
+            stats->relay_rtt[i] = route_stats.rtt;
+            stats->relay_jitter[i] = route_stats.jitter;
+            stats->relay_packet_loss[i] = route_stats.packet_loss;
+        }
+        else
+        {
+            stats->relay_ids[i] = manager->relay_ids[i];
+            stats->relay_rtt[i] = 255;  // IMPORTANT: 255 = "not routable"
+            stats->relay_jitter[i] = 0;
+            stats->relay_packet_loss[i] = 0;
+        }
     }
 
     next_relay_stats_verify_sentinels( stats );
@@ -6697,6 +6731,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             if ( packet.near_relays_changed )
             {
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+            }
+
+            if ( packet.exclude_near_relays )
+            {
+                next_relay_manager_exclude( client->near_relay_manager, packet.near_relay_excluded );
             }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
