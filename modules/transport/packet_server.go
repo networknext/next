@@ -475,6 +475,8 @@ type SessionResponsePacket struct {
 	Committed          bool
 	HasDebug           bool
 	Debug              string
+	ExcludeNearRelays  bool
+	NearRelayExcluded  [core.MaxNearRelays]bool
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
@@ -532,6 +534,15 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
 		stream.SerializeBool(&packet.HasDebug)
 		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 5) {
+		stream.SerializeBool(&packet.ExcludeNearRelays)
+		if packet.ExcludeNearRelays {
+			for i := range packet.NearRelayExcluded {
+				stream.SerializeBool(&packet.NearRelayExcluded[i])
+			}
+		}
 	}
 
 	return stream.Error()
