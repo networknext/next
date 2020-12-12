@@ -9672,6 +9672,8 @@ struct NextBackendSessionResponsePacket
     bool committed;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
+    bool exclude_near_relays;
+    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
 
     NextBackendSessionResponsePacket()
     {
@@ -9726,7 +9728,16 @@ struct NextBackendSessionResponsePacket
         {
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
-        
+
+        serialize_bool( stream, exclude_near_relays );
+        if ( exclude_near_relays )
+        {
+            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+            {
+                serialize_bool( stream, near_relay_excluded[i] );
+            }
+        }
+
         return true;
     }
 };
@@ -14940,6 +14951,11 @@ static void test_backend_packets()
         }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
+        in.exclude_near_relays = true;
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+        }
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14957,6 +14973,11 @@ static void test_backend_packets()
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
+        next_check( in.exclude_near_relays == out.exclude_near_relays );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+        }
     }
 
     // session response packet (route, near relays changed)
