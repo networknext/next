@@ -4566,9 +4566,7 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
 
     next_assert( near_relay_excluded );
 
-    // todo
-    (void) manager;
-    (void) near_relay_excluded;
+    memcpy( manager->relay_excluded, near_relay_excluded, sizeof(manager->relay_excluded) );
 }
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id )
@@ -4662,7 +4660,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
             stats->relay_ids[i] = manager->relay_ids[i];
             stats->relay_rtt[i] = 255;  // IMPORTANT: 255 = "not routable"
             stats->relay_jitter[i] = 0;
-            stats->relay_packet_loss[i] = 0;
+            stats->relay_packet_loss[i] = 100;
         }
     }
 
@@ -15325,6 +15323,55 @@ static void test_relay_manager()
             next_check( relay_ids[i+4] == stats.relay_ids[i] );
         }
     }
+
+    // remove all relays
+
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == 0 );
+    }
+
+    // add max relays and exclude odd near relays, verify odd near relays don't have stats
+    
+    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
+
+    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
+
+    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    {
+        near_relay_excluded[i] = ( i % 2 ) != 0;
+    }
+
+    next_relay_manager_exclude( manager, near_relay_excluded );
+
+    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == NumRelays );
+        for ( int i = 0; i < NumRelays; ++i )
+        {
+            next_check( relay_ids[i] == stats.relay_ids[i] );
+            if ( ( i % 2 ) != 0 )
+            {
+                // odd (excluded)
+                next_check( stats.relay_rtt[i] == 255 );
+                next_check( stats.relay_jitter[i] == 0 );
+                next_check( stats.relay_packet_loss[i] == 100 );
+            }
+            else
+            {
+                // even (not excluded)
+                next_check( stats.relay_rtt[i] == 0 );
+                next_check( stats.relay_jitter[i] == 0 );
+                next_check( stats.relay_packet_loss[i] == 100 );
+            }
+        }
+    }
+
+    // exclude a near relay and 
 
     next_relay_manager_destroy( manager );
 }
