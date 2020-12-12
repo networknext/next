@@ -5871,9 +5871,236 @@ func TestReframeRelays_ReduceJitter(t *testing.T) {
 	assert.Equal(t, int32(5), routeState.NumNearRelays)
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
 	assert.Equal(t, []int32{6, 6, 90, 90, 90}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
 }
 
-// todo: TestReframeRelays_ReducePacketLoss
+func TestReframeRelays_ReducePacketLoss_Simple(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	// start with a clean slate
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+
+	// pass in some near relay ids with a near relay that LOOKS attractive (lowest latency)
+	// but has packet loss on the first near relay, and verify it gets excluded temporarily.
+
+	directJitter := int32(10)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{1, 0, 0, 0, 0}
+
+	destRelayIds := relayIds
+
+	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
+	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	out_numDestRelays := int32(0)
+	out_destRelays := []int32{0, 0, 0, 0, 0}
+
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// verify it remains excluded for 7 more slices (history size is 8) once it stops having packet loss.
+	
+	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
+
+	for i := 0; i < 7; i++ {
+
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+		assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+		assert.Equal(t, int32(5), out_numDestRelays)
+		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+		assert.Equal(t, int32(10), routeState.DirectJitter)
+		assert.Equal(t, int32(5), routeState.NumNearRelays)
+		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	}
+
+	// after 8 slices the near relay should recover and become routable again
+
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+}
+
+func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	// start with a clean slate
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+
+	// give direct some packet loss on first slice and the same amount of PL on the first near relay
+	// the near relay should not be excluded because it was at no point ever "worse" packet loss than direct
+
+	directJitter := int32(10)
+	directPacketLoss := int32(1)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{1, 0, 0, 0, 0}
+
+	destRelayIds := relayIds
+
+	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
+	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	out_numDestRelays := int32(0)
+	out_destRelays := []int32{0, 0, 0, 0, 0}
+
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// verify it remains routable for 7 more slices (history size is 8) after packet loss stops
+	
+	directPacketLoss = int32(0)
+
+	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
+
+	for i := 0; i < 7; i++ {
+
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+		assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+		assert.Equal(t, int32(5), out_numDestRelays)
+		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+		assert.Equal(t, int32(10), routeState.DirectJitter)
+		assert.Equal(t, int32(5), routeState.NumNearRelays)
+		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	}
+}
+
+func TestReframeRelays_ReducePacketLoss_Worse(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	// start with a clean slate
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+
+	// give direct some packet loss on first slice and worse PL on the first near relay
+	// the near relay should not be routable because it has worse packet loss than direct
+
+	directJitter := int32(10)
+	directPacketLoss := int32(1)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{2, 0, 0, 0, 0}
+
+	destRelayIds := relayIds
+
+	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
+	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	out_numDestRelays := int32(0)
+	out_destRelays := []int32{0, 0, 0, 0, 0}
+
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// verify it remains unroutable for 7 more slices (history size is 8) while packet loss continues
+	
+	for i := 0; i < 7; i++ {
+
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directJitter, directPacketLoss, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+		assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+		assert.Equal(t, int32(5), out_numDestRelays)
+		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+		assert.Equal(t, int32(10), routeState.DirectJitter)
+		assert.Equal(t, int32(5), routeState.NumNearRelays)
+		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	}
+}
 
 // -------------------------------------------------------------
