@@ -6,7 +6,7 @@ const (
 	FEATURE_BIGTABLE          FeatureEnum = 0
 	FEATURE_NEW_RELAY_BACKEND FeatureEnum = 1
 	FEATURE_POSTGRES          FeatureEnum = 2
-	FEATURE_VANITY_METRIC 	  FeatureEnum = 3
+	FEATURE_VANITY_METRIC     FeatureEnum = 3
 )
 
 const NumFeatures = 4

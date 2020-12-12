@@ -109,15 +109,17 @@ const (
 )
 
 const (
-	NEXT_PLATFORM_UNKNOWN  = 0
-	NEXT_PLATFORM_WINDOWS  = 1
-	NEXT_PLATFORM_MAC      = 2
-	NEXT_PLATFORM_UNIX     = 3
-	NEXT_PLATFORM_SWITCH   = 4
-	NEXT_PLATFORM_PS4      = 5
-	NEXT_PLATFORM_IOS      = 6
-	NEXT_PLATFORM_XBOX_ONE = 7
-	NEXT_PLATFORM_MAX      = 7
+	NEXT_PLATFORM_UNKNOWN       = 0
+	NEXT_PLATFORM_WINDOWS       = 1
+	NEXT_PLATFORM_MAC           = 2
+	NEXT_PLATFORM_UNIX          = 3
+	NEXT_PLATFORM_SWITCH        = 4
+	NEXT_PLATFORM_PS4           = 5
+	NEXT_PLATFORM_IOS           = 6
+	NEXT_PLATFORM_XBOX_ONE      = 7
+	NEXT_PLATFORM_XBOX_SERIES_X = 8
+	NEXT_PLATFORM_PS5           = 9
+	NEXT_PLATFORM_MAX           = 9
 )
 
 const NEXT_MAX_SESSION_DEBUG = 1024
@@ -453,7 +455,7 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 			stream.SerializeBool(&packet.NearRelayExcluded[i])
 		}
 	}
-	
+
 	return stream.Error()
 }
 

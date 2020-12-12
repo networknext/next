@@ -40,15 +40,18 @@ const (
 	ConnectionTypeCellular = 3
 	ConnectionTypeMax      = 3
 
-	PlatformTypeUnknown = 0
-	PlatformTypeWindows = 1
-	PlatformTypeMac     = 2
-	PlatformTypeUnix    = 3
-	PlatformTypeSwitch  = 4
-	PlatformTypePS4     = 5
-	PlatformTypeIOS     = 6
-	PlatformTypeXBOXOne = 7
-	PlatformTypeMax     = 7
+	PlatformTypeUnknown     = 0
+	PlatformTypeWindows     = 1
+	PlatformTypeMac         = 2
+	PlatformTypeUnix        = 3
+	PlatformTypeSwitch      = 4
+	PlatformTypePS4         = 5
+	PlatformTypeIOS         = 6
+	PlatformTypeXBOXOne     = 7
+	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
+	PlatformTypeXBOXSeriesX = 8
+	PlatformTypePS5         = 9
+	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)
@@ -341,7 +344,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&packet.UserHash)
 
-	stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax)
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 5) {
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_New)
+	} else {
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_Old)
+	}
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 

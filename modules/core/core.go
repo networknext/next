@@ -772,7 +772,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 		return -1
 	}
 
-	// The route matrix is triangular, so depending on the indices for the 
+	// The route matrix is triangular, so depending on the indices for the
 	// source and dest relays in the route, we need to reverse the route
 	if routeRelays[0] < routeRelays[routeNumRelays-1] {
 		ReverseRoute(routeRelays[:routeNumRelays])
@@ -937,7 +937,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		// IMPORTANT: If the source relay jitter is higher than the direct jitter
 		// make it unroutable for the next slice *only* so it can recover from this
 		if routeState.NearRelayJitter[i] > routeState.DirectJitter {
-			out_sourceRelayLatency[i] = 255			
+			out_sourceRelayLatency[i] = 255
 		}
 	}
 
@@ -978,29 +978,29 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		index := routeState.PLHistoryIndex
 
-		samples := routeState.PLHistorySamples	
+		samples := routeState.PLHistorySamples
 
 		threshold := samples / 2
 
 		if directPacketLoss > 0 {
-			routeState.DirectPLHistory |= (1<<index)
+			routeState.DirectPLHistory |= (1 << index)
 		} else {
-			routeState.DirectPLHistory &= ^(1<<index)
+			routeState.DirectPLHistory &= ^(1 << index)
 		}
 
 		for i := range sourceRelayPacketLoss {
 
 			if sourceRelayPacketLoss[i] > directPacketLoss {
-				routeState.NearRelayPLHistory[i] |= (1<<index)
+				routeState.NearRelayPLHistory[i] |= (1 << index)
 			} else {
-				routeState.NearRelayPLHistory[i] &= ^(1<<index)
+				routeState.NearRelayPLHistory[i] &= ^(1 << index)
 			}
 
 			// exclude near relays with a history of worse packet loss
 
 			plCount := int32(0)
 			for j := 0; j < int(samples); j++ {
-				if ( routeState.NearRelayPLHistory[i] & (1<<j) ) != 0 {
+				if (routeState.NearRelayPLHistory[i] & (1 << j)) != 0 {
 					plCount++
 				}
 			}
@@ -1018,7 +1018,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 			}
 		}
 
-		routeState.PLHistoryIndex = ( routeState.PLHistoryIndex + 1 ) % 8
+		routeState.PLHistoryIndex = (routeState.PLHistoryIndex + 1) % 8
 	}
 
 	// exclude any dest relays that no longer exist in the route matrix
@@ -1061,7 +1061,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 
 	numBestRoutes := 0
 	bestRoutes := make([]BestRoute, 1024)
-	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost + threshold, bestRoutes, &numBestRoutes)
+	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes)
 	if numBestRoutes == 0 {
 		if debug != nil {
 			*debug += "could not find any next routes. this should never happen\n"
@@ -1076,7 +1076,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 				numNearRelays++
 			}
 		}
-		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost + threshold, numNearRelays, len(sourceRelays))
+		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
 	}
 
 	randomIndex := rand.Intn(numBestRoutes)
@@ -1110,7 +1110,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 	if currentRouteCost < 0 {
 		if debug != nil {
 			*debug += "current route no longer exists. picking a new random route\n"
-		}		
+		}
 		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
 		routeLost = true
@@ -1124,7 +1124,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 	if currentRouteCost > bestRouteCost+switchThreshold {
 		if debug != nil {
 			*debug += fmt.Sprintf("current route no longer within switch threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, switchThreshold)
-		}		
+		}
 		GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
 		return
@@ -1371,7 +1371,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	if internal.ForceNext {
 		if debug != nil {
 			*debug += "forcing network next\n"
-		}		
+		}
 		maxCost = math.MaxInt32
 		routeState.ForcedNext = true
 	}
@@ -1433,7 +1433,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
 	// if we mispredict RTT by 5ms or more, leave network next
 
-	if predictedLatency > 0 && nextLatency >= predictedLatency + 5 {
+	if predictedLatency > 0 && nextLatency >= predictedLatency+5 {
 		if debug != nil {
 			*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
 		}
@@ -1468,7 +1468,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		}
 
 		// IMPORTANT: Here is where we abort the network next route if we see that we have
-		// made latency worse on the previous slice. This is disabled while we are not committed, 
+		// made latency worse on the previous slice. This is disabled while we are not committed,
 		// so we can properly evaluate the route in try before you buy instead of vetoing it right away
 		if routeState.Committed && nextLatency > (directLatency-rttVeto) {
 			if debug != nil {
