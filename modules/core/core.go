@@ -1019,6 +1019,27 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 
 		routeState.PLHistoryIndex = (routeState.PLHistoryIndex + 1) % 8
+
+		// if some relays have packet loss, while others don't, prefer the relays with no packet loss
+
+		numRelaysWithPacketLoss := 0
+		numRelaysWithoutPacketLoss := 0
+
+		for i := range sourceRelayPacketLoss {
+			if routeState.NearRelayPLHistory[i] != 0 {
+				numRelaysWithPacketLoss++
+			} else {
+				numRelaysWithoutPacketLoss++
+			}
+		}
+
+		if numRelaysWithPacketLoss > 0 && numRelaysWithoutPacketLoss > 0 {
+			for i := range sourceRelayPacketLoss {
+				if routeState.NearRelayPLHistory[i] != 0 {
+					out_sourceRelayLatency[i] = 255
+				}
+			}
+		}
 	}
 
 	// exclude any dest relays that no longer exist in the route matrix
