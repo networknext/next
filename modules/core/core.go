@@ -20,6 +20,7 @@ const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 64
+const JitterThreshold = 5
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -933,17 +934,24 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		out_sourceRelayLatency[i] = routeState.NearRelayRTT[i]
 		out_sourceRelayJitter[i] = routeState.NearRelayJitter[i]
-
-		// IMPORTANT: If the source relay jitter is higher than the direct jitter
-		// make it unroutable for the next slice *only* so it can recover from this
-		if routeState.NearRelayJitter[i] > routeState.DirectJitter {
-			out_sourceRelayLatency[i] = 255
-		}
 	}
 
-	// reduce jitter by excluding near relays with higher jitter than average
+	// reduce jitter by excluding near relays with high jitter
 
 	if routeShader.ReduceJitter {
+
+		for i := range sourceRelayLatency {
+
+			if routeState.DirectJitter > JitterThreshold && routeState.NearRelayJitter[i] > routeState.DirectJitter {
+				out_sourceRelayLatency[i] = 255
+			}
+
+			if routeState.DirectJitter <= JitterThreshold && routeState.NearRelayJitter[i] > JitterThreshold {
+				out_sourceRelayLatency[i] = 255
+			}
+		}
+
+		// exclude any relays with higher than average jitter
 
 		count := 0
 		totalJitter := 0.0
@@ -956,18 +964,20 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		if count > 0 {
 			averageJitter := int32(math.Ceil(totalJitter / float64(count)))
-			for i := range sourceRelayLatency {
-				if out_sourceRelayLatency[i] == 255 {
-					continue
-				}
-				if out_sourceRelayJitter[i] > averageJitter {
-					out_sourceRelayLatency[i] = 255
+			if averageJitter > JitterThreshold {
+				for i := range sourceRelayLatency {
+					if out_sourceRelayLatency[i] == 255 {
+						continue
+					}
+					if out_sourceRelayJitter[i] > averageJitter {
+						out_sourceRelayLatency[i] = 255
+					}
 				}
 			}
 		}
 	}
 
-	// reduce packet loss by excluding any near relays wih historically higher packet loss than direct
+	// reduce packet loss by excluding near relays with high packet loss
 
 	if routeShader.ReducePacketLoss {
 
