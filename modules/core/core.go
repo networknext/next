@@ -964,14 +964,12 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		if count > 0 {
 			averageJitter := int32(math.Ceil(totalJitter / float64(count)))
-			if averageJitter > JitterThreshold {
-				for i := range sourceRelayLatency {
-					if out_sourceRelayLatency[i] == 255 {
-						continue
-					}
-					if out_sourceRelayJitter[i] > averageJitter {
-						out_sourceRelayLatency[i] = 255
-					}
+			for i := range sourceRelayLatency {
+				if out_sourceRelayLatency[i] == 255 {
+					continue
+				}
+				if out_sourceRelayJitter[i] > JitterThreshold && out_sourceRelayJitter[i] > averageJitter {
+					out_sourceRelayLatency[i] = 255
 				}
 			}
 		}
