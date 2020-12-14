@@ -109,15 +109,17 @@ const (
 )
 
 const (
-	NEXT_PLATFORM_UNKNOWN  = 0
-	NEXT_PLATFORM_WINDOWS  = 1
-	NEXT_PLATFORM_MAC      = 2
-	NEXT_PLATFORM_UNIX     = 3
-	NEXT_PLATFORM_SWITCH   = 4
-	NEXT_PLATFORM_PS4      = 5
-	NEXT_PLATFORM_IOS      = 6
-	NEXT_PLATFORM_XBOX_ONE = 7
-	NEXT_PLATFORM_MAX      = 7
+	NEXT_PLATFORM_UNKNOWN       = 0
+	NEXT_PLATFORM_WINDOWS       = 1
+	NEXT_PLATFORM_MAC           = 2
+	NEXT_PLATFORM_UNIX          = 3
+	NEXT_PLATFORM_SWITCH        = 4
+	NEXT_PLATFORM_PS4           = 5
+	NEXT_PLATFORM_IOS           = 6
+	NEXT_PLATFORM_XBOX_ONE      = 7
+	NEXT_PLATFORM_XBOX_SERIES_X = 8
+	NEXT_PLATFORM_PS5           = 9
+	NEXT_PLATFORM_MAX           = 9
 )
 
 const NEXT_MAX_SESSION_DEBUG = 1024
@@ -305,18 +307,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
 	if hasTags {
-		if ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, 4, 0, 3) {
-			// multiple tags
-			stream.SerializeInteger(&packet.NumTags, 0, NEXT_MAX_TAGS)
-			for i := 0; i < int(packet.NumTags); i++ {
-				stream.SerializeUint64(&packet.Tags[i])
-			}
-		} else {
-			// single tag
-			stream.SerializeUint64(&packet.Tags[0])
-			if stream.IsWriting() {
-				packet.NumTags = 1
-			}
+		stream.SerializeInteger(&packet.NumTags, 0, NEXT_MAX_TAGS)
+		for i := 0; i < int(packet.NumTags); i++ {
+			stream.SerializeUint64(&packet.Tags[i])
 		}
 	}
 
@@ -398,6 +391,8 @@ type NextBackendSessionResponsePacket struct {
 	Committed          bool
 	HasDebug           bool
 	Debug              string
+	ExcludeNearRelays  bool
+	NearRelayExcluded  [NEXT_MAX_NEAR_RELAYS]bool
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
@@ -449,9 +444,16 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		stream.SerializeBytes(packet.Tokens)
 	}
 
-	if ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, 4, 0, 4) {
-		stream.SerializeBool(&packet.HasDebug)
+	stream.SerializeBool(&packet.HasDebug)
+	if packet.HasDebug {
 		stream.SerializeString(&packet.Debug, NEXT_MAX_SESSION_DEBUG)
+	}
+
+	stream.SerializeBool(&packet.ExcludeNearRelays)
+	if packet.ExcludeNearRelays {
+		for i := range packet.NearRelayExcluded {
+			stream.SerializeBool(&packet.NearRelayExcluded[i])
+		}
 	}
 
 	return stream.Error()
