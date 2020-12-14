@@ -40,15 +40,18 @@ const (
 	ConnectionTypeCellular = 3
 	ConnectionTypeMax      = 3
 
-	PlatformTypeUnknown = 0
-	PlatformTypeWindows = 1
-	PlatformTypeMac     = 2
-	PlatformTypeUnix    = 3
-	PlatformTypeSwitch  = 4
-	PlatformTypePS4     = 5
-	PlatformTypeIOS     = 6
-	PlatformTypeXBOXOne = 7
-	PlatformTypeMax     = 7
+	PlatformTypeUnknown     = 0
+	PlatformTypeWindows     = 1
+	PlatformTypeMac         = 2
+	PlatformTypeUnix        = 3
+	PlatformTypeSwitch      = 4
+	PlatformTypePS4         = 5
+	PlatformTypeIOS         = 6
+	PlatformTypeXBOXOne     = 7
+	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
+	PlatformTypeXBOXSeriesX = 8
+	PlatformTypePS5         = 9
+	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)
@@ -341,7 +344,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&packet.UserHash)
 
-	stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax)
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 5) {
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_New)
+	} else {
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_Old)
+	}
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 
@@ -475,6 +482,8 @@ type SessionResponsePacket struct {
 	Committed          bool
 	HasDebug           bool
 	Debug              string
+	ExcludeNearRelays  bool
+	NearRelayExcluded  [core.MaxNearRelays]bool
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
@@ -532,6 +541,15 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
 		stream.SerializeBool(&packet.HasDebug)
 		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 5) {
+		stream.SerializeBool(&packet.ExcludeNearRelays)
+		if packet.ExcludeNearRelays {
+			for i := range packet.NearRelayExcluded {
+				stream.SerializeBool(&packet.NearRelayExcluded[i])
+			}
+		}
 	}
 
 	return stream.Error()
