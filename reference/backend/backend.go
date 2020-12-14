@@ -109,15 +109,17 @@ const (
 )
 
 const (
-	NEXT_PLATFORM_UNKNOWN  = 0
-	NEXT_PLATFORM_WINDOWS  = 1
-	NEXT_PLATFORM_MAC      = 2
-	NEXT_PLATFORM_UNIX     = 3
-	NEXT_PLATFORM_SWITCH   = 4
-	NEXT_PLATFORM_PS4      = 5
-	NEXT_PLATFORM_IOS      = 6
-	NEXT_PLATFORM_XBOX_ONE = 7
-	NEXT_PLATFORM_MAX      = 7
+	NEXT_PLATFORM_UNKNOWN       = 0
+	NEXT_PLATFORM_WINDOWS       = 1
+	NEXT_PLATFORM_MAC           = 2
+	NEXT_PLATFORM_UNIX          = 3
+	NEXT_PLATFORM_SWITCH        = 4
+	NEXT_PLATFORM_PS4           = 5
+	NEXT_PLATFORM_IOS           = 6
+	NEXT_PLATFORM_XBOX_ONE      = 7
+	NEXT_PLATFORM_XBOX_SERIES_X = 8
+	NEXT_PLATFORM_PS5           = 9
+	NEXT_PLATFORM_MAX           = 9
 )
 
 const NEXT_MAX_SESSION_DEBUG = 1024
@@ -389,6 +391,8 @@ type NextBackendSessionResponsePacket struct {
 	Committed          bool
 	HasDebug           bool
 	Debug              string
+	ExcludeNearRelays  bool
+	NearRelayExcluded  [NEXT_MAX_NEAR_RELAYS]bool
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
@@ -444,7 +448,14 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 	if packet.HasDebug {
 		stream.SerializeString(&packet.Debug, NEXT_MAX_SESSION_DEBUG)
 	}
-	
+
+	stream.SerializeBool(&packet.ExcludeNearRelays)
+	if packet.ExcludeNearRelays {
+		for i := range packet.NearRelayExcluded {
+			stream.SerializeBool(&packet.NearRelayExcluded[i])
+		}
+	}
+
 	return stream.Error()
 }
 
