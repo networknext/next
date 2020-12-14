@@ -481,6 +481,11 @@ deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 
+.PHONY: deploy-vanity-dev
+deploy-vanity-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t vanity -n vanity -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-2 -t vanity -n vanity -b gs://development_artifacts
+
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
@@ -492,6 +497,11 @@ deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
+.PHONY: deploy-vanity-staging
+deploy-vanity-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t vanity -n vanity -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-2 -t vanity -n vanity -b gs://staging_artifacts
+
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
@@ -502,6 +512,11 @@ deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+
+.PHONY: deploy-vanity-prod
+deploy-vanity-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t vanity -n vanity -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-2 -t vanity -n vanity -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
