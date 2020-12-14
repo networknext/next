@@ -761,6 +761,8 @@ void next_read_address( const uint8_t ** buffer, next_address_t * address )
 {
     const uint8_t * start = *buffer;
 
+    memset( address, 0, sizeof(next_address_t) );
+
     address->type = next_read_uint8( buffer );
 
     if ( address->type == NEXT_ADDRESS_IPV4 )
@@ -13838,6 +13840,8 @@ static void test_address_read_and_write()
     struct next_address_t a, b, c;
 
     memset( &a, 0, sizeof(a) );
+    memset( &b, 0, sizeof(b) );
+    memset( &c, 0, sizeof(c) );
 
     next_address_parse( &b, "127.0.0.1:50000" );
 
