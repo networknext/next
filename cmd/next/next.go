@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -325,7 +324,7 @@ type buyer struct {
 type seller struct {
 	Name                 string
 	ShortName            string
-	CompanyCode          string
+	CustomerCode         string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
 }
@@ -1507,6 +1506,7 @@ func main() {
 				Name:       "add",
 				ShortUsage: "next buyer add [filepath]",
 				ShortHelp:  "Add a buyer from a JSON file or piped from stdin",
+				LongHelp:   nextBuyerAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("buyers", args)
 
@@ -1534,37 +1534,6 @@ func main() {
 						PublicKey:   publicKey,
 					})
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next buyer add example",
-						ShortHelp:  "Displays an example buyer for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
-							_, err := rand.Read(examplePublicKey)
-							if err != nil {
-								return fmt.Errorf("Error generating random buyer public key: %v", err)
-							}
-							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
-
-							example := buyer{
-								CompanyCode: "microzon",
-								Live:        true,
-								PublicKey:   examplePublicKeyString,
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal buyer struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new buyer:")
-							fmt.Println(string(jsonBytes))
-							fmt.Println("Note: a valid company code is required to add a buyer.")
-							return nil
-						},
-					},
 				},
 			},
 			{ // remove
@@ -1756,6 +1725,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				Name:       "add",
 				ShortUsage: "next seller add [filepath]",
 				ShortHelp:  "Add a seller to storage from a JSON file or piped from stdin",
+				LongHelp:   nextSellerAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("sellers", args)
 
@@ -1763,7 +1733,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					var sellerUSD struct {
 						Name            string
 						ShortName       string
-						CompanyCode     string
+						CustomerCode    string
 						IngressPriceUSD string
 						EgressPriceUSD  string
 					}
@@ -1785,8 +1755,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					s := seller{
 						Name:                 sellerUSD.Name,
-						ShortName:            sellerUSD.ShortName,
-						CompanyCode:          sellerUSD.ShortName,
+						ShortName:            sellerUSD.CustomerCode,
+						CustomerCode:         sellerUSD.CustomerCode,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
@@ -1796,41 +1766,11 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ID:                        s.Name,
 						Name:                      s.Name,
 						ShortName:                 s.ShortName,
-						CompanyCode:               s.CompanyCode,
+						CompanyCode:               s.CustomerCode,
 						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
 						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
 					})
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next seller add example",
-						ShortHelp:  "Displays an example seller for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							example := struct {
-								Name            string
-								ShortName       string
-								IngressPriceUSD string
-								EgressPriceUSD  string
-							}{
-								Name:            "Amazon.com, Inc.",
-								ShortName:       "amazon",
-								IngressPriceUSD: "0.01",
-								EgressPriceUSD:  "0.1",
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal seller struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
-							fmt.Println(string(jsonBytes))
-
-							return nil
-						},
-					},
 				},
 			},
 			{
@@ -1953,6 +1893,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 							fmt.Println("Example JSON schema to add a new customer:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("All fields are required. The Code field must be unique.")
 
 							return nil
 						},
@@ -2316,3 +2257,31 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 	fmt.Printf("\n")
 }
+
+var nextBuyerAddJSONLongHelp = `
+Add a buyer entry for the provided customer. The input data is 
+provided by a JSON file of the form:
+
+{
+  "CustomerCode": "microzon",
+  "Live": true,
+  "Debug": false // optional
+  "PublicKey": "IQl4JmtP5T8wyqc6EpNk0ymD3iVfvDx3teXZ98ghFqQ1leO6GmKNrQ=="
+}
+
+A valid Customer code is required to add a buyer.
+`
+
+var nextSellerAddJSONLongHelp = `
+Add a seller entry for the provided customer. The input data is 
+provided by a JSON file of the form:
+
+{
+  "Name": "Amazon.com, Inc.",
+  "CustomerCode": "microzon",
+  "IngressPriceUSD": "0.01",
+  "EgressPriceUSD": "0.1"
+}
+
+A valid Customer code is required to add a buyer.
+`
