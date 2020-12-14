@@ -1210,10 +1210,13 @@ func TestRouteShaders(t *testing.T) {
 		userID3, err := strconv.ParseUint("fb6fa90ad67bc76a", 16, 64)
 		assert.NoError(t, err)
 
+		fmt.Println("--> sql_test AddBannedUser()  1")
 		err = db.AddBannedUser(ctx, outerBuyer.ID, userID1)
 		assert.NoError(t, err)
+		fmt.Println("--> sql_test AddBannedUser()  2")
 		err = db.AddBannedUser(ctx, outerBuyer.ID, userID2)
 		assert.NoError(t, err)
+		fmt.Println("--> sql_test AddBannedUser()  3")
 		err = db.AddBannedUser(ctx, outerBuyer.ID, userID3)
 		assert.NoError(t, err)
 
@@ -1223,6 +1226,13 @@ func TestRouteShaders(t *testing.T) {
 		assert.True(t, bannedUserList[userID1])
 		assert.True(t, bannedUserList[userID2])
 		assert.True(t, bannedUserList[userID3])
+
+		checkRouteShader, err := db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.True(t, len(checkRouteShader.BannedUsers) > 0)
+		assert.True(t, checkRouteShader.BannedUsers[userID1])
+		assert.True(t, checkRouteShader.BannedUsers[userID2])
+		assert.True(t, checkRouteShader.BannedUsers[userID3])
 
 		err = db.RemoveBannedUser(ctx, outerBuyer.ID, userID1)
 		assert.NoError(t, err)
