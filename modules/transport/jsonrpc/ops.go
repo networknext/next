@@ -198,7 +198,6 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			s.Logger.Log("err", err)
 			return err
 		}
-
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
 			CompanyName: c.Name,
@@ -296,7 +295,6 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 			s.Logger.Log("err", err)
 			return err
 		}
-		fmt.Printf("customer name: %s\n", c.Name)
 		reply.Sellers = append(reply.Sellers, seller{
 			ID:                   localSeller.ID,
 			Name:                 c.Name,
