@@ -80,5 +80,12 @@
         1141867895387079451,
         -7664475006302134894,
         -6848787315892866519
-    ]
+    ],
+    "mispredicted": true,
+    "vetoed": true,
+    "latencyWorse": true,
+    "noRoute": true,
+    "nextLatencyTooHigh": true,
+    "routeChanged": true,
+    "commitVeto": true
 }

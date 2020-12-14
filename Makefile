@@ -241,12 +241,20 @@ ifndef BIGTABLE_CF_NAME
 export BIGTABLE_CF_NAME = portal-session-history
 endif
 
+ifndef BIGTABLE_WRITE_DELETE_ROW
+export BIGTABLE_WRITE_DELETE_ROW = false
+endif
+
 ifndef BIGTABLE_TABLE_NAME
-export BIGTABLE_TABLE_NAME = BTTest
+export BIGTABLE_TABLE_NAME = portal-session-history
 endif
 
 ifndef BIGTABLE_HISTORICAL_TXT
 export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
+endif
+
+ifndef FEATURE_VANITY_METRIC
+export FEATURE_VANITY_METRIC = false
 endif
 
 .PHONY: help
@@ -334,13 +342,6 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
-.PHONY: build-api
-build-api: dist
-	@printf "Building api... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
-	@printf "done\n"
-
-
 #######################
 
 .PHONY: dev-portal
@@ -404,6 +405,10 @@ dev-server: build-sdk build-server  ## runs a local server
 dev-api: build-api ## runs a local api endpoint service
 	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
 
+.PHONY: dev-vanity
+dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
+	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
+
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
@@ -459,6 +464,18 @@ build-billing:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
+	@printf "done\n"
+
+.PHONY: build-vanity
+build-vanity: dist
+	@printf "Building vanity metrics ..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
+	@printf "done\n"
+
 .PHONY: deploy-relay-backend-dev
 deploy-relay-backend-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
@@ -506,6 +523,14 @@ build-billing-artifacts-dev: build-billing
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
+.PHONY: build-api-artifacts-dev
+build-api-artifacts-dev: build-api
+	./deploy/build-artifacts.sh -e dev -s api
+
+.PHONY: build-vanity-artifacts-dev
+build-vanity-artifacts-dev: build-vanity
+	./deploy/build-artifacts.sh -e dev -s vanity
+
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
@@ -538,6 +563,14 @@ build-billing-artifacts-staging: build-billing
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
 
+.PHONY: build-api-artifacts-staging
+build-api-artifacts-staging: build-api
+	./deploy/build-artifacts.sh -e staging -s api
+
+.PHONY: build-vanity-artifacts-staging
+build-vanity-artifacts-staging: build-vanity
+	./deploy/build-artifacts.sh -e staging -s vanity
+
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
@@ -566,6 +599,14 @@ build-billing-artifacts-prod: build-billing
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
 
+.PHONY: build-api-artifacts-prod
+build-api-artifacts-prod: build-api
+	./deploy/build-artifacts.sh -e prod -s api
+
+.PHONY: build-vanity-artifacts-prod
+build-vanity-artifacts-prod: build-vanity
+	./deploy/build-artifacts.sh -e prod -s vanity
+
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
@@ -593,6 +634,14 @@ publish-billing-artifacts-dev:
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
+
+.PHONY: publish-api-artifacts-dev
+publish-api-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s api
+
+.PHONY: publish-vanity-artifacts-dev
+publish-vanity-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s vanity
 
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
@@ -625,6 +674,14 @@ publish-billing-artifacts-staging:
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
+.PHONY: publish-api-artifacts-staging
+publish-api-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s api
+
+.PHONY: publish-vanity-artifacts-staging
+publish-vanity-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s vanity
 
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
@@ -661,6 +718,14 @@ publish-load-test-server-list:
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-api-artifacts-prod
+publish-api-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s api
+
+.PHONY: publish-vanity-artifacts-prod
+publish-vanity-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s vanity
 
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
@@ -984,7 +1049,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

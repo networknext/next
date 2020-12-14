@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/networknext/backend/modules/envvar"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
@@ -111,6 +113,15 @@ func (e ErrDatacenterNotAllowed) Error() string {
 }
 
 func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
+	// We should always support the "local" datacenter, even without a datacenter mapping
+	if crypto.HashID("local") == datacenterID {
+		return routing.Datacenter{
+			ID:      crypto.HashID("local"),
+			Name:    "local",
+			Enabled: true,
+		}, nil
+	}
+
 	// enforce that whatever datacenter the server says it's in, we have a mapping for it
 	datacenterAliases := storer.GetDatacenterMapsForBuyer(buyerID)
 	for _, dcMap := range datacenterAliases {
@@ -189,7 +200,19 @@ func (n nearRelayGroup) Copy(other *nearRelayGroup) {
 	copy(other.PacketLosses, n.PacketLosses)
 }
 
-func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelays nearRelayGroup, routeState *core.RouteState, newSession bool, clientLat float32, clientLong float32, maxNearRelays int, directJitter int32, destRelayIDs []uint64) (bool, nearRelayGroup, []int32, error) {
+func handleNearAndDestRelays(
+	routeMatrix *routing.RouteMatrix,
+	incomingNearRelays nearRelayGroup,
+	routeShader *core.RouteShader,
+	routeState *core.RouteState,
+	newSession bool,
+	clientLat float32,
+	clientLong float32,
+	maxNearRelays int,
+	directJitter int32,
+	directPacketLoss int32,
+	destRelayIDs []uint64,
+) (bool, nearRelayGroup, []int32, error) {
 	var nearRelaysChanged bool
 
 	if newSession {
@@ -222,7 +245,7 @@ func handleNearAndDestRelays(routeMatrix *routing.RouteMatrix, incomingNearRelay
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
-	core.ReframeRelays(routeState, routeMatrix.RelayIDsToIndices, directJitter, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directJitter, directPacketLoss, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
 	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
@@ -366,7 +389,17 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessi
 	}
 }
 
-func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uint64) routing.IPLocator, getRouteMatrix func() *routing.RouteMatrix, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, maxNearRelays int, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionUpdateMetrics, internalIPSellers []string, enableInternalIPs bool) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(
+	logger log.Logger,
+	getIPLocator func(sessionID uint64) routing.IPLocator,
+	getRouteMatrix func() *routing.RouteMatrix,
+	multipathVetoHandler *storage.MultipathVetoHandler,
+	storer storage.Storer,
+	maxNearRelays int,
+	routerPrivateKey [crypto.KeySize]byte,
+	postSessionHandler *PostSessionHandler,
+	metrics *metrics.SessionUpdateMetrics,
+) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -486,6 +519,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 
 		if buyer.Debug {
 			debug = new(string)
+		}
+
+		// Hack to support ESL - if a player has a "pro" tag, use pro mode in the route shader
+		// Do this for ESL or local, for testing
+		if buyer.ID == 0x1e4e8804454033c8 || buyer.ID == 0xbdbebdbf0f7be395 {
+			if packet.NumTags > 0 {
+				for i := int32(0); i < packet.NumTags; i++ {
+					if packet.Tags[i] == crypto.HashID("pro") {
+						buyer.RouteShader.ProMode = true
+						break
+					}
+				}
+			}
 		}
 
 		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
@@ -616,12 +662,14 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
 			routeMatrix,
 			incomingNearRelays,
+			&buyer.RouteShader,
 			&sessionData.RouteState,
 			newSession,
 			sessionData.Location.Latitude,
 			sessionData.Location.Longitude,
 			maxNearRelays,
 			int32(math.Ceil(float64(packet.DirectJitter))),
+			int32(math.Floor(float64(packet.DirectPacketLoss)+0.5)),
 			destRelayIDs,
 		)
 
@@ -672,10 +720,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		var routeRelayNames [core.MaxRelaysPerRoute]string
 		var routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
 
+		var nextRouteSwitched bool
+
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
 			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
-				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
+				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 		} else {
 			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
@@ -684,10 +734,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 				metrics.RouteDoesNotExist.Add(1)
 
 				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
-					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
+					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 				}
 			} else {
-				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+				var stay bool
+				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
 					// Continue token
 
 					// Check if the route has changed
@@ -695,7 +746,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 						metrics.RouteSwitched.Add(1)
 
 						// Create a next token here rather than a continue token since the route has switched
-						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response, internalIPSellers, enableInternalIPs)
+						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 					} else {
 						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 					}
@@ -723,10 +774,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 		}
 
 		response.Committed = sessionData.RouteState.Committed
+		response.Multipath = sessionData.RouteState.Multipath
 
 		// Store the route back into the session data
 		sessionData.RouteNumRelays = routeNumRelays
 		sessionData.RouteCost = routeCost
+		sessionData.RouteChanged = nextRouteSwitched
 
 		for i := int32(0); i < routeNumRelays; i++ {
 			relayID := routeMatrix.RelayIDs[routeRelays[i]]
@@ -753,14 +806,24 @@ func SessionUpdateHandlerFunc(logger log.Logger, getIPLocator func(sessionID uin
 	}
 }
 
-func HandleNextToken(sessionData *SessionData, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket, internalIPSellers []string, enableInternalIPs bool) {
+func HandleNextToken(
+	sessionData *SessionData,
+	storer storage.Storer,
+	buyer *routing.Buyer,
+	packet *SessionUpdatePacket,
+	routeNumRelays int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	routerPrivateKey [crypto.KeySize]byte,
+	response *SessionResponsePacket,
+) {
 	// Add another 10 seconds to the slice and increment the session version
 	sessionData.Initial = true
 	sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 	sessionData.SessionVersion++
 
 	numTokens := routeNumRelays + 2 // relays + client + server
-	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer, internalIPSellers, enableInternalIPs)
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
 	if routeAddresses == nil || routePublicKeys == nil {
 		response.RouteType = routing.RouteTypeDirect
 		response.NumTokens = 0
@@ -775,10 +838,20 @@ func HandleNextToken(sessionData *SessionData, storer storage.Storer, buyer *rou
 	response.Tokens = tokenData
 }
 
-func HandleContinueToken(sessionData *SessionData, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket) {
+func HandleContinueToken(
+	sessionData *SessionData,
+	storer storage.Storer,
+	buyer *routing.Buyer,
+	packet *SessionUpdatePacket,
+	routeNumRelays int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	routerPrivateKey [crypto.KeySize]byte,
+	response *SessionResponsePacket,
+) {
 	numTokens := routeNumRelays + 2 // relays + client + server
 	// empty string array b/c don't care for internal ips here
-	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer, []string{}, false)
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
 	if routeAddresses == nil || routePublicKeys == nil {
 		response.RouteType = routing.RouteTypeDirect
 		response.NumTokens = 0
@@ -793,7 +866,16 @@ func HandleContinueToken(sessionData *SessionData, storer storage.Storer, buyer 
 	response.Tokens = tokenData
 }
 
-func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey []byte, serverAddress *net.UDPAddr, serverPublicKey []byte, numTokens int32, routeRelays []int32, allRelayIDs []uint64, storer storage.Storer, internalIPSellers []string, enableInternalIPs bool) ([]*net.UDPAddr, [][]byte) {
+func GetRouteAddressesAndPublicKeys(
+	clientAddress *net.UDPAddr,
+	clientPublicKey []byte,
+	serverAddress *net.UDPAddr,
+	serverPublicKey []byte,
+	numTokens int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	storer storage.Storer,
+) ([]*net.UDPAddr, [][]byte) {
 	routeAddresses := make([]*net.UDPAddr, numTokens)
 	routePublicKeys := make([][]byte, numTokens)
 
@@ -814,29 +896,8 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 				continue
 			}
 
-			routeAddresses[i+1] = &relay.Addr
-
-			if enableInternalIPs {
-				shouldTryUseInternalIPs := false
-				for i := range internalIPSellers {
-					if internalIPSellers[i] == relay.Seller.Name {
-						shouldTryUseInternalIPs = true
-						break
-					}
-				}
-
-				// check if the previous relay is the same seller
-				if shouldTryUseInternalIPs && i >= 1 {
-					prevRelayIndex := routeRelays[i-1]
-					if prevRelayIndex < totalNumRelays {
-						prevID := allRelayIDs[prevRelayIndex]
-						prev, err := storer.Relay(prevID)
-						if err == nil && prev.Seller.ID == relay.Seller.ID {
-							routeAddresses[i+1] = &relay.InternalAddr
-						}
-					}
-				}
-			}
+			enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
+			routeAddresses = AddAddress(enableInternalIPs, i, relay, allRelayIDs, storer, routeRelays, routeAddresses)
 
 			routePublicKeys[i+1] = relay.PublicKey
 			foundRelayCount++
@@ -850,7 +911,38 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket, sessionData *SessionData, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [core.MaxRelaysPerRoute]string, routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller, nearRelays nearRelayGroup, datacenter *routing.Datacenter, debug *string) {
+func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, storer storage.Storer, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
+	totalNumRelays := int32(len(allRelayIDs))
+	routeAddresses[index+1] = &relay.Addr
+	if enableInternalIPs {
+		// check if the previous relay is the same seller
+		if index >= 1 {
+			prevRelayIndex := routeRelays[index-1]
+			if prevRelayIndex < totalNumRelays {
+				prevID := allRelayIDs[prevRelayIndex]
+				prev, err := storer.Relay(prevID)
+				if err == nil && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
+					routeAddresses[index+1] = &relay.InternalAddr
+				}
+			}
+		}
+	}
+
+	return routeAddresses
+}
+
+func PostSessionUpdate(
+	postSessionHandler *PostSessionHandler,
+	packet *SessionUpdatePacket,
+	sessionData *SessionData,
+	buyer *routing.Buyer,
+	multipathVetoHandler *storage.MultipathVetoHandler,
+	routeRelayNames [core.MaxRelaysPerRoute]string,
+	routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller,
+	nearRelays nearRelayGroup,
+	datacenter *routing.Datacenter,
+	debug *string,
+) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -983,9 +1075,20 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, packet *SessionUp
 		RouteLost:                       sessionData.RouteState.RouteLost,
 		NumTags:                         uint8(packet.NumTags),
 		Tags:                            packet.Tags,
+		Mispredicted:                    sessionData.RouteState.Mispredict,
+		Vetoed:                          sessionData.RouteState.Veto,
+		LatencyWorse:                    sessionData.RouteState.LatencyWorse,
+		NoRoute:                         sessionData.RouteState.NoRoute,
+		NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
+		RouteChanged:                    sessionData.RouteChanged,
+		CommitVeto:                      sessionData.RouteState.CommitVeto,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
+
+	if postSessionHandler.useVanityMetrics {
+		postSessionHandler.SendVanityMetric(billingEntry)
+	}
 
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
 	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
