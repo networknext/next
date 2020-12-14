@@ -16,7 +16,6 @@ import (
 	"net"
 	"net/http"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
@@ -486,10 +486,52 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Setup feature config for vanity metrics
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_VANITY_METRIC",
+			Enum:        config.FEATURE_VANITY_METRIC,
+			Value:       false,
+			Description: "Vanity metrics for fast aggregate statistic lookup",
+		},
+	})
+	featureConfig = envVarConfig
+	// Determine if should use vanity metrics
+	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
+
+	// Start vanity metrics publisher
+	vanityPublishers := make([]pubsub.Publisher, 0)
+	{
+		vanityMetricHosts := envvar.GetList("FEATURE_VANITY_METRIC_HOSTS", []string{"tcp://127.0.0.1:6666"})
+
+		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		for _, host := range vanityMetricHosts {
+			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
+				return 1
+			}
+
+			vanityPublishers = append(vanityPublishers, vanityPublisher)
+		}
+	}
+
+	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
@@ -599,16 +641,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
-	enableInternalIPs, err := envvar.GetBool("ENABLE_INTERNAL_IPS", false)
-	if err != nil {
-		level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
-		return 1
-	}
-
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, internalIPSellers, enableInternalIPs)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

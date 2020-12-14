@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(18)
+	BillingEntryVersion = uint8(20)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -74,7 +74,14 @@ const (
 		1 + // RelayWentAway
 		1 + // RouteLost
 		1 + // NumTags
-		BillingEntryMaxTags*8 // Tags
+		BillingEntryMaxTags*8 + // Tags
+		1 + // Mispredicted
+		1 + // Vetoed
+		1 + // LatencyWorse
+		1 + // NoRoute
+		1 + // NextLatencyTooHigh
+		1 + // RouteChanged
+		1 // CommitVeto
 )
 
 type BillingEntry struct {
@@ -138,6 +145,13 @@ type BillingEntry struct {
 	RouteLost                       bool
 	NumTags                         uint8
 	Tags                            [BillingEntryMaxTags]uint64
+	Mispredicted                    bool
+	Vetoed                          bool
+	LatencyWorse                    bool
+	NoRoute                         bool
+	NextLatencyTooHigh              bool
+	RouteChanged                    bool
+	CommitVeto                      bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -243,6 +257,15 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	for i := uint8(0); i < entry.NumTags; i++ {
 		encoding.WriteUint64(data, &index, entry.Tags[i])
 	}
+
+	encoding.WriteBool(data, &index, entry.Mispredicted)
+	encoding.WriteBool(data, &index, entry.Vetoed)
+
+	encoding.WriteBool(data, &index, entry.LatencyWorse)
+	encoding.WriteBool(data, &index, entry.NoRoute)
+	encoding.WriteBool(data, &index, entry.NextLatencyTooHigh)
+	encoding.WriteBool(data, &index, entry.RouteChanged)
+	encoding.WriteBool(data, &index, entry.CommitVeto)
 
 	return data[:index]
 }
@@ -563,6 +586,38 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			if !encoding.ReadUint64(data, &index, &entry.Tags[i]) {
 				return false
 			}
+		}
+	}
+
+	if entry.Version >= 19 {
+		if !encoding.ReadBool(data, &index, &entry.Mispredicted) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.Vetoed) {
+			return false
+		}
+	}
+
+	if entry.Version >= 20 {
+		if !encoding.ReadBool(data, &index, &entry.LatencyWorse) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.NoRoute) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.NextLatencyTooHigh) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.RouteChanged) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.CommitVeto) {
+			return false
 		}
 	}
 

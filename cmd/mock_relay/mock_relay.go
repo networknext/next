@@ -5,17 +5,17 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"time"
-	"bytes"
-	"net"
-	"strconv"
 	"io/ioutil"
-	"net/http"
 	"math"
+	"net"
+	"net/http"
 	"os"
+	"strconv"
+	"time"
 	"unsafe"
 )
 
@@ -263,7 +263,7 @@ func main() {
 		fmt.Printf("could not encrypt relay token data: %v\n", err)
 	}
 
-	initData = initData[:index + C.crypto_box_MACBYTES]
+	initData = initData[:index+C.crypto_box_MACBYTES]
 
 	// create and reuse one http client
 
@@ -273,7 +273,7 @@ func main() {
 
 	// init relay
 
-    fmt.Printf( "\nInitializing relay\n" );
+	fmt.Printf("\nInitializing relay\n")
 
 	initialized := false
 
@@ -297,13 +297,13 @@ func main() {
 			continue
 		}
 
-	   	if len(responseData) != 4 + 8 + RelayTokenBytes {
-	   		continue
-	   	}
+		if len(responseData) != 4+8+RelayTokenBytes {
+			continue
+		}
 
-	   	index := 0
+		index := 0
 
-	   	var version uint32
+		var version uint32
 		if !ReadUint32(responseData, &index, &version) {
 			continue
 		}
@@ -324,7 +324,7 @@ func main() {
 		os.Exit(1)
 	}
 
-    fmt.Printf( "\nRelay initialized\n\n" );
+	fmt.Printf("\nRelay initialized\n\n")
 
 	// loop and update the relay
 
@@ -334,7 +334,7 @@ func main() {
 
 		time.Sleep(1 * time.Second)
 
-		go func(updateNumber int){
+		go func(updateNumber int) {
 
 			// build update data
 
@@ -344,24 +344,24 @@ func main() {
 
 			WriteUint32(updateData, &index, UpdateRequestVersion)
 			WriteString(updateData, &index, relayAddress.String(), MaxRelayAddressLength)
-		    WriteBytes(updateData, &index, relayToken, RelayTokenBytes)
-		    
-		    numRelays := uint32(320)
-		    WriteUint32(updateData, &index, numRelays)
-		    for i := 0; i < int(numRelays); i++ {
-		    	WriteUint64(updateData, &index, 0)
-		    	WriteUint32(updateData, &index, 0)
-		    	WriteUint32(updateData, &index, 0)
-		    	WriteUint32(updateData, &index, 0)
-		    }
+			WriteBytes(updateData, &index, relayToken, RelayTokenBytes)
 
-		    WriteUint64(updateData, &index, 0)
-		    WriteUint64(updateData, &index, 0)
-		    WriteUint64(updateData, &index, 0)
-		    WriteUint8(updateData, &index, 0)
-		    WriteUint64(updateData, &index, 0)
-		    WriteUint64(updateData, &index, 0)
-		    WriteString(updateData, &index, "1.0.0", 5)
+			numRelays := uint32(320)
+			WriteUint32(updateData, &index, numRelays)
+			for i := 0; i < int(numRelays); i++ {
+				WriteUint64(updateData, &index, 0)
+				WriteUint32(updateData, &index, 0)
+				WriteUint32(updateData, &index, 0)
+				WriteUint32(updateData, &index, 0)
+			}
+
+			WriteUint64(updateData, &index, 0)
+			WriteUint64(updateData, &index, 0)
+			WriteUint64(updateData, &index, 0)
+			WriteUint8(updateData, &index, 0)
+			WriteUint64(updateData, &index, 0)
+			WriteUint64(updateData, &index, 0)
+			WriteString(updateData, &index, "1.0.0", 5)
 
 			requestTime := time.Now()
 

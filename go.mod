@@ -24,11 +24,11 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
+	github.com/google/go-cmp v0.5.2
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/lib/pq v1.8.0
-	github.com/matryer/moq v0.1.4 // indirect
 	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/onsi/ginkgo v1.10.3 // indirect
