@@ -198,7 +198,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			s.Logger.Log("err", err)
 			return err
 		}
-		fmt.Printf("customer name: %s\n", c.Name)
+
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
 			CompanyName: c.Name,
