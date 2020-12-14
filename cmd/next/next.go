@@ -1396,6 +1396,7 @@ func main() {
 				Name:       "add",
 				ShortUsage: "next datacenter add <filepath>",
 				ShortHelp:  "Add a datacenter to storage from a JSON file or piped from stdin",
+				LongHelp:   nextDatacenterAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("datacenters", args)
 
@@ -1408,34 +1409,6 @@ func main() {
 					// Add the Datacenter to storage
 					addDatacenter(rpcClient, env, dc)
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next datacenter add example",
-						ShortHelp:  "Displays an example datacenter for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							example := datacenter{
-								Name:          "some.locale.1",
-								Enabled:       false,
-								Latitude:      90,
-								Longitude:     180,
-								SupplierName:  "supplier.locale.1",
-								StreetAddress: "Somewhere, Else, Earth",
-								SellerID:      "some_seller",
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal datacenter struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new datacenter:")
-							fmt.Println(string(jsonBytes))
-							fmt.Println("Note: a valid Seller ID is required to add a datacenter.")
-							return nil
-						},
-					},
 				},
 			},
 			{ // remove
@@ -2284,4 +2257,22 @@ provided by a JSON file of the form:
 }
 
 A valid Customer code is required to add a buyer.
+`
+var nextDatacenterAddJSONLongHelp = `
+Add a datacenter entry (and a map) for the provided customer. 
+The input data is provided by a JSON file of the form:
+
+Example JSON schema to add a new datacenter:
+{
+  "Name": "some.locale.1",
+  "Enabled": false,
+  "Latitude": 90,
+  "Longitude": 180,
+  "SupplierName": "supplier.locale.1",
+  "StreetAddress": "Somewhere, Else, Earth",
+  "SellerID": "some_seller"
+}
+
+The supplier name is optional. All other fields are required. A 
+valid Seller ID is required to add a datacenter and a map. 
 `
