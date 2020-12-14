@@ -2520,7 +2520,8 @@ Example JSON schema to add a new datacenter:
 }
 
 The supplier name is optional. All other fields are required. A 
-valid Seller ID is required to add a datacenter and a map. 
+valid Seller ID is required to add a datacenter and a map.`
+
 var nextBuyerConfigAddJSONLongHelp = `
 Add an internal config for the specified buyer. The config
 must be in a json file of the form:
