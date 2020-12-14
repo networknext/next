@@ -15347,28 +15347,26 @@ static void test_relay_manager()
 
     next_relay_manager_exclude( manager, near_relay_excluded );
 
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    next_relay_stats_t stats;
+    next_relay_manager_get_stats( manager, &stats );
+    next_check( stats.num_relays == NumRelays );
+
+    for ( int i = 0; i < NumRelays; ++i )
     {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NumRelays );
-        for ( int i = 0; i < NumRelays; ++i )
+        next_check( relay_ids[i] == stats.relay_ids[i] );
+        if ( ( i % 2 ) != 0 )
         {
-            next_check( relay_ids[i] == stats.relay_ids[i] );
-            if ( ( i % 2 ) != 0 )
-            {
-                // odd (excluded)
-                next_check( stats.relay_rtt[i] == 255 );
-                next_check( stats.relay_jitter[i] == 0 );
-                next_check( stats.relay_packet_loss[i] == 100 );
-            }
-            else
-            {
-                // even (not excluded)
-                next_check( stats.relay_rtt[i] == 0 );
-                next_check( stats.relay_jitter[i] == 0 );
-                next_check( stats.relay_packet_loss[i] == 100 );
-            }
+            // odd (excluded)
+            next_check( stats.relay_rtt[i] == 255 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100 );
+        }
+        else
+        {
+            // even (not excluded)
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100 );
         }
     }
 
