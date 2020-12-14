@@ -113,6 +113,15 @@ func (e ErrDatacenterNotAllowed) Error() string {
 }
 
 func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
+	// We should always support the "local" datacenter, even without a datacenter mapping
+	if crypto.HashID("local") == datacenterID {
+		return routing.Datacenter{
+			ID:      crypto.HashID("local"),
+			Name:    "local",
+			Enabled: true,
+		}, nil
+	}
+
 	// enforce that whatever datacenter the server says it's in, we have a mapping for it
 	datacenterAliases := storer.GetDatacenterMapsForBuyer(buyerID)
 	for _, dcMap := range datacenterAliases {
@@ -1076,6 +1085,10 @@ func PostSessionUpdate(
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
+
+	if postSessionHandler.useVanityMetrics {
+		postSessionHandler.SendVanityMetric(billingEntry)
+	}
 
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
 	for i := int32(0); i < sessionData.RouteNumRelays; i++ {

@@ -12,13 +12,13 @@ import (
 
 // todo: is this still used?
 type Route struct {
-	NumRelays       int                    	`json:"numRelays"`
+	NumRelays       int                                 `json:"numRelays"`
 	RelayIDs        [core.MaxRelaysPerRoute]uint64      `json:"relayIDs"`
 	RelayNames      [core.MaxRelaysPerRoute]string      `json:"relayNames"`
 	RelayAddrs      [core.MaxRelaysPerRoute]net.UDPAddr `json:"relayAddrs"`
 	RelayPublicKeys [core.MaxRelaysPerRoute][]byte      `json:"relayPublicKeys"`
 	RelaySellers    [core.MaxRelaysPerRoute]Seller      `json:"relaySellers"`
-	Stats           Stats                  `json:"stats"`
+	Stats           Stats                               `json:"stats"`
 }
 
 func (r Route) String() string {
