@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -1507,6 +1506,7 @@ func main() {
 				Name:       "add",
 				ShortUsage: "next buyer add [filepath]",
 				ShortHelp:  "Add a buyer from a JSON file or piped from stdin",
+				LongHelp:   nextBuyerAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("buyers", args)
 
@@ -1534,37 +1534,6 @@ func main() {
 						PublicKey:   publicKey,
 					})
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next buyer add example",
-						ShortHelp:  "Displays an example buyer for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
-							_, err := rand.Read(examplePublicKey)
-							if err != nil {
-								return fmt.Errorf("Error generating random buyer public key: %v", err)
-							}
-							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
-
-							example := buyer{
-								CompanyCode: "microzon",
-								Live:        true,
-								PublicKey:   examplePublicKeyString,
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal buyer struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new buyer:")
-							fmt.Println(string(jsonBytes))
-							fmt.Println("Note: a valid company code is required to add a buyer.")
-							return nil
-						},
-					},
 				},
 			},
 			{ // remove
@@ -1953,6 +1922,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 							fmt.Println("Example JSON schema to add a new customer:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("All fields are required. The Code field must be unique.")
 
 							return nil
 						},
@@ -2316,3 +2286,17 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 	fmt.Printf("\n")
 }
+
+var nextBuyerAddJSONLongHelp = `
+Add a buyer entry for the provided customer. The data is pulled 
+from a JSON file of the form:
+
+{
+  "CompanyCode": "microzon",
+  "Live": true,
+  "Debug": false // optional
+  "PublicKey": "IQl4JmtP5T8wyqc6EpNk0ymD3iVfvDx3teXZ98ghFqQ1leO6GmKNrQ=="
+}
+
+A valid company code is required to add a buyer.
+`
