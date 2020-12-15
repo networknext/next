@@ -580,14 +580,12 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	err = transport.UnmarshalSessionData(&actualSessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	assert.Equal(t, expectedSessionData, actualSessionData)
+	// Compare the session data and response packet
 
-	if expectedResponse.RouteType == routing.RouteTypeDirect {
-		assert.Equal(t, expectedResponse, responsePacket)
-	} else {
-		// We can't check the entire response anymore since the tokens will be random each time
-		assertResponseEqual(t, expectedResponse, responsePacket)
-	}
+	assert.Equal(t, expectedSessionData, actualSessionData)
+	assertResponseEqual(t, expectedResponse, responsePacket)
+
+	// Compare metrics
 
 	assertAllMetricsEqual(t, *expectedMetrics, *sessionUpdateMetrics)
 }
@@ -595,6 +593,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 func assertResponseEqual(t *testing.T, expectedResponse transport.SessionResponsePacket, actualResponse transport.SessionResponsePacket) {
 	// We can't check if the entire response is equal since the response's tokens will be different each time
 	// since the encryption generates random bytes for the nonce
+	assert.Equal(t, expectedResponse.Version, actualResponse.Version)
 	assert.Equal(t, expectedResponse.SessionID, actualResponse.SessionID)
 	assert.Equal(t, expectedResponse.SliceNumber, actualResponse.SliceNumber)
 	assert.Equal(t, expectedResponse.RouteType, actualResponse.RouteType)
@@ -603,8 +602,8 @@ func assertResponseEqual(t *testing.T, expectedResponse transport.SessionRespons
 	assert.Equal(t, expectedResponse.NearRelayIDs, actualResponse.NearRelayIDs)
 	assert.Equal(t, expectedResponse.NearRelayAddresses, actualResponse.NearRelayAddresses)
 	assert.Equal(t, expectedResponse.NumTokens, actualResponse.NumTokens)
-	assert.Equal(t, expectedResponse.Committed, actualResponse.Committed)
 	assert.Equal(t, expectedResponse.Multipath, actualResponse.Multipath)
+	assert.Equal(t, expectedResponse.Committed, actualResponse.Committed)
 	assert.Equal(t, expectedResponse.HasDebug, actualResponse.HasDebug)
 
 	if expectedResponse.HasDebug {
@@ -862,7 +861,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
-	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 2
 
@@ -886,7 +885,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
-	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 2
 
