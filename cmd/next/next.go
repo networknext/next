@@ -917,47 +917,47 @@ func main() {
 					return nil
 				},
 			},
-			{
-				Name:       "speed",
-				ShortUsage: "next relay speed <relay name> <value (Mbps)>",
-				ShortHelp:  "sets the speed value of a relay",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
-					}
+			// {
+			// 	Name:       "speed",
+			// 	ShortUsage: "next relay speed <relay name> <value (Mbps)>",
+			// 	ShortHelp:  "sets the speed value of a relay",
+			// 	Exec: func(_ context.Context, args []string) error {
+			// 		if len(args) == 0 {
+			// 			handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
+			// 		}
 
-					if len(args) == 1 {
-						handleRunTimeError(fmt.Sprintln("You need to supply a relay NIC speed in Mbps"), 0)
-					}
+			// 		if len(args) == 1 {
+			// 			handleRunTimeError(fmt.Sprintln("You need to supply a relay NIC speed in Mbps"), 0)
+			// 		}
 
-					nicSpeed, err := strconv.ParseUint(args[1], 10, 64)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Unable to parse %s as uint64\n", args[1]), 1)
-					}
+			// 		nicSpeed, err := strconv.ParseUint(args[1], 10, 64)
+			// 		if err != nil {
+			// 			handleRunTimeError(fmt.Sprintf("Unable to parse %s as uint64\n", args[1]), 1)
+			// 		}
 
-					setRelayNIC(rpcClient, env, args[0], nicSpeed)
+			// 		setRelayNIC(rpcClient, env, args[0], nicSpeed)
 
-					return nil
-				},
-			},
-			{
-				Name:       "state",
-				ShortUsage: "next relay state <state> <regex> [regex...]",
-				ShortHelp:  "Sets the relay state directly",
-				LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintln("You need to supply a relay state"), 0)
-					}
+			// 		return nil
+			// 	},
+			// },
+			// {
+			// 	Name:       "state",
+			// 	ShortUsage: "next relay state <state> <regex> [regex...]",
+			// 	ShortHelp:  "Sets the relay state directly",
+			// 	LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		if len(args) == 0 {
+			// 			handleRunTimeError(fmt.Sprintln("You need to supply a relay state"), 0)
+			// 		}
 
-					if len(args) == 1 {
-						handleRunTimeError(fmt.Sprintln("You need to supply at least one relay name regex"), 0)
-					}
+			// 		if len(args) == 1 {
+			// 			handleRunTimeError(fmt.Sprintln("You need to supply at least one relay name regex"), 0)
+			// 		}
 
-					setRelayState(rpcClient, env, args[0], args[1:])
-					return nil
-				},
-			},
+			// 		setRelayState(rpcClient, env, args[0], args[1:])
+			// 		return nil
+			// 	},
+			// },
 			{
 				Name:       "rename",
 				ShortUsage: "next relay rename <old name> <new name>",
@@ -1061,268 +1061,6 @@ func main() {
 
 					removeRelay(rpcClient, env, args[0])
 					return nil
-				},
-			},
-			{
-				Name:       "ops",
-				ShortUsage: "next relay ops <command>",
-				ShortHelp:  "Operations-related relay setup commands",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintln("Please provide at least one command name"), 0)
-					}
-
-					removeRelay(rpcClient, env, args[0])
-					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "mrc",
-						ShortUsage: "next relay ops mrc <relay> <value in USD>",
-						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an MRC value in $USD"), 0)
-								return nil
-							}
-
-							mrc, err := strconv.ParseFloat(args[1], 64)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as a decimal number\n", args[1]), 1)
-							}
-							opsMRC(rpcClient, env, args[0], mrc)
-
-							return nil
-						},
-					},
-					{
-						Name:       "overage",
-						ShortUsage: "next relay ops overage <relay> <value in USD>",
-						ShortHelp:  "Set the overage value for the given relay (in $USD)",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an overage value in $USD"), 0)
-							}
-
-							overage, err := strconv.ParseFloat(args[1], 64)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as a decimal number\n", args[1]), 1)
-							}
-							opsOverage(rpcClient, env, args[0], overage)
-
-							return nil
-						},
-					},
-					{
-						Name:       "bwrule",
-						ShortUsage: "next relay ops bwrule <relay> <pool|burst|flat|none>",
-						ShortHelp:  "Set the bandwidth rule for the given relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and abandwidth rule"), 0)
-							}
-
-							rules := []string{"none", "flat", "pool", "burst"}
-							for _, rule := range rules {
-								if rule == args[1] {
-									opsBWRule(rpcClient, env, args[0], args[1])
-									return nil
-								}
-							}
-
-							handleRunTimeError(fmt.Sprintf("'%s' not a valid bandwidth rule - must be one of none, flat, pool or burst\n", args[1]), 0)
-							return nil
-						},
-					},
-					{
-						Name:       "type",
-						ShortUsage: "next relay ops type <relay> <bare|vm|none>",
-						ShortHelp:  "Set the machine/server type for the given relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a machine type"), 0)
-							}
-
-							rules := []string{"none", "vm", "bare"}
-							for _, rule := range rules {
-								if rule == args[1] {
-									opsType(rpcClient, env, args[0], args[1])
-									return nil
-								}
-							}
-
-							handleRunTimeError(fmt.Sprintf("'%s' not a valid machine type - must be one of none, vm or bare\n", args[1]), 0)
-							return nil
-						},
-					},
-					{
-						Name:       "term",
-						ShortUsage: "next relay ops term <relay> <value>",
-						ShortHelp:  "Set the contract term for the given relay (in months)",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a contract term in months"), 0)
-							}
-
-							term, err := strconv.ParseUint(args[1], 10, 32)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
-							}
-							opsTerm(rpcClient, env, args[0], int32(term))
-
-							return nil
-						},
-					},
-					{
-						Name:       "startdate",
-						ShortUsage: "next relay ops startdate <relay> <value, e.g. 'January 2, 2006'>",
-						ShortHelp:  "Set the contract start date for the given relay (e.g. 'January 2, 2006')",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a contract start date e.g. 'January 2, 2006'"), 0)
-							}
-
-							opsStartDate(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
-					{
-						Name:       "enddate",
-						ShortUsage: "next relay ops enddate <relay> <value, e.g. 'January 2, 2006'>",
-						ShortHelp:  "Set the contract end date for the given relay (e.g. 'January 2, 2006')",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a contract end date e.g. 'January 2, 2006'"), 0)
-							}
-
-							opsEndDate(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
-					{
-						Name:       "bandwidth",
-						ShortUsage: "next relay ops bandwidth <relay> <value in GB, e.g. 20000>",
-						ShortHelp:  "Set the bandwidth allotment for the give relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a bandwidth value in GB"), 0)
-							}
-
-							bw, err := strconv.ParseUint(args[1], 10, 32)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
-							}
-
-							opsBandwidth(rpcClient, env, args[0], int32(bw))
-							return nil
-						},
-					},
-					{
-						Name:       "nic",
-						ShortUsage: "next relay ops nic <relay> <value in Mbps, e.g. 10000>",
-						ShortHelp:  "Set the NIC available to the specified relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a value in Mbps"), 0)
-							}
-
-							nic, err := strconv.ParseUint(args[1], 10, 32)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
-							}
-
-							opsNic(rpcClient, env, args[0], int32(nic))
-							return nil
-						},
-					},
-					{
-						Name:       "addr",
-						ShortUsage: "next relay ops addr <relay> <IP address:port e.g 10.1.2.34:40000>",
-						ShortHelp:  "Set the external address for the specified relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
-							}
-
-							opsExternalAddr(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
-					{
-						Name:       "mgmt",
-						ShortUsage: "next relay ops mgmt <relay> <IP address e.g 10.1.2.34>",
-						ShortHelp:  "Set the management address for the specified relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address"), 0)
-							}
-
-							opsManagementAddr(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
-					{
-						Name:       "sshuser",
-						ShortUsage: "next relay ops sshuser <relay> <user name>",
-						ShortHelp:  "Set the username to use for SSHing into the specified relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a username"), 0)
-							}
-
-							opsSSHUser(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
-					{
-						Name:       "sshport",
-						ShortUsage: "next relay ops sshport <relay> <port number>",
-						ShortHelp:  "Set the SSH port for the specified relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a port number"), 0)
-							}
-
-							port, err := strconv.ParseInt(args[1], 10, 32)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
-							}
-
-							opsSSHPort(rpcClient, env, args[0], port)
-							return nil
-						},
-					},
-					{
-						Name:       "maxsessions",
-						ShortUsage: "next relay ops maxsessions <relay> <session count>",
-						ShortHelp:  "Set the maximum number of concurrent sessions the specified relay can support",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a session count"), 0)
-							}
-
-							port, err := strconv.ParseInt(args[1], 10, 32)
-							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
-							}
-
-							opsMaxSessions(rpcClient, env, args[0], port)
-							return nil
-						},
-					},
-					{
-						Name:       "internaladdr",
-						ShortUsage: "next relay ops internaladdr <relay> <IP address:port e.g 10.1.2.34:40000>",
-						ShortHelp:  "Set the internal network address for the specified relay",
-						Exec: func(_ context.Context, args []string) error {
-							if len(args) != 2 {
-								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
-							}
-
-							opsInternalAddr(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
 				},
 			},
 			{
