@@ -862,6 +862,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	for i := range routeRelayIds {
 		relayIndex, ok := relayIDToIndex[routeRelayIds[i]]
 		if !ok {
+
 			routeState.RelayWentAway = true
 			return false
 		}
@@ -1382,7 +1383,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, debug *string) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, debug *string) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1486,10 +1487,30 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	routeState.Committed = !internal.Uncommitted && (!internal.TryBeforeYouBuy || routeState.Multipath)
 
+	if debug != nil {
+		if !routeState.Committed && internal.Uncommitted {
+			*debug += fmt.Sprintf("uncommitted\n")
+		} else {
+			*debug += fmt.Sprintf("try before you buy\n")
+		}
+	}
+
+	// print the network next route to debug
+
+	if debug != nil {
+		for i := 0; i < int(bestRouteNumRelays); i++ {
+			if i != int(bestRouteNumRelays-1) {
+				*debug += fmt.Sprintf("%s - ", relayNames[bestRouteRelays[i]])
+			} else {
+				*debug += fmt.Sprintf("%s\n", relayNames[bestRouteRelays[i]])
+			}
+		}
+	}
+
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
 	// if we early out, go direct
 
@@ -1594,12 +1615,24 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	*out_updatedRouteNumRelays = bestRouteNumRelays
 	copy(out_updatedRouteRelays, bestRouteRelays[:bestRouteNumRelays])
 
+	// print the network next route to debug
+
+	if debug != nil {
+		for i := 0; i < int(bestRouteNumRelays); i++ {
+			if i != int(bestRouteNumRelays-1) {
+				*debug += fmt.Sprintf("%s - ", relayNames[bestRouteRelays[i]])
+			} else {
+				*debug += fmt.Sprintf("%s\n", relayNames[bestRouteRelays[i]])
+			}
+		}
+	}
+
 	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
-	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
+	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, relayNames, routeShader, routeState, internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 
 	if routeState.Next && !stayOnNetworkNext {
 		routeState.Next = false
