@@ -514,3 +514,49 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 	table.Output(relayList)
 
 }
+
+func modifyRelayField(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	field string,
+	value string,
+) error {
+
+	args := localjsonrpc.RelaysArgs{
+		Regex: relayRegex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return nil
+	}
+
+	if len(reply.Relays) == 0 {
+		handleRunTimeError(fmt.Sprintf("No relay matches found for '%s'", relayRegex), 0)
+	}
+
+	if len(reply.Relays) > 1 {
+		fmt.Printf("Found several  matches for '%s'", relayRegex)
+		for _, relay := range reply.Relays {
+			fmt.Printf("\t%s\n", relay.Name)
+		}
+		handleRunTimeError(fmt.Sprintln("Please be more specific."), 0)
+	}
+
+	emptyReply := localjsonrpc.ModifyRelayFieldReply{}
+
+	modifyArgs := localjsonrpc.ModifyRelayFieldArgs{
+		RelayID: reply.Relays[0].ID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "OpsService.ModifyRelayField", modifyArgs); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Field %s for relay %s updated successfully.\n", field, reply.Relays[0].Name)
+	return nil
+}

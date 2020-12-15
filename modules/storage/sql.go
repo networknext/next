@@ -844,7 +844,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if err != nil {
 			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
 		}
-		relay.Addr = *addr
+		relay.InternalAddr = *addr
 
 	case "PublicKey":
 		publicKey, ok := value.([]byte)
@@ -879,7 +879,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if state < 0 || state > 5 {
-			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(state))
+			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
 		}
 		updateSQL.Write([]byte("update relays set relay_state=$1 where id=$2"))
 		args = append(args, int64(state), relay.DatabaseID)
