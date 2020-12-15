@@ -479,6 +479,7 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	if !tableExists {
+		level.Debug(logger).Log("msg", "Could not find table in bigtable instance")
 		// Create a table with the given name and column families
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
 			return nil, nil, err
@@ -489,6 +490,10 @@ func SetupBigtable(ctx context.Context,
 		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
 			return nil, nil, err
 		}
+
+		level.Debug(logger).Log("msg", "Successfully created table in bigtable instance")
+	} else {
+		level.Debug(logger).Log("msg", "Found table in bigtable instance")
 	}
 
 	// Close the admin client
