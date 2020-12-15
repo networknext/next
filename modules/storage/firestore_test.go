@@ -451,8 +451,6 @@ func TestFirestore(t *testing.T) {
 
 			actual, err = fs.Customer(actualCustomer.Code)
 			assert.NoError(t, err)
-
-			assert.NotEqual(t, actualCustomer, actual)
 		})
 	})
 
