@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -359,7 +358,7 @@ type buyer struct {
 type seller struct {
 	Name                 string
 	ShortName            string
-	CompanyCode          string
+	CustomerCode         string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
 }
@@ -1352,6 +1351,20 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "modify",
+				ShortUsage: "next relay modify (relay name or substring) (field name) (value)",
+				ShortHelp:  "Modify a specific field for the given relay",
+				LongHelp:   nextRelayUpdateJSONLongHelp,
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 3 {
+						handleRunTimeError(fmt.Sprintln("Must provide a relay name, field name and a value."), 0)
+					}
+
+					modifyRelayField(rpcClient, env, args[0], args[1], args[2])
+					return nil
+				},
+			},
 		},
 	}
 
@@ -1431,6 +1444,7 @@ func main() {
 				Name:       "add",
 				ShortUsage: "next datacenter add <filepath>",
 				ShortHelp:  "Add a datacenter to storage from a JSON file or piped from stdin",
+				LongHelp:   nextDatacenterAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("datacenters", args)
 
@@ -1443,34 +1457,6 @@ func main() {
 					// Add the Datacenter to storage
 					addDatacenter(rpcClient, env, dc)
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next datacenter add example",
-						ShortHelp:  "Displays an example datacenter for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							example := datacenter{
-								Name:          "some.locale.1",
-								Enabled:       false,
-								Latitude:      90,
-								Longitude:     180,
-								SupplierName:  "supplier.locale.1",
-								StreetAddress: "Somewhere, Else, Earth",
-								SellerID:      "some_seller",
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal datacenter struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new datacenter:")
-							fmt.Println(string(jsonBytes))
-							fmt.Println("Note: a valid Seller ID is required to add a datacenter.")
-							return nil
-						},
-					},
 				},
 			},
 			{ // remove
@@ -1541,6 +1527,7 @@ func main() {
 				Name:       "add",
 				ShortUsage: "next buyer add [filepath]",
 				ShortHelp:  "Add a buyer from a JSON file or piped from stdin",
+				LongHelp:   nextBuyerAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("buyers", args)
 
@@ -1568,37 +1555,6 @@ func main() {
 						PublicKey:   publicKey,
 					})
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next buyer add example",
-						ShortHelp:  "Displays an example buyer for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
-							_, err := rand.Read(examplePublicKey)
-							if err != nil {
-								return fmt.Errorf("Error generating random buyer public key: %v", err)
-							}
-							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
-
-							example := buyer{
-								CompanyCode: "microzon",
-								Live:        true,
-								PublicKey:   examplePublicKeyString,
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal buyer struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new buyer:")
-							fmt.Println(string(jsonBytes))
-							fmt.Println("Note: a valid company code is required to add a buyer.")
-							return nil
-						},
-					},
 				},
 			},
 			{ // remove
@@ -2002,6 +1958,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				Name:       "add",
 				ShortUsage: "next seller add [filepath]",
 				ShortHelp:  "Add a seller to storage from a JSON file or piped from stdin",
+				LongHelp:   nextSellerAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("sellers", args)
 
@@ -2009,7 +1966,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					var sellerUSD struct {
 						Name            string
 						ShortName       string
-						CompanyCode     string
+						CustomerCode    string
 						IngressPriceUSD string
 						EgressPriceUSD  string
 					}
@@ -2031,8 +1988,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					s := seller{
 						Name:                 sellerUSD.Name,
-						ShortName:            sellerUSD.ShortName,
-						CompanyCode:          sellerUSD.ShortName,
+						ShortName:            sellerUSD.CustomerCode,
+						CustomerCode:         sellerUSD.CustomerCode,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
@@ -2042,41 +1999,11 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ID:                        s.Name,
 						Name:                      s.Name,
 						ShortName:                 s.ShortName,
-						CompanyCode:               s.CompanyCode,
+						CompanyCode:               s.CustomerCode,
 						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
 						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
 					})
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next seller add example",
-						ShortHelp:  "Displays an example seller for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							example := struct {
-								Name            string
-								ShortName       string
-								IngressPriceUSD string
-								EgressPriceUSD  string
-							}{
-								Name:            "Amazon.com, Inc.",
-								ShortName:       "amazon",
-								IngressPriceUSD: "0.01",
-								EgressPriceUSD:  "0.1",
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal seller struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
-							fmt.Println(string(jsonBytes))
-
-							return nil
-						},
-					},
 				},
 			},
 			{
@@ -2199,6 +2126,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 							fmt.Println("Example JSON schema to add a new customer:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("All fields are required. The Code field must be unique.")
 
 							return nil
 						},
@@ -2563,6 +2491,51 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 	fmt.Printf("\n")
 }
 
+var nextBuyerAddJSONLongHelp = `
+Add a buyer entry for the provided customer. The input data is 
+provided by a JSON file of the form:
+
+{
+  "CustomerCode": "microzon",
+  "Live": true,
+  "Debug": false // optional
+  "PublicKey": "IQl4JmtP5T8wyqc6EpNk0ymD3iVfvDx3teXZ98ghFqQ1leO6GmKNrQ=="
+}
+
+A valid Customer code is required to add a buyer.
+`
+
+var nextSellerAddJSONLongHelp = `
+Add a seller entry for the provided customer. The input data is 
+provided by a JSON file of the form:
+
+{
+  "Name": "Amazon.com, Inc.",
+  "CustomerCode": "microzon",
+  "IngressPriceUSD": "0.01",
+  "EgressPriceUSD": "0.1"
+}
+
+A valid Customer code is required to add a buyer.
+`
+var nextDatacenterAddJSONLongHelp = `
+Add a datacenter entry (and a map) for the provided customer. 
+The input data is provided by a JSON file of the form:
+
+Example JSON schema to add a new datacenter:
+{
+  "Name": "some.locale.1",
+  "Enabled": false,
+  "Latitude": 90,
+  "Longitude": 180,
+  "SupplierName": "supplier.locale.1",
+  "StreetAddress": "Somewhere, Else, Earth",
+  "SellerID": "some_seller"
+}
+
+The supplier name is optional. All other fields are required. A 
+valid Seller ID is required to add a datacenter and a map.`
+
 var nextBuyerConfigAddJSONLongHelp = `
 Add an internal config for the specified buyer. The config
 must be in a json file of the form:
@@ -2656,4 +2629,46 @@ must be one of the following and is case-sensitive:
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
+`
+
+var nextRelayUpdateJSONLongHelp = `
+Modify one field for the specified relay. The field
+must be one of the following and is case-sensitive:
+
+  Name                 string
+  Addr                 string (1.2.3.4:40000) - the port is required
+  InternalAddr         string (1.2.3.4:40000) - the port is required
+  PublicKey            string
+  NICSpeedMbps         integer
+  IncludedBandwidthGB  integer
+  State                any valid relay state (see below)
+  ManagementAddr       string (1.2.3.4:40000) - the port is optional
+  SSHUser              string
+  SSHPort              integer
+  MaxSessions          integer
+  MRC                  USD (e.g. 250.00)
+  Overage              USD (e.g. 250.00)
+  BWRule               any valid bandwidth rule (see below)
+  ContractTerm         integer (1, 12, 24, etc.)
+  StartDate            string, of the format: "January 2, 2006"
+  EndDate              string, of the format: "January 2, 2006"
+  Type                 any valid relay server type (see below)
+
+Valid relay states:
+   enabled
+   maintenance
+   disabled
+   quarantined (not currently in use)
+   decommissioned
+   offline
+
+Valid bandwidth rules:
+   flat
+   burst
+   pool
+
+Valid server types:
+   baremetal
+   virtualmachine
+
 `
