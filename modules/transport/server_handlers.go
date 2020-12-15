@@ -488,15 +488,15 @@ func SessionUpdateHandlerFunc(
 				nearRelays.IDs[i] = relayID
 				nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
 				nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-				nearRelays.RTTs[i] = int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i])))
-				nearRelays.Jitters[i] = int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayJitter[i])))
+				nearRelays.RTTs[i] = prevSessionData.RouteState.NearRelayRTT[i]
+				nearRelays.Jitters[i] = prevSessionData.RouteState.NearRelayJitter[i]
 
 				// We don't actually store the packet loss in the session data, so just use the
 				// values from the session update packet (no max history)
 				if nearRelays.RTTs[i] >= 255 {
 					nearRelays.PacketLosses[i] = 100
 				} else {
-					nearRelays.PacketLosses[i] = int32(math.Ceil(float64(packet.NearRelayPacketLoss[i])))
+					nearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
 				}
 			}
 
@@ -980,7 +980,7 @@ func PostSessionUpdate(
 	}
 
 	var routeCost int32 = sessionData.RouteCost
-	if sessionData.RouteCost == math.MaxInt32 {
+	if sessionData.RouteCost >= routing.InvalidRouteValue {
 		routeCost = 0
 	}
 
@@ -1121,8 +1121,7 @@ func PostSessionUpdate(
 		deltaRTT = packet.DirectRTT - packet.NextRTT
 	}
 
-	var predictedRTT int64
-	predictedRTT = int64(routeCost)
+	predictedRTT := float64(routeCost)
 
 	portalData := &SessionPortalData{
 		Meta: SessionMeta{
@@ -1157,7 +1156,7 @@ func PostSessionUpdate(
 				PacketLoss: float64(packet.DirectPacketLoss),
 			},
 			Predicted: routing.Stats{
-				RTT: float64(predictedRTT),
+				RTT: predictedRTT,
 			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),
