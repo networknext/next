@@ -1351,6 +1351,20 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "modify",
+				ShortUsage: "next relay modify (relay name or substring) (field name) (value)",
+				ShortHelp:  "Modify a specific field for the given relay",
+				LongHelp:   nextRelayUpdateJSONLongHelp,
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 3 {
+						handleRunTimeError(fmt.Sprintln("Must provide a relay name, field name and a value."), 0)
+					}
+
+					modifyRelayField(rpcClient, env, args[0], args[1], args[2])
+					return nil
+				},
+			},
 		},
 	}
 
@@ -2615,4 +2629,46 @@ must be one of the following and is case-sensitive:
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
+`
+
+var nextRelayUpdateJSONLongHelp = `
+Modify one field for the specified relay. The field
+must be one of the following and is case-sensitive:
+
+  Name                 string
+  Addr                 string (1.2.3.4:40000) - the port is required
+  InternalAddr         string (1.2.3.4:40000) - the port is required
+  PublicKey            string
+  NICSpeedMbps         integer
+  IncludedBandwidthGB  integer
+  State                any valid relay state (see below)
+  ManagementAddr       string (1.2.3.4:40000) - the port is optional
+  SSHUser              string
+  SSHPort              integer
+  MaxSessions          integer
+  MRC                  USD (e.g. 250.00)
+  Overage              USD (e.g. 250.00)
+  BWRule               any valid bandwidth rule (see below)
+  ContractTerm         integer (1, 12, 24, etc.)
+  StartDate            string, of the format: "January 2, 2006"
+  EndDate              string, of the format: "January 2, 2006"
+  Type                 any valid relay server type (see below)
+
+Valid relay states:
+   enabled
+   maintenance
+   disabled
+   quarantined (not currently in use)
+   decommissioned
+   offline
+
+Valid bandwidth rules:
+   flat
+   burst
+   pool
+
+Valid server types:
+   baremetal
+   virtualmachine
+
 `

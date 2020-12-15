@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
@@ -483,8 +484,30 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 		return
 	}
 
-	startDate := reply.Relay.StartDate.Format("January 1, 2006")
-	endDate := reply.Relay.EndDate.Format("January 1, 2006")
+	var bwRule string
+	switch reply.Relay.BWRule {
+	case routing.BWRuleNone:
+		bwRule = "none specified"
+	case routing.BWRuleFlat:
+		bwRule = "flat"
+	case routing.BWRulePool:
+		bwRule = "pool"
+	case routing.BWRuleBurst:
+		bwRule = "burst"
+	}
+
+	var machineType string
+	switch reply.Relay.Type {
+	case routing.NoneSpecified:
+		machineType = "none specified"
+	case routing.BareMetal:
+		machineType = "bare metal"
+	case routing.VirtualMachine:
+		machineType = "virtual machine"
+	}
+
+	startDate := reply.Relay.StartDate.Format("January 2, 2006")
+	endDate := reply.Relay.EndDate.Format("January 2, 2006")
 
 	relay := "\nrelay info:\n"
 	relay += "  ID                 : " + fmt.Sprintf("%d", reply.Relay.ID) + "\n"
@@ -500,16 +523,13 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	relay += "  SSHUser            : " + reply.Relay.SSHUser + "\n"
 	relay += "  SSHPort            : " + fmt.Sprintf("%d", reply.Relay.SSHPort) + "\n"
 	relay += "  MaxSessions        : " + fmt.Sprintf("%d", reply.Relay.MaxSessionCount) + "\n"
-	relay += "  CPUUsage           : " + fmt.Sprintf("%f", reply.Relay.CPUUsage) + "\n"
-	relay += "  MemUsage           : " + fmt.Sprintf("%f", reply.Relay.MemUsage) + "\n"
-	relay += "  MRC                : " + fmt.Sprintf("%v", reply.Relay.MRC) + "\n"
-	relay += "  Overage            : " + fmt.Sprintf("%v", reply.Relay.Overage) + "\n"
-	relay += "  BWRule             : " + fmt.Sprintf("%v", reply.Relay.BWRule) + "\n"
+	relay += "  MRC                : " + fmt.Sprintf("%4.2f", reply.Relay.MRC.ToDollars()) + "\n"
+	relay += "  Overage            : " + fmt.Sprintf("%4.2f", reply.Relay.Overage.ToDollars()) + "\n"
+	relay += "  BWRule             : " + fmt.Sprintf("%s", bwRule) + "\n"
 	relay += "  ContractTerm       : " + fmt.Sprintf("%d", reply.Relay.ContractTerm) + "\n"
 	relay += "  StartDate          : " + startDate + "\n"
 	relay += "  EndDate            : " + endDate + "\n"
-	relay += "  Type               : " + fmt.Sprintf("%v", reply.Relay.Type) + "\n"
-	relay += "  DatabaseID         : " + fmt.Sprintf("%d", reply.Relay.DatabaseID) + "\n"
+	relay += "  Type               : " + fmt.Sprintf("%s", machineType) + "\n"
 
 	fmt.Printf("%s\n", relay)
 
