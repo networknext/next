@@ -136,28 +136,6 @@ func (locator *goodIPLocator) LocateIP(ip net.IP) (routing.Location, error) {
 	return routing.LocationNullIsland, nil
 }
 
-func assertResponseEqual(t *testing.T, expectedResponse transport.SessionResponsePacket, actualResponse transport.SessionResponsePacket) {
-	// We can't check if the entire response is equal since the response's tokens will be different each time
-	// since the encryption generates random bytes for the nonce
-	assert.Equal(t, expectedResponse.SessionID, actualResponse.SessionID)
-	assert.Equal(t, expectedResponse.SliceNumber, actualResponse.SliceNumber)
-	assert.Equal(t, expectedResponse.RouteType, actualResponse.RouteType)
-	assert.Equal(t, expectedResponse.NearRelaysChanged, actualResponse.NearRelaysChanged)
-	assert.Equal(t, expectedResponse.NumNearRelays, actualResponse.NumNearRelays)
-	assert.Equal(t, expectedResponse.NearRelayIDs, actualResponse.NearRelayIDs)
-	assert.Equal(t, expectedResponse.NearRelayAddresses, actualResponse.NearRelayAddresses)
-	assert.Equal(t, expectedResponse.NumTokens, actualResponse.NumTokens)
-	assert.Equal(t, expectedResponse.Committed, actualResponse.Committed)
-	assert.Equal(t, expectedResponse.Multipath, actualResponse.Multipath)
-	assert.Equal(t, expectedResponse.HasDebug, actualResponse.HasDebug)
-
-	if expectedResponse.HasDebug {
-		assert.NotEmpty(t, actualResponse.Debug)
-	} else {
-		assert.Empty(t, actualResponse.Debug)
-	}
-}
-
 type routeInfo struct {
 	sessionVersion uint32
 	initial        bool
@@ -270,7 +248,7 @@ func getExpectedSessionData(
 		}
 	}
 
-	nearRelays := getRelays(t, request.numNearRelays, request.nearRelayRTTType)
+	nearRelays := getRelays(t, response.numNearRelays, request.nearRelayRTTType)
 
 	var expireTimestamp uint64
 	if response.routeType == routing.RouteTypeNew {
@@ -365,8 +343,6 @@ type sessionUpdateBackendConfig struct {
 	buyers               []routing.Buyer
 	datacenters          []routing.Datacenter
 	datacenterMaps       []routing.DatacenterMap
-	sellers              []routing.Seller
-	relays               []routing.Relay
 }
 
 func NewSessionUpdateBackendConfig(t *testing.T) *sessionUpdateBackendConfig {
@@ -376,8 +352,6 @@ func NewSessionUpdateBackendConfig(t *testing.T) *sessionUpdateBackendConfig {
 		buyers:               nil,
 		datacenters:          nil,
 		datacenterMaps:       nil,
-		sellers:              nil,
-		relays:               nil,
 	}
 }
 
@@ -470,11 +444,30 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		assert.NoError(t, err)
 	}
 
+	relays := getRelays(t, backend.numRouteMatrixRelays, goodRTT)
+
+	seller := routing.Seller{ID: "sellerID"}
+	if relays.Count > 0 {
+		err := storer.AddSeller(ctx, seller)
+		assert.NoError(t, err)
+	}
+
+	for i := int32(0); i < relays.Count; i++ {
+		var datacenter routing.Datacenter
+
+		if i < int32(len(backend.datacenters)) {
+			datacenter = backend.datacenters[i]
+		} else {
+			t.Errorf("Tried to add %d relays but there was only %d datacenters. There should be one datacenter per relay.", relays.Count, len(backend.datacenters))
+		}
+
+		err := storer.AddRelay(ctx, routing.Relay{ID: relays.IDs[i], Seller: seller, Datacenter: datacenter, PublicKey: make([]byte, crypto.KeySize)})
+		assert.NoError(t, err)
+	}
+
 	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return backend.ipLocator
 	}
-
-	relays := getRelays(t, backend.numRouteMatrixRelays, goodRTT)
 
 	statsdb := routing.NewStatsDatabase()
 	var routeMatrix routing.RouteMatrix
@@ -566,6 +559,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 			NearRelayAddresses: nearRelays.Addresses,
 			SessionDataBytes:   int32(len(sessionDataSlice)),
 			Committed:          routeInfo.committed,
+			NumTokens:          2 + int32(len(routeInfo.routeRelayIDs)),
 		}
 	}
 
@@ -587,9 +581,37 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	assert.NoError(t, err)
 
 	assert.Equal(t, expectedSessionData, actualSessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
+
+	if expectedResponse.RouteType == routing.RouteTypeDirect {
+		assert.Equal(t, expectedResponse, responsePacket)
+	} else {
+		// We can't check the entire response anymore since the tokens will be random each time
+		assertResponseEqual(t, expectedResponse, responsePacket)
+	}
 
 	assertAllMetricsEqual(t, *expectedMetrics, *sessionUpdateMetrics)
+}
+
+func assertResponseEqual(t *testing.T, expectedResponse transport.SessionResponsePacket, actualResponse transport.SessionResponsePacket) {
+	// We can't check if the entire response is equal since the response's tokens will be different each time
+	// since the encryption generates random bytes for the nonce
+	assert.Equal(t, expectedResponse.SessionID, actualResponse.SessionID)
+	assert.Equal(t, expectedResponse.SliceNumber, actualResponse.SliceNumber)
+	assert.Equal(t, expectedResponse.RouteType, actualResponse.RouteType)
+	assert.Equal(t, expectedResponse.NearRelaysChanged, actualResponse.NearRelaysChanged)
+	assert.Equal(t, expectedResponse.NumNearRelays, actualResponse.NumNearRelays)
+	assert.Equal(t, expectedResponse.NearRelayIDs, actualResponse.NearRelayIDs)
+	assert.Equal(t, expectedResponse.NearRelayAddresses, actualResponse.NearRelayAddresses)
+	assert.Equal(t, expectedResponse.NumTokens, actualResponse.NumTokens)
+	assert.Equal(t, expectedResponse.Committed, actualResponse.Committed)
+	assert.Equal(t, expectedResponse.Multipath, actualResponse.Multipath)
+	assert.Equal(t, expectedResponse.HasDebug, actualResponse.HasDebug)
+
+	if expectedResponse.HasDebug {
+		assert.NotEmpty(t, actualResponse.Debug)
+	} else {
+		assert.Empty(t, actualResponse.Debug)
+	}
 }
 
 /// -------- ERROR TESTS ------------
@@ -833,294 +855,77 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 // These tests check different scenarios where we need to make sure
 // that we return a response with the correct values
 
-// // The first slice of any session should always return a direct route
-// // with a set of near relays populated in the response packet
-// func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
-// 	sdkVersion := transport.SDKVersionMin
-// 	sessionID := uint64(1111)
-// 	sliceNumber := uint32(0)
-// 	buyerID := uint64(123)
-// 	datacenterID := uint64(456)
-// 	userHash := uint64(12345)
-// 	clientPingTimedOut := false
-// 	fallbackToDirect := false
-// 	directStats := getStats(noRTT)
-// 	nextStats := getStats(noRTT)
+// The first slice of any session should always return a direct route
+// with a set of near relays populated in the response packet
+func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
+	request := NewSessionUpdateRequestConfig(t)
 
-// 	hitRouteLogic := false
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 2
 
-// 	startTime := uint64(time.Now().Unix())
+	response := NewSessionUpdateResponseConfig(t)
+	response.numNearRelays = 2
 
-// 	initialSessionData := &transport.SessionData{
-// 		SessionID:       sessionID,
-// 		SliceNumber:     sliceNumber,
-// 		Location:        routing.LocationNullIsland,
-// 		ExpireTimestamp: startTime,
-// 		RouteState: core.RouteState{
-// 			UserID: userHash,
-// 		},
-// 	}
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.DirectSlices.Add(1)
 
-// 	startingNearRelays := getRelays(t, 0, noRTT)
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+}
 
-// 	var goodIPLocator goodIPLocator
+// The core routing logic has decided that we can't improve this session,
+// so send back a direct route with the same near relays
+func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
+	request := NewSessionUpdateRequestConfig(t)
+	request.sliceNumber = 1
+	request.directStats = getStats(goodRTT)
+	request.numNearRelays = 2
+	request.nearRelayRTTType = badRTT
 
-// 	numRouteMatrixRelays := int32(2)
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 2
 
-// 	buyers := []routing.Buyer{{ID: buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
-// 	datacenters := []routing.Datacenter{{ID: datacenterID}}
-// 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
+	response := NewSessionUpdateResponseConfig(t)
+	response.numNearRelays = 2
+	response.attemptFindRoute = true
 
-// 	responsePacket, sessionData, actualMetrics := runSessionUpdateTest(
-// 		t,
-// 		sdkVersion,
-// 		sessionID,
-// 		sliceNumber,
-// 		buyerID,
-// 		datacenterID,
-// 		userHash,
-// 		clientPingTimedOut,
-// 		fallbackToDirect,
-// 		directStats,
-// 		nextStats,
-// 		startingNearRelays,
-// 		initialSessionData,
-// 		&goodIPLocator,
-// 		numRouteMatrixRelays,
-// 		buyers,
-// 		datacenters,
-// 		datacenterMaps,
-// 	)
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.DirectSlices.Add(1)
 
-// 	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
-// 	expectedMetrics.DirectSlices.Add(1)
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+}
 
-// 	expectedResponseType := int32(routing.RouteTypeDirect)
+// This session can be improved, so we can send back a new
+// network next route for the session to take
+func TestSessionUpdateHandlerNextRoute(t *testing.T) {
+	request := NewSessionUpdateRequestConfig(t)
+	request.sliceNumber = 1
+	request.directStats = getStats(badRTT)
+	request.numNearRelays = 2
+	request.nearRelayRTTType = goodRTT
 
-// 	expectedNearRelays := getRelays(t, numRouteMatrixRelays, noRTT)
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 2
 
-// 	routeInfo := getRouteInfo(t, expectedResponseType, 0)
+	response := NewSessionUpdateResponseConfig(t)
+	response.routeType = routing.RouteTypeNew
+	response.routeNumRelays = 2
+	response.numNearRelays = 2
+	response.attemptFindRoute = true
 
-// 	expectedSessionData := getExpectedSessionData(
-// 		startTime,
-// 		sessionID,
-// 		sliceNumber,
-// 		userHash,
-// 		expectedResponseType,
-// 		fallbackToDirect,
-// 		expectedNearRelays,
-// 		hitRouteLogic,
-// 		routeInfo,
-// 	)
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.NextSlices.Add(1)
 
-// 	validateSessionUpdateTest(
-// 		t,
-// 		sdkVersion,
-// 		sessionID,
-// 		sliceNumber,
-// 		expectedResponseType,
-// 		expectedNearRelays,
-// 		routeInfo,
-// 		expectedSessionData,
-// 		responsePacket,
-// 		sessionData,
-// 		expectedMetrics,
-// 		actualMetrics,
-// 	)
-// }
-
-// // The core routing logic has decided that we can't improve this session,
-// // so send back a direct route with the same near relays
-// func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
-// 	sdkVersion := transport.SDKVersionMin
-// 	sessionID := uint64(1111)
-// 	sliceNumber := uint32(1)
-// 	buyerID := uint64(123)
-// 	datacenterID := uint64(456)
-// 	userHash := uint64(12345)
-// 	clientPingTimedOut := false
-// 	fallbackToDirect := false
-// 	directStats := getStats(goodRTT)
-// 	nextStats := getStats(noRTT)
-
-// 	hitRouteLogic := true
-
-// 	startTime := uint64(time.Now().Unix())
-
-// 	initialSessionData := &transport.SessionData{
-// 		SessionID:       sessionID,
-// 		SliceNumber:     sliceNumber,
-// 		Location:        routing.LocationNullIsland,
-// 		ExpireTimestamp: startTime,
-// 		RouteState: core.RouteState{
-// 			UserID: userHash,
-// 		},
-// 	}
-
-// 	startingNearRelays := getRelays(t, 2, badRTT)
-
-// 	var goodIPLocator goodIPLocator
-
-// 	numRouteMatrixRelays := int32(2)
-
-// 	buyers := []routing.Buyer{{ID: buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
-// 	datacenters := []routing.Datacenter{{ID: datacenterID}}
-// 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
-
-// 	responsePacket, sessionData, actualMetrics := runSessionUpdateTest(
-// 		t,
-// 		sdkVersion,
-// 		sessionID,
-// 		sliceNumber,
-// 		buyerID,
-// 		datacenterID,
-// 		userHash,
-// 		clientPingTimedOut,
-// 		fallbackToDirect,
-// 		directStats,
-// 		nextStats,
-// 		startingNearRelays,
-// 		initialSessionData,
-// 		&goodIPLocator,
-// 		numRouteMatrixRelays,
-// 		buyers,
-// 		datacenters,
-// 		datacenterMaps,
-// 	)
-
-// 	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
-// 	expectedMetrics.DirectSlices.Add(1)
-
-// 	expectedResponseType := int32(routing.RouteTypeDirect)
-
-// 	expectedNearRelays := getRelays(t, numRouteMatrixRelays, badRTT)
-
-// 	routeInfo := getRouteInfo(t, expectedResponseType, 0)
-
-// 	expectedSessionData := getExpectedSessionData(
-// 		startTime,
-// 		sessionID,
-// 		sliceNumber,
-// 		userHash,
-// 		expectedResponseType,
-// 		fallbackToDirect,
-// 		expectedNearRelays,
-// 		hitRouteLogic,
-// 		routeInfo,
-// 	)
-
-// 	validateSessionUpdateTest(
-// 		t,
-// 		sdkVersion,
-// 		sessionID,
-// 		sliceNumber,
-// 		expectedResponseType,
-// 		expectedNearRelays,
-// 		routeInfo,
-// 		expectedSessionData,
-// 		responsePacket,
-// 		sessionData,
-// 		expectedMetrics,
-// 		actualMetrics,
-// 	)
-// }
-
-// // This session can be improved, so we can send back a new
-// // network next route for the session to take
-// func TestSessionUpdateHandlerNextRoute(t *testing.T) {
-// 	sdkVersion := transport.SDKVersionMin
-// 	sessionID := uint64(1111)
-// 	sliceNumber := uint32(1)
-// 	buyerID := uint64(123)
-// 	datacenterID := uint64(456)
-// 	userHash := uint64(12345)
-// 	clientPingTimedOut := false
-// 	fallbackToDirect := false
-// 	directStats := getStats(badRTT)
-// 	nextStats := getStats(noRTT)
-
-// 	hitRouteLogic := true
-
-// 	startTime := uint64(time.Now().Unix())
-
-// 	initialSessionData := &transport.SessionData{
-// 		SessionID:       sessionID,
-// 		SliceNumber:     sliceNumber,
-// 		Location:        routing.LocationNullIsland,
-// 		ExpireTimestamp: startTime,
-// 		RouteState: core.RouteState{
-// 			UserID: userHash,
-// 		},
-// 	}
-
-// 	startingNearRelays := getRelays(t, 2, goodRTT)
-
-// 	var goodIPLocator goodIPLocator
-
-// 	numRouteMatrixRelays := int32(2)
-
-// 	buyers := []routing.Buyer{{ID: buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
-// 	datacenters := []routing.Datacenter{{ID: datacenterID}}
-// 	datacenterMaps := []routing.DatacenterMap{{BuyerID: buyerID, DatacenterID: datacenterID}}
-// 	relays := []routing.Relay{{ID: crypto.HashID("test.relay.1")}}
-
-// 	responsePacket, sessionData, actualMetrics := runSessionUpdateTest(
-// 		t,
-// 		sdkVersion,
-// 		sessionID,
-// 		sliceNumber,
-// 		buyerID,
-// 		datacenterID,
-// 		userHash,
-// 		clientPingTimedOut,
-// 		fallbackToDirect,
-// 		directStats,
-// 		nextStats,
-// 		startingNearRelays,
-// 		initialSessionData,
-// 		&goodIPLocator,
-// 		numRouteMatrixRelays,
-// 		buyers,
-// 		datacenters,
-// 		datacenterMaps,
-// 	)
-
-// 	expectedMetrics := getBlankServerBackendMetrics(t).SessionUpdateMetrics
-// 	expectedMetrics.NextSlices.Add(1)
-
-// 	expectedResponseType := int32(routing.RouteTypeNew)
-
-// 	expectedNearRelays := getRelays(t, numRouteMatrixRelays, goodRTT)
-
-// 	routeInfo := getRouteInfo(t, expectedResponseType, numRouteMatrixRelays)
-
-// 	expectedSessionData := getExpectedSessionData(
-// 		startTime,
-// 		sessionID,
-// 		sliceNumber,
-// 		userHash,
-// 		expectedResponseType,
-// 		fallbackToDirect,
-// 		expectedNearRelays,
-// 		hitRouteLogic,
-// 		routeInfo,
-// 	)
-
-// 	validateSessionUpdateTest(
-// 		t,
-// 		sdkVersion,
-// 		sessionID,
-// 		sliceNumber,
-// 		expectedResponseType,
-// 		expectedNearRelays,
-// 		routeInfo,
-// 		expectedSessionData,
-// 		responsePacket,
-// 		sessionData,
-// 		expectedMetrics,
-// 		actualMetrics,
-// 	)
-// }
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+}
 
 func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	// Seed the RNG so we don't get different results from running `make test`
