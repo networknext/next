@@ -4361,6 +4361,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+		RouteCost:       routing.InvalidRouteValue,
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			PLHistoryIndex:   1,

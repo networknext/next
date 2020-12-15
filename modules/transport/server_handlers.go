@@ -773,6 +773,10 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
+		if routeCost > routing.InvalidRouteValue {
+			routeCost = routing.InvalidRouteValue
+		}
+
 		response.Committed = sessionData.RouteState.Committed
 		response.Multipath = sessionData.RouteState.Multipath
 
