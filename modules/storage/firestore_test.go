@@ -290,7 +290,6 @@ func TestFirestore(t *testing.T) {
 			expectedCustomer := routing.Customer{
 				Code:                   "local",
 				Name:                   "Local",
-				Active:                 false,
 				AutomaticSignInDomains: "",
 				BuyerRef:               nil,
 				SellerRef:              nil,
@@ -446,7 +445,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual := actualCustomer
-			actual.Active = true
 
 			err = fs.SetCustomer(ctx, actual)
 			assert.NoError(t, err)
@@ -455,8 +453,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, actualCustomer, actual)
-			actual.Active = false
-			assert.Equal(t, actualCustomer, actual)
 		})
 	})
 
@@ -647,7 +643,6 @@ func TestFirestore(t *testing.T) {
 			expectedCustomer := routing.Customer{
 				Code:                   "local",
 				Name:                   "Local",
-				Active:                 false,
 				AutomaticSignInDomains: "",
 				BuyerRef:               nil,
 				SellerRef:              nil,
@@ -1042,9 +1037,8 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expectedCustomer := routing.Customer{
-				Code:   "local",
-				Name:   expected.Name,
-				Active: true,
+				Code: "local",
+				Name: expected.Name,
 			}
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
