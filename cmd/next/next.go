@@ -1786,8 +1786,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code:                   customer.Code,
 						Name:                   customer.Name,
 						AutomaticSignInDomains: customer.AutomaticSignInDomains,
-						Active:                 customer.Active,
-						Debug:                  customer.Debug,
 						BuyerRef:               nil,
 						SellerRef:              nil,
 					}
