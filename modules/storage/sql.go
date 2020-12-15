@@ -117,8 +117,6 @@ type sqlCustomer struct {
 	ID                     int64
 	Name                   string
 	AutomaticSignInDomains string
-	Active                 bool
-	Debug                  bool
 	CustomerCode           string
 	DatabaseID             int64
 	BuyerID                sql.NullInt64 // loaded during syncCustomers()
@@ -140,13 +138,12 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		CustomerCode:           c.Code,
 		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
-		Active:                 c.Active,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into customers ("))
-	sql.Write([]byte("active, automatic_signin_domain, customer_name, customer_code"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
+	sql.Write([]byte(") values ($1, $2, $3)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -154,7 +151,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(customer.Active,
+	result, err := stmt.Exec(
 		customer.AutomaticSignInDomains,
 		customer.Name,
 		customer.CustomerCode,
@@ -250,8 +247,8 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", c.Code)}
 	}
 
-	sql.Write([]byte("update customers set (active, debug, automatic_signin_domain, customer_name) ="))
-	sql.Write([]byte("($1, $2, $3, $4) where id = $5"))
+	sql.Write([]byte("update customers set (automatic_signin_domain, customer_name) ="))
+	sql.Write([]byte("($1, $2) where id = $5"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -259,7 +256,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, c.DatabaseID)
+	result, err := stmt.Exec(c.AutomaticSignInDomains, c.Name, c.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -844,7 +841,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if err != nil {
 			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
 		}
-		relay.Addr = *addr
+		relay.InternalAddr = *addr
 
 	case "PublicKey":
 		publicKey, ok := value.([]byte)
@@ -879,7 +876,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if state < 0 || state > 5 {
-			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(state))
+			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
 		}
 		updateSQL.Write([]byte("update relays set relay_state=$1 where id=$2"))
 		args = append(args, int64(state), relay.DatabaseID)

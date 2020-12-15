@@ -79,8 +79,6 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddCustomer", func(t *testing.T) {
 		customer := routing.Customer{
-			Active:                 true,
-			Debug:                  true,
 			Code:                   customerShortname,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -91,7 +89,6 @@ func TestInsertSQL(t *testing.T) {
 
 		outerCustomer, err = db.Customer(customerShortname)
 		assert.NoError(t, err)
-		assert.Equal(t, customer.Active, outerCustomer.Active)
 		assert.Equal(t, customer.Code, outerCustomer.Code)
 		assert.Equal(t, customer.Name, outerCustomer.Name)
 		assert.Equal(t, customer.AutomaticSignInDomains, outerCustomer.AutomaticSignInDomains)
@@ -297,7 +294,6 @@ func TestDeleteSQL(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -495,7 +491,6 @@ func TestUpdateSQL(t *testing.T) {
 
 	t.Run("SetCustomer", func(t *testing.T) {
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   "Compcode",
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -510,8 +505,6 @@ func TestUpdateSQL(t *testing.T) {
 
 		customerWithID.Name = "No Longer The Company, Ltd."
 		customerWithID.AutomaticSignInDomains = "fredscuttle.com,swampthing.com"
-		customerWithID.Active = false
-		customerWithID.Debug = false
 
 		err = db.SetCustomer(ctx, customerWithID)
 		assert.NoError(t, err)
@@ -519,8 +512,6 @@ func TestUpdateSQL(t *testing.T) {
 		checkCustomer, err := db.Customer("Compcode")
 		assert.NoError(t, err)
 
-		assert.Equal(t, customerWithID.Active, checkCustomer.Active)
-		assert.Equal(t, customerWithID.Debug, checkCustomer.Debug)
 		assert.Equal(t, customerWithID.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
 		assert.Equal(t, customerWithID.Name, checkCustomer.Name)
 
@@ -694,14 +685,14 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *newAddr, checkRelay.Addr)
 
-		// relay.Addr
+		// relay.InternalAddr
 		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
 		assert.NoError(t, err)
-		err = db.UpdateRelay(ctx, rid, "Addr", "192.168.0.2:40000")
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "192.168.0.2:40000")
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, *intAddr, checkRelay.Addr)
+		assert.Equal(t, *intAddr, checkRelay.InternalAddr)
 
 		// relay.ManagementAddr
 		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
@@ -845,7 +836,6 @@ func TestInternalConfig(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -1037,7 +1027,6 @@ func TestRouteShaders(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
