@@ -3692,7 +3692,8 @@ void next_default_config( next_config_t * config )
 {
     next_assert( config );
     memset( config, 0, sizeof(next_config_t) );
-    strncpy( config->hostname, NEXT_HOSTNAME, sizeof(config->hostname) - 1 );
+    strncpy( config->hostname, NEXT_HOSTNAME, sizeof(config->hostname) );
+    config->hostname[sizeof(config->hostname)-1] = '\0';
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 }
@@ -3782,7 +3783,8 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    strncpy( config.hostname, config_in ? config_in->hostname : NEXT_HOSTNAME, sizeof(config.hostname) - 1 );
+    strncpy( config.hostname, config_in ? config_in->hostname : NEXT_HOSTNAME, sizeof(config.hostname) );
+    config.hostname[sizeof(config.hostname)-1] = '\0';
 
     if ( config_in )
     {
@@ -3854,7 +3856,8 @@ int next_init( void * context, next_config_t * config_in )
     if ( next_hostname_override )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override next hostname: '%s'", next_hostname_override );
-        strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) - 1 );
+        strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) );
+        config.hostname[sizeof(config.hostname)-1] = '\0';
     }
 
     const char * backend_public_key_env = next_platform_getenv( "NEXT_BACKEND_PUBLIC_KEY" );
@@ -8042,7 +8045,7 @@ int next_address_parse( next_address_t * address, const char * address_string_in
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH + NEXT_ADDRESS_BUFFER_SAFETY*2];
 
     char * address_string = buffer + NEXT_ADDRESS_BUFFER_SAFETY;
-    strncpy( address_string, address_string_in, NEXT_MAX_ADDRESS_STRING_LENGTH - 1 );
+    strncpy( address_string, address_string_in, NEXT_MAX_ADDRESS_STRING_LENGTH );
     address_string[NEXT_MAX_ADDRESS_STRING_LENGTH-1] = '\0';
 
     int address_string_length = (int) strlen( address_string );
@@ -10250,7 +10253,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", datacenter );
             server->datacenter_id = next_datacenter_id( datacenter );
-            strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
+            strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
             server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
         }
         else
@@ -11963,7 +11966,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.request_id = next_random_uint64();
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
-            strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
+            strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
             packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
 
             server->server_init_request_id = packet.request_id;
