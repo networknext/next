@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modood/table"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -419,7 +421,92 @@ func relays(
 
 }
 
-func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay) {
+func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
+
+	dcID, err := strconv.ParseUint(r.DatacenterID, 16, 64)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Could not parse %s in to a hex integer", r.DatacenterID), 0)
+	}
+
+	dcArg := localjsonrpc.DatacenterArg{
+		ID: dcID,
+	}
+
+	var dcReply localjsonrpc.DatacenterReply
+
+	if err := rpcClient.CallFor(&dcReply, "OpsService.Datacenter", dcArg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", r.Addr)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Could not resolve udp address for Addr %s: %v\n", r.Addr, err), 1)
+	}
+
+	var internalAddr *net.UDPAddr
+	if r.InternalAddr != "" {
+		internalAddr, err = net.ResolveUDPAddr("udp", r.InternalAddr)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not resolve udp address for InternalAddr %s: %v\n", r.Addr, err), 1)
+		}
+	}
+
+	var bwRule routing.BandWidthRule
+	switch r.BWRule {
+	case "flat":
+		bwRule = routing.BWRuleFlat
+	case "burst":
+		bwRule = routing.BWRuleBurst
+	case "pool":
+		bwRule = routing.BWRulePool
+	default:
+		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid bandwidth rule", r.BWRule), 0)
+	}
+
+	var machineType routing.MachineType
+	switch r.Type {
+	case "baremetal":
+		machineType = routing.BareMetal
+	case "virtualmachine":
+		machineType = routing.VirtualMachine
+	default:
+		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid machine type", r.Type), 0)
+	}
+
+	startDate, err := time.Parse("January 2, 2006", r.StartDate)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.StartDate), 0)
+	}
+
+	endDate, err := time.Parse("January 2, 2006", r.EndDate)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.EndDate), 0)
+	}
+
+	rid := crypto.HashID(r.Addr)
+	relay := routing.Relay{
+		ID:                  rid,
+		Name:                r.Name,
+		Addr:                *addr,
+		InternalAddr:        *internalAddr,
+		PublicKey:           []byte(r.PublicKey),
+		Datacenter:          dcReply.Datacenter,
+		NICSpeedMbps:        r.NicSpeedMbps,
+		IncludedBandwidthGB: r.IncludedBandwidthGB,
+		State:               routing.RelayStateMaintenance,
+		ManagementAddr:      r.ManagementAddr,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		MaxSessions:         r.MaxSessions,
+		MRC:                 routing.DollarsToNibblins(r.MRC),
+		Overage:             routing.DollarsToNibblins(r.Overage),
+		BWRule:              bwRule,
+		ContractTerm:        r.ContractTerm,
+		StartDate:           startDate,
+		EndDate:             endDate,
+		Type:                machineType,
+	}
+
 	args := localjsonrpc.AddRelayArgs{
 		Relay: relay,
 	}

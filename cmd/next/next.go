@@ -17,7 +17,6 @@ import (
 	"hash/fnv"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -366,13 +365,23 @@ type seller struct {
 type relay struct {
 	Name                string
 	Addr                string
-	SellerID            string
-	DatacenterName      string
-	NicSpeedMbps        uint64
-	IncludedBandwidthGB uint64
+	InternalAddr        string
+	PublicKey           string
+	DatacenterID        string
+	NicSpeedMbps        int32
+	IncludedBandwidthGB int32
+	State               string
 	ManagementAddr      string
 	SSHUser             string
 	SSHPort             int64
+	MaxSessions         uint32
+	MRC                 float64
+	Overage             float64
+	BWRule              string
+	ContractTerm        int32
+	StartDate           string
+	EndDate             string
+	Type                string
 }
 
 type datacenter struct {
@@ -939,6 +948,7 @@ func main() {
 				Name:       "add",
 				ShortUsage: "next relay add <filepath>",
 				ShortHelp:  "Add relay(s) from a JSON file or piped from stdin",
+				LongHelp:   nextRelayAddJSONLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					jsonData := readJSONData("relays", args)
 
@@ -948,65 +958,9 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal relay: %v\n", err), 1)
 					}
 
-					addr, err := net.ResolveUDPAddr("udp", relay.Addr)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not resolve udp address %s: %v\n", relay.Addr, err), 1)
-					}
-
-					// Build the actual Relay struct from the input relay struct
-					rid := crypto.HashID(relay.Addr)
-					realRelay := routing.Relay{
-						ID:       rid,
-						SignedID: int64(rid),
-						Name:     relay.Name,
-						Addr:     *addr,
-						Seller: routing.Seller{
-							ID: relay.SellerID,
-						},
-						Datacenter: routing.Datacenter{
-							ID:   crypto.HashID(relay.DatacenterName),
-							Name: relay.DatacenterName,
-						},
-						NICSpeedMbps:        int32(relay.NicSpeedMbps),
-						IncludedBandwidthGB: int32(relay.IncludedBandwidthGB),
-						State:               routing.RelayStateMaintenance,
-						ManagementAddr:      relay.ManagementAddr,
-						SSHUser:             relay.SSHUser,
-						SSHPort:             relay.SSHPort,
-					}
-
 					// Add the Relay to storage
-					addRelay(rpcClient, env, realRelay)
+					addRelay(rpcClient, env, relay)
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next relay add example",
-						ShortHelp:  "Displays an example relay for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							example := relay{
-								Name:                "amazon.ohio.2",
-								Addr:                "127.0.0.1:40000",
-								SellerID:            "5tCm7KjOw3EBYojLe6PC",
-								DatacenterName:      "amazon.ohio.2",
-								NicSpeedMbps:        1000,
-								IncludedBandwidthGB: 1,
-								ManagementAddr:      "127.0.0.1",
-								SSHUser:             "root",
-								SSHPort:             22,
-							}
-
-							jsonBytes, err := json.MarshalIndent(example, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal relay struct"), 1)
-							}
-
-							fmt.Println("Example JSON schema to add a new relay:")
-							fmt.Println(string(jsonBytes))
-							return nil
-						},
-					},
 				},
 			},
 			{
@@ -2356,6 +2310,44 @@ Valid relay states:
    quarantined (not currently in use)
    decommissioned
    offline
+
+Valid bandwidth rules:
+   flat
+   burst
+   pool
+
+Valid server types:
+   baremetal
+   virtualmachine
+
+`
+
+var nextRelayAddJSONLongHelp = `
+Add a relay using the data provided in a json file. The json file 
+must be of the form:
+
+{
+  "Name": "local.locale.9",
+  "Addr": "1.2.3.4:40000",
+  "InternalAddr": "127.0.0.2:10009", // optional
+  "PublicKey": "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=",
+  "Datacenter": "c62a99140dd374fd",  // datacenter ID in hex
+  "NICSpeedMbps": 1000,
+  "IncludedBandwidthGB": 10000,
+  "ManagementAddr": "1.2.3.49",
+  "SSHUser": "root",
+  "SSHPort": 1000,
+  "MaxSessions": 100000,
+  "MRC": 297.00,      // US Dollars
+  "Overage": 100.00,  // US Dollars
+  "BWRule": "flat",   // any valid bandwidth rule (see below)
+  "ContractTerm": 12,
+  "StartDate": "December 15, 2020", // exactly this format
+  "EndDate": "December 15, 2020",   // exactly this format
+  "Type": "virtualmachine"          // any valid machine type (see below)
+}
+
+All fields are required except as noted (InternalAddr).
 
 Valid bandwidth rules:
    flat

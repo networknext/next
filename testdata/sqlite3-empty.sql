@@ -104,7 +104,7 @@ create table datacenters (
 create table relays (
   id integer primary key autoincrement,
   contract_term integer not null,
-  display_name varchar not null,
+  display_name varchar not null unique,
   end_date date not null,
   included_bandwidth_gb integer not null,
   internal_ip inet,
@@ -144,7 +144,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/12/15 14:51:22
+-- File generation: 2020/12/15 17:10:31
 
 -- machine_types
 insert into machine_types values (0, 'none');
