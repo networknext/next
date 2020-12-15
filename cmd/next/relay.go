@@ -518,34 +518,6 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	return success
 }
 
-func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string, nicSpeed uint64) {
-	relays := getRelayInfo(rpcClient, env, relayName)
-
-	if len(relays) == 0 {
-		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", relayName), 0)
-	}
-
-	info := relays[0]
-
-	args := localjsonrpc.RelayNICSpeedUpdateArgs{
-		RelayID:       info.id,
-		RelayNICSpeed: nicSpeed,
-	}
-
-	var reply localjsonrpc.RelayNICSpeedUpdateReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
-		fmt.Printf("Error setting relay NIC speed: %v\n", err)
-		os.Exit(0)
-	}
-
-	// Give the portal enough time to pull down the new state so that
-	// the relay state doesn't appear incorrectly
-	fmt.Println("Waiting for portal to sync changes...")
-	time.Sleep(11 * time.Second)
-
-	fmt.Printf("NIC speed set for %s\n", info.name)
-}
-
 // TODO modify to use the OpsService.UpdateRelay endpoint
 func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
 
@@ -569,29 +541,6 @@ func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName strin
 		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
 	}
 
-}
-
-func setRelayState(rpcClient jsonrpc.RPCClient, env Environment, stateString string, regexes []string) {
-	state, err := routing.ParseRelayState(stateString)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("%v\n", err), 0)
-	}
-
-	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
-
-		if len(relays) == 0 {
-			fmt.Printf("no relay matched the regex '%s'\n", regex)
-			continue
-		}
-
-		for _, relay := range relays {
-			if !updateRelayState(rpcClient, relay, state) {
-				continue
-			}
-			fmt.Printf("Relay state updated for %s to %v\n", relay.name, state)
-		}
-	}
 }
 
 func checkRelays(
