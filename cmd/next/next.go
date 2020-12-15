@@ -917,47 +917,6 @@ func main() {
 					return nil
 				},
 			},
-			// {
-			// 	Name:       "speed",
-			// 	ShortUsage: "next relay speed <relay name> <value (Mbps)>",
-			// 	ShortHelp:  "sets the speed value of a relay",
-			// 	Exec: func(_ context.Context, args []string) error {
-			// 		if len(args) == 0 {
-			// 			handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
-			// 		}
-
-			// 		if len(args) == 1 {
-			// 			handleRunTimeError(fmt.Sprintln("You need to supply a relay NIC speed in Mbps"), 0)
-			// 		}
-
-			// 		nicSpeed, err := strconv.ParseUint(args[1], 10, 64)
-			// 		if err != nil {
-			// 			handleRunTimeError(fmt.Sprintf("Unable to parse %s as uint64\n", args[1]), 1)
-			// 		}
-
-			// 		setRelayNIC(rpcClient, env, args[0], nicSpeed)
-
-			// 		return nil
-			// 	},
-			// },
-			// {
-			// 	Name:       "state",
-			// 	ShortUsage: "next relay state <state> <regex> [regex...]",
-			// 	ShortHelp:  "Sets the relay state directly",
-			// 	LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
-			// 	Exec: func(ctx context.Context, args []string) error {
-			// 		if len(args) == 0 {
-			// 			handleRunTimeError(fmt.Sprintln("You need to supply a relay state"), 0)
-			// 		}
-
-			// 		if len(args) == 1 {
-			// 			handleRunTimeError(fmt.Sprintln("You need to supply at least one relay name regex"), 0)
-			// 		}
-
-			// 		setRelayState(rpcClient, env, args[0], args[1:])
-			// 		return nil
-			// 	},
-			// },
 			{
 				Name:       "rename",
 				ShortUsage: "next relay rename <old name> <new name>",
