@@ -21,7 +21,6 @@ create table bw_billing_rules (
 
 create table customers (
   id integer primary key autoincrement,
-  active boolean not null,
   debug boolean not null default false,
   automatic_signin_domain varchar null,
   customer_name varchar not null,
