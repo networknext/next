@@ -2022,3 +2022,28 @@ func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, r
 
 	return nil
 }
+
+type BuyerArg struct {
+	BuyerID uint64
+}
+
+type BuyerReply struct {
+	Buyer routing.Buyer
+}
+
+func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply) error {
+
+	var b routing.Buyer
+	var err error
+
+	b, err = s.Storage.Buyer(arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("Buyer() error retrieving buyer for ID %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	reply.Buyer = b
+
+	return nil
+}
