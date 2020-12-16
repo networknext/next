@@ -1174,6 +1174,19 @@ func main() {
 					return nil
 				},
 			},
+			{ // info
+				Name:       "info",
+				ShortUsage: "next buyer info (id)",
+				ShortHelp:  "Get detailed information for the specified buyer",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+					}
+
+					getBuyerInfo(rpcClient, env, args[0])
+					return nil
+				},
+			},
 			{ // add
 				Name:       "add",
 				ShortUsage: "next buyer add [filepath]",

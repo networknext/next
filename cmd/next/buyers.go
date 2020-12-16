@@ -798,3 +798,30 @@ func removeBannedUser(
 	fmt.Printf("Banned user %016x successfully removed  for buyer %s.\n", userID, buyerName)
 	return nil
 }
+
+func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+
+	buyerID, err := strconv.ParseUint(id, 16, 64)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error converting BuyerID hex to signed int: %s\n", id), 0)
+	}
+
+	arg := localjsonrpc.BuyerArg{
+		BuyerID: buyerID,
+	}
+
+	var reply localjsonrpc.BuyerReply
+	if err := rpcClient.CallFor(&reply, "BuyersService.Buyer", arg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	buyerInfo := "Buyer " + reply.Buyer.ShortName + " info:\n"
+	buyerInfo += "  CompanyCode: " + reply.Buyer.CompanyCode + "\n"
+	buyerInfo += "  ShortName  : " + reply.Buyer.ShortName + "\n"
+	buyerInfo += "  Live       : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
+	buyerInfo += "  Debug      : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
+
+	fmt.Println(buyerInfo)
+	os.Exit(0)
+
+}
