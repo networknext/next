@@ -659,10 +659,10 @@ func TestUpdateSQL(t *testing.T) {
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {
-		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPrice", 133.44)
+		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPriceNibblinsPerGB", 133.44)
 		assert.NoError(t, err)
 
-		err = db.UpdateSeller(ctx, sellerWithID.ID, "IngressPrice", 144.33)
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "IngressPriceNibblinsPerGB", 144.33)
 		assert.NoError(t, err)
 
 		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
