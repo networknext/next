@@ -1,7 +1,7 @@
 <template>
   <div class="map-container-no-offset">
     <div class="map" id="map"></div>
-    <canvas id="deck-canvas" v-bind:data-intercom="map"></canvas>
+    <canvas id="deck-canvas" data-intercom="map"></canvas>
   </div>
 </template>
 
