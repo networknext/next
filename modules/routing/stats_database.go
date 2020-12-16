@@ -159,7 +159,7 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 
 		} else {
 			// Make sure that relays with 100% packet loss do not have 0 RTT
-			// and will definitely be excluded during route optimzation
+			// and will definitely be excluded during route optimization
 			if stats.PacketLoss > 99 {
 				relay.RTTHistory[relay.Index] = InvalidRouteValue
 				relay.JitterHistory[relay.Index] = InvalidRouteValue
@@ -243,7 +243,7 @@ func (database *StatsDatabase) GetCosts(relayIDs []uint64, maxJitter float32, ma
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 
 			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
-				costs[ijIndex] = int32(math.Floor(float64(rtt)))
+				costs[ijIndex] = int32(math.Ceil(float64(rtt)))
 			} else {
 				costs[ijIndex] = -1
 			}
