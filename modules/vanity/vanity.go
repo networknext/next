@@ -68,7 +68,7 @@ type VanityMetricHandler struct {
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
-	logger 				 log.Logger
+	logger               log.Logger
 }
 
 // VanityMetrics is the struct for all desired vanity metrics
@@ -119,7 +119,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
-		logger:				  logger,
+		logger:               logger,
 	}
 }
 
@@ -346,12 +346,12 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		vanityMetricPerBuyer.SlicesJitterReduced.Add(float64(vanityMetricDataBuffer[j].SlicesJitterReduced))
 		vanityMetricPerBuyer.SessionsAccelerated.Add(float64(vanityMetricDataBuffer[j].SessionsAccelerated))
 
-		level.Debug(vm.logger).Log("msg", "Updating metric values", 
-			"buyerID", buyerID, 
-			"userHash", vanityMetricDataBuffer[j].UserHash, 
-			"sessionID", vanityMetricDataBuffer[j].SessionID, 
+		level.Debug(vm.logger).Log("msg", "Updating metric values",
+			"buyerID", buyerID,
+			"userHash", vanityMetricDataBuffer[j].UserHash,
+			"sessionID", vanityMetricDataBuffer[j].SessionID,
 			"timestamp", vanityMetricDataBuffer[j].Timestamp,
-			"SlicesAccelerated", vanityMetricDataBuffer[j].SlicesAccelerated, 
+			"SlicesAccelerated", vanityMetricDataBuffer[j].SlicesAccelerated,
 			"SlicesLatencyReduced", vanityMetricDataBuffer[j].SlicesLatencyReduced,
 			"SlicesPacketLossReduced", vanityMetricDataBuffer[j].SlicesPacketLossReduced,
 			"SlicesJitterReduced", vanityMetricDataBuffer[j].SlicesJitterReduced,

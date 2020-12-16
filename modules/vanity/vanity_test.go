@@ -168,7 +168,9 @@ func TestNewVanityMetrics(t *testing.T) {
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, 5)
+	logger := log.NewNopLogger()
+
+	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, 5, logger)
 	assert.NotNil(t, vanityMetrics)
 }
 
@@ -374,8 +376,6 @@ func TestReadingMetrics(t *testing.T) {
 	// Get metrics for evaluating the performance of vanity metrics
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
-
-	logger := log.NewNopLogger()
 
 	vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, 5, logger)
 
