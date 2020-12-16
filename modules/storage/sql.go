@@ -2758,3 +2758,76 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 
 	return nil
 }
+
+func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	seller, err := db.Seller(sellerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%016x", sellerID)}
+	}
+
+	switch field {
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update sellers set short_name=$1 where id=$2"))
+		args = append(args, shortName, seller.DatabaseID)
+		seller.ShortName = shortName
+	case "EgressPrice":
+		egressPrice, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		egress := routing.DollarsToNibblins(egressPrice)
+		updateSQL.Write([]byte("update sellers set public_egress_price=$1 where id=$2"))
+		args = append(args, int64(egress), seller.DatabaseID)
+		seller.EgressPriceNibblinsPerGB = egress
+	case "IngressPrice":
+		ingressPrice, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		ingress := routing.DollarsToNibblins(ingressPrice)
+		updateSQL.Write([]byte("update sellers set public_ingress_price=$1 where id=$2"))
+		args = append(args, int64(ingress), seller.DatabaseID)
+		seller.IngressPriceNibblinsPerGB = ingress
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateSeller SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.sellerMutex.Lock()
+	db.sellers[sellerID] = seller
+	db.sellerMutex.Unlock()
+
+	return nil
+}
