@@ -1724,9 +1724,10 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				},
 			},
 			{
-				Name:       "update ",
+				Name:       "update",
 				ShortUsage: "next seller update  (seller ID) (field) (value)",
 				ShortHelp:  "Update the specified field for the given seller",
+				LongHelp:   nextSellerUpdateLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 3 {
 						handleRunTimeError(fmt.Sprintln("Please provide the seller id, field and value."), 0)
@@ -1833,6 +1834,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				Name:       "update",
 				ShortUsage: "next customer update (customer code) (field) (value)",
 				ShortHelp:  "Modify the specified field for the given customer",
+				LongHelp:   nextCustomerUpdateLongHelp,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
 						handleRunTimeError(fmt.Sprintln("Please provide the customer code, field and value."), 0)
