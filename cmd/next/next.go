@@ -1448,7 +1448,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				Subcommands: []*ffcli.Command{
 					{ // add shader
 						Name:       "add",
-						ShortUsage: "next buyer shader add (internalconfig json)",
+						ShortUsage: "next buyer shader add (route shader json)",
 						ShortHelp:  "Add a route shader for the specified buyer.",
 						LongHelp:   nextBuyerShaderAddJSONLongHelp,
 						Exec: func(_ context.Context, args []string) error {
@@ -2210,7 +2210,7 @@ will be assigned the zero value for that type (0 or false).
 `
 
 var nextBuyerShaderAddJSONLongHelp = `
-Add an route shader for the specified buyer. The shader
+Add a route shader for the specified buyer. The shader
 must be in a json file of the form:
 
 {
