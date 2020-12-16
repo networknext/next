@@ -95,6 +95,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
+		"Slices Accelerated":	      true,
 		"Slices Latency Reduced":     true,
 		"Slices Packet Loss Reduced": true,
 		"Slices Jitter Reduced":      true,
@@ -466,12 +467,15 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 	// Create a interval and duration for all vanity metrics
 	tsInterval := &monitoringpb.TimeInterval{EndTime: timestamppb.New(endTime), StartTime: timestamppb.New(startTime)}
 	duration := endTime.Sub(startTime)
+	// duration := time.Minute*1
+	fmt.Printf("tsInterval: %v\n", tsInterval)
+	fmt.Printf("duration: %v\n", duration)
 
 	// Create max aggregation (used for Counters)
 	maxAgg := &monitoringpb.Aggregation{
 		AlignmentPeriod:    durationpb.New(duration),
-		PerSeriesAligner:   monitoringpb.Aggregation_Aligner(11), // Get max values per alignment period
-		CrossSeriesReducer: monitoringpb.Aggregation_Reducer(3),  // Get single max value across alignment periods
+		PerSeriesAligner:   monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
+		// CrossSeriesReducer: monitoringpb.Aggregation_Reducer(4),  // Get single max value across alignment periods
 	}
 
 	// Create the final returned map
@@ -500,26 +504,45 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			return nil, errors.New(errStr)
 		}
 
+		// fmt.Printf("Display Name: %s, points: %v\n", displayName, pointsList)
+
 		// Extract the max point value from the list of points
-		var maxPointVal float64
+		maxPointVal := int64(0)
+		var pointVals []int64
 		for _, points := range pointsList {
 			for _, point := range points {
-				if point.Value.GetDoubleValue() > maxPointVal {
-					maxPointVal = point.Value.GetDoubleValue()
-				}
+				pointVals = append(pointVals, point.Value.GetInt64Value())
+				
+				// if point.Value.GetInt64Value() > maxPointVal {
+				// 	maxPointVal = point.Value.GetInt64Value()
+				// }
 			}
 		}
 
+		fmt.Printf("Display Name %s, list: %v\n", displayName, pointVals)
+		sumVal := int64(0)
+		for _, val := range pointVals {
+			sumVal += val
+			if val > maxPointVal {
+				maxPointVal = val
+			}
+		}
+		avgPointVal := float64(sumVal) / float64(len(pointVals))
+		fmt.Printf("\tSum of list: %d\n\tMax in list: %d\n\tAverage of list: %v\n", sumVal, maxPointVal, avgPointVal)
+
+		// fmt.Printf("Display Name %s: maxPoint: %d\n", displayName, maxPointVal)
+		floatPointVal := float64(maxPointVal)
 		// Check if the metric needs hours calculated
 		if vm.hourMetricsMap[displayName] {
 			seconds := time.Second * time.Duration(10*maxPointVal)
+			fmt.Printf("Display Name: %s seconds: %v\n", displayName, seconds)
 			hours := seconds.Hours()
 			// Round to 3 decimal places
-			maxPointVal = math.Round(hours*1000) / 1000
+			floatPointVal = math.Round(hours*1000) / 1000
 		}
 
 		// Add metric value to the final map
-		metricsMap[vm.displayMap[displayName]] = maxPointVal
+		metricsMap[vm.displayMap[displayName]] = floatPointVal
 	}
 
 	// Encode the map of vanity metric names to their values
