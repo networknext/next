@@ -836,9 +836,9 @@ func updateBuyer(
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
-	emptyReply := localjsonrpc.BuyerUpdateReply{}
+	emptyReply := localjsonrpc.UpdateBuyerReply{}
 
-	args := localjsonrpc.UpdateInternalConfigArgs{
+	args := localjsonrpc.UpdateBuyerArgs{
 		BuyerID: buyerID,
 		Field:   field,
 		Value:   value,

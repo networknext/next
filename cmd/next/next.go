@@ -1732,7 +1732,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the seller id, field and value."), 0)
 					}
 
-					updateSeller(rpcClient, env, args[0])
+					updateSeller(rpcClient, env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1838,7 +1838,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the customer code, field and value."), 0)
 					}
 
-					updateCustomer(rpcClient, env, args[0])
+					updateCustomer(rpcClient, env, args[0], args[1], args[2])
 					return nil
 				},
 			},
