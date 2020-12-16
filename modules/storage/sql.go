@@ -2695,3 +2695,66 @@ func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, va
 
 	return nil
 }
+
+func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	customer, err := db.Customer(customerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%016x", customerID)}
+	}
+
+	switch field {
+	case "AutomaticSigninDomains":
+		domains, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set automatic_signin_domain=$1 where id=$2"))
+		args = append(args, domains, customer.DatabaseID)
+		customer.AutomaticSignInDomains = domains
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set customer_name=$1 where id=$2"))
+		args = append(args, name, customer.DatabaseID)
+		customer.Name = name
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateCustomer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.customerMutex.Lock()
+	db.customers[customerID] = customer
+	db.customerMutex.Unlock()
+
+	return nil
+}
