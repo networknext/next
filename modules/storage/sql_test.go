@@ -79,8 +79,6 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddCustomer", func(t *testing.T) {
 		customer := routing.Customer{
-			Active:                 true,
-			Debug:                  true,
 			Code:                   customerShortname,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -91,7 +89,6 @@ func TestInsertSQL(t *testing.T) {
 
 		outerCustomer, err = db.Customer(customerShortname)
 		assert.NoError(t, err)
-		assert.Equal(t, customer.Active, outerCustomer.Active)
 		assert.Equal(t, customer.Code, outerCustomer.Code)
 		assert.Equal(t, customer.Name, outerCustomer.Name)
 		assert.Equal(t, customer.AutomaticSignInDomains, outerCustomer.AutomaticSignInDomains)
@@ -122,16 +119,14 @@ func TestInsertSQL(t *testing.T) {
 	t.Run("AddDatacenter", func(t *testing.T) {
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID("some.locale.name"),
-			Name:    "some.locale.name",
-			Enabled: true,
+			ID:   crypto.HashID("some.locale.name"),
+			Name: "some.locale.name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			StreetAddress: "Somewhere, USA",
-			SupplierName:  "supplier.local.name",
-			SellerID:      outerSeller.DatabaseID,
+			SupplierName: "supplier.local.name",
+			SellerID:     outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -141,7 +136,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, outerDatacenter.ID, datacenter.ID)
 		assert.Equal(t, outerDatacenter.Name, datacenter.Name)
-		assert.Equal(t, outerDatacenter.StreetAddress, datacenter.StreetAddress)
 		assert.Equal(t, outerDatacenter.Location.Latitude, datacenter.Location.Latitude)
 		assert.Equal(t, outerDatacenter.Location.Longitude, datacenter.Location.Longitude)
 		assert.Equal(t, outerDatacenter.SupplierName, datacenter.SupplierName)
@@ -297,7 +291,6 @@ func TestDeleteSQL(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -346,15 +339,13 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID("some.locale.name"),
-			Name:    "some.locale.name",
-			Enabled: true,
+			ID:   crypto.HashID("some.locale.name"),
+			Name: "some.locale.name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			StreetAddress: "Somewhere, USA",
-			SellerID:      outerSeller.DatabaseID,
+			SellerID: outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -495,7 +486,6 @@ func TestUpdateSQL(t *testing.T) {
 
 	t.Run("SetCustomer", func(t *testing.T) {
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   "Compcode",
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -510,8 +500,6 @@ func TestUpdateSQL(t *testing.T) {
 
 		customerWithID.Name = "No Longer The Company, Ltd."
 		customerWithID.AutomaticSignInDomains = "fredscuttle.com,swampthing.com"
-		customerWithID.Active = false
-		customerWithID.Debug = false
 
 		err = db.SetCustomer(ctx, customerWithID)
 		assert.NoError(t, err)
@@ -519,8 +507,6 @@ func TestUpdateSQL(t *testing.T) {
 		checkCustomer, err := db.Customer("Compcode")
 		assert.NoError(t, err)
 
-		assert.Equal(t, customerWithID.Active, checkCustomer.Active)
-		assert.Equal(t, customerWithID.Debug, checkCustomer.Debug)
 		assert.Equal(t, customerWithID.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
 		assert.Equal(t, customerWithID.Name, checkCustomer.Name)
 
@@ -596,16 +582,14 @@ func TestUpdateSQL(t *testing.T) {
 
 		did := crypto.HashID("some.locale.name")
 		datacenter := routing.Datacenter{
-			ID:      did,
-			Name:    "some.locale.name",
-			Enabled: true,
+			ID:   did,
+			Name: "some.locale.name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			StreetAddress: "Somewhere, USA",
-			SupplierName:  "supplier.local.name",
-			SellerID:      sellerWithID.DatabaseID,
+			SupplierName: "supplier.local.name",
+			SellerID:     sellerWithID.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -616,10 +600,8 @@ func TestUpdateSQL(t *testing.T) {
 
 		modifiedDatacenter := datacenterWithID
 		modifiedDatacenter.Name = "some.newlocale.name"
-		modifiedDatacenter.Enabled = false
 		modifiedDatacenter.Location.Longitude = 70.5
 		modifiedDatacenter.Location.Latitude = 120.5
-		modifiedDatacenter.StreetAddress = "Somewhere, else, USA"
 		modifiedDatacenter.SupplierName = "supplier.nonlocal.name"
 
 		err = db.SetDatacenter(ctx, modifiedDatacenter)
@@ -628,11 +610,59 @@ func TestUpdateSQL(t *testing.T) {
 		checkModDC, err := db.Datacenter(did)
 		assert.NoError(t, err)
 		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
-		assert.Equal(t, modifiedDatacenter.Enabled, checkModDC.Enabled)
 		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
-		assert.Equal(t, modifiedDatacenter.StreetAddress, checkModDC.StreetAddress)
 		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
+	})
+
+	t.Run("UpdateCustomer", func(t *testing.T) {
+		err := db.UpdateCustomer(ctx, customerWithID.Code, "Name", "A Brand New Name")
+		assert.NoError(t, err)
+
+		err = db.UpdateCustomer(ctx, customerWithID.Code, "AutomaticSigninDomains", "somewhere.com,somewhere.else.com")
+		assert.NoError(t, err)
+
+		checkCustomer, err := db.Customer(customerWithID.Code)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "A Brand New Name", checkCustomer.Name)
+		assert.Equal(t, "somewhere.com,somewhere.else.com", checkCustomer.AutomaticSignInDomains)
+	})
+
+	t.Run("UpdateBuyer", func(t *testing.T) {
+		err := db.UpdateBuyer(ctx, buyerWithID.ID, "Live", false)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Debug", false)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
+		assert.NoError(t, err)
+
+		checkBuyer, err := db.Buyer(buyerWithID.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, false, checkBuyer.Live)
+		assert.Equal(t, false, checkBuyer.Debug)
+		assert.Equal(t, "newname", checkBuyer.ShortName)
+	})
+
+	t.Run("UpdateSeller", func(t *testing.T) {
+		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPriceNibblinsPerGB", 133.44)
+		assert.NoError(t, err)
+
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "IngressPriceNibblinsPerGB", 144.33)
+		assert.NoError(t, err)
+
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
+		assert.NoError(t, err)
+
+		checkSeller, err := db.Seller(sellerWithID.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, routing.Nibblin(14433000000000), checkSeller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, "newname", checkSeller.ShortName)
 	})
 
 	t.Run("UpdateRelay", func(t *testing.T) {
@@ -694,14 +724,14 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *newAddr, checkRelay.Addr)
 
-		// relay.Addr
+		// relay.InternalAddr
 		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
 		assert.NoError(t, err)
-		err = db.UpdateRelay(ctx, rid, "Addr", "192.168.0.2:40000")
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "192.168.0.2:40000")
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, *intAddr, checkRelay.Addr)
+		assert.Equal(t, *intAddr, checkRelay.InternalAddr)
 
 		// relay.ManagementAddr
 		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
@@ -845,7 +875,6 @@ func TestInternalConfig(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -1037,7 +1066,6 @@ func TestRouteShaders(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
