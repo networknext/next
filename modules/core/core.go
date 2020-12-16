@@ -963,19 +963,23 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 		for i := range sourceRelayLatency {
 
 			if routeState.DirectJitter > JitterThreshold && routeState.NearRelayJitter[i] > routeState.DirectJitter {
-				if debug != nil {
-					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
-					*debug += fmt.Sprintf("%s temp excluded, high jitter (1). %d > %d\n", relayNames[relayIndex], routeState.NearRelayJitter[i], routeState.DirectJitter)
+				if routeState.NearRelayRTT[i] != 255 {
+					if debug != nil {
+						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
+						*debug += fmt.Sprintf("%s temp excluded, high jitter (1). %d > %d\n", relayNames[relayIndex], routeState.NearRelayJitter[i], routeState.DirectJitter)
+					}
+					out_sourceRelayLatency[i] = 255
 				}
-				out_sourceRelayLatency[i] = 255
 			}
 
 			if routeState.DirectJitter <= JitterThreshold && routeState.NearRelayJitter[i] > JitterThreshold {
-				if debug != nil {
-					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
-					*debug += fmt.Sprintf("%s temp excluded, high jitter (2). %d > %d\n", relayNames[relayIndex], routeState.NearRelayJitter[i], JitterThreshold)
+				if routeState.NearRelayRTT[i] != 255 {
+					if debug != nil {
+						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
+						*debug += fmt.Sprintf("%s temp excluded, high jitter (2). %d > %d\n", relayNames[relayIndex], routeState.NearRelayJitter[i], JitterThreshold)
+					}
+					out_sourceRelayLatency[i] = 255
 				}
-				out_sourceRelayLatency[i] = 255
 			}
 		}
 
@@ -997,11 +1001,13 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 					continue
 				}
 				if out_sourceRelayJitter[i] > JitterThreshold && out_sourceRelayJitter[i] > averageJitter {
-					if debug != nil {
-						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
-						*debug += fmt.Sprintf("%s temp excluded, above avg jitter. %d > %d\n", relayNames[relayIndex], out_sourceRelayJitter[i], averageJitter)
+					if routeState.NearRelayRTT[i] != 255 {
+						if debug != nil {
+							relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
+							*debug += fmt.Sprintf("%s temp excluded, above avg jitter. %d > %d\n", relayNames[relayIndex], out_sourceRelayJitter[i], averageJitter)
+						}
+						out_sourceRelayLatency[i] = 255
 					}
-					out_sourceRelayLatency[i] = 255
 				}
 			}
 		}
@@ -1029,6 +1035,10 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 		}
 
 		for i := range sourceRelayPacketLoss {
+
+			if routeState.NearRelayRTT[i] == 255 {
+				continue
+			}
 
 			if sourceRelayPacketLoss[i] > directPacketLoss {
 				routeState.NearRelayPLHistory[i] |= (1 << index)
@@ -1083,6 +1093,9 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 
 		if numRelaysWithPacketLoss > 0 && numRelaysWithoutPacketLoss > 0 {
 			for i := range sourceRelayPacketLoss {
+				if routeState.NearRelayRTT[i] == 255 {
+					continue
+				}
 				if routeState.NearRelayPLHistory[i] != 0 {
 					if debug != nil {
 						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
