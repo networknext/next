@@ -2779,7 +2779,7 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		updateSQL.Write([]byte("update sellers set short_name=$1 where id=$2"))
 		args = append(args, shortName, seller.DatabaseID)
 		seller.ShortName = shortName
-	case "EgressPrice":
+	case "EgressPriceNibblinsPerGB":
 		egressPrice, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("%v is not a valid float64 type", value)
@@ -2788,7 +2788,7 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		updateSQL.Write([]byte("update sellers set public_egress_price=$1 where id=$2"))
 		args = append(args, int64(egress), seller.DatabaseID)
 		seller.EgressPriceNibblinsPerGB = egress
-	case "IngressPrice":
+	case "IngressPriceNibblinsPerGB":
 		ingressPrice, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("%v is not a valid float64 type", value)

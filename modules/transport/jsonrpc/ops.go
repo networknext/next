@@ -1220,7 +1220,7 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
-	case "ShortName", "AutomaticSigninDomains":
+	case "Name", "AutomaticSigninDomains":
 		err := s.Storage.UpdateCustomer(context.Background(), args.CustomerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateCustomer() error updating record for customer %s: %v", args.CustomerID, err)
@@ -1257,12 +1257,18 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-	case "EggressPrice", "IngressPrice":
+	case "EgressPrice", "IngressPrice":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
+		}
+
+		if args.Field == "EgressPrice" {
+			args.Field = "EgressPriceNibblinsPerGB"
+		} else {
+			args.Field = "IngressPriceNibblinsPerGB"
 		}
 		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, newValue)
 		if err != nil {

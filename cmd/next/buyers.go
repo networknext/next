@@ -799,12 +799,9 @@ func removeBannedUser(
 	return nil
 }
 
-func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, buyerRegex string) {
 
-	buyerID, err := strconv.ParseUint(id, 16, 64)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Error converting BuyerID hex to signed int: %s\n", id), 0)
-	}
+	_, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
 	arg := localjsonrpc.BuyerArg{
 		BuyerID: buyerID,

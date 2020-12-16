@@ -1189,7 +1189,7 @@ func main() {
 			},
 			{ // update
 				Name:       "update",
-				ShortUsage: "next buyer update (buyer ID) (field) (value)",
+				ShortUsage: "next buyer update (buyer name or substring) (field) (value)",
 				ShortHelp:  "Update the specified field for the given buyer",
 				LongHelp:   nextBuyerUpdateLongHelp,
 				Exec: func(_ context.Context, args []string) error {
@@ -1197,7 +1197,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Please provide the buyer name, field and value."), 0)
 					}
 
-					getBuyerInfo(rpcClient, env, args[0])
+					updateBuyer(rpcClient, env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1836,7 +1836,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortHelp:  "Modify the specified field for the given customer",
 				LongHelp:   nextCustomerUpdateLongHelp,
 				Exec: func(_ context.Context, args []string) error {
-					if len(args) != 1 {
+					if len(args) != 3 {
 						handleRunTimeError(fmt.Sprintln("Please provide the customer code, field and value."), 0)
 					}
 
@@ -2414,7 +2414,7 @@ var nextSellerUpdateLongHelp = `
 Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
-  EggressPrice US Dollars
+  EgressPrice US Dollars
   IngressPrice US Dollars
   ShortName    string
 
