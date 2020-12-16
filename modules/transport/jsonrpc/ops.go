@@ -861,7 +861,6 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 			Name:         d.Name,
 			ID:           d.ID,
 			SignedID:     d.SignedID,
-			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
 			SupplierName: d.SupplierName,

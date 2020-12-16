@@ -124,16 +124,14 @@ func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) 
 
 	did := crypto.HashID(dc.Name)
 	datacenter := routing.Datacenter{
-		ID:      did,
-		Name:    dc.Name,
-		Enabled: dc.Enabled,
+		ID:   did,
+		Name: dc.Name,
 		Location: routing.Location{
 			Latitude:  dc.Latitude,
 			Longitude: dc.Longitude,
 		},
-		StreetAddress: dc.StreetAddress,
-		SupplierName:  dc.SupplierName,
-		SellerID:      sellerReply.Seller.DatabaseID,
+		SupplierName: dc.SupplierName,
+		SellerID:     sellerReply.Seller.DatabaseID,
 	}
 
 	args := localjsonrpc.AddDatacenterArgs{

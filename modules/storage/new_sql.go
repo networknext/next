@@ -315,17 +315,15 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 		datacenterIDs[dc.ID] = did
 
 		d := routing.Datacenter{
-			ID:      did,
-			Name:    dc.Name,
-			Enabled: dc.Enabled,
+			ID:   did,
+			Name: dc.Name,
 			Location: routing.Location{
 				Latitude:  dc.Latitude,
 				Longitude: dc.Longitude,
 			},
-			SupplierName:  dc.SupplierName,
-			StreetAddress: dc.StreetAddress,
-			SellerID:      dc.SellerID,
-			DatabaseID:    dc.ID,
+			SupplierName: dc.SupplierName,
+			SellerID:     dc.SellerID,
+			DatabaseID:   dc.ID,
 		}
 
 		datacenters[did] = d

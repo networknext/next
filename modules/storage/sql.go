@@ -1441,13 +1441,11 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	}
 
 	dc := sqlDatacenter{
-		Name:          d.Name,
-		Enabled:       d.Enabled,
-		Latitude:      d.Location.Latitude,
-		Longitude:     d.Location.Longitude,
-		SupplierName:  d.SupplierName,
-		SellerID:      d.SellerID,
-		StreetAddress: d.StreetAddress,
+		Name:         d.Name,
+		Latitude:     d.Location.Latitude,
+		Longitude:    d.Location.Longitude,
+		SupplierName: d.SupplierName,
+		SellerID:     d.SellerID,
 	}
 
 	sql.Write([]byte("update datacenters set ("))
@@ -1783,13 +1781,11 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	}
 
 	dc := sqlDatacenter{
-		Name:          datacenter.Name,
-		Enabled:       datacenter.Enabled,
-		Latitude:      datacenter.Location.Latitude,
-		Longitude:     datacenter.Location.Longitude,
-		SupplierName:  datacenter.SupplierName,
-		SellerID:      datacenter.SellerID,
-		StreetAddress: datacenter.StreetAddress,
+		Name:         datacenter.Name,
+		Latitude:     datacenter.Location.Latitude,
+		Longitude:    datacenter.Location.Longitude,
+		SupplierName: datacenter.SupplierName,
+		SellerID:     datacenter.SellerID,
 	}
 
 	sql.Write([]byte("insert into datacenters ("))

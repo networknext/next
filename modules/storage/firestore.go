@@ -1510,7 +1510,6 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
 		Name:         d.Name,
-		Enabled:      d.Enabled,
 		Latitude:     d.Location.Latitude,
 		Longitude:    d.Location.Longitude,
 		SupplierName: d.SupplierName,
@@ -1618,7 +1617,6 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
 				"name":         d.Name,
-				"enabled":      d.Enabled,
 				"latitude":     d.Location.Latitude,
 				"longitude":    d.Location.Longitude,
 				"supplierName": d.SupplierName,
@@ -1755,9 +1753,8 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 
 		did := crypto.HashID(d.Name)
 		datacenters[did] = routing.Datacenter{
-			ID:      did,
-			Name:    d.Name,
-			Enabled: d.Enabled,
+			ID:   did,
+			Name: d.Name,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
@@ -1904,9 +1901,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID(d.Name),
-			Name:    d.Name,
-			Enabled: d.Enabled,
+			ID:   crypto.HashID(d.Name),
+			Name: d.Name,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,

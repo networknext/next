@@ -119,16 +119,14 @@ func TestInsertSQL(t *testing.T) {
 	t.Run("AddDatacenter", func(t *testing.T) {
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID("some.locale.name"),
-			Name:    "some.locale.name",
-			Enabled: true,
+			ID:   crypto.HashID("some.locale.name"),
+			Name: "some.locale.name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			StreetAddress: "Somewhere, USA",
-			SupplierName:  "supplier.local.name",
-			SellerID:      outerSeller.DatabaseID,
+			SupplierName: "supplier.local.name",
+			SellerID:     outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -138,7 +136,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, outerDatacenter.ID, datacenter.ID)
 		assert.Equal(t, outerDatacenter.Name, datacenter.Name)
-		assert.Equal(t, outerDatacenter.StreetAddress, datacenter.StreetAddress)
 		assert.Equal(t, outerDatacenter.Location.Latitude, datacenter.Location.Latitude)
 		assert.Equal(t, outerDatacenter.Location.Longitude, datacenter.Location.Longitude)
 		assert.Equal(t, outerDatacenter.SupplierName, datacenter.SupplierName)
@@ -342,15 +339,13 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID("some.locale.name"),
-			Name:    "some.locale.name",
-			Enabled: true,
+			ID:   crypto.HashID("some.locale.name"),
+			Name: "some.locale.name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			StreetAddress: "Somewhere, USA",
-			SellerID:      outerSeller.DatabaseID,
+			SellerID: outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -587,16 +582,14 @@ func TestUpdateSQL(t *testing.T) {
 
 		did := crypto.HashID("some.locale.name")
 		datacenter := routing.Datacenter{
-			ID:      did,
-			Name:    "some.locale.name",
-			Enabled: true,
+			ID:   did,
+			Name: "some.locale.name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			StreetAddress: "Somewhere, USA",
-			SupplierName:  "supplier.local.name",
-			SellerID:      sellerWithID.DatabaseID,
+			SupplierName: "supplier.local.name",
+			SellerID:     sellerWithID.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -607,10 +600,8 @@ func TestUpdateSQL(t *testing.T) {
 
 		modifiedDatacenter := datacenterWithID
 		modifiedDatacenter.Name = "some.newlocale.name"
-		modifiedDatacenter.Enabled = false
 		modifiedDatacenter.Location.Longitude = 70.5
 		modifiedDatacenter.Location.Latitude = 120.5
-		modifiedDatacenter.StreetAddress = "Somewhere, else, USA"
 		modifiedDatacenter.SupplierName = "supplier.nonlocal.name"
 
 		err = db.SetDatacenter(ctx, modifiedDatacenter)
@@ -619,10 +610,8 @@ func TestUpdateSQL(t *testing.T) {
 		checkModDC, err := db.Datacenter(did)
 		assert.NoError(t, err)
 		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
-		assert.Equal(t, modifiedDatacenter.Enabled, checkModDC.Enabled)
 		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
-		assert.Equal(t, modifiedDatacenter.StreetAddress, checkModDC.StreetAddress)
 		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
 	})
 

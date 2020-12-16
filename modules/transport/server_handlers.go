@@ -116,9 +116,8 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 	// We should always support the "local" datacenter, even without a datacenter mapping
 	if crypto.HashID("local") == datacenterID {
 		return routing.Datacenter{
-			ID:      crypto.HashID("local"),
-			Name:    "local",
-			Enabled: true,
+			ID:   crypto.HashID("local"),
+			Name: "local",
 		}, nil
 	}
 
