@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -37,24 +38,28 @@ func addCustomer(rpcClient jsonrpc.RPCClient, env Environment, c routing.Custome
 
 }
 
-// func customerLink(rpcClient jsonrpc.RPCClient, env Environment, customerName string, buyerID uint64, sellerID string) {
-// 	args := localjsonrpc.SetCustomerLinkArgs{
-// 		CustomerName: customerName,
-// 		BuyerID:      buyerID,
-// 		SellerID:     sellerID,
-// 	}
+func getCustomerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 
-// 	var reply localjsonrpc.SetCustomerLinkReply
-// 	if err := rpcClient.CallFor(&reply, "OpsService.SetCustomerLink", args); err != nil {
-// 		handleJSONRPCError(env, err)
-// 		return
-// 	}
+	arg := localjsonrpc.CustomerArg{
+		CustomerID: id,
+	}
 
-// 	if buyerID != 0 {
-// 		fmt.Printf("Customer %s linked to buyer ID %d successfully\n", customerName, buyerID)
-// 	}
+	var reply localjsonrpc.CustomerReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Customer", arg); err != nil {
+		handleJSONRPCError(env, err)
+	}
 
-// 	if sellerID != "" {
-// 		fmt.Printf("Customer %s linked to seller ID %s successfully\n", customerName, sellerID)
-// 	}
-// }
+	customerInfo := "Customer " + reply.Customer.Name + " info:\n"
+	customerInfo += "  Code         : " + reply.Customer.Code + "\n"
+	customerInfo += "  Name         : " + reply.Customer.Name + "\n\n"
+	customerInfo += "  Automatic Sign-In Domains:\n"
+	if reply.Customer.AutomaticSignInDomains == "" {
+		customerInfo += "\tnone"
+	} else {
+		customerInfo += "\t" + reply.Customer.AutomaticSignInDomains + "\n"
+	}
+
+	fmt.Println(customerInfo)
+	os.Exit(0)
+
+}
