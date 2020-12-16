@@ -1421,7 +1421,6 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 
 	customerShortName := "shortName"
 	customer := routing.Customer{
-		Debug:                  true,
 		Code:                   customerShortName,
 		Name:                   "Company, Ltd.",
 		AutomaticSignInDomains: "fredscuttle.com",
@@ -1470,15 +1469,13 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 	// fmt.Printf("BuyerID: %d\n", outerBuyer.ID)
 
 	datacenter := routing.Datacenter{
-		ID:      crypto.HashID("some.locale.name"),
-		Name:    "some.locale.name",
-		Enabled: true,
+		ID:   crypto.HashID("some.locale.name"),
+		Name: "some.locale.name",
 		Location: routing.Location{
 			Latitude:  70.5,
 			Longitude: 120.5,
 		},
-		StreetAddress: "Somewhere, USA",
-		SellerID:      outerSeller.DatabaseID,
+		SellerID: outerSeller.DatabaseID,
 	}
 
 	err = storer.AddDatacenter(ctx, datacenter)
