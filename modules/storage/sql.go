@@ -2624,3 +2624,74 @@ func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVa
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
 }
+
+func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	buyer, err := db.Buyer(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	switch field {
+	case "Live":
+		live, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Live: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set is_live_customer=$1 where id=$2"))
+		args = append(args, live, buyer.DatabaseID)
+		buyer.Live = live
+	case "Debug":
+		debug, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Debug: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set debug=$1 where id=$2"))
+		args = append(args, debug, buyer.DatabaseID)
+		buyer.Debug = debug
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update buyers set short_name=$1 where id=$2"))
+		args = append(args, shortName, buyer.DatabaseID)
+		buyer.ShortName = shortName
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.buyerMutex.Lock()
+	db.buyers[buyerID] = buyer
+	db.buyerMutex.Unlock()
+
+	return nil
+}

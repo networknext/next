@@ -1187,6 +1187,20 @@ func main() {
 					return nil
 				},
 			},
+			{ // update
+				Name:       "update",
+				ShortUsage: "next buyer update (buyer ID) (field) (value)",
+				ShortHelp:  "Update the specified field for the given buyer",
+				LongHelp:   nextBuyerUpdateLongHelp,
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+					}
+
+					getBuyerInfo(rpcClient, env, args[0])
+					return nil
+				},
+			},
 			{ // add
 				Name:       "add",
 				ShortUsage: "next buyer add [filepath]",
@@ -2331,3 +2345,38 @@ Example JSON schema required to add a new customer:
 
 All fields are required. The Code field must be unique
 in the system.`
+
+var nextBuyerUpdateLongHelp = `
+Update one field for the specified buyer. The field
+must be one of the following and is case-sensitive:
+
+  Live      bool
+  Debug     bool
+  ShortName string
+
+The value should be whatever type is appropriate for the field
+as defined above.
+`
+var nextCustomerUpdateLongHelp = `
+Update one field for the specified customer. The field
+must be one of the following and is case-sensitive:
+
+  AutomaticSigninDomains string
+  Name                   string
+  
+The value should be whatever type is appropriate for the field
+as defined above. Sign-in domains are provided as a comma-separated 
+list in double-quotes.
+`
+
+var nextSellerUpdateLongHelp = `
+Update one field for the specified seller. The field
+must be one of the following and is case-sensitive:
+
+  EggressPrice US Dollars
+  IngressPrice US Dollars
+  ShortName    string
+
+The value should be whatever type is appropriate for the field
+as defined above.
+`
