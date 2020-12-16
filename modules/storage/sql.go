@@ -117,6 +117,7 @@ type sqlCustomer struct {
 	ID                     int64
 	Name                   string
 	AutomaticSignInDomains string
+	Debug                  bool
 	CustomerCode           string
 	DatabaseID             int64
 	BuyerID                sql.NullInt64 // loaded during syncCustomers()

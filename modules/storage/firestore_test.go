@@ -21,7 +21,6 @@ import (
 type customer struct {
 	Name                   string                 `firestore:"name"`
 	Code                   string                 `firestore:"code"`
-	Active                 bool                   `firestore:"active"`
 	AutomaticSignInDomains string                 `firestore:"automaticSigninDomains"`
 	BuyerRef               *firestore.DocumentRef `firestore:"buyerRef"`
 	SellerRef              *firestore.DocumentRef `firestore:"sellerRef"`
@@ -451,6 +450,8 @@ func TestFirestore(t *testing.T) {
 
 			actual, err = fs.Customer(actualCustomer.Code)
 			assert.NoError(t, err)
+
+			assert.Equal(t, actualCustomer, actual)
 		})
 	})
 
