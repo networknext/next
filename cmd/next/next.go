@@ -1662,11 +1662,24 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortUsage: "next seller remove <id>",
 				ShortHelp:  "Remove a seller from storage",
 				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
+					if len(args) != 1 {
 						handleRunTimeError(fmt.Sprintln("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers"), 0)
 					}
 
 					removeSeller(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{
+				Name:       "info",
+				ShortUsage: "next seller info <id>",
+				ShortHelp:  "Remove a seller from storage",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+					}
+
+					getSellerInfo(rpcClient, env, args[0])
 					return nil
 				},
 			},
