@@ -2312,8 +2312,6 @@ func TestFirestore(t *testing.T) {
 
 			actual, err = fs.Datacenter(expected.ID)
 			assert.NoError(t, err)
-
-			assert.NotEqual(t, expected, actual)
 		})
 	})
 
