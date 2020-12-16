@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -68,4 +69,27 @@ func removeSeller(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	}
 
 	fmt.Printf("Seller with ID \"%s\" removed from storage.\n", id)
+}
+
+func getSellerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+
+	arg := localjsonrpc.SellerArg{
+		ID: id,
+	}
+
+	var reply localjsonrpc.SellerReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Seller", arg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	sellerInfo := "Seller " + reply.Seller.Name + " info:\n"
+	sellerInfo += "  ID           : " + reply.Seller.ID + "\n"
+	sellerInfo += "  Name         : " + reply.Seller.Name + "\n"
+	sellerInfo += "  ShortName    : " + reply.Seller.ShortName + "\n"
+	sellerInfo += "  Egress Price : " + fmt.Sprintf("%4.2f", reply.Seller.EgressPriceNibblinsPerGB.ToDollars()) + "\n"
+	sellerInfo += "  Ingress Price: " + fmt.Sprintf("%4.2f", reply.Seller.IngressPriceNibblinsPerGB.ToDollars()) + "\n"
+
+	fmt.Println(sellerInfo)
+	os.Exit(0)
+
 }

@@ -1421,8 +1421,6 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 
 	customerShortName := "shortName"
 	customer := routing.Customer{
-		Active:                 true,
-		Debug:                  true,
 		Code:                   customerShortName,
 		Name:                   "Company, Ltd.",
 		AutomaticSignInDomains: "fredscuttle.com",
