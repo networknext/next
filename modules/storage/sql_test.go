@@ -626,6 +626,56 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
 	})
 
+	t.Run("UpdateCustomer", func(t *testing.T) {
+		err := db.UpdateCustomer(ctx, customerWithID.Code, "Name", "A Brand New Name")
+		assert.NoError(t, err)
+
+		err = db.UpdateCustomer(ctx, customerWithID.Code, "AutomaticSigninDomains", "somewhere.com,somewhere.else.com")
+		assert.NoError(t, err)
+
+		checkCustomer, err := db.Customer(customerWithID.Code)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "A Brand New Name", checkCustomer.Name)
+		assert.Equal(t, "somewhere.com,somewhere.else.com", checkCustomer.AutomaticSignInDomains)
+	})
+
+	t.Run("UpdateBuyer", func(t *testing.T) {
+		err := db.UpdateBuyer(ctx, buyerWithID.ID, "Live", false)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Debug", false)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
+		assert.NoError(t, err)
+
+		checkBuyer, err := db.Buyer(buyerWithID.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, false, checkBuyer.Live)
+		assert.Equal(t, false, checkBuyer.Debug)
+		assert.Equal(t, "newname", checkBuyer.ShortName)
+	})
+
+	t.Run("UpdateSeller", func(t *testing.T) {
+		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPrice", 133.44)
+		assert.NoError(t, err)
+
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "IngressPrice", 144.33)
+		assert.NoError(t, err)
+
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
+		assert.NoError(t, err)
+
+		checkSeller, err := db.Seller(sellerWithID.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, routing.Nibblin(14433000000000), checkSeller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, "newname", checkSeller.ShortName)
+	})
+
 	t.Run("UpdateRelay", func(t *testing.T) {
 
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
