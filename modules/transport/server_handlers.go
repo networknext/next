@@ -874,6 +874,8 @@ func GetRouteAddressesAndPublicKeys(
 	totalNumRelays := int32(len(allRelayIDs))
 	foundRelayCount := int32(0)
 
+	enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
+
 	for i := int32(0); i < numTokens-2; i++ {
 		relayIndex := routeRelays[i]
 		if relayIndex < totalNumRelays {
@@ -883,7 +885,6 @@ func GetRouteAddressesAndPublicKeys(
 				continue
 			}
 
-			enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
 			routeAddresses = AddAddress(enableInternalIPs, i, relay, allRelayIDs, storer, routeRelays, routeAddresses)
 
 			routePublicKeys[i+1] = relay.PublicKey
