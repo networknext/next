@@ -11,7 +11,6 @@ type Customer struct {
 	Code                   string
 	Name                   string
 	AutomaticSignInDomains string
-	Active                 bool
 	Debug                  bool
 	BuyerRef               *firestore.DocumentRef // TODO: chopping block
 	SellerRef              *firestore.DocumentRef // TODO: chopping block
@@ -24,7 +23,6 @@ func (c *Customer) String() string {
 	customer += "\tCode                  : '" + c.Code + "'\n"
 	customer += "\tName                  : '" + c.Name + "'\n"
 	customer += "\tAutomaticSignInDomains: '" + c.AutomaticSignInDomains + "'\n"
-	customer += "\tActive                : " + strconv.FormatBool(c.Active) + "\n"
 	customer += "\tDebug                 : " + strconv.FormatBool(c.Debug) + "\n"
 	customer += "\tDatabaseID            : " + fmt.Sprintf("%d", c.DatabaseID) + "\n"
 
