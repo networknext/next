@@ -2162,7 +2162,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code:                   customer.Code,
 						Name:                   customer.Name,
 						AutomaticSignInDomains: customer.AutomaticSignInDomains,
-						Active:                 customer.Active,
 						Debug:                  customer.Debug,
 						BuyerRef:               nil,
 						SellerRef:              nil,
@@ -2182,13 +2181,11 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								Code                   string
 								Name                   string
 								AutomaticSignInDomains string
-								Active                 bool
 								Debug                  bool
 							}{
 								Code:                   "amazon",
 								Name:                   "Amazon.com, Inc.",
 								AutomaticSignInDomains: "amazon.networknext.com // comma separated list",
-								Active:                 true,
 								Debug:                  false,
 							}
 
