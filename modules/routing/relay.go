@@ -133,7 +133,7 @@ func GetBandwidthRuleSQL(bwRule int64) (BandWidthRule, error) {
 		return BWRuleFlat, nil
 	case 2:
 		return BWRuleBurst, nil
-	case 4:
+	case 3:
 		return BWRulePool, nil
 	default:
 		return BWRuleNone, fmt.Errorf("invalid BandWidthRule '%d'", bwRule)
@@ -724,6 +724,7 @@ func (r *Relay) String() string {
 	relay += "\tID                 : " + fmt.Sprintf("%d", r.ID) + "\n"
 	relay += "\tName               : " + r.Name + "\n"
 	relay += "\tAddr               : " + r.Addr.String() + "\n"
+	relay += "\tInternalAddr       : " + r.InternalAddr.String() + "\n"
 	relay += "\tPublicKey          : " + string(r.PublicKey) + "\n"
 	relay += "\tSeller             : " + fmt.Sprintf("%d", r.Seller.DatabaseID) + "\n"
 	relay += "\tDatacenter         : " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
@@ -738,7 +739,6 @@ func (r *Relay) String() string {
 	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
 	relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
 	relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
-	relay += "\tUpdateKey          : " + string(r.UpdateKey) + "\n"
 	relay += "\tMRC                : " + fmt.Sprintf("%v", r.MRC) + "\n"
 	relay += "\tOverage            : " + fmt.Sprintf("%v", r.Overage) + "\n"
 	relay += "\tBWRule             : " + fmt.Sprintf("%v", r.BWRule) + "\n"

@@ -96,11 +96,12 @@ var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
 }
 
 type RelayBackendMetrics struct {
-	Goroutines        Gauge
-	MemoryAllocated   Gauge
-	RouteMatrix       RouteMatrixMetrics
-	PingStatsMetrics  AnalyticsMetrics
-	RelayStatsMetrics AnalyticsMetrics
+	Goroutines              Gauge
+	MemoryAllocated         Gauge
+	RouteMatrix             RouteMatrixMetrics
+	PingStatsMetrics        AnalyticsMetrics
+	RelayStatsMetrics       AnalyticsMetrics
+	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyRelayBackendMetrics RelayBackendMetrics = RelayBackendMetrics{
@@ -126,10 +127,11 @@ var EmptyRouteMatrixMetrics RouteMatrixMetrics = RouteMatrixMetrics{
 }
 
 type AnalyticsServiceMetrics struct {
-	Goroutines        Gauge
-	MemoryAllocated   Gauge
-	PingStatsMetrics  AnalyticsMetrics
-	RelayStatsMetrics AnalyticsMetrics
+	Goroutines              Gauge
+	MemoryAllocated         Gauge
+	PingStatsMetrics        AnalyticsMetrics
+	RelayStatsMetrics       AnalyticsMetrics
+	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
@@ -171,6 +173,105 @@ var EmptyBigTableMetrics = BigTableMetrics{
 	ReadSliceSuccessCount:  &EmptyCounter{},
 	ReadMetaFailureCount:   &EmptyCounter{},
 	ReadSliceFailureCount:  &EmptyCounter{},
+}
+
+type VanityServiceMetrics struct {
+	Goroutines               Gauge
+	MemoryAllocated          Gauge
+	ReceivedVanityCount      Counter
+	UpdateVanitySuccessCount Counter
+	UpdateVanityFailureCount Counter
+	ReadVanitySuccessCount   Counter
+	ReadVanityFailureCount   Counter
+}
+
+var EmptyVanityServiceMetrics = VanityServiceMetrics{
+	Goroutines:               &EmptyGauge{},
+	MemoryAllocated:          &EmptyGauge{},
+	ReceivedVanityCount:      &EmptyCounter{},
+	UpdateVanitySuccessCount: &EmptyCounter{},
+	UpdateVanityFailureCount: &EmptyCounter{},
+	ReadVanitySuccessCount:   &EmptyCounter{},
+	ReadVanityFailureCount:   &EmptyCounter{},
+}
+
+func NewVanityServiceMetrics(ctx context.Context, metricsHandler Handler) (*VanityServiceMetrics, error) {
+	var err error
+
+	vanityMetrics := VanityServiceMetrics{}
+
+	vanityMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Goroutine Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity_metrics.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the vanity_metrics is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Memory Allocated",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity_metrics.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the vanity_metrics has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.ReceivedVanityCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Received Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.received.count",
+		Unit:        "reads",
+		Description: "The number of successful vanity metrics received from ZeroMQ",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.UpdateVanitySuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Update Success Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.update.success.count",
+		Unit:        "updates",
+		Description: "The number of successful vanity metric updates to the metrics handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.UpdateVanityFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Update Failure Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.update.failure.count",
+		Unit:        "updates",
+		Description: "The number of failed vanity metric updates to the metrics handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.ReadVanitySuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Read Success Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.read.success.count",
+		Unit:        "reads",
+		Description: "The number of successful vanity metric reads from StackDriver",
+	})
+
+	vanityMetrics.ReadVanityFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Read Failure Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.read.failure.count",
+		Unit:        "reads",
+		Description: "The number of failed vanity metric reads from StackDriver",
+	})
+
+	return &vanityMetrics, nil
 }
 
 func NewBigTableMetrics(ctx context.Context, metricsHandler Handler) (*BigTableMetrics, error) {
@@ -636,6 +737,73 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 
 	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
 
+	//RelayNamesHash
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Received",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries",
+		Unit:        "entries",
+		Description: "The total number of Route Matrix Stats entries received through Google Pub/Sub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Submitted",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Queued",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Flushed",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Read Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Write Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &relayBackendMetrics, nil
 }
 
@@ -842,6 +1010,73 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		DisplayName: "Relay Stats Write Failure",
 		ServiceName: "analytics",
 		ID:          "analytics.relay_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	//RelayNamesHash
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Received",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries",
+		Unit:        "entries",
+		Description: "The total number of Route Matrix Stats entries received through Google Pub/Sub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Submitted",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Queued",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Flushed",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Read Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Write Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.error.write_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

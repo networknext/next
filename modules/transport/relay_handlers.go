@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/networknext/backend/modules/envvar"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
@@ -40,12 +42,10 @@ type RelayInitHandlerConfig struct {
 }
 
 type RelayUpdateHandlerConfig struct {
-	RelayMap          *routing.RelayMap
-	StatsDB           *routing.StatsDatabase
-	Metrics           *metrics.RelayUpdateMetrics
-	Storer            storage.Storer
-	InternalIPSellers []string
-	EnableInternalIPs bool
+	RelayMap *routing.RelayMap
+	StatsDB  *routing.StatsDatabase
+	Metrics  *metrics.RelayUpdateMetrics
+	Storer   storage.Storer
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -337,13 +337,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		relaysToPing := make([]routing.RelayPingData, 0)
 		allRelayData := params.RelayMap.GetAllRelayData()
 
-		shouldTryUseInternalIPs := false
-		if params.EnableInternalIPs {
-			for i := range params.InternalIPSellers {
-				if params.InternalIPSellers[i] == relay.Seller.Name {
-					shouldTryUseInternalIPs = true
-				}
-			}
+		enableInternalIPs, err := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
+		if err != nil {
+			level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
 		}
 
 		for _, v := range allRelayData {
@@ -356,7 +352,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 				if otherRelay.State == routing.RelayStateEnabled {
 					var address string
-					if shouldTryUseInternalIPs && relay.Seller.Name == otherRelay.Seller.Name {
+					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && relay.InternalAddr.String() != ":0" && otherRelay.InternalAddr.String() != ":0" {
 						address = otherRelay.InternalAddr.String()
 					} else {
 						address = v.Addr.String()

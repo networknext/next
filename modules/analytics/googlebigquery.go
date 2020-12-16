@@ -118,3 +118,50 @@ func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
 		bq.Metrics.EntriesFlushed.Add(float64(len(entries)))
 	}
 }
+
+type RouteMatrixStatsWriter interface {
+	Write(ctx context.Context, entry *RouteMatrixStatsEntry) error
+}
+
+type NoOpRouteMatrixStatsWriter struct {
+	written uint64
+}
+
+func (bq *NoOpRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMatrixStatsEntry) error {
+	atomic.AddUint64(&bq.written, 1)
+	return nil
+}
+
+type GoogleBigQueryRouteMatrixStatsWriter struct {
+	Metrics       *metrics.AnalyticsMetrics
+	Logger        log.Logger
+	TableInserter *bigquery.Inserter
+
+	entries chan *RouteMatrixStatsEntry
+}
+
+func NewGoogleBigQueryRouteMatrixStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) (GoogleBigQueryRouteMatrixStatsWriter, error) {
+
+	return GoogleBigQueryRouteMatrixStatsWriter{
+		Metrics:       metrics,
+		Logger:        logger,
+		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
+		entries:       make(chan *RouteMatrixStatsEntry, DefaultBigQueryChannelSize),
+	}, nil
+}
+
+func (bq *GoogleBigQueryRouteMatrixStatsWriter) Write(ctx context.Context, entries *RouteMatrixStatsEntry) error {
+	bq.Metrics.EntriesSubmitted.Add(1)
+	bq.entries <- entries
+	return nil
+}
+
+func (bq *GoogleBigQueryRouteMatrixStatsWriter) WriteLoop(ctx context.Context) {
+	for entries := range bq.entries {
+		if err := bq.TableInserter.Put(ctx, entries); err != nil {
+			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+		}
+		bq.Metrics.EntriesFlushed.Add(1)
+	}
+}

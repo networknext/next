@@ -479,6 +479,7 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	if !tableExists {
+		level.Debug(logger).Log("msg", "Could not find table in bigtable instance")
 		// Create a table with the given name and column families
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
 			return nil, nil, err
@@ -489,6 +490,10 @@ func SetupBigtable(ctx context.Context,
 		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
 			return nil, nil, err
 		}
+
+		level.Debug(logger).Log("msg", "Successfully created table in bigtable instance")
+	} else {
+		level.Debug(logger).Log("msg", "Found table in bigtable instance")
 	}
 
 	// Close the admin client
@@ -504,11 +509,16 @@ func SetupBigtable(ctx context.Context,
 
 	if btEmulatorOK {
 		if historicalPath, ok := os.LookupEnv("BIGTABLE_HISTORICAL_TXT"); ok {
-			// Insert historical data into bigtable during local testing
-			level.Info(logger).Log("msg", "Seeding bigtable with historical data.")
-			err = SeedBigtable(ctx, btClient, btCfNames, historicalPath)
-			if err != nil {
-				return nil, nil, err
+			// Check if historical path is valid
+			if _, err := os.Stat(historicalPath); !os.IsNotExist(err) {
+				// Insert historical data into bigtable during local testing
+				level.Info(logger).Log("msg", "Seeding bigtable with historical data.")
+				err = SeedBigtable(ctx, btClient, btCfNames, historicalPath)
+				if err != nil {
+					return nil, nil, err
+				}
+			} else {
+				level.Info(logger).Log("msg", "path", historicalPath, "Does not exist. Skipping over seeding bigtable with historical data")
 			}
 		} else {
 			level.Info(logger).Log("msg", "Could not locate BIGTABLE_HISTORICAL_TXT. Skipping over seeding bigtable with historical data")

@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"math"
 	"net"
 
 	"github.com/networknext/backend/modules/core"
@@ -16,11 +17,10 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 0
+	SessionDataVersion = 4
 	MaxSessionDataSize = 511
 
-	MaxNearRelays = 32
-	MaxTokens     = 7
+	MaxTokens = 7
 
 	PacketTypeServerUpdate       = 220
 	PacketTypeSessionUpdate      = 221
@@ -40,15 +40,18 @@ const (
 	ConnectionTypeCellular = 3
 	ConnectionTypeMax      = 3
 
-	PlatformTypeUnknown = 0
-	PlatformTypeWindows = 1
-	PlatformTypeMac     = 2
-	PlatformTypeUnix    = 3
-	PlatformTypeSwitch  = 4
-	PlatformTypePS4     = 5
-	PlatformTypeIOS     = 6
-	PlatformTypeXBOXOne = 7
-	PlatformTypeMax     = 7
+	PlatformTypeUnknown     = 0
+	PlatformTypeWindows     = 1
+	PlatformTypeMac         = 2
+	PlatformTypeUnix        = 3
+	PlatformTypeSwitch      = 4
+	PlatformTypePS4         = 5
+	PlatformTypeIOS         = 6
+	PlatformTypeXBOXOne     = 7
+	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
+	PlatformTypeXBOXSeriesX = 8
+	PlatformTypePS5         = 9
+	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)
@@ -66,6 +69,8 @@ const (
 	FallbackFlagsCount_401                  = 12
 
 	MaxTags = 8
+
+	NextMaxSessionDebug = 1024
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
@@ -285,9 +290,9 @@ type SessionUpdatePacket struct {
 	NextPacketLoss                  float32
 	NumNearRelays                   int32
 	NearRelayIDs                    []uint64
-	NearRelayRTT                    []float32
-	NearRelayJitter                 []float32
-	NearRelayPacketLoss             []float32
+	NearRelayRTT                    []int32
+	NearRelayJitter                 []int32
+	NearRelayPacketLoss             []int32
 	NextKbpsUp                      uint32
 	NextKbpsDown                    uint32
 	PacketsSentClientToServer       uint64
@@ -339,7 +344,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&packet.UserHash)
 
-	stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax)
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 5) {
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_New)
+	} else {
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_Old)
+	}
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 
@@ -404,20 +413,32 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
 
-	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+	stream.SerializeInteger(&packet.NumNearRelays, 0, core.MaxNearRelays)
 
 	if stream.IsReading() {
 		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayRTT = make([]float32, packet.NumNearRelays)
-		packet.NearRelayJitter = make([]float32, packet.NumNearRelays)
-		packet.NearRelayPacketLoss = make([]float32, packet.NumNearRelays)
+		packet.NearRelayRTT = make([]int32, packet.NumNearRelays)
+		packet.NearRelayJitter = make([]int32, packet.NumNearRelays)
+		packet.NearRelayPacketLoss = make([]int32, packet.NumNearRelays)
 	}
 
 	for i := int32(0); i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIDs[i])
-		stream.SerializeFloat32(&packet.NearRelayRTT[i])
-		stream.SerializeFloat32(&packet.NearRelayJitter[i])
-		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
+		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 4) {
+			// SDK 4.0.4 optimized transmission of near relay rtt, jitter and packet loss
+			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+		} else {
+			var rtt, jitter, packetLoss float32
+			stream.SerializeFloat32(&rtt)
+			stream.SerializeFloat32(&jitter)
+			stream.SerializeFloat32(&packetLoss)
+
+			packet.NearRelayRTT[i] = int32(math.Ceil(float64(rtt)))
+			packet.NearRelayJitter[i] = int32(math.Ceil(float64(jitter)))
+			packet.NearRelayPacketLoss[i] = int32(math.Floor(float64(packetLoss + 0.5)))
+		}
 	}
 
 	if packet.Next {
@@ -445,11 +466,13 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 }
 
 type SessionResponsePacket struct {
+	Version            SDKVersion
 	SessionID          uint64
 	SliceNumber        uint32
 	SessionDataBytes   int32
 	SessionData        [MaxSessionDataSize]byte
 	RouteType          int32
+	NearRelaysChanged  bool
 	NumNearRelays      int32
 	NearRelayIDs       []uint64
 	NearRelayAddresses []net.UDPAddr
@@ -457,42 +480,76 @@ type SessionResponsePacket struct {
 	Tokens             []byte
 	Multipath          bool
 	Committed          bool
+	HasDebug           bool
+	Debug              string
+	ExcludeNearRelays  bool
+	NearRelayExcluded  [core.MaxNearRelays]bool
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
+
 	stream.SerializeUint64(&packet.SessionID)
+
 	stream.SerializeUint32(&packet.SliceNumber)
+
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
 	}
+
 	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
-	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
-	if stream.IsReading() {
-		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+
+	nearRelaysChanged := true
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
+		stream.SerializeBool(&packet.NearRelaysChanged)
+		nearRelaysChanged = packet.NearRelaysChanged
 	}
-	for i := int32(0); i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIDs[i])
-		stream.SerializeAddress(&packet.NearRelayAddresses[i])
+
+	if nearRelaysChanged {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, core.MaxNearRelays)
+		if stream.IsReading() {
+			packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
+			packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+		}
+		for i := int32(0); i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIDs[i])
+			stream.SerializeAddress(&packet.NearRelayAddresses[i])
+		}
 	}
+
 	if packet.RouteType != routing.RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
+
 	if packet.RouteType == routing.RouteTypeNew {
 		if stream.IsReading() {
 			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
+
 	if packet.RouteType == routing.RouteTypeContinue {
 		if stream.IsReading() {
 			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
 		}
 		stream.SerializeBytes(packet.Tokens)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
+		stream.SerializeBool(&packet.HasDebug)
+		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 5) {
+		stream.SerializeBool(&packet.ExcludeNearRelays)
+		if packet.ExcludeNearRelays {
+			for i := range packet.NearRelayExcluded {
+				stream.SerializeBool(&packet.NearRelayExcluded[i])
+			}
+		}
 	}
 
 	return stream.Error()
@@ -506,9 +563,10 @@ type SessionData struct {
 	ExpireTimestamp  uint64
 	Initial          bool
 	Location         routing.Location
+	RouteChanged     bool
 	RouteNumRelays   int32
 	RouteCost        int32
-	RouteRelayIDs    [routing.MaxRelays]uint64
+	RouteRelayIDs    [core.MaxRelaysPerRoute]uint64
 	RouteState       core.RouteState
 	EverOnNext       bool
 	FellBackToDirect bool
@@ -536,15 +594,21 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 }
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
+
 	stream.SerializeBits(&sessionData.Version, 8)
-	if stream.IsReading() && sessionData.Version != SessionDataVersion {
-		return fmt.Errorf("bad session data version %d, expected %d", sessionData.Version, SessionDataVersion)
+	if stream.IsReading() && sessionData.Version > SessionDataVersion {
+		return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
 	}
+
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
+
 	stream.SerializeUint32(&sessionData.SliceNumber)
+
 	stream.SerializeUint64(&sessionData.ExpireTimestamp)
+
 	stream.SerializeBool(&sessionData.Initial)
+
 	locationSize := uint32(sessionData.Location.Size())
 	stream.SerializeUint32(&locationSize)
 	if stream.IsReading() {
@@ -560,14 +624,29 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 		stream.SerializeBytes(locationBytes)
 	}
+
+	if sessionData.Version >= 3 {
+		stream.SerializeBool(&sessionData.RouteChanged)
+	}
+
 	hasRoute := sessionData.RouteNumRelays > 0
 	stream.SerializeBool(&hasRoute)
-	if hasRoute {
-		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, routing.MaxRelays)
+
+	if sessionData.Version >= 4 {
 		stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
+	}
+
+	if hasRoute {
+		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, core.MaxRelaysPerRoute)
+
+		if sessionData.Version < 4 {
+			stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
+		}
+
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
 		}
+
 	}
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)
@@ -584,14 +663,52 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ProMode)
 	stream.SerializeBool(&sessionData.RouteState.Multipath)
 	stream.SerializeBool(&sessionData.RouteState.Committed)
-	stream.SerializeBool(&sessionData.RouteState.CommitPending)
-	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 3)
+	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
+	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 4)
 	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
-	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
+	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
+
+	if sessionData.Version >= 2 {
+		stream.SerializeBool(&sessionData.RouteState.Mispredict)
+	}
+
 	stream.SerializeBool(&sessionData.EverOnNext)
+
 	stream.SerializeBool(&sessionData.FellBackToDirect)
+
+	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
+
+	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
+		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
+		if sessionData.Version >= 1 {
+			if sessionData.Version >= 2 {
+				nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
+				stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
+				sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
+			} else {
+				stream.SerializeUint32(&sessionData.RouteState.NearRelayPLHistory[i])
+			}
+
+		}
+	}
+
+	if sessionData.Version >= 2 {
+		directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
+		stream.SerializeInteger(&directPLHistory, 0, 255)
+		sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
+	}
+
+	if sessionData.Version >= 1 {
+		stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
+		stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
+	}
+
+	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
+	stream.SerializeBool(&sessionData.RouteState.RouteLost)
+	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
 
 	return stream.Error()
 }

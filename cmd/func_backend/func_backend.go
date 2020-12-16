@@ -123,7 +123,7 @@ func OptimizeThread() {
 			}
 		}
 
-		core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenterIDs)
+		core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenterIDs)
 
 		backend.mutex.Unlock()
 
@@ -187,8 +187,8 @@ func (backend *Backend) GetNearRelays() []routing.RelayData {
 	allRelayData := backend.relayMap.GetAllRelayData()
 	backend.mutex.Unlock()
 	sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
-	if len(allRelayData) > int(transport.MaxNearRelays) {
-		allRelayData = allRelayData[:transport.MaxNearRelays]
+	if len(allRelayData) > int(core.MaxNearRelays) {
+		allRelayData = allRelayData[:core.MaxNearRelays]
 	}
 	return allRelayData
 }
@@ -225,6 +225,16 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
 		return
 	}
+}
+
+func excludeNearRelays(sessionResponse *transport.SessionResponsePacket, routeState core.RouteState) {
+	numExcluded := 0
+	for i := 0; i < int(routeState.NumNearRelays); i++ {
+		if routeState.NearRelayRTT[i] == 255 {
+			sessionResponse.NearRelayExcluded[i] = true
+		}
+	}
+	sessionResponse.ExcludeNearRelays = numExcluded > 0
 }
 
 func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
@@ -287,13 +297,13 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if backend.mode == BACKEND_MODE_JITTER {
 		if sessionUpdate.JitterClientToServer > 0 {
 			fmt.Printf("%f jitter up\n", sessionUpdate.JitterClientToServer)
-			if sessionUpdate.JitterClientToServer > 10 {
+			if sessionUpdate.JitterClientToServer > 100 {
 				panic("jitter up too high")
 			}
 		}
 		if sessionUpdate.JitterServerToClient > 0 {
 			fmt.Printf("%f jitter down\n", sessionUpdate.JitterServerToClient)
-			if sessionUpdate.JitterServerToClient > 10 {
+			if sessionUpdate.JitterServerToClient > 100 {
 				panic("jitter down too high")
 			}
 		}
@@ -323,7 +333,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
 		for i := 0; i <= int(sessionUpdate.NumNearRelays); i++ {
-			fmt.Printf("near relay: id = %x, rtt = %f, jitter = %f, packet loss = %f\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
+			fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %d\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
 		}
 	}
 
@@ -436,8 +446,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 		// Make next route from near relays (but respect hop limit)
 		numRelays := len(nearRelays)
-		if numRelays > routing.MaxRelays {
-			numRelays = routing.MaxRelays
+		if numRelays > core.MaxRelaysPerRoute {
+			numRelays = core.MaxRelaysPerRoute
 		}
 		nextRoute := routing.Route{
 			NumRelays:       numRelays,
@@ -509,6 +519,10 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		fmt.Printf("error: nil session response\n")
 		return
 	}
+
+	sessionResponse.Version = sessionUpdate.Version
+
+	excludeNearRelays(sessionResponse, sessionData.RouteState)
 
 	sessionDataBuffer, err := transport.MarshalSessionData(&sessionData)
 	if err != nil {

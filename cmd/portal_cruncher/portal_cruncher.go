@@ -94,6 +94,7 @@ func mainReturnWithCode() int {
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BIGTABLE",
+			Enum:        config.FEATURE_BIGTABLE,
 			Value:       false,
 			Description: "Bigtable integration for historic session data",
 		},
@@ -198,7 +199,7 @@ func mainReturnWithCode() int {
 	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
 
 	// Determine if should insert into Bigtable
-	useBigtable := featureConfig.FeatureEnabled(0)
+	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE)
 
 	// Get Bigtable instance ID
 	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")

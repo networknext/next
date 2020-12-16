@@ -166,6 +166,7 @@ func main() {
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BIGTABLE",
+			Enum:        config.FEATURE_BIGTABLE,
 			Value:       false,
 			Description: "Bigtable integration for historic session data",
 		},
@@ -182,7 +183,7 @@ func main() {
 		level.Info(logger).Log("msg", "Detected bigtable emulator host")
 	}
 
-	useBigtable := featureConfig.FeatureEnabled(0) && (gcpOK || btEmulatorOK)
+	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
 
 	var btClient *storage.BigTable
 	var btCfName string
@@ -340,6 +341,7 @@ func main() {
 		RedisPoolSessionSlices: redisPoolSessionSlices,
 		RedisPoolSessionMap:    redisPoolSessionMap,
 		Storage:                db,
+		Env:                    env,
 	}
 
 	configService := jsonrpc.ConfigService{

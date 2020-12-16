@@ -248,7 +248,6 @@ func (o *Optimizer) removeRelay(relayAddress string) {
 }
 
 func (o *Optimizer) UpdateRelay(requestBody []byte) {
-	fmt.Println("update relay called")
 	var relayUpdateRequest transport.RelayUpdateRequest
 	err := relayUpdateRequest.UnmarshalBinary(requestBody)
 	if err != nil {

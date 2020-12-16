@@ -11,16 +11,16 @@ import (
 	"encoding/binary"
 	"expvar"
 	"fmt"
-	"github.com/networknext/backend/modules/common/helpers"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/networknext/backend/modules/common/helpers"
 
 	"os"
 	"os/signal"
@@ -31,6 +31,7 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
@@ -69,8 +70,8 @@ func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
 	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
 	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
 
-	lat := (float64(latBits)) / 0xFFFFFFFF
-	long := (float64(longBits)) / 0xFFFFFFFF
+	lat := (float32(latBits)) / 0xFFFFFFFF
+	long := (float32(longBits)) / 0xFFFFFFFF
 
 	return routing.Location{
 		Latitude:  (-90.0 + lat*180.0) * 0.5,
@@ -150,26 +151,6 @@ func mainReturnWithCode() int {
 			backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 			time.Sleep(time.Second * 10)
-		}
-	}()
-
-	// Create datacenter tracker
-	datacenterTracker := transport.NewDatacenterTracker()
-
-	go func() {
-		for {
-			unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
-			emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
-
-			for _, datacenter := range unknownDatacenters {
-				level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
-			}
-
-			for _, datacenter := range emptyDatacenters {
-				level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
-			}
-
-			time.Sleep(10 * time.Second)
 		}
 	}()
 
@@ -274,19 +255,19 @@ func mainReturnWithCode() int {
 
 	var matrixStore storage.MatrixStore
 	matrixStoreAddr := envvar.Get("MATRIX_STORE_ADDRESS", "")
-	if matrixStoreAddr != ""{
-		mSReadTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250 *time.Millisecond)
+	if matrixStoreAddr != "" {
+		mSReadTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
-		mSWriteTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250 *time.Millisecond)
+		mSWriteTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
 
-		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddr, mSReadTimeout, mSWriteTimeout, 0 *time.Second )
+		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddr, mSReadTimeout, mSWriteTimeout, 0*time.Second)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
@@ -319,7 +300,7 @@ func mainReturnWithCode() int {
 				}
 
 				valveBackend, err := envvar.GetBool("VALVE_SERVER_BACKEND", false)
-				if err != nil{
+				if err != nil {
 					level.Error(logger).Log("err", err)
 				}
 
@@ -330,7 +311,7 @@ func mainReturnWithCode() int {
 					var buffer []byte
 					start := time.Now()
 
-					newRelayBackend, err :=envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
+					newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
 					if err != nil {
 						level.Error(logger).Log("err", err)
 					}
@@ -340,14 +321,14 @@ func mainReturnWithCode() int {
 							if err != nil {
 								level.Error(logger).Log("err", err)
 							}
-						}else{
+						} else {
 							buffer, err = matrixStore.GetLiveMatrix(storage.MatrixTypeNormal)
 							if err != nil {
 								level.Error(logger).Log("err", err)
 							}
 						}
 
-					} else{
+					} else {
 						var routeEntriesReader io.ReadCloser
 
 						// Default to reading route matrix from file
@@ -505,10 +486,52 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Setup feature config for vanity metrics
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_VANITY_METRIC",
+			Enum:        config.FEATURE_VANITY_METRIC,
+			Value:       false,
+			Description: "Vanity metrics for fast aggregate statistic lookup",
+		},
+	})
+	featureConfig = envVarConfig
+	// Determine if should use vanity metrics
+	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
+
+	// Start vanity metrics publisher
+	vanityPublishers := make([]pubsub.Publisher, 0)
+	{
+		vanityMetricHosts := envvar.GetList("FEATURE_VANITY_METRIC_HOSTS", []string{"tcp://127.0.0.1:6666"})
+
+		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		for _, host := range vanityMetricHosts {
+			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
+				return 1
+			}
+
+			vanityPublishers = append(vanityPublishers, vanityPublisher)
+		}
+	}
+
+	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
@@ -618,16 +641,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	internalIPSellers := strings.Split(envvar.Get("INTERNAL_IP_SELLERS", ""), ",")
-	enableInternalIPs, err := envvar.GetBool("ENABLE_INTERNAL_IPS", false)
-	if err != nil {
-		level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
-		return 1
-	}
-
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, datacenterTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, datacenterTracker, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, internalIPSellers, enableInternalIPs)
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
