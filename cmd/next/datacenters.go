@@ -90,7 +90,6 @@ func datacenters(
 					ID:           fmt.Sprintf("%d", int64(dc.ID)),
 					Latitude:     dc.Latitude,
 					Longitude:    dc.Longitude,
-					Enabled:      dc.Enabled,
 					SupplierName: dc.SupplierName,
 				})
 			}
@@ -101,7 +100,6 @@ func datacenters(
 					ID:           fmt.Sprintf("%016x", dc.ID),
 					Latitude:     dc.Latitude,
 					Longitude:    dc.Longitude,
-					Enabled:      dc.Enabled,
 					SupplierName: dc.SupplierName,
 				})
 			}

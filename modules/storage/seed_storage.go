@@ -107,7 +107,6 @@ func SeedStorage(
 		did := crypto.HashID("local")
 		datacenter := routing.Datacenter{
 			ID:           did,
-			SignedID:     int64(did),
 			Name:         "local",
 			SupplierName: "usw2-az4",
 		}

@@ -851,7 +851,6 @@ type datacenter struct {
 	SignedID     int64   `json:"signed_id"`
 	Latitude     float32 `json:"latitude"`
 	Longitude    float32 `json:"longitude"`
-	Enabled      bool    `json:"enabled"`
 	SupplierName string  `json:"supplierName"`
 }
 
@@ -860,7 +859,6 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
 			ID:           d.ID,
-			SignedID:     d.SignedID,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
 			SupplierName: d.SupplierName,

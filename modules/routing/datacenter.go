@@ -11,7 +11,6 @@ var UnknownDatacenter = Datacenter{
 
 type Datacenter struct {
 	ID           uint64
-	SignedID     int64
 	Name         string
 	AliasName    string // convenience field in server_handlers.go
 	Location     Location
