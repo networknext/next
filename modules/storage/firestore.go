@@ -410,7 +410,6 @@ func (fs *Firestore) SetCustomer(ctx context.Context, c routing.Customer) error 
 				"buyerRef":               c.BuyerRef,
 				"sellerRef":              c.SellerRef,
 				"automaticSigninDomains": c.AutomaticSignInDomains,
-				"active":                 c.Active,
 			}
 
 			if _, err := cdoc.Ref.Set(ctx, newCustomerData, firestore.MergeAll); err != nil {
@@ -2128,7 +2127,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			Code:                   c.Code,
 			Name:                   c.Name,
 			AutomaticSignInDomains: c.AutomaticSignInDomains,
-			Active:                 c.Active,
 			BuyerRef:               c.BuyerRef,
 			SellerRef:              c.SellerRef,
 		}
