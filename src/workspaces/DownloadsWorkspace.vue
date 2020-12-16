@@ -22,26 +22,28 @@
     <div class="card mb-2">
       <div class="card-body">
         <div class="btn-group-vertical btn-group-sm float-right">
-          <a
-            href="#"
-            v-on:click="downloadSDK()"
-            class="btn btn-primary m-1 btn-width"
-          >
-            <font-awesome-icon icon="download"
-                                class="fa-w-16 fa-fw"
-            />
-            SDK v4.0.4
-          </a>
-          <a
-            href="#"
-            v-on:click="downloadDocs()"
-            class="btn btn-primary m-1 btn-width"
-          >
-            <font-awesome-icon icon="download"
-                                class="fa-w-16 fa-fw"
-            />
-            Documentation
-          </a>
+          <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation">
+            <a
+              href="#"
+              v-on:click="downloadSDK()"
+              class="btn btn-primary m-1 btn-width"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              SDK v4.0.4
+            </a>
+            <a
+              href="#"
+              v-on:click="downloadDocs()"
+              class="btn btn-primary m-1 btn-width"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              Documentation
+            </a>
+          </div>
       </div>
       <h5 class="card-title">
           Network Next SDK
