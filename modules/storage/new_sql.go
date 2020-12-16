@@ -315,17 +315,15 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 		datacenterIDs[dc.ID] = did
 
 		d := routing.Datacenter{
-			ID:      did,
-			Name:    dc.Name,
-			Enabled: dc.Enabled,
+			ID:   did,
+			Name: dc.Name,
 			Location: routing.Location{
 				Latitude:  dc.Latitude,
 				Longitude: dc.Longitude,
 			},
-			SupplierName:  dc.SupplierName,
-			StreetAddress: dc.StreetAddress,
-			SellerID:      dc.SellerID,
-			DatabaseID:    dc.ID,
+			SupplierName: dc.SupplierName,
+			SellerID:     dc.SellerID,
+			DatabaseID:   dc.ID,
 		}
 
 		datacenters[did] = d
@@ -689,7 +687,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	// sql.Write([]byte("left join buyers on customers.id = buyers.customer_id "))
 	// sql.Write([]byte("left join sellers on customers.id = sellers.customer_id"))
 
-	sql.Write([]byte("select id, debug, automatic_signin_domain, "))
+	sql.Write([]byte("select id, automatic_signin_domain, "))
 	sql.Write([]byte("customer_name, customer_code from customers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -701,7 +699,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(&customer.ID,
-			&customer.Debug,
 			&customer.AutomaticSignInDomains,
 			&customer.Name,
 			&customer.CustomerCode,
