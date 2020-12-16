@@ -1193,8 +1193,8 @@ func main() {
 				ShortHelp:  "Update the specified field for the given buyer",
 				LongHelp:   nextBuyerUpdateLongHelp,
 				Exec: func(_ context.Context, args []string) error {
-					if len(args) != 1 {
-						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+					if len(args) != 3 {
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name, field and value."), 0)
 					}
 
 					getBuyerInfo(rpcClient, env, args[0])
@@ -1245,6 +1245,19 @@ func main() {
 					}
 
 					removeBuyer(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{ // update
+				Name:       "update ",
+				ShortUsage: "next buyer remove (buyer name or substring) (field name) (value)",
+				ShortHelp:  "Remove a buyer from storage",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 3 {
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
+					}
+
+					updateBuyer(rpcClient, env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1710,6 +1723,19 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					return nil
 				},
 			},
+			{
+				Name:       "update ",
+				ShortUsage: "next seller update  (seller ID) (field) (value)",
+				ShortHelp:  "Update the specified field for the given seller",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 3 {
+						handleRunTimeError(fmt.Sprintln("Please provide the seller id, field and value."), 0)
+					}
+
+					updateSeller(rpcClient, env, args[0])
+					return nil
+				},
+			},
 		},
 	}
 
@@ -1800,6 +1826,19 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					getCustomerInfo(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{
+				Name:       "update",
+				ShortUsage: "next customer update (customer code) (field) (value)",
+				ShortHelp:  "Modify the specified field for the given customer",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide the customer code, field and value."), 0)
+					}
+
+					updateCustomer(rpcClient, env, args[0])
 					return nil
 				},
 			},

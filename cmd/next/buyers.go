@@ -825,3 +825,29 @@ func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	os.Exit(0)
 
 }
+
+func updateBuyer(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	field string,
+	value string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.BuyerUpdateReply{}
+
+	args := localjsonrpc.UpdateInternalConfigArgs{
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateBuyer", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Buyer %s updated successfully.\n", buyerName)
+	return nil
+}

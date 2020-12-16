@@ -1204,3 +1204,76 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 
 	return nil
 }
+
+type UpdateCustomerArgs struct {
+	CustomerID string
+	Field      string
+	Value      string
+}
+
+type UpdateCustomerReply struct{}
+
+func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, reply *UpdateCustomerReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "ShortName", "AutomaticSigninDomains":
+		err := s.Storage.UpdateCustomer(context.Background(), args.CustomerID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateCustomer() error updating record for customer %s: %v", args.CustomerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Customer type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateSellerArgs struct {
+	SellerID string
+	Field    string
+	Value    string
+}
+
+type UpdateSellerReply struct{}
+
+func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply *UpdateSellerReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "ShortName":
+		err := s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	case "EggressPrice", "IngressPrice":
+		newValue, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for seller %s: %v", args.SellerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Seller type", args.Field)
+	}
+
+	return nil
+}

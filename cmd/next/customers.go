@@ -63,3 +63,27 @@ func getCustomerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	os.Exit(0)
 
 }
+
+func updateCustomer(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	customerCode string,
+	field string,
+	value string,
+) error {
+
+	emptyReply := localjsonrpc.UpdateCustomerReply{}
+
+	args := localjsonrpc.UpdateCustomerArgs{
+		CustomerID: customerCode,
+		Field:      field,
+		Value:      value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "OpsService.UpdateCustomer", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Customer %s updated successfully.\n", customerCode)
+	return nil
+}
