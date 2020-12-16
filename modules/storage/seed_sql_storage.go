@@ -41,7 +41,6 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Network Next",
 			Code:                   "next",
-			Active:                 true,
 			AutomaticSignInDomains: "networknext.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -50,7 +49,6 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
 			Code:                   "ghost-army",
-			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -59,7 +57,6 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Local",
 			Code:                   "local",
-			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)

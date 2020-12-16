@@ -79,7 +79,6 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddCustomer", func(t *testing.T) {
 		customer := routing.Customer{
-			Active:                 true,
 			Debug:                  true,
 			Code:                   customerShortname,
 			Name:                   "Company, Ltd.",
@@ -91,7 +90,6 @@ func TestInsertSQL(t *testing.T) {
 
 		outerCustomer, err = db.Customer(customerShortname)
 		assert.NoError(t, err)
-		assert.Equal(t, customer.Active, outerCustomer.Active)
 		assert.Equal(t, customer.Code, outerCustomer.Code)
 		assert.Equal(t, customer.Name, outerCustomer.Name)
 		assert.Equal(t, customer.AutomaticSignInDomains, outerCustomer.AutomaticSignInDomains)
@@ -297,7 +295,6 @@ func TestDeleteSQL(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -495,7 +492,6 @@ func TestUpdateSQL(t *testing.T) {
 
 	t.Run("SetCustomer", func(t *testing.T) {
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   "Compcode",
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -510,7 +506,6 @@ func TestUpdateSQL(t *testing.T) {
 
 		customerWithID.Name = "No Longer The Company, Ltd."
 		customerWithID.AutomaticSignInDomains = "fredscuttle.com,swampthing.com"
-		customerWithID.Active = false
 		customerWithID.Debug = false
 
 		err = db.SetCustomer(ctx, customerWithID)
@@ -519,7 +514,6 @@ func TestUpdateSQL(t *testing.T) {
 		checkCustomer, err := db.Customer("Compcode")
 		assert.NoError(t, err)
 
-		assert.Equal(t, customerWithID.Active, checkCustomer.Active)
 		assert.Equal(t, customerWithID.Debug, checkCustomer.Debug)
 		assert.Equal(t, customerWithID.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
 		assert.Equal(t, customerWithID.Name, checkCustomer.Name)
@@ -845,7 +839,6 @@ func TestInternalConfig(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",
@@ -1036,7 +1029,6 @@ func TestRouteShaders(t *testing.T) {
 
 		customerCode := "Compcode"
 		customer := routing.Customer{
-			Active:                 true,
 			Code:                   customerCode,
 			Name:                   "Company, Ltd.",
 			AutomaticSignInDomains: "fredscuttle.com",

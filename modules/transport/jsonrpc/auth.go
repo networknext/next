@@ -834,7 +834,6 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			BuyerRef:               oldCompany.BuyerRef,
 			SellerRef:              oldCompany.SellerRef,
 			AutomaticSignInDomains: oldCompany.AutomaticSignInDomains,
-			Active:                 oldCompany.Active,
 		}
 
 		buyer, err := s.Storage.BuyerWithCompanyCode(oldCompanyCode)

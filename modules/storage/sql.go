@@ -115,7 +115,6 @@ type sqlCustomer struct {
 	ID                     int64
 	Name                   string
 	AutomaticSignInDomains string
-	Active                 bool
 	Debug                  bool
 	CustomerCode           string
 	DatabaseID             int64
@@ -138,13 +137,12 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		CustomerCode:           c.Code,
 		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
-		Active:                 c.Active,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into customers ("))
-	sql.Write([]byte("active, automatic_signin_domain, customer_name, customer_code"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
+	sql.Write([]byte(") values ($1, $2, $3)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -152,7 +150,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(customer.Active,
+	result, err := stmt.Exec(
 		customer.AutomaticSignInDomains,
 		customer.Name,
 		customer.CustomerCode,
@@ -248,8 +246,8 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", c.Code)}
 	}
 
-	sql.Write([]byte("update customers set (active, debug, automatic_signin_domain, customer_name) ="))
-	sql.Write([]byte("($1, $2, $3, $4) where id = $5"))
+	sql.Write([]byte("update customers set (debug, automatic_signin_domain, customer_name) ="))
+	sql.Write([]byte("($1, $2, $3) where id = $5"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -257,7 +255,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, c.DatabaseID)
+	result, err := stmt.Exec(c.Debug, c.AutomaticSignInDomains, c.Name, c.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
