@@ -7,8 +7,6 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8
-      - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
       - checkout
       - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
       - chmod +x premake5
@@ -16,43 +14,51 @@ blocks:
   - name: Unit
     task:
       jobs:
-        - name: debug_portable
+        - name: debug_portable_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=debug_portable
             - ./bin/test
-        - name: debug_x64
+        - name: debug_x64_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=debug_x64
             - ./bin/test
-        - name: debug_avx
+        - name: debug_avx_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=debug_avx
             - ./bin/test
-        - name: debug_avx2
+        - name: debug_avx2_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=debug_avx2
             - ./bin/test
-        - name: release_portable
+        - name: release_portable_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=release_portable
             - ./bin/test
-        - name: release_x64
+        - name: release_x64_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=release_x64
             - ./bin/test
-        - name: release_avx
+        - name: release_avx_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=release_avx
             - ./bin/test
-        - name: release_avx2
+        - name: release_avx2_gcc6
           commands:
             - ./premake5 gmake
+            - sem-version c 6
             - make -j32 config=release_avx2
             - ./bin/test
