@@ -1,4 +1,4 @@
-#ifdef HAVE_AMD64_ASM
+#ifdef NEXT_X64
 
 .text
 .p2align 5
@@ -958,3 +958,5 @@ jmp ._bytesbetween1and255
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
 #endif
+
+.globl consts_S_dummy

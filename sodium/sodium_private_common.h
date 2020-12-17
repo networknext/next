@@ -219,19 +219,44 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
 # endif
 #endif
 
-#if ( defined(__clang__) || defined(__GNUC__) ) && defined(__x86_64__) && !defined(__ORBIS__)
+#if defined(__clang__) || defined(__GNUC__)
 
-# define HAVE_MMINTRIN_H  1
-# define HAVE_EMMINTRIN_H 1
-# define HAVE_PMMINTRIN_H 1
-# define HAVE_TMMINTRIN_H 1
-# define HAVE_SMMINTRIN_H 1
-# define HAVE_AVXINTRIN_H 1
-# define HAVE_WMMINTRIN_H 1
-# define HAVE_AVX2INTRIN_H 1
-# define HAVE_AVX_ASM 1
-# define HAVE_AMD64_ASM 1
-# define HAVE_CPUID 1
+    #if NEXT_AVX
+
+        # define HAVE_MMINTRIN_H  1
+        # define HAVE_EMMINTRIN_H 1
+        # define HAVE_PMMINTRIN_H 1
+        # define HAVE_TMMINTRIN_H 1
+        # define HAVE_SMMINTRIN_H 1
+        # define HAVE_AVXINTRIN_H 1
+        # define HAVE_WMMINTRIN_H 1
+        # define HAVE_AVX2INTRIN_H 1
+        # define HAVE_AVX_ASM 1
+        # define HAVE_AMD64_ASM 1
+        # define HAVE_CPUID 1
+
+    #elif NEXT_X64
+
+        # define HAVE_MMINTRIN_H  1
+        # define HAVE_EMMINTRIN_H 1
+        # define HAVE_PMMINTRIN_H 1
+        # define HAVE_TMMINTRIN_H 1
+        # define HAVE_SMMINTRIN_H 1
+        # define HAVE_WMMINTRIN_H 1
+        # define HAVE_AMD64_ASM 1
+        # define HAVE_CPUID 1
+
+    #elif NEXT_X64
+
+        # define HAVE_MMINTRIN_H  1
+        # define HAVE_EMMINTRIN_H 1
+        # define HAVE_PMMINTRIN_H 1
+        # define HAVE_TMMINTRIN_H 1
+        # define HAVE_SMMINTRIN_H 1
+        # define HAVE_WMMINTRIN_H 1
+        # define HAVE_CPUID 1
+
+    #endif
 
 #endif
 

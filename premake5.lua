@@ -1,5 +1,6 @@
 
 solution "next"
+	platforms { "portable", "x86", "x64", "avx" }
 	configurations { "Debug", "Release" }
 	targetdir "bin/"
 	rtti "Off"
@@ -14,8 +15,13 @@ solution "next"
 		defines { "NDEBUG" }
 		editandcontinue "Off"
 	filter "system:windows"
-		architecture "x86_64"
 		location ("visualstudio")
+	filter "platforms:*x86"
+		architecture "x86"
+	filter "platforms:*x64 or *avx"
+		architecture "x86_64"
+	filter "platforms:*avx"
+		architecture "x86_64"
 
 project "next"
 	kind "StaticLib"
@@ -35,18 +41,25 @@ project "next"
 
 project "sodium"
 	kind "StaticLib"
-	vectorextensions "AVX2"
-	defines { "NEXT_CRYPTO_LOGS=1" }
 	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
 		"sodium/**.h",
 	}
-	filter "system:not windows"
-		defines { "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
+  	filter { "platforms:*x64 or *avx" }
 		files {
 			"sodium/**.S"
 		}
+	filter "platforms:*x86"
+		architecture "x86"
+		defines { "NEXT_X86=1", "NEXT_CRYPTO_LOGS=1" }
+	filter "platforms:*x64"
+		architecture "x86_64"
+		defines { "NEXT_X64=1", "NEXT_CRYPTO_LOGS=1" }
+	filter "platforms:*avx"
+		architecture "x86_64"
+		vectorextensions "AVX2"
+		defines { "NEXT_X64=1", "NEXT_AVX=1", "NEXT_CRYPTO_LOGS=1" }
 	filter "system:windows"
 		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
 		linkoptions { "/ignore:4221" }

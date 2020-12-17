@@ -4,6 +4,7 @@
 #include "sodium_utils.h"
 #include "sodium_stream_salsa20.h"
 #include "sodium_salsa20-xmm6.h"
+#include "sodium_private_common.h"
 
 #ifdef HAVE_AMD64_ASM
 

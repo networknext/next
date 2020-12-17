@@ -1,5 +1,5 @@
 
-#ifdef HAVE_AVX_ASM
+#ifdef NEXT_AVX
 
 #define IN_SANDY2X
 
@@ -15,3 +15,5 @@
 #endif
 
 #endif
+
+.globl consts_S_dummy
