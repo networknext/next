@@ -125,7 +125,7 @@ blocks:
             - sem-version c 8
             - make -j32 config=debug_x64
             - ./bin/test
-        - name: debug_avx_gcc7
+        - name: debug_avx_gcc8
           commands:
             - ./premake5 gmake
             - sem-version c 8
@@ -146,7 +146,7 @@ blocks:
         - name: release_x64_gcc8
           commands:
             - ./premake5 gmake
-            - sem-version c 7
+            - sem-version c 8
             - make -j32 config=release_x64
             - ./bin/test
         - name: release_avx_gcc8
