@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	noRTT         rttType = 0
-	badRTT        rttType = 1
-	goodRTT       rttType = 2
-	overloadedRTT rttType = 3
+	noRTT          rttType = 0
+	badRTT         rttType = 1
+	goodRTT        rttType = 2
+	overloadedRTT  rttType = 3
+	slightlyBadRTT rttType = 4
 )
 
 type rttType int
@@ -185,6 +186,9 @@ func getStats(rttType rttType) routing.Stats {
 
 	case overloadedRTT:
 		return routing.Stats{RTT: 500}
+
+	case slightlyBadRTT:
+		return routing.Stats{RTT: 16}
 	}
 
 	return routing.Stats{}
@@ -304,7 +308,16 @@ func getBlankSessionUpdateMetrics(t *testing.T) *metrics.SessionUpdateMetrics {
 	return metrics.SessionUpdateMetrics
 }
 
-func getInitialSessionData(t *testing.T, startTime time.Time, request *sessionUpdateRequestConfig, routeShader core.RouteShader, routeInfo routeInfo, response *sessionUpdateResponseConfig) *transport.SessionData {
+func getInitialSessionData(
+	t *testing.T,
+	startTime time.Time,
+	request *sessionUpdateRequestConfig,
+	routeInfo routeInfo,
+	response *sessionUpdateResponseConfig,
+	committed bool,
+	commitCounter int32,
+	multipath bool,
+) *transport.SessionData {
 	var sessionData *transport.SessionData
 
 	if request.badSessionDataSessionID {
@@ -316,7 +329,7 @@ func getInitialSessionData(t *testing.T, startTime time.Time, request *sessionUp
 	} else if request.sliceNumber > 1 {
 		prevRequest := *request
 		prevRequest.sliceNumber -= 1
-		sd := getExpectedSessionData(t, transport.SessionData{}, uint64(startTime.Unix()), &prevRequest, routeShader, routeInfo, response, false, false, false)
+		sd := getExpectedSessionData(t, transport.SessionData{}, uint64(startTime.Unix()), &prevRequest, routeInfo, response, false, false, false, committed, commitCounter, multipath)
 		sessionData = &sd
 	} else if request.sliceNumber > 0 {
 		sessionData = &transport.SessionData{
@@ -338,12 +351,14 @@ func getExpectedSessionData(
 	initialSessionData transport.SessionData,
 	expireTimestamp uint64,
 	request *sessionUpdateRequestConfig,
-	routeShader core.RouteShader,
 	routeInfo routeInfo,
 	response *sessionUpdateResponseConfig,
 	noRoute bool,
 	multipathOverload bool,
 	latencyWorse bool,
+	committed bool,
+	commitCounter int32,
+	multipath bool,
 ) transport.SessionData {
 	if response.unchangedSessionData {
 		initialSessionData.Version = transport.SessionDataVersion
@@ -367,12 +382,10 @@ func getExpectedSessionData(
 
 	var everOnNext bool
 	var reduceLatency bool
-	var committed bool
 	if request.prevRouteType != routing.RouteTypeDirect || response.routeType != routing.RouteTypeDirect {
 		// These fields are "sticky" - they will remain true as long as we take network next once
 		everOnNext = true
 		reduceLatency = true
-		committed = true
 	}
 
 	sessionData := transport.SessionData{
@@ -391,7 +404,9 @@ func getExpectedSessionData(
 			Veto:              noRoute || multipathOverload || latencyWorse,
 			ReduceLatency:     reduceLatency,
 			Committed:         committed,
-			Multipath:         routeShader.Multipath,
+			CommitCounter:     commitCounter,
+			CommitVeto:        false,
+			Multipath:         multipath,
 			RelayWentAway:     request.badRouteRelays,
 			RouteLost:         request.badNearRelay || request.badRouteRelays,
 			NoRoute:           noRoute,
@@ -598,7 +613,17 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		routeShader = backend.buyer.RouteShader
 	}
 
-	initialSessionData := getInitialSessionData(t, startTime, request, routeShader, prevRouteInfo, response)
+	internalConfig := core.NewInternalConfig()
+	if backend.buyer != nil {
+		internalConfig = backend.buyer.InternalConfig
+	}
+
+	var commitCounter int32
+	if internalConfig.TryBeforeYouBuy {
+		commitCounter = int32(request.sliceNumber)
+	}
+
+	initialSessionData := getInitialSessionData(t, startTime, request, prevRouteInfo, response, !internalConfig.TryBeforeYouBuy, commitCounter, routeShader.Multipath)
 
 	var sessionDataSlice []byte
 	var err error
@@ -764,7 +789,16 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		}
 	}
 
-	expectedSessionData := getExpectedSessionData(t, *initialSessionData, expireTimestamp, request, routeShader, routeInfo, response, noRoute, multipathOverload, latencyWorse)
+	committed := response.routeType != routing.RouteTypeDirect || initialSessionData.RouteState.Committed
+	if internalConfig.TryBeforeYouBuy && request.directStats.RTT < request.nextStats.RTT {
+		committed = false
+	}
+
+	if internalConfig.TryBeforeYouBuy {
+		commitCounter++
+	}
+
+	expectedSessionData := getExpectedSessionData(t, *initialSessionData, expireTimestamp, request, routeInfo, response, noRoute, multipathOverload, latencyWorse, committed, commitCounter, routeShader.Multipath)
 
 	sessionDataSlice, err = transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
@@ -1412,224 +1446,38 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
 
+// The session has try before you buy enabled, so this test
+// validates that we don't actually commit to the route
+// until we know that it is satisfactory
 func TestSessionUpdateHandlerCommitPending(t *testing.T) {
-	// Seed the RNG so we don't get different results from running `make test`
-	// and running the test directly in VSCode
-	rand.Seed(0)
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
+	request := NewSessionUpdateRequestConfig(t)
+	request.sliceNumber = 2
+	request.directStats = getStats(goodRTT)
+	request.nextStats = getStats(slightlyBadRTT)
+	request.numNearRelays = 2
+	request.nearRelayRTTType = goodRTT
+	request.prevRouteType = routing.RouteTypeContinue
+	request.prevRouteNumRelays = 2
 
-	expectedMetrics := metrics.EmptyServerBackendMetrics
-	var err error
-	emptySessionUpdateMetrics := metrics.EmptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics = &emptySessionUpdateMetrics
-	expectedMetrics.SessionUpdateMetrics.NextSlices, err = metricsHandler.NewCounter(context.Background(), &metrics.Descriptor{})
-	assert.NoError(t, err)
-	expectedMetrics.SessionUpdateMetrics.NextSlices.Add(1)
-
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
 	internalConfig := core.NewInternalConfig()
 	internalConfig.TryBeforeYouBuy = true
-	err = storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:             100,
-		Live:           true,
-		RouteShader:    core.NewRouteShader(),
-		InternalConfig: internalConfig,
-	})
-	assert.NoError(t, err)
 
-	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
-	assert.NoError(t, err)
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: internalConfig}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 3
 
-	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
-	assert.NoError(t, err)
+	response := NewSessionUpdateResponseConfig(t)
+	response.routeType = routing.RouteTypeContinue
+	response.routeNumRelays = 2
+	response.numNearRelays = 2
+	response.attemptFindRoute = true
 
-	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
-	assert.NoError(t, err)
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.NextSlices.Add(1)
 
-	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
-	assert.NoError(t, err)
-
-	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
-	assert.NoError(t, err)
-	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
-	assert.NoError(t, err)
-
-	publicKey := make([]byte, crypto.KeySize)
-	privateKey := [crypto.KeySize]byte{}
-
-	err = storer.AddRelay(context.Background(), routing.Relay{
-		ID:         1,
-		Addr:       *relayAddr1,
-		PublicKey:  publicKey,
-		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
-	})
-	assert.NoError(t, err)
-
-	err = storer.AddRelay(context.Background(), routing.Relay{
-		ID:         2,
-		Addr:       *relayAddr2,
-		PublicKey:  publicKey,
-		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 11},
-	})
-	assert.NoError(t, err)
-
-	sessionDataStruct := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       1111,
-		SliceNumber:     1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
-		RouteNumRelays:  2,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
-		RouteState: core.RouteState{
-			Next:          true,
-			ReduceLatency: true,
-			CommitCounter: 1,
-			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
-		},
-	}
-
-	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
-	assert.NoError(t, err)
-
-	sessionDataArray := [transport.MaxSessionDataSize]byte{}
-	copy(sessionDataArray[:], sessionDataSlice)
-
-	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:57247")
-	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersion{4, 0, 4},
-		SessionID:            1111,
-		CustomerID:           100,
-		DatacenterID:         11,
-		SliceNumber:          1,
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          sessionDataArray,
-		ClientAddress:        *clientAddr,
-		ServerAddress:        *serverAddr,
-		ClientRoutePublicKey: publicKey,
-		ServerRoutePublicKey: publicKey,
-		DirectRTT:            60,
-		Next:                 true,
-		NextRTT:              62,
-		NumNearRelays:        2,
-		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []int32{10, 15},
-		NearRelayJitter:      []int32{0, 0},
-		NearRelayPacketLoss:  []int32{0, 0},
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	routeMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1},
-		RelayIDs:           []uint64{1, 2},
-		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
-		RelayNames:         []string{"test.relay.1", "test.relay.2"},
-		RelayLatitudes:     []float32{90, 89},
-		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 11},
-		RouteEntries: []core.RouteEntry{
-			{
-				DirectCost:     65,
-				NumRoutes:      int32(core.TriMatrixLength(2)),
-				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
-				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
-				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
-					{
-						1, 0,
-					},
-				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(1, 0)},
-			},
-		},
-	}
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expireTimestamp := uint64(time.Now().Unix()) + billing.BillingSliceSeconds
-
-	tokenData := make([]byte, core.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES*4)
-	routePublicKeys := make([][]byte, 0)
-	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
-	core.WriteContinueTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionDataStruct.SessionVersion), 4, routePublicKeys, privateKey)
-	expectedResponse := transport.SessionResponsePacket{
-		Version:     requestPacket.Version,
-		SessionID:   requestPacket.SessionID,
-		SliceNumber: requestPacket.SliceNumber,
-		RouteType:   routing.RouteTypeContinue,
-		NumTokens:   4,
-		Tokens:      tokenData,
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SessionVersion:  sessionDataStruct.SessionVersion,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: expireTimestamp,
-		Initial:         false,
-		RouteNumRelays:  2,
-		RouteCost:       50 + core.CostBias,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
-		RouteState: core.RouteState{
-			UserID:           requestPacket.UserHash,
-			Next:             true,
-			ReduceLatency:    true,
-			CommitCounter:    2,
-			NumNearRelays:    2,
-			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
-			PLHistoryIndex:   1,
-			PLHistorySamples: 1,
-		},
-		EverOnNext: true,
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-
-	assertResponseEqual(t, expectedResponse, responsePacket)
-	assertAllMetricsEqual(t, *expectedMetrics.SessionUpdateMetrics, *metrics.SessionUpdateMetrics)
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
 
 func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
