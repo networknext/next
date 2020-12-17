@@ -608,7 +608,7 @@ func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
 	defer conn.Close()
 
 	// Refresh the expiration time for this key
-	refreshedTime := time.Now().Add(vm.maxUserIdleTime).Unix()
+	refreshedTime := time.Now().Add(vm.maxUserIdleTime).UnixNano()
 	member := fmt.Sprintf("sid-%s", sessionID)
 	_, err := conn.Do("ZADD", redis.Args{}.Add(vm.redisSetName).Add(refreshedTime).Add(member)...)
 	if err != nil {
@@ -622,7 +622,7 @@ func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
 }
 
 func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
-	currentTime := time.Now().Unix()
+	currentTime := time.Now().UnixNano()
 
 	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
 
