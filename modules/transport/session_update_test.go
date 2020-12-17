@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	noRTT   rttType = 0
-	badRTT  rttType = 1
-	goodRTT rttType = 2
+	noRTT         rttType = 0
+	badRTT        rttType = 1
+	goodRTT       rttType = 2
+	overloadedRTT rttType = 3
 )
 
 type rttType int
@@ -181,6 +182,9 @@ func getStats(rttType rttType) routing.Stats {
 
 	case goodRTT:
 		return routing.Stats{RTT: 15}
+
+	case overloadedRTT:
+		return routing.Stats{RTT: 500}
 	}
 
 	return routing.Stats{}
@@ -300,7 +304,7 @@ func getBlankSessionUpdateMetrics(t *testing.T) *metrics.SessionUpdateMetrics {
 	return metrics.SessionUpdateMetrics
 }
 
-func getInitialSessionData(t *testing.T, request *sessionUpdateRequestConfig, routeInfo routeInfo, startTime time.Time, response *sessionUpdateResponseConfig) *transport.SessionData {
+func getInitialSessionData(t *testing.T, startTime time.Time, request *sessionUpdateRequestConfig, routeShader core.RouteShader, routeInfo routeInfo, response *sessionUpdateResponseConfig) *transport.SessionData {
 	var sessionData *transport.SessionData
 
 	if request.badSessionDataSessionID {
@@ -312,7 +316,7 @@ func getInitialSessionData(t *testing.T, request *sessionUpdateRequestConfig, ro
 	} else if request.sliceNumber > 1 {
 		prevRequest := *request
 		prevRequest.sliceNumber -= 1
-		sd := getExpectedSessionData(t, transport.SessionData{}, uint64(startTime.Unix()), &prevRequest, routeInfo, response)
+		sd := getExpectedSessionData(t, transport.SessionData{}, uint64(startTime.Unix()), &prevRequest, routeShader, routeInfo, response, false, false)
 		sessionData = &sd
 	} else if request.sliceNumber > 0 {
 		sessionData = &transport.SessionData{
@@ -334,8 +338,11 @@ func getExpectedSessionData(
 	initialSessionData transport.SessionData,
 	expireTimestamp uint64,
 	request *sessionUpdateRequestConfig,
+	routeShader core.RouteShader,
 	routeInfo routeInfo,
 	response *sessionUpdateResponseConfig,
+	noRoute bool,
+	multipathOverload bool,
 ) transport.SessionData {
 	if response.unchangedSessionData {
 		initialSessionData.Version = transport.SessionDataVersion
@@ -357,7 +364,6 @@ func getExpectedSessionData(
 
 	nearRelays := getRelays(t, response.numNearRelays, request.nearRelayRTTType, request.badNearRelay)
 
-	var noRoute bool
 	var everOnNext bool
 	var reduceLatency bool
 	var committed bool
@@ -366,10 +372,6 @@ func getExpectedSessionData(
 		everOnNext = true
 		reduceLatency = true
 		committed = true
-
-		if response.routeType == routing.RouteTypeDirect {
-			noRoute = true
-		}
 	}
 
 	sessionData := transport.SessionData{
@@ -382,15 +384,17 @@ func getExpectedSessionData(
 		RouteNumRelays:  int32(len(routeInfo.routeRelayIDs)),
 		RouteCost:       routeInfo.routeCost,
 		RouteState: core.RouteState{
-			UserID:        request.userHash,
-			NumNearRelays: int32(nearRelays.Count),
-			Next:          routeInfo.next,
-			Veto:          noRoute,
-			ReduceLatency: reduceLatency,
-			Committed:     committed,
-			RelayWentAway: request.badRouteRelays,
-			RouteLost:     request.badNearRelay || request.badRouteRelays,
-			NoRoute:       noRoute,
+			UserID:            request.userHash,
+			NumNearRelays:     int32(nearRelays.Count),
+			Next:              routeInfo.next,
+			Veto:              noRoute || multipathOverload,
+			ReduceLatency:     reduceLatency,
+			Committed:         committed,
+			Multipath:         routeShader.Multipath,
+			RelayWentAway:     request.badRouteRelays,
+			RouteLost:         request.badNearRelay || request.badRouteRelays,
+			NoRoute:           noRoute,
+			MultipathOverload: multipathOverload,
 		},
 		Initial:          routeInfo.initial,
 		FellBackToDirect: request.fallbackToDirect,
@@ -467,7 +471,7 @@ type sessionUpdateBackendConfig struct {
 	ipLocator            routing.IPLocator
 	numRouteMatrixRelays int32
 	internalAddresses    bool
-	buyers               []routing.Buyer
+	buyer                *routing.Buyer
 	datacenters          []routing.Datacenter
 	datacenterMaps       []routing.DatacenterMap
 }
@@ -477,7 +481,7 @@ func NewSessionUpdateBackendConfig(t *testing.T) *sessionUpdateBackendConfig {
 		ipLocator:            &goodIPLocator{},
 		numRouteMatrixRelays: 0,
 		internalAddresses:    false,
-		buyers:               nil,
+		buyer:                nil,
 		datacenters:          nil,
 		datacenterMaps:       nil,
 	}
@@ -587,7 +591,12 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		false,
 	)
 
-	initialSessionData := getInitialSessionData(t, request, prevRouteInfo, startTime, response)
+	routeShader := core.NewRouteShader()
+	if backend.buyer != nil {
+		routeShader = backend.buyer.RouteShader
+	}
+
+	initialSessionData := getInitialSessionData(t, startTime, request, routeShader, prevRouteInfo, response)
 
 	var sessionDataSlice []byte
 	var err error
@@ -650,8 +659,8 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	ctx := context.Background()
 	storer := &storage.InMemory{}
 
-	for _, buyer := range backend.buyers {
-		err := storer.AddBuyer(ctx, buyer)
+	if backend.buyer != nil {
+		err := storer.AddBuyer(ctx, *backend.buyer)
 		assert.NoError(t, err)
 	}
 
@@ -738,7 +747,17 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		expireTimestamp = uint64(startTime.Unix()) + billing.BillingSliceSeconds
 	}
 
-	expectedSessionData := getExpectedSessionData(t, *initialSessionData, expireTimestamp, request, routeInfo, response)
+	var noRoute bool
+	var multipathOverload bool
+	if request.prevRouteType != routing.RouteTypeDirect && response.routeType == routing.RouteTypeDirect {
+		if request.directStats == getStats(overloadedRTT) {
+			multipathOverload = true
+		} else if response.routeNumRelays == 0 {
+			noRoute = true
+		}
+	}
+
+	expectedSessionData := getExpectedSessionData(t, *initialSessionData, expireTimestamp, request, routeShader, routeInfo, response, noRoute, multipathOverload)
 
 	sessionDataSlice, err = transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
@@ -908,7 +927,7 @@ func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.unchangedSessionData = true
@@ -925,7 +944,7 @@ func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	request.datacenterID = crypto.HashID("alias")
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, Alias: "alias"}}
 
 	response := NewSessionUpdateResponseConfig(t)
@@ -942,7 +961,7 @@ func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 
 	response := NewSessionUpdateResponseConfig(t)
@@ -959,7 +978,7 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.ipLocator = &badIPLocator{}
@@ -979,7 +998,7 @@ func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
 	request.badSessionData = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 
@@ -998,7 +1017,7 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 	request.badSessionDataSessionID = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 
@@ -1017,7 +1036,7 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 	request.badSessionDataSliceNumber = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 
@@ -1034,7 +1053,7 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: false}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: false}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 
@@ -1052,7 +1071,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	request.fallbackToDirect = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 
@@ -1069,7 +1088,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 
@@ -1095,7 +1114,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 2
@@ -1119,7 +1138,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	request.nearRelayRTTType = badRTT
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 2
@@ -1144,7 +1163,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	request.nearRelayRTTType = goodRTT
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 2
@@ -1175,7 +1194,7 @@ func TestSessionUpdateNextRouteInternalIPs(t *testing.T) {
 	request.nearRelayRTTType = goodRTT
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 2
@@ -1206,7 +1225,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	request.prevRouteNumRelays = 2
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 3
@@ -1236,7 +1255,7 @@ func TestSessionUpdateHandlerRelayWentAway(t *testing.T) {
 	request.badRouteRelays = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 3
@@ -1269,7 +1288,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	request.badNearRelay = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 3
@@ -1301,7 +1320,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	request.badRouteRelays = true
 
 	backend := NewSessionUpdateBackendConfig(t)
-	backend.buyers = []routing.Buyer{{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}}
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
 	backend.numRouteMatrixRelays = 3
@@ -1318,204 +1337,238 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
 
+// The session was vetoed from taking network next because
+// the server backend detected that multipath has overloaded
+// the user's connection. This session will be vetoed, and any
+// subsequent sessions from this user for the next 7 days will
+// not be allowed to use multipath.
 func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
-	// Seed the RNG so we don't get different results from running `make test`
-	// and running the test directly in VSCode
-	rand.Seed(0)
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	buyer := routing.Buyer{
-		ID:             100,
-		Live:           true,
-		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
-	}
-	err = storer.AddBuyer(context.Background(), buyer)
-	assert.NoError(t, err)
-	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
-	assert.NoError(t, err)
+	request := NewSessionUpdateRequestConfig(t)
+	request.sliceNumber = 2
+	request.directStats = getStats(overloadedRTT)
+	request.numNearRelays = 2
+	request.nearRelayRTTType = goodRTT
+	request.prevRouteType = routing.RouteTypeContinue
+	request.prevRouteNumRelays = 2
 
-	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
-	assert.NoError(t, err)
+	routeShader := core.NewRouteShader()
+	routeShader.Multipath = true
 
-	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
-	assert.NoError(t, err)
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: routeShader, InternalConfig: core.NewInternalConfig()}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 3
 
-	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
-	assert.NoError(t, err)
+	response := NewSessionUpdateResponseConfig(t)
+	response.numNearRelays = 2
+	response.attemptFindRoute = true
 
-	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
-	assert.NoError(t, err)
-	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
-	assert.NoError(t, err)
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.MultipathOverload.Add(1)
 
-	publicKey := make([]byte, crypto.KeySize)
-	privateKey := [crypto.KeySize]byte{}
-
-	err = storer.AddRelay(context.Background(), routing.Relay{
-		ID:         1,
-		Addr:       *relayAddr1,
-		PublicKey:  publicKey,
-		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 10},
-	})
-	assert.NoError(t, err)
-
-	err = storer.AddRelay(context.Background(), routing.Relay{
-		ID:         2,
-		Addr:       *relayAddr2,
-		PublicKey:  publicKey,
-		Seller:     routing.Seller{ID: "seller"},
-		Datacenter: routing.Datacenter{ID: 11},
-	})
-	assert.NoError(t, err)
-
-	sessionDataStruct := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       1111,
-		SliceNumber:     1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
-		RouteNumRelays:  2,
-		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
-		RouteState: core.RouteState{
-			UserID:        1234567890,
-			Next:          true,
-			ReduceLatency: true,
-			Multipath:     true,
-			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
-		},
-	}
-
-	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
-	assert.NoError(t, err)
-
-	sessionDataArray := [transport.MaxSessionDataSize]byte{}
-	copy(sessionDataArray[:], sessionDataSlice)
-
-	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:57247")
-	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersion{4, 0, 4},
-		SessionID:            1111,
-		CustomerID:           100,
-		DatacenterID:         11,
-		SliceNumber:          1,
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          sessionDataArray,
-		ClientAddress:        *clientAddr,
-		ServerAddress:        *serverAddr,
-		ClientRoutePublicKey: publicKey,
-		ServerRoutePublicKey: publicKey,
-		UserHash:             sessionDataStruct.RouteState.UserID,
-		DirectRTT:            500,
-		Next:                 true,
-		NumNearRelays:        2,
-		NearRelayIDs:         []uint64{1, 2},
-		NearRelayRTT:         []int32{10, 15},
-		NearRelayJitter:      []int32{0, 0},
-		NearRelayPacketLoss:  []int32{0, 0},
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	routeMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1},
-		RelayIDs:           []uint64{1, 2},
-		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
-		RelayNames:         []string{"test.relay.1", "test.relay.2"},
-		RelayLatitudes:     []float32{90, 89},
-		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 11},
-		RouteEntries: []core.RouteEntry{
-			{
-				DirectCost:     65,
-				NumRoutes:      int32(core.TriMatrixLength(2)),
-				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
-				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
-				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
-					{
-						0, 1,
-					},
-				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
-			},
-		},
-	}
-	routeMatrixFunc := func() *routing.RouteMatrix {
-		return &routeMatrix
-	}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
-	assert.NoError(t, err)
-
-	expectedResponse := transport.SessionResponsePacket{
-		Version:     requestPacket.Version,
-		SessionID:   requestPacket.SessionID,
-		SliceNumber: requestPacket.SliceNumber,
-		RouteType:   routing.RouteTypeDirect,
-	}
-
-	expectedSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		SessionID:       requestPacket.SessionID,
-		SessionVersion:  sessionDataStruct.SessionVersion,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-		Initial:         false,
-		RouteState: core.RouteState{
-			UserID:            requestPacket.UserHash,
-			Veto:              true,
-			Multipath:         true,
-			MultipathOverload: true,
-			ReduceLatency:     true,
-			NumNearRelays:     2,
-			NearRelayRTT:      [core.MaxNearRelays]int32{10, 15},
-			PLHistoryIndex:    1,
-			PLHistorySamples:  1,
-		},
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-
-	assertResponseEqual(t, expectedResponse, responsePacket)
-	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.MultipathOverload.Value())
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
+
+// func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
+// 	// Seed the RNG so we don't get different results from running `make test`
+// 	// and running the test directly in VSCode
+// 	rand.Seed(0)
+// 	logger := log.NewNopLogger()
+// 	metricsHandler := metrics.LocalHandler{}
+// 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+// 	assert.NoError(t, err)
+// 	responseBuffer := bytes.NewBuffer(nil)
+// 	storer := &storage.InMemory{}
+// 	buyer := routing.Buyer{
+// 		ID:             100,
+// 		Live:           true,
+// 		RouteShader:    core.NewRouteShader(),
+// 		InternalConfig: core.NewInternalConfig(),
+// 	}
+// 	err = storer.AddBuyer(context.Background(), buyer)
+// 	assert.NoError(t, err)
+// 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+// 	assert.NoError(t, err)
+
+// 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 11})
+// 	assert.NoError(t, err)
+
+// 	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{BuyerID: 100, DatacenterID: 11})
+// 	assert.NoError(t, err)
+
+// 	err = storer.AddSeller(context.Background(), routing.Seller{ID: "seller"})
+// 	assert.NoError(t, err)
+
+// 	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+// 	assert.NoError(t, err)
+// 	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+// 	assert.NoError(t, err)
+
+// 	publicKey := make([]byte, crypto.KeySize)
+// 	privateKey := [crypto.KeySize]byte{}
+
+// 	err = storer.AddRelay(context.Background(), routing.Relay{
+// 		ID:         1,
+// 		Addr:       *relayAddr1,
+// 		PublicKey:  publicKey,
+// 		Seller:     routing.Seller{ID: "seller"},
+// 		Datacenter: routing.Datacenter{ID: 10},
+// 	})
+// 	assert.NoError(t, err)
+
+// 	err = storer.AddRelay(context.Background(), routing.Relay{
+// 		ID:         2,
+// 		Addr:       *relayAddr2,
+// 		PublicKey:  publicKey,
+// 		Seller:     routing.Seller{ID: "seller"},
+// 		Datacenter: routing.Datacenter{ID: 11},
+// 	})
+// 	assert.NoError(t, err)
+
+// 	sessionDataStruct := transport.SessionData{
+// 		Version:         transport.SessionDataVersion,
+// 		SessionID:       1111,
+// 		SliceNumber:     1,
+// 		Location:        routing.LocationNullIsland,
+// 		ExpireTimestamp: uint64(time.Now().Unix()),
+// 		RouteNumRelays:  2,
+// 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
+// 		RouteState: core.RouteState{
+// 			UserID:        1234567890,
+// 			Next:          true,
+// 			ReduceLatency: true,
+// 			Multipath:     true,
+// 			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
+// 		},
+// 	}
+
+// 	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
+// 	assert.NoError(t, err)
+
+// 	sessionDataArray := [transport.MaxSessionDataSize]byte{}
+// 	copy(sessionDataArray[:], sessionDataSlice)
+
+// 	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:57247")
+// 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+
+// 	requestPacket := transport.SessionUpdatePacket{
+// 		Version:              transport.SDKVersion{4, 0, 4},
+// 		SessionID:            1111,
+// 		CustomerID:           100,
+// 		DatacenterID:         11,
+// 		SliceNumber:          1,
+// 		SessionDataBytes:     int32(len(sessionDataSlice)),
+// 		SessionData:          sessionDataArray,
+// 		ClientAddress:        *clientAddr,
+// 		ServerAddress:        *serverAddr,
+// 		ClientRoutePublicKey: publicKey,
+// 		ServerRoutePublicKey: publicKey,
+// 		UserHash:             sessionDataStruct.RouteState.UserID,
+// 		DirectRTT:            500,
+// 		Next:                 true,
+// 		NumNearRelays:        2,
+// 		NearRelayIDs:         []uint64{1, 2},
+// 		NearRelayRTT:         []int32{10, 15},
+// 		NearRelayJitter:      []int32{0, 0},
+// 		NearRelayPacketLoss:  []int32{0, 0},
+// 	}
+// 	requestData, err := transport.MarshalPacket(&requestPacket)
+// 	assert.NoError(t, err)
+
+// 	var goodIPLocator goodIPLocator
+// 	ipLocatorFunc := func(sessionID uint64) routing.IPLocator {
+// 		return &goodIPLocator
+// 	}
+
+// 	routeMatrix := routing.RouteMatrix{
+// 		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1},
+// 		RelayIDs:           []uint64{1, 2},
+// 		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
+// 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
+// 		RelayLatitudes:     []float32{90, 89},
+// 		RelayLongitudes:    []float32{180, 179},
+// 		RelayDatacenterIDs: []uint64{10, 11},
+// 		RouteEntries: []core.RouteEntry{
+// 			{
+// 				DirectCost:     65,
+// 				NumRoutes:      int32(core.TriMatrixLength(2)),
+// 				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
+// 				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
+// 				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
+// 					{
+// 						0, 1,
+// 					},
+// 				},
+// 				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
+// 			},
+// 		},
+// 	}
+// 	routeMatrixFunc := func() *routing.RouteMatrix {
+// 		return &routeMatrix
+// 	}
+
+// 	redisServer, err := miniredis.Run()
+// 	assert.NoError(t, err)
+
+// 	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+// 	assert.NoError(t, err)
+
+// 	expectedResponse := transport.SessionResponsePacket{
+// 		Version:     requestPacket.Version,
+// 		SessionID:   requestPacket.SessionID,
+// 		SliceNumber: requestPacket.SliceNumber,
+// 		RouteType:   routing.RouteTypeDirect,
+// 	}
+
+// 	expectedSessionData := transport.SessionData{
+// 		Version:         transport.SessionDataVersion,
+// 		SessionID:       requestPacket.SessionID,
+// 		SessionVersion:  sessionDataStruct.SessionVersion,
+// 		SliceNumber:     requestPacket.SliceNumber + 1,
+// 		Location:        routing.LocationNullIsland,
+// 		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+// 		Initial:         false,
+// 		RouteState: core.RouteState{
+// 			UserID:            requestPacket.UserHash,
+// 			Veto:              true,
+// 			Multipath:         true,
+// 			MultipathOverload: true,
+// 			ReduceLatency:     true,
+// 			NumNearRelays:     2,
+// 			NearRelayRTT:      [core.MaxNearRelays]int32{10, 15},
+// 			PLHistoryIndex:    1,
+// 			PLHistorySamples:  1,
+// 		},
+// 	}
+
+// 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+// 	assert.NoError(t, err)
+
+// 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+// 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+// 	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
+// 	handler := transport.SessionUpdateHandlerFunc(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, 32, privateKey, postSessionHandler, metrics.SessionUpdateMetrics)
+// 	handler(responseBuffer, &transport.UDPPacket{
+// 		Data: requestData,
+// 	})
+
+// 	var responsePacket transport.SessionResponsePacket
+// 	responsePacket.Version = requestPacket.Version
+// 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+// 	assert.NoError(t, err)
+
+// 	var sessionData transport.SessionData
+// 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+// 	assert.NoError(t, err)
+
+// 	assert.Equal(t, expectedSessionData, sessionData)
+
+// 	assertResponseEqual(t, expectedResponse, responsePacket)
+// 	assert.Equal(t, 1.0, metrics.SessionUpdateMetrics.MultipathOverload.Value())
+// }
 
 func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	// Seed the RNG so we don't get different results from running `make test`
