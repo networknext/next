@@ -597,9 +597,10 @@ func (vm *VanityMetricHandler) SessionIDExists(sessionID string) (exists bool, e
 		if err != nil {
 			return true, err
 		}
+		return true, nil
 	}
 
-	return true, nil
+	return false, nil
 }
 
 func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
@@ -623,7 +624,11 @@ func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
 func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
 	currentTime := time.Now().Unix()
 
-	_, err := conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...)
+	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
+
+	if numRemoved != 0 {
+		level.Debug(vm.logger).Log("msg", "Removed Session IDs from redis", "numRemoved", numRemoved)
+	}
 
 	return err
 }

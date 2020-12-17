@@ -247,7 +247,6 @@ func TestReceiveMessage(t *testing.T) {
 
 func TestUpdateMetrics(t *testing.T) {
 	ctx := context.Background()
-	redisServer, _ := miniredis.Run()
 
 	// Get the time series metrics handler for vanity metrics (local since not actively writing)
 	tsMetricsHandler := &metrics.LocalHandler{}
@@ -259,6 +258,8 @@ func TestUpdateMetrics(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	t.Run("add session id to redis", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
@@ -269,6 +270,7 @@ func TestUpdateMetrics(t *testing.T) {
 	})
 
 	t.Run("check session id exists in redis", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
@@ -287,30 +289,38 @@ func TestUpdateMetrics(t *testing.T) {
 	})
 
 	t.Run("check session ID expiration in redis", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
 		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*1, "testSet", logger)
 
+		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
+		defer conn.Close()
+
 		err := vanityMetrics.AddSessionID(sessionIDStr)
 		assert.NoError(t, err)
 
-		// Sleep for 1 second to let the expiration time limit reach
-		time.Sleep(time.Second*1)
+		// Ensure set has the sessionID
+		members, err := conn.Do("ZCARD", redis.Args{}.Add("testSet")...)
+		assert.NoError(t, err)
+		assert.NotNil(t, members)
+		assert.Equal(t, int64(1), members)
 
-		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
-		defer conn.Close()
+		// Sleep for 2 seconds to let the expiration time limit reach
+		time.Sleep(time.Second * 2)
 
 		// Expire old sessions
 		err = vanityMetrics.ExpireOldSessions(conn)
 		assert.NoError(t, err)
 
-		numMembers, err := redis.Int(conn.Do("ZCARD", redis.Args{}.Add("testSet")))
+		members, err = conn.Do("ZCARD", redis.Args{}.Add("testSet")...)
 		assert.NoError(t, err)
-		assert.Equal(t, 0, numMembers)
+		assert.Equal(t, int64(0), members)
 	})
 
 	t.Run("vanity data update metric success", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
 		vanityData := getTestVanityData(rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64())
 
 		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", logger)
