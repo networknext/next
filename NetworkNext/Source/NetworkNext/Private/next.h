@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "4.0.4"
+#define NEXT_VERSION_FULL                                   "4.0.5"
 #define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                    4
+#define NEXT_VERSION_PATCH_INT                                    5
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                  255
@@ -77,7 +77,9 @@
 #define NEXT_PLATFORM_PS4                                         5
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
-#define NEXT_PLATFORM_MAX                                         7
+#define NEXT_PLATFORM_XBOX_SERIESX                                8
+#define NEXT_PLATFORM_PS5                                         9
+#define NEXT_PLATFORM_MAX                                         9
 
 #define NEXT_MAX_TAGS                                             8
 
