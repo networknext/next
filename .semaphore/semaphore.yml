@@ -14,6 +14,7 @@ blocks:
   - name: Unit
     task:
       jobs:
+      
         - name: debug_portable_gcc6
           commands:
             - ./premake5 gmake
@@ -60,5 +61,103 @@ blocks:
           commands:
             - ./premake5 gmake
             - sem-version c 6
+            - make -j32 config=release_avx2
+            - ./bin/test
+            
+        - name: debug_portable_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=debug_portable
+            - ./bin/test
+        - name: debug_x64_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=debug_x64
+            - ./bin/test
+        - name: debug_avx_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=debug_avx
+            - ./bin/test
+        - name: debug_avx2_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=debug_avx2
+            - ./bin/test
+        - name: release_portable_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=release_portable
+            - ./bin/test
+        - name: release_x64_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=release_x64
+            - ./bin/test
+        - name: release_avx_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=release_avx
+            - ./bin/test
+        - name: release_avx2_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=release_avx2
+            - ./bin/test
+
+        - name: debug_portable_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
+            - make -j32 config=debug_portable
+            - ./bin/test
+        - name: debug_x64_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
+            - make -j32 config=debug_x64
+            - ./bin/test
+        - name: debug_avx_gcc7
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
+            - make -j32 config=debug_avx
+            - ./bin/test
+        - name: debug_avx2_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
+            - make -j32 config=debug_avx2
+            - ./bin/test
+        - name: release_portable_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
+            - make -j32 config=release_portable
+            - ./bin/test
+        - name: release_x64_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 7
+            - make -j32 config=release_x64
+            - ./bin/test
+        - name: release_avx_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
+            - make -j32 config=release_avx
+            - ./bin/test
+        - name: release_avx2_gcc8
+          commands:
+            - ./premake5 gmake
+            - sem-version c 8
             - make -j32 config=release_avx2
             - ./bin/test
