@@ -2,7 +2,7 @@ version: v1.0
 name: Test
 agent:
   machine:
-    type: e1-standard-2
+    type: e1-standard-8
     os_image: ubuntu1804
 global_job_config:
   prologue:
@@ -16,8 +16,43 @@ blocks:
   - name: Unit
     task:
       jobs:
-        - name: SDK
+        - name: debug_portable
           commands:
             - ./premake5 gmake
-            - make
+            - make -j32 config=debug_portable
+            - ./bin/test
+        - name: debug_x64
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=debug_x64
+            - ./bin/test
+        - name: debug_avx
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=debug_avx
+            - ./bin/test
+        - name: debug_avx2
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=debug_avx2
+            - ./bin/test
+        - name: release_portable
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=release_portable
+            - ./bin/test
+        - name: release_x64
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=release_x64
+            - ./bin/test
+        - name: release_avx
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=release_avx
+            - ./bin/test
+        - name: release_avx2
+          commands:
+            - ./premake5 gmake
+            - make -j32 config=release_avx2
             - ./bin/test
