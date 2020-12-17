@@ -117,7 +117,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, 5, logger)
+	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", logger)
 
 	errChan := make(chan error, 1)
 	// Start HTTP server

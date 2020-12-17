@@ -52,19 +52,15 @@ func (e *ErrUnmarshalMessage) Error() string {
 	return fmt.Sprintf("could not unmarshal message: %v", e.err)
 }
 
-type UserSession struct {
-	SessionID string `redis:"sessionID"`
-	Timestamp string `redis:"timestamp"`
-}
-
 type VanityMetricHandler struct {
 	handler              metrics.Handler
 	metrics              *metrics.VanityServiceMetrics
 	vanityMetricDataChan chan *VanityMetrics
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
-	redisUserSessionsMap *redis.Pool
-	maxUserIdleTime      int
+	redisSessionsMap     *redis.Pool
+	redisSetName         string
+	maxUserIdleTime      time.Duration
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
@@ -88,10 +84,11 @@ type VanityMetrics struct {
 }
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
-	vanitySubscriber pubsub.Subscriber, redisUserSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int, vanityMaxUserIdleTimeSeconds int, logger log.Logger) *VanityMetricHandler {
+	vanitySubscriber pubsub.Subscriber, redisSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int,
+	vanityMaxUserIdleTime time.Duration, vanitySetName string, logger log.Logger) *VanityMetricHandler {
 
 	// Create Redis client for userHash -> sessionID, timestamp map
-	vanityUserSessions := storage.NewRedisPool(redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections)
+	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisMaxIdleConnections, redisMaxActiveConnections)
 
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
@@ -115,8 +112,9 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		vanityMetricDataChan: make(chan *VanityMetrics, chanBufferSize),
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
-		redisUserSessionsMap: vanityUserSessions,
-		maxUserIdleTime:      vanityMaxUserIdleTimeSeconds,
+		redisSessionsMap:     vanitySessionsMap,
+		redisSetName:         vanitySetName,
+		maxUserIdleTime:      vanityMaxUserIdleTime,
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
@@ -331,7 +329,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		}
 
 		// Calculate sessionsAccelerated
-		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp)
+		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
 		if err != nil {
 			level.Error(vm.logger).Log("err", err)
 			return err
@@ -385,35 +383,25 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 }
 
 // Checks if a userHash has moved onto a new sessionID at a later point in time
-func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, timestamp uint64) (bool, error) {
-	userHashStr := fmt.Sprintf("%016x", userHash)
+func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	sessionIDStr := fmt.Sprintf("%016x", sessionID)
-	timestampStr := fmt.Sprintf("%016x", timestamp)
-
-	// See if userHash is in redis
-	userSession, exists, err := vm.GetUserSession(userHashStr)
+	exists, err := vm.SessionIDExists(sessionIDStr)
 	if err != nil {
-		return false, err
+		return exists, nil
 	}
 
-	newSession := false
-
-	// See if this is a new session for an existing userHash
-	if exists && sessionIDStr != userSession.SessionID && timestampStr > userSession.Timestamp {
-		newSession = true
+	if !exists {
+		// Not a new sessionID
+		return false, nil
 	}
 
-	if !exists || newSession {
-		// Update redis with the latest info for the userHash
-		newUserSession := &UserSession{SessionID: sessionIDStr, Timestamp: timestampStr}
-		err = vm.PutUserSession(userHashStr, newUserSession)
-		if err != nil {
-			return true, err
-		}
-		return true, nil
+	// Found a new sessionID, add it to the set
+	err = vm.AddSessionID(sessionIDStr)
+	if err != nil {
+		return exists, err
 	}
 
-	return false, nil
+	return true, nil
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct
@@ -594,67 +582,48 @@ func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType
 	return fmt.Sprintf(`projects/%s/metricDescriptors/%s`, gcpProjectID, metricType)
 }
 
-// Gets a UserSession struct from Redis for a given userHash
-func (vm *VanityMetricHandler) GetUserSession(userHash string) (userSession *UserSession, exists bool, err error) {
-	conn := vm.redisUserSessionsMap.Get()
+func (vm *VanityMetricHandler) SessionIDExists(sessionID string) (exists bool, err error) {
+	conn := vm.redisSessionsMap.Get()
 	defer conn.Close()
-	session := &UserSession{}
-
-	// Check if key exists
-	key := fmt.Sprintf("uh-%s", userHash)
-	exists, err = redis.Bool(conn.Do("EXISTS", key))
+	member := fmt.Sprintf("sid-%s", sessionID)
+	score, err := conn.Do("ZSCORE", redis.Args{}.Add(vm.redisSetName).Add(member)...)
 	if err != nil {
-		return session, false, err
-	}
-	if !exists {
-		return session, false, nil
+		return false, err
 	}
 
-	// Get the session and time
-	replies, err := conn.Do("HGETALL", key)
-	if err != nil {
-		return session, true, err
+	if score != nil {
+		// If the sessionID exists, refresh its expiration time
+		err = vm.AddSessionID(sessionID)
+		if err != nil {
+			return true, err
+		}
 	}
 
-	// Parse the reply into a UserSession struct
-	err = redis.ScanStruct(replies.([]interface{}), session)
-	if err != nil {
-		return session, true, err
-	}
-
-	// Refresh the expire time
-	resp, err := conn.Do("EXPIRE", key, vm.maxUserIdleTime)
-	if err != nil {
-		return session, true, err
-	}
-	if resp != int64(1) {
-		errorStr := fmt.Sprintf("Could not reset expire time for userHash %s; response %d", userHash, resp)
-		return session, true, errors.New(errorStr)
-	}
-
-	return session, true, nil
+	return true, nil
 }
 
-// Puts a userHash -> UserSession struct in Redis
-func (vm *VanityMetricHandler) PutUserSession(userHash string, userSession *UserSession) error {
-	conn := vm.redisUserSessionsMap.Get()
+func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
+	conn := vm.redisSessionsMap.Get()
 	defer conn.Close()
 
-	// Set the userHash -> UserSession in redis
-	key := fmt.Sprintf("uh-%s", userHash)
-	if _, err := conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(userSession)...); err != nil {
-		return err
-	}
-
-	// Refresh the expire time
-	resp, err := conn.Do("EXPIRE", key, vm.maxUserIdleTime)
+	// Refresh the expiration time for this key
+	refreshedTime := time.Now().Add(vm.maxUserIdleTime).Unix()
+	member := fmt.Sprintf("sid-%s", sessionID)
+	_, err := conn.Do("ZADD", redis.Args{}.Add(vm.redisSetName).Add(refreshedTime).Add(member)...)
 	if err != nil {
 		return err
 	}
-	if resp != int64(1) {
-		errorStr := fmt.Sprintf("Could not reset expire time for userHash %s; response %d", userHash, resp)
-		return errors.New(errorStr)
-	}
 
-	return nil
+	// Expire old set members
+	err = vm.ExpireOldSessions(conn)
+
+	return err
+}
+
+func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
+	currentTime := time.Now().Unix()
+
+	_, err := conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...)
+
+	return err
 }
