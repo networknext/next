@@ -205,7 +205,14 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errStr, http.StatusBadRequest)
 			return
 		}
-
+		
+		// fmt.Printf("%v%v",startTime, endTime)
+		// err = vanityMetrics.DeleteMetricDescriptor(context.Background(), sd, gcpProjectID, buyerID)
+		// if err != nil {
+		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
+		// data, err := vanityMetrics.ListCustomMetrics(context.Background(), sd, gcpProjectID, buyerID)
 		data, err := vanityMetrics.GetVanityMetricJSON(context.Background(), sd, gcpProjectID, buyerID, startTime, endTime)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

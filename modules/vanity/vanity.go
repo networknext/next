@@ -336,8 +336,16 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			return err
 		}
 		if newSession {
+			level.Debug(vm.logger).Log("msg", "Found new accelerated session for user", "userHash", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].UserHash), "sessionID", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].SessionID))
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
+
+		// Reset the metric before adding
+		vanityMetricPerBuyer.SlicesAccelerated.ValueReset()
+		vanityMetricPerBuyer.SlicesLatencyReduced.ValueReset()
+		vanityMetricPerBuyer.SlicesPacketLossReduced.ValueReset()
+		vanityMetricPerBuyer.SlicesJitterReduced.ValueReset()
+		vanityMetricPerBuyer.SessionsAccelerated.ValueReset()
 
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
@@ -406,6 +414,21 @@ func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 	}
 
 	return ret_val, nil
+}
+
+func(vm *VanityMetricHandler) DeleteMetricDescriptor(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, serviceName string) error {
+	metricNames := []string{"slices_accelerated","slices_latency_reduced","slices_packet_loss_reduced","slices_jitter_reduced","sessions_accelerated"}
+
+	for _, metricName := range metricNames{
+		name := fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/vanity_metric.%s", gcpProjectID, serviceName, metricName)
+		req := &monitoringpb.DeleteMetricDescriptorRequest{Name: name}
+		err := sd.Client.DeleteMetricDescriptor(ctx, req)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Returns a marshaled JSON of all custom metrics tracked through Stackdriver
@@ -501,19 +524,34 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 		}
 
 		// Extract the max point value from the list of points
+		type PointTime struct {
+			Start time.Time
+			Value int64
+			End time.Time
+		}
+		var pointList []int64
+		sumPoints := int64(0)
 		maxPointVal := int64(0)
+		var pointTimes []PointTime
 		for _, points := range pointsList {
 			for _, point := range points {
+				sumPoints += point.Value.GetInt64Value()
+				pointList = append(pointList, point.Value.GetInt64Value())
 				if point.Value.GetInt64Value() > maxPointVal {
 					maxPointVal = point.Value.GetInt64Value()
 				}
+				pt := PointTime{Start: point.Interval.StartTime.AsTime(), Value: point.Value.GetInt64Value(), End: point.Interval.EndTime.AsTime()}
+				pointTimes = append(pointTimes, pt)
 			}
 		}
+		fmt.Printf("Display Name: %s\n\tPointList: %v\n\tsumPoints: %d\n\tmaxPointVal: %d\n\tlength of point list: %d\n\tPoint Times: %v\n", displayName, pointList, sumPoints, maxPointVal, len(pointList), pointTimes)
 
-		floatPointVal := float64(maxPointVal)
+		// floatPointVal := float64(maxPointVal)
+		floatPointVal := float64(sumPoints)
 		// Check if the a slice metric needs hours calculated
 		if vm.hourMetricsMap[displayName] {
-			seconds := time.Second * time.Duration(10*maxPointVal)
+			// seconds := time.Second * time.Duration(10*maxPointVal)
+			seconds := time.Second * time.Duration(10*sumPoints)
 			hours := seconds.Hours()
 			// Round to 3 decimal places
 			floatPointVal = math.Round(hours*1000) / 1000
@@ -534,6 +572,7 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 
 // Gets lists of points for a time series request
 func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, sd *metrics.StackDriverHandler, name string, filter string, interval *monitoringpb.TimeInterval, aggregation *monitoringpb.Aggregation) ([][]*monitoringpb.Point, error) {
+	fmt.Println(aggregation)
 	req := &monitoringpb.ListTimeSeriesRequest{
 		Name:        name,
 		Filter:      filter,
