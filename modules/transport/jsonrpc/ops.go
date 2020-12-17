@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
@@ -369,6 +370,29 @@ func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *
 		s.Logger.Log("err", err)
 		return err
 	}
+	return nil
+}
+
+type CustomerArg struct {
+	CustomerID string
+}
+
+type CustomerReply struct {
+	Customer routing.Customer
+}
+
+func (s *OpsService) Customer(r *http.Request, arg *CustomerArg, reply *CustomerReply) error {
+
+	var c routing.Customer
+	var err error
+
+	if c, err = s.Storage.Customer(arg.CustomerID); err != nil {
+		err = fmt.Errorf("Customer() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	reply.Customer = c
+
 	return nil
 }
 
@@ -827,7 +851,6 @@ type datacenter struct {
 	SignedID     int64   `json:"signed_id"`
 	Latitude     float32 `json:"latitude"`
 	Longitude    float32 `json:"longitude"`
-	Enabled      bool    `json:"enabled"`
 	SupplierName string  `json:"supplierName"`
 }
 
@@ -836,8 +859,6 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
 			ID:           d.ID,
-			SignedID:     d.SignedID,
-			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
 			SupplierName: d.SupplierName,
@@ -1047,6 +1068,193 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 	}
 
 	reply.Relay = relay
+
+	return nil
+}
+
+type ModifyRelayFieldArgs struct {
+	RelayID uint64
+	Field   string
+	Value   string
+}
+
+type ModifyRelayFieldReply struct{}
+
+func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArgs, reply *ModifyRelayFieldReply) error {
+
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	// sent to storer as float64
+	case "NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm", "SSHPort", "MaxSessions":
+		newfloat, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			return fmt.Errorf("Value: %v is not a valid numeric type", args.Value)
+		}
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newfloat)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	// net.UDPAddr, time.Time - all sent to storer as strings
+	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate":
+		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	// routing.RelayState
+	case "State":
+
+		state, err := routing.ParseRelayState(args.Value)
+		if err != nil {
+			err := fmt.Errorf("value '%s' is not a valid relay state", args.Value)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, float64(state))
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	// nibblins (received as USD, sent to storer as float64)
+	case "MRC", "Overage":
+		newValue, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	// routing.BandwidthRule
+	case "BWRule":
+
+		bwRule, err := routing.ParseBandwidthRule(args.Value)
+		if err != nil {
+			err := fmt.Errorf("value '%s' is not a valid bandwidth rule", args.Value)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, float64(bwRule))
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		// routing.MachineType
+	case "Type":
+
+		machineType, err := routing.ParseMachineType(args.Value)
+		if err != nil {
+			err := fmt.Errorf("value '%s' is not a valid machine type", args.Value)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, float64(machineType))
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the Relay type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateCustomerArgs struct {
+	CustomerID string
+	Field      string
+	Value      string
+}
+
+type UpdateCustomerReply struct{}
+
+func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, reply *UpdateCustomerReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "Name", "AutomaticSigninDomains":
+		err := s.Storage.UpdateCustomer(context.Background(), args.CustomerID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateCustomer() error updating record for customer %s: %v", args.CustomerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Customer type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateSellerArgs struct {
+	SellerID string
+	Field    string
+	Value    string
+}
+
+type UpdateSellerReply struct{}
+
+func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply *UpdateSellerReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "ShortName":
+		err := s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	case "EgressPrice", "IngressPrice":
+		newValue, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		if args.Field == "EgressPrice" {
+			args.Field = "EgressPriceNibblinsPerGB"
+		} else {
+			args.Field = "IngressPriceNibblinsPerGB"
+		}
+		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for seller %s: %v", args.SellerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Seller type", args.Field)
+	}
 
 	return nil
 }

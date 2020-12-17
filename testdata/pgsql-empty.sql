@@ -234,4 +234,4 @@ insert into relay_states values (4, 'decommissioned');
 insert into relay_states values (5, 'offline');
 
 -- metadata
- insert into metadata (sync_sequence_number) values (0);
+ update metadata set sync_sequence_number = 0;
