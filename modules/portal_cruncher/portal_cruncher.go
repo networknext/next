@@ -240,6 +240,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 							errChan <- err
 							return
 						}
+						btPortalDataBuffer = btPortalDataBuffer[:0]
 
 					case <-ctx.Done():
 						return
@@ -669,6 +670,5 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 		cruncher.btMetrics.WriteSliceSuccessCount.Add(1)
 	}
 
-	btPortalDataBuffer = btPortalDataBuffer[:0]
 	return nil
 }
