@@ -2330,8 +2330,8 @@ Valid bandwidth rules:
    pool
 
 Valid server types:
-   baremetal
-   virtualmachine
+   bare-metal
+   vm
 
 `
 
@@ -2368,8 +2368,8 @@ Valid bandwidth rules:
    pool
 
 Valid server types:
-   baremetal
-   virtualmachine
+   bare-metal
+   vm
 
 `
 

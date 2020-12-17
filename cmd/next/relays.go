@@ -451,25 +451,13 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		}
 	}
 
-	var bwRule routing.BandWidthRule
-	switch r.BWRule {
-	case "flat":
-		bwRule = routing.BWRuleFlat
-	case "burst":
-		bwRule = routing.BWRuleBurst
-	case "pool":
-		bwRule = routing.BWRulePool
-	default:
+	bwRule, err := routing.ParseBandwidthRule(r.BWRule)
+	if err != nil {
 		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid bandwidth rule", r.BWRule), 0)
 	}
 
-	var machineType routing.MachineType
-	switch r.Type {
-	case "baremetal":
-		machineType = routing.BareMetal
-	case "virtualmachine":
-		machineType = routing.VirtualMachine
-	default:
+	machineType, err := routing.ParseMachineType(r.Type)
+	if err != nil {
 		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid machine type", r.Type), 0)
 	}
 

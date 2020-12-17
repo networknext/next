@@ -1112,26 +1112,14 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 
 	// routing.RelayState
 	case "State":
-		var state float64
-		switch args.Value {
-		case "enabled":
-			state = 0
-		case "maintenance":
-			state = 1
-		case "disabled":
-			state = 2
-		case "quarantined":
-			state = 3
-		case "decommissioned":
-			state = 4
-		case "offline":
-			state = 5
-		default:
+
+		state, err := routing.ParseRelayState(args.Value)
+		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid relay state", args.Value)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, state)
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, float64(state))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -1155,20 +1143,14 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 
 	// routing.BandwidthRule
 	case "BWRule":
-		var bwRule float64
-		switch args.Value {
-		case "flat":
-			bwRule = 1
-		case "burst":
-			bwRule = 2
-		case "pool":
-			bwRule = 3
-		default:
+
+		bwRule, err := routing.ParseBandwidthRule(args.Value)
+		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid bandwidth rule", args.Value)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, bwRule)
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, float64(bwRule))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -1177,18 +1159,14 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 
 		// routing.MachineType
 	case "Type":
-		var machineType float64
-		switch args.Value {
-		case "baremetal":
-			machineType = 1
-		case "virtualmachine":
-			machineType = 2
-		default:
+
+		machineType, err := routing.ParseMachineType(args.Value)
+		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid machine type", args.Value)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, machineType)
+		err = s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, float64(machineType))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
 			level.Error(s.Logger).Log("err", err)
