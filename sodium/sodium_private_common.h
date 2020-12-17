@@ -283,15 +283,25 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
 # define HAVE_PMMINTRIN_H 1
 # define HAVE_TMMINTRIN_H 1
 # define HAVE_SMMINTRIN_H 1
+
+#if NEXT_AVX
 # define HAVE_AVXINTRIN_H 1
+#endif
+
 # if _MSC_VER >= 1600
 #  define HAVE_WMMINTRIN_H 1
 # endif
+
+#if NEXT_AVX2
 # if _MSC_VER >= 1700 && defined(_M_X64)
 #  define HAVE_AVX2INTRIN_H 1
 # endif
+#endif
+
 #elif defined(HAVE_INTRIN_H)
+
 # include <intrin.h>
+
 #endif
 
 #ifdef HAVE_LIBCTGRIND

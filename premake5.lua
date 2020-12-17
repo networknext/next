@@ -44,7 +44,7 @@ project "sodium"
 		"sodium/**.c",
 		"sodium/**.h",
 	}
-  	filter { "platforms:*x64 or *avx or *avx2" }
+  	filter { "system:not windows", "platforms:*x64 or *avx or *avx2" }
 		files {
 			"sodium/**.S"
 		}
