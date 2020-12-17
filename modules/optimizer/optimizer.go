@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"runtime"
+	"sort"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -275,22 +276,31 @@ func (o *Optimizer) UpdateRelay(requestBody []byte) {
 	o.RelayMap.Unlock()
 }
 
-func (o *Optimizer) NewCostAndRouteMatrixBaseRelayData(relayIDs []uint64) (*routing.CostMatrix, *routing.RouteMatrix) {
-	numRelays := len(relayIDs)
+func (o *Optimizer) NewCostAndRouteMatrixBaseRelayData(baseRelayIDs []uint64) (*routing.CostMatrix, *routing.RouteMatrix) {
+	namesMap := make(map[string]routing.Relay)
+	numRelays := len(baseRelayIDs)
 	relayAddresses := make([]net.UDPAddr, numRelays)
 	relayNames := make([]string, numRelays)
 	relayLatitudes := make([]float32, numRelays)
 	relayLongitudes := make([]float32, numRelays)
 	relayDatacenterIDs := make([]uint64, numRelays)
+	relayIDs := make([]uint64, numRelays)
 
-	for i, relayID := range relayIDs {
+	for i, relayID := range baseRelayIDs {
 		relay, err := o.Store.Relay(relayID)
 		if err != nil {
 			continue
 		}
 
-		relayAddresses[i] = relay.Addr
 		relayNames[i] = relay.Name
+		namesMap[relay.Name] = relay
+	}
+	//sort relay names then populate other arrays
+	sort.Strings(relayNames)
+	for i, relayName := range relayNames {
+		relay := namesMap[relayName]
+		relayIDs[i] = relay.ID
+		relayAddresses[i] = relay.Addr
 		relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
 		relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 		relayDatacenterIDs[i] = relay.Datacenter.ID

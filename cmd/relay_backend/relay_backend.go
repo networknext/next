@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/common"
+
 	"github.com/networknext/backend/modules/common/helpers"
 
 	"cloud.google.com/go/pubsub"
@@ -419,6 +421,9 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	relayEnabledCache := common.NewRelayEnabledCache(storer)
+	relayEnabledCache.StartRunner(1 * time.Minute)
+
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if err != nil {
@@ -643,12 +648,19 @@ func mainReturnWithCode() int {
 			}
 			if hashing {
 				timestamp := time.Now().UTC().Unix()
-				relayHash := fnv.New64a()
-				for _, name := range relayNames {
-					relayHash.Write([]byte(name))
+
+				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
+				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
+				if len(downRelayNames) != 0 {
+					relayHash := fnv.New64a()
+					for _, name := range downRelayNames {
+						relayHash.Write([]byte(name))
+					}
+
+					hash := relayHash.Sum64()
+					namesHashEntry.Hash = hash
 				}
-				hash := relayHash.Sum64()
-				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(hash), Names: relayNames}
+
 				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
 				if err != nil {
 					level.Error(logger).Log("err", err)

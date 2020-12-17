@@ -410,7 +410,6 @@ func (fs *Firestore) SetCustomer(ctx context.Context, c routing.Customer) error 
 				"buyerRef":               c.BuyerRef,
 				"sellerRef":              c.SellerRef,
 				"automaticSigninDomains": c.AutomaticSignInDomains,
-				"active":                 c.Active,
 			}
 
 			if _, err := cdoc.Ref.Set(ctx, newCustomerData, firestore.MergeAll); err != nil {
@@ -1511,7 +1510,6 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
 		Name:         d.Name,
-		Enabled:      d.Enabled,
 		Latitude:     d.Location.Latitude,
 		Longitude:    d.Location.Longitude,
 		SupplierName: d.SupplierName,
@@ -1619,7 +1617,6 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
 				"name":         d.Name,
-				"enabled":      d.Enabled,
 				"latitude":     d.Location.Latitude,
 				"longitude":    d.Location.Longitude,
 				"supplierName": d.SupplierName,
@@ -1756,9 +1753,8 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 
 		did := crypto.HashID(d.Name)
 		datacenters[did] = routing.Datacenter{
-			ID:      did,
-			Name:    d.Name,
-			Enabled: d.Enabled,
+			ID:   did,
+			Name: d.Name,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
@@ -1905,9 +1901,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID(d.Name),
-			Name:    d.Name,
-			Enabled: d.Enabled,
+			ID:   crypto.HashID(d.Name),
+			Name: d.Name,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
@@ -2128,7 +2123,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			Code:                   c.Code,
 			Name:                   c.Name,
 			AutomaticSignInDomains: c.AutomaticSignInDomains,
-			Active:                 c.Active,
 			BuyerRef:               c.BuyerRef,
 			SellerRef:              c.SellerRef,
 		}
@@ -2323,27 +2317,27 @@ func (fs *Firestore) RouteShader(buyerID uint64) (core.RouteShader, error) {
 }
 
 func (fs *Firestore) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
-	return fmt.Errorf("AddInternalConfig not yet impemented in Firestore storer")
+	return fmt.Errorf("AddInternalConfig not impemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateInternalConfig not yet impemented in Firestore storer")
+	return fmt.Errorf("UpdateInternalConfig not impemented in Firestore storer")
 }
 
 func (fs *Firestore) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveInternalConfig not yet impemented in Firestore storer")
+	return fmt.Errorf("RemoveInternalConfig not impemented in Firestore storer")
 }
 
 func (fs *Firestore) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	return fmt.Errorf("AddRouteShader not yet impemented in Firestore storer")
+	return fmt.Errorf("AddRouteShader not impemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateRouteShader not yet impemented in Firestore storer")
+	return fmt.Errorf("UpdateRouteShader not impemented in Firestore storer")
 }
 
 func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveRouteShader not yet impemented in Firestore storer")
+	return fmt.Errorf("RemoveRouteShader not impemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
@@ -2351,13 +2345,25 @@ func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field stri
 }
 
 func (fs *Firestore) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("AddBannedUser not yet impemented in Firestore storer"))
+	return fmt.Errorf(("AddBannedUser not impemented in Firestore storer"))
 }
 
 func (fs *Firestore) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("RemoveBannedUser not yet impemented in Firestore storer"))
+	return fmt.Errorf(("RemoveBannedUser not impemented in Firestore storer"))
 }
 
 func (fs *Firestore) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
-	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in Firestore storer"))
+	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not impemented in Firestore storer"))
+}
+
+func (fs *Firestore) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateBuyer not impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
+	return fmt.Errorf("UpdateSeller not impemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
+	return fmt.Errorf("UpdateCustomer not impemented in Firestore storer")
 }
