@@ -721,42 +721,38 @@ func SessionUpdateHandlerFunc(
 
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
 				metrics.RouteDoesNotExist.Add(1)
+			}
 
-				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
+			if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+				// Continue token
+
+				// Check if the route has changed
+				if nextRouteSwitched {
+					metrics.RouteSwitched.Add(1)
+
+					// Create a next token here rather than a continue token since the route has switched
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				} else {
+					HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 				}
 			} else {
-				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
-					// Continue token
+				// Route was vetoed - check to see why
+				if sessionData.RouteState.NoRoute {
+					level.Warn(logger).Log("warn", "route no longer exists")
+					metrics.NoRoute.Add(1)
+				}
 
-					// Check if the route has changed
-					if nextRouteSwitched {
-						metrics.RouteSwitched.Add(1)
+				if sessionData.RouteState.MultipathOverload {
+					level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+					metrics.MultipathOverload.Add(1)
 
-						// Create a next token here rather than a continue token since the route has switched
-						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-					} else {
-						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-					}
-				} else {
-					// Route was vetoed - check to see why
-					if sessionData.RouteState.NoRoute {
-						level.Warn(logger).Log("warn", "route no longer exists")
-						metrics.NoRoute.Add(1)
-					}
+					// We will handle updating the multipath veto redis in the post session update
+					// to avoid blocking the routing response
+				}
 
-					if sessionData.RouteState.MultipathOverload {
-						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
-						metrics.MultipathOverload.Add(1)
-
-						// We will handle updating the multipath veto redis in the post session update
-						// to avoid blocking the routing response
-					}
-
-					if sessionData.RouteState.LatencyWorse {
-						level.Warn(logger).Log("warn", "this route makes latency worse")
-						metrics.LatencyWorse.Add(1)
-					}
+				if sessionData.RouteState.LatencyWorse {
+					level.Warn(logger).Log("warn", "this route makes latency worse")
+					metrics.LatencyWorse.Add(1)
 				}
 			}
 		}
