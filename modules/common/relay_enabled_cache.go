@@ -82,7 +82,7 @@ func (rec *RelayEnabledCache) GetEnabledRelays() ([]string, []uint64) {
 	return relayNames, relayIDs
 }
 
-func (rec *RelayEnabledCache) GetDownRelays(runningRelays []string) ([]string, []uint64) {
+func (rec *RelayEnabledCache) GetDownRelays(runningRelays []uint64) ([]string, []uint64) {
 	downRelays := make(map[string]uint64)
 	downRelayNames := make([]string, 0)
 	rec.mux.RLock()
@@ -92,8 +92,8 @@ func (rec *RelayEnabledCache) GetDownRelays(runningRelays []string) ([]string, [
 	//find
 	for _, dbRelay := range activeRelays {
 		found := false
-		for _, rName := range runningRelays {
-			if dbRelay.name == rName {
+		for _, rID := range runningRelays {
+			if dbRelay.id == rID {
 				found = true
 				break
 			}

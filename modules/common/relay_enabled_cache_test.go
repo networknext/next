@@ -119,7 +119,7 @@ func TestRelayEnabledCache_GetDownRelays(t *testing.T) {
 	}}
 	rec := NewRelayEnabledCache(storer)
 	rec.runner()
-	runningRelayNames := []string{"relay0", "relay3"}
+	runningRelayNames := []uint64{0, 3}
 
 	downRelayNames, downRelayIDs := rec.GetDownRelays(runningRelayNames)
 	assert.Equal(t, 2, len(downRelayNames))

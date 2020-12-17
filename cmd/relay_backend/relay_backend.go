@@ -649,7 +649,7 @@ func mainReturnWithCode() int {
 			if hashing {
 				timestamp := time.Now().UTC().Unix()
 
-				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayNames)
+				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
 				if len(downRelayNames) != 0 {
 					relayHash := fnv.New64a()
