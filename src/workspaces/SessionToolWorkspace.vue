@@ -85,12 +85,7 @@ export default class SessionToolWorkspace extends Vue {
   }
 
   private created () {
-    console.log('Created')
     this.searchID = this.$route.params.pathMatch || ''
-  }
-
-  private mounted () {
-    console.log('mounted')
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
