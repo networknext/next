@@ -19,10 +19,10 @@ blocks:
             - env_var: GCC_VERSION
               values: [ "6", "7", "8" ]
             - env_var: CONFIG
-              values: [ "config=debug_portable" ]
+              values: [ "debug_portable" ]
           commands:
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
             - gcc --version
-            - make -j32 $CONFIG
+            - make -j32 config=$CONFIG
             - ./bin/test
