@@ -85,11 +85,16 @@ export default class SessionToolWorkspace extends Vue {
   }
 
   private created () {
+    console.log('Created')
     this.searchID = this.$route.params.pathMatch || ''
   }
 
+  private mounted () {
+    console.log('mounted')
+  }
+
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    this.searchID = this.$route.params.pathMatch || ''
+    this.searchID = to.params.pathMatch || ''
     this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
     this.alertType = AlertType.INFO
     next()
