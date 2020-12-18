@@ -293,7 +293,7 @@ func TestUpdateMetrics(t *testing.T) {
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
-		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Millisecond*1, "testSet", logger)
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Millisecond*10, "testSet", logger)
 
 		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
 		defer conn.Close()
@@ -307,8 +307,8 @@ func TestUpdateMetrics(t *testing.T) {
 		assert.NotNil(t, members)
 		assert.Equal(t, int64(1), members)
 
-		// Sleep for 20 nanoseconds to let the expiration time limit reach
-		time.Sleep(time.Millisecond*2)
+		// Sleep for 20 milliseconds to let the expiration time limit reach
+		time.Sleep(time.Millisecond*20)
 
 		// Expire old sessions
 		err = vanityMetrics.ExpireOldSessions(conn)
