@@ -26,5 +26,5 @@ blocks:
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
             - gcc --version
-            - make -j32 config=$BUILD_$PLATFORM
+            - make -j32 config=$(BUILD)_$(PLATFORM)
             - ./bin/test
