@@ -17,10 +17,14 @@ blocks:
         - name: test
           matrix:
             - env_var: GCC_VERSION
-              values: [ "4", "5", "6", "7", "8" ]
+              values: [ 6", "7", "8" ]
+            - env_var: BUILD
+              values: [ "debug", "release" ]
+            - env_var: PLATFORM
+              values: [ "portable", "x64", "avx", "avx2" ]
           commands:
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
             - gcc --version
-            - make -j32 config=debug_portable
+            - make -j32 config=$BUILD_$PLATFORM
             - ./bin/test
