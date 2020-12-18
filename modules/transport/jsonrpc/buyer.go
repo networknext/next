@@ -431,7 +431,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 
 		totalCount := firstTotalCount
-		if secondTotalCount > firstNextCount {
+		if secondTotalCount > firstTotalCount {
 			totalCount = secondTotalCount
 		}
 
