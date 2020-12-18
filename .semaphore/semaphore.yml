@@ -21,5 +21,6 @@ blocks:
           commands:
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
+            - gcc --version
             - make -j32 config=debug_portable
             - ./bin/test
