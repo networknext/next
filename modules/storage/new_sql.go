@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
@@ -24,29 +25,49 @@ import (
 // only used for unit testing.
 func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
-	fmt.Println("Creating SQLite3 Storer.")
-	pwd, _ := os.Getwd()
-	fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
+	var sqlite3 *sql.DB
 
-	// remove the old db file if it exists (SQLite3 save one by default when
-	// exiting)
-	fmt.Println("--> Attempting to remove db file")
-	if _, err := os.Stat("testdata/network_next.db"); err == nil || os.IsExist(err) {
+	fmt.Println("Creating SQLite3 Storer.")
+	// pwd, _ := os.Getwd()
+	// fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
+
+	// remove the old db file if it exists (SQLite3 saves one by default when exiting)
+	// fmt.Println("--> Attempting to remove db file")
+	if _, err := os.Stat("testdata/sqlite3-empty.sql"); err == nil || os.IsExist(err) { // happy path
+		// fmt.Println("--> Removing testdata/network_next.db")
 		err = os.Remove("testdata/network_next.db")
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
+			// return nil, err
+		}
+		// fmt.Println("--> Removed testdata/network_next.db")
+		sqlite3, err = sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
 			return nil, err
 		}
-	}
-
-	sqlite3, err := sql.Open("sqlite3", "file:testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
-	if err != nil {
-		err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
-		return nil, err
+		// fmt.Println("--> opened testdata/network_next.db")
+	} else if _, err := os.Stat("../../testdata/sqlite3-empty.sql"); err == nil || os.IsExist(err) { // unit test
+		// fmt.Println("--> Removing ../../testdata/network_next.db")
+		err = os.Remove("../../testdata/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %w", err)
+			// return nil, err
+		}
+		// fmt.Println("--> Removed ../../testdata/network_next.db")
+		sqlite3, err = sql.Open("sqlite3", "file:../../testdata/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error creating db connection: %w", err)
+			return nil, err
+		}
+		// fmt.Println("--> opened ../../testdata/network_next.db")
+	} else {
+		fmt.Println("--> did not find db file?")
+		os.Exit(0)
 	}
 
 	// db.Ping actually establishes the connection and validates the parameters
-	err = sqlite3.Ping()
+	err := sqlite3.Ping()
 	if err != nil {
 		err = fmt.Errorf("NewSQLite3() error pinging db: %w", err)
 		return nil, err
@@ -61,13 +82,16 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 		customers:          make(map[string]routing.Customer),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
 		SyncSequenceNumber: -1,
 	}
 
 	// populate the db with some data from dev
 	file, err := ioutil.ReadFile("testdata/sqlite3-empty.sql") // happy path
 	if err != nil {
-		file, err = ioutil.ReadFile("testdata/sqlite3-empty.sql") // unit test
+		file, err = ioutil.ReadFile("../../testdata/sqlite3-empty.sql") // unit test
 		if err != nil {
 			err = fmt.Errorf("NewSQLite3() error opening seed file: %w", err)
 			return nil, err
@@ -101,22 +125,21 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 }
 
 // NewPostgreSQL returns an PostgreSQL backed database pointer
-func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
+func NewPostgreSQL(
+	ctx context.Context,
+	logger log.Logger,
+	pgHostIP string,
+	pgUserName string,
+	pgPassword string,
+) (*SQL, error) {
 
 	fmt.Println("Creating PostgreSQL Storer.")
 
-	// TODO: move sensitive stuff to env w/ GCP vars
-	const (
-		host     = "localhost"
-		port     = 5432
-		user     = "engineering"
-		password = "0xdeadbeef"
-		dbname   = "nn"
-	)
-
+	// -- port and db name are the same regardless of the environment
+	// -- sslmode is a driver req, connection is internal/IP and encrypted
 	pgsqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+		pgHostIP, 5432, pgUserName, pgPassword, "network_next")
 
 	pgsql, err := sql.Open("postgres", pgsqlInfo)
 	if err != nil {
@@ -145,6 +168,9 @@ func NewPostgreSQL(ctx context.Context, logger log.Logger) (*SQL, error) {
 		customerIDs:        make(map[int64]string),
 		buyerIDs:           make(map[int64]uint64),
 		sellerIDs:          make(map[int64]string),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
 		SyncSequenceNumber: -1,
 	}
 
@@ -203,14 +229,29 @@ func (db *SQL) Sync(ctx context.Context) error {
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
 	// 	1 Customers
-	//	2 Buyers
-	//	3 Sellers
-	// 	4 Datacenters
-	// 	5 DatacenterMaps
-	//	6 Relays
+	//  2 InternalConfigs
+	//  3 BannedUsers
+	//  4 RouteShaders
+	//	5 Buyers
+	//	6 Sellers
+	// 	7 Datacenters
+	// 	8 DatacenterMaps
+	//	9 Relays
 
 	if err := db.syncCustomers(ctx); err != nil {
 		return fmt.Errorf("failed to sync customers: %v", err)
+	}
+
+	if err := db.syncInternalConfigs(ctx); err != nil {
+		return fmt.Errorf("failed to sync internal configs: %v", err)
+	}
+
+	if err := db.syncBannedUsers(ctx); err != nil {
+		return fmt.Errorf("failed to sync banned users: %v", err)
+	}
+
+	if err := db.syncRouteShaders(ctx); err != nil {
+		return fmt.Errorf("failed to sync route shaders: %v", err)
 	}
 
 	if err := db.syncBuyers(ctx); err != nil {
@@ -316,9 +357,10 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sql.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
 	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
-	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.update_key, "))
-	sql.Write([]byte("relays.bw_billing_rule, relays.datacenter, "))
-	sql.Write([]byte("relays.machine_type, relays.relay_state from relays "))
+	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
+	sql.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
+	sql.Write([]byte("relays.machine_type, relays.relay_state, "))
+	sql.Write([]byte("relays.internal_ip, relays.internal_ip_port from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -347,11 +389,14 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.SSHPort,
 			&relay.SSHUser,
 			&relay.StartDate,
-			&relay.UpdateKey,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
 			&relay.BWRule,
 			&relay.DatacenterID,
 			&relay.MachineType,
 			&relay.State,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
@@ -366,6 +411,11 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
+		fullInternalAddress := relay.InternalIP + ":" + fmt.Sprintf("%d", relay.InternalIPPort)
+		internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+		}
 		// TODO: this should be treated as a legit address
 		// managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
 		// if err != nil {
@@ -396,6 +446,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			ID:                  rid,
 			Name:                relay.Name,
 			Addr:                *publicAddr,
+			InternalAddr:        *internalAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -405,7 +456,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
-			UpdateKey:           relay.UpdateKey,
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
@@ -480,14 +530,16 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyerIDs[buyer.DatabaseID] = buyer.ID
 
-		rs, err := db.GetRouteShaderForBuyerID(ctx, buyer.DatabaseID)
+		// apply default values if a custom RouteShader or InternalConfig
+		// is not saved for the buyer
+		rs, err := db.RouteShader(buyer.ID)
 		if err != nil {
-			// level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			rs = core.NewRouteShader()
 		}
 
-		ic, err := db.GetInternalConfigForBuyerID(ctx, buyer.DatabaseID)
+		ic, err := db.InternalConfig(buyer.ID)
 		if err != nil {
-			level.Warn(db.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyer.ID), "err", err)
+			ic = core.NewInternalConfig()
 		}
 
 		b := routing.Buyer{
@@ -622,6 +674,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 	db.datacenterMapMutex.Unlock()
 	return nil
 }
+
 func (db *SQL) syncCustomers(ctx context.Context) error {
 	var sql bytes.Buffer
 	var customer sqlCustomer
@@ -684,4 +737,220 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 
 	return nil
+}
+
+type sqlInternalConfig struct {
+	RouteSelectThreshold       int64
+	RouteSwitchThreshold       int64
+	MaxLatencyTradeOff         int64
+	RTTVetoDefault             int64
+	RTTVetoPacketLoss          int64
+	RTTVetoMultipath           int64
+	MultipathOverloadThreshold int64
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int64
+}
+
+func (db *SQL) syncInternalConfigs(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	var sqlIC sqlInternalConfig
+
+	internalConfigs := make(map[uint64]core.InternalConfig)
+
+	sql.Write([]byte("select max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
+	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
+	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
+	sql.Write([]byte("large_customer, is_uncommitted, buyer_id from rs_internal_configs"))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var buyerID int64
+		err := rows.Scan(
+			&sqlIC.MaxLatencyTradeOff,
+			&sqlIC.MaxRTT,
+			&sqlIC.MultipathOverloadThreshold,
+			&sqlIC.RouteSwitchThreshold,
+			&sqlIC.RouteSelectThreshold,
+			&sqlIC.RTTVetoDefault,
+			&sqlIC.RTTVetoMultipath,
+			&sqlIC.RTTVetoPacketLoss,
+			&sqlIC.TryBeforeYouBuy,
+			&sqlIC.ForceNext,
+			&sqlIC.LargeCustomer,
+			&sqlIC.Uncommitted,
+			&buyerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
+
+		internalConfig := core.InternalConfig{
+			RouteSelectThreshold:       int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold:       int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:         int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:            int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:         int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:          int32(sqlIC.RTTVetoMultipath),
+			MultipathOverloadThreshold: int32(sqlIC.MultipathOverloadThreshold),
+			TryBeforeYouBuy:            sqlIC.TryBeforeYouBuy,
+			ForceNext:                  sqlIC.ForceNext,
+			LargeCustomer:              sqlIC.LargeCustomer,
+			Uncommitted:                sqlIC.Uncommitted,
+			MaxRTT:                     int32(sqlIC.MaxRTT),
+		}
+
+		id := db.buyerIDs[buyerID]
+		internalConfigs[id] = internalConfig
+	}
+
+	db.internalConfigMutex.Lock()
+	db.internalConfigs = internalConfigs
+	db.internalConfigMutex.Unlock()
+	return nil
+}
+
+type sqlRouteShader struct {
+	ABTest                    bool
+	AcceptableLatency         int64
+	AcceptablePacketLoss      float64
+	BandwidthEnvelopeDownKbps int64
+	BandwidthEnvelopeUpKbps   int64
+	DisableNetworkNext        bool
+	LatencyThreshold          int64
+	Multipath                 bool
+	ProMode                   bool
+	ReduceLatency             bool
+	ReducePacketLoss          bool
+	ReduceJitter              bool
+	SelectionPercent          int64
+}
+
+func (db *SQL) syncRouteShaders(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	var sqlRS sqlRouteShader
+
+	routeShaders := make(map[uint64]core.RouteShader)
+
+	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
+	sql.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id from route_shaders "))
+
+	rows, err := db.Client.QueryContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var buyerID int64
+		err := rows.Scan(
+			&sqlRS.ABTest,
+			&sqlRS.AcceptableLatency,
+			&sqlRS.AcceptablePacketLoss,
+			&sqlRS.BandwidthEnvelopeDownKbps,
+			&sqlRS.BandwidthEnvelopeUpKbps,
+			&sqlRS.DisableNetworkNext,
+			&sqlRS.LatencyThreshold,
+			&sqlRS.Multipath,
+			&sqlRS.ProMode,
+			&sqlRS.ReduceLatency,
+			&sqlRS.ReducePacketLoss,
+			&sqlRS.ReduceJitter,
+			&sqlRS.SelectionPercent,
+			&buyerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			return err
+		}
+
+		routeShader := core.RouteShader{
+			DisableNetworkNext:        sqlRS.DisableNetworkNext,
+			SelectionPercent:          int(sqlRS.SelectionPercent),
+			ABTest:                    sqlRS.ABTest,
+			ProMode:                   sqlRS.ProMode,
+			ReduceLatency:             sqlRS.ReduceLatency,
+			ReducePacketLoss:          sqlRS.ReducePacketLoss,
+			ReduceJitter:              sqlRS.ReduceJitter,
+			Multipath:                 sqlRS.Multipath,
+			AcceptableLatency:         int32(sqlRS.AcceptableLatency),
+			LatencyThreshold:          int32(sqlRS.LatencyThreshold),
+			AcceptablePacketLoss:      float32(sqlRS.AcceptablePacketLoss),
+			BandwidthEnvelopeUpKbps:   int32(sqlRS.BandwidthEnvelopeUpKbps),
+			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
+		}
+
+		id := db.buyerIDs[buyerID]
+		if bannedUsers, ok := db.bannedUsers[id]; ok {
+			routeShader.BannedUsers = bannedUsers
+		}
+		routeShaders[id] = routeShader
+	}
+
+	for buyerID, rs := range routeShaders {
+		bannedUserList, ok := db.bannedUsers[buyerID]
+		if ok {
+			rs.BannedUsers = bannedUserList
+		}
+	}
+
+	db.routeShaderMutex.Lock()
+	db.routeShaders = routeShaders
+	db.routeShaderMutex.Unlock()
+	return nil
+}
+
+func (db *SQL) syncBannedUsers(ctx context.Context) error {
+
+	var sql bytes.Buffer
+	bannedUserList := make(map[uint64]map[uint64]bool)
+
+	sql.Write([]byte("select user_id, buyer_id from banned_users order by buyer_id asc"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID, dbBuyerID int64
+		err := rows.Scan(&userID, &dbBuyerID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+			return err
+		}
+
+		buyerID := db.buyerIDs[dbBuyerID]
+
+		bannedUser := make(map[uint64]bool)
+		bannedUser[uint64(userID)] = true
+		if _, ok := bannedUserList[uint64(buyerID)]; !ok {
+			bannedUserList[uint64(buyerID)] = make(map[uint64]bool)
+			bannedUserList[uint64(buyerID)] = bannedUser
+		} else {
+			bannedUserList[uint64(buyerID)][uint64(userID)] = true
+		}
+	}
+
+	db.bannedUserMutex.Lock()
+	db.bannedUsers = bannedUserList
+	db.bannedUserMutex.Unlock()
+
+	return nil
+
 }

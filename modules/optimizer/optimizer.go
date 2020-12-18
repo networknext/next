@@ -1,8 +1,15 @@
 package optimizer
 
+import "C"
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"net"
+	"runtime"
+	"sort"
+	"time"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/util/conn"
@@ -15,12 +22,8 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
-	"math/rand"
-	"net"
-	"runtime"
-	"time"
 
-
+	gcStorage "cloud.google.com/go/storage"
 )
 
 type Optimizer struct {
@@ -37,6 +40,7 @@ type Optimizer struct {
 	RelayStore  storage.RelayStore
 	StatsDB     *routing.StatsDatabase
 	Store       storage.Storer
+	CloudBucket *gcStorage.BucketHandle
 }
 
 func NewBaseOptimizer(cfg *Config) *Optimizer {
@@ -90,7 +94,9 @@ func (o *Optimizer) optimize(numRelays, numSegments int, costMatrix *routing.Cos
 	metrics.Invocations.Add(1)
 	optimizeDurationStart := time.Now()
 
-	routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, 5, costMatrix.RelayDatacenterIDs)
+	costThreshold := int32(1)
+
+	routeEntries := core.Optimize(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs)
 	if len(routeEntries) == 0 {
 		level.Warn(o.Logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 		return nil
@@ -202,14 +208,24 @@ func (o *Optimizer) GetValveRouteMatrix() (*routing.CostMatrix, *routing.RouteMa
 	return costMatrix, routeMatrix
 }
 
-func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error {
-	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(), matrixType, routeMatrix.GetResponseData())
+func (o *Optimizer) CloudStoreMatrix(matrixType string, timestamp time.Time, matrix []byte) error {
+	dir := fmt.Sprintf("matrix/optimizer/%d/%d/%d/%d/%d/%d/%s-%d", o.id, timestamp.Year(), timestamp.Month(), timestamp.Day(), timestamp.Hour(), timestamp.Minute(), matrixType, timestamp.Second())
+	obj := o.CloudBucket.Object(dir)
+	writer := obj.NewWriter(context.Background())
+	defer writer.Close()
+	_, err := writer.Write(matrix)
+	return err
+}
 
+func (o *Optimizer) UpdateMatrix(routeMatrix routing.RouteMatrix, matrixType string) error {
+
+	matrix := storage.NewMatrix(o.id, o.createdAt, time.Now(), matrixType, routeMatrix.GetResponseData())
 	err := o.MatrixStore.UpdateOptimizerMatrix(matrix)
 	if err != nil {
 		level.Error(o.Logger).Log("msg", "failed to route matrix in MatrixStore", "err", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -255,7 +271,6 @@ func (o *Optimizer) removeRelay(relayAddress string) {
 }
 
 func (o *Optimizer) UpdateRelay(requestBody []byte) {
-	fmt.Println("update relay called")
 	var relayUpdateRequest transport.RelayUpdateRequest
 	err := relayUpdateRequest.UnmarshalBinary(requestBody)
 	if err != nil {
@@ -283,22 +298,31 @@ func (o *Optimizer) UpdateRelay(requestBody []byte) {
 	o.RelayMap.Unlock()
 }
 
-func (o *Optimizer) NewCostAndRouteMatrixBaseRelayData(relayIDs []uint64) (*routing.CostMatrix, *routing.RouteMatrix) {
-	numRelays := len(relayIDs)
+func (o *Optimizer) NewCostAndRouteMatrixBaseRelayData(baseRelayIDs []uint64) (*routing.CostMatrix, *routing.RouteMatrix) {
+	namesMap := make(map[string]routing.Relay)
+	numRelays := len(baseRelayIDs)
 	relayAddresses := make([]net.UDPAddr, numRelays)
 	relayNames := make([]string, numRelays)
 	relayLatitudes := make([]float32, numRelays)
 	relayLongitudes := make([]float32, numRelays)
 	relayDatacenterIDs := make([]uint64, numRelays)
+	relayIDs := make([]uint64, numRelays)
 
-	for i, relayID := range relayIDs {
+	for i, relayID := range baseRelayIDs {
 		relay, err := o.Store.Relay(relayID)
 		if err != nil {
 			continue
 		}
 
-		relayAddresses[i] = relay.Addr
 		relayNames[i] = relay.Name
+		namesMap[relay.Name] = relay
+	}
+	//sort relay names then populate other arrays
+	sort.Strings(relayNames)
+	for i, relayName := range relayNames {
+		relay := namesMap[relayName]
+		relayIDs[i] = relay.ID
+		relayAddresses[i] = relay.Addr
 		relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
 		relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
 		relayDatacenterIDs[i] = relay.Datacenter.ID
@@ -422,14 +446,13 @@ func (o *Optimizer) StartSubscriber() error {
 	}
 }
 
-
-func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPublisher,ctx context.Context, publishInterval time.Duration) error {
+func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPublisher, ctx context.Context, publishInterval time.Duration) error {
 	syncTimer := helpers.NewSyncTimer(publishInterval)
-	for !o.shutdown{
+	for !o.shutdown {
 		syncTimer.Run()
 
 		cpy := o.StatsDB.MakeCopy()
-		entries := analytics.ExtractPingStats(cpy)
+		entries := analytics.ExtractPingStats(cpy, o.cfg.MaxJitter, o.cfg.MaxPacketLoss)
 		if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 			level.Error(o.Logger).Log("err", err)
 			return err
@@ -439,10 +462,10 @@ func (o *Optimizer) PingPublishRunner(pingStatsPublisher analytics.PingStatsPubl
 	return nil
 }
 
-func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsPublisher,ctx context.Context, publishInterval time.Duration) error {
+func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsPublisher, ctx context.Context, publishInterval time.Duration) error {
 
 	syncTimer := helpers.NewSyncTimer(publishInterval)
-	for !o.shutdown{
+	for !o.shutdown {
 		syncTimer.Run()
 		allRelayData := o.RelayMap.GetAllRelayData()
 		entries := make([]analytics.RelayStatsEntry, len(allRelayData))
@@ -491,7 +514,9 @@ func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsP
 
 				rtt, jitter, pl := o.StatsDB.GetSample(relay.ID, otherRelay.ID)
 				if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
-					numRouteable++
+					if jitter <= float32(o.cfg.MaxJitter) && pl <= float32(o.cfg.MaxPacketLoss) {
+						numRouteable++
+					}
 				}
 			}
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -74,6 +75,7 @@ type account struct {
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
+	CreatedAt   time.Time          `json:"created_at"`
 }
 
 var roleIDs []string = []string{
@@ -115,22 +117,12 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
-	if !ok {
-		err := fmt.Errorf("AllAcounts() unable to parse email from token")
-		s.Logger.Log("err", err)
-		return err
-	}
-
 	requestCompany, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
 		return fmt.Errorf("AllAcounts(): user is not assigned to a company")
 	}
 
 	for _, a := range accountList.Users {
-		if requestEmail == *a.Email {
-			continue
-		}
 		companyCode, ok := a.AppMetadata["company_code"].(string)
 		if !ok || requestCompany != companyCode {
 			continue
@@ -312,6 +304,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			registered[*a.Email] = a
 		}
 	}
+	currentTime := time.Now()
 
 	// Create an account for each new email
 	var newUser *management.User
@@ -333,6 +326,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				AppMetadata: map[string]interface{}{
 					"company_code": userCompanyCode,
 				},
+				CreatedAt: &currentTime,
 			}
 			if err = s.UserManager.Create(newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to create new user: %w", err)
@@ -358,6 +352,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				},
 				Identities: user.Identities,
 				Name:       user.Name,
+				CreatedAt:  &currentTime,
 			}
 			if err = s.UserManager.Update(*user.ID, newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to update user: %w", err)
@@ -441,6 +436,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Name:        *u.Name,
 		Email:       *u.Email,
 		Roles:       r,
+		CreatedAt:   *u.CreatedAt,
 	}
 
 	return account
@@ -459,7 +455,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	reply.Roles = make([]*management.Role, 0)
 
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("AllRoles(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -502,7 +498,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("UserRoles(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}

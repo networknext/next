@@ -38,7 +38,7 @@ export ENV = local
 ##################
 
 export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local
+export NEXT_DATACENTER = local aliased
 export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
@@ -241,12 +241,20 @@ ifndef BIGTABLE_CF_NAME
 export BIGTABLE_CF_NAME = portal-session-history
 endif
 
+ifndef BIGTABLE_WRITE_DELETE_ROW
+export BIGTABLE_WRITE_DELETE_ROW = false
+endif
+
 ifndef BIGTABLE_TABLE_NAME
-export BIGTABLE_TABLE_NAME = BTTest
+export BIGTABLE_TABLE_NAME = portal-session-history
 endif
 
 ifndef BIGTABLE_HISTORICAL_TXT
 export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
+endif
+
+ifndef FEATURE_VANITY_METRIC
+export FEATURE_VANITY_METRIC = false
 endif
 
 .PHONY: help
@@ -334,11 +342,6 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
-.PHONY: test-load
-test-load: ## runs load tests
-	@printf "\nRunning load tests...\n" ; \
-	$(GO) run ./cmd/load_test/load_tests.go
-
 #######################
 
 .PHONY: dev-portal
@@ -373,10 +376,6 @@ dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
 dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
 
-.PHONY: dev-ghost-army
-dev-ghost-army: build-ghost-army ## runs a local ghost army
-	@./dist/ghost_army
-
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/backend.go
@@ -402,6 +401,14 @@ dev-multi-clients: build-client  ## runs 10 local clients
 dev-server: build-sdk build-server  ## runs a local server
 	@./dist/server
 
+.PHONY: dev-api
+dev-api: build-api ## runs a local api endpoint service
+	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
+
+.PHONY: dev-vanity
+dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
+	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
+
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
@@ -409,12 +416,6 @@ $(DIST_DIR)/$(SDKNAME).so: dist
 
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so
-
-PHONY: build-load-test
-build-load-test:
-	@printf "Building load test... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load-test ./cmd/load_test/load_tests.go
-	@printf "done\n"
 
 PHONY: build-portal-cruncher
 build-portal-cruncher:
@@ -463,6 +464,18 @@ build-billing:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
+	@printf "done\n"
+
+.PHONY: build-vanity
+build-vanity: dist
+	@printf "Building vanity metrics ..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
+	@printf "done\n"
+
 .PHONY: deploy-relay-backend-dev
 deploy-relay-backend-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
@@ -471,6 +484,11 @@ deploy-relay-backend-dev:
 deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
+
+.PHONY: deploy-vanity-dev
+deploy-vanity-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t vanity -n vanity -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-2 -t vanity -n vanity -b gs://development_artifacts
 
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging:
@@ -483,6 +501,11 @@ deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
+.PHONY: deploy-vanity-staging
+deploy-vanity-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t vanity -n vanity -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-2 -t vanity -n vanity -b gs://staging_artifacts
+
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
@@ -494,17 +517,10 @@ deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
-.PHONY: deploy-ghost-army-dev
-deploy-ghost-army-dev:
-	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
-
-.PHONY: deploy-ghost-army-staging
-deploy-ghost-army-staging:
-	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
-
-.PHONY: deploy-ghost-army-prod
-deploy-ghost-army-prod:
-	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
+.PHONY: deploy-vanity-prod
+deploy-vanity-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t vanity -n vanity -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-2 -t vanity -n vanity -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
@@ -521,6 +537,14 @@ build-billing-artifacts-dev: build-billing
 .PHONY: build-analytics-artifacts-dev
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
+
+.PHONY: build-api-artifacts-dev
+build-api-artifacts-dev: build-api
+	./deploy/build-artifacts.sh -e dev -s api
+
+.PHONY: build-vanity-artifacts-dev
+build-vanity-artifacts-dev: build-vanity
+	./deploy/build-artifacts.sh -e dev -s vanity
 
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
@@ -546,10 +570,6 @@ build-relay-backend-artifacts-dev: build-relay-backend
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
-.PHONY: build-ghost-army-artifacts-dev
-build-ghost-army-artifacts-dev: build-ghost-army
-	./deploy/build-artifacts.sh -e dev -s ghost_army
-
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -557,6 +577,14 @@ build-billing-artifacts-staging: build-billing
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
+
+.PHONY: build-api-artifacts-staging
+build-api-artifacts-staging: build-api
+	./deploy/build-artifacts.sh -e staging -s api
+
+.PHONY: build-vanity-artifacts-staging
+build-vanity-artifacts-staging: build-vanity
+	./deploy/build-artifacts.sh -e staging -s vanity
 
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
@@ -574,17 +602,9 @@ build-relay-backend-artifacts-staging: build-relay-backend
 build-portal-cruncher-artifacts-staging: build-portal-cruncher
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
-.PHONY: build-load-test-artifacts-staging
-build-load-test-artifacts-staging: build-load-test
-	./deploy/build-artifacts.sh -e staging -s load-test
-
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
-
-.PHONY: build-ghost-army-artifacts-staging
-build-ghost-army-artifacts-staging: build-ghost-army
-	./deploy/build-artifacts.sh -e staging -s ghost_army
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
@@ -593,6 +613,14 @@ build-billing-artifacts-prod: build-billing
 .PHONY: build-analytics-artifacts-prod
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
+
+.PHONY: build-api-artifacts-prod
+build-api-artifacts-prod: build-api
+	./deploy/build-artifacts.sh -e prod -s api
+
+.PHONY: build-vanity-artifacts-prod
+build-vanity-artifacts-prod: build-vanity
+	./deploy/build-artifacts.sh -e prod -s vanity
 
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
@@ -614,10 +642,6 @@ build-relay-backend-artifacts-prod: build-relay-backend
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
-.PHONY: build-ghost-army-artifacts-prod
-build-ghost-army-artifacts-prod: build-ghost-army
-	./deploy/build-artifacts.sh -e prod -s ghost_army
-
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
@@ -625,6 +649,14 @@ publish-billing-artifacts-dev:
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
+
+.PHONY: publish-api-artifacts-dev
+publish-api-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s api
+
+.PHONY: publish-vanity-artifacts-dev
+publish-vanity-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s vanity
 
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
@@ -650,10 +682,6 @@ publish-relay-backend-artifacts-dev:
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
-.PHONY: publish-ghost-army-artifacts-dev
-publish-ghost-army-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
-
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
@@ -661,6 +689,14 @@ publish-billing-artifacts-staging:
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
+.PHONY: publish-api-artifacts-staging
+publish-api-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s api
+
+.PHONY: publish-vanity-artifacts-staging
+publish-vanity-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s vanity
 
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
@@ -674,10 +710,6 @@ publish-portal-artifacts-staging:
 publish-portal-cruncher-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
 
-.PHONY: publish-load-test-artifacts-staging
-publish-load-test-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test
-
 .PHONY: publish-relay-backend-artifacts-staging
 publish-relay-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_backend
@@ -685,10 +717,6 @@ publish-relay-backend-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
-
-.PHONY: publish-ghost-army-artifacts-staging
-publish-ghost-army-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
 
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts:
@@ -705,6 +733,14 @@ publish-load-test-server-list:
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-api-artifacts-prod
+publish-api-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s api
+
+.PHONY: publish-vanity-artifacts-prod
+publish-vanity-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s vanity
 
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
@@ -730,9 +766,6 @@ publish-relay-backend-artifacts-prod:
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
 
-.PHONY: publish-ghost-army-artifacts-prod
-publish-ghost-army-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -750,24 +783,6 @@ publish-bootstrap-script-staging:
 publish-bootstrap-script-prod:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-dev
-publish-ghost-army-bootstrap-script-dev:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-staging
-publish-ghost-army-bootstrap-script-staging:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-prod
-publish-ghost-army-bootstrap-script-prod:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: build-server
@@ -803,6 +818,15 @@ build-next:
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
 	@printf "done\n"
 
+
+#######################
+#     Ghost Army      #
+#######################
+
+.PHONY: dev-ghost-army
+dev-ghost-army: build-ghost-army ## runs a local ghost army
+	@./dist/ghost_army
+
 .PHONY: build-ghost-army
 build-ghost-army:
 	@printf "Building ghost army... "
@@ -812,14 +836,68 @@ build-ghost-army:
 .PHONY: build-ghost-army-generator
 build-ghost-army-generator:
 	@printf "Building ghost army generator... "
-	@$(GO) build -o ./dist/gag ./cmd/ghost_army_generator/*.go
+	@$(GO) build -o ./dist/ghost_army_generator ./cmd/ghost_army_generator/*.go
 	@printf "done\n"
 
 .PHONY: build-ghost-army-analyzer
 build-ghost-army-analyzer:
 	@printf "Building ghost army analyzer... "
-	@$(GO) build -o ./dist/gaa ./cmd/ghost_army_analyzer/*.go
+	@$(GO) build -o ./dist/ghost_army_analyzer ./cmd/ghost_army_analyzer/*.go
 	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-dev
+publish-ghost-army-bootstrap-script-dev:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-staging
+publish-ghost-army-bootstrap-script-staging:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-prod
+publish-ghost-army-bootstrap-script-prod:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: build-ghost-army-artifacts-dev
+build-ghost-army-artifacts-dev: build-ghost-army
+	./deploy/build-artifacts.sh -e dev -s ghost_army
+
+.PHONY: build-ghost-army-artifacts-staging
+build-ghost-army-artifacts-staging: build-ghost-army
+	./deploy/build-artifacts.sh -e staging -s ghost_army
+
+.PHONY: build-ghost-army-artifacts-prod
+build-ghost-army-artifacts-prod: build-ghost-army
+	./deploy/build-artifacts.sh -e prod -s ghost_army
+
+.PHONY: publish-ghost-army-artifacts-dev
+publish-ghost-army-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
+
+.PHONY: publish-ghost-army-artifacts-staging
+publish-ghost-army-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
+
+.PHONY: publish-ghost-army-artifacts-prod
+publish-ghost-army-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
+
+.PHONY: deploy-ghost-army-dev
+deploy-ghost-army-dev:
+	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
+
+.PHONY: deploy-ghost-army-staging
+deploy-ghost-army-staging:
+	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
+
+.PHONY: deploy-ghost-army-prod
+deploy-ghost-army-prod:
+	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
 
 #######################
 #    Relay Gateway    #
@@ -986,7 +1064,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

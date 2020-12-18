@@ -186,11 +186,12 @@ var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
 }
 
 type RelayBackendMetrics struct {
-	Goroutines        Gauge
-	MemoryAllocated   Gauge
-	RouteMatrix       RouteMatrixMetrics
-	PingStatsMetrics  AnalyticsMetrics
-	RelayStatsMetrics AnalyticsMetrics
+	Goroutines              Gauge
+	MemoryAllocated         Gauge
+	RouteMatrix             RouteMatrixMetrics
+	PingStatsMetrics        AnalyticsMetrics
+	RelayStatsMetrics       AnalyticsMetrics
+	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyRelayBackendMetrics RelayBackendMetrics = RelayBackendMetrics{
@@ -216,10 +217,11 @@ var EmptyRouteMatrixMetrics RouteMatrixMetrics = RouteMatrixMetrics{
 }
 
 type AnalyticsServiceMetrics struct {
-	Goroutines        Gauge
-	MemoryAllocated   Gauge
-	PingStatsMetrics  AnalyticsMetrics
-	RelayStatsMetrics AnalyticsMetrics
+	Goroutines              Gauge
+	MemoryAllocated         Gauge
+	PingStatsMetrics        AnalyticsMetrics
+	RelayStatsMetrics       AnalyticsMetrics
+	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
@@ -261,6 +263,105 @@ var EmptyBigTableMetrics = BigTableMetrics{
 	ReadSliceSuccessCount:  &EmptyCounter{},
 	ReadMetaFailureCount:   &EmptyCounter{},
 	ReadSliceFailureCount:  &EmptyCounter{},
+}
+
+type VanityServiceMetrics struct {
+	Goroutines               Gauge
+	MemoryAllocated          Gauge
+	ReceivedVanityCount      Counter
+	UpdateVanitySuccessCount Counter
+	UpdateVanityFailureCount Counter
+	ReadVanitySuccessCount   Counter
+	ReadVanityFailureCount   Counter
+}
+
+var EmptyVanityServiceMetrics = VanityServiceMetrics{
+	Goroutines:               &EmptyGauge{},
+	MemoryAllocated:          &EmptyGauge{},
+	ReceivedVanityCount:      &EmptyCounter{},
+	UpdateVanitySuccessCount: &EmptyCounter{},
+	UpdateVanityFailureCount: &EmptyCounter{},
+	ReadVanitySuccessCount:   &EmptyCounter{},
+	ReadVanityFailureCount:   &EmptyCounter{},
+}
+
+func NewVanityServiceMetrics(ctx context.Context, metricsHandler Handler) (*VanityServiceMetrics, error) {
+	var err error
+
+	vanityMetrics := VanityServiceMetrics{}
+
+	vanityMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Goroutine Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity_metrics.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the vanity_metrics is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Memory Allocated",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity_metrics.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the vanity_metrics has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.ReceivedVanityCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Received Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.received.count",
+		Unit:        "reads",
+		Description: "The number of successful vanity metrics received from ZeroMQ",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.UpdateVanitySuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Update Success Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.update.success.count",
+		Unit:        "updates",
+		Description: "The number of successful vanity metric updates to the metrics handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.UpdateVanityFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Update Failure Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.update.failure.count",
+		Unit:        "updates",
+		Description: "The number of failed vanity metric updates to the metrics handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vanityMetrics.ReadVanitySuccessCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Read Success Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.read.success.count",
+		Unit:        "reads",
+		Description: "The number of successful vanity metric reads from StackDriver",
+	})
+
+	vanityMetrics.ReadVanityFailureCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Read Failure Count",
+		ServiceName: "vanity_metrics",
+		ID:          "vanity.metrics.read.failure.count",
+		Unit:        "reads",
+		Description: "The number of failed vanity metric reads from StackDriver",
+	})
+
+	return &vanityMetrics, nil
 }
 
 func NewBigTableMetrics(ctx context.Context, metricsHandler Handler) (*BigTableMetrics, error) {
@@ -423,10 +524,99 @@ func NewRelayInitMetrics(ctx context.Context, metricsHandler Handler) (*RelayIni
 		return nil, err
 	}
 
+	var initErrorMetrics RelayInitErrorMetrics
+	initErrorMetrics.UnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init unmarshal failure count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.unmarshal_failure.count",
+		Unit:        "unmarshal_failure",
+		Description: "The total number of received relay init requests that resulted in unmarshal failure",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initErrorMetrics.InvalidMagic, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init invalid magic error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.invalid_magic.count",
+		Unit:        "invalid_magic",
+		Description: "The total number of received relay init requests that resulted in invalid magic error",
+	})
+	if err != nil {
+		return nil, err
+	}
+	///
+	initErrorMetrics.InvalidVersion, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init invalid version error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.invalid_version.count",
+		Unit:        "invalid_version",
+		Description: "The total number of received relay init requests that resulted in invalid version error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initErrorMetrics.RelayNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init relay not found error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.not_found.count",
+		Unit:        "relay_not_found",
+		Description: "The total number of received relay init requests that resulted in relay not found error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initErrorMetrics.RelayQuarantined, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init relay quarantined error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.quarantined.count",
+		Unit:        "relay_quarantined",
+		Description: "The total number of received relay init requests that resulted in relay quarantined error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initErrorMetrics.DecryptionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init decryption failure count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.decryption_failure.count",
+		Unit:        "decryption_failure",
+		Description: "The total number of received relay init requests that resulted in decryption failure",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initErrorMetrics.RelayAlreadyExists, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init relay already exists count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.already_exists.count",
+		Unit:        "relay_already_exists",
+		Description: "The total number of received relay init requests that resulted in relay already exists",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initErrorMetrics.IPLookupFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init IP lookup failure count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.errors.ip_lookup_failure.count",
+		Unit:        "ip_lookup_failure",
+		Description: "The total number of received relay init requests that resulted in IP lookup failure",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	initMetrics := RelayInitMetrics{
 		Invocations:   initCount,
 		DurationGauge: initDuration,
-		ErrorMetrics:  EmptyRelayInitErrorMetrics,
+		ErrorMetrics:  initErrorMetrics,
 	}
 
 	return &initMetrics, nil
@@ -455,10 +645,77 @@ func NewRelayUpdateMetrics(ctx context.Context, metricsHandler Handler) (*RelayU
 		return nil, err
 	}
 
+	var em RelayUpdateErrorMetrics
+	em.UnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update unmarshal failure count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.errors.unmarshal_failure.count",
+		Unit:        "unmarshal_failure",
+		Description: "The total number of received relay update requests that resulted in unmarshal failure",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	em.InvalidVersion, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update invalid version error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.errors.invalid_version.count",
+		Unit:        "invalid_version",
+		Description: "The total number of received relay update requests that resulted in invalid version error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	em.ExceedMaxRelays, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay upgrade exceed max relays error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.errors.exceed_max_relays.count",
+		Unit:        "exceed_max_relays",
+		Description: "The total number of received relay update requests that resulted in exceed max relays error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	em.RelayNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update relay not found error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.errors.not_found.count",
+		Unit:        "relay_not_found",
+		Description: "The total number of received relay update requests that resulted in relay not found error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	em.InvalidToken, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update invalid token error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.errors.invalid_token.count",
+		Unit:        "invalid_token",
+		Description: "The total number of received relay init requests that resulted in invalid token error",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	em.RelayNotEnabled, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update relay not enabled error count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init_errors.not_enabled.count",
+		Unit:        "relay_not_enabled",
+		Description: "The total number of received relay init requests that resulted in relay not enabled",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	updateMetrics := RelayUpdateMetrics{
 		Invocations:   updateCount,
 		DurationGauge: updateDuration,
-		ErrorMetrics:  EmptyRelayUpdateErrorMetrics,
+		ErrorMetrics:  em,
 	}
 
 	return &updateMetrics, nil
@@ -984,6 +1241,73 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 
 	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
 
+	//RelayNamesHash
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Received",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries",
+		Unit:        "entries",
+		Description: "The total number of Route Matrix Stats entries received through Google Pub/Sub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Submitted",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Queued",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Entries Flushed",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Read Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrixStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Route Matrix Stats Write Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.route_matrix_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &relayBackendMetrics, nil
 }
 
@@ -1190,6 +1514,73 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		DisplayName: "Relay Stats Write Failure",
 		ServiceName: "analytics",
 		ID:          "analytics.relay_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	//RelayNamesHash
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Received",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries",
+		Unit:        "entries",
+		Description: "The total number of Route Matrix Stats entries received through Google Pub/Sub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Submitted",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Queued",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Entries Flushed",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Read Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RouteMatrixStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stats Write Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.route_matrix_stats.error.write_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
