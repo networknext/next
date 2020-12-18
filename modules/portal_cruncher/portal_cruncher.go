@@ -451,7 +451,9 @@ func SetupBigtable(ctx context.Context,
 	btMaxAgeDays int,
 	logger log.Logger) (*storage.BigTable, []string, error) {
 	// Setup Bigtable
+	fmt.Printf("setting up bigtable\n\tgcpProjectID: %s\n\tbtInstanceID: %s\n\tbtTableName: %s\n\tbtCfName: %s\n\tbtMaxAgeDays: %d\n\t", gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays)
 	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
+	fmt.Printf("The value of btEmulatorOK is %v\n", btEmulatorOK)
 	if btEmulatorOK {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
@@ -465,34 +467,39 @@ func SetupBigtable(ctx context.Context,
 
 	// Put the column family names in a slice
 	btCfNames := []string{btCfName}
-
+	fmt.Printf("Creating bigtable admin with gcpProjectID %s btInstanceID %s and logger...\n", gcpProjectID, btInstanceID)
 	// Create a bigtable admin for setup
 	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
 	if err != nil {
 		return nil, nil, err
 	}
+	fmt.Printf("Created bigtable admin successfully\n Verifying table exists with btTableName %s\n", btTableName)
 
 	// Check if the table exists in the instance
 	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 	if err != nil {
 		return nil, nil, err
 	}
-
+	fmt.Printf("Does the table exist? %v\n", tableExists)
 	if !tableExists {
 		level.Debug(logger).Log("msg", "Could not find table in bigtable instance")
+		fmt.Printf("Creating table with btTableName %s ; btCfNames %v...\n", btTableName, btCfNames)
 		// Create a table with the given name and column families
 		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
 			return nil, nil, err
 		}
+		fmt.Printf("Created table successfully\n Setting max age policy...\n")
 
 		// Set a garbage collection policy of maxAgeDays
 		maxAge := time.Hour * time.Duration(24*btMaxAgeDays)
 		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
 			return nil, nil, err
 		}
+		fmt.Printf("Set the max age policy successfully\n")
 
 		level.Debug(logger).Log("msg", "Successfully created table in bigtable instance")
 	} else {
+		fmt.Printf("Found table in bigtable instance\n")
 		level.Debug(logger).Log("msg", "Found table in bigtable instance")
 	}
 
