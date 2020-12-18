@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/stretchr/testify/assert"
@@ -143,5 +145,28 @@ func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []stri
 
 		err = inMemory.AddRelay(context.Background(), relay)
 		assert.NoError(t, err)
+	}
+}
+
+func assertAllMetricsEqual(t *testing.T, expectedMetrics interface{}, actualMetrics interface{}) {
+	expectedMetricsValue := reflect.ValueOf(expectedMetrics)
+	actualMetricsValue := reflect.ValueOf(actualMetrics)
+	for i := 0; i < actualMetricsValue.NumField(); i++ {
+		if expectedMetricsValue.Field(i).CanInterface() && actualMetricsValue.Field(i).CanInterface() {
+			expectedField := expectedMetricsValue.Field(i).Interface()
+			actualField := actualMetricsValue.Field(i).Interface()
+
+			expectedValuer, ok := expectedField.(metrics.Valuer)
+			if !ok {
+				continue
+			}
+
+			actualValuer, ok := actualField.(metrics.Valuer)
+			if !ok {
+				continue
+			}
+
+			assert.Equal(t, expectedValuer.Value(), actualValuer.Value(), expectedMetricsValue.Type().Field(i).Name)
+		}
 	}
 }

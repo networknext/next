@@ -111,6 +111,10 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 			Relays      string
 		}{}
 
+		if entry.NumRoutes == 0 {
+			continue
+		}
+
 		if len(entry.RouteNumRelays) == 0 {
 			handleRunTimeError(fmt.Sprintln("RouteNumRelays empty or nil"), 0)
 		}

@@ -7,7 +7,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,29 +65,17 @@ func TestRouteMatrixSerialize(t *testing.T) {
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
-	nearRelays, err := routeMatrix.GetNearRelays(0, 0, transport.MaxNearRelays)
+	nearRelays, err := routeMatrix.GetNearRelays(0, 0, core.MaxNearRelays)
 	assert.EqualError(t, err, "no near relays")
-	assert.Nil(t, nearRelays)
+	assert.Empty(t, nearRelays)
 }
 
 func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expectedLat := uint64(float64(0))
-	expectedLong := uint64(float64(0))
+	expected := routeMatrix.RelayIDs
 
-	expectedNumNearRelays := 2
-	expected := make([]routing.NearRelayData, 0)
-	for i := 0; i < expectedNumNearRelays; i++ {
-		expected = append(expected, routing.NearRelayData{
-			ID:       routeMatrix.RelayIDs[i],
-			Addr:     &routeMatrix.RelayAddresses[i],
-			Name:     routeMatrix.RelayNames[i],
-			Distance: int(core.HaversineDistance(float64(expectedLat), float64(expectedLong), float64(routeMatrix.RelayLatitudes[i]), float64(routeMatrix.RelayLongitudes[i]))),
-		})
-	}
-
-	actual, err := routeMatrix.GetNearRelays(0, 0, transport.MaxNearRelays)
+	actual, err := routeMatrix.GetNearRelays(0, 0, core.MaxNearRelays)
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected, actual)
@@ -97,19 +84,7 @@ func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 func TestRouteMatrixGetNearRelaysSuccessWithMax(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expectedLat := uint64(float64(0))
-	expectedLong := uint64(float64(0))
-
-	expectedNumNearRelays := 1
-	expected := make([]routing.NearRelayData, 0)
-	for i := 0; i < expectedNumNearRelays; i++ {
-		expected = append(expected, routing.NearRelayData{
-			ID:       routeMatrix.RelayIDs[i],
-			Addr:     &routeMatrix.RelayAddresses[i],
-			Name:     routeMatrix.RelayNames[i],
-			Distance: int(core.HaversineDistance(float64(expectedLat), float64(expectedLong), float64(routeMatrix.RelayLatitudes[i]), float64(routeMatrix.RelayLongitudes[i]))),
-		})
-	}
+	expected := routeMatrix.RelayIDs[:1]
 
 	actual, err := routeMatrix.GetNearRelays(0, 0, 1)
 	assert.NoError(t, err)

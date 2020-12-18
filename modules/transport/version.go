@@ -15,7 +15,7 @@ type SDKVersion struct {
 }
 
 var (
-	SDKVersionMin = SDKVersion{3, 3, 2}
+	SDKVersionMin = SDKVersion{4, 0, 0}
 	SDKVersionMax = SDKVersion{254, 1023, 254}
 )
 

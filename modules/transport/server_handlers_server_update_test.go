@@ -3,7 +3,6 @@ package transport_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/go-kit/kit/log"
@@ -18,14 +17,13 @@ import (
 func TestServerUpdateHandlerReadPacketFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	storer := &storage.InMemory{}
-	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
@@ -37,7 +35,6 @@ func TestServerUpdateHandlerReadPacketFailure(t *testing.T) {
 func TestServerUpdateHandlerBuyerNotFound(t *testing.T) {
 	logger := log.NewNopLogger()
 	storer := &storage.InMemory{}
-	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -47,8 +44,8 @@ func TestServerUpdateHandlerBuyerNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -65,7 +62,6 @@ func TestServerUpdateHandlerSDKTooOld(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -78,8 +74,8 @@ func TestServerUpdateHandlerSDKTooOld(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -103,7 +99,6 @@ func TestServerUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -117,19 +112,16 @@ func TestServerUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	assert.Equal(t, metrics.ServerUpdateMetrics.DatacenterNotFound.Value(), 1.0)
-
-	unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
-	assert.Equal(t, []string{fmt.Sprintf("%016x", crypto.HashID("datacenter.alias"))}, unknownDatacenters)
+	assert.Equal(t, metrics.ServerUpdateMetrics.MisconfiguredDatacenterAlias.Value(), 1.0)
 }
 
-func TestServerUpdateHandlerDatacenterAndAliasNotFound(t *testing.T) {
+func TestServerUpdateHandlerDatacenterNotFound(t *testing.T) {
 	logger := log.NewNopLogger()
 	storer := &storage.InMemory{}
 
@@ -138,7 +130,6 @@ func TestServerUpdateHandlerDatacenterAndAliasNotFound(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -152,16 +143,49 @@ func TestServerUpdateHandlerDatacenterAndAliasNotFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	assert.Equal(t, metrics.ServerUpdateMetrics.DatacenterNotFound.Value(), 1.0)
+}
 
-	unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
-	assert.Equal(t, []string{fmt.Sprintf("%016x", crypto.HashID("datacenter.alias"))}, unknownDatacenters)
+func TestServerUpdateHandlerDatacenterNotAllowed(t *testing.T) {
+	logger := log.NewNopLogger()
+	storer := &storage.InMemory{}
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{
+		ID: 123,
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{
+		ID: crypto.HashID("datacenter.name"),
+	})
+	assert.NoError(t, err)
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerUpdatePacket{
+		Version:      transport.SDKVersion{4, 0, 0},
+		CustomerID:   123,
+		DatacenterID: crypto.HashID("datacenter.name"),
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Equal(t, metrics.ServerUpdateMetrics.DatacenterNotAllowed.Value(), 1.0)
 }
 
 func TestServerUpdateHandlerSuccess(t *testing.T) {
@@ -179,8 +203,14 @@ func TestServerUpdateHandlerSuccess(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	datacenterTracker := transport.NewDatacenterTracker()
+	err = storer.AddDatacenterMap(context.Background(), routing.DatacenterMap{
+		BuyerID:      123,
+		DatacenterID: crypto.HashID("datacenter.name"),
+	})
+	assert.NoError(t, err)
+
 	metricsHandler := metrics.LocalHandler{}
+	expectedMetrics := metrics.EmptyServerUpdateMetrics
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -193,14 +223,13 @@ func TestServerUpdateHandlerSuccess(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
-	assert.Empty(t, unknownDatacenters)
+	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerUpdateMetrics)
 }
 
 func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
@@ -225,8 +254,8 @@ func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	datacenterTracker := transport.NewDatacenterTracker()
 	metricsHandler := metrics.LocalHandler{}
+	expectedMetrics := metrics.EmptyServerUpdateMetrics
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
@@ -239,12 +268,11 @@ func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, metrics.PostSessionMetrics)
-	handler := transport.ServerUpdateHandlerFunc(logger, storer, datacenterTracker, postSessionHandler, metrics.ServerUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.PostSessionMetrics)
+	handler := transport.ServerUpdateHandlerFunc(logger, storer, postSessionHandler, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
-	unknownDatacenterNames := datacenterTracker.GetUnknownDatacentersNames()
-	assert.Empty(t, unknownDatacenterNames)
+	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerUpdateMetrics)
 }

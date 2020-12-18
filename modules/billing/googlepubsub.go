@@ -105,7 +105,7 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry)
 
 	client.bufferMutex.Lock()
 
-	if client.bufferMessageCount < client.BufferCountThreshold {
+	if client.bufferMessageCount < client.BufferCountThreshold || len(client.buffer) < client.MinBufferBytes {
 		client.buffer = append(client.buffer, data...)
 		client.bufferMessageCount++
 		client.Metrics.EntriesSubmitted.Add(1)

@@ -16,8 +16,8 @@ import (
 type datacenterReply struct {
 	Name         string
 	ID           string
-	Latitude     float64
-	Longitude    float64
+	Latitude     float32
+	Longitude    float32
 	Enabled      bool
 	SupplierName string
 }
