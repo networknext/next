@@ -97,8 +97,13 @@ export default class SessionToolWorkspace extends Vue {
 
   private fetchSessionDetails () {
     this.message = ''
-    if (this.searchID === '') {
+    if (this.searchID === '' && this.$route.path !== '/session-tool') {
       this.$router.push({ path: '/session-tool' })
+      return
+    }
+    if (this.searchID === '' && this.$route.path === '/session-tool') {
+      this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+      this.alertType = AlertType.INFO
       return
     }
     const newRoute = `/session-tool/${this.searchID}`
