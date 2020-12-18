@@ -5,7 +5,7 @@ if (bytes > 0) {
     __m128i diag3 = _mm_loadu_si128((const __m128i *) (x + 12));
     __m128i a0, a1, a2, a3, a4, a5, a6, a7;
     __m128i b0, b1, b2, b3, b4, b5, b6, b7;
-    char partialblock[64];
+    uint8_t partialblock[64];
 
     unsigned int i;
 
@@ -171,10 +171,10 @@ if (bytes > 0) {
         diag1                                  = _mm_shuffle_epi32(diag1, 0x39); \
         diag2                                  = _mm_shuffle_epi32(diag2, 0x39); \
         diag3                                  = _mm_shuffle_epi32(diag3, 0x39); \
-        *(uint32_t *) (partialblock + (A * 4)) = in##A;                          \
-        *(uint32_t *) (partialblock + (B * 4)) = in##B;                          \
-        *(uint32_t *) (partialblock + (C * 4)) = in##C;                          \
-        *(uint32_t *) (partialblock + (D * 4)) = in##D;                          \
+        memcpy( partialblock + (A*4), &in##A, 4 );                               \
+        memcpy( partialblock + (B*4), &in##B, 4 );                               \
+        memcpy( partialblock + (C*4), &in##C, 4 );                               \
+        memcpy( partialblock + (D*4), &in##D, 4 );                               \
     } while (0)
 
 #define ONEQUAD(A, B, C, D) ONEQUAD_SHUFFLE(A, B, C, D)
