@@ -2346,7 +2346,6 @@ must be of the form:
   "InternalAddr": "127.0.0.2:10009", // optional
   "PublicKey": "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=",
   "Datacenter": "c62a99140dd374fd",  // datacenter ID in hex
-  "Seller": "azure",                 // Seller.Name
   "NICSpeedMbps": 1000,
   "IncludedBandwidthGB": 10000,
   "ManagementAddr": "1.2.3.49",

@@ -438,15 +438,6 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		handleJSONRPCError(env, err)
 	}
 
-	sellerArg := localjsonrpc.SellerArg{
-		ID: r.Seller,
-	}
-	var sellerReply localjsonrpc.SellerReply
-
-	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
-		handleJSONRPCError(env, err)
-	}
-
 	addr, err := net.ResolveUDPAddr("udp", r.Addr)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("Could not resolve udp address for Addr %s: %v\n", r.Addr, err), 1)
