@@ -17,7 +17,7 @@ blocks:
         - name: test
           matrix:
             - env_var: GCC_VERSION
-              values: [ 6", "7", "8" ]
+              values: [ "6", "7", "8" ]
             - env_var: BUILD
               values: [ "debug", "release" ]
             - env_var: PLATFORM
