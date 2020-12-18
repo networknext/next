@@ -322,7 +322,7 @@ func (cruncher *PortalCruncher) insertCountDataIntoRedis(redisPortalCountBuffer 
 
 		// Add the new session count
 		cruncher.sessionMap.Command("HSET", "c-%s-%d %s %d", customerID, minutes, serverID, numSessions)
-		cruncher.sessionMap.Command("EXPIRE", "c-%s-%d %d", customerID, minutes, 30)
+		cruncher.sessionMap.Command("EXPIRE", "c-%s-%d %d", customerID, minutes, 60)
 	}
 }
 
