@@ -95,7 +95,7 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    this.searchID = this.$route.params.pathMatch || ''
+    this.searchID = to.params.pathMatch || ''
     this.message = 'Please enter a User ID to view their sessions.'
     this.alertType = AlertType.INFO
     next()
