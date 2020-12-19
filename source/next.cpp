@@ -4355,13 +4355,9 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(5)
 
-    next_ping_history_t * relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+    next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(6)
-
-    next_ping_history_t ping_history_array[NEXT_MAX_NEAR_RELAYS];
-
-    NEXT_DECLARE_SENTINEL(7)
 };
 
 void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
@@ -4377,10 +4373,9 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
     NEXT_INITIALIZE_SENTINEL( manager, 4 )
     NEXT_INITIALIZE_SENTINEL( manager, 5 )
     NEXT_INITIALIZE_SENTINEL( manager, 6 )
-    NEXT_INITIALIZE_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        next_ping_history_initialize_sentinels( &manager->ping_history_array[i] );
+        next_ping_history_initialize_sentinels( &manager->relay_ping_history[i] );
 }
 
 void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
@@ -4394,10 +4389,9 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 4 )
     NEXT_VERIFY_SENTINEL( manager, 5 )
     NEXT_VERIFY_SENTINEL( manager, 6 )
-    NEXT_VERIFY_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        next_ping_history_verify_sentinels( &manager->ping_history_array[i] );
+        next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
 }
 
 void next_relay_manager_reset( next_relay_manager_t * manager );
@@ -4429,11 +4423,10 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
     memset( manager->relay_excluded, 0, sizeof(manager->relay_excluded) );
-    memset( manager->relay_ping_history, 0, sizeof(manager->relay_ping_history) );
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
-        next_ping_history_clear( &manager->ping_history_array[i] );
+        next_ping_history_clear( &manager->relay_ping_history[i] );
     }    
 }
 
@@ -4446,118 +4439,26 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     next_assert( relay_ids );
     next_assert( relay_addresses );
 
-    // first copy all current relays that are also in the updated relay relay list
+    next_relay_manager_reset( manager );
 
-    bool history_slot_taken[NEXT_MAX_NEAR_RELAYS];
-    memset( history_slot_taken, 0, sizeof(history_slot_taken) );
+    // copy across all relay data
 
-    bool found[NEXT_MAX_NEAR_RELAYS];
-    memset( found, 0, sizeof(found) );
-
-    uint64_t new_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    double new_relay_last_ping_time[NEXT_MAX_NEAR_RELAYS];
-    next_address_t new_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    next_ping_history_t * new_relay_ping_history[NEXT_MAX_NEAR_RELAYS];
-
-    int index = 0;
-
-    for ( int i = 0; i < manager->num_relays; ++i )
-    {
-        for ( int j = 0; j < num_relays; ++j )
-        {
-            if ( manager->relay_ids[i] == relay_ids[j] )
-            {
-                found[j] = true;
-                new_relay_ids[index] = manager->relay_ids[i];
-                new_relay_last_ping_time[index] = manager->relay_last_ping_time[i];
-                new_relay_addresses[index] = manager->relay_addresses[i];
-                new_relay_ping_history[index] = manager->relay_ping_history[i];
-                const int slot = manager->relay_ping_history[i] - manager->ping_history_array;
-                next_assert( slot >= 0 );
-                next_assert( slot < NEXT_MAX_NEAR_RELAYS );
-                history_slot_taken[slot] = true;
-                index++;
-                break;
-            }
-        }
-    }
-
-    // now copy all near relays not found in the current relay list
+    manager->num_relays = num_relays;
 
     for ( int i = 0; i < num_relays; ++i )
     {
-        if ( !found[i] )
-        {
-            new_relay_ids[index] = relay_ids[i];
-            new_relay_last_ping_time[index] = -10000.0;
-            new_relay_addresses[index] = relay_addresses[i];
-            new_relay_ping_history[index] = NULL;
-            for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-            {
-                if ( !history_slot_taken[j] )
-                {
-                    new_relay_ping_history[index] = &manager->ping_history_array[j];
-                    next_ping_history_clear( new_relay_ping_history[index] );
-                    history_slot_taken[j] = true;
-                    break;
-                }
-            }
-            next_assert( new_relay_ping_history[index] );
-            index++;
-        }                
+        manager->relay_ids[i] = relay_ids[i];
+        manager->relay_addresses[i] = relay_addresses[i];
     }
-
-    // commit the updated relay array
-
-    manager->num_relays = index;
-    memcpy( manager->relay_ids, new_relay_ids, size_t(8) * index );
-    memcpy( manager->relay_last_ping_time, new_relay_last_ping_time, size_t(8) * index );
-    memcpy( manager->relay_addresses, new_relay_addresses, sizeof(next_address_t) * index );
-    memcpy( manager->relay_ping_history, new_relay_ping_history, sizeof(next_ping_history_t*) * index );
 
     // make sure all ping times are evenly distributed to avoid clusters of ping packets
 
     double current_time = next_time();
 
-    if ( manager->num_relays > 0 )
+    for ( int i = 0; i < manager->num_relays; ++i )
     {
-        for ( int i = 0; i < manager->num_relays; ++i )
-        {
-            manager->relay_last_ping_time[i] = current_time - NEXT_RELAY_PING_TIME + i * NEXT_RELAY_PING_TIME / manager->num_relays;
-        }
+        manager->relay_last_ping_time[i] = current_time - NEXT_RELAY_PING_TIME + i * NEXT_RELAY_PING_TIME / manager->num_relays;
     }
-
-#ifndef NDEBUG
-
-    // make sure everything is correct
-
-    next_assert( num_relays == index );
-
-    int num_found = 0;
-    for ( int i = 0; i < num_relays; ++i )
-    {
-        for ( int j = 0; j < manager->num_relays; ++j )
-        {
-            if ( relay_ids[i] == manager->relay_ids[j] && next_address_equal( &relay_addresses[i], &manager->relay_addresses[j] ) == 1 )
-            {
-                num_found++;
-                break;
-            }
-        }
-    }
-    next_assert( num_found == num_relays );
-
-    for ( int i = 0; i < num_relays; ++i )
-    {
-        for ( int j = 0; j < num_relays; ++j )
-        {
-            if ( i == j )
-                continue;
-            next_assert( manager->relay_ping_history[i] != manager->relay_ping_history[j] );
-        }
-    }
-
-#endif // #ifndef DEBUG
 
     next_relay_manager_verify_sentinels( manager );
 }
@@ -4590,7 +4491,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
         if ( manager->relay_last_ping_time[i] + NEXT_RELAY_PING_TIME <= current_time )
         {
-            uint64_t ping_sequence = next_ping_history_ping_sent( manager->relay_ping_history[i], next_time() );
+            uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
 
             NextRelayPingPacket packet;
             packet.ping_sequence = ping_sequence;
@@ -4624,7 +4525,7 @@ bool next_relay_manager_process_pong( next_relay_manager_t * manager, const next
 
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
-            next_ping_history_pong_received( manager->relay_ping_history[i], sequence, next_time() );
+            next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_time() );
             return true;
         }
     }
@@ -4650,7 +4551,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
         {
             next_route_stats_t route_stats;
             
-            next_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
+            next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
             
             stats->relay_ids[i] = manager->relay_ids[i];
             stats->relay_rtt[i] = route_stats.rtt;
