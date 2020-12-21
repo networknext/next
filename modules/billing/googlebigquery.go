@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"cloud.google.com/go/bigquery"
@@ -68,6 +69,8 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		if bufferLength >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
+
+				fmt.Printf("%+v\n", entry)
 
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
