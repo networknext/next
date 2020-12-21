@@ -2589,18 +2589,18 @@ Add an route shader for the specified buyer. The shader
 must be in a json file of the form:
 
 {
-	"DisableNetworkNext": false
-	"SelectionPercent": 100
-	"ABTest": false
-	"ProMode": false
-	"ReduceLatency": true
-	"ReduceJitter": false
-	"ReducePacketLoss": true
-	"Multipath": false
-	"AcceptableLatency": 25
-	"LatencyThreshold": 5
-	"AcceptablePacketLoss": 1.00000
-	"BandwidthEnvelopeUpKbps": 500
+	"DisableNetworkNext": false,
+	"SelectionPercent": 100,
+	"ABTest": false,
+	"ProMode": false,
+	"ReduceLatency": true,
+	"ReduceJitter": true,
+	"ReducePacketLoss": true,
+	"Multipath": false,
+	"AcceptableLatency": 25,
+	"LatencyThreshold": 5,
+	"AcceptablePacketLoss": 1.00000,
+	"BandwidthEnvelopeUpKbps": 500,
 	"BandwidthEnvelopeDownKbps": 1200,
 	"BuyerID": "205cca7361c2ae96"
 }
