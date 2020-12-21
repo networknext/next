@@ -471,7 +471,13 @@ func SessionUpdateHandlerFunc(
 			}
 
 			// Rebuild the near relays from the previous session data
-			nearRelays := newNearRelayGroup(prevSessionData.RouteState.NumNearRelays)
+			var nearRelays nearRelayGroup
+
+			// Make sure we only rebuild the previous near relays if we haven't gotten out of sync somehow
+			if prevSessionData.RouteState.NumNearRelays == packet.NumNearRelays {
+				nearRelays = newNearRelayGroup(prevSessionData.RouteState.NumNearRelays)
+			}
+
 			for i := int32(0); i < nearRelays.Count; i++ {
 
 				// Since we now guarantee that the near relay IDs reported up from the SDK each slice don't change,
