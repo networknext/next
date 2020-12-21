@@ -877,8 +877,14 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		routeState.NumNearRelays = int32(len(sourceRelayID))
 	}
 
-	if int(routeState.NumNearRelays) != len(sourceRelayID) {
-		panic("source relays must not change after initial slice")
+	if int(routeState.NumNearRelays) != len(sourceRelayId) {
+		// IMPORTANT: This should not happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
+		for i := 0; i < int(routeState.NumNearRelays); i++ {
+			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+		}
+		*out_numDestRelays = int32(0)
+		return
 	}
 
 	if directJitter > 255 {
