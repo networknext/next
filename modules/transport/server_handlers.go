@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules/envvar"
@@ -241,6 +242,10 @@ func handleNearAndDestRelays(
 
 	var nearRelays nearRelayGroup
 	incomingNearRelays.Copy(&nearRelays)
+
+	if nearRelays.Count != routeState.NumNearRelays {
+		return nearRelaysChanged, nearRelays, nil, fmt.Errorf("near relays changed from %d to %d", routeState.NumNearRelays, nearRelays.Count)
+	}
 
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
@@ -682,8 +687,14 @@ func SessionUpdateHandlerFunc(
 		response.NearRelaysChanged = nearRelaysChanged
 
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to get near relays", "err", err)
-			metrics.NearRelaysLocateFailure.Add(1)
+			if strings.HasPrefix(err.Error(), "near relays changed") {
+				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
+				metrics.NearRelaysChanged.Add(1)
+			} else {
+				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
+				metrics.NearRelaysLocateFailure.Add(1)
+			}
+
 			return
 		}
 
