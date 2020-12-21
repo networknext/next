@@ -63,6 +63,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case billingEntry := <-post.postSessionBillingChannel:
+					fmt.Printf("%+v\n", billingEntry)
 					if err := post.biller.Bill(ctx, billingEntry); err != nil {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
 						post.metrics.BillingFailure.Add(1)
