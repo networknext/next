@@ -871,14 +871,20 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, directPacketLoss int32, sourceRelayID []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, directPacketLoss int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
-		routeState.NumNearRelays = int32(len(sourceRelayID))
+		routeState.NumNearRelays = int32(len(sourceRelayId))
 	}
 
-	if int(routeState.NumNearRelays) != len(sourceRelayID) {
-		panic("source relays must not change after initial slice")
+	if int(routeState.NumNearRelays) != len(sourceRelayId) {
+		// IMPORTANT: This should not happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
+		for i := 0; i < int(routeState.NumNearRelays); i++ {
+			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+		}
+		*out_numDestRelays = int32(0)
+		return
 	}
 
 	if directJitter > 255 {
@@ -906,7 +912,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 
 		// any source relay that no longer exists cannot be routed through
-		_, ok := relayIDToIndex[sourceRelayID[i]]
+		_, ok := relayIDToIndex[sourceRelayId[i]]
 		if !ok {
 			routeState.NearRelayRTT[i] = 255
 			out_sourceRelayLatency[i] = 255
