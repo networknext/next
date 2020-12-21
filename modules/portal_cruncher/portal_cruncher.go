@@ -476,7 +476,7 @@ func SetupBigtable(ctx context.Context,
 	// Check if the table exists in the instance
 	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("SetupBigtable() Failed to verify if table exists: %v" err)
+		return nil, nil, fmt.Errorf("SetupBigtable() Failed to verify if table exists: %v", err)
 	}
 
 	if !tableExists {
