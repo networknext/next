@@ -877,7 +877,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		routeState.NumNearRelays = int32(len(sourceRelayID))
 	}
 
-	if int(routeState.NumNearRelays) != len(sourceRelayId) {
+	if int(routeState.NumNearRelays) != len(sourceRelayID) {
 		// IMPORTANT: This should not happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
 		for i := 0; i < int(routeState.NumNearRelays); i++ {
 			routeState.NearRelayRTT[i] = 255
