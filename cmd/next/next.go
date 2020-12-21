@@ -368,6 +368,7 @@ type relay struct {
 	InternalAddr        string
 	PublicKey           string
 	DatacenterID        string
+	Seller              string
 	NicSpeedMbps        int32
 	IncludedBandwidthGB int32
 	State               string
