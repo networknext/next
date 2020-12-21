@@ -1063,7 +1063,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 
 			if plCount > threshold {
 				if debug != nil {
-					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
+					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
 					*debug += fmt.Sprintf("%s temp excluded, history of pl (%d>%d)\n", relayNames[relayIndex], plCount, threshold)
 				}
 				out_sourceRelayLatency[i] = 255
@@ -1074,7 +1074,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 
 			if routeState.DirectPLHistory == 0 && routeState.NearRelayPLHistory[i] != 0 {
 				if debug != nil {
-					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
+					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
 					*debug += fmt.Sprintf("%s temp excluded, has pl but direct has none\n", relayNames[relayIndex])
 				}
 				out_sourceRelayLatency[i] = 255
@@ -1104,7 +1104,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 				}
 				if routeState.NearRelayPLHistory[i] != 0 {
 					if debug != nil {
-						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
+						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
 						*debug += fmt.Sprintf("%s temp excluded, has pl but other near relays don't\n", relayNames[relayIndex])
 					}
 					out_sourceRelayLatency[i] = 255
