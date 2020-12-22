@@ -290,7 +290,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncDatacenters(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -304,7 +304,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 			&dc.SellerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncDatacenters(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -361,7 +361,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sqlQuery.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncRelays(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -393,7 +393,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.InternalIPPort,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -512,7 +512,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncBuyers(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -527,7 +527,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			&buyer.CustomerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncBuyers(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -587,7 +587,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncSellers(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -600,7 +600,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 			&seller.CustomerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncSellers(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -648,7 +648,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncDatacenterMaps(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -656,7 +656,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 	for rows.Next() {
 		err := rows.Scan(&sqlMap.Alias, &sqlMap.BuyerID, &sqlMap.DatacenterID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncDatacenterMaps(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -695,7 +695,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncCustomers(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -707,8 +707,7 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 			&customer.CustomerCode,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
-			fmt.Printf("error parsing returned row: %v\n", err)
+			level.Error(db.Logger).Log("during", "syncCustomers(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -764,7 +763,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncInternalConfigs(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -787,7 +786,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			&buyerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncInternalConfigs(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -845,7 +844,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncRouteShaders(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -869,7 +868,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			&buyerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "syncRouteShaders(): error parsing returned row", "err", err)
 			return err
 		}
 
@@ -918,7 +917,7 @@ func (db *SQL) syncBannedUsers(ctx context.Context) error {
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "syncBannedUsers(): QueryContext returned an error", "err", err)
 		return err
 	}
 	defer rows.Close()
@@ -927,7 +926,7 @@ func (db *SQL) syncBannedUsers(ctx context.Context) error {
 		var userID, dbBuyerID int64
 		err := rows.Scan(&userID, &dbBuyerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
+			level.Error(db.Logger).Log("during", "syncBannedUsers() error parsing user and buyer IDs", "err", err)
 			return err
 		}
 
