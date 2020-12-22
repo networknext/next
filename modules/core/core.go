@@ -879,7 +879,13 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 	}
 
 	if int(routeState.NumNearRelays) != len(sourceRelayId) {
-		panic("source relays must not change after initial slice")
+		// IMPORTANT: This should not happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
+		for i := 0; i < int(routeState.NumNearRelays); i++ {
+			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+		}
+		*out_numDestRelays = int32(0)
+		return
 	}
 
 	if directJitter > 255 {
@@ -1057,7 +1063,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 
 			if plCount > threshold {
 				if debug != nil {
-					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
+					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
 					*debug += fmt.Sprintf("%s temp excluded, history of pl (%d>%d)\n", relayNames[relayIndex], plCount, threshold)
 				}
 				out_sourceRelayLatency[i] = 255
@@ -1068,7 +1074,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 
 			if routeState.DirectPLHistory == 0 && routeState.NearRelayPLHistory[i] != 0 {
 				if debug != nil {
-					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
+					relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
 					*debug += fmt.Sprintf("%s temp excluded, has pl but direct has none\n", relayNames[relayIndex])
 				}
 				out_sourceRelayLatency[i] = 255
@@ -1098,7 +1104,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIdToIn
 				}
 				if routeState.NearRelayPLHistory[i] != 0 {
 					if debug != nil {
-						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]					
+						relayIndex, _ := relayIdToIndex[sourceRelayId[i]]
 						*debug += fmt.Sprintf("%s temp excluded, has pl but other near relays don't\n", relayNames[relayIndex])
 					}
 					out_sourceRelayLatency[i] = 255
@@ -1314,12 +1320,12 @@ func NewInternalConfig() InternalConfig {
 	return InternalConfig{
 		RouteSelectThreshold:       2,
 		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         20,
+		MaxLatencyTradeOff:         10,
 		RTTVeto_Default:            -10,
 		RTTVeto_PacketLoss:         -20,
 		RTTVeto_Multipath:          -20,
 		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
+		TryBeforeYouBuy:            true,
 		ForceNext:                  false,
 		LargeCustomer:              false,
 		Uncommitted:                false,

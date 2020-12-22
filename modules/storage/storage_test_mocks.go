@@ -180,6 +180,12 @@ var _ Storer = &StorerMock{}
 //             SyncLoopFunc: func(ctx context.Context, c <-chan time.Time)  {
 // 	               panic("mock out the SyncLoop method")
 //             },
+//             UpdateBuyerFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+// 	               panic("mock out the UpdateBuyer method")
+//             },
+//             UpdateCustomerFunc: func(ctx context.Context, customerID string, field string, value interface{}) error {
+// 	               panic("mock out the UpdateCustomer method")
+//             },
 //             UpdateInternalConfigFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateInternalConfig method")
 //             },
@@ -188,6 +194,9 @@ var _ Storer = &StorerMock{}
 //             },
 //             UpdateRouteShaderFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateRouteShader method")
+//             },
+//             UpdateSellerFunc: func(ctx context.Context, sellerID string, field string, value interface{}) error {
+// 	               panic("mock out the UpdateSeller method")
 //             },
 //         }
 //
@@ -355,6 +364,12 @@ type StorerMock struct {
 	// SyncLoopFunc mocks the SyncLoop method.
 	SyncLoopFunc func(ctx context.Context, c <-chan time.Time)
 
+	// UpdateBuyerFunc mocks the UpdateBuyer method.
+	UpdateBuyerFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
+
+	// UpdateCustomerFunc mocks the UpdateCustomer method.
+	UpdateCustomerFunc func(ctx context.Context, customerID string, field string, value interface{}) error
+
 	// UpdateInternalConfigFunc mocks the UpdateInternalConfig method.
 	UpdateInternalConfigFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
 
@@ -363,6 +378,9 @@ type StorerMock struct {
 
 	// UpdateRouteShaderFunc mocks the UpdateRouteShader method.
 	UpdateRouteShaderFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
+
+	// UpdateSellerFunc mocks the UpdateSeller method.
+	UpdateSellerFunc func(ctx context.Context, sellerID string, field string, value interface{}) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -695,6 +713,28 @@ type StorerMock struct {
 			// C is the c argument value.
 			C <-chan time.Time
 		}
+		// UpdateBuyer holds details about calls to the UpdateBuyer method.
+		UpdateBuyer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
+		// UpdateCustomer holds details about calls to the UpdateCustomer method.
+		UpdateCustomer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CustomerID is the customerID argument value.
+			CustomerID string
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
 		// UpdateInternalConfig holds details about calls to the UpdateInternalConfig method.
 		UpdateInternalConfig []struct {
 			// Ctx is the ctx argument value.
@@ -723,6 +763,17 @@ type StorerMock struct {
 			Ctx context.Context
 			// BuyerID is the buyerID argument value.
 			BuyerID uint64
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
+		// UpdateSeller holds details about calls to the UpdateSeller method.
+		UpdateSeller []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SellerID is the sellerID argument value.
+			SellerID string
 			// Field is the field argument value.
 			Field string
 			// Value is the value argument value.
@@ -782,9 +833,12 @@ type StorerMock struct {
 	lockSetSeller                 sync.RWMutex
 	lockSetSequenceNumber         sync.RWMutex
 	lockSyncLoop                  sync.RWMutex
+	lockUpdateBuyer               sync.RWMutex
+	lockUpdateCustomer            sync.RWMutex
 	lockUpdateInternalConfig      sync.RWMutex
 	lockUpdateRelay               sync.RWMutex
 	lockUpdateRouteShader         sync.RWMutex
+	lockUpdateSeller              sync.RWMutex
 }
 
 // AddBannedUser calls AddBannedUserFunc.
@@ -2552,6 +2606,92 @@ func (mock *StorerMock) SyncLoopCalls() []struct {
 	return calls
 }
 
+// UpdateBuyer calls UpdateBuyerFunc.
+func (mock *StorerMock) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+	if mock.UpdateBuyerFunc == nil {
+		panic("StorerMock.UpdateBuyerFunc: method is nil but Storer.UpdateBuyer was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Field   string
+		Value   interface{}
+	}{
+		Ctx:     ctx,
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	mock.lockUpdateBuyer.Lock()
+	mock.calls.UpdateBuyer = append(mock.calls.UpdateBuyer, callInfo)
+	mock.lockUpdateBuyer.Unlock()
+	return mock.UpdateBuyerFunc(ctx, buyerID, field, value)
+}
+
+// UpdateBuyerCalls gets all the calls that were made to UpdateBuyer.
+// Check the length with:
+//     len(mockedStorer.UpdateBuyerCalls())
+func (mock *StorerMock) UpdateBuyerCalls() []struct {
+	Ctx     context.Context
+	BuyerID uint64
+	Field   string
+	Value   interface{}
+} {
+	var calls []struct {
+		Ctx     context.Context
+		BuyerID uint64
+		Field   string
+		Value   interface{}
+	}
+	mock.lockUpdateBuyer.RLock()
+	calls = mock.calls.UpdateBuyer
+	mock.lockUpdateBuyer.RUnlock()
+	return calls
+}
+
+// UpdateCustomer calls UpdateCustomerFunc.
+func (mock *StorerMock) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
+	if mock.UpdateCustomerFunc == nil {
+		panic("StorerMock.UpdateCustomerFunc: method is nil but Storer.UpdateCustomer was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		CustomerID string
+		Field      string
+		Value      interface{}
+	}{
+		Ctx:        ctx,
+		CustomerID: customerID,
+		Field:      field,
+		Value:      value,
+	}
+	mock.lockUpdateCustomer.Lock()
+	mock.calls.UpdateCustomer = append(mock.calls.UpdateCustomer, callInfo)
+	mock.lockUpdateCustomer.Unlock()
+	return mock.UpdateCustomerFunc(ctx, customerID, field, value)
+}
+
+// UpdateCustomerCalls gets all the calls that were made to UpdateCustomer.
+// Check the length with:
+//     len(mockedStorer.UpdateCustomerCalls())
+func (mock *StorerMock) UpdateCustomerCalls() []struct {
+	Ctx        context.Context
+	CustomerID string
+	Field      string
+	Value      interface{}
+} {
+	var calls []struct {
+		Ctx        context.Context
+		CustomerID string
+		Field      string
+		Value      interface{}
+	}
+	mock.lockUpdateCustomer.RLock()
+	calls = mock.calls.UpdateCustomer
+	mock.lockUpdateCustomer.RUnlock()
+	return calls
+}
+
 // UpdateInternalConfig calls UpdateInternalConfigFunc.
 func (mock *StorerMock) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 	if mock.UpdateInternalConfigFunc == nil {
@@ -2678,5 +2818,48 @@ func (mock *StorerMock) UpdateRouteShaderCalls() []struct {
 	mock.lockUpdateRouteShader.RLock()
 	calls = mock.calls.UpdateRouteShader
 	mock.lockUpdateRouteShader.RUnlock()
+	return calls
+}
+
+// UpdateSeller calls UpdateSellerFunc.
+func (mock *StorerMock) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
+	if mock.UpdateSellerFunc == nil {
+		panic("StorerMock.UpdateSellerFunc: method is nil but Storer.UpdateSeller was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		SellerID string
+		Field    string
+		Value    interface{}
+	}{
+		Ctx:      ctx,
+		SellerID: sellerID,
+		Field:    field,
+		Value:    value,
+	}
+	mock.lockUpdateSeller.Lock()
+	mock.calls.UpdateSeller = append(mock.calls.UpdateSeller, callInfo)
+	mock.lockUpdateSeller.Unlock()
+	return mock.UpdateSellerFunc(ctx, sellerID, field, value)
+}
+
+// UpdateSellerCalls gets all the calls that were made to UpdateSeller.
+// Check the length with:
+//     len(mockedStorer.UpdateSellerCalls())
+func (mock *StorerMock) UpdateSellerCalls() []struct {
+	Ctx      context.Context
+	SellerID string
+	Field    string
+	Value    interface{}
+} {
+	var calls []struct {
+		Ctx      context.Context
+		SellerID string
+		Field    string
+		Value    interface{}
+	}
+	mock.lockUpdateSeller.RLock()
+	calls = mock.calls.UpdateSeller
+	mock.lockUpdateSeller.RUnlock()
 	return calls
 }

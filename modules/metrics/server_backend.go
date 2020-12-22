@@ -84,6 +84,7 @@ type SessionUpdateMetrics struct {
 	MisconfiguredDatacenterAlias               Counter
 	DatacenterNotAllowed                       Counter
 	NearRelaysLocateFailure                    Counter
+	NearRelaysChanged                          Counter
 	NoRelaysInDatacenter                       Counter
 	RouteDoesNotExist                          Counter
 	RouteSwitched                              Counter
@@ -123,6 +124,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	MisconfiguredDatacenterAlias:               &EmptyCounter{},
 	DatacenterNotAllowed:                       &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
+	NearRelaysChanged:                          &EmptyCounter{},
 	NoRelaysInDatacenter:                       &EmptyCounter{},
 	RouteDoesNotExist:                          &EmptyCounter{},
 	RouteSwitched:                              &EmptyCounter{},
@@ -762,6 +764,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".near_relays_locate_failure",
 		Unit:        "errors",
 		Description: "The number of times we failed to locate any near relays for a " + packetDescription + ".",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.NearRelaysChanged, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Near Relays Changed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".near_relays_changed",
+		Unit:        "errors",
+		Description: "The number of times the near relays changed after the first slice for a " + packetDescription + ".",
 	})
 	if err != nil {
 		return nil, err
