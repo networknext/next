@@ -119,7 +119,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		params.RelayMap.Lock()
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
-			level.Warn(locallogger).Log("msg", "relay already initialized")
+			level.Error(locallogger).Log("msg", "relay already initialized")
+			fmt.Printf("relay %v %v tried to reinitialized", relayData.ID, relayData.Name)
 			http.Error(writer, "relay already initialized", http.StatusConflict)
 			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
 			params.RelayMap.Unlock()
