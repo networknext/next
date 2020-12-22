@@ -202,6 +202,7 @@ func (n nearRelayGroup) Copy(other *nearRelayGroup) {
 }
 
 func handleNearAndDestRelays(
+	sliceNumber int32,
 	routeMatrix *routing.RouteMatrix,
 	incomingNearRelays nearRelayGroup,
 	routeShader *core.RouteShader,
@@ -250,7 +251,7 @@ func handleNearAndDestRelays(
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
-	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directJitter, directPacketLoss, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directJitter, directPacketLoss, sliceNumber, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
 	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
@@ -671,6 +672,7 @@ func SessionUpdateHandlerFunc(
 		}
 
 		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
+			int32(packet.SliceNumber),
 			routeMatrix,
 			incomingNearRelays,
 			&buyer.RouteShader,
