@@ -285,8 +285,8 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	datacenters := make(map[uint64]routing.Datacenter)
 	datacenterIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select id, display_name, enabled, latitude, longitude,"))
-	sql.Write([]byte("supplier_name, street_address, seller_id from datacenters"))
+	sql.Write([]byte("select id, display_name, latitude, longitude,"))
+	sql.Write([]byte("supplier_name, seller_id from datacenters"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -298,11 +298,9 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	for rows.Next() {
 		err = rows.Scan(&dc.ID,
 			&dc.Name,
-			&dc.Enabled,
 			&dc.Latitude,
 			&dc.Longitude,
 			&dc.SupplierName,
-			&dc.StreetAddress,
 			&dc.SellerID,
 		)
 		if err != nil {
