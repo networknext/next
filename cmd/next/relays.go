@@ -443,14 +443,6 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		handleRunTimeError(fmt.Sprintf("Could not resolve udp address for Addr %s: %v\n", r.Addr, err), 1)
 	}
 
-	var internalAddr *net.UDPAddr
-	if r.InternalAddr != "" {
-		internalAddr, err = net.ResolveUDPAddr("udp", r.InternalAddr)
-		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Could not resolve udp address for InternalAddr %s: %v\n", r.Addr, err), 1)
-		}
-	}
-
 	bwRule, err := routing.ParseBandwidthRule(r.BWRule)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid bandwidth rule", r.BWRule), 0)
@@ -486,7 +478,6 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		ID:                  rid,
 		Name:                r.Name,
 		Addr:                *addr,
-		InternalAddr:        *internalAddr,
 		PublicKey:           []byte(r.PublicKey),
 		Datacenter:          dcReply.Datacenter,
 		NICSpeedMbps:        r.NicSpeedMbps,
@@ -504,6 +495,15 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		EndDate:             endDate,
 		Type:                machineType,
 		Seller:              sellerReply.Seller,
+	}
+
+	var internalAddr *net.UDPAddr
+	if r.InternalAddr != "" {
+		internalAddr, err = net.ResolveUDPAddr("udp", r.InternalAddr)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not resolve udp address for InternalAddr %s: %v\n", r.Addr, err), 1)
+		}
+		relay.InternalAddr = *internalAddr
 	}
 
 	args := localjsonrpc.AddRelayArgs{
