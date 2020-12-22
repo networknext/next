@@ -471,6 +471,16 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.EndDate), 0)
 	}
 
+	sellerArg := localjsonrpc.SellerArg{
+		ID: r.Seller,
+	}
+
+	sellerReply := localjsonrpc.SellerReply{}
+
+	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
 	rid := crypto.HashID(r.Addr)
 	relay := routing.Relay{
 		ID:                  rid,
@@ -493,6 +503,7 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		StartDate:           startDate,
 		EndDate:             endDate,
 		Type:                machineType,
+		Seller:              sellerReply.Seller,
 	}
 
 	args := localjsonrpc.AddRelayArgs{

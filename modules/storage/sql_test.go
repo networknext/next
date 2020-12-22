@@ -243,6 +243,13 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.State, checkRelay.State)
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
+
+		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
+		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
+		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
+		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 	})
 
 	t.Run("AddDatacenterMap", func(t *testing.T) {
