@@ -240,6 +240,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 							errChan <- err
 							return
 						}
+						btPortalDataBuffer = btPortalDataBuffer[:0]
 
 					case <-ctx.Done():
 						return
@@ -462,7 +463,7 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	if gcpProjectID == "" && !btEmulatorOK {
-		return nil, nil, fmt.Errorf("No GCP Project ID found. Could not find $BIGTABLE_EMULATOR_HOST for local testing.")
+		return nil, nil, fmt.Errorf("SetupBigtable() No GCP Project ID found. Could not find $BIGTABLE_EMULATOR_HOST for local testing.")
 	}
 
 	// Put the column family names in a slice
@@ -478,7 +479,7 @@ func SetupBigtable(ctx context.Context,
 	// Check if the table exists in the instance
 	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("SetupBigtable() Failed to verify if table exists: %v", err)
 	}
 	fmt.Printf("Does the table exist? %v\n", tableExists)
 	if !tableExists {
@@ -493,7 +494,7 @@ func SetupBigtable(ctx context.Context,
 		// Set a garbage collection policy of maxAgeDays
 		maxAge := time.Hour * time.Duration(24*btMaxAgeDays)
 		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("SetupBigtable() Failed to set max age policy: %v", err)
 		}
 		fmt.Printf("Set the max age policy successfully\n")
 
@@ -676,6 +677,5 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 		cruncher.btMetrics.WriteSliceSuccessCount.Add(1)
 	}
 
-	btPortalDataBuffer = btPortalDataBuffer[:0]
 	return nil
 }
