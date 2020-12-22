@@ -1049,8 +1049,8 @@ type sqlRelay struct {
 	Name               string
 	PublicIP           string // []byte?
 	PublicIPPort       int64
-	InternalIP         string // []byte?
-	InternalIPPort     int64
+	InternalIP         sql.NullString // []byte?
+	InternalIPPort     sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
@@ -1073,7 +1073,7 @@ type sqlRelay struct {
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
-	var sql bytes.Buffer
+	var sqlQuery bytes.Buffer
 
 	db.relayMutex.RLock()
 	_, ok := db.relays[r.ID]
@@ -1087,11 +1087,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
-	internalIP := ""
-	internalIPPort := int64(0)
+
+	var internalIP sql.NullString
+	var internalIPPort sql.NullInt64
 	if r.InternalAddr.String() != "" {
-		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
-		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
@@ -1121,15 +1122,15 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		MachineType:        int64(r.Type),
 	}
 
-	sql.Write([]byte("insert into relays ("))
-	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+	sqlQuery.Write([]byte("insert into relays ("))
+	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing AddRelay SQL", "err", err)
 		return err
@@ -1233,7 +1234,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 // TODO: chopping block
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
-	var sql bytes.Buffer
+	var sqlQuery bytes.Buffer
 
 	db.relayMutex.RLock()
 	_, ok := db.relays[r.ID]
@@ -1248,11 +1249,11 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
-	internalIP := ""
-	internalIPPort := int64(0)
+	var internalIP sql.NullString
+	var internalIPPort sql.NullInt64
 	if r.InternalAddr.String() != "" {
-		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
-		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
@@ -1282,15 +1283,15 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		MachineType:        int64(r.Type),
 	}
 
-	sql.Write([]byte("update relays set ("))
-	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
-	sql.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) where id = $22"))
+	sqlQuery.Write([]byte("update relays set ("))
+	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) where id = $22"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing SetRelay SQL", "err", err)
 		return err
