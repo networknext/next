@@ -4433,8 +4433,11 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     }    
 }
 
-void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses )
+void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses, bool high_frequency_pings )
 {
+    // todo: implement high frequency pings
+    (void) high_frequency_pings;
+
     next_relay_manager_verify_sentinels( manager );
 
     next_assert( num_relays >= 0 );
@@ -6634,7 +6637,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             if ( packet.near_relays_changed )
             {
-                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
             }
 
             if ( packet.exclude_near_relays )
@@ -9219,6 +9222,7 @@ struct next_session_entry_t
 
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
+    bool high_frequency_pings;
 
     NEXT_DECLARE_SENTINEL(28)
 };
@@ -10541,6 +10545,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
             packet.exclude_near_relays = entry->exclude_near_relays;
             memcpy( packet.near_relay_excluded, entry->near_relay_excluded, sizeof( packet.near_relay_excluded ) );
+            packet.high_frequency_pings = entry->high_frequency_pings;
 
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
 
@@ -10968,6 +10973,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             entry->exclude_near_relays = packet.exclude_near_relays;
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
+            entry->high_frequency_pings = packet.high_frequency_pings;
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
@@ -15255,7 +15261,7 @@ static void test_relay_manager()
 
     // add max relays
     
-    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses, false );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -15268,7 +15274,7 @@ static void test_relay_manager()
 
     // remove all relays
 
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, false );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -15279,7 +15285,7 @@ static void test_relay_manager()
 
     for ( int j = 0; j < 2; ++j )
     {
-        next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
+        next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses, false );
         {
             next_relay_stats_t stats;
             next_relay_manager_get_stats( manager, &stats );
@@ -15293,7 +15299,7 @@ static void test_relay_manager()
     
     // now add a few new relays, while some relays remain the same
 
-    next_relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4 );
+    next_relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4, false );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -15306,7 +15312,7 @@ static void test_relay_manager()
 
     // remove all relays
 
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, false );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -15315,7 +15321,7 @@ static void test_relay_manager()
 
     // add max relays and exclude odd near relays, verify odd near relays don't have stats
     
-    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses, false );
 
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
 
@@ -15348,6 +15354,8 @@ static void test_relay_manager()
             next_check( stats.relay_packet_loss[i] == 100 );
         }
     }
+
+    // todo: test high frequency pings
 
     next_relay_manager_destroy( manager );
 }
