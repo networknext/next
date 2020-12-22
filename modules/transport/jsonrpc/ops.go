@@ -290,15 +290,16 @@ type seller struct {
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
 	for _, localSeller := range s.Storage.Sellers() {
-		c, err := s.Storage.Customer(localSeller.CompanyCode)
-		if err != nil {
-			err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
-			s.Logger.Log("err", err)
-			return err
-		}
+		// this is broken in firestore, customers in general do not exist
+		// c, err := s.Storage.Customer(localSeller.CompanyCode)
+		// if err != nil {
+		// 	err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
+		// 	s.Logger.Log("err", err)
+		// 	return err
+		// }
 		reply.Sellers = append(reply.Sellers, seller{
 			ID:                   localSeller.ID,
-			Name:                 c.Name,
+			Name:                 localSeller.Name,
 			IngressPriceNibblins: localSeller.IngressPriceNibblinsPerGB,
 			EgressPriceNibblins:  localSeller.EgressPriceNibblinsPerGB,
 		})
