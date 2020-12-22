@@ -1634,7 +1634,6 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
-		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1652,7 +1651,6 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 			UserID:           requestPacket.UserHash,
 			Next:             true,
 			ReduceLatency:    true,
-			Committed:        true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
 			PLHistoryIndex:   1,
@@ -1905,7 +1903,6 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   5,
 		Tokens:      tokenData,
-		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1923,7 +1920,6 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 			UserID:           requestPacket.UserHash,
 			Next:             true,
 			ReduceLatency:    true,
-			Committed:        true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
 			PLHistoryIndex:   1,
@@ -2275,7 +2271,6 @@ func TestFeatureInternalIP(t *testing.T) {
 //			UserID:        requestPacket.UserHash,
 //			Next:          true,
 //			ReduceLatency: true,
-//			Committed:     true,
 //			NumNearRelays: 2,
 //			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 // 			PLHistoryIndex: 1,
@@ -2407,7 +2402,6 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
-			Committed:     true,
 			NumNearRelays: 2,
 			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
 		},
@@ -2493,9 +2487,9 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		SessionID:   requestPacket.SessionID,
 		SliceNumber: requestPacket.SliceNumber,
 		RouteType:   routing.RouteTypeContinue,
+		Committed:   true,
 		NumTokens:   4,
 		Tokens:      tokenData,
-		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2512,8 +2506,9 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
-			ReduceLatency:    true,
 			Committed:        true,
+			CommitCounter:    1,
+			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
 			PLHistoryIndex:   1,
@@ -2654,7 +2649,6 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		ServerAddress:        *serverAddr,
 		ClientRoutePublicKey: publicKey,
 		ServerRoutePublicKey: publicKey,
-		Committed:            true,
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
@@ -2719,7 +2713,6 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
-		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2737,7 +2730,6 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 			UserID:           requestPacket.UserHash,
 			Next:             true,
 			ReduceLatency:    true,
-			Committed:        true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
 			RelayWentAway:    true,
@@ -2878,7 +2870,6 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		ServerAddress:        *serverAddr,
 		ClientRoutePublicKey: publicKey,
 		ServerRoutePublicKey: publicKey,
-		Committed:            true,
 		DirectRTT:            60,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
@@ -2941,6 +2932,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		SessionID:   requestPacket.SessionID,
 		SliceNumber: requestPacket.SliceNumber,
 		RouteType:   routing.RouteTypeNew,
+		Committed:   true,
 		NumTokens:   4,
 		Tokens:      tokenData,
 	}
@@ -2959,6 +2951,8 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
+			Committed:        true,
+			CommitCounter:    1,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
@@ -4164,7 +4158,6 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		SliceNumber: requestPacket.SliceNumber,
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
-		Committed:   true,
 		HasDebug:    true,
 	}
 
@@ -4183,7 +4176,6 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 			UserID:           requestPacket.UserHash,
 			Next:             true,
 			ReduceLatency:    true,
-			Committed:        true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
 			PLHistoryIndex:   1,
