@@ -92,11 +92,9 @@ create table banned_users (
 create table datacenters (
   id integer primary key autoincrement,
   display_name varchar not null unique,
-  enabled boolean not null,
   latitude numeric not null,
   longitude numeric not null,
   supplier_name varchar,
-  street_address varchar not null,
   seller_id integer not null,
   constraint fk_seller_id foreign key (seller_id) references sellers(id)
 );
@@ -144,7 +142,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/12/15 17:10:31
+-- File generation: 2020/12/22 14:50:52
 
 -- machine_types
 insert into machine_types values (0, 'none');
