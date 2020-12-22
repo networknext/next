@@ -436,7 +436,15 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter := db.datacenters[db.datacenterIDs[relay.DatacenterID]]
+		datacenter, err := db.Datacenter(db.datacenterIDs[relay.DatacenterID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+		}
+
+		seller, err := db.Seller(db.sellerIDs[datacenter.SellerID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+		}
 
 		relayIDs[relay.DatabaseID] = rid
 
@@ -461,6 +469,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			StartDate:           relay.StartDate,
 			EndDate:             relay.EndDate,
 			Type:                machineType,
+			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 		}
 		relays[rid] = r
