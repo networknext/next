@@ -2345,7 +2345,7 @@ must be of the form:
   "Addr": "1.2.3.4:40000",
   "InternalAddr": "127.0.0.2:10009", // optional
   "PublicKey": "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=",
-  "Datacenter": "c62a99140dd374fd",  // datacenter ID in hex
+  "DatacenterID": "c62a99140dd374fd",  // datacenter ID in hex
   "NICSpeedMbps": 1000,
   "IncludedBandwidthGB": 10000,
   "ManagementAddr": "1.2.3.49",
@@ -2358,7 +2358,8 @@ must be of the form:
   "ContractTerm": 12,
   "StartDate": "December 15, 2020", // exactly this format
   "EndDate": "December 15, 2020",   // exactly this format
-  "Type": "virtualmachine"          // any valid machine type (see below)
+  "Type": "virtualmachine",          // any valid machine type (see below)
+  "Seller": "colocrossing"
 }
 
 All fields are required except as noted (InternalAddr).
