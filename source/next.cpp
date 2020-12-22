@@ -4343,7 +4343,7 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    double relay_last_ping_time[NEXT_MAX_NEAR_RELAYS];
+    double relay_last_ping_time_low_frequency[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -4420,7 +4420,7 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     manager->num_relays = 0;
     
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
-    memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
+    memset( manager->relay_last_ping_time_low_frequency, 0, sizeof(manager->relay_last_ping_time_low_frequency) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
     memset( manager->relay_excluded, 0, sizeof(manager->relay_excluded) );
 
@@ -4457,7 +4457,7 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        manager->relay_last_ping_time[i] = current_time - NEXT_RELAY_PING_TIME + i * NEXT_RELAY_PING_TIME / manager->num_relays;
+        manager->relay_last_ping_time_low_frequency[i] = current_time - NEXT_RELAY_PING_TIME + i * NEXT_RELAY_PING_TIME / manager->num_relays;
     }
 
     next_relay_manager_verify_sentinels( manager );
@@ -4489,7 +4489,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
         if ( manager->relay_excluded[i] )
             continue;
 
-        if ( manager->relay_last_ping_time[i] + NEXT_RELAY_PING_TIME <= current_time )
+        if ( manager->relay_last_ping_time_low_frequency[i] + NEXT_RELAY_PING_TIME <= current_time )
         {
             uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
 
@@ -4507,7 +4507,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
 
-            manager->relay_last_ping_time[i] = current_time;
+            manager->relay_last_ping_time_low_frequency[i] = current_time;
         }
     }
 }
@@ -9635,6 +9635,7 @@ struct NextBackendSessionResponsePacket
     char debug[NEXT_MAX_SESSION_DEBUG];
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
+    bool high_frequency_pings;
 
     NextBackendSessionResponsePacket()
     {
@@ -9698,6 +9699,8 @@ struct NextBackendSessionResponsePacket
                 serialize_bool( stream, near_relay_excluded[i] );
             }
         }
+
+        serialize_bool( stream, high_frequency_pings );
 
         return true;
     }
@@ -14925,6 +14928,7 @@ static void test_backend_packets()
         {
             in.near_relay_excluded[i] = ( i % 2 ) == 0;
         }
+        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14947,6 +14951,7 @@ static void test_backend_packets()
         {
             next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
         }
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // session response packet (route, near relays changed)
@@ -14979,6 +14984,12 @@ static void test_backend_packets()
         {
             in.session_data[i] = uint8_t(i);
         }
+        in.exclude_near_relays = true;
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+        }
+        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14998,7 +15009,13 @@ static void test_backend_packets()
         next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-    }
+        next_check( in.exclude_near_relays == out.exclude_near_relays );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+        }
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
+}
 
     // session response packet (continue, near relays changed)
     {
@@ -15030,6 +15047,12 @@ static void test_backend_packets()
         {
             in.session_data[i] = uint8_t(i);
         }
+        in.exclude_near_relays = true;
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+        }
+        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -15049,6 +15072,12 @@ static void test_backend_packets()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
+        next_check( in.exclude_near_relays == out.exclude_near_relays );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+        }
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // session response packet (direct, near relays not changed)
@@ -15080,6 +15109,12 @@ static void test_backend_packets()
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
+        next_check( in.exclude_near_relays == out.exclude_near_relays );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+        }
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // session response packet (route, near relays not changed)
@@ -15102,6 +15137,12 @@ static void test_backend_packets()
         {
             in.session_data[i] = uint8_t(i);
         }
+        in.exclude_near_relays = true;
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+        }
+        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -15115,6 +15156,12 @@ static void test_backend_packets()
         next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
+        next_check( in.exclude_near_relays == out.exclude_near_relays );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+        }
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // session response packet (continue, near relays not changed)
@@ -15137,6 +15184,12 @@ static void test_backend_packets()
         {
             in.session_data[i] = uint8_t(i);
         }
+        in.exclude_near_relays = true;
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+        }
+        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -15150,6 +15203,12 @@ static void test_backend_packets()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
+        next_check( in.exclude_near_relays == out.exclude_near_relays );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+        }
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
