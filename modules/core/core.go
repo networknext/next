@@ -948,9 +948,6 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		if directPacketLoss > 0 {
 			routeState.DirectPLCount++
-			if routeState.DirectPLCount > 255 {
-				routeState.DirectPLCount = 255
-			}
 		}
 
 		if int32(routeState.DirectPLCount*10) <= sliceNumber {		// IMPORTANT: Only run for nonexistent or sporadic direct PL
@@ -959,9 +956,6 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 				if sourceRelayPacketLoss[i] > 0 {
 					routeState.NearRelayPLCount[i]++
-					if routeState.NearRelayPLCount[i] > 255 {
-						routeState.NearRelayPLCount[i] = 255
-					}
 				}
 
 				if routeState.NearRelayPLCount[i] > routeState.DirectPLCount {
