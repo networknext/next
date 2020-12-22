@@ -798,3 +798,53 @@ func removeBannedUser(
 	fmt.Printf("Banned user %016x successfully removed  for buyer %s.\n", userID, buyerName)
 	return nil
 }
+
+func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, buyerRegex string) {
+
+	_, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	arg := localjsonrpc.BuyerArg{
+		BuyerID: buyerID,
+	}
+
+	var reply localjsonrpc.BuyerReply
+	if err := rpcClient.CallFor(&reply, "BuyersService.Buyer", arg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	buyerInfo := "Buyer " + reply.Buyer.ShortName + " info:\n"
+	buyerInfo += "  CompanyCode: " + reply.Buyer.CompanyCode + "\n"
+	buyerInfo += "  ShortName  : " + reply.Buyer.ShortName + "\n"
+	buyerInfo += "  Live       : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
+	buyerInfo += "  Debug      : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
+
+	fmt.Println(buyerInfo)
+	os.Exit(0)
+
+}
+
+func updateBuyer(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	field string,
+	value string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.UpdateBuyerReply{}
+
+	args := localjsonrpc.UpdateBuyerArgs{
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateBuyer", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Buyer %s updated successfully.\n", buyerName)
+	return nil
+}

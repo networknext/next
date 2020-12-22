@@ -315,17 +315,15 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 		datacenterIDs[dc.ID] = did
 
 		d := routing.Datacenter{
-			ID:      did,
-			Name:    dc.Name,
-			Enabled: dc.Enabled,
+			ID:   did,
+			Name: dc.Name,
 			Location: routing.Location{
 				Latitude:  dc.Latitude,
 				Longitude: dc.Longitude,
 			},
-			SupplierName:  dc.SupplierName,
-			StreetAddress: dc.StreetAddress,
-			SellerID:      dc.SellerID,
-			DatabaseID:    dc.ID,
+			SupplierName: dc.SupplierName,
+			SellerID:     dc.SellerID,
+			DatabaseID:   dc.ID,
 		}
 
 		datacenters[did] = d
@@ -438,7 +436,15 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter := db.datacenters[db.datacenterIDs[relay.DatacenterID]]
+		datacenter, err := db.Datacenter(db.datacenterIDs[relay.DatacenterID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+		}
+
+		seller, err := db.Seller(db.sellerIDs[datacenter.SellerID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+		}
 
 		relayIDs[relay.DatabaseID] = rid
 
@@ -463,6 +469,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			StartDate:           relay.StartDate,
 			EndDate:             relay.EndDate,
 			Type:                machineType,
+			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 		}
 		relays[rid] = r
@@ -682,14 +689,14 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	customers := make(map[string]routing.Customer)
 	customerIDs := make(map[int64]string)
 
-	// sql.Write([]byte("select customers.id, customers.active, customers.debug, "))
+	// sql.Write([]byte("select customers.id, customers.debug, "))
 	// sql.Write([]byte("customers.automatic_signin_domain, customers.customer_name, "))
 	// sql.Write([]byte("customers.customer_code, buyers.id as buyer_id, "))
 	// sql.Write([]byte("sellers.id as seller_id from customers "))
 	// sql.Write([]byte("left join buyers on customers.id = buyers.customer_id "))
 	// sql.Write([]byte("left join sellers on customers.id = sellers.customer_id"))
 
-	sql.Write([]byte("select id, active, debug, automatic_signin_domain, "))
+	sql.Write([]byte("select id, automatic_signin_domain, "))
 	sql.Write([]byte("customer_name, customer_code from customers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -701,8 +708,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(&customer.ID,
-			&customer.Active,
-			&customer.Debug,
 			&customer.AutomaticSignInDomains,
 			&customer.Name,
 			&customer.CustomerCode,
@@ -719,7 +724,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 			Code:                   customer.CustomerCode,
 			Name:                   customer.Name,
 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
-			Active:                 customer.Active,
 			DatabaseID:             customer.ID,
 		}
 
