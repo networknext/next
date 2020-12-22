@@ -32,7 +32,7 @@ int main()
         printf( "error: failed to initialize network next\n" );
     }
 
-    printf( "Running SDK tests:\n\n" );
+    printf( "\nRunning SDK tests:\n\n" );
 
     next_test();
 

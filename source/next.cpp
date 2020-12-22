@@ -72,7 +72,6 @@
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
 #define NEXT_MAX_NEAR_RELAYS                                           32
-#define NEXT_RELAY_PING_TIME                                          1.0
 #define NEXT_ROUTE_TOKEN_BYTES                                         76
 #define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              116
 #define NEXT_CONTINUE_TOKEN_BYTES                                      17
@@ -173,6 +172,9 @@
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
 #define NEXT_MAX_SESSION_DEBUG                                       1024
+
+#define NEXT_LOW_FREQUENCY_PING_RATE                                    1
+#define NEXT_HIGH_FREQUENCY_PING_RATE                                  10
 
 static uint8_t next_backend_public_key[] = 
 { 
@@ -4346,7 +4348,7 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    double relay_last_ping_time_low_frequency[NEXT_MAX_NEAR_RELAYS];
+    double relay_last_ping_time[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -4358,9 +4360,13 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(5)
 
-    next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+    bool high_frequency_pings;
 
     NEXT_DECLARE_SENTINEL(6)
+
+    next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(7)
 };
 
 void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
@@ -4376,6 +4382,7 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
     NEXT_INITIALIZE_SENTINEL( manager, 4 )
     NEXT_INITIALIZE_SENTINEL( manager, 5 )
     NEXT_INITIALIZE_SENTINEL( manager, 6 )
+    NEXT_INITIALIZE_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_initialize_sentinels( &manager->relay_ping_history[i] );
@@ -4392,6 +4399,7 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 4 )
     NEXT_VERIFY_SENTINEL( manager, 5 )
     NEXT_VERIFY_SENTINEL( manager, 6 )
+    NEXT_VERIFY_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
@@ -4423,9 +4431,11 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     manager->num_relays = 0;
     
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
-    memset( manager->relay_last_ping_time_low_frequency, 0, sizeof(manager->relay_last_ping_time_low_frequency) );
+    memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
     memset( manager->relay_excluded, 0, sizeof(manager->relay_excluded) );
+
+    manager->high_frequency_pings = false;
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
@@ -4435,9 +4445,6 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
 
 void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses, bool high_frequency_pings )
 {
-    // todo: implement high frequency pings
-    (void) high_frequency_pings;
-
     next_relay_manager_verify_sentinels( manager );
 
     next_assert( num_relays >= 0 );
@@ -4446,6 +4453,10 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     next_assert( relay_addresses );
 
     next_relay_manager_reset( manager );
+
+    // copy across high frequency ping flag
+
+    manager->high_frequency_pings = high_frequency_pings;
 
     // copy across all relay data
 
@@ -4461,9 +4472,11 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
 
     double current_time = next_time();
 
+    const double ping_time = high_frequency_pings ? ( 1.0 / NEXT_HIGH_FREQUENCY_PING_RATE ) : ( 1.0 / NEXT_LOW_FREQUENCY_PING_RATE );
+
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        manager->relay_last_ping_time_low_frequency[i] = current_time - NEXT_RELAY_PING_TIME + i * NEXT_RELAY_PING_TIME / manager->num_relays;
+        manager->relay_last_ping_time[i] = current_time - ping_time + i * ping_time / manager->num_relays;
     }
 
     next_relay_manager_verify_sentinels( manager );
@@ -4495,7 +4508,9 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
         if ( manager->relay_excluded[i] )
             continue;
 
-        if ( manager->relay_last_ping_time_low_frequency[i] + NEXT_RELAY_PING_TIME <= current_time )
+        const double ping_time = manager->high_frequency_pings ? ( 1.0 / NEXT_HIGH_FREQUENCY_PING_RATE ) : ( 1.0 / NEXT_LOW_FREQUENCY_PING_RATE );
+
+        if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {
             uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
 
@@ -4513,7 +4528,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
 
-            manager->relay_last_ping_time_low_frequency[i] = current_time;
+            manager->relay_last_ping_time[i] = current_time;
         }
     }
 }
@@ -15355,7 +15370,13 @@ static void test_relay_manager()
         }
     }
 
-    // todo: test high frequency pings
+    // test high frequency pings
+
+    next_check( manager->high_frequency_pings == false );
+
+    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses, true );
+
+    next_check( manager->high_frequency_pings == true );
 
     next_relay_manager_destroy( manager );
 }
