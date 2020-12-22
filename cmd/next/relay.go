@@ -528,14 +528,13 @@ func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName strin
 		return
 	}
 
-	var reply localjsonrpc.UpdateRelayReply
-	args := localjsonrpc.UpdateRelayArgs{
-		RelayID: relayID,
-		Field:   "Name",
-		Value:   newName,
+	reply := localjsonrpc.RelayNameUpdateReply{}
+	args := localjsonrpc.RelayNameUpdateArgs{
+		RelayID:   relayID,
+		RelayName: newName,
 	}
 
-	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
 		fmt.Printf("error renaming relay: %v\n", (err))
 	} else {
 		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
