@@ -336,32 +336,30 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	db.datacenters = datacenters
 	db.datacenterMutex.Unlock()
 
-	level.Info(db.Logger).Log("during", "syncDatacenters", "num", len(db.datacenters))
-
 	return nil
 }
 
 func (db *SQL) syncRelays(ctx context.Context) error {
 
-	var sql bytes.Buffer
+	var sqlQuery bytes.Buffer
 	var relay sqlRelay
 
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
-	sql.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sql.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
-	sql.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
-	sql.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
-	sql.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
-	sql.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sql.Write([]byte("relays.internal_ip, relays.internal_ip_port from relays "))
+	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
+	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
+	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
+	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
+	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
 
-	rows, err := db.Client.QueryContext(ctx, sql.String())
+	rows, err := db.Client.QueryContext(ctx, sqlQuery.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "QueryContext returned an error", "err", err)
 		return err
@@ -407,11 +405,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
-		fullInternalAddress := relay.InternalIP + ":" + fmt.Sprintf("%d", relay.InternalIPPort)
-		internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
-		}
 		// TODO: this should be treated as a legit address
 		// managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
 		// if err != nil {
@@ -450,7 +443,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			ID:                  rid,
 			Name:                relay.Name,
 			Addr:                *publicAddr,
-			InternalAddr:        *internalAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -470,6 +462,16 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 		}
+
+		if relay.InternalIP.String != "" {
+			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
+			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+			}
+			r.InternalAddr = *internalAddr
+		}
+
 		relays[rid] = r
 
 	}
@@ -481,8 +483,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	db.relayIDsMutex.Lock()
 	db.relayIDs = relayIDs
 	db.relayIDsMutex.Unlock()
-
-	level.Info(db.Logger).Log("during", "syncRelays", "num", len(db.relays))
 
 	return nil
 }
@@ -572,8 +572,6 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	db.buyers = buyers
 	db.buyerMutex.Unlock()
 
-	level.Info(db.Logger).Log("during", "syncBuyers", "num", len(db.customers))
-
 	return nil
 }
 func (db *SQL) syncSellers(ctx context.Context) error {
@@ -629,8 +627,6 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	db.sellerMutex.Lock()
 	db.sellers = sellers
 	db.sellerMutex.Unlock()
-
-	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 
 	return nil
 }
@@ -735,8 +731,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	db.customerMutex.Lock()
 	db.customers = customers
 	db.customerMutex.Unlock()
-
-	level.Info(db.Logger).Log("during", "syncCustomers", "num", len(db.customers))
 
 	return nil
 }
