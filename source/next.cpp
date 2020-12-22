@@ -3156,6 +3156,7 @@ struct NextRouteUpdatePacket
     char debug[NEXT_MAX_SESSION_DEBUG];
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
+    bool high_frequency_pings;
 
     NextRouteUpdatePacket()
     {
@@ -3215,6 +3216,8 @@ struct NextRouteUpdatePacket
                 serialize_bool( stream, near_relay_excluded[i] );
             }
         }
+
+        serialize_bool( stream, high_frequency_pings );
 
         return true;
     }
@@ -14200,6 +14203,7 @@ static void test_packets()
     // route update packet (direct)
     {
         static NextRouteUpdatePacket in, out;
+
         in.sequence = 100000;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
@@ -14219,6 +14223,8 @@ static void test_packets()
         in.jitter_client_to_server = 0.1f;
         in.has_debug = true;
         strcpy( in.debug, "debug time" );
+        in.high_frequency_pings = true;
+
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -14226,6 +14232,7 @@ static void test_packets()
         next_replay_protection_reset( &replay_protection );
         next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
         next_check( in.near_relays_changed == out.near_relays_changed );
@@ -14242,6 +14249,7 @@ static void test_packets()
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // route update packet (route)
@@ -14268,6 +14276,8 @@ static void test_packets()
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
         in.jitter_client_to_server = 0.25f;
+        in.high_frequency_pings = true;
+
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -14275,6 +14285,7 @@ static void test_packets()
         next_replay_protection_reset( &replay_protection );
         next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
         next_check( in.near_relays_changed == out.near_relays_changed );
@@ -14293,9 +14304,10 @@ static void test_packets()
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
-    // route update packet (update)
+    // route update packet (continue)
     {
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
@@ -14316,6 +14328,8 @@ static void test_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_lost_client_to_server = 10000;
+        in.high_frequency_pings = true;
+
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -14323,6 +14337,7 @@ static void test_packets()
         next_replay_protection_reset( &replay_protection );
         next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
         next_check( in.near_relays_changed == out.near_relays_changed );
@@ -14338,6 +14353,7 @@ static void test_packets()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // route update ack packet
