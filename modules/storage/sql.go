@@ -1450,8 +1450,8 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	}
 
 	sql.Write([]byte("update datacenters set ("))
-	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
-	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4, $5, $6, $7) where id = $8"))
+	sql.Write([]byte("display_name, latitude, longitude, supplier_name, "))
+	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4, $5) where id = $6"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1460,11 +1460,9 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	}
 
 	result, err := stmt.Exec(dc.Name,
-		dc.Enabled,
 		dc.Latitude,
 		dc.Longitude,
 		dc.SupplierName,
-		dc.StreetAddress,
 		dc.SellerID,
 		d.DatabaseID,
 	)
@@ -1754,14 +1752,12 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 }
 
 type sqlDatacenter struct {
-	ID            int64
-	Name          string
-	Enabled       bool
-	Latitude      float32
-	Longitude     float32
-	SupplierName  string
-	StreetAddress string
-	SellerID      int64
+	ID           int64
+	Name         string
+	Latitude     float32
+	Longitude    float32
+	SupplierName string
+	SellerID     int64
 }
 
 // AddDatacenter adds the provided datacenter to storage. It enforces business rule
@@ -1790,8 +1786,8 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	}
 
 	sql.Write([]byte("insert into datacenters ("))
-	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
-	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5, $6, $7)"))
+	sql.Write([]byte("display_name, latitude, longitude, supplier_name, "))
+	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1800,11 +1796,9 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	}
 
 	result, err := stmt.Exec(dc.Name,
-		dc.Enabled,
 		dc.Latitude,
 		dc.Longitude,
 		dc.SupplierName,
-		dc.StreetAddress,
 		dc.SellerID,
 	)
 
