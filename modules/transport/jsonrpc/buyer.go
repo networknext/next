@@ -572,7 +572,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
 			reply.Slices = append(reply.Slices, slice)
 		}
-		fmt.Printf("For sessionID %s, len of slice rows is %d\n", args.SessionID, len(sliceRows))
 	}
 
 	sort.Slice(reply.Slices, func(i, j int) bool {
