@@ -2677,9 +2677,13 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	routeRelays := [MaxRelaysPerRoute]int32{}
 
 	routeShader := NewRouteShader()
+
 	routeState := RouteState{}
+	
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = false
 
 	routeState.UserID = 100
 
@@ -2908,7 +2912,9 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = false
 
 	routeShader.AcceptableLatency = 100
 	routeState.UserID = 100
@@ -2953,7 +2959,7 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 	directPacketLoss := float32(5.0)
 
 	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
+	sourceRelayCosts := []int32{5}
 
 	destRelays := []int32{1}
 
@@ -2962,9 +2968,13 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 	routeRelays := [MaxRelaysPerRoute]int32{}
 
 	routeShader := NewRouteShader()
+
 	routeState := RouteState{}
+	
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = false
 
 	routeShader.AcceptableLatency = 25
 	routeState.UserID = 100
@@ -3070,9 +3080,13 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 	routeRelays := [MaxRelaysPerRoute]int32{}
 
 	routeShader := NewRouteShader()
+
 	routeState := RouteState{}
+	
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = false
 
 	routeState.UserID = 100
 
@@ -3358,9 +3372,13 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) 
 	routeRelays := [MaxRelaysPerRoute]int32{}
 
 	routeShader := NewRouteShader()
+
 	routeState := RouteState{}
+	
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
+	internal.TryBeforeYouBuy = false
 
 	routeShader.Multipath = true
 
@@ -4742,10 +4760,14 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeShader.ReduceLatency = false
+
 	routeState := RouteState{}
+	
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
 	internal.ForceNext = true
+	internal.TryBeforeYouBuy = false
 
 	routeState.Next = false
 	routeState.UserID = 100
@@ -5139,9 +5161,12 @@ func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
 	routeRelays := [MaxRelaysPerRoute]int32{}
 
 	routeShader := NewRouteShader()
+	
 	routeState := RouteState{}
+	
 	internal := NewInternalConfig()
 	internal.Uncommitted = true
+	internal.TryBeforeYouBuy = false
 
 	routeState.Next = true
 	routeState.UserID = 100
