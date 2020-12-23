@@ -43,7 +43,6 @@ type BigQueryBillingEntry struct {
 	ConnectionType                  bigquery.NullInt64
 	PlatformType                    bigquery.NullInt64
 	SdkVersion                      bigquery.NullString
-	PacketLoss                      bigquery.NullFloat64
 	EnvelopeBytesUp                 bigquery.NullInt64
 	EnvelopeBytesDown               bigquery.NullInt64
 	PredictedNextRTT                bigquery.NullFloat64
