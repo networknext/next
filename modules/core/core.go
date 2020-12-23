@@ -871,7 +871,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directJitter int32, directPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayId))
@@ -906,6 +906,13 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		// any source relay with >= 50% PL in the last slice is bad news
 		if sourceRelayPacketLoss[i] >= 50 {
+			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			continue
+		}
+
+		// any source relay with latency > direct is not helpful to us
+		if routeState.NearRelayRTT[i] != 255 && routeState.NearRelayRTT[i] > directLatency + 10 {
 			routeState.NearRelayRTT[i] = 255
 			out_sourceRelayLatency[i] = 255
 			continue
@@ -1249,6 +1256,7 @@ type InternalConfig struct {
 	LargeCustomer              bool
 	Uncommitted                bool
 	MaxRTT                     int32
+	HighFrequencyPings         bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1265,6 +1273,7 @@ func NewInternalConfig() InternalConfig {
 		LargeCustomer:              false,
 		Uncommitted:                false,
 		MaxRTT:                     300,
+		HighFrequencyPings:         true,
 	}
 }
 
@@ -1458,9 +1467,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// if we mispredict RTT by 5ms or more, leave network next
+	// if we mispredict RTT by 10ms or more, leave network next
 
-	if predictedLatency > 0 && nextLatency >= predictedLatency+5 {
+	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		if debug != nil {
 			*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
 		}
