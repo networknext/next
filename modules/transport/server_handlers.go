@@ -549,6 +549,12 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
+		// Set the AB test field manually on the first slice only, so that
+		// existing sessions don't start or stop running the AB test
+		if newSession {
+			sessionData.RouteState.ABTest = buyer.RouteShader.ABTest
+		}
+
 		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
 			level.Error(logger).Log("handler", "session_update", "err", err)
 
