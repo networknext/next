@@ -574,6 +574,15 @@ func SessionUpdateHandlerFunc(
 			sessionData.RouteState.UserID = packet.UserHash
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 
+			// Set the AB test field manually on the first slice only, so that
+			// existing sessions don't start or stop running the AB test
+			sessionData.RouteState.ABTest = buyer.RouteShader.ABTest
+
+			// Save constant session data in the prev session data so that they
+			// are displayed in the portal and billing correctly
+			prevSessionData.Location = sessionData.Location
+			prevSessionData.RouteState.ABTest = sessionData.RouteState.ABTest
+
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ClientLocateFailure.Add(1)
