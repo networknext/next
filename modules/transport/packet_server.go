@@ -484,6 +484,7 @@ type SessionResponsePacket struct {
 	Debug              string
 	ExcludeNearRelays  bool
 	NearRelayExcluded  [core.MaxNearRelays]bool
+	HighFrequencyPings bool
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
@@ -550,6 +551,10 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 				stream.SerializeBool(&packet.NearRelayExcluded[i])
 			}
 		}
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 6) {
+		stream.SerializeBool(&packet.HighFrequencyPings)
 	}
 
 	return stream.Error()
