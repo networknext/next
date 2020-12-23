@@ -135,7 +135,7 @@ type internalConfig struct {
 	LargeCustomer              bool  `firestore:"largeCustomer"`
 	Uncommitted                bool  `firestore:"uncommitted"`
 	MaxRTT                     int32 `firestore:"maxRTT"`
-	HighFrequencyPings         int32 `firestore:"highFrequencyPings"`
+	HighFrequencyPings         bool  `firestore:"highFrequencyPings"`
 }
 
 type FirestoreError struct {
