@@ -1249,6 +1249,7 @@ type InternalConfig struct {
 	LargeCustomer              bool
 	Uncommitted                bool
 	MaxRTT                     int32
+	HighFrequencyPings         bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1265,6 +1266,7 @@ func NewInternalConfig() InternalConfig {
 		LargeCustomer:              false,
 		Uncommitted:                false,
 		MaxRTT:                     300,
+		HighFrequencyPings:         true,
 	}
 }
 
