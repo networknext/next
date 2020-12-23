@@ -5630,6 +5630,8 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 	directJitter := int32(5)
 	directPacketLoss := int32(0)
 
+	nextPacketLoss := int32(0)
+
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
 	sourceRelayJitter := []int32{5, 5, 5, 5, 5}
@@ -5642,7 +5644,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 	out_numDestRelays := int32(0)
 	out_destRelays := []int32{0, 0, 0, 0, 0}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{5, 5, 5, 5, 5}, out_sourceRelayJitter)
@@ -5660,7 +5662,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 	sourceRelayLatency = []int32{100, 100, 100, 100, 100}
 	sourceRelayJitter = []int32{10, 10, 10, 10, 10}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{100, 100, 100, 100, 100}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 10, 10}, out_sourceRelayJitter)
@@ -5678,7 +5680,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 	sourceRelayLatency = []int32{99, 99, 99, 99, 99}
 	sourceRelayJitter = []int32{9, 9, 9, 9, 9}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 2, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 2, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{100, 100, 100, 100, 100}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 10, 10}, out_sourceRelayJitter)
@@ -5694,7 +5696,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	sourceRelayPacketLoss = []int32{50, 0, 0, 0, 0}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 3, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 3, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 100, 100, 100, 100}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 10, 10}, out_sourceRelayJitter)
@@ -5710,7 +5712,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	sourceRelayLatency = []int32{99, 0, 99, 99, 99}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 4, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 4, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 100, 100, 100}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 10, 10}, out_sourceRelayJitter)
@@ -5726,7 +5728,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	delete(relayIdToIndex, relayIds[2])
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 5, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 5, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 255, 100, 100}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 10, 10}, out_sourceRelayJitter)
@@ -5742,7 +5744,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	sourceRelayJitter = []int32{100, 100, 100, 100, 100}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 6, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 6, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 255, 255, 255}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 100, 100}, out_sourceRelayJitter)
@@ -5758,7 +5760,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	directJitter = int32(110)
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 7, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 7, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 255, 100, 100}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{10, 10, 10, 100, 100}, out_sourceRelayJitter)
@@ -5799,6 +5801,8 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 	directJitter := int32(5)
 	directPacketLoss := int32(0)
 
+	nextPacketLoss := int32(0)
+
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
 	sourceRelayJitter := []int32{5, 5, 5, 5, 5}
@@ -5811,7 +5815,7 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 	out_numDestRelays := int32(0)
 	out_destRelays := []int32{0, 0, 0, 0, 0}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{5, 5, 5, 5, 5}, out_sourceRelayJitter)
@@ -5827,7 +5831,7 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 
 	sourceRelayJitter = []int32{20, 20, 20, 20, 20}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 255, 255, 255}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{20, 20, 20, 20, 20}, out_sourceRelayJitter)
@@ -5843,7 +5847,7 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 
 	directJitter = int32(30)
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 2, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 2, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{20, 20, 20, 20, 20}, out_sourceRelayJitter)
@@ -5860,9 +5864,9 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 
 	directJitter = int32(100)
 
-	sourceRelayJitter = []int32{20, 20, 90, 90, 90}	
+	sourceRelayJitter = []int32{20, 20, 90, 90, 90}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 3, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 3, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 255, 255, 255}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{20, 20, 90, 90, 90}, out_sourceRelayJitter)
@@ -5905,6 +5909,8 @@ func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
 	directJitter := int32(0)
 	directPacketLoss := int32(0)
 
+	nextPacketLoss := int32(0)
+
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
 	sourceRelayJitter := []int32{1, 2, 3, 4, 5}
@@ -5917,7 +5923,7 @@ func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
 	out_numDestRelays := int32(0)
 	out_destRelays := []int32{0, 0, 0, 0, 0}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{1, 2, 3, 4, 5}, out_sourceRelayJitter)
@@ -5931,19 +5937,101 @@ func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
 
 	// now increase the near relay jitter above the threshold and verify the relays get excluded
 
-	sourceRelayJitter = []int32{JitterThreshold+1, JitterThreshold+1, JitterThreshold+1, JitterThreshold+1, JitterThreshold+1}
+	sourceRelayJitter = []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 255, 255, 255}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{JitterThreshold+1, JitterThreshold+1, JitterThreshold+1, JitterThreshold+1, JitterThreshold+1}, out_sourceRelayJitter)
+	assert.Equal(t, []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}, out_sourceRelayJitter)
 	assert.Equal(t, int32(5), out_numDestRelays)
 	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
 
 	assert.Equal(t, int32(0), routeState.DirectJitter)
 	assert.Equal(t, int32(5), routeState.NumNearRelays)
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{JitterThreshold+1, JitterThreshold+1, JitterThreshold+1, JitterThreshold+1, JitterThreshold+1}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+}
+
+func TestReframeRelays_ReducePacketLoss_PenializeRoutePacketLoss(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	// start with a clean slate
+
+	routeShader := NewRouteShader()
+
+	routeState := RouteState{}
+
+	// pass in some near relay ids with a near relay that LOOKS attractive (lowest latency)
+	// and has no packet loss, but there was some packet loss on the route. Verify it gets excluded.
+
+	directLatency := int32(100)
+	directJitter := int32(10)
+	directPacketLoss := int32(0)
+
+	nextPacketLoss := int32(1)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	destRelayIds := relayIds
+
+	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
+	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	out_numDestRelays := int32(0)
+	out_destRelays := []int32{0, 0, 0, 0, 0}
+
+	sliceNumber := int32(0)
+
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, relayIds[0], sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+	sliceNumber++
+
+	assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+	assert.Equal(t, int32(5), out_numDestRelays)
+	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+	assert.Equal(t, int32(10), routeState.DirectJitter)
+	assert.Equal(t, int32(5), routeState.NumNearRelays)
+	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+
+	// verify it remains excluded from now on
+
+	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
+
+	for i := 0; i < 64; i++ {
+
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+
+		sliceNumber++
+
+		assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
+		assert.Equal(t, int32(5), out_numDestRelays)
+		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
+
+		assert.Equal(t, int32(10), routeState.DirectJitter)
+		assert.Equal(t, int32(5), routeState.NumNearRelays)
+		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
+		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	}
 
 }
 
@@ -5976,6 +6064,8 @@ func TestReframeRelays_ReducePacketLoss_Sporadic(t *testing.T) {
 	directJitter := int32(10)
 	directPacketLoss := int32(0)
 
+	nextPacketLoss := int32(0)
+
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
@@ -5990,7 +6080,7 @@ func TestReframeRelays_ReducePacketLoss_Sporadic(t *testing.T) {
 
 	sliceNumber := int32(0)
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	sliceNumber++
 
@@ -6005,12 +6095,12 @@ func TestReframeRelays_ReducePacketLoss_Sporadic(t *testing.T) {
 	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
 	// verify it remains excluded from now on, as long as direct has no packet loss
-	
+
 	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
 
 	for i := 0; i < 64; i++ {
 
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 		sliceNumber++
 
@@ -6056,6 +6146,8 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 	directJitter := int32(10)
 	directPacketLoss := int32(1)
 
+	nextPacketLoss := int32(0)
+
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
@@ -6070,7 +6162,7 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 
 	sliceNumber := int32(0)
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	sliceNumber++
 
@@ -6085,10 +6177,10 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
 	// verify it remains excluded while packet loss continues
-	
+
 	for i := 0; i < 7; i++ {
 
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 		sliceNumber++
 
@@ -6109,7 +6201,7 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 		sliceNumber++
 
@@ -6124,7 +6216,7 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 	}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	sliceNumber++
 
@@ -6168,6 +6260,8 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 	directJitter := int32(10)
 	directPacketLoss := int32(1)
 
+	nextPacketLoss := int32(1)
+
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
@@ -6180,7 +6274,7 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 	out_numDestRelays := int32(0)
 	out_destRelays := []int32{0, 0, 0, 0, 0}
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
 	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
@@ -6193,14 +6287,15 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
 	// verify it remains routable for 7 more slices (history size is 8) after packet loss stops
-	
+
 	directPacketLoss = int32(0)
+	nextPacketLoss = int32(0)
 
 	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
 
 	for i := 0; i < 7; i++ {
 
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
+		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 		assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
 		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
