@@ -6961,6 +6961,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.upgraded = client->upgraded;
         client->client_stats.reported = client->reported;
         client->client_stats.fallback_to_direct = client->fallback_to_direct;
+        client->client_stats.high_frequency_pings = client->near_relay_manager->high_frequency_pings;
         client->client_stats.multipath = client->multipath;
         client->client_stats.committed = committed;
         client->client_stats.platform_id = next_platform_id();

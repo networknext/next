@@ -207,6 +207,7 @@ struct next_client_stats_t
     bool multipath;
     bool reported;
     bool fallback_to_direct;
+    bool high_frequency_pings;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
