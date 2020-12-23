@@ -366,7 +366,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Multipath",
 		"NextBytesUp",
 		"NextBytesDown",
-		"Initial",
 		"Datacenter",
 		"RttReduction",
 		"PacketLossReduction",
@@ -489,11 +488,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		nextBytesDown := ""
 		if billingEntry.NextBytesDown.Valid {
 			nextBytesDown = fmt.Sprintf("%d", billingEntry.NextBytesDown.Int64)
-		}
-		// Initial
-		initial := ""
-		if billingEntry.Initial.Valid {
-			initial = strconv.FormatBool(billingEntry.Initial.Bool)
 		}
 		// DatacenterString
 		datacenterName := ""
@@ -737,7 +731,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			multipath,
 			nextBytesUp,
 			nextBytesDown,
-			initial,
 			datacenterName,
 			rttReduction,
 			plReduction,
