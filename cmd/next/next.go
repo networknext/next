@@ -1441,7 +1441,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								ForceNext:                  ic.ForceNext,
 								LargeCustomer:              ic.LargeCustomer,
 								Uncommitted:                ic.Uncommitted,
-								MaxRTT:                     int32(ic.MaxLatencyTradeOff),
+								MaxRTT:                     int32(ic.MaxRTT),
 							})
 
 							return nil
