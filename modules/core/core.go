@@ -1016,15 +1016,11 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	if routeShader.ReduceJitter {
 
-		// exclude near relays with higher jitter than direct
+		// exclude near relays with (significantly) higher jitter than direct
 
 		for i := range sourceRelayLatency {
 
-			if routeState.DirectJitter > JitterThreshold && routeState.NearRelayJitter[i] > routeState.DirectJitter {
-				out_sourceRelayLatency[i] = 255
-			}
-
-			if routeState.DirectJitter <= JitterThreshold && routeState.NearRelayJitter[i] > JitterThreshold {
+			if routeState.NearRelayJitter[i] > routeState.DirectJitter + JitterThreshold {
 				out_sourceRelayLatency[i] = 255
 			}
 		}
