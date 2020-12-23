@@ -211,6 +211,7 @@ func handleNearAndDestRelays(
 	clientLat float32,
 	clientLong float32,
 	maxNearRelays int,
+	directLatency int32,
 	directJitter int32,
 	directPacketLoss int32,
 	destRelayIDs []uint64,
@@ -251,7 +252,7 @@ func handleNearAndDestRelays(
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
-	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directJitter, directPacketLoss, sliceNumber, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directLatency, directJitter, directPacketLoss, sliceNumber, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
 	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
@@ -681,6 +682,7 @@ func SessionUpdateHandlerFunc(
 			sessionData.Location.Latitude,
 			sessionData.Location.Longitude,
 			maxNearRelays,
+			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),
 			int32(math.Floor(float64(packet.DirectPacketLoss)+0.5)),
 			destRelayIDs,
@@ -703,6 +705,7 @@ func SessionUpdateHandlerFunc(
 		response.NumNearRelays = nearRelays.Count
 		response.NearRelayIDs = nearRelays.IDs
 		response.NearRelayAddresses = nearRelays.Addrs
+		response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
 
 		// First slice always direct
 		if newSession {
