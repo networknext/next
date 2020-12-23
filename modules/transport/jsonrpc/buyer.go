@@ -1483,7 +1483,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	multipath,
 	nextBytesUp,
 	nextBytesDown,
-	initial,
 	datacenterID,
 	rttReduction,
 	packetLossReduction,
