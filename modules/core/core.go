@@ -871,7 +871,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, firstRouteRelayId uint64, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayId))
@@ -912,7 +912,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 
 		// any source relay with latency > direct is not helpful to us
-		if routeState.NearRelayRTT[i] != 255 && routeState.NearRelayRTT[i] > directLatency + 10 {
+		if routeState.NearRelayRTT[i] != 255 && routeState.NearRelayRTT[i] > directLatency+10 {
 			routeState.NearRelayRTT[i] = 255
 			out_sourceRelayLatency[i] = 255
 			continue
@@ -951,13 +951,31 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	if routeShader.ReducePacketLoss {
 
+		// If we've increased packet loss on the network next route but it wasn't on the first hop,
+		// penalize the near relay anyway
+
+		if firstRouteRelayId != 0 && nextPacketLoss > 0 {
+
+			for i := range sourceRelayId {
+
+				if sourceRelayId[i] == firstRouteRelayId {
+
+					if sourceRelayPacketLoss[i] == 0 {
+						routeState.NearRelayPLCount[i]++
+					}
+
+					break
+				}
+			}
+		}
+
 		// exclude near relays with higher number of packet loss events than direct (sporadic packet loss)
 
 		if directPacketLoss > 0 {
 			routeState.DirectPLCount++
 		}
 
-		if int32(routeState.DirectPLCount*10) <= sliceNumber {		// IMPORTANT: Only run for nonexistent or sporadic direct PL
+		if int32(routeState.DirectPLCount*10) <= sliceNumber { // IMPORTANT: Only run for nonexistent or sporadic direct PL
 
 			for i := range sourceRelayPacketLoss {
 
@@ -970,7 +988,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 				}
 			}
 		}
-		
+
 		// exclude near relays with a history of packet loss values worse than direct (continuous packet loss)
 
 		routeState.PLHistorySamples++
@@ -983,7 +1001,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		samples := routeState.PLHistorySamples
 
 		temp_threshold := samples / 2
-		
+
 		if directPacketLoss > 0 {
 			routeState.DirectPLHistory |= (1 << index)
 		} else {
@@ -1020,7 +1038,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 		for i := range sourceRelayLatency {
 
-			if routeState.NearRelayJitter[i] > routeState.DirectJitter + JitterThreshold {
+			if routeState.NearRelayJitter[i] > routeState.DirectJitter+JitterThreshold {
 				out_sourceRelayLatency[i] = 255
 			}
 		}
@@ -1042,7 +1060,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 				if out_sourceRelayLatency[i] == 255 {
 					continue
 				}
-				if out_sourceRelayJitter[i] > averageJitter + JitterThreshold {
+				if out_sourceRelayJitter[i] > averageJitter+JitterThreshold {
 					out_sourceRelayLatency[i] = 255
 				}
 			}
