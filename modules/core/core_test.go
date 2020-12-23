@@ -5823,21 +5823,23 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
 	assert.Equal(t, []int32{5, 5, 5, 5, 5}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
-	// now increase the near relay jitter so it is above the direct jitter and verify these relays are excluded temporarily
+	// now increase the near relay jitter so it is above the direct jitter + threshold and verify these relays are excluded temporarily
 
-	sourceRelayJitter = []int32{20, 20, 20, 20, 20}
+	highJitter := directJitter + JitterThreshold + 1
+
+	sourceRelayJitter = []int32{highJitter, highJitter, highJitter, highJitter, highJitter}
 
 	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{255, 255, 255, 255, 255}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{20, 20, 20, 20, 20}, out_sourceRelayJitter)
+	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, out_sourceRelayJitter)
 	assert.Equal(t, int32(5), out_numDestRelays)
 	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
 
 	assert.Equal(t, int32(5), routeState.DirectJitter)
 	assert.Equal(t, int32(5), routeState.NumNearRelays)
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{20, 20, 20, 20, 20}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
 	// increase direct jitter and all near relays should recover and be routable again
 
@@ -5846,33 +5848,33 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 2, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{20, 20, 20, 20, 20}, out_sourceRelayJitter)
+	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, out_sourceRelayJitter)
 	assert.Equal(t, int32(5), out_numDestRelays)
 	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
 
 	assert.Equal(t, int32(30), routeState.DirectJitter)
 	assert.Equal(t, int32(5), routeState.NumNearRelays)
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{20, 20, 20, 20, 20}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
 	// now blow out direct jitter and a few near relays. make sure the high jitter near relays
 	// get excluded because they have higher than average jitter across all near relays.
 
 	directJitter = int32(100)
 
-	sourceRelayJitter = []int32{20, 20, 90, 90, 90}	
+	sourceRelayJitter = []int32{highJitter, highJitter, 90, 90, 90}	
 
 	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, 3, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
 
 	assert.Equal(t, []int32{50, 50, 255, 255, 255}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{20, 20, 90, 90, 90}, out_sourceRelayJitter)
+	assert.Equal(t, []int32{highJitter, highJitter, 90, 90, 90}, out_sourceRelayJitter)
 	assert.Equal(t, int32(5), out_numDestRelays)
 	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
 
 	assert.Equal(t, int32(100), routeState.DirectJitter)
 	assert.Equal(t, int32(5), routeState.NumNearRelays)
 	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{20, 20, 90, 90, 90}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	assert.Equal(t, []int32{highJitter, highJitter, 90, 90, 90}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 }
 
 func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
