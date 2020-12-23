@@ -1467,9 +1467,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// if we mispredict RTT by 5ms or more, leave network next
+	// if we mispredict RTT by 10ms or more, leave network next
 
-	if predictedLatency > 0 && nextLatency >= predictedLatency+5 {
+	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		if debug != nil {
 			*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
 		}
