@@ -38,7 +38,6 @@
     "connectionType": 1,
     "platformType": 1,
     "sdkVersion": "4.0.1",
-    "packetLoss": null,
     "envelopeBytesUp": 1280000,
     "envelopeBytesDown": 1280000,
     "predictedNextRTT": 6.0,

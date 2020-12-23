@@ -1646,9 +1646,6 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].PlatformType)
 		assert.Equal(t, bigquery.NullString{StringVal: "4.0.1", Valid: true}, reply.SessionBillingInfo[0].SdkVersion)
 
-		// empty/null column
-		assert.Equal(t, bigquery.NullFloat64{Float64: 0, Valid: false}, reply.SessionBillingInfo[0].PacketLoss)
-
 		assert.Equal(t, bigquery.NullInt64{Int64: 1280000, Valid: true}, reply.SessionBillingInfo[0].EnvelopeBytesUp)
 		assert.Equal(t, bigquery.NullInt64{Int64: 1280000, Valid: true}, reply.SessionBillingInfo[0].EnvelopeBytesDown)
 		assert.Equal(t, bigquery.NullFloat64{Float64: 6.0, Valid: true}, reply.SessionBillingInfo[0].PredictedNextRTT)
