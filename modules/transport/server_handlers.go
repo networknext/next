@@ -1074,7 +1074,7 @@ func PostSessionUpdate(
 		Latitude:                        float32(sessionData.Location.Latitude),
 		Longitude:                       float32(sessionData.Location.Longitude),
 		ISP:                             sessionData.Location.ISP,
-		ABTest:                          sessionData.RouteState.ABTest,
+		ABTest:                          buyer.RouteShader.ABTest,
 		RouteDecision:                   0,
 		ConnectionType:                  uint8(packet.ConnectionType),
 		PlatformType:                    uint8(packet.PlatformType),
