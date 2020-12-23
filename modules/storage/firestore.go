@@ -1170,6 +1170,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		StartDate:          r.StartDate.UTC(),
 		EndDate:            r.EndDate.UTC(),
 		Type:               serverType,
+		MaxSessions:        int32(r.MaxSessions),
 	}
 
 	// Add the relay in remote storage
