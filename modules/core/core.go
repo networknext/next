@@ -912,7 +912,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 
 		// any source relay with latency > direct is not helpful to us
-		if routeState.NearRelayRTT[i] != 255 && routeState.NearRelayRTT[i] > directLatency {
+		if routeState.NearRelayRTT[i] != 255 && routeState.NearRelayRTT[i] > directLatency + 10 {
 			routeState.NearRelayRTT[i] = 255
 			out_sourceRelayLatency[i] = 255
 			continue
