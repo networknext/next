@@ -1629,7 +1629,6 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Multipath)
 		assert.Equal(t, bigquery.NullInt64{Int64: 127500, Valid: true}, reply.SessionBillingInfo[0].NextBytesUp)
 		assert.Equal(t, bigquery.NullInt64{Int64: 153750, Valid: true}, reply.SessionBillingInfo[0].NextBytesDown)
-		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Initial)
 		assert.Equal(t, bigquery.NullInt64{Int64: int64(outerDatacenter.ID), Valid: true}, reply.SessionBillingInfo[0].DatacenterID)
 		assert.Equal(t, bigquery.NullString{StringVal: outerDatacenter.Name, Valid: true}, reply.SessionBillingInfo[0].DatacenterString)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RttReduction)

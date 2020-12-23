@@ -22,7 +22,6 @@
     "multipath": false,
     "nextBytesUp": 127500,
     "nextBytesDown": 153750,
-    "initial": false,
     "datacenterID": -4782787265783630760,
     "rttReduction": true,
     "packetLossReduction": false,
