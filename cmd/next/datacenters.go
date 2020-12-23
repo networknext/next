@@ -90,7 +90,6 @@ func datacenters(
 					ID:           fmt.Sprintf("%d", int64(dc.ID)),
 					Latitude:     dc.Latitude,
 					Longitude:    dc.Longitude,
-					Enabled:      dc.Enabled,
 					SupplierName: dc.SupplierName,
 				})
 			}
@@ -101,7 +100,6 @@ func datacenters(
 					ID:           fmt.Sprintf("%016x", dc.ID),
 					Latitude:     dc.Latitude,
 					Longitude:    dc.Longitude,
-					Enabled:      dc.Enabled,
 					SupplierName: dc.SupplierName,
 				})
 			}
@@ -124,16 +122,14 @@ func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) 
 
 	did := crypto.HashID(dc.Name)
 	datacenter := routing.Datacenter{
-		ID:      did,
-		Name:    dc.Name,
-		Enabled: dc.Enabled,
+		ID:   did,
+		Name: dc.Name,
 		Location: routing.Location{
 			Latitude:  dc.Latitude,
 			Longitude: dc.Longitude,
 		},
-		StreetAddress: dc.StreetAddress,
-		SupplierName:  dc.SupplierName,
-		SellerID:      sellerReply.Seller.DatabaseID,
+		SupplierName: dc.SupplierName,
+		SellerID:     sellerReply.Seller.DatabaseID,
 	}
 
 	args := localjsonrpc.AddDatacenterArgs{

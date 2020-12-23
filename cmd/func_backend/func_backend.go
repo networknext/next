@@ -227,6 +227,16 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 }
 
+func excludeNearRelays(sessionResponse *transport.SessionResponsePacket, routeState core.RouteState) {
+	numExcluded := 0
+	for i := 0; i < int(routeState.NumNearRelays); i++ {
+		if routeState.NearRelayRTT[i] == 255 {
+			sessionResponse.NearRelayExcluded[i] = true
+		}
+	}
+	sessionResponse.ExcludeNearRelays = numExcluded > 0
+}
+
 func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	var sessionUpdate transport.SessionUpdatePacket
 	if err := transport.UnmarshalPacket(&sessionUpdate, incoming.Data); err != nil {
@@ -511,6 +521,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	sessionResponse.Version = sessionUpdate.Version
+
+	excludeNearRelays(sessionResponse, sessionData.RouteState)
 
 	sessionDataBuffer, err := transport.MarshalSessionData(&sessionData)
 	if err != nil {

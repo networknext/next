@@ -1421,8 +1421,6 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 
 	customerShortName := "shortName"
 	customer := routing.Customer{
-		Active:                 true,
-		Debug:                  true,
 		Code:                   customerShortName,
 		Name:                   "Company, Ltd.",
 		AutomaticSignInDomains: "fredscuttle.com",
@@ -1471,15 +1469,13 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 	// fmt.Printf("BuyerID: %d\n", outerBuyer.ID)
 
 	datacenter := routing.Datacenter{
-		ID:      crypto.HashID("some.locale.name"),
-		Name:    "some.locale.name",
-		Enabled: true,
+		ID:   crypto.HashID("some.locale.name"),
+		Name: "some.locale.name",
 		Location: routing.Location{
 			Latitude:  70.5,
 			Longitude: 120.5,
 		},
-		StreetAddress: "Somewhere, USA",
-		SellerID:      outerSeller.DatabaseID,
+		SellerID: outerSeller.DatabaseID,
 	}
 
 	err = storer.AddDatacenter(ctx, datacenter)
@@ -1692,6 +1688,14 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, int64(1141867895387079451), reply.SessionBillingInfo[0].Tags[0])
 		assert.Equal(t, int64(-7664475006302134894), reply.SessionBillingInfo[0].Tags[1])
 		assert.Equal(t, int64(-6848787315892866519), reply.SessionBillingInfo[0].Tags[2])
+
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Mispredicted)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Vetoed)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].LatencyWorse)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].NoRoute)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].NextLatencyTooHigh)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RouteChanged)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].CommitVeto)
 
 	})
 }

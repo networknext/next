@@ -2,7 +2,7 @@ package optimizer
 
 import (
 	"fmt"
-
+	"runtime"
 	"time"
 
 	"github.com/networknext/backend/modules/envvar"
@@ -24,6 +24,7 @@ type Config struct {
 	subscriberRecieveBufferSize int
 	CloudStoreActive            bool
 	CloudStoreOnly              bool
+	NumThreads                  int
 }
 
 func GetConfig() (*Config, error) {
@@ -99,6 +100,8 @@ func GetConfig() (*Config, error) {
 		return nil, err
 	}
 
+	numThreads, err := envvar.GetInt("NUM_THREADS", runtime.NumCPU())
+
 	csActive, err := envvar.GetBool("CLOUD_STORE_ACTIVE", false)
 	if err != nil {
 		return nil, err
@@ -123,6 +126,7 @@ func GetConfig() (*Config, error) {
 		MatrixStoreWriteTimeout:     matrixStoreWriteTimeout,
 		subscriberPort:              subscriberPort,
 		subscriberRecieveBufferSize: subscriberRecieveBufferSize,
+		NumThreads:                  numThreads,
 		CloudStoreActive:            csActive,
 		CloudStoreOnly:              csOnly,
 	}, nil
