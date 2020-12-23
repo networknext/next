@@ -214,14 +214,10 @@ func handleNearAndDestRelays(
 	destRelayIDs []uint64,
 	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
-	var nearRelaysChanged bool
-
 	if newSession {
-		nearRelaysChanged = true
-
 		nearRelayIDs, err := routeMatrix.GetNearRelays(clientLat, clientLong, maxNearRelays)
 		if err != nil {
-			return nearRelaysChanged, nearRelayGroup{}, nil, err
+			return false, nearRelayGroup{}, nil, err
 		}
 
 		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
@@ -237,21 +233,21 @@ func handleNearAndDestRelays(
 		}
 
 		routeState.NumNearRelays = nearRelays.Count
-		return nearRelaysChanged, nearRelays, nil, nil
+		return true, nearRelays, nil, nil
 	}
 
 	var nearRelays nearRelayGroup
 	incomingNearRelays.Copy(&nearRelays)
 
 	if nearRelays.Count != routeState.NumNearRelays {
-		return nearRelaysChanged, nearRelays, nil, fmt.Errorf("near relays changed from %d to %d", routeState.NumNearRelays, nearRelays.Count)
+		return false, nearRelayGroup{}, nil, fmt.Errorf("near relays changed from %d to %d", routeState.NumNearRelays, nearRelays.Count)
 	}
 
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
 	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, routeMatrix.RelayNames, directJitter, directPacketLoss, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays, debug)
-	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
+	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
 func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
@@ -447,7 +443,7 @@ func SessionUpdateHandlerFunc(
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
-			if sessionData.RouteState.Next {
+			if response.RouteType != routing.RouteTypeDirect {
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
 			} else {
@@ -685,6 +681,9 @@ func SessionUpdateHandlerFunc(
 			debug,
 		)
 
+		response.NumNearRelays = nearRelays.Count
+		response.NearRelayIDs = nearRelays.IDs
+		response.NearRelayAddresses = nearRelays.Addrs
 		response.NearRelaysChanged = nearRelaysChanged
 
 		if err != nil {
@@ -698,10 +697,6 @@ func SessionUpdateHandlerFunc(
 
 			return
 		}
-
-		response.NumNearRelays = nearRelays.Count
-		response.NearRelayIDs = nearRelays.IDs
-		response.NearRelayAddresses = nearRelays.Addrs
 
 		// First slice always direct
 		if newSession {
