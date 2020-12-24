@@ -878,9 +878,11 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 	}
 
 	if int(routeState.NumNearRelays) != len(sourceRelayId) {
-		// IMPORTANT: This should not happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
-		for i := 0; i < int(routeState.NumNearRelays); i++ {
+		// IMPORTANT: This should never happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
+		for i := 0; i < len(routeState.NearRelayRTT); i++ {
 			routeState.NearRelayRTT[i] = 255
+		}
+		for i := 0; i < len(out_sourceRelayLatency); i++ {
 			out_sourceRelayLatency[i] = 255
 		}
 		*out_numDestRelays = int32(0)
@@ -1064,6 +1066,17 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 					out_sourceRelayLatency[i] = 255
 				}
 			}
+		}
+	}
+
+	// extra safety. don't let any relay report latency of zero
+
+	for i := range sourceRelayLatency {
+
+		if sourceRelayLatency[i] <= 0 || out_sourceRelayLatency[i] <= 0 {
+			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			continue
 		}
 	}
 
@@ -1374,6 +1387,14 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	maxCost := directLatency
 
+	// apply safety to source relay cost
+
+	for i := range sourceRelayCost {
+		if sourceRelayCost[i] <= 0 {
+			sourceRelayCost[i] = 255
+		}
+	}
+
 	// should we try to reduce latency?
 
 	reduceLatency := false
@@ -1479,6 +1500,14 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false, false
+	}
+
+	// apply safety to source relay cost
+
+	for i := range sourceRelayCost {
+		if sourceRelayCost[i] <= 0 {
+			sourceRelayCost[i] = 255
+		}
 	}
 
 	// if we mispredict RTT by 10ms or more, leave network next
