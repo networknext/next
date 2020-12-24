@@ -951,8 +951,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	if routeShader.ReducePacketLoss {
 
-		// If we've increased packet loss on the network next route but it wasn't on the first hop,
-		// penalize the near relay anyway
+		// if packet loss occurred on direct, penalize the near relay for the route
 
 		if firstRouteRelayId != 0 && nextPacketLoss > 0 {
 
