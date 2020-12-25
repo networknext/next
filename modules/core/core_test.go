@@ -2700,6 +2700,70 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	assert.Equal(t, int32(1), routeDiversity)
 }
 
+func TestTakeNetworkNext_ReduceLatency_RouteDiversity(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles.a", "10.0.0.1")
+	env.AddRelay("losangeles.b", "10.0.0.2")
+	env.AddRelay("losangeles.c", "10.0.0.3")
+	env.AddRelay("losangeles.d", "10.0.0.4")
+	env.AddRelay("losangeles.e", "10.0.0.5")
+	env.AddRelay("chicago", "10.0.0.6")
+
+	env.SetCost("losangeles.a", "chicago", 10)
+	env.SetCost("losangeles.b", "chicago", 10)
+	env.SetCost("losangeles.c", "chicago", 10)
+	env.SetCost("losangeles.d", "chicago", 10)
+	env.SetCost("losangeles.e", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(50)
+	directPacketLoss := float32(0.0)
+
+	sourceRelays := []int32{0,1,2,3,4}
+	sourceRelayCosts := []int32{10, 10, 10, 10, 10}
+
+	destRelays := []int32{5}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+	routeState := RouteState{}
+	multipathVetoUsers := map[uint64]bool{}
+	internal := NewInternalConfig()
+
+	routeState.UserID = 100
+
+	debug := ""
+
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = true
+
+	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(5), routeDiversity)
+}
+
 func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 
 	t.Parallel()
