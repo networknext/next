@@ -593,8 +593,9 @@ func (env *TestEnvironment) GetBestRoutes(routeMatrix []RouteEntry, sourceRelays
 		}
 	}
 	numBestRoutes := 0
+	routeDiversity := int32(0)
 	bestRoutes := make([]BestRoute, 1024)
-	GetBestRoutes(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, bestRoutes, &numBestRoutes)
+	GetBestRoutes(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, bestRoutes, &numBestRoutes, &routeDiversity)
 	routes := make([]TestRouteData, numBestRoutes)
 	for i := 0; i < numBestRoutes; i++ {
 		routes[i].cost = bestRoutes[i].Cost
@@ -690,7 +691,7 @@ func (env *TestEnvironment) ReframeRelays(sourceRelayNames []string, destRelayNa
 	return sourceRelays, destRelays
 }
 
-func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32) (int32, []string) {
+func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32) (int32, int32, []string) {
 
 	sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
 
@@ -700,9 +701,9 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourc
 
 	debug := ""
 	selectThreshold := int32(2)
-	result := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
-	if !result {
-		return 0, []string{}
+	hasRoute, routeDiversity := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	if !hasRoute {
+		return 0, 0, []string{}
 	}
 
 	bestRouteRelayNames := make([]string, bestRouteNumRelays)
@@ -712,7 +713,7 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourc
 		bestRouteRelayNames[i] = routeData.name
 	}
 
-	return bestRouteCost, bestRouteRelayNames
+	return bestRouteCost, routeDiversity, bestRouteRelayNames
 }
 
 func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteRelayNames []string) (int32, []string) {
@@ -2004,9 +2005,10 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	maxCost := int32(40)
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+	bestRouteCost, routeDiversity, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
 	assert.Equal(t, int32(35+CostBias), bestRouteCost)
+	assert.Equal(t, int32(1), routeDiversity)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
 
@@ -2054,7 +2056,7 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 
 	maxCost := int32(20)
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+	bestRouteCost, routeDiversity, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
 	assert.True(t, bestRouteCost > 0)
 	assert.True(t, bestRouteCost <= maxCost)
@@ -2067,6 +2069,8 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 	if bestRouteCost == 17 {
 		assert.Equal(t, []string{"losangeles.b", "b", "chicago.a"}, bestRouteRelays)
 	}
+
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestGetBestRoute_Initial_NoRoute(t *testing.T) {
@@ -2113,9 +2117,10 @@ func TestGetBestRoute_Initial_NoRoute(t *testing.T) {
 
 	maxCost := int32(1)
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+	bestRouteCost, routeDiversity, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
 	assert.True(t, bestRouteCost == 0)
+	assert.True(t, routeDiversity == int32(0))
 	assert.Equal(t, 0, len(bestRouteRelays))
 }
 
@@ -2163,9 +2168,10 @@ func TestGetBestRoute_Initial_NegativeMaxCost(t *testing.T) {
 
 	maxCost := int32(-1)
 
-	bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+	bestRouteCost, routeDiversity, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
-	assert.True(t, bestRouteCost == 0)
+	assert.Equal(t, int32(0), bestRouteCost)
+	assert.Equal(t, int32(0), routeDiversity)
 	assert.Equal(t, 0, len(bestRouteRelays))
 }
 
@@ -2378,7 +2384,9 @@ func TestTakeNetworkNext_EarlyOutDirect_Veto(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2387,6 +2395,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Veto(t *testing.T) {
 	expectedRouteState.Veto = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_EarlyOutDirect_Banned(t *testing.T) {
@@ -2436,7 +2445,9 @@ func TestTakeNetworkNext_EarlyOutDirect_Banned(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2445,7 +2456,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Banned(t *testing.T) {
 	expectedRouteState.Banned = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_EarlyOutDirect_Disabled(t *testing.T) {
@@ -2495,7 +2506,9 @@ func TestTakeNetworkNext_EarlyOutDirect_Disabled(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2504,7 +2517,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Disabled(t *testing.T) {
 	expectedRouteState.Disabled = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_EarlyOutDirect_NotSelected(t *testing.T) {
@@ -2554,7 +2567,9 @@ func TestTakeNetworkNext_EarlyOutDirect_NotSelected(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2563,7 +2578,7 @@ func TestTakeNetworkNext_EarlyOutDirect_NotSelected(t *testing.T) {
 	expectedRouteState.NotSelected = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_EarlyOutDirect_B(t *testing.T) {
@@ -2613,7 +2628,9 @@ func TestTakeNetworkNext_EarlyOutDirect_B(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2622,7 +2639,7 @@ func TestTakeNetworkNext_EarlyOutDirect_B(t *testing.T) {
 	expectedRouteState.B = true
 
 	assert.Equal(t, expectedRouteState, routeState)
-
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 // -------------------------------------------------------------------------------
@@ -2667,7 +2684,9 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -2678,6 +2697,7 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
@@ -2728,7 +2748,9 @@ func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2736,6 +2758,7 @@ func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 	expectedRouteState.UserID = 100
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
@@ -2786,7 +2809,9 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2794,6 +2819,7 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 	expectedRouteState.UserID = 100
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
@@ -2836,7 +2862,9 @@ func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -2844,6 +2872,7 @@ func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	expectedRouteState.UserID = 100
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 // -----------------------------------------------------------------------------
@@ -2889,7 +2918,9 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -2900,6 +2931,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
@@ -2943,7 +2975,9 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -2954,6 +2988,7 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) {
@@ -2996,7 +3031,9 @@ func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) 
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -3004,6 +3041,7 @@ func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) 
 	expectedRouteState.UserID = 100
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.T) {
@@ -3046,7 +3084,9 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -3058,6 +3098,7 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
@@ -3102,7 +3143,9 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -3110,6 +3153,7 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 	expectedRouteState.UserID = 100
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 // -----------------------------------------------------------------------------
@@ -3156,7 +3200,9 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -3168,6 +3214,7 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
@@ -3213,7 +3260,9 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -3225,6 +3274,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
@@ -3269,7 +3319,9 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -3282,6 +3334,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) {
@@ -3328,7 +3381,9 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) 
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -3341,6 +3396,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) 
 	expectedRouteState.Committed = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 // -----------------------------------------------------------------------------
@@ -3389,7 +3445,9 @@ func TestTakeNetworkNext_ProMode(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -3402,6 +3460,7 @@ func TestTakeNetworkNext_ProMode(t *testing.T) {
 	expectedRouteState.ReduceLatency = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
@@ -3450,7 +3509,9 @@ func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -3458,6 +3519,7 @@ func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
 	expectedRouteState.UserID = 100
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 // -----------------------------------------------------------------------------
@@ -4670,7 +4732,9 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -4683,6 +4747,7 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 	assert.Equal(t, expectedRouteState, routeState)
 	assert.Equal(t, int32(50+CostBias), routeCost)
 	assert.Equal(t, int32(2), routeNumRelays)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
@@ -4724,7 +4789,9 @@ func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -4733,6 +4800,7 @@ func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	expectedRouteState.ForcedNext = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 func TestStayOnNetworkNext_ForceNext(t *testing.T) {
@@ -4992,7 +5060,9 @@ func TestTakeNetworkNext_Uncommitted(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -5004,6 +5074,7 @@ func TestTakeNetworkNext_Uncommitted(t *testing.T) {
 	assert.Equal(t, expectedRouteState, routeState)
 	assert.Equal(t, int32(12+CostBias), routeCost)
 	assert.Equal(t, int32(3), routeNumRelays)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
@@ -5116,7 +5187,9 @@ func TestTakeNetworkNext_TryBeforeYouBuy(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -5127,6 +5200,7 @@ func TestTakeNetworkNext_TryBeforeYouBuy(t *testing.T) {
 	expectedRouteState.Committed = false
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 func TestStayOnNetworkNext_TryBeforeYouBuy_Commit(t *testing.T) {
@@ -5527,7 +5601,9 @@ func TestTakeNetworkNext_TryBeforeYouBuy_Multipath(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.True(t, result)
 
@@ -5539,6 +5615,7 @@ func TestTakeNetworkNext_TryBeforeYouBuy_Multipath(t *testing.T) {
 	expectedRouteState.Multipath = true
 
 	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
 }
 
 // -------------------------------------------------------------
@@ -5588,7 +5665,9 @@ func TestPredictedRTT(t *testing.T) {
 
 	debug := ""
 
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
 
 	assert.False(t, result)
 
@@ -5598,6 +5677,7 @@ func TestPredictedRTT(t *testing.T) {
 	assert.Equal(t, expectedRouteState, routeState)
 
 	assert.Equal(t, int32(20+CostBias), routeCost)
+	assert.Equal(t, int32(0), routeDiversity)
 }
 
 // -------------------------------------------------------------
