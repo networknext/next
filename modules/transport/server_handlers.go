@@ -433,6 +433,7 @@ func SessionUpdateHandlerFunc(
 
 		var sessionData SessionData
 		var prevSessionData SessionData
+		var routeDiversity int32
 
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
@@ -516,7 +517,7 @@ func SessionUpdateHandlerFunc(
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
+				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, routeDiversity, debug)
 			}
 		}()
 
@@ -759,7 +760,7 @@ func SessionUpdateHandlerFunc(
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 		} else {
@@ -768,7 +769,7 @@ func SessionUpdateHandlerFunc(
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
 				metrics.RouteDoesNotExist.Add(1)
 
-				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
+				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 				}
 			} else {
@@ -976,6 +977,7 @@ func PostSessionUpdate(
 	routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller,
 	nearRelays nearRelayGroup,
 	datacenter *routing.Datacenter,
+	routeDiversity int32,
 	debug *string,
 ) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
@@ -1117,6 +1119,7 @@ func PostSessionUpdate(
 		NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
 		RouteChanged:                    sessionData.RouteChanged,
 		CommitVeto:                      sessionData.RouteState.CommitVeto,
+		RouteDiversity:                  uint32(routeDiversity),
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
