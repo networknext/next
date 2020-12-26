@@ -1278,6 +1278,7 @@ type RouteState struct {
 	RouteLost          bool
 	DirectJitter       int32
 	Mispredict         bool
+	LackOfDiversity    bool
 }
 
 type InternalConfig struct {
@@ -1480,6 +1481,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		if debug != nil {
 			*debug += fmt.Sprintf("not enough route diversity. %d < %d\n", routeDiversity, internal.RouteDiversity)
 		}
+		routeState.LackOfDiversity = true
 		return false
 	}
 
