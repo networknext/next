@@ -2764,6 +2764,63 @@ func TestTakeNetworkNext_ReduceLatency_RouteDiversity(t *testing.T) {
 	assert.Equal(t, int32(5), routeDiversity)
 }
 
+func TestTakeNetworkNext_ReduceLatency_LackOfDiversity(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles.a", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles.a", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(50)
+	directPacketLoss := float32(0.0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+	routeState := RouteState{}
+	multipathVetoUsers := map[uint64]bool{}
+
+	internal := NewInternalConfig()
+	internal.RouteDiversity = 5
+
+	routeState.UserID = 100
+
+	debug := ""
+
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
+
+	assert.False(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = false
+	expectedRouteState.LackOfDiversity = true
+
+	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
+}
+
 func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 
 	t.Parallel()
@@ -6454,9 +6511,5 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 	}
 }
-
-// -------------------------------------------------------------
-
-// todo: test route diversity
 
 // -------------------------------------------------------------
