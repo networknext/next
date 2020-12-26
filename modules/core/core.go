@@ -1278,6 +1278,7 @@ type RouteState struct {
 	RouteLost          bool
 	DirectJitter       int32
 	Mispredict         bool
+	LackOfDiversity    bool
 }
 
 type InternalConfig struct {
@@ -1285,8 +1286,8 @@ type InternalConfig struct {
 	RouteSwitchThreshold       int32
 	MaxLatencyTradeOff         int32
 	RTTVeto_Default            int32
-	RTTVeto_PacketLoss         int32
 	RTTVeto_Multipath          int32
+	RTTVeto_PacketLoss         int32
 	MultipathOverloadThreshold int32
 	TryBeforeYouBuy            bool
 	ForceNext                  bool
@@ -1294,6 +1295,7 @@ type InternalConfig struct {
 	Uncommitted                bool
 	MaxRTT                     int32
 	HighFrequencyPings         bool
+	RouteDiversity             int32
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1302,8 +1304,8 @@ func NewInternalConfig() InternalConfig {
 		RouteSwitchThreshold:       5,
 		MaxLatencyTradeOff:         20,
 		RTTVeto_Default:            -10,
-		RTTVeto_PacketLoss:         -20,
 		RTTVeto_Multipath:          -20,
+		RTTVeto_PacketLoss:         -30,
 		MultipathOverloadThreshold: 500,
 		TryBeforeYouBuy:            false,
 		ForceNext:                  false,
@@ -1311,6 +1313,7 @@ func NewInternalConfig() InternalConfig {
 		Uncommitted:                false,
 		MaxRTT:                     300,
 		HighFrequencyPings:         true,
+		RouteDiversity:             0,
 	}
 }
 
@@ -1471,6 +1474,16 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	*out_routeNumRelays = bestRouteNumRelays
 	*out_routeDiversity = routeDiversity
 	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
+
+	// if we don't have enough route diversity, we can't take network next
+
+	if routeDiversity < internal.RouteDiversity {
+		if debug != nil {
+			*debug += fmt.Sprintf("not enough route diversity. %d < %d\n", routeDiversity, internal.RouteDiversity)
+		}
+		routeState.LackOfDiversity = true
+		return false
+	}
 
 	// if we don't have a network next route, we can't take network next
 

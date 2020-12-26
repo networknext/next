@@ -4359,7 +4359,7 @@ func TestStayOnNetworkNext_ReducePacketLoss_RTTVeto(t *testing.T) {
 
 	directLatency := int32(5)
 
-	nextLatency := int32(30)
+	nextLatency := int32(40)
 
 	predictedLatency := int32(0)
 
@@ -6454,5 +6454,9 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 	}
 }
+
+// -------------------------------------------------------------
+
+// todo: test route diversity
 
 // -------------------------------------------------------------
