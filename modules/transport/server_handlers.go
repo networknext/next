@@ -1120,6 +1120,7 @@ func PostSessionUpdate(
 		RouteChanged:                    sessionData.RouteChanged,
 		CommitVeto:                      sessionData.RouteState.CommitVeto,
 		RouteDiversity:                  uint32(routeDiversity),
+		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
