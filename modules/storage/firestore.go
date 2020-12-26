@@ -2274,6 +2274,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.Uncommitted = tempIC.Uncommitted
 	ic.MaxRTT = tempIC.MaxRTT
 	ic.HighFrequencyPings = tempIC.HighFrequencyPings
+	ic.RouteDiversity = tempIC.RouteDiversity
 
 	return ic, nil
 }
