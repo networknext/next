@@ -136,6 +136,7 @@ type internalConfig struct {
 	Uncommitted                bool  `firestore:"uncommitted"`
 	MaxRTT                     int32 `firestore:"maxRTT"`
 	HighFrequencyPings         bool  `firestore:"highFrequencyPings"`
+	RouteDiversity             int32 `firestore:"routeDiversity"`
 }
 
 type FirestoreError struct {
@@ -2295,6 +2296,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"uncommitted":                internalConfig.Uncommitted,
 		"maxRTT":                     internalConfig.MaxRTT,
 		"highFrequencyPings":         internalConfig.HighFrequencyPings,
+		"routeDiversity":             internalConfig.RouteDiversity,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)

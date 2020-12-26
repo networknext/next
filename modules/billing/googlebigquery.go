@@ -256,5 +256,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["routeDiversity"] = entry.RouteDiversity
 	}
 
+	if entry.LackOfDiversity {
+		e["lackOfDiversity"] = entry.LackOfDiversity
+	}
+
 	return e, "", nil
 }
