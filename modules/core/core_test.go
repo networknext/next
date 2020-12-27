@@ -3313,7 +3313,9 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
 	multipathVetoUsers := map[uint64]bool{}
+	
 	internal := NewInternalConfig()
+	internal.MultipathThreshold = 100
 
 	routeShader.Multipath = true
 
@@ -3331,6 +3333,67 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 	expectedRouteState.UserID = 100
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
+	expectedRouteState.ReduceLatency = true
+	expectedRouteState.Committed = true
+
+	assert.Equal(t, expectedRouteState, routeState)
+	assert.Equal(t, int32(1), routeDiversity)
+}
+
+func TestTakeNetworkNext_ReduceLatency_MultipathThreshold(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(100)
+	directPacketLoss := float32(0.0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+	routeState := RouteState{}
+	multipathVetoUsers := map[uint64]bool{}
+	
+	internal := NewInternalConfig()
+	internal.MultipathThreshold = 20
+
+	routeShader.Multipath = true
+
+	routeState.UserID = 100
+
+	debug := ""
+
+	routeDiversity := int32(0)
+
+	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.Multipath = false
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.Committed = true
 
@@ -3432,7 +3495,9 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
 	multipathVetoUsers := map[uint64]bool{}
+
 	internal := NewInternalConfig()
+	internal.MultipathThreshold = 100
 
 	routeShader.Multipath = true
 
@@ -5719,6 +5784,7 @@ func TestTakeNetworkNext_TryBeforeYouBuy_Multipath(t *testing.T) {
 
 	internal := NewInternalConfig()
 	internal.TryBeforeYouBuy = true
+	internal.MultipathThreshold = 100
 
 	debug := ""
 

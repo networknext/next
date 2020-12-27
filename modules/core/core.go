@@ -1296,6 +1296,7 @@ type InternalConfig struct {
 	MaxRTT                     int32
 	HighFrequencyPings         bool
 	RouteDiversity             int32
+	MultipathThreshold         int32
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1314,6 +1315,7 @@ func NewInternalConfig() InternalConfig {
 		MaxRTT:                     300,
 		HighFrequencyPings:         true,
 		RouteDiversity:             0,
+		MultipathThreshold:         20,
 	}
 }
 
@@ -1503,13 +1505,29 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		return false
 	}
 
+	// don't multipath if the difference between next and direct RTT is too large
+
+	multipath := (proMode || routeShader.Multipath) && !userHasMultipathVeto
+
+	if internal.MultipathThreshold > 0 {
+		
+		difference := bestRouteCost - directLatency
+		if difference < 0 {
+			difference = -difference
+		}
+
+		if difference >= internal.MultipathThreshold {
+			multipath = false
+		}		
+	}
+
 	// take the network next route
 
 	routeState.Next = true
 	routeState.ReduceLatency = reduceLatency
 	routeState.ReducePacketLoss = reducePacketLoss
 	routeState.ProMode = proMode
-	routeState.Multipath = (proMode || routeShader.Multipath) && !userHasMultipathVeto
+	routeState.Multipath = multipath
 
 	// should we commit to sending packets across network next?
 
