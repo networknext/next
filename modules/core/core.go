@@ -1505,17 +1505,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		return false
 	}
 
-	// if the next route RTT is significantly different to direct, don't multipath
+	// don't multipath if the difference between next and direct RTT is too large
 
 	multipath := (proMode || routeShader.Multipath) && !userHasMultipathVeto
 
-	difference := bestRouteCost - directLatency
-	if difference < 0 {
-		difference = -difference
-	}
+	if internal.MultipathThreshold > 0 {
+		
+		difference := bestRouteCost - directLatency
+		if difference < 0 {
+			difference = -difference
+		}
 
-	if difference >= internal.MultipathThreshold {
-		multipath = false
+		if difference >= internal.MultipathThreshold {
+			multipath = false
+		}		
 	}
 
 	// take the network next route
