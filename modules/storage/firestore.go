@@ -137,6 +137,7 @@ type internalConfig struct {
 	MaxRTT                     int32 `firestore:"maxRTT"`
 	HighFrequencyPings         bool  `firestore:"highFrequencyPings"`
 	RouteDiversity             int32 `firestore:"routeDiversity"`
+	MultipathThreshold         int32 `firestore:"multipathThreshold"`
 }
 
 type FirestoreError struct {
@@ -2275,6 +2276,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.MaxRTT = tempIC.MaxRTT
 	ic.HighFrequencyPings = tempIC.HighFrequencyPings
 	ic.RouteDiversity = tempIC.RouteDiversity
+	ic.MultipathThreshold = tempIC.MultipathThreshold
 
 	return ic, nil
 }
@@ -2298,6 +2300,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"maxRTT":                     internalConfig.MaxRTT,
 		"highFrequencyPings":         internalConfig.HighFrequencyPings,
 		"routeDiversity":             internalConfig.RouteDiversity,
+		"multipathThreshold":         internalConfig.MultipathThreshold,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
