@@ -30,12 +30,11 @@ build-artifacts() {
 }
 
 print_usage() {
-  printf "Usage: build-artifacts.sh -e environment -s service\n\n"
-  printf "s [string]\Building environment [dev, staging, prod]\n"
-  printf "e [string]\tService being built [portal, portal_cruncher, server_backend, etc]\n"
+  printf "Usage: build-load-test-artifacts.sh -s service\n\n"
+  printf "e [string]\tService being built [load_test_client, load_test_server, etc]\n"
 
   printf "Example:\n\n"
-  printf "> build-artifacts.sh -e dev -s portal\n"
+  printf "> build-load-test-artifacts.sh -s load_test_client\n"
 }
 
 if [ ! $# -eq 2 ]
@@ -44,7 +43,7 @@ then
   exit 1
 fi
 
-while getopts 'e:s:h' flag; do
+while getopts 's:h' flag; do
   case "${flag}" in
     s) SERVICE="${OPTARG}" ;;
     h) print_usage

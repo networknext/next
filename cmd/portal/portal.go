@@ -3,18 +3,19 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/binary"
 	"fmt"
-	"net"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
@@ -24,14 +25,16 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/encoding"
-	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/jsonrpc"
-	"github.com/networknext/backend/transport/middleware"
+
+	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
+	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 var (
@@ -39,6 +42,11 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+)
+
+const (
+	MAILCHIMP_SERVER_PREFIX = "us20"
+	MAILCHIMP_LIST_ID       = "553903bc6f"
 )
 
 func main() {
@@ -101,145 +109,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	var relayPublicKey []byte
-	var customerID uint64
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
-
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
-			customerPublicKey = customerPublicKey[8:]
-		}
-	}
-
-	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"))
+	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"))
+	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
-	}
-
-	var db storage.Storer = &storage.InMemory{
-		LocalMode: true,
-	}
-
-	{
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   customerID,
-			Name:                 "local",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
-
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.2 * 1e9,
-		}
-
-		did := crypto.HashID("local")
-		datacenter := routing.Datacenter{
-			ID:           did,
-			SignedID:     int64(did),
-			Name:         "local",
-			SupplierName: "usw2-az4",
-		}
-
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-
-		addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-		rid1 := crypto.HashID(addr1.String())
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "local.test_relay.a",
-			ID:             rid1,
-			SignedID:       int64(rid1),
-			Addr:           addr1,
-			PublicKey:      relayPublicKey,
-			Seller:         seller,
-			Datacenter:     datacenter,
-			ManagementAddr: "127.0.0.1",
-			SSHUser:        "root",
-			SSHPort:        22,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
-			StartDate:      time.Now(),
-			EndDate:        time.Now(),
-			Type:           routing.BareMetal,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
-
-		addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-		rid2 := crypto.HashID(addr2.String())
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "local.test_relay.b",
-			ID:             rid2,
-			SignedID:       int64(rid2),
-			Addr:           addr2,
-			PublicKey:      relayPublicKey,
-			Seller:         seller,
-			Datacenter:     datacenter,
-			ManagementAddr: "127.0.0.1",
-			SSHUser:        "root",
-			SSHPort:        22,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
-
-		addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-		rid3 := crypto.HashID(addr3.String())
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "abc.xyz",
-			ID:             rid3,
-			SignedID:       int64(rid3),
-			Addr:           addr3,
-			PublicKey:      relayPublicKey,
-			Seller:         seller,
-			Datacenter:     datacenter,
-			ManagementAddr: "127.0.0.1",
-			SSHUser:        "root",
-			SSHPort:        22,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
 	}
 
 	manager, err := management.New(
@@ -252,44 +143,103 @@ func main() {
 		os.Exit(1)
 	}
 
-	auth0Client := storage.Auth0{
-		Manager: manager,
-		Logger:  logger,
-	}
+	var userManager storage.UserManager = manager.User
+	var jobManager storage.JobManager = manager.Job
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		gcpProjectID = "local"
 
-		level.Info(logger).Log("msg", "Detected firestore emulator")
+	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
 	}
 
-	if gcpOK || emulatorOK {
-		// Firestore
+	// switch db.(type) {
+	// case *storage.SQL:
+	// 	if env == "local" {
+	// 		err = storage.SeedSQLStorage(ctx, db)
+	// 	}
+	// }
+
+	// Setup feature config for bigtable
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
+			Name:        "FEATURE_BIGTABLE",
+			Enum:        config.FEATURE_BIGTABLE,
+			Value:       false,
+			Description: "Bigtable integration for historic session data",
+		},
+	})
+	featureConfig = envVarConfig
 
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
+	// Setup Bigtable
 
-			// Set the Firestore Storer to give to handlers
-			db = fs
+	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	if btEmulatorOK {
+		// Emulator is used for local testing
+		// Requires that emulator has been started in another terminal to work as intended
+		gcpProjectID = "local"
+		level.Info(logger).Log("msg", "Detected bigtable emulator host")
+	}
+
+	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
+
+	var btClient *storage.BigTable
+	var btCfName string
+	if useBigtable {
+		// Get Bigtable instance ID
+		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
+
+		// Get the table name
+		btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
+
+		// Get the column family
+		btCfName = envvar.Get("BIGTABLE_CF_NAME", "")
+
+		// Create a bigtable admin for setup
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
 		}
+
+		// Check if the table exists in the instance
+		tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		if !tableExists {
+			level.Info(logger).Log("envvar", "BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance. Creating empty table to run portal.")
+			btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
+		}
+
+		// Close the admin client
+		if err = btAdmin.Close(); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Create a standard client for writing to the table
+		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+	}
+
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
+		os.Exit(1)
 	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
@@ -323,6 +273,12 @@ func main() {
 		}
 	}
 
+	// if env == "local" {
+	// 	if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
+	// 		level.Error(logger).Log("err", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
 	// is commented out in the ops service.
 
@@ -375,12 +331,22 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
+		UseBigtable:            useBigtable,
+		BigTableCfName:         btCfName,
+		BigTable:               btClient,
+		BigTableMetrics:        btMetrics,
 		Logger:                 logger,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
 		RedisPoolSessionSlices: redisPoolSessionSlices,
 		RedisPoolSessionMap:    redisPoolSessionMap,
 		Storage:                db,
+		Env:                    env,
+	}
+
+	configService := jsonrpc.ConfigService{
+		Logger:  logger,
+		Storage: db,
 	}
 
 	go func() {
@@ -428,88 +394,29 @@ func main() {
 				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
 				continue
 			}
-			defer res.Body.Close()
 
-			data := make([]byte, res.ContentLength)
-			res.Body.Read(data)
-
-			index := 0
-
-			var version uint8
-			if !encoding.ReadUint8(data, &index, &version) {
-				level.Error(logger).Log("unable to read relay stats version")
+			if res.StatusCode != http.StatusOK {
+				level.Error(logger).Log("msg", "bad relay_stats request")
 				continue
 			}
 
-			var count uint64
-			if !encoding.ReadUint64(data, &index, &count) {
-				level.Error(logger).Log("unable to read relay stats count")
+			if res.ContentLength == -1 {
+				level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
+				res.Body.Close()
 				continue
 			}
 
-			m := make(map[uint64]jsonrpc.RelayData)
-			for i := uint64(0); i < count; i++ {
-				var id uint64
-				if !encoding.ReadUint64(data, &index, &id) {
-					level.Error(logger).Log("unable to read relay stats id")
-					break
-				}
-
-				var relay jsonrpc.RelayData
-
-				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
-					level.Error(logger).Log("unable to read relay stats session count")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.Tx) {
-					level.Error(logger).Log("unable to read relay stats tx")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.Rx) {
-					level.Error(logger).Log("unable to read relay stats rx")
-					break
-				}
-
-				var major uint8
-				if !encoding.ReadUint8(data, &index, &major) {
-					level.Error(logger).Log("msg", "unable to relay stats major version")
-				}
-
-				var minor uint8
-				if !encoding.ReadUint8(data, &index, &minor) {
-					level.Error(logger).Log("msg", "unable to relay stats minor version")
-				}
-
-				var patch uint8
-				if !encoding.ReadUint8(data, &index, &patch) {
-					level.Error(logger).Log("msg", "unable to relay stats patch version")
-				}
-
-				relay.Version = fmt.Sprintf("%d.%d.%d", major, minor, patch)
-
-				var unixTime uint64
-				if !encoding.ReadUint64(data, &index, &unixTime) {
-					level.Error(logger).Log("unable to read relay stats last update time")
-					break
-				}
-				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
-
-				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
-					level.Error(logger).Log("unable to read relay stats cpu usage")
-					break
-				}
-
-				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
-					level.Error(logger).Log("unable to read relay stats memory usage")
-					break
-				}
-
-				m[id] = relay
+			data, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to read response body", "err", err)
+				res.Body.Close()
+				continue
 			}
+			res.Body.Close()
 
-			relayMap.Swap(&m)
+			if err := relayMap.ReadAndSwap(data); err != nil {
+				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
+			}
 		}
 	}()
 
@@ -524,21 +431,28 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value("user")
+			user := i.Request.Context().Value(jsonrpc.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
-				if requestRoles, ok := claims["https://networknext.com/userRoles"]; ok {
-					if roles, ok := requestRoles.(map[string]interface{})["roles"]; ok {
+				if requestData, ok := claims["https://networknext.com/userData"]; ok {
+					var userRoles []string
+					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
 						rolesInterface := roles.([]interface{})
-						userRoles := make([]string, len(rolesInterface))
+						userRoles = make([]string, len(rolesInterface))
 						for i, v := range rolesInterface {
 							userRoles[i] = v.(string)
 						}
-						if len(userRoles) > 0 {
-							return jsonrpc.SetRoles(i.Request, userRoles)
-						}
 					}
+					var companyCode string
+					if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
+						companyCode = companyCodeInterface.(string)
+					}
+					var newsletterConsent bool
+					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
+						newsletterConsent = consent.(bool)
+					}
+					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
@@ -553,10 +467,16 @@ func main() {
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
+		s.RegisterService(&configService, "")
 		s.RegisterService(&jsonrpc.AuthService{
-			Logger:  logger,
-			Auth0:   auth0Client,
-			Storage: db,
+			MailChimpManager: transport.MailChimpHandler{
+				HTTPHandler: *http.DefaultClient,
+				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
+			},
+			Logger:      logger,
+			UserManager: userManager,
+			JobManager:  jobManager,
+			Storage:     db,
 		}, "")
 
 		allowCORSStr := os.Getenv("CORS")
@@ -565,14 +485,17 @@ func main() {
 			allowCORS = ok
 		}
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
-		if allowCORS {
-			http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
-		}
+		r := mux.NewRouter()
 
-		http.HandleFunc("/health", transport.HealthHandlerFunc())
-		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/health", transport.HealthHandlerFunc())
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
+
+		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
+
+		r.PathPrefix("/").Handler(middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), handlers.CompressHandler(spa)))
 
 		level.Info(logger).Log("addr", ":"+port)
 
@@ -587,6 +510,7 @@ func main() {
 			server := &http.Server{
 				Addr:      ":" + port,
 				TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+				Handler:   r,
 			}
 
 			err = server.ListenAndServeTLS("", "")
@@ -597,7 +521,7 @@ func main() {
 		}
 
 		// Fall through to running on any other port defined with TLS disabled
-		err := http.ListenAndServe(":"+port, nil)
+		err := http.ListenAndServe(":"+port, r)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -607,4 +531,47 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+}
+
+// spaHandler implements the http.Handler interface, so we can use it
+// to respond to HTTP requests. The path to the static directory and
+// path to the index file within that static directory are used to
+// serve the SPA in the given static directory.
+type spaHandler struct {
+	staticPath string
+	indexPath  string
+}
+
+// ServeHTTP inspects the URL path to locate a file within the static dir
+// on the SPA handler. If a file is found, it will be served. If not, the
+// file located at the index path on the SPA handler will be served. This
+// is suitable behavior for serving an SPA (single page application).
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// get the absolute path to prevent directory traversal
+	path, err := filepath.Abs(r.URL.Path)
+	if err != nil {
+		// if we failed to get the absolute path respond with a 400 bad request
+		// and stop
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// prepend the path with the path to the static directory
+	path = filepath.Join(h.staticPath, path)
+
+	// check whether a file exists at the given path
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		// file does not exist, serve index.html
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	} else if err != nil {
+		// if we got an error (that wasn't that the file doesn't exist) stating the
+		// file, return a 500 internal server error and stop
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// otherwise, use http.FileServer to serve the static dir
+	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
 }

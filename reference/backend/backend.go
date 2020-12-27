@@ -1,5 +1,5 @@
 /*
-	Network Next Reference Backend.
+	Network Next Reference Backend (SDK4)
 	Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
@@ -10,7 +10,6 @@ package main
 import "C"
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
@@ -22,6 +21,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"sort"
 	"strconv"
@@ -32,35 +32,36 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const NEXT_MAX_TAGS = 8
+
+const NEXT_MAX_ROUTE_RELAYS = 5
+
+const NEXT_MAX_SESSION_DATA_BYTES = 511
+
+const NEXT_MAX_SESSION_UPDATE_RETRIES = 10
+
 const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
-const NEXT_BACKEND_SERVER_UPDATE_PACKET = 200
-const NEXT_BACKEND_SESSION_UPDATE_PACKET = 201
-const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 202
-const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 203
-const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 204
 
-const NEXT_MAX_PACKET_BYTES = 1500
+const NEXT_BACKEND_SERVER_UPDATE_PACKET = 220
+const NEXT_BACKEND_SESSION_UPDATE_PACKET = 221
+const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 222
+const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 223
+const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 224
+
+const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
 const NEXT_ADDRESS_BYTES = 19
 const NEXT_MAX_NODES = 7
-const NEXT_SESSION_TOKEN_BYTES = 77
-const NEXT_ENCRYPTED_SESSION_TOKEN_BYTES = 117
-const NEXT_CONTINUE_TOKEN_BYTES = 18
-const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 58
+const NEXT_ROUTE_TOKEN_BYTES = 76
+const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
+const NEXT_CONTINUE_TOKEN_BYTES = 17
+const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
 const NEXT_ROUTE_TYPE_DIRECT = 0
 const NEXT_ROUTE_TYPE_NEW = 1
 const NEXT_ROUTE_TYPE_CONTINUE = 2
-
-const NEXT_VERSION_MAJOR = 0
-const NEXT_VERSION_MINOR = 0
-const NEXT_VERSION_PATCH = 0
-
-const NEXT_VERSION_MAJOR_MAX = 254
-const NEXT_VERSION_MINOR_MAX = 1023
-const NEXT_VERSION_PATCH_MAX = 254
 
 const NEXT_FLAGS_BAD_ROUTE_TOKEN = uint32(1 << 0)
 const NEXT_FLAGS_NO_ROUTE_TO_CONTINUE = uint32(1 << 1)
@@ -70,9 +71,11 @@ const NEXT_FLAGS_ROUTE_EXPIRED = uint32(1 << 4)
 const NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT = uint32(1 << 5)
 const NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT = uint32(1 << 6)
 const NEXT_FLAGS_CLIENT_TIMED_OUT = uint32(1 << 7)
-const NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT = uint32(1 << 8)
-const NEXT_FLAGS_DIRECT_ROUTE_EXPIRED = uint32(1 << 9)
-const NEXT_FLAGS_COUNT = 10
+const NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT = uint32(1 << 8)
+const NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT = uint32(1 << 9)
+const NEXT_FLAGS_DIRECT_PONG_TIMED_OUT = uint32(1 << 10)
+const NEXT_FLAGS_NEXT_PONG_TIMED_OUT = uint32(1 << 11)
+const NEXT_FLAGS_COUNT = 12
 
 const NEXT_RELAY_INIT_REQUEST_MAGIC = uint32(0x9083708f)
 const NEXT_RELAY_INIT_REQUEST_VERSION = 0
@@ -102,18 +105,24 @@ const (
 	NEXT_CONNECTION_TYPE_WIRED    = 1
 	NEXT_CONNECTION_TYPE_WIFI     = 2
 	NEXT_CONNECTION_TYPE_CELLULAR = 3
+	NEXT_CONNECTION_TYPE_MAX      = 3
 )
 
 const (
-	NEXT_PLATFORM_UNKNOWN  = 0
-	NEXT_PLATFORM_WINDOWS  = 1
-	NEXT_PLATFORM_MAC      = 2
-	NEXT_PLATFORM_UNIX     = 3
-	NEXT_PLATFORM_SWITCH   = 4
-	NEXT_PLATFORM_PS4      = 5
-	NEXT_PLATFORM_IOS      = 6
-	NEXT_PLATFORM_XBOX_ONE = 7
+	NEXT_PLATFORM_UNKNOWN       = 0
+	NEXT_PLATFORM_WINDOWS       = 1
+	NEXT_PLATFORM_MAC           = 2
+	NEXT_PLATFORM_UNIX          = 3
+	NEXT_PLATFORM_SWITCH        = 4
+	NEXT_PLATFORM_PS4           = 5
+	NEXT_PLATFORM_IOS           = 6
+	NEXT_PLATFORM_XBOX_ONE      = 7
+	NEXT_PLATFORM_XBOX_SERIES_X = 8
+	NEXT_PLATFORM_PS5           = 9
+	NEXT_PLATFORM_MAX           = 9
 )
+
+const NEXT_MAX_SESSION_DEBUG = 1024
 
 var relayPublicKey = []byte{
 	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
@@ -131,38 +140,22 @@ var packetHashKey = []byte{0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40,
 // ===================================================================================================================
 
 type NextBackendServerInitRequestPacket struct {
-	RequestId    uint64
+	VersionMajor uint32
+	VersionMinor uint32
+	VersionPatch uint32
 	CustomerId   uint64
 	DatacenterId uint64
-	Signature    []byte
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+	RequestId    uint64
 }
 
 func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
-	stream.SerializeInteger(&packet.VersionMajor, 0, NEXT_VERSION_MAJOR_MAX)
-	stream.SerializeInteger(&packet.VersionMinor, 0, NEXT_VERSION_MINOR_MAX)
-	stream.SerializeInteger(&packet.VersionPatch, 0, NEXT_VERSION_PATCH_MAX)
-	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeBits(&packet.VersionMajor, 8)
+	stream.SerializeBits(&packet.VersionMinor, 8)
+	stream.SerializeBits(&packet.VersionPatch, 8)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
-	if stream.IsReading() {
-		packet.Signature = make([]byte, SignatureBytes)
-	}
-	stream.SerializeBytes(packet.Signature)
+	stream.SerializeUint64(&packet.RequestId)
 	return stream.Error()
-}
-
-func (packet *NextBackendServerInitRequestPacket) GetSignData() []byte {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMajor))
-	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMinor))
-	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionPatch))
-	binary.Write(buf, binary.LittleEndian, packet.RequestId)
-	binary.Write(buf, binary.LittleEndian, packet.CustomerId)
-	binary.Write(buf, binary.LittleEndian, packet.DatacenterId)
-	return buf.Bytes()
 }
 
 // -------------------------------------------------------------------------------------
@@ -170,354 +163,351 @@ func (packet *NextBackendServerInitRequestPacket) GetSignData() []byte {
 type NextBackendServerInitResponsePacket struct {
 	RequestId uint64
 	Response  uint32
-	Signature []byte
 }
 
 func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
-	stream.SerializeUint32(&packet.Response)
-	if stream.IsReading() {
-		packet.Signature = make([]byte, SignatureBytes)
-	}
-	stream.SerializeBytes(packet.Signature)
+	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
-}
-
-func (packet *NextBackendServerInitResponsePacket) GetSignData() []byte {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, packet.RequestId)
-	binary.Write(buf, binary.LittleEndian, packet.Response)
-	return buf.Bytes()
 }
 
 // -------------------------------------------------------------------------------------
 
 type NextBackendServerUpdatePacket struct {
-	Sequence             uint64
-	VersionMajor         int32
-	VersionMinor         int32
-	VersionPatch         int32
-	CustomerId           uint64
-	DatacenterId         uint64
-	NumSessionsPending   uint32
-	NumSessionsUpgraded  uint32
-	ServerAddress        net.UDPAddr
-	ServerRoutePublicKey []byte
-	Signature            []byte
+	VersionMajor  uint32
+	VersionMinor  uint32
+	VersionPatch  uint32
+	CustomerId    uint64
+	DatacenterId  uint64
+	NumSessions   uint32
+	ServerAddress net.UDPAddr
 }
 
 func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
-	stream.SerializeUint64(&packet.Sequence)
-	stream.SerializeInteger(&packet.VersionMajor, 0, NEXT_VERSION_MAJOR_MAX)
-	stream.SerializeInteger(&packet.VersionMinor, 0, NEXT_VERSION_MINOR_MAX)
-	stream.SerializeInteger(&packet.VersionPatch, 0, NEXT_VERSION_PATCH_MAX)
+	stream.SerializeBits(&packet.VersionMajor, 8)
+	stream.SerializeBits(&packet.VersionMinor, 8)
+	stream.SerializeBits(&packet.VersionPatch, 8)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
-	stream.SerializeUint32(&packet.NumSessionsPending)
-	stream.SerializeUint32(&packet.NumSessionsUpgraded)
+	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
-	if stream.IsReading() {
-		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-		packet.Signature = make([]byte, SignatureBytes)
-	}
-	stream.SerializeBytes(packet.ServerRoutePublicKey)
-	stream.SerializeBytes(packet.Signature)
 	return stream.Error()
-}
-
-func (packet *NextBackendServerUpdatePacket) GetSignData() []byte {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, packet.Sequence)
-	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMajor))
-	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMinor))
-	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionPatch))
-	binary.Write(buf, binary.LittleEndian, packet.CustomerId)
-	binary.Write(buf, binary.LittleEndian, packet.DatacenterId)
-	binary.Write(buf, binary.LittleEndian, packet.NumSessionsPending)
-	binary.Write(buf, binary.LittleEndian, packet.NumSessionsUpgraded)
-	address := make([]byte, NEXT_ADDRESS_BYTES)
-	WriteAddress(address, &packet.ServerAddress)
-	binary.Write(buf, binary.LittleEndian, address)
-	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
-	return buf.Bytes()
 }
 
 // -----------------------------------------------------------------------------
 
 type NextBackendSessionUpdatePacket struct {
-	Sequence                  uint64
-	CustomerId                uint64
-	SessionId                 uint64
-	UserHash                  uint64
-	PlatformId                uint64
-	Tag                       uint64
-	Flags                     uint32
-	Flagged                   bool
-	FallbackToDirect          bool
-	TryBeforeYouBuy           bool
-	ConnectionType            int32
-	OnNetworkNext             bool
-	Committed                 bool
-	DirectMinRTT              float32
-	DirectMaxRTT              float32
-	DirectMeanRTT             float32
-	DirectJitter              float32
-	DirectPacketLoss          float32
-	NextMinRTT                float32
-	NextMaxRTT                float32
-	NextMeanRTT               float32
-	NextJitter                float32
-	NextPacketLoss            float32
-	NumNearRelays             int32
-	NearRelayIds              []uint64
-	NearRelayMinRTT           []float32
-	NearRelayMaxRTT           []float32
-	NearRelayMeanRTT          []float32
-	NearRelayJitter           []float32
-	NearRelayPacketLoss       []float32
-	ClientAddress             net.UDPAddr
-	ServerAddress             net.UDPAddr
-	ClientRoutePublicKey      []byte
-	KbpsUp                    uint32
-	KbpsDown                  uint32
-	PacketsSentClientToServer uint64
-	PacketsSentServerToClient uint64
-	PacketsLostClientToServer uint64
-	PacketsLostServerToClient uint64
-	UserFlags                 uint64
-	Signature                 []byte
+	VersionMajor                    uint32
+	VersionMinor                    uint32
+	VersionPatch                    uint32
+	CustomerId                      uint64
+	DatacenterId                    uint64
+	SessionId                       uint64
+	SliceNumber                     uint32
+	RetryNumber                     int32
+	SessionDataBytes                int32
+	SessionData                     [NEXT_MAX_SESSION_DATA_BYTES]byte
+	ClientAddress                   net.UDPAddr
+	ServerAddress                   net.UDPAddr
+	ClientRoutePublicKey            []byte
+	ServerRoutePublicKey            []byte
+	UserHash                        uint64
+	PlatformId                      int32
+	ConnectionType                  int32
+	Next                            bool
+	Committed                       bool
+	Reported                        bool
+	FallbackToDirect                bool
+	ClientBandwidthOverLimit        bool
+	ServerBandwidthOverLimit        bool
+	ClientPingTimedOut              bool
+	NumTags                         int32
+	Tags                            [NEXT_MAX_TAGS]uint64
+	Flags                           uint32
+	UserFlags                       uint64
+	DirectRTT                       float32
+	DirectJitter                    float32
+	DirectPacketLoss                float32
+	NextRTT                         float32
+	NextJitter                      float32
+	NextPacketLoss                  float32
+	NumNearRelays                   int32
+	NearRelayIds                    []uint64
+	NearRelayRTT                    []int32
+	NearRelayJitter                 []int32
+	NearRelayPacketLoss             []int32
+	NextKbpsUp                      uint32
+	NextKbpsDown                    uint32
+	PacketsSentClientToServer       uint64
+	PacketsSentServerToClient       uint64
+	PacketsLostClientToServer       uint64
+	PacketsLostServerToClient       uint64
+	PacketsOutOfOrderClientToServer uint64
+	PacketsOutOfOrderServerToClient uint64
+	JitterClientToServer            float32
+	JitterServerToClient            float32
 }
 
-func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
-	stream.SerializeUint64(&packet.Sequence)
+func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
+
+	stream.SerializeBits(&packet.VersionMajor, 8)
+	stream.SerializeBits(&packet.VersionMinor, 8)
+	stream.SerializeBits(&packet.VersionPatch, 8)
+
 	stream.SerializeUint64(&packet.CustomerId)
-	stream.SerializeAddress(&packet.ServerAddress)
+
+	stream.SerializeUint64(&packet.DatacenterId)
+
 	stream.SerializeUint64(&packet.SessionId)
+
+	stream.SerializeBits(&packet.SliceNumber, 32)
+
+	stream.SerializeInteger(&packet.RetryNumber, 0, NEXT_MAX_SESSION_UPDATE_RETRIES)
+
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
+	}
+
+	stream.SerializeAddress(&packet.ClientAddress)
+	stream.SerializeAddress(&packet.ServerAddress)
+
+	if stream.IsReading() {
+		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+	}
+	stream.SerializeBytes(packet.ClientRoutePublicKey)
+	stream.SerializeBytes(packet.ServerRoutePublicKey)
+
 	stream.SerializeUint64(&packet.UserHash)
-	stream.SerializeUint64(&packet.PlatformId)
-	stream.SerializeUint64(&packet.Tag)
-	stream.SerializeBits(&packet.Flags, 11)
-	stream.SerializeBool(&packet.Flagged)
+
+	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
+
+	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
+
+	stream.SerializeBool(&packet.Next)
+	stream.SerializeBool(&packet.Committed)
+	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR)
-	stream.SerializeFloat32(&packet.DirectMinRTT)
-	stream.SerializeFloat32(&packet.DirectMaxRTT)
-	stream.SerializeFloat32(&packet.DirectMeanRTT)
+	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
+	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	stream.SerializeBool(&packet.ClientPingTimedOut)
+
+	hasTags := stream.IsWriting() && packet.NumTags > 0
+	hasFlags := stream.IsWriting() && packet.Flags != 0
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
+	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
+
+	stream.SerializeBool(&hasTags)
+	stream.SerializeBool(&hasFlags)
+	stream.SerializeBool(&hasUserFlags)
+	stream.SerializeBool(&hasLostPackets)
+	stream.SerializeBool(&hasOutOfOrderPackets)
+
+	if hasTags {
+		stream.SerializeInteger(&packet.NumTags, 0, NEXT_MAX_TAGS)
+		for i := 0; i < int(packet.NumTags); i++ {
+			stream.SerializeUint64(&packet.Tags[i])
+		}
+	}
+
+	if hasFlags {
+		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
+	}
+
+	if hasUserFlags {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+
+	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
-	stream.SerializeBool(&packet.OnNetworkNext)
-	stream.SerializeBool(&packet.Committed)
-	if packet.OnNetworkNext {
-		stream.SerializeFloat32(&packet.NextMinRTT)
-		stream.SerializeFloat32(&packet.NextMaxRTT)
-		stream.SerializeFloat32(&packet.NextMeanRTT)
+
+	if packet.Next {
+		stream.SerializeFloat32(&packet.NextRTT)
 		stream.SerializeFloat32(&packet.NextJitter)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
+
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
 	if stream.IsReading() {
 		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayMinRTT = make([]float32, packet.NumNearRelays)
-		packet.NearRelayMaxRTT = make([]float32, packet.NumNearRelays)
-		packet.NearRelayMeanRTT = make([]float32, packet.NumNearRelays)
-		packet.NearRelayJitter = make([]float32, packet.NumNearRelays)
-		packet.NearRelayPacketLoss = make([]float32, packet.NumNearRelays)
+		packet.NearRelayRTT = make([]int32, packet.NumNearRelays)
+		packet.NearRelayJitter = make([]int32, packet.NumNearRelays)
+		packet.NearRelayPacketLoss = make([]int32, packet.NumNearRelays)
 	}
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeFloat32(&packet.NearRelayMinRTT[i])
-		stream.SerializeFloat32(&packet.NearRelayMaxRTT[i])
-		stream.SerializeFloat32(&packet.NearRelayMeanRTT[i])
-		stream.SerializeFloat32(&packet.NearRelayJitter[i])
-		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
+		stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+		stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+		stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
 	}
-	stream.SerializeAddress(&packet.ClientAddress)
-	if stream.IsReading() {
-		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-		packet.Signature = make([]byte, SignatureBytes)
+
+	if packet.Next {
+		stream.SerializeUint32(&packet.NextKbpsUp)
+		stream.SerializeUint32(&packet.NextKbpsDown)
 	}
-	stream.SerializeBytes(packet.ClientRoutePublicKey)
-	stream.SerializeUint32(&packet.KbpsUp)
-	stream.SerializeUint32(&packet.KbpsDown)
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 5) {
-		stream.SerializeUint64(&packet.PacketsSentClientToServer)
-		stream.SerializeUint64(&packet.PacketsSentServerToClient)
+
+	stream.SerializeUint64(&packet.PacketsSentClientToServer)
+	stream.SerializeUint64(&packet.PacketsSentServerToClient)
+
+	if hasLostPackets {
+		stream.SerializeUint64(&packet.PacketsLostClientToServer)
+		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
-	stream.SerializeUint64(&packet.PacketsLostClientToServer)
-	stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	stream.SerializeUint64(&packet.UserFlags)
-	stream.SerializeBytes(packet.Signature)
+
+	if hasOutOfOrderPackets {
+		stream.SerializeUint64(&packet.PacketsOutOfOrderClientToServer)
+		stream.SerializeUint64(&packet.PacketsOutOfOrderServerToClient)
+	}
+
+	stream.SerializeFloat32(&packet.JitterClientToServer)
+	stream.SerializeFloat32(&packet.JitterServerToClient)
+
 	return stream.Error()
-}
-
-func (packet *NextBackendSessionUpdatePacket) HeaderSerialize(stream Stream) error {
-	stream.SerializeUint64(&packet.Sequence)
-	stream.SerializeUint64(&packet.CustomerId)
-	stream.SerializeAddress(&packet.ServerAddress)
-	return stream.Error()
-}
-
-func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
-
-	buf := new(bytes.Buffer)
-
-	binary.Write(buf, binary.LittleEndian, packet.Sequence)
-	binary.Write(buf, binary.LittleEndian, packet.CustomerId)
-	binary.Write(buf, binary.LittleEndian, packet.SessionId)
-	binary.Write(buf, binary.LittleEndian, packet.UserHash)
-	binary.Write(buf, binary.LittleEndian, packet.PlatformId)
-	binary.Write(buf, binary.LittleEndian, packet.Tag)
-
-	binary.Write(buf, binary.LittleEndian, packet.Flags)
-	binary.Write(buf, binary.LittleEndian, packet.Flagged)
-	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
-	binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
-	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
-
-	var onNetworkNext uint8
-	onNetworkNext = 0
-	if packet.OnNetworkNext {
-		onNetworkNext = 1
-	}
-
-	binary.Write(buf, binary.LittleEndian, onNetworkNext)
-
-	binary.Write(buf, binary.LittleEndian, packet.DirectMinRTT)
-	binary.Write(buf, binary.LittleEndian, packet.DirectMaxRTT)
-	binary.Write(buf, binary.LittleEndian, packet.DirectMeanRTT)
-	binary.Write(buf, binary.LittleEndian, packet.DirectJitter)
-	binary.Write(buf, binary.LittleEndian, packet.DirectPacketLoss)
-
-	binary.Write(buf, binary.LittleEndian, packet.NextMinRTT)
-	binary.Write(buf, binary.LittleEndian, packet.NextMaxRTT)
-	binary.Write(buf, binary.LittleEndian, packet.NextMeanRTT)
-	binary.Write(buf, binary.LittleEndian, packet.NextJitter)
-	binary.Write(buf, binary.LittleEndian, packet.NextPacketLoss)
-
-	binary.Write(buf, binary.LittleEndian, uint32(packet.NumNearRelays))
-	var i int32
-	for i = 0; i < packet.NumNearRelays; i++ {
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayIds[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayMinRTT[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayMaxRTT[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayMeanRTT[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayJitter[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayPacketLoss[i])
-	}
-
-	clientAddress := make([]byte, NEXT_ADDRESS_BYTES)
-	WriteAddress(clientAddress, &packet.ClientAddress)
-	binary.Write(buf, binary.LittleEndian, clientAddress)
-
-	serverAddress := make([]byte, NEXT_ADDRESS_BYTES)
-	WriteAddress(serverAddress, &packet.ServerAddress)
-	binary.Write(buf, binary.LittleEndian, serverAddress)
-
-	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
-	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
-
-	binary.Write(buf, binary.LittleEndian, packet.PacketsSentClientToServer)
-	binary.Write(buf, binary.LittleEndian, packet.PacketsSentServerToClient)
-	binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
-	binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
-
-	binary.Write(buf, binary.LittleEndian, packet.ClientRoutePublicKey)
-
-	return buf.Bytes()
 }
 
 // --------------------------------------------------------------------------------
 
 type NextBackendSessionResponsePacket struct {
-	Sequence             uint64
-	SessionId            uint64
-	NumNearRelays        int32
-	NearRelayIds         []uint64
-	NearRelayAddresses   []net.UDPAddr
-	RouteType            int32
-	Multipath            bool
-	Committed            bool
-	NumTokens            int32
-	Tokens               []byte
-	ServerRoutePublicKey []byte
-	Signature            []byte
+	VersionMajor       uint32
+	VersionMinor       uint32
+	VersionPatch       uint32
+	SessionId          uint64
+	SliceNumber        uint32
+	SessionDataBytes   int32
+	SessionData        [NEXT_MAX_SESSION_DATA_BYTES]byte
+	RouteType          int32
+	NearRelaysChanged  bool
+	NumNearRelays      int32
+	NearRelayIds       []uint64
+	NearRelayAddresses []net.UDPAddr
+	NumTokens          int32
+	Tokens             []byte
+	Multipath          bool
+	Committed          bool
+	HasDebug           bool
+	Debug              string
+	ExcludeNearRelays  bool
+	NearRelayExcluded  [NEXT_MAX_NEAR_RELAYS]bool
+	HighFrequencyPings bool
 }
 
-func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
-	stream.SerializeUint64(&packet.Sequence)
+func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
+
 	stream.SerializeUint64(&packet.SessionId)
-	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
-	if stream.IsReading() {
-		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
-		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+
+	stream.SerializeBits(&packet.SliceNumber, 32)
+
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
 	}
-	var i int32
-	for i = 0; i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeAddress(&packet.NearRelayAddresses[i])
-	}
+
 	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
+
+	stream.SerializeBool(&packet.NearRelaysChanged)
+
+	if packet.NearRelaysChanged {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
+		if stream.IsReading() {
+			packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
+			packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+		}
+		var i int32
+		for i = 0; i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIds[i])
+			stream.SerializeAddress(&packet.NearRelayAddresses[i])
+		}
+	}
+
 	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, NEXT_MAX_NODES)
 	}
+
 	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
 		if stream.IsReading() {
-			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
+			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
+
 	if packet.RouteType == NEXT_ROUTE_TYPE_CONTINUE {
 		if stream.IsReading() {
 			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if stream.IsReading() {
-		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-		packet.Signature = make([]byte, SignatureBytes)
+
+	stream.SerializeBool(&packet.HasDebug)
+	if packet.HasDebug {
+		stream.SerializeString(&packet.Debug, NEXT_MAX_SESSION_DEBUG)
 	}
-	stream.SerializeBytes(packet.ServerRoutePublicKey)
-	stream.SerializeBytes(packet.Signature)
+
+	stream.SerializeBool(&packet.ExcludeNearRelays)
+	if packet.ExcludeNearRelays {
+		for i := range packet.NearRelayExcluded {
+			stream.SerializeBool(&packet.NearRelayExcluded[i])
+		}
+	}
+	stream.SerializeBool(&packet.HighFrequencyPings)
+
 	return stream.Error()
 }
 
-func (packet *NextBackendSessionResponsePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, packet.Sequence)
-	binary.Write(buf, binary.LittleEndian, packet.SessionId)
-	binary.Write(buf, binary.LittleEndian, uint8(packet.NumNearRelays))
-	var i int32
-	for i = 0; i < packet.NumNearRelays; i++ {
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayIds[i])
-		address := make([]byte, NEXT_ADDRESS_BYTES)
-		WriteAddress(address, &packet.NearRelayAddresses[i])
-		binary.Write(buf, binary.LittleEndian, address)
+// ------------------------------------------------------------------------------------------
+
+const SessionDataVersion = 0
+
+type SessionData struct {
+	Version         uint32
+	SessionId       uint64
+	SessionVersion  uint32
+	SliceNumber     uint32
+	ExpireTimestamp uint64
+	Route           []uint64
+}
+
+func (packet *SessionData) Serialize(stream Stream) error {
+
+	stream.SerializeBits(&packet.Version, 8)
+	if stream.IsReading() && packet.Version != SessionDataVersion {
+		return fmt.Errorf("bad session data version %d, expected %d", packet.Version, SessionDataVersion)
 	}
-	binary.Write(buf, binary.LittleEndian, uint8(packet.RouteType))
-	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
-		if packet.Multipath {
-			binary.Write(buf, binary.LittleEndian, uint8(1))
-		} else {
-			binary.Write(buf, binary.LittleEndian, uint8(0))
+
+	stream.SerializeUint64(&packet.SessionId)
+
+	stream.SerializeBits(&packet.SliceNumber, 32)
+
+	stream.SerializeBits(&packet.SessionVersion, 8)
+
+	stream.SerializeUint64(&packet.ExpireTimestamp)
+
+	numRelays := int32(0)
+	hasRoute := false
+	if stream.IsWriting() {
+		numRelays = int32(len(packet.Route))
+		hasRoute = numRelays > 0
+	}
+
+	stream.SerializeBool(&hasRoute)
+	if hasRoute {
+		stream.SerializeInteger(&numRelays, 0, NEXT_MAX_ROUTE_RELAYS)
+		if stream.IsReading() {
+			packet.Route = make([]uint64, numRelays)
 		}
-		if packet.Committed {
-			binary.Write(buf, binary.LittleEndian, uint8(1))
-		} else {
-			binary.Write(buf, binary.LittleEndian, uint8(0))
+		for i := 0; i < int(numRelays); i++ {
+			stream.SerializeUint64(&packet.Route[i])
 		}
-		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}
-	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
-		binary.Write(buf, binary.LittleEndian, packet.Tokens)
-	}
-	if packet.RouteType == NEXT_ROUTE_TYPE_CONTINUE {
-		binary.Write(buf, binary.LittleEndian, packet.Tokens)
-	}
-	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
-	return buf.Bytes()
+
+	return stream.Error()
 }
 
 // ===================================================================================================================
@@ -549,11 +539,7 @@ type ServerEntry struct {
 
 type SessionEntry struct {
 	id              uint64
-	version         uint8
 	expireTimestamp uint64
-	route           []uint64
-	next            bool
-	slice           uint64
 }
 
 func TimeoutThread() {
@@ -640,8 +626,9 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 	return false
 }
 
-func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
-	if packetBytes <= NEXT_PACKET_HASH_BYTES {
+func IsNetworkNextPacket(packetData []byte) bool {
+	packetBytes := len(packetData)
+	if packetBytes <= 1+NEXT_PACKET_HASH_BYTES {
 		fmt.Printf("packet too small\n")
 		return false
 	}
@@ -649,348 +636,60 @@ func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
 		fmt.Printf("packet too big\n")
 		return false
 	}
+	messageLength := packetBytes - 1 - NEXT_PACKET_HASH_BYTES
+	if messageLength > 32 {
+		messageLength = 32
+	}
 	hash := make([]byte, NEXT_PACKET_HASH_BYTES)
 	C.crypto_generichash(
 		(*C.uchar)(&hash[0]),
 		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[NEXT_PACKET_HASH_BYTES]),
-		C.ulonglong(packetBytes-NEXT_PACKET_HASH_BYTES),
+		(*C.uchar)(&packetData[1+NEXT_PACKET_HASH_BYTES]),
+		C.ulonglong(messageLength),
 		(*C.uchar)(&packetHashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
 	for i := 0; i < NEXT_PACKET_HASH_BYTES; i++ {
-		if hash[i] != packetData[i] {
+		if hash[i] != packetData[i+1] {
+			fmt.Printf("signature check failed\n")
 			return false
 		}
 	}
 	return true
 }
 
-func SignNetworkNextPacket(packetData []byte) []byte {
-	signedPacketData := make([]byte, len(packetData)+NEXT_PACKET_HASH_BYTES)
-	C.crypto_generichash(
-		(*C.uchar)(&signedPacketData[0]),
-		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[0]),
-		C.ulonglong(len(packetData)),
-		(*C.uchar)(&packetHashKey[0]),
-		C.ulong(C.crypto_generichash_KEYBYTES),
-	)
+func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
+	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
 	for i := 0; i < len(packetData); i++ {
-		signedPacketData[NEXT_PACKET_HASH_BYTES+i] = packetData[i]
+		signedPacketData[i] = packetData[i]
 	}
+	messageLength := len(packetData) - 9
+	if messageLength < 0 {
+		panic("wtf")
+	}
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[9]), C.ulonglong(messageLength))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
 	return signedPacketData
 }
 
-func main() {
-
-	rand.Seed(time.Now().UnixNano())
-
-	backend.relayDatabase = make(map[string]RelayEntry)
-	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]SessionEntry)
-
-	go TimeoutThread()
-
-	go WebServer()
-
-	listenAddress := net.UDPAddr{
-		Port: NEXT_SERVER_BACKEND_PORT,
-		IP:   net.ParseIP("0.0.0.0"),
+func HashNetworkNextPacket(packetData []byte) {
+	messageLength := len(packetData) - 9
+	if messageLength <= 0 {
+		panic("wtf")
 	}
-
-	connection, err := net.ListenUDP("udp", &listenAddress)
-	if err != nil {
-		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
-		return
+	if messageLength > 32 {
+		messageLength = 32
 	}
-
-	defer connection.Close()
-
-	fmt.Printf("started reference backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
-	for {
-
-		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
-
-		packetBytes, from, err := connection.ReadFromUDP(packetData)
-
-		if err != nil {
-			fmt.Printf("socket error: %v\n", err)
-			continue
-		}
-
-		if packetBytes <= 0 {
-			continue
-		}
-
-		if !IsNetworkNextPacket(packetData, packetBytes) {
-			continue
-		}
-
-		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
-		packetBytes -= NEXT_PACKET_HASH_BYTES
-
-		packetType := packetData[0]
-
-		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
-
-			readStream := CreateReadStream(packetData[1:])
-
-			serverInitRequest := &NextBackendServerInitRequestPacket{}
-			if err := serverInitRequest.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server init request packet: %v\n", err)
-				continue
-			}
-
-			// todo: we really should run the signature check here
-
-			initResponse := &NextBackendServerInitResponsePacket{}
-			initResponse.RequestId = serverInitRequest.RequestId
-			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
-
-			signResponseData := initResponse.GetSignData()
-			initResponse.Signature = CryptoSignCreate(signResponseData, backendPrivateKey)
-			if initResponse.Signature == nil {
-				fmt.Printf("error: failed to sign server init response packet\n")
-				continue
-			}
-
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
-			if err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			if err := initResponse.Serialize(writeStream); err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
-
-			_, err = connection.WriteToUDP(signedResponsePacketData, from)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
-			}
-
-		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
-
-			readStream := CreateReadStream(packetData[1:])
-
-			serverUpdate := &NextBackendServerUpdatePacket{}
-			if err := serverUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server update packet: %v\n", err)
-				continue
-			}
-
-			// todo: we really should run the signature check here
-
-			serverEntry := ServerEntry{}
-			serverEntry.address = from
-			serverEntry.publicKey = serverUpdate.ServerRoutePublicKey
-			serverEntry.lastUpdate = time.Now().Unix()
-
-			key := string(from.String())
-
-			backend.mutex.Lock()
-			_, ok := backend.serverDatabase[key]
-			if !ok {
-				backend.dirty = true
-			}
-			backend.serverDatabase[key] = serverEntry
-			backend.mutex.Unlock()
-
-		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
-
-			readStream := CreateReadStream(packetData[1:])
-			sessionUpdate := &NextBackendSessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
-				continue
-			}
-
-			// todo: we really should run the signature check here
-
-			if sessionUpdate.FallbackToDirect {
-				continue
-			}
-
-			backend.mutex.RLock()
-			serverEntry, ok := backend.serverDatabase[string(from.String())]
-			backend.mutex.RUnlock()
-			if !ok {
-				continue
-			}
-
-			nearRelayIds, nearRelayAddresses := GetNearRelays()
-
-			var sessionResponse *NextBackendSessionResponsePacket
-
-			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
-			backend.mutex.RUnlock()
-
-			newSession := !ok
-
-			if newSession {
-				sessionEntry.id = sessionUpdate.SessionId
-				sessionEntry.version = 0
-				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
-			} else {
-				sessionEntry.expireTimestamp += 10
-				sessionEntry.slice++
-			}
-
-			takeNetworkNext := len(nearRelayIds) > 0
-
-			if !takeNetworkNext {
-
-				// direct route
-
-				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
-					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
-					NumTokens:            0,
-					Tokens:               nil,
-					ServerRoutePublicKey: serverEntry.publicKey,
-					Signature:            nil,
-				}
-
-				sessionEntry.route = nil
-				sessionEntry.next = false
-
-			} else {
-
-				// next route
-
-				numRelays := len(nearRelayIds)
-				if numRelays > 5 {
-					numRelays = 5
-				}
-
-				route := make([]uint64, numRelays)
-				for i := 0; i < numRelays; i++ {
-					route[i] = nearRelayIds[i]
-				}
-
-				routeChanged := RouteChanged(sessionEntry.route, route)
-
-				numNodes := numRelays + 2
-
-				addresses := make([]*net.UDPAddr, numNodes)
-				publicKeys := make([][]byte, numNodes)
-				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
-
-				for i := 0; i < numRelays; i++ {
-					addresses[1+i] = &nearRelayAddresses[i]
-					publicKeys[1+i] = relayPublicKey
-				}
-
-				addresses[numNodes-1] = from
-				publicKeys[numNodes-1] = serverEntry.publicKey
-
-				var tokens []byte
-
-				var routeType int32
-
-				if !sessionEntry.next || routeChanged {
-
-					// new route
-
-					sessionEntry.version++
-					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write route tokens: %v\n", err)
-						continue
-					}
-					routeType = NEXT_ROUTE_TYPE_NEW
-
-				} else {
-
-					// continue route
-
-					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, routerPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write continue tokens: %v\n", err)
-						continue
-					}
-					routeType = NEXT_ROUTE_TYPE_CONTINUE
-
-				}
-
-				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
-					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            routeType,
-					Multipath:            false,
-					Committed:            true,
-					NumTokens:            int32(numNodes),
-					Tokens:               tokens,
-					ServerRoutePublicKey: serverEntry.publicKey,
-					Signature:            nil,
-				}
-
-				sessionEntry.route = route
-				sessionEntry.next = true
-			}
-
-			if sessionResponse == nil {
-				fmt.Printf("error: nil session response\n")
-				continue
-			}
-
-			backend.mutex.Lock()
-			if newSession {
-				backend.dirty = true
-			}
-			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
-			backend.mutex.Unlock()
-
-			signResponseData := sessionResponse.GetSignData(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
-			sessionResponse.Signature = CryptoSignCreate(signResponseData, backendPrivateKey)
-			if sessionResponse.Signature == nil {
-				fmt.Printf("error: failed to sign session response packet")
-				continue
-			}
-
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
-			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
-			}
-			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
-
-			_, err = connection.WriteToUDP(signedResponsePacketData, from)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
-			}
-
-		}
-	}
+	C.crypto_generichash(
+		(*C.uchar)(&packetData[1]),
+		C.ulong(NEXT_PACKET_HASH_BYTES),
+		(*C.uchar)(&packetData[9]),
+		C.ulonglong(messageLength),
+		(*C.uchar)(&packetHashKey[0]),
+		C.ulong(C.crypto_generichash_KEYBYTES),
+	)
 }
 
 // -----------------------------------------------------------
@@ -1273,6 +972,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	index = 0
 
 	WriteUint32(responseData, &index, NEXT_RELAY_UPDATE_RESPONSE_VERSION)
+
+	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 
 	WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
@@ -2423,38 +2124,10 @@ func (stream *ReadStream) GetBytesProcessed() int {
 
 // -------------------------------------------------------------------------------------
 
-func ProtocolVersionAtLeast(serverVersionMajor int32, serverVersionMinor int32, serverVersionPatch int32, targetProtocolVersionMajor int32, targetProtocolVersionMinor int32, targetProtocolVersionPatch int32) bool {
-
-	if serverVersionMajor == 0 && serverVersionMinor == 0 && serverVersionPatch == 0 {
-		// This is an internal build, assume latest version.
-		return true
-	}
-
-	if serverVersionMajor > targetProtocolVersionMajor {
-		// The server has a major version newer than the target, ignore minor and patch numbers and pass.
-		return true
-	}
-
-	if serverVersionMajor == targetProtocolVersionMajor {
-		// The server has a matching major version, now check minor version.
-
-		if serverVersionMinor > targetProtocolVersionMinor {
-			// The server has a minor version newer than the target, ignore patch number and pass.
-			return true
-		}
-
-		if serverVersionMinor == targetProtocolVersionMinor {
-			// The server has a matching minor version, now check patch version.
-
-			if serverVersionPatch >= targetProtocolVersionPatch {
-				// The patch version is newer or equal to the desired version, pass.
-				return true
-			}
-		}
-	}
-
-	// Server version is not new enough.
-	return false
+func ProtocolVersionAtLeast(serverMajor uint32, serverMinor uint32, serverPatch uint32, targetMajor uint32, targetMinor uint32, targetPatch uint32) bool {
+	serverVersion := ((serverMajor & 0xFF) << 16) | ((serverMinor & 0xFF) << 8) | (serverPatch & 0xFF)
+	targetVersion := ((targetMajor & 0xFF) << 16) | ((targetMinor & 0xFF) << 8) | (targetPatch & 0xFF)
+	return serverVersion >= targetVersion
 }
 
 // -----------------------------------------------------------------------------
@@ -2605,57 +2278,26 @@ func Decrypt_ChaCha20(encrypted []byte, additional []byte, nonce []byte, private
 	}
 }
 
-func GenerateSessionId() uint64 {
-	var sessionId uint64
-	C.randombytes_buf(unsafe.Pointer(&sessionId), 8)
-	sessionId &= ^((uint64(1)) << 63)
-	return sessionId
-}
-
 func RandomBytes(bytes int) []byte {
 	buffer := make([]byte, bytes)
 	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(bytes))
 	return buffer
 }
 
-func CryptoSignVerify(sign_data []byte, signature []byte, public_key []byte) bool {
-	if len(public_key) != C.crypto_sign_PUBLICKEYBYTES || len(signature) != C.crypto_sign_BYTES {
-		return false
-	}
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&sign_data[0]), C.ulonglong(len(sign_data)))
-	return C.crypto_sign_final_verify(&state, (*C.uchar)(&signature[0]), (*C.uchar)(&public_key[0])) == 0
-}
-
-func CryptoSignCreate(sign_data []byte, private_key []byte) []byte {
-	if len(private_key) != C.crypto_sign_BYTES {
-		return nil
-	}
-	signature := make([]byte, C.crypto_sign_BYTES)
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&sign_data[0]), C.ulonglong(len(sign_data)))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&signature[0]), nil, (*C.uchar)(&private_key[0]))
-	return signature
-}
-
-func WriteSessionToken(token *SessionToken, buffer []byte) {
+func WriteRouteToken(token *RouteToken, buffer []byte) {
 	binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
 	binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
 	buffer[8+8] = token.sessionVersion
-	buffer[8+8+1] = token.sessionFlags
-	binary.LittleEndian.PutUint32(buffer[8+8+2:], token.kbpsUp)
-	binary.LittleEndian.PutUint32(buffer[8+8+2+4:], token.kbpsDown)
-	WriteAddress(buffer[8+8+2+4+4:], token.nextAddress)
-	copy(buffer[8+8+2+4+4+NEXT_ADDRESS_BYTES:], token.privateKey)
+	binary.LittleEndian.PutUint32(buffer[8+8+1:], token.kbpsUp)
+	binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.kbpsDown)
+	WriteAddress(buffer[8+8+1+4+4:], token.nextAddress)
+	copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.privateKey)
 }
 
 func WriteContinueToken(token *ContinueToken, buffer []byte) {
 	binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
 	binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
 	buffer[8+8] = token.sessionVersion
-	buffer[8+8+1] = token.sessionFlags
 }
 
 func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
@@ -2666,7 +2308,6 @@ func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
 	token.expireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
 	token.sessionId = binary.LittleEndian.Uint64(buffer[8:])
 	token.sessionVersion = buffer[8+8]
-	token.sessionFlags = buffer[8+8+1]
 	return token, nil
 }
 
@@ -2678,56 +2319,10 @@ func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPriv
 	return result
 }
 
-func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
-	if numNodes < 1 || numNodes > NEXT_MAX_NODES {
-		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
-	}
-	privateKey := RandomBytes(KeyBytes)
-	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
-	for i := 0; i < numNodes; i++ {
-		nonce := RandomBytes(NonceBytes)
-		token := &SessionToken{}
-		token.expireTimestamp = expireTimestamp
-		token.sessionId = sessionId
-		token.sessionVersion = sessionVersion
-		token.sessionFlags = sessionFlags
-		token.kbpsUp = kbpsUp
-		token.kbpsDown = kbpsDown
-		if i != numNodes-1 {
-			token.nextAddress = addresses[i+1]
-		}
-		token.privateKey = privateKey
-		err := WriteEncryptedSessionToken(tokenData[i*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return tokenData, nil
-}
-
-func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
-	if numNodes < 1 || numNodes > NEXT_MAX_NODES {
-		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
-	}
-	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
-	for i := 0; i < numNodes; i++ {
-		token := &ContinueToken{}
-		token.expireTimestamp = expireTimestamp
-		token.sessionId = sessionId
-		token.sessionVersion = sessionVersion
-		token.sessionFlags = sessionFlags
-		err := WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return tokenData, nil
-}
-
-func WriteEncryptedSessionToken(buffer []byte, token *SessionToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
+func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
 	copy(buffer, nonce)
-	WriteSessionToken(token, buffer[NonceBytes:])
-	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_SESSION_TOKEN_BYTES)
+	WriteRouteToken(token, buffer[NonceBytes:])
+	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
 	return result
 }
 
@@ -2743,13 +2338,56 @@ func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiv
 	return ReadContinueToken(tokenData)
 }
 
+func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+	if numNodes < 1 || numNodes > NEXT_MAX_NODES {
+		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
+	}
+	privateKey := RandomBytes(KeyBytes)
+	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	for i := 0; i < numNodes; i++ {
+		nonce := RandomBytes(NonceBytes)
+		token := &RouteToken{}
+		token.expireTimestamp = expireTimestamp
+		token.sessionId = sessionId
+		token.sessionVersion = sessionVersion
+		token.kbpsUp = kbpsUp
+		token.kbpsDown = kbpsDown
+		if i != numNodes-1 {
+			token.nextAddress = addresses[i+1]
+		}
+		token.privateKey = privateKey
+		err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tokenData, nil
+}
+
+func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+	if numNodes < 1 || numNodes > NEXT_MAX_NODES {
+		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
+	}
+	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+	for i := 0; i < numNodes; i++ {
+		token := &ContinueToken{}
+		token.expireTimestamp = expireTimestamp
+		token.sessionId = sessionId
+		token.sessionVersion = sessionVersion
+		err := WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tokenData, nil
+}
+
 // --------------------------------------------------------
 
-type SessionToken struct {
+type RouteToken struct {
 	expireTimestamp uint64
 	sessionId       uint64
 	sessionVersion  uint8
-	sessionFlags    uint8
 	kbpsUp          uint32
 	kbpsDown        uint32
 	nextAddress     *net.UDPAddr
@@ -2760,7 +2398,364 @@ type ContinueToken struct {
 	expireTimestamp uint64
 	sessionId       uint64
 	sessionVersion  uint8
-	sessionFlags    uint8
 }
 
 // -------------------------------------------------------
+
+func main() {
+
+	rand.Seed(time.Now().UnixNano())
+
+	backend.relayDatabase = make(map[string]RelayEntry)
+	backend.serverDatabase = make(map[string]ServerEntry)
+	backend.sessionDatabase = make(map[uint64]SessionEntry)
+
+	go TimeoutThread()
+
+	go WebServer()
+
+	listenAddress := net.UDPAddr{
+		Port: NEXT_SERVER_BACKEND_PORT,
+		IP:   net.ParseIP("0.0.0.0"),
+	}
+
+	connection, err := net.ListenUDP("udp", &listenAddress)
+	if err != nil {
+		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
+		return
+	}
+
+	defer connection.Close()
+
+	fmt.Printf("\nreference backend (sdk4)\n\n")
+
+	multipath := false
+	if os.Getenv("BACKEND_MULTIPATH") == "1" {
+		multipath = true
+	}
+
+	on_off := false
+	if os.Getenv("BACKEND_ON_OFF") == "1" {
+		on_off = true
+	}
+
+	for {
+
+		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
+
+		packetBytes, from, err := connection.ReadFromUDP(packetData)
+
+		packetData = packetData[:packetBytes]
+
+		if err != nil {
+			fmt.Printf("socket error: %v\n", err)
+			continue
+		}
+
+		if packetBytes <= 0 {
+			continue
+		}
+
+		packetType := packetData[0]
+
+		if !IsNetworkNextPacket(packetData) {
+			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
+			continue
+		}
+
+		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
+		packetBytes -= NEXT_PACKET_HASH_BYTES
+
+		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
+
+			readStream := CreateReadStream(packetData[1:])
+
+			serverInitRequest := &NextBackendServerInitRequestPacket{}
+			if err := serverInitRequest.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server init request packet: %v\n", err)
+				continue
+			}
+
+			initResponse := &NextBackendServerInitResponsePacket{}
+			initResponse.RequestId = serverInitRequest.RequestId
+			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
+
+			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				continue
+			}
+
+			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
+			writeStream.SerializeBits(&responsePacketType, 8)
+			hash := uint64(0)
+			writeStream.SerializeUint64(&hash)
+			if err := initResponse.Serialize(writeStream); err != nil {
+				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				continue
+			}
+			writeStream.Flush()
+
+			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+
+			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+
+			HashNetworkNextPacket(responsePacketData)
+
+			_, err = connection.WriteToUDP(responsePacketData, from)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				continue
+			}
+
+		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
+
+			readStream := CreateReadStream(packetData[1:])
+
+			serverUpdate := &NextBackendServerUpdatePacket{}
+			if err := serverUpdate.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server update packet: %v\n", err)
+				continue
+			}
+
+			serverEntry := ServerEntry{}
+			serverEntry.address = from
+			serverEntry.lastUpdate = time.Now().Unix()
+
+			key := string(from.String())
+
+			backend.mutex.Lock()
+			_, ok := backend.serverDatabase[key]
+			if !ok {
+				backend.dirty = true
+			}
+			backend.serverDatabase[key] = serverEntry
+			backend.mutex.Unlock()
+
+		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
+
+			readStream := CreateReadStream(packetData[1:])
+			sessionUpdate := &NextBackendSessionUpdatePacket{}
+			if err := sessionUpdate.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				continue
+			}
+
+			if sessionUpdate.FallbackToDirect {
+				fmt.Printf("*** FALLBACK TO DIRECT ***\n")
+			}
+
+			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
+			var sessionData SessionData
+			sessionData.Version = SessionDataVersion
+			if sessionUpdate.SliceNumber != 0 {
+				err := sessionData.Serialize(sessionDataReadStream)
+				if err != nil {
+					fmt.Printf("error: could not read session data: %v\n", err)
+					continue
+				}
+			}
+
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
+
+			var sessionResponse *NextBackendSessionResponsePacket
+
+			backend.mutex.RLock()
+			sessionEntry := backend.sessionDatabase[sessionUpdate.SessionId]
+			sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 15
+			backend.mutex.RUnlock()
+
+			nearRelayIds, nearRelayAddresses := GetNearRelays()
+
+			takeNetworkNext := len(nearRelayIds) > 0 && !sessionUpdate.FallbackToDirect
+
+			if on_off {
+				if (sessionData.SliceNumber % 2) != 0 {
+					takeNetworkNext = false
+				}
+			}
+
+			if sessionUpdate.ClientPingTimedOut {
+				takeNetworkNext = false
+			}
+
+			if !takeNetworkNext {
+
+				// direct route
+
+				sessionResponse = &NextBackendSessionResponsePacket{
+					SessionId:          sessionUpdate.SessionId,
+					SliceNumber:        sessionUpdate.SliceNumber,
+					RouteType:          int32(NEXT_ROUTE_TYPE_DIRECT),
+					NearRelaysChanged:  true,
+					NumNearRelays:      int32(len(nearRelayIds)),
+					NearRelayIds:       nearRelayIds,
+					NearRelayAddresses: nearRelayAddresses,
+					NumTokens:          0,
+					Tokens:             nil,
+					HighFrequencyPings: true,
+				}
+
+				sessionData.Route = nil
+
+			} else {
+
+				// next route
+
+				numRelays := len(nearRelayIds)
+				if numRelays > 5 {
+					numRelays = 5
+				}
+
+				route := make([]uint64, numRelays)
+				for i := 0; i < numRelays; i++ {
+					route[i] = nearRelayIds[i]
+				}
+
+				routeChanged := RouteChanged(sessionData.Route, route)
+
+				numNodes := numRelays + 2
+
+				addresses := make([]*net.UDPAddr, numNodes)
+				publicKeys := make([][]byte, numNodes)
+				publicKeys[0] = sessionUpdate.ClientRoutePublicKey
+
+				for i := 0; i < numRelays; i++ {
+					addresses[1+i] = &nearRelayAddresses[i]
+					publicKeys[1+i] = relayPublicKey
+				}
+
+				addresses[numNodes-1] = from
+				publicKeys[numNodes-1] = sessionUpdate.ServerRoutePublicKey
+
+				var tokens []byte
+
+				var routeType int32
+
+				if sessionData.ExpireTimestamp == 0 {
+					sessionData.ExpireTimestamp = uint64(time.Now().Unix())
+				}
+
+				if routeChanged {
+
+					// new route
+
+					routeType = NEXT_ROUTE_TYPE_NEW
+
+					sessionData.ExpireTimestamp += 20
+					sessionData.SessionVersion += 1
+
+					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 1024, 1024, numNodes, addresses, publicKeys, routerPrivateKey)
+
+					if err != nil {
+						fmt.Printf("error: could not write route tokens: %v\n", err)
+						continue
+					}
+
+				} else {
+
+					// continue route
+
+					routeType = NEXT_ROUTE_TYPE_CONTINUE
+
+					sessionData.ExpireTimestamp += 10
+
+					tokens, err = WriteContinueTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), numNodes, publicKeys, routerPrivateKey)
+
+					if err != nil {
+						fmt.Printf("error: could not write continue tokens: %v\n", err)
+						continue
+					}
+
+				}
+
+				sessionResponse = &NextBackendSessionResponsePacket{
+					SliceNumber:        sessionUpdate.SliceNumber,
+					SessionId:          sessionUpdate.SessionId,
+					NearRelaysChanged:  true,
+					NumNearRelays:      int32(len(nearRelayIds)),
+					NearRelayIds:       nearRelayIds,
+					NearRelayAddresses: nearRelayAddresses,
+					RouteType:          routeType,
+					NumTokens:          int32(numNodes),
+					Tokens:             tokens,
+					Multipath:          multipath,
+					Committed:          true,
+					HighFrequencyPings: true,
+				}
+
+				sessionData.Route = route
+			}
+
+			if sessionResponse == nil {
+				fmt.Printf("error: nil session response\n")
+				continue
+			}
+
+			sessionResponse.VersionMajor = sessionUpdate.VersionMajor
+			sessionResponse.VersionMinor = sessionUpdate.VersionMinor
+			sessionResponse.VersionPatch = sessionUpdate.VersionPatch
+
+			backend.mutex.Lock()
+			if sessionData.SliceNumber == 1 {
+				backend.dirty = true
+			}
+			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
+			backend.mutex.Unlock()
+
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
+
+			sessionDataWriteStream, err := CreateWriteStream(1024)
+			if err != nil {
+				fmt.Printf("error: failed to create write stream for session data: %v\n", err)
+				continue
+			}
+			if err := sessionData.Serialize(sessionDataWriteStream); err != nil {
+				fmt.Printf("error: failed to write session data: %v\n", err)
+				continue
+			}
+			sessionDataWriteStream.Flush()
+
+			if sessionResponse.SessionDataBytes > NEXT_MAX_SESSION_DATA_BYTES {
+				panic("session data is too large")
+			}
+
+			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
+			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
+
+			sessionResponse.HasDebug = true
+			sessionResponse.Debug = "test session debug"
+
+			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
+				continue
+			}
+			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
+			writeStream.SerializeBits(&responsePacketType, 8)
+			hash := uint64(0)
+			writeStream.SerializeUint64(&hash)
+			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
+				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				continue
+			}
+			writeStream.Flush()
+
+			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+
+			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+
+			HashNetworkNextPacket(responsePacketData)
+
+			_, err = connection.WriteToUDP(responsePacketData, from)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				continue
+			}
+		}
+	}
+}

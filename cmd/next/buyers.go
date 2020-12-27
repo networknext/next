@@ -1,14 +1,18 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -36,7 +40,7 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment, signed bool) {
 				Name    string
 				BuyerID string
 			}{
-				Name:    buyer.Name,
+				Name:    buyer.CompanyName,
 				BuyerID: fmt.Sprintf("%d", int64(buyer.ID)),
 			})
 		}
@@ -46,7 +50,7 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment, signed bool) {
 				Name    string
 				BuyerID string
 			}{
-				Name:    buyer.Name,
+				Name:    buyer.CompanyName,
 				BuyerID: fmt.Sprintf("%016x", buyer.ID),
 			})
 		}
@@ -66,7 +70,7 @@ func addBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer routing.Buyer)
 		return
 	}
 
-	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.Name)
+	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.CompanyCode)
 }
 
 func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
@@ -95,7 +99,7 @@ func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buye
 	for i := range buyers.Buyers {
 		if fmt.Sprintf("%016x", buyers.Buyers[i].ID) == buyerID {
 
-			fmt.Printf(" Routing rules for %s:\n\n", buyers.Buyers[i].Name)
+			fmt.Printf(" Routing rules for %s:\n\n", buyers.Buyers[i].CompanyName)
 
 			transpose := []struct {
 				RoutingRuleSetting string
@@ -147,8 +151,8 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 
 	r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) {
-			filtered = append(filtered, []string{buyer.Name, fmt.Sprintf("%016x", buyer.ID)})
+		if r.MatchString(buyer.CompanyName) {
+			filtered = append(filtered, []string{buyer.CompanyName, fmt.Sprintf("%016x", buyer.ID)})
 		}
 	}
 
@@ -199,22 +203,13 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 	return
 }
 
-func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
-	args := localjsonrpc.SetRoutingRulesSettingsArgs{
-		BuyerID:              buyerID,
-		RoutingRulesSettings: rrs,
-	}
-
-	var reply localjsonrpc.SetRoutingRulesSettingsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.SetRoutingRulesSettings", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
-}
-
-func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer string) {
+func datacenterMapsForBuyer(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyer string,
+	csvOutput bool,
+	signedIDs bool,
+) {
 
 	if buyer == "" {
 		var reply localjsonrpc.ListDatacenterMapsReply
@@ -228,49 +223,150 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer 
 			return
 		}
 
-		table.Output(reply.DatacenterMaps)
-		return
-	}
+		if signedIDs {
+			var newMaps []localjsonrpc.DatacenterMapsFull
+			for _, dcMap := range reply.DatacenterMaps {
+				buyerID, err := strconv.ParseUint(dcMap.BuyerID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting BuyerID hex to signed int: %s\n", dcMap.BuyerID), 1)
+				}
+				dcID, err := strconv.ParseUint(dcMap.DatacenterID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting DatacenterID hex to signed int: %s\n", dcMap.DatacenterID), 1)
+				}
+				dcMap.BuyerID = fmt.Sprintf("%d", int64(buyerID))
+				dcMap.DatacenterID = fmt.Sprintf("%d", int64(dcID))
 
-	var buyerID uint64
-	var err error
+				newMaps = append(newMaps, dcMap)
+			}
 
-	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyersReply localjsonrpc.BuyersReply
-	if err = rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-	r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
-	for _, buyer := range buyersReply.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
-			buyerID = buyer.ID
+			reply.DatacenterMaps = newMaps
+		}
+
+		if csvOutput {
+			var csvInfo [][]string
+			csvInfo = append(csvInfo, []string{
+				"Alias", "DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
+			for _, dcMap := range reply.DatacenterMaps {
+
+				csvInfo = append(csvInfo, []string{
+					dcMap.Alias,
+					dcMap.DatacenterName,
+					dcMap.DatacenterID,
+					dcMap.BuyerName,
+					dcMap.BuyerID,
+					dcMap.SupplierName,
+				})
+			}
+
+			fileName := "./dcmaps.csv"
+			f, err := os.Create(fileName)
+			if err != nil {
+				fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+				return
+			}
+
+			writer := csv.NewWriter(f)
+			err = writer.WriteAll(csvInfo)
+			if err != nil {
+				fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			}
+			fmt.Println("CSV file written: dcmaps.csv")
+		} else {
+			table.Output(reply.DatacenterMaps)
+		}
+
+	} else {
+		var buyerID uint64
+		var err error
+
+		buyerArgs := localjsonrpc.BuyersArgs{}
+		var buyersReply localjsonrpc.BuyersReply
+		if err = rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
+			handleJSONRPCError(env, err)
+			return
+		}
+		r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
+		for _, buyer := range buyersReply.Buyers {
+			if r.MatchString(buyer.CompanyName) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+				buyerID = buyer.ID
+			}
+		}
+
+		if buyerID == 0 {
+			fmt.Printf("No match for provided buyer ID: %v\n\n", buyer)
+			fmt.Println("Here is a current list of buyers in the system:")
+			buyers(rpcClient, env, false)
+			return
+		}
+
+		args := localjsonrpc.DatacenterMapsArgs{
+			ID: buyerID,
+		}
+
+		var reply localjsonrpc.DatacenterMapsReply
+		if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
+			fmt.Printf("rpc error: %v\n", err)
+			handleJSONRPCError(env, err)
+			return
+		}
+
+		sort.Slice(reply.DatacenterMaps, func(i int, j int) bool {
+			return reply.DatacenterMaps[i].DatacenterName < reply.DatacenterMaps[j].DatacenterName
+		})
+
+		if signedIDs {
+			var newMaps []localjsonrpc.DatacenterMapsFull
+			for _, dcMap := range reply.DatacenterMaps {
+				buyerID, err := strconv.ParseUint(dcMap.BuyerID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting BuyerID hex to signed int: %s\n", dcMap.BuyerID), 1)
+				}
+				dcID, err := strconv.ParseUint(dcMap.DatacenterID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting DatacenterID hex to signed int: %s\n", dcMap.DatacenterID), 1)
+				}
+				dcMap.BuyerID = fmt.Sprintf("%d", int64(buyerID))
+				dcMap.DatacenterID = fmt.Sprintf("%d", int64(dcID))
+
+				newMaps = append(newMaps, dcMap)
+			}
+
+			reply.DatacenterMaps = newMaps
+		}
+
+		if csvOutput {
+			var csvInfo [][]string
+			csvInfo = append(csvInfo, []string{
+				"Alias", "DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
+			for _, dcMap := range reply.DatacenterMaps {
+				csvInfo = append(csvInfo, []string{
+					dcMap.Alias,
+					dcMap.DatacenterName,
+					dcMap.DatacenterID,
+					dcMap.BuyerName,
+					dcMap.BuyerID,
+					dcMap.SupplierName,
+				})
+			}
+
+			fileName := "./dcmaps.csv"
+			f, err := os.Create(fileName)
+			if err != nil {
+				fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+				return
+			}
+
+			writer := csv.NewWriter(f)
+			err = writer.WriteAll(csvInfo)
+			if err != nil {
+				fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			}
+			fmt.Println("CSV file written: dcmaps.csv")
+		} else {
+			table.Output(reply.DatacenterMaps)
 		}
 	}
-
-	if buyerID == 0 {
-		fmt.Printf("No match for provided buyer ID: %v\n\n", buyer)
-		fmt.Println("Here is a current list of buyers in the system:")
-		buyers(rpcClient, env, false)
-		return
-	}
-
-	args := localjsonrpc.DatacenterMapsArgs{
-		ID: buyerID,
-	}
-
-	var reply localjsonrpc.DatacenterMapsReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
-		fmt.Printf("rpc error: %v\n", err)
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	sort.Slice(reply.DatacenterMaps, func(i int, j int) bool {
-		return reply.DatacenterMaps[i].DatacenterName < reply.DatacenterMaps[j].DatacenterName
-	})
-
-	table.Output(reply.DatacenterMaps)
 
 }
 
@@ -287,7 +383,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+		if r.MatchString(buyer.CompanyName) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
 			buyerID = buyer.ID
 		}
 	}
@@ -312,9 +408,9 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 
 	arg := localjsonrpc.AddDatacenterMapArgs{
 		DatacenterMap: routing.DatacenterMap{
-			BuyerID:    buyerID,
-			Datacenter: dcID,
-			Alias:      dcm.Alias,
+			BuyerID:      buyerID,
+			DatacenterID: dcID,
+			Alias:        dcm.Alias,
 		},
 	}
 
@@ -341,7 +437,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+		if r.MatchString(buyer.CompanyName) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
 			buyerID = buyer.ID
 		}
 	}
@@ -366,9 +462,9 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 
 	arg := localjsonrpc.RemoveDatacenterMapArgs{
 		DatacenterMap: routing.DatacenterMap{
-			BuyerID:    buyerID,
-			Datacenter: dcID,
-			Alias:      dcm.Alias,
+			BuyerID:      buyerID,
+			DatacenterID: dcID,
+			Alias:        dcm.Alias,
 		},
 	}
 
@@ -380,4 +476,325 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 
 	return nil
 
+}
+
+func buyerIDFromName(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) (string, uint64) {
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	var filtered []string
+	var buyerID uint64
+
+	r := regexp.MustCompile("(?i)" + buyerRegex) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.CompanyName) {
+			filtered = append(filtered, buyer.CompanyName)
+			buyerID = buyer.ID
+		}
+	}
+
+	if len(filtered) == 0 {
+		handleRunTimeError(fmt.Sprintf("No buyer matches found for '%s'", buyerRegex), 0)
+	}
+
+	if len(filtered) > 1 {
+		fmt.Printf("Found several  matches for '%s'", buyerRegex)
+		for _, match := range filtered {
+			fmt.Printf("\t%s\n", match)
+		}
+		handleRunTimeError(fmt.Sprintln("Please be more specific."), 0)
+	}
+
+	return filtered[0], buyerID
+}
+
+func getInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+	var reply localjsonrpc.GetInternalConfigReply
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	arg := localjsonrpc.GetInternalConfigArg{
+		BuyerID: buyerID,
+	}
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetInternalConfig", arg); err != nil {
+		fmt.Println("No InternalConfig stored for this buyer (they use the defaults).")
+		return nil
+	}
+
+	fmt.Printf("InternalConfig for buyer %s:\n", buyerName)
+	fmt.Printf("  RouteSelectThreshold      : %d\n", reply.InternalConfig.RouteSelectThreshold)
+	fmt.Printf("  RouteSwitchThreshold      : %d\n", reply.InternalConfig.RouteSwitchThreshold)
+	fmt.Printf("  MaxLatencyTradeOff        : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
+	fmt.Printf("  RTTVeto_Default           : %d\n", reply.InternalConfig.RTTVeto_Default)
+	fmt.Printf("  RTTVeto_PacketLoss        : %d\n", reply.InternalConfig.RTTVeto_PacketLoss)
+	fmt.Printf("  RTTVeto_Multipath         : %d\n", reply.InternalConfig.RTTVeto_Multipath)
+	fmt.Printf("  MultipathOverloadThreshold: %d\n", reply.InternalConfig.MultipathOverloadThreshold)
+	fmt.Printf("  TryBeforeYouBuy           : %t\n", reply.InternalConfig.TryBeforeYouBuy)
+	fmt.Printf("  ForceNext                 : %t\n", reply.InternalConfig.ForceNext)
+	fmt.Printf("  LargeCustomer             : %t\n", reply.InternalConfig.LargeCustomer)
+	fmt.Printf("  Uncommitted               : %t\n", reply.InternalConfig.Uncommitted)
+	fmt.Printf("  MaxRTT                    : %d\n", reply.InternalConfig.MaxRTT)
+
+	return nil
+}
+
+func getRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+	var reply localjsonrpc.GetRouteShaderReply
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	arg := localjsonrpc.GetRouteShaderArg{
+		BuyerID: buyerID,
+	}
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetRouteShader", arg); err != nil {
+		fmt.Println("No RouteShader stored for this buyer (they use the defaults).")
+		return nil
+	}
+
+	fmt.Printf("RouteShader for buyer %s:\n", buyerName)
+	fmt.Printf("  DisableNetworkNext       : %t\n", reply.RouteShader.DisableNetworkNext)
+	fmt.Printf("  SelectionPercent         : %d\n", reply.RouteShader.SelectionPercent)
+	fmt.Printf("  ABTest                   : %t\n", reply.RouteShader.ABTest)
+	fmt.Printf("  ProMode                  : %t\n", reply.RouteShader.ProMode)
+	fmt.Printf("  ReduceLatency            : %t\n", reply.RouteShader.ReduceLatency)
+	fmt.Printf("  ReduceJitter             : %t\n", reply.RouteShader.ReduceJitter)
+	fmt.Printf("  ReducePacketLoss         : %t\n", reply.RouteShader.ReducePacketLoss)
+	fmt.Printf("  Multipath                : %t\n", reply.RouteShader.Multipath)
+	fmt.Printf("  AcceptableLatency        : %d\n", reply.RouteShader.AcceptableLatency)
+	fmt.Printf("  LatencyThreshold         : %d\n", reply.RouteShader.LatencyThreshold)
+	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
+	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
+	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
+
+	return nil
+}
+
+func addInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerID uint64,
+	ic core.InternalConfig,
+) error {
+
+	emptyReply := localjsonrpc.AddInternalConfigReply{}
+
+	args := localjsonrpc.AddInternalConfigArgs{
+		BuyerID:        buyerID,
+		InternalConfig: ic,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddInternalConfig", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Println("InternalConfig added successfully.")
+	return nil
+}
+
+func removeInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.RemoveInternalConfigReply{}
+
+	args := localjsonrpc.RemoveInternalConfigArg{
+		BuyerID: buyerID,
+	}
+	// Storer method checks BuyerID validity
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveInternalConfig", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("InternalConfig for %s removed successfully.\n", buyerName)
+	return nil
+}
+
+func updateInternalConfig(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	field string,
+	value string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.UpdateInternalConfigReply{}
+
+	args := localjsonrpc.UpdateInternalConfigArgs{
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateInternalConfig", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("InternalConfig for %s updated successfully.\n", buyerName)
+	return nil
+}
+
+func addRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerID uint64,
+	rs core.RouteShader,
+) error {
+
+	emptyReply := localjsonrpc.AddRouteShaderReply{}
+
+	args := localjsonrpc.AddRouteShaderArgs{
+		BuyerID:     buyerID,
+		RouteShader: rs,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddRouteShader", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Println("RouteShader added successfully.")
+	return nil
+}
+
+func removeRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.RemoveRouteShaderReply{}
+
+	args := localjsonrpc.RemoveRouteShaderArg{
+		BuyerID: buyerID,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("RouteShader for %s removed successfully.\n", buyerName)
+	return nil
+}
+
+func updateRouteShader(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	field string,
+	value string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.UpdateRouteShaderReply{}
+
+	args := localjsonrpc.UpdateRouteShaderArgs{
+		BuyerID: buyerID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateRouteShader", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("RouteShader for %s updated successfully.\n", buyerName)
+	return nil
+}
+
+func getBannedUsers(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	reply := localjsonrpc.GetBannedUserReply{}
+
+	args := localjsonrpc.GetBannedUserArg{
+		BuyerID: buyerID,
+	}
+	if err := rpcClient.CallFor(&reply, "BuyersService.GetBannedUsers", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Banned users for buyer %s:\n", buyerName)
+	for _, userID := range reply.BannedUsers {
+		fmt.Printf("  %s\n", userID)
+	}
+	return nil
+}
+
+func addBannedUser(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	userID uint64,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.BannedUserReply{}
+
+	args := localjsonrpc.BannedUserArgs{
+		BuyerID: buyerID,
+		UserID:  userID,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddBannedUser", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Banned user %016x added for buyer %s successfully.\n", userID, buyerName)
+	return nil
+}
+
+func removeBannedUser(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyerRegex string,
+	userID uint64,
+) error {
+
+	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+
+	emptyReply := localjsonrpc.BannedUserReply{}
+
+	args := localjsonrpc.BannedUserArgs{
+		BuyerID: buyerID,
+		UserID:  userID,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveBannedUser", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Banned user %016x successfully removed  for buyer %s.\n", userID, buyerName)
+	return nil
 }

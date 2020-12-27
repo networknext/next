@@ -4,7 +4,7 @@ bucket=
 artifact=
 
 print_usage() {
-    printf "Usage: bootstrap.sh -a artifact\n\n"
+    printf "Usage: bootstrap.sh -b bucket_name -a artifact\n\n"
     printf "b [string]\tBucket name on GCP Storage\n"
     printf "a [string]\tArtifact name on GCP Storage\n"
 
@@ -35,7 +35,7 @@ gsutil cp "$bucket/libpgm-5.2.so.0" '/usr/local/lib'
 # Copy libzmq from GCP Storage
 gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
 
-# Copy libzmq from GCP Storage
+# Copy libnext from GCP Storage
 gsutil cp "$bucket/libnext.so" '/usr/local/lib'
 
 # Refresh the known libs on the system

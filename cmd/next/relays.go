@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -60,7 +60,7 @@ func opsRelays(
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
-		"Name", "Address", "MRC", "Overage", "BW Rule",
+		"Name", "MRC", "Overage", "BW Rule",
 		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed"})
 
 	for _, relay := range reply.Relays {
@@ -98,19 +98,19 @@ func opsRelays(
 			continue
 		}
 
-		mrc := "n/a"
+		mrc := ""
 		if relay.MRC > 0 {
 			mrc = fmt.Sprintf("%.2f", relay.MRC.ToCents()/100)
 		}
-		overage := "n/a"
+		overage := ""
 		if relay.Overage > 0 {
-			overage = fmt.Sprintf("%.2f", relay.Overage.ToCents()/100)
+			overage = fmt.Sprintf("%.5f", relay.Overage.ToCents()/100)
 		}
 
 		var bwRule string
 		switch relay.BWRule {
 		case routing.BWRuleNone:
-			bwRule = "n/a"
+			bwRule = ""
 		case routing.BWRuleFlat:
 			bwRule = "flat"
 		case routing.BWRuleBurst:
@@ -118,44 +118,44 @@ func opsRelays(
 		case routing.BWRulePool:
 			bwRule = "pool"
 		default:
-			bwRule = "n/a"
+			bwRule = ""
 		}
 
 		var machineType string
 		switch relay.Type {
 		case routing.NoneSpecified:
-			machineType = "n/a"
+			machineType = ""
 		case routing.BareMetal:
 			machineType = "bare metal"
 		case routing.VirtualMachine:
 			machineType = "virtual machine"
 		default:
-			machineType = "n/a"
+			machineType = ""
 		}
 
-		contractTerm := "n/a"
+		contractTerm := ""
 		if relay.ContractTerm != 0 {
 			contractTerm = fmt.Sprintf("%d", relay.ContractTerm)
 		}
 
-		startDate := "n/a"
+		startDate := ""
 		if !relay.StartDate.IsZero() {
 			startDate = relay.StartDate.Format("January 2, 2006")
 		}
 
-		endDate := "n/a"
+		endDate := ""
 		if !relay.EndDate.IsZero() {
 			endDate = relay.EndDate.Format("January 2, 2006")
 		}
 
 		bandwidth := strconv.FormatInt(int64(relay.IncludedBandwidthGB), 10)
 		if bandwidth == "0" {
-			bandwidth = "n/a"
+			bandwidth = ""
 		}
 
 		nicSpeed := strconv.FormatInt(int64(relay.NICSpeedMbps), 10)
 		if nicSpeed == "0" {
-			nicSpeed = "n/a"
+			nicSpeed = ""
 		}
 
 		// return csv file
@@ -252,8 +252,8 @@ func relays(
 		return
 	}
 
-	sort.Slice(reply.Relays, func(i int, j int) bool {
-		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
+	sort.SliceStable(reply.Relays, func(i int, j int) bool {
+		return reply.Relays[i].TrafficStats.SessionCount > reply.Relays[j].TrafficStats.SessionCount
 	})
 
 	relays := []struct {
@@ -264,9 +264,6 @@ func relays(
 		Sessions    string
 		Tx          string
 		Rx          string
-		Version     string
-		CPUUsage    string `table:"CPU Usage"`
-		MemUsage    string `table:"Memory Usage"`
 		LastUpdated string
 	}{}
 
@@ -304,25 +301,9 @@ func relays(
 			// Relay should be hidden, so don't include in final output
 			includeRelay = false
 		}
-
-		var rx string
-		bitsReceived := relay.BytesReceived * 8
-		if bitsReceived > 1000000000 {
-			rx = fmt.Sprintf("%.02fGbps", float64(bitsReceived)/float64(1000000000))
-		} else {
-			rx = fmt.Sprintf("%.02fMbps", float64(bitsReceived)/float64(1000000))
-		}
-
-		var tx string
-		bitsTransmitted := relay.BytesSent * 8
-		if bitsTransmitted > 1000000000 {
-			tx = fmt.Sprintf("%.02fGbps", float64(bitsTransmitted)/float64(1000000000))
-		} else {
-			tx = fmt.Sprintf("%.02fMbps", float64(bitsTransmitted)/float64(1000000))
-		}
-
-		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
-		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
+		unitFormat(0)
+		bitsTransmitted := unitFormat(relay.TrafficStats.AllTx() * 8)
+		bitsReceived := unitFormat(relay.TrafficStats.AllRx() * 8)
 
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
@@ -350,7 +331,7 @@ func relays(
 			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 				var relayID string
 				if relayIDSigned {
-					relayID = fmt.Sprintf("%d", relay.SignedID)
+					relayID = fmt.Sprintf("%d", int64(relay.ID))
 				} else {
 					relayID = fmt.Sprintf("%016x", relay.ID)
 				}
@@ -359,9 +340,9 @@ func relays(
 					relayID,
 					address,
 					relay.State,
-					fmt.Sprintf("%d", relay.SessionCount),
-					tx,
-					rx,
+					fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
+					bitsTransmitted,
+					bitsReceived,
 					relay.Version,
 					lastUpdated,
 				})
@@ -370,7 +351,7 @@ func relays(
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			var relayID string
 			if relayIDSigned {
-				relayID = fmt.Sprintf("%d", relay.SignedID)
+				relayID = fmt.Sprintf("%d", int64(relay.ID))
 			} else {
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}
@@ -382,21 +363,15 @@ func relays(
 				Sessions    string
 				Tx          string
 				Rx          string
-				Version     string
-				CPUUsage    string `table:"CPU Usage"`
-				MemUsage    string `table:"Memory Usage"`
 				LastUpdated string
 			}{
 				Name:        relay.Name,
 				ID:          relayID,
 				Address:     address,
 				State:       relay.State,
-				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
-				Tx:          tx,
-				Rx:          rx,
-				Version:     relay.Version,
-				CPUUsage:    cpuUsage,
-				MemUsage:    memUsage,
+				Sessions:    fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
+				Tx:          bitsTransmitted,
+				Rx:          bitsReceived,
 				LastUpdated: lastUpdated,
 			})
 		}
@@ -517,13 +492,15 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 	}
 
 	for key, relayCount := range relayCountList {
-		relayList = append(relayList, struct {
-			State string
-			Count string
-		}{
-			State: key,
-			Count: strconv.Itoa(relayCount),
-		})
+		if key != "decommissioned" {
+			relayList = append(relayList, struct {
+				State string
+				Count string
+			}{
+				State: key,
+				Count: strconv.Itoa(relayCount),
+			})
+		}
 	}
 
 	relayList = append(relayList, struct {

@@ -35,9 +35,9 @@ done
 trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_clients} ; r++)); do
-./dist/client &
-pid="$!"
-printf "PID ${pid}: Client opened\n"
+  ./dist/client &
+  pid="$!"
+  printf "PID ${pid}: Client opened\n"
 done
 
 print_env

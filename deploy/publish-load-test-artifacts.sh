@@ -12,18 +12,23 @@ ARTIFACT_BUCKET=
 SERVICE=
 
 publish() {
-  printf "Publishing ${SERVICE} artifact to ${ARTIFACT_BUCKET} \n\n"
-	gsutil cp ${DIST_DIR}/${SERVICE}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}.tar.gz
-	printf "done\n"
+  if [ "$SERVICE" = "staging_servers.txt" ]; then
+    printf "Publishing ${SERVICE} to ${ARTIFACT_BUCKET} \n\n"
+    gsutil cp ${DIR}/${SERVICE} ${ARTIFACT_BUCKET}/${SERVICE} || exit 1
+  else
+    printf "Publishing ${SERVICE} artifact to ${ARTIFACT_BUCKET} \n\n"
+    gsutil cp ${DIST_DIR}/${SERVICE}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}.tar.gz || exit 1
+  fi
+  printf "done\n"
 }
 
 print_usage() {
-  printf "Usage: publish.sh -e environment -s service -b bucket\n\n"
-  printf "s [string]\tService being published [portal, portal_cruncher, server_backend, etc]\n"
+  printf "Usage: publish-load-test-artifacts.sh -s service -b bucket\n\n"
+  printf "s [string]\tService being published [load_test_server, load_test_client, etc]\n"
   printf "b [string]\tBucket name on GCP Storage\n"
 
   printf "Example:\n\n"
-  printf "> publish.sh -e dev -s portal -b gs://development_artifacts\n"
+  printf "> publish-load-test-artifacts.sh -s load_test_server -b gs://staging_artifacts\n"
 }
 
 if [ ! $# -eq 4 ]

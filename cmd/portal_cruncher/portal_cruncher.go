@@ -7,30 +7,26 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"runtime"
-	"strings"
 
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/metrics"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/pubsub"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
+	"github.com/networknext/backend/modules/backend" // todo: not a good module name
+	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/pubsub"
+
+	portalcruncher "github.com/networknext/backend/modules/portal_cruncher"
 )
 
 var (
@@ -40,158 +36,70 @@ var (
 	tag           string
 )
 
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func main() {
+	os.Exit(mainReturnWithCode())
+}
 
-	fmt.Printf("portal-cruncher: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+func mainReturnWithCode() int {
+	serviceName := "portal_cruncher"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 
-	// Configure local logging
-	logger := log.NewLogfmtLogger(os.Stdout)
+	gcpProjectID := backend.GetGCPProjectID()
 
-	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	backend.GetLogger(ctx, gcpProjectID, serviceName)
 
-	// StackDriver Logging
-	{
-		var enableSDLogging bool
-		enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-		if ok {
-			var err error
-			enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-			if err != nil {
-				level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		}
-
-		if enableSDLogging {
-			if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-				loggingClient, err := gcplogging.NewClient(ctx, projectID)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-					os.Exit(1)
-				}
-
-				logger = logging.NewStackdriverLogger(loggingClient, "portal-cruncher")
-			}
-		}
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	env, err := backend.GetEnv()
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	// Get env
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
 	}
 
-	var err error
-	redisFlushCount := 1000
-	redisFlushCountString, ok := os.LookupEnv("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT")
-	if ok {
-		if redisFlushCount, err = strconv.Atoi(redisFlushCountString); err != nil {
-			level.Error(logger).Log("envvar", "PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	if gcpOK {
-
-		// StackDriver Metrics
-		{
-			var enableSDMetrics bool
-			var err error
-			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-			if ok {
-				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
-				}
-
-				metricsHandler = &sd
-
-				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-				writeInterval, err := time.ParseDuration(sdwriteinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-					os.Exit(1)
-				}
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-				}()
-			}
-		}
-
-		// StackDriver Profiler
-		{
-			var enableSDProfiler bool
-			var err error
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "portal_cruncher",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
 		}
 	}
 
 	portalCruncherMetrics, err := metrics.NewPortalCruncherMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create portal cruncher metrics", "err", err)
+		return 1
 	}
+
+	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
+		return 1
+	}
+
+	// Setup feature config for bigtable
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BIGTABLE",
+			Enum:        config.FEATURE_BIGTABLE,
+			Value:       false,
+			Description: "Bigtable integration for historic session data",
+		},
+	})
+	featureConfig = envVarConfig
 
 	// Setup the stats print routine
 	{
@@ -210,6 +118,10 @@ func main() {
 				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceivedMessageCount.Value()))
+				fmt.Printf("%d bigtable success meta writes\n", int(btMetrics.WriteMetaSuccessCount.Value()))
+				fmt.Printf("%d bigtable success slice writes\n", int(btMetrics.WriteSliceSuccessCount.Value()))
+				fmt.Printf("%d bigtable failed meta writes\n", int(btMetrics.WriteMetaFailureCount.Value()))
+				fmt.Printf("%d bigtable failed slice writes\n", int(btMetrics.WriteSliceFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -220,302 +132,148 @@ func main() {
 	// Start portal cruncher subscriber
 	var portalSubscriber pubsub.Subscriber
 	{
-		cruncherPort, ok := os.LookupEnv("CRUNCHER_PORT")
-		if !ok {
-			level.Error(logger).Log("err", "env var CRUNCHER_PORT must be set")
-			os.Exit(1)
-		}
-
-		receiveBufferSizeString, ok := os.LookupEnv("CRUNCHER_RECEIVE_BUFFER_SIZE")
-		if !ok {
-			level.Error(logger).Log("err", "env var CRUNCHER_RECEIVE_BUFFER_SIZE must be set")
-			os.Exit(1)
-		}
-
-		receiveBufferSize, err := strconv.ParseInt(receiveBufferSizeString, 10, 64)
+		cruncherPort := envvar.Get("CRUNCHER_PORT", "5555")
 		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_RECEIVE_BUFFER_SIZE", "msg", "could not parse", "err", err)
-			os.Exit(1)
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
 		}
 
 		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
 			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
 			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
-			os.Exit(1)
+			return 1
 		}
 
 		portalSubscriber = portalCruncherSubscriber
 	}
 
-	receiveGoroutineCount := int64(1)
-	receiveGoroutineCountString, ok := os.LookupEnv("CRUNCHER_RECEIVE_GOROUTINE_COUNT")
-	if ok {
-		receiveGoroutineCount, err = strconv.ParseInt(receiveGoroutineCountString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_RECEIVE_GOROUTINE_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
+	redisPingFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	redisFlushFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_FLUSH_FREQUENCY", time.Second)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	redisFlushCount, err := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 5)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	messageChanSize, err := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	redisHostTopSessions := envvar.Get("REDIS_HOST_TOP_SESSIONS", "127.0.0.1:6379")
+	redisHostSessionMap := envvar.Get("REDIS_HOST_SESSION_MAP", "127.0.0.1:6379")
+	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
+	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
+
+	// Determine if should insert into Bigtable
+	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE)
+
+	// Get Bigtable instance ID
+	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
+	// Get the table name
+	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
+	// Get the column family name
+	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
+	// Get the max number of days the data should be kept in Bigtable
+	btMaxAgeDays, err := envvar.GetInt("BIGTABLE_MAX_AGE_DAYS", 90)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	btGoroutineCount, err := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
+		portalSubscriber,
+		redisHostTopSessions,
+		redisHostSessionMap,
+		redisHostSessionMeta,
+		redisHostSessionSlices,
+		useBigtable,
+		gcpProjectID,
+		btInstanceID,
+		btTableName,
+		btCfName,
+		btMaxAgeDays,
+		messageChanSize,
+		logger,
+		portalCruncherMetrics,
+		btMetrics)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if err := portalCruncher.PingRedis(); err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount); err != nil {
+			level.Error(logger).Log("err", err)
+			errChan <- err
+			return
 		}
-	}
-
-	redisGoroutineCount := int64(1)
-	redisGoroutineCountString, ok := os.LookupEnv("CRUNCHER_REDIS_GOROUTINE_COUNT")
-	if ok {
-		redisGoroutineCount, err = strconv.ParseInt(redisGoroutineCountString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_REDIS_GOROUTINE_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	messageChanSize := int64(10000000)
-	messageChanSizeString, ok := os.LookupEnv("CRUNCHER_MESSAGE_CHANNEL_SIZE")
-	if ok {
-		messageChanSize, err = strconv.ParseInt(messageChanSizeString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CRUNCHER_MESSAGE_CHANNEL_SIZE", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	messageChan := make(chan []byte, messageChanSize)
-
-	// Start receive loops
-	for i := int64(0); i < receiveGoroutineCount; i++ {
-		go func() {
-			for {
-				_, message, err := portalSubscriber.ReceiveMessage()
-				if err != nil {
-					level.Error(logger).Log("msg", "error receiving message", "err", err)
-					continue
-				}
-
-				portalCruncherMetrics.ReceivedMessageCount.Add(1)
-
-				if int64(len(messageChan)) < messageChanSize { // Drop messages if redis insertion is backed up
-					messageChan <- message
-				}
-			}
-		}()
-	}
-
-	// Start redis insertion loop
-	{
-		for i := int64(0); i < redisGoroutineCount; i++ {
-			go func() {
-
-				// Each goroutine should use its own TCP socket
-				clientTopSessions, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
-				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
-					os.Exit(1)
-				}
-				if err := clientTopSessions.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
-					os.Exit(1)
-				}
-
-				clientSessionMap, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_MAP"))
-				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
-					os.Exit(1)
-				}
-				if err := clientSessionMap.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
-					os.Exit(1)
-				}
-
-				clientSessionMeta, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_META"))
-				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
-					os.Exit(1)
-				}
-				if err := clientSessionMeta.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
-					os.Exit(1)
-				}
-
-				clientSessionSlices, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_SLICES"))
-				if err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
-					os.Exit(1)
-				}
-				if err := clientSessionSlices.Ping(); err != nil {
-					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
-					os.Exit(1)
-				}
-
-				portalDataBuffer := make([]transport.SessionPortalData, 0)
-
-				now := time.Now()
-				pingTime := time.Now()
-
-				for incoming := range messageChan {
-					var sessionPortalData transport.SessionPortalData
-					if err := sessionPortalData.UnmarshalBinary(incoming); err != nil {
-						level.Error(logger).Log("msg", "error unmarshaling session data message", "err", err)
-						continue
-					}
-
-					portalDataBuffer = append(portalDataBuffer, sessionPortalData)
-
-					if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
-						continue
-					}
-
-					// Periodically ping the redis instances and restart if we don't get a pong
-					if time.Since(pingTime) >= time.Second*10 {
-						if err := clientTopSessions.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_TOP_SESSIONS", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						if err := clientSessionMap.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_MAP", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						if err := clientSessionMeta.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_META", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						if err := clientSessionSlices.Ping(); err != nil {
-							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_SLICES", "err", err)
-							fmt.Println(err)
-							os.Exit(1)
-						}
-
-						pingTime = time.Now()
-					}
-
-					now = time.Now()
-					secs := now.Unix()
-					minutes := secs / 60
-
-					// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
-					clientTopSessions.Command("DEL", "s-%d", minutes-2)
-
-					// Update the current global top sessions minute bucket
-					clientTopSessions.StartCommand("ZADD")
-					clientTopSessions.CommandArgs("s-%d", minutes)
-					for j := range portalDataBuffer {
-						meta := portalDataBuffer[j].Meta
-						sessionID := fmt.Sprintf("%016x", meta.ID)
-						score := meta.DeltaRTT
-						if score < 0 {
-							score = 0
-						}
-						if !meta.OnNetworkNext {
-							score = -meta.DirectRTT
-						}
-						clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
-					}
-					clientTopSessions.EndCommand()
-					clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
-
-					for j := range portalDataBuffer {
-						meta := &portalDataBuffer[j].Meta
-						slice := &portalDataBuffer[j].Slice
-						point := &portalDataBuffer[j].Point
-						sessionID := fmt.Sprintf("%016x", meta.ID)
-						customerID := fmt.Sprintf("%016x", meta.BuyerID)
-						next := meta.OnNetworkNext
-						score := meta.DeltaRTT
-						if score < 0 {
-							score = 0
-						}
-						if !next {
-							score = -meta.DirectRTT
-						}
-
-						// Check if we should randomize the location (for staging load test)
-						if point.Latitude == 0 && point.Longitude == 0 && strings.Contains(meta.ClientAddr, "10.128.") {
-							// Randomize the location by using 4 bits of the session ID for the lat, and the other 4 for the long
-							sessionIDBytes := make([]byte, 8)
-							binary.LittleEndian.PutUint64(sessionIDBytes, meta.ID)
-
-							latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
-							longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
-
-							lat := (float64(latBits)) / 0xFFFFFFFF
-							long := (float64(longBits)) / 0xFFFFFFFF
-
-							point.Latitude = (-90.0 + lat*180.0) * 0.25
-							point.Longitude = (-180.0 + long*360.0)
-						}
-
-						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
-						// and update the current per-buyer top sessions list
-						clientTopSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
-						clientTopSessions.Command("ZADD", "sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
-						clientTopSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, 30)
-
-						// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
-						clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-2, sessionID)
-						clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-2, sessionID)
-
-						// Update the map points for this minute bucket
-						// Make sure to remove the session ID from the opposite bucket in case the session
-						// has switched from direct -> next or next -> direct
-						pointString := point.RedisString()
-						if next {
-							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
-							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
-							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
-						} else {
-							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
-							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
-							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
-						}
-
-						// Expire map points
-						clientSessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, 30)
-						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
-
-						// Update session meta
-						clientSessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
-
-						// Update session slices
-						clientSessionSlices.Command("RPUSH", "ss-%s \"%s\"", sessionID, slice.RedisString())
-						clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
-					}
-
-					portalDataBuffer = portalDataBuffer[:0]
-				}
-			}()
-		}
-	}
+	}()
 
 	// Start HTTP server
 	{
 		go func() {
 			router := mux.NewRouter()
-			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.HandleFunc("/health", transport.HealthHandlerFunc())
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
-				os.Exit(1)
+				errChan <- err
+				return
 			}
 
 			err := http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				os.Exit(1)
+				errChan <- err
+				return
 			}
 		}()
 	}
@@ -523,21 +281,11 @@ func main() {
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
-	<-sigint
-}
 
-func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-
-		statusCode := http.StatusOK
-
-		w.WriteHeader(statusCode)
-		w.Write([]byte(http.StatusText(statusCode)))
+	select {
+	case <-sigint:
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		return 1
 	}
 }

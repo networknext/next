@@ -1,13 +1,15 @@
-CXX = g++
 CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
+TAR = tar
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
+	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
+	CXX = g++-8
 endif
 
 SDKNAME = libnext
@@ -20,6 +22,7 @@ COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
+PORTAL_DIR=./cmd/portal
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
@@ -35,7 +38,7 @@ export ENV = local
 ##################
 
 export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local
+export NEXT_DATACENTER = local aliased
 export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
@@ -50,7 +53,7 @@ export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_ADDRESS
-export RELAY_ADDRESS = 127.0.0.1:0
+export RELAY_ADDRESS = 127.0.0.1
 endif
 
 ifndef RELAY_DEBUG
@@ -123,6 +126,10 @@ ifndef MAXMIND_ISP_DB_URI
 export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
 endif
 
+ifndef LOCAL_RELAYS
+export LOCAL_RELAYS = 10
+endif
+
 ifndef SESSION_MAP_INTERVAL
 export SESSION_MAP_INTERVAL = 1s
 endif
@@ -143,6 +150,10 @@ ifndef REDIS_HOST_SESSION_MAP
 export REDIS_HOST_SESSION_MAP = 127.0.0.1:6379
 endif
 
+ifndef RELAY_STORE_ADDRESS
+export RELAY_STORE_ADDRESS = 127.0.0.1:6379
+endif
+
 ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
@@ -157,8 +168,12 @@ ifndef GOOGLE_FIRESTORE_SYNC_INTERVAL
 export GOOGLE_FIRESTORE_SYNC_INTERVAL = 10s
 endif
 
-ifndef PORTAL_CRUNCHER_HOST
-export PORTAL_CRUNCHER_HOST = tcp://127.0.0.1:5555
+ifndef GOOGLE_CLOUD_SQL_SYNC_INTERVAL
+export GOOGLE_CLOUD_SQL_SYNC_INTERVAL = 10s
+endif
+
+ifndef PORTAL_CRUNCHER_HOSTS
+export PORTAL_CRUNCHER_HOSTS = tcp://127.0.0.1:5555,tcp://127.0.0.1:5556
 endif
 
 ifndef ALLOWED_ORIGINS
@@ -209,61 +224,103 @@ ifndef CRUNCHER_RECEIVE_BUFFER_SIZE
 export CRUNCHER_RECEIVE_BUFFER_SIZE = 100
 endif
 
+ifndef GHOST_ARMY_BIN
+export GHOST_ARMY_BIN = ./dist/ghost_army.bin
+endif
+
+ifndef DATACENTERS_CSV
+export DATACENTERS_CSV = ./dist/datacenters.csv
+endif
+
+# Bigtable emulator must be running before testing bigtable in happy path
+ifndef FEATURE_BIGTABLE
+export FEATURE_BIGTABLE = false
+endif
+
+ifndef BIGTABLE_CF_NAME
+export BIGTABLE_CF_NAME = portal-session-history
+endif
+
+ifndef BIGTABLE_WRITE_DELETE_ROW
+export BIGTABLE_WRITE_DELETE_ROW = false
+endif
+
+ifndef BIGTABLE_TABLE_NAME
+export BIGTABLE_TABLE_NAME = portal-session-history
+endif
+
+ifndef BIGTABLE_HISTORICAL_TXT
+export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
+endif
+
+ifndef FEATURE_VANITY_METRIC
+export FEATURE_VANITY_METRIC = false
+endif
+
 .PHONY: help
-help: ## this list
+help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
 
-.PHONY: clean
-clean: ## cleans the dist directory of all builds
-	@rm -fr $(DIST_DIR)
-	@mkdir $(DIST_DIR)
-
-.PHONY: format
-format: ## runs gofmt on all go source code
-	@$(GOFMT) -s -w .
-	@printf "\n"
+.PHONY: dist
+dist:
+	mkdir -p $(DIST_DIR)
 
 #####################
-## TESTS AND TOOLS ##
+## ESSENTIAL TOOLS ##
 #####################
 
 .PHONY: test
-test: test-unit
-
-ifeq ($(OS),linux)
-.PHONY: test-unit-relay
-test-unit-relay: build-relay-tests ## runs relay unit tests
-	@$(RELAY_DIR)/bin/relay.test
-endif
-
-.PHONY: test-unit-backend
-test-unit-backend: ## runs backend unit tests
+test: clean ## runs unit tests
 	@./scripts/test-unit-backend.sh
 
-.PHONY: test-unit
-test-unit: clean test-unit-backend ## runs backend unit tests
+.PHONY: build-analytics
+build-analytics: dist
+	@printf "Building analytics... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+	@printf "done\n"
 
-ifeq ($(OS),linux)
-.PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-soak-test ## runs sdk soak test under valgrind (linux only)
-	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
-	@printf "\n"
+ifeq ($(OS),darwin)
+.PHONY: build-load-test-server
+build-load-test-server: dist build-sdk
+	@printf "Building load test server... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+else
+.PHONY: build-load-test-server
+build-load-test-server: dist build-sdk
+	@printf "Building load test server... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
+	@printf "done\n"
+endif
+
+ifeq ($(OS),darwin)
+.PHONY: build-load-test-client
+build-load-test-client: dist build-sdk
+	@printf "Building load test client... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+else
+.PHONY: build-load-test-client
+build-load-test-client: dist build-sdk
+	@printf "Building load test client... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
+	@printf "done\n"
 endif
 
 .PHONY: build-functional-backend
-build-functional-backend: ## builds the functional backend
+build-functional-backend: dist
 	@printf "Building functional backend... " ; \
 	$(GO) build -o ./dist/func_backend ./cmd/func_backend/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-functional-tests
-build-functional-tests: ## builds functional tests
+build-functional-tests: dist
 	@printf "Building functional tests... " ; \
 	$(GO) build -o ./dist/func_tests ./cmd/func_tests/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests ## builds the functional tests
+build-test-func: clean dist build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -275,7 +332,7 @@ run-test-func:
 test-func: build-test-func run-test-func ## runs functional tests
 
 .PHONY: build-test-func-parallel
-build-test-func-parallel:
+build-test-func-parallel: dist
 	@docker build -t func_tests -f ./cmd/func_tests/Dockerfile .
 
 .PHONY: run-test-func-parallel
@@ -283,57 +340,13 @@ run-test-func-parallel:
 	@./scripts/test-func-parallel.sh
 
 .PHONY: test-func-parallel
-test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
-
-.PHONY: test-load
-test-load: ## runs load tests
-	@printf "\nRunning load tests...\n" ; \
-	$(GO) run ./cmd/load-test/load_tests.go
+test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
 #######################
-# Relay Build Process #
-#######################
-
-RELAY_DIR := ./cmd/relay
-RELAY_MAKEFILE := Makefile
-RELAY_EXE := relay
-
-.PHONY: build-relay-ref
-build-relay-ref: ## builds the reference relay
-	@printf "Building reference relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-relay
-build-relay: ## builds the relay
-	@printf "Building relay... "
-	@mkdir -p $(DIST_DIR)
-	@cd $(RELAY_DIR) && $(MAKE) release
-	@echo "done"
-
-.PHONY: build-relay-tests
-build-relay-tests: ## builds the relay unit tests (linux only)
-	@printf "Building relay with tests enabled... "
-	@cd $(RELAY_DIR) && $(MAKE) test
-	@echo "done"
-
-.PHONY: dev-relay
-dev-relay: build-relay ## runs a local relay
-	@$(DIST_DIR)/$(RELAY_EXE)
-
-.PHONY: dev-multi-relays
-dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 20 -p 10000
-
-#######################
-
-.PHONY: dev-optimizer
-dev-optimizer: ## runs a local optimizer
-	$(GO) run cmd/optimizer/optimizer.go
 
 .PHONY: dev-portal
-dev-portal: build-portal ## runs a local portal web server
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
+dev-portal: build-portal-local ## runs a local portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
 
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
@@ -344,7 +357,7 @@ dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
 .PHONY: dev-server-backend-valve
-dev-server-backend-valve: build-server-backend ## runs a local valve server backend
+dev-server-backend-valve: build-server-backend
 	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
 
 .PHONY: dev-billing
@@ -355,56 +368,63 @@ dev-billing: build-billing ## runs a local billing service
 dev-analytics: build-analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
 
-.PHONY: dev-portal-cruncher
-dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
+.PHONY: dev-portal-cruncher-1
+dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
-.PHONY: dev-load-test
-dev-load-test: build-load-test ## runs a local load test
-	./dist/load_test
+.PHONY: dev-portal-cruncher-2
+dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
+	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
-	$(GO) run reference/backend/*.go
+	$(GO) run reference/backend/backend.go
 
 .PHONY: dev-reference-relay
 dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
-.PHONY: dev-server
-dev-server: build-sdk build-server  ## runs a local server
-	@./dist/server
+.PHONY: dev-mock-relay
+dev-mock-relay: ## runs a local mock relay
+	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
+	./dist/mock_relay
 
 .PHONY: dev-client
 dev-client: build-client  ## runs a local client
 	@./dist/client
 
 .PHONY: dev-multi-clients
-dev-multi-clients: build-client ## runs 20 local clients
-	./scripts/client-spawner.sh -n 20
+dev-multi-clients: build-client  ## runs 10 local clients
+	@./scripts/client-spawner.sh -n 10
 
-$(DIST_DIR)/$(SDKNAME).so:
+.PHONY: dev-server
+dev-server: build-sdk build-server  ## runs a local server
+	@./dist/server
+
+.PHONY: dev-api
+dev-api: build-api ## runs a local api endpoint service
+	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
+
+.PHONY: dev-vanity
+dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
+	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
+
+$(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
-	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/next.cpp ./sdk/source/next_ios.cpp ./sdk/source/next_linux.cpp ./sdk/source/next_mac.cpp ./sdk/source/next_ps4.cpp ./sdk/source/next_switch.cpp ./sdk/source/next_windows.cpp ./sdk/source/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk
-build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
-
-PHONY: build-load-test
-build-load-test: ## builds the load test binary
-	@printf "Building load test... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load-test ./cmd/load_test/load_tests.go
-	@printf "done\n"
+build-sdk: $(DIST_DIR)/$(SDKNAME).so
 
 PHONY: build-portal-cruncher
-build-portal-cruncher: ## builds the portal_cruncher binary
+build-portal-cruncher:
 	@printf "Building portal_cruncher... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
 	@printf "done\n"
 
 .PHONY: build-portal
-build-portal: ## builds the portal binary
+build-portal:
 	@printf "Building portal... \n"
 	@printf "TIMESTAMP: ${TIMESTAMP}\n"
 	@printf "SHA: ${SHA}\n"
@@ -413,282 +433,324 @@ build-portal: ## builds the portal binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
-.PHONY: deploy-portal
-deploy-portal: ## builds and deploys the portal to dev
-	@printf "Deploying portal to dev... \n\n"
-	gcloud compute --project "network-next-v3-dev" ssh portal-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a portal.dev.tar.gz'
+.PHONY: build-portal-local
+build-portal-local:
+	@printf "Building portal... \n"
+	@printf "TIMESTAMP: ${TIMESTAMP}\n"
+	@printf "SHA: ${SHA}\n"
+	@printf "RELEASE: ${RELEASE}\n"
+	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
+	@gsutil cp $(ARTIFACT_BUCKET_PROD)/portal-dist.local.tar.gz $(PORTAL_DIR)/portal-dist.local.tar.gz
+	@$(TAR) -xvf $(PORTAL_DIR)/portal-dist.local.tar.gz --directory $(PORTAL_DIR)
+	@rm -fr $(PORTAL_DIR)/portal-dist.local.tar.gz
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@printf "done\n"
 
 .PHONY: build-relay-backend
-build-relay-backend: ## builds the relay backend binary
+build-relay-backend:
 	@printf "Building relay backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
-.PHONY: deploy-relay-backend-dev
-deploy-relay-backend-dev: ## builds and deploys the relay backend to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -b gs://development_artifacts
-
-.PHONY: deploy-portal-cruncher-dev
-deploy-portal-cruncher-dev: ## builds and deploys the portal cruncher to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -b gs://development_artifacts
-
-.PHONY: deploy-relay-backend-staging
-deploy-relay-backend-staging: ## builds and deploys the relay backend to prod
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -b gs://staging_artifacts
-
-.PHONY: deploy-portal-cruncher-staging
-deploy-portal-cruncher-staging: ## builds and deploys the server backend to staging
-	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -b gs://staging_artifacts
-
-.PHONY: deploy-relay-backend-prod
-deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -b gs://prod_artifacts
-
-.PHONY: deploy-portal-cruncher-prod
-deploy-portal-cruncher-prod: ## builds and deploys the portal cruncher to prod
-	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -b gs://prod_artifacts
-
 .PHONY: build-server-backend
-build-server-backend: ## builds the server backend binary
+build-server-backend:
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-billing
-build-billing: ## builds the billing binary
+build-billing:
 	@printf "Building billing... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
-.PHONY: deploy-server-backend-dev-1
-deploy-server-backend-dev-1: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t server-backend -b gs://development_artifacts
-
-.PHONY: deploy-server-backend-dev-2
-deploy-server-backend-dev-2: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e dev -c dev-2 -t server-backend -b gs://development_artifacts
-
-.PHONY: deploy-server-backend-staging
-deploy-server-backend-staging: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e staging -c staging-1 -t server-backend -b gs://staging_artifacts
-
-.PHONY: build-analytics
-build-analytics: ## builds the analytics binary
-	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+.PHONY: build-api
+build-api: dist
+	@printf "Building api... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
 	@printf "done\n"
 
-.PHONY: deploy-server-backend-psyonix
-deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
-	./deploy/deploy.sh -e prod -c psyonix -t server-backend -b gs://prod_artifacts
+.PHONY: build-vanity
+build-vanity: dist
+	@printf "Building vanity metrics ..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
+	@printf "done\n"
 
-.PHONY: deploy-server-backend-liquidbit
-deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
-	./deploy/deploy.sh -e prod -c prod-42rz -t server-backend -b gs://prod_artifacts
+.PHONY: deploy-relay-backend-dev
+deploy-relay-backend-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
 
-.PHONY: deploy-server-backend-valve
-deploy-server-backend-valve: ## builds and deploys the server backend to valve
-	./deploy/deploy.sh -e prod -c valve-r57d -t server-backend -b gs://prod_artifacts
+.PHONY: deploy-portal-crunchers-dev
+deploy-portal-crunchers-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 
-.PHONY: deploy-server-backend-velan
-deploy-server-backend-velan: ## builds and deploys the server backend to velan
-	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -b gs://prod_artifacts
+.PHONY: deploy-relay-backend-staging
+deploy-relay-backend-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
 
-.PHONY: deploy-server-backend-esl
-deploy-server-backend-esl: ## builds and deploys the server backend to esl
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -b gs://prod_artifacts
+.PHONY: deploy-portal-crunchers-staging
+deploy-portal-crunchers-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-2 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
+
+.PHONY: deploy-relay-backend-prod
+deploy-relay-backend-prod:
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
+
+.PHONY: deploy-portal-crunchers-prod
+deploy-portal-crunchers-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
-build-load-test-server-artifacts: build-load-test-server ## builds the load test artifacts staging
+build-load-test-server-artifacts: build-load-test-server
 	./deploy/build-load-test-artifacts.sh -s load_test_server
 
 .PHONY: build-load-test-client-artifacts
-build-load-test-client-artifacts: build-load-test-client ## builds the load test artifacts staging
+build-load-test-client-artifacts: build-load-test-client
 	./deploy/build-load-test-artifacts.sh -s load_test_client
 
 .PHONY: build-billing-artifacts-dev
-build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
+build-billing-artifacts-dev: build-billing
 	./deploy/build-artifacts.sh -e dev -s billing
 
 .PHONY: build-analytics-artifacts-dev
-build-analytics-artifacts-dev: build-analytics ## builds the analytics service and creates the dev artifact
+build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
+.PHONY: build-api-artifacts-dev
+build-api-artifacts-dev: build-api
+	./deploy/build-artifacts.sh -e dev -s api
+
+.PHONY: build-vanity-artifacts-dev
+build-vanity-artifacts-dev: build-vanity
+	./deploy/build-artifacts.sh -e dev -s vanity
+
 .PHONY: build-relay-artifacts-dev
-build-relay-artifacts-dev: build-relay ## builds the relay artifacts dev
+build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
 
 .PHONY: build-portal-artifacts-dev
-build-portal-artifacts-dev: build-portal ## builds the portal artifacts dev
-	./deploy/build-artifacts.sh -e dev -s portal
+build-portal-artifacts-dev: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
+
+.PHONY: build-portal-artifacts-dev-old
+build-portal-artifacts-dev-old: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-old -b $(ARTIFACT_BUCKET)
 
 .PHONY: build-portal-cruncher-artifacts-dev
-build-portal-cruncher-artifacts-dev: build-portal-cruncher ## builds the portal cruncher artifacts dev
+build-portal-cruncher-artifacts-dev: build-portal-cruncher
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-dev
-build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backend artifacts dev
+build-relay-backend-artifacts-dev: build-relay-backend
 	./deploy/build-artifacts.sh -e dev -s relay_backend
 
 .PHONY: build-server-backend-artifacts-dev
-build-server-backend-artifacts-dev: build-server-backend ## builds the server backend artifacts dev
-	./deploy/build-artifacts.sh -e dev -s server-backend
+build-server-backend-artifacts-dev: build-server-backend
+	./deploy/build-artifacts.sh -e dev -s server_backend
 
 .PHONY: build-billing-artifacts-staging
-build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
+build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
 
 .PHONY: build-analytics-artifacts-staging
-build-analytics-artifacts-staging: build-analytics ## builds the analytics service and creates the prod artifact
+build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
 
+.PHONY: build-api-artifacts-staging
+build-api-artifacts-staging: build-api
+	./deploy/build-artifacts.sh -e staging -s api
+
+.PHONY: build-vanity-artifacts-staging
+build-vanity-artifacts-staging: build-vanity
+	./deploy/build-artifacts.sh -e staging -s vanity
+
 .PHONY: build-relay-artifacts-staging
-build-relay-artifacts-staging: build-relay ## builds the relay artifacts staging
+build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
 
 .PHONY: build-portal-artifacts-staging
-build-portal-artifacts-staging: build-portal ## builds the portal artifacts staging
-	./deploy/build-artifacts.sh -e staging -s portal
+build-portal-artifacts-staging: build-portal
+	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
 
 .PHONY: build-relay-backend-artifacts-staging
-build-relay-backend-artifacts-staging: build-relay-backend ## builds the relay backend artifacts staging
+build-relay-backend-artifacts-staging: build-relay-backend
 	./deploy/build-artifacts.sh -e staging -s relay_backend
 
 .PHONY: build-portal-cruncher-artifacts-staging
-build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the portal cruncher artifacts staging
+build-portal-cruncher-artifacts-staging: build-portal-cruncher
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
-.PHONY: build-load-test-artifacts-staging
-build-load-test-artifacts-staging: build-load-test ## builds the load test artifacts staging
-	./deploy/build-artifacts.sh -e staging -s load-test
-
 .PHONY: build-server-backend-artifacts-staging
-build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
-	./deploy/build-artifacts.sh -e staging -s server-backend
+build-server-backend-artifacts-staging: build-server-backend
+	./deploy/build-artifacts.sh -e staging -s server_backend
 
 .PHONY: build-billing-artifacts-prod
-build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
+build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
 
 .PHONY: build-analytics-artifacts-prod
-build-analytics-artifacts-prod: build-analytics ## builds the analytics service and creates the prod artifact
+build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
 
+.PHONY: build-api-artifacts-prod
+build-api-artifacts-prod: build-api
+	./deploy/build-artifacts.sh -e prod -s api
+
+.PHONY: build-vanity-artifacts-prod
+build-vanity-artifacts-prod: build-vanity
+	./deploy/build-artifacts.sh -e prod -s vanity
+
 .PHONY: build-relay-artifacts-prod
-build-relay-artifacts-prod: build-relay ## builds the relay artifacts prod
+build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
 
 .PHONY: build-portal-artifacts-prod
-build-portal-artifacts-prod: build-portal ## builds the portal artifacts prod
-	./deploy/build-artifacts.sh -e prod -s portal
+build-portal-artifacts-prod: build-portal
+	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
 
 .PHONY: build-portal-cruncher-artifacts-prod
-build-portal-cruncher-artifacts-prod: build-portal-cruncher ## builds the portal cruncher artifacts prod
+build-portal-cruncher-artifacts-prod: build-portal-cruncher
 	./deploy/build-artifacts.sh -e prod -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-prod
-build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay backend artifacts prod
+build-relay-backend-artifacts-prod: build-relay-backend
 	./deploy/build-artifacts.sh -e prod -s relay_backend
 
 .PHONY: build-server-backend-artifacts-prod
-build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
-	./deploy/build-artifacts.sh -e prod -s server-backend
+build-server-backend-artifacts-prod: build-server-backend
+	./deploy/build-artifacts.sh -e prod -s server_backend
 
 .PHONY: publish-billing-artifacts-dev
-publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
+publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
 
 .PHONY: publish-analytics-artifacts-dev
-publish-analytics-artifacts-dev: ## publishes the analytics dev artifact
+publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
 
+.PHONY: publish-api-artifacts-dev
+publish-api-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s api
+
+.PHONY: publish-vanity-artifacts-dev
+publish-vanity-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s vanity
+
 .PHONY: publish-relay-artifacts-dev
-publish-relay-artifacts-dev: ## publishes the relay artifacts to GCP Storage with gsutil dev
+publish-relay-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
 
 .PHONY: publish-portal-artifacts-dev
-publish-portal-artifacts-dev: ## publishes the portal artifacts to GCP Storage with gsutil dev
+publish-portal-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
 
+.PHONY: publish-portal-artifacts-dev-test
+publish-portal-artifacts-dev-test:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
+
 .PHONY: publish-portal-cruncher-artifacts-dev
-publish-portal-cruncher-artifacts-dev: ## publishes the portal cruncher artifacts to GCP Storage with gsutil dev
+publish-portal-cruncher-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
 
 .PHONY: publish-relay-backend-artifacts-dev
-publish-relay-backend-artifacts-dev: ## publishes the relay backend artifacts to GCP Storage with gsutil dev
+publish-relay-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_backend
 
 .PHONY: publish-server-backend-artifacts-dev
-publish-server-backend-artifacts-dev: ## publishes the server backend artifacts to GCP Storage with gsutil dev
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server-backend
+publish-server-backend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
 .PHONY: publish-billing-artifacts-staging
-publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
+publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
 
 .PHONY: publish-analytics-artifacts-staging
-publish-analytics-artifacts-staging: ## publishes the analytics staging artifact
+publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
 
+.PHONY: publish-api-artifacts-staging
+publish-api-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s api
+
+.PHONY: publish-vanity-artifacts-staging
+publish-vanity-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s vanity
+
 .PHONY: publish-relay-artifacts-staging
-publish-relay-artifacts-staging: ## publishes the relay artifacts to GCP Storage with gsutil staging
+publish-relay-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
 
 .PHONY: publish-portal-artifacts-staging
-publish-portal-artifacts-staging: ## publishes the portal artifacts to GCP Storage with gsutil staging
+publish-portal-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
 
 .PHONY: publish-portal-cruncher-artifacts-staging
-publish-portal-cruncher-artifacts-staging: ## publishes the portal cruncher artifacts to GCP Storage with gsutil staging
+publish-portal-cruncher-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
 
-.PHONY: publish-load-test-artifacts-staging
-publish-load-test-artifacts-staging: ## publishes the load test artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test
-
 .PHONY: publish-relay-backend-artifacts-staging
-publish-relay-backend-artifacts-staging: ## publishes the relay backend artifacts to GCP Storage with gsutil staging
+publish-relay-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_backend
 
 .PHONY: publish-server-backend-artifacts-staging
-publish-server-backend-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server-backend
+publish-server-backend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
 
 .PHONY: publish-load-test-server-artifacts
-publish-load-test-server-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
+publish-load-test-server-artifacts:
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server
 
 .PHONY: publish-load-test-client-artifacts
-publish-load-test-client-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
+publish-load-test-client-artifacts:
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
 
+.PHONY: publish-load-test-server-list
+publish-load-test-server-list:
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s staging_servers.txt
+
 .PHONY: publish-billing-artifacts-prod
-publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
+publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
 
+.PHONY: publish-api-artifacts-prod
+publish-api-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s api
+
+.PHONY: publish-vanity-artifacts-prod
+publish-vanity-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s vanity
+
 .PHONY: publish-analytics-artifacts-prod
-publish-analytics-artifacts-prod: ## publishes the analytics prod artifact
+publish-analytics-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
 
 .PHONY: publish-relay-artifacts-prod
-publish-relay-artifacts-prod: ## publishes the relay artifacts to GCP Storage with gsutil prod
+publish-relay-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
 
 .PHONY: publish-portal-artifacts-prod
-publish-portal-artifacts-prod: ## publishes the portal artifacts to GCP Storage with gsutil prod
+publish-portal-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
 
 .PHONY: publish-portal-cruncher-artifacts-prod
-publish-portal-cruncher-artifacts-prod: ## publishes the portal cruncher artifacts to GCP Storage with gsutil prod
+publish-portal-cruncher-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
 
 .PHONY: publish-relay-backend-artifacts-prod
-publish-relay-backend-artifacts-prod: ## publishes the relay backend artifacts to GCP Storage with gsutil prod
+publish-relay-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_backend
 
 .PHONY: publish-server-backend-artifacts-prod
-publish-server-backend-artifacts-prod: ## publishes the server backend artifacts to GCP Storage with gsutil prod
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server-backend
+publish-server-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
+
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -709,31 +771,19 @@ publish-bootstrap-script-prod:
 	@printf "done\n"
 
 .PHONY: build-server
-build-server: build-sdk ## builds the server
+build-server: build-sdk
 	@printf "Building server... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-load-test-server
-build-load-test-server: build-sdk ## builds the load test server binary
-	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
-	@printf "done\n"
-
 .PHONY: build-functional-server
-build-functional-server:
+build-functional-server: build-sdk
 	@printf "Building functional server... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-load-test-client
-build-load-test-client: build-sdk ## builds the load test client binary
-	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
-	@printf "done\n"
-
 .PHONY: build-functional-client
-build-functional-client:
+build-functional-client: build-sdk
 	@printf "Building functional client... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
@@ -742,27 +792,273 @@ build-functional-client:
 build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
 .PHONY: build-client
-build-client: build-sdk ## builds the client
+build-client: build-sdk
 	@printf "Building client... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
-build-next: ## builds the operator tool
+build-next:
 	@printf "Building operator tool... "
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
 	@printf "done\n"
 
+
+#######################
+#     Ghost Army      #
+#######################
+
+.PHONY: dev-ghost-army
+dev-ghost-army: build-ghost-army ## runs a local ghost army
+	@./dist/ghost_army
+
+.PHONY: build-ghost-army
+build-ghost-army:
+	@printf "Building ghost army... "
+	@$(GO) build -o ./dist/ghost_army ./cmd/ghost_army/*.go
+	@printf "done\n"
+
+.PHONY: build-ghost-army-generator
+build-ghost-army-generator:
+	@printf "Building ghost army generator... "
+	@$(GO) build -o ./dist/ghost_army_generator ./cmd/ghost_army_generator/*.go
+	@printf "done\n"
+
+.PHONY: build-ghost-army-analyzer
+build-ghost-army-analyzer:
+	@printf "Building ghost army analyzer... "
+	@$(GO) build -o ./dist/ghost_army_analyzer ./cmd/ghost_army_analyzer/*.go
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-dev
+publish-ghost-army-bootstrap-script-dev:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-staging
+publish-ghost-army-bootstrap-script-staging:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-prod
+publish-ghost-army-bootstrap-script-prod:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: build-ghost-army-artifacts-dev
+build-ghost-army-artifacts-dev: build-ghost-army
+	./deploy/build-artifacts.sh -e dev -s ghost_army
+
+.PHONY: build-ghost-army-artifacts-staging
+build-ghost-army-artifacts-staging: build-ghost-army
+	./deploy/build-artifacts.sh -e staging -s ghost_army
+
+.PHONY: build-ghost-army-artifacts-prod
+build-ghost-army-artifacts-prod: build-ghost-army
+	./deploy/build-artifacts.sh -e prod -s ghost_army
+
+.PHONY: publish-ghost-army-artifacts-dev
+publish-ghost-army-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
+
+.PHONY: publish-ghost-army-artifacts-staging
+publish-ghost-army-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
+
+.PHONY: publish-ghost-army-artifacts-prod
+publish-ghost-army-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
+
+.PHONY: deploy-ghost-army-dev
+deploy-ghost-army-dev:
+	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
+
+.PHONY: deploy-ghost-army-staging
+deploy-ghost-army-staging:
+	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
+
+.PHONY: deploy-ghost-army-prod
+deploy-ghost-army-prod:
+	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
+
+#######################
+#    Relay Gateway    #
+#######################
+
+.PHONY: dev-relay-gateway
+dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+	@PORT=30001 ./dist/relay_gateway
+
+.PHONY: build-relay-gateway
+build-relay-gateway:
+	@printf "Building relay gateway... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
+	@printf "done\n"
+
+.PHONY: build-relay-gateway-artifacts-dev
+build-relay-gateway-artifacts-dev: build-relay-gateway
+	./deploy/build-artifacts.sh -e dev -s relay_gateway
+
+.PHONY: build-relay-gateway-artifacts-staging
+build-relay-gateway-artifacts-staging: build-relay-gateway
+	./deploy/build-artifacts.sh -e staging -s relay_gateway
+
+.PHONY: build-relay-gateway-artifacts-prod
+build-relay-gateway-artifacts-prod: build-relay-gateway
+	./deploy/build-artifacts.sh -e prod -s relay_gateway
+
+.PHONY: publish-relay-gateway-artifacts-dev
+publish-relay-gateway-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
+
+.PHONY: publish-relay-gateway-artifacts-staging
+publish-relay-gateway-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
+
+.PHONY: publish-relay-gateway-artifacts-prod
+publish-relay-gateway-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
+
+#######################
+#     Optimizer       #
+#######################
+
+.PHONY: dev-optimizer
+dev-optimizer: build-optimizer ## runs a local optimizer
+	@PORT=30005 ./dist/optimizer
+
+.PHONY: build-optimizer
+build-optimizer:
+	@printf "Building Optimizer... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
+	@printf "done\n"
+
+.PHONY: build-optimizer-artifacts-dev
+build-optimizer-artifacts-dev: build-optimizer
+	./deploy/build-artifacts.sh -e dev -s optimizer
+
+.PHONY: build-optimizer-artifacts-staging
+build-optimizer-artifacts-staging: build-optimizer
+	./deploy/build-artifacts.sh -e staging -s optimizer
+
+.PHONY: build-optimizer-artifacts-prod
+build-optimizer-artifacts-prod: build-optimizer
+	./deploy/build-artifacts.sh -e prod -s optimizer
+
+.PHONY: deploy-optimizer-dev
+deploy-optimizer-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t optimizer -n optimizer -b gs://development_artifacts
+
+.PHONY: deploy-optimizer-staging
+deploy-optimizer-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t optimizer -n optimizer -b gs://staging_artifacts
+
+.PHONY: deploy-optimizer-prod
+deploy-optimizer-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t optimizer -n optimizer -b gs://prod_artifacts
+
+.PHONY: publish-optimizer-artifacts-dev
+publish-optimizer-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s optimizer
+
+.PHONY: publish-optimizer-artifacts-staging
+publish-optimizer-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s optimizer
+
+.PHONY: publish-optimizer-artifacts-prod
+publish-optimizer-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s optimizer
+
+#######################
+#Route Matrix Selector#
+#######################
+
+.PHONY: dev-route-matrix-selector
+dev-route-matrix-selector: build-route-matrix-selector ## runs a local route matrix selector
+	@PORT=30010 ./dist/route_matrix_selector
+
+.PHONY: build-route-matrix-selector
+build-route-matrix-selector:
+	@printf "Building Route Matrix Selector... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/route_matrix_selector ./cmd/route_matrix_selector/route_matrix.go
+	@printf "done\n"
+
+.PHONY: build-route-matrix-selector-artifacts-dev
+build-route-matrix-selector-artifacts-dev: build-route-matrix-selector
+	./deploy/build-artifacts.sh -e dev -s route_matrix_selector
+
+.PHONY: build-route-matrix-selector-artifacts-staging
+build-route-matrix-selector-artifacts-staging: build-route-matrix-selector
+	./deploy/build-artifacts.sh -e staging -s route_matrix_selector
+
+.PHONY: build-route-matrix-selector-artifacts-prod
+build-route-matrix-selector-artifacts-prod: build-route-matrix-selector
+	./deploy/build-artifacts.sh -e prod -s route_matrix_selector
+
+.PHONY: publish-route-matrix-selector-artifacts-dev
+publish-route-matrix-selector-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s route_matrix_selector
+
+.PHONY: publish-route-matrix-selector-artifacts-staging
+publish-route-matrix-selector-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s route_matrix_selector
+
+.PHONY: publish-route-matrix-selector-artifacts-prod
+publish-route-matrix-selector-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s route_matrix_selector
+
+
+#######################
+# Relay Build Process #
+#######################
+
+RELAY_DIR := ./relay
+RELAY_MAKEFILE := Makefile
+RELAY_EXE := relay
+
+.PHONY: build-relay-ref
+build-relay-ref:
+	@printf "Building reference relay... "
+	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-relay
+build-relay:
+	@printf "Building relay... "
+	@mkdir -p $(DIST_DIR)
+	@cd $(RELAY_DIR) && $(MAKE) release
+	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)
+	@echo "done"
+
+.PHONY: dev-relay
+dev-relay: build-relay ## runs a local relay
+	@$(DIST_DIR)/$(RELAY_EXE)
+
+.PHONY: dev-multi-relays
+dev-multi-relays: build-relay ## runs 10 local relays
+	./scripts/relay-spawner.sh -n 10 -p 10000
+
+#######################
+
+.PHONY: format
+format:
+	@$(GOFMT) -s -w .
+	@printf "\n"
+
 .PHONY: build-all
-build-all: build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
-rebuild-all: clean build-all
+rebuild-all: clean build-all ## rebuilds everything
 
 .PHONY: update-sdk
-update-sdk: ## updates the sdk submodule
-	git submodule update --remote --merge
+update-sdk:
+	git submodule update --remote --merge sdk
 
-.PHONY: sync
-sync: ## syncs to latest code including submodules
-	git pull && git submodule update --recursive
+.PHONY: clean
+clean: ## cleans everything
+	@rm -fr $(DIST_DIR)
+	@mkdir $(DIST_DIR)

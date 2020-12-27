@@ -135,10 +135,6 @@ AuthHandler = {
 		}, 30);
 	},
 	signUp() {
-    window.location.hostname === 'portal.networknext.com' ? gtag('event', 'clicked sign up', {
-      'event_category': 'Account Creation',
-      'event_label': 'Sign up'
-    }) : null
 		setTimeout(() => {
 			this.auth0Client.loginWithRedirect({
 				connection: "Username-Password-Authentication",
@@ -469,13 +465,6 @@ UserHandler = {
 				this.userInfo.company = response.account.company_name;
         this.userInfo.roles = response.account.roles;
 
-        if (AuthHandler.isSignupRedirect && window.location.hostname === 'portal.networknext.com') {
-          gtag('event', 'successful sign up', {
-            'event_category': 'Account Creation',
-            'event_label': 'Redirect after sign up'
-          })
-        }
-
 				if (AuthHandler.isSignupRedirect && !UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
 					JSONRPCClient
 						.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
@@ -588,7 +577,7 @@ WorkspaceHandler = {
 				this.loadSessionsPage();
 				break;
 			case 'sessionTool':
-				let id = options || '';
+        let id = options || '';
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					danger: false,
 					id: id,
@@ -1216,7 +1205,6 @@ function createVueComponents() {
 		},
 		methods: {
       addUsers: addUsers,
-      gtag: gtag,
 			saveAutoSignIn: saveAutoSignIn,
 			updatePubKey: updatePubKey,
 		}

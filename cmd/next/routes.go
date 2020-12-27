@@ -6,8 +6,8 @@ import (
 	"sort"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -27,8 +27,8 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 
 	for _, route := range reply.Routes {
 		fmt.Printf("RTT(%v) ", route.Stats.RTT)
-		for _, relay := range route.Relays {
-			fmt.Print(relay.Name, " ")
+		for _, relayName := range route.RelayNames {
+			fmt.Print(relayName, " ")
 		}
 		fmt.Println()
 	}
@@ -58,7 +58,7 @@ func viewCostMatrix(inputFile string) {
 			secondRelayName := costMatrix.RelayNames[j]
 
 			ijIndex := routing.TriMatrixIndex(i, j)
-			rtt := costMatrix.RTT[ijIndex]
+			rtt := costMatrix.Costs[ijIndex]
 
 			entries = append(entries, struct {
 				FirstRelayName  string
@@ -102,14 +102,18 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 	}
 
 	var displayCount int
-	for _, entry := range routeMatrix.Entries {
-		directRTT := entry.DirectRTT
+	for _, entry := range routeMatrix.RouteEntries {
+		directRTT := entry.DirectCost
 		numRoutes := entry.NumRoutes
 
 		displayEntries := []struct {
 			IndirectRTT int32
 			Relays      string
 		}{}
+
+		if entry.NumRoutes == 0 {
+			continue
+		}
 
 		if len(entry.RouteNumRelays) == 0 {
 			handleRunTimeError(fmt.Sprintln("RouteNumRelays empty or nil"), 0)
@@ -135,7 +139,7 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 		}
 
 		for i := int32(0); i < numRoutes; i++ {
-			rtt := entry.RouteRTT[i]
+			rtt := entry.RouteCost[i]
 			numRelays := entry.RouteNumRelays[i]
 
 			var relays string
@@ -167,5 +171,5 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 		displayCount++
 	}
 
-	fmt.Printf("\n%d Entries, showing %d\n", len(routeMatrix.Entries), displayCount)
+	fmt.Printf("\n%d Entries, showing %d\n", len(routeMatrix.RouteEntries), displayCount)
 }

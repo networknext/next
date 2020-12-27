@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -16,21 +14,21 @@ func opsMRC(rpcClient jsonrpc.RPCClient,
 	mrcUSD float64,
 ) {
 
-	var relay routing.Relay
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	var relayID uint64
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	relay.MRC = routing.CentsToNibblins(mrcUSD * 100)
-
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "MRC",
+		Value:   mrcUSD,
 	}
 
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -45,21 +43,21 @@ func opsOverage(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	overageUSD float64,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	relay.Overage = routing.CentsToNibblins(overageUSD * 100)
-
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "Overage",
+		Value:   overageUSD,
 	}
 
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -73,34 +71,34 @@ func opsBWRule(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	rule string,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	var bwRule routing.BandWidthRule
+	var bwRule int32
 	switch rule {
 	case "pool":
-		bwRule = routing.BWRulePool
+		bwRule = 3
 	case "burst":
-		bwRule = routing.BWRuleBurst
+		bwRule = 2
 	case "flat":
-		bwRule = routing.BWRuleFlat
+		bwRule = 1
 	case "none":
-		bwRule = routing.BWRuleNone
+		bwRule = 0
 	default:
 		handleRunTimeError(fmt.Sprintln("Bandwidth rule must be one of pool, burst, flat or none."), 0)
 	}
-	relay.BWRule = bwRule
 
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "BWRule",
+		Value:   bwRule,
 	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -114,21 +112,20 @@ func opsTerm(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	months int32,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	relay.ContractTerm = months
-
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "ContractTerm",
+		Value:   months,
 	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -143,25 +140,20 @@ func opsStartDate(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	startDate string,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	var err error
-	relay.StartDate, err = time.Parse("January 2, 2006", startDate)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", startDate), 0)
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "StartDate",
+		Value:   startDate,
 	}
-
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
-	}
-
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -175,25 +167,21 @@ func opsEndDate(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	endDate string,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	var err error
-	relay.EndDate, err = time.Parse("January 2, 2006", endDate)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", endDate), 0)
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "EndDate",
+		Value:   endDate,
 	}
 
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
-	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -207,32 +195,33 @@ func opsType(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	machineType string,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	var serverType routing.MachineType
+	var serverType int32
 	switch machineType {
 	case "bare":
-		serverType = routing.BareMetal
+		serverType = 1
 	case "vm":
-		serverType = routing.VirtualMachine
+		serverType = 2
 	case "none":
-		serverType = routing.NoneSpecified
+		serverType = 0
 	default:
 		handleRunTimeError(fmt.Sprintln("machine type must be one of bare, vm or none."), 0)
 	}
-	relay.Type = serverType
 
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "Type",
+		Value:   serverType,
 	}
 
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -246,21 +235,21 @@ func opsBandwidth(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	bw int32,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	relay.IncludedBandwidthGB = bw
-
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "IncludedBandwidthGB",
+		Value:   bw,
 	}
 
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -275,21 +264,21 @@ func opsNic(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	nic int32,
 ) {
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	relay.NICSpeedMbps = nic
-
-	args := localjsonrpc.RelayMetadataArgs{
-		Relay: relay,
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "NICSpeedMbps",
+		Value:   nic,
 	}
 
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -299,7 +288,236 @@ func opsNic(rpcClient jsonrpc.RPCClient,
 
 }
 
-func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (routing.Relay, bool) {
+func opsExternalAddr(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	addr string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "Addr",
+		Value:   addr,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay external address successfully updated.")
+	return
+
+}
+
+func opsManagementAddr(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	addr string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "ManagementAddr",
+		Value:   addr,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay management address successfully updated.")
+	return
+
+}
+
+func opsSSHUser(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	username string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "SSHUser",
+		Value:   username,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay SSH user name successfully updated.")
+	return
+
+}
+
+func opsSSHPort(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	port int64,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "SSHPort",
+		Value:   port,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay SSH port number successfully updated.")
+	return
+
+}
+
+func opsMaxSessions(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	sessions int64,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "SSHPort",
+		Value:   sessions,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay max sessions value successfully updated.")
+	return
+
+}
+
+func opsInternalAddr(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	addr string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "InternalAddr",
+		Value:   addr,
+	}
+
+	var reply localjsonrpc.UpdateRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Relay internal IP address successfully updated.")
+	return
+
+}
+
+func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+) {
+	var relayID uint64
+	var ok bool
+	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	args := localjsonrpc.GetRelayArgs{
+		RelayID: relayID,
+	}
+
+	var reply localjsonrpc.GetRelayReply
+	if err := rpcClient.CallFor(&reply, "OpsService.GetRelay", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	startDate := reply.Relay.StartDate.Format("January 1, 2006")
+	endDate := reply.Relay.EndDate.Format("January 1, 2006")
+
+	relay := "\nrelay info:\n"
+	relay += "  ID                 : " + fmt.Sprintf("%d", reply.Relay.ID) + "\n"
+	relay += "  Name               : " + reply.Relay.Name + "\n"
+	relay += "  Addr               : " + reply.Relay.Addr + "\n"
+	relay += "  InternalAddr       : " + reply.Relay.InternalAddr + "\n"
+	relay += "  PublicKey          : " + string(reply.Relay.PublicKey) + "\n"
+	relay += "  Datacenter         : " + fmt.Sprintf("%016x", reply.Relay.DatacenterID) + "\n"
+	relay += "  NICSpeedMbps       : " + fmt.Sprintf("%d", reply.Relay.NICSpeedMbps) + "\n"
+	relay += "  IncludedBandwidthGB: " + fmt.Sprintf("%d", reply.Relay.IncludedBandwidthGB) + "\n"
+	relay += "  State              : " + fmt.Sprintf("%v", reply.Relay.State) + "\n"
+	relay += "  ManagementAddr     : " + reply.Relay.ManagementAddr + "\n"
+	relay += "  SSHUser            : " + reply.Relay.SSHUser + "\n"
+	relay += "  SSHPort            : " + fmt.Sprintf("%d", reply.Relay.SSHPort) + "\n"
+	relay += "  MaxSessions        : " + fmt.Sprintf("%d", reply.Relay.MaxSessionCount) + "\n"
+	relay += "  CPUUsage           : " + fmt.Sprintf("%f", reply.Relay.CPUUsage) + "\n"
+	relay += "  MemUsage           : " + fmt.Sprintf("%f", reply.Relay.MemUsage) + "\n"
+	relay += "  MRC                : " + fmt.Sprintf("%v", reply.Relay.MRC) + "\n"
+	relay += "  Overage            : " + fmt.Sprintf("%v", reply.Relay.Overage) + "\n"
+	relay += "  BWRule             : " + fmt.Sprintf("%v", reply.Relay.BWRule) + "\n"
+	relay += "  ContractTerm       : " + fmt.Sprintf("%d", reply.Relay.ContractTerm) + "\n"
+	relay += "  StartDate          : " + startDate + "\n"
+	relay += "  EndDate            : " + endDate + "\n"
+	relay += "  Type               : " + fmt.Sprintf("%v", reply.Relay.Type) + "\n"
+	relay += "  DatabaseID         : " + fmt.Sprintf("%d", reply.Relay.DatabaseID) + "\n"
+
+	fmt.Printf("%s\n", relay)
+
+	return
+
+}
+
+func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (uint64, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -308,7 +526,7 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 	err := rpcClient.CallFor(&reply, "OpsService.Relays", args)
 	if err != nil {
 		handleJSONRPCError(env, err)
-		return routing.Relay{}, false
+		return 0, false
 	}
 
 	if len(reply.Relays) == 0 {
@@ -317,19 +535,6 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 		handleRunTimeError(fmt.Sprintf("'%s' returned more than one relay - please be more specific.", regex), 0)
 	}
 
-	replyRelay := routing.Relay{
-		ID:           reply.Relays[0].ID,
-		Name:         reply.Relays[0].Name,
-		FirestoreID:  reply.Relays[0].FirestoreID,
-		MRC:          reply.Relays[0].MRC,
-		Overage:      reply.Relays[0].Overage,
-		BWRule:       reply.Relays[0].BWRule,
-		ContractTerm: reply.Relays[0].ContractTerm,
-		StartDate:    reply.Relays[0].StartDate,
-		EndDate:      reply.Relays[0].EndDate,
-		Type:         reply.Relays[0].Type,
-	}
-
-	return replyRelay, true
+	return reply.Relays[0].ID, true
 
 }

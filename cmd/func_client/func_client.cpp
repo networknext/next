@@ -1,4 +1,4 @@
-/*
+ /*
     Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -29,29 +29,54 @@
 
 static volatile int quit = 0;
 
+static uint8_t client_id[32];
+
+extern void next_random_bytes( uint8_t * buffer, int bytes );
+
 void interrupt_handler( int signal )
 {
     (void) signal; quit = 1;
 }
 
-void generate_packet( uint8_t * packet_data, int & packet_bytes )
+void generate_packet( uint8_t * packet_data, int & packet_bytes, bool high_bandwidth )
 {
-    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    if ( high_bandwidth )
+    {
+        packet_bytes = NEXT_MTU;
+    }
+    else
+    {
+        packet_bytes = 32 + 1 + ( rand() % NEXT_MTU ) / 10;
+    }
+    memcpy( packet_data, client_id, 32 );
     const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-        packet_data[i] = (uint8_t) ( start + i ) % 256;
+    for ( int i = 0; i < packet_bytes - 32; ++i )
+    {
+        packet_data[32+i] = (uint8_t) ( start + i ) % 256;
+    }
 }
 
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
+    next_assert( packet_bytes >= 32 );
+    next_assert( packet_bytes <= NEXT_MTU );
     const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+    for ( int i = 0; i < packet_bytes - 32; ++i )
+    {
+        next_assert( packet_data[32+i] == (uint8_t) ( ( start + i ) % 256 ) );
+    }
 }
 
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context;
+
+    if ( packet_bytes <= 32 )
+        return;
+   
+    if ( memcmp( packet_data, client_id, 32 ) != 0 )
+        return;
+
     verify_packet( packet_data, packet_bytes );
 }
 
@@ -62,6 +87,7 @@ extern float next_fake_direct_rtt;
 extern float next_fake_next_packet_loss;
 extern float next_fake_next_rtt;
 extern bool next_packet_loss;
+extern bool next_fake_fallback_to_direct;
 
 int main()
 {
@@ -80,6 +106,13 @@ int main()
     if ( disable_network_next_env )
     {
         config.disable_network_next = true;
+    }
+
+    bool report_session = false;
+    const char * report_session_env = getenv( "CLIENT_REPORT_SESSION" );
+    if ( report_session_env )
+    {
+        report_session = true;
     }
 
     const char * fake_direct_packet_loss_env = getenv( "CLIENT_FAKE_DIRECT_PACKET_LOSS" );
@@ -122,6 +155,20 @@ int main()
         }
     }
 
+    double stop_sending_packets_time = -1.0;
+    const char * stop_sending_packets_time_env = getenv( "CLIENT_STOP_SENDING_PACKETS_TIME" );
+    if ( stop_sending_packets_time_env )
+    {
+        stop_sending_packets_time = atof( stop_sending_packets_time_env );
+    }
+
+    double fallback_to_direct_time = -1.0;
+    const char * fallback_to_direct_time_env = getenv( "CLIENT_FALLBACK_TO_DIRECT_TIME" );
+    if ( fallback_to_direct_time_env )
+    {
+        fallback_to_direct_time = atof( fallback_to_direct_time_env );
+    }
+
     next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
     if ( next_init( NULL, &config ) != NEXT_OK )
@@ -132,6 +179,8 @@ int main()
         return 1;
 
     next_client_open_session( client, "127.0.0.1:32202" );
+
+    next_random_bytes( client_id, 32 );
 
     const char * client_user_flags_env = getenv( "CLIENT_USER_FLAGS" );
     if ( client_user_flags_env )
@@ -153,10 +202,24 @@ int main()
         stop_time = atof( duration_env );
     }
 
+    bool high_bandwidth = false;
+    const char * high_bandwidth_env = getenv( "CLIENT_HIGH_BANDWIDTH" );
+    if ( high_bandwidth_env )
+    {
+        high_bandwidth = true;
+    }
+
     double time = 0.0;
     double delta_time = 1.0 / 60.0;
 
+    bool reported = false;
     bool second_connect_completed = false;
+
+    // IMPORTANT: Have to wait a bit here or the first packet will get dropped
+    // because of a race condition between the server getting set via OPEN_SESSION_COMMAND
+    // and the recvfrom for the response from the server.
+    next_client_update( client );
+    next_sleep( 0.25 );
 
     while ( stop_time < 0.0 || time < stop_time )
     {
@@ -167,6 +230,7 @@ int main()
         {
             next_client_open_session( client, connect_address );
             second_connect_completed = true;
+            next_random_bytes( client_id, 32 );
         }
 
         if ( client_user_flags_env )
@@ -176,14 +240,27 @@ int main()
 
         next_client_update( client );
 
-        uint8_t packet_data[NEXT_MTU];
-        memset( packet_data, 0, sizeof( packet_data ) );
+        if ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time )
+        {
+            uint8_t packet_data[NEXT_MTU];
+            memset( packet_data, 0, sizeof( packet_data ) );
 
-        int packet_bytes = 0;
+            int packet_bytes = 0;
+            generate_packet( packet_data, packet_bytes, high_bandwidth );
 
-        generate_packet( packet_data, packet_bytes );
+            next_client_send_packet( client, packet_data, packet_bytes );
+        }
 
-        next_client_send_packet( client, packet_data, packet_bytes );
+        if ( fallback_to_direct_time >= 0.0 && time > fallback_to_direct_time )
+        {
+            next_fake_fallback_to_direct = true;
+        }
+
+        if ( report_session && time > 30.0 && !reported )
+        {
+            next_client_report_session( client );
+            reported = true;
+        }
 
         next_sleep( delta_time );
 
