@@ -8,12 +8,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"net"
@@ -27,9 +29,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
@@ -264,12 +267,17 @@ func readJSONData(entity string, args []string) []byte {
 	} else {
 		// Read the file at the given filepath
 		if len(args) == 0 {
-			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example\n", entity, entity, entity, entity), 0)
+			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\n", entity), 0)
 		}
 
 		data, err = ioutil.ReadFile(args[0])
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error reading %s JSON file: %v\n", entity, err), 1)
+			// Can't read the file, assume it is raw json data
+			data = []byte(args[0])
+			if !json.Valid(data) {
+				// It's not valid json, so error out
+				handleRunTimeError("invalid input, not a valid filepath or valid JSON", 1)
+			}
 		}
 	}
 
@@ -309,16 +317,49 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 
 }
 
+type internalConfig struct {
+	RouteSelectThreshold       int32
+	RouteSwitchThreshold       int32
+	MaxLatencyTradeOff         int32
+	RTTVeto_Default            int32
+	RTTVeto_PacketLoss         int32
+	RTTVeto_Multipath          int32
+	MultipathOverloadThreshold int32
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int32
+	BuyerID                    string
+}
+
+type routeShader struct {
+	DisableNetworkNext        bool
+	SelectionPercent          int
+	ABTest                    bool
+	ProMode                   bool
+	ReduceLatency             bool
+	ReduceJitter              bool
+	ReducePacketLoss          bool
+	Multipath                 bool
+	AcceptableLatency         int32
+	LatencyThreshold          int32
+	AcceptablePacketLoss      float32
+	BandwidthEnvelopeUpKbps   int32
+	BandwidthEnvelopeDownKbps int32
+	BuyerID                   string
+}
+
 type buyer struct {
-	Name      string
-	Domain    string
-	Active    bool
-	Live      bool
-	PublicKey string
+	CompanyCode string
+	Live        bool
+	PublicKey   string
 }
 
 type seller struct {
 	Name                 string
+	ShortName            string
+	CompanyCode          string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
 }
@@ -326,7 +367,6 @@ type seller struct {
 type relay struct {
 	Name                string
 	Addr                string
-	PublicKey           string
 	SellerID            string
 	DatacenterName      string
 	NicSpeedMbps        uint64
@@ -337,9 +377,13 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name     string
-	Enabled  bool
-	Location routing.Location
+	Name          string
+	Enabled       bool
+	Latitude      float32
+	Longitude     float32
+	SupplierName  string
+	StreetAddress string
+	SellerID      string
 }
 
 // used to decode dcMap hex strings from json
@@ -386,9 +430,18 @@ func main() {
 	var buyersIdSigned bool
 	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
 
+	buyerfs := flag.NewFlagSet("buyers", flag.ExitOnError)
+	var csvOutput bool
+	var signedIDs bool
+	buyerfs.BoolVar(&csvOutput, "csv", false, "Send output to CSV file")
+	buyerfs.BoolVar(&signedIDs, "signed", false, "Display buyer and datacenter IDs as signed ints")
+
 	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
 	var datacenterIdSigned bool
 	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
+
+	var datacentersCSV bool
+	datacentersfs.BoolVar(&datacentersCSV, "csv", false, "Send output to CSV instead of the command line")
 
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
@@ -606,7 +659,29 @@ func main() {
 			sessions(rpcClient, env, args[0], sessionCount)
 			return nil
 		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "dump",
+				ShortUsage: "next session dump <session id>",
+				ShortHelp:  "Write all billing data for the given ID to a CSV file",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
+					}
+
+					sessionID, err := strconv.ParseUint(args[0], 16, 64)
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not convert %s to uint64", args[0]), 0)
+					}
+
+					dumpSession(rpcClient, env, sessionID)
+
+					return nil
+				},
+			},
+		},
 	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -761,7 +836,6 @@ func main() {
 					relay := &relays[0]
 
 					fmt.Printf("Public Key: %s\n", relay.publicKey)
-					fmt.Printf("Update Key: %s\n", relay.updateKey)
 
 					return nil
 				},
@@ -921,19 +995,13 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not resolve udp address %s: %v\n", relay.Addr, err), 1)
 					}
 
-					publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not decode bas64 public key %s: %v\n", relay.PublicKey, err), 1)
-					}
-
 					// Build the actual Relay struct from the input relay struct
 					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        rid,
-						SignedID:  int64(rid),
-						Name:      relay.Name,
-						Addr:      *addr,
-						PublicKey: publicKey,
+						ID:       rid,
+						SignedID: int64(rid),
+						Name:     relay.Name,
+						Addr:     *addr,
 						Seller: routing.Seller{
 							ID: relay.SellerID,
 						},
@@ -962,14 +1030,13 @@ func main() {
 							example := relay{
 								Name:                "amazon.ohio.2",
 								Addr:                "127.0.0.1:40000",
-								PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 								SellerID:            "5tCm7KjOw3EBYojLe6PC",
 								DatacenterName:      "amazon.ohio.2",
 								NicSpeedMbps:        1000,
 								IncludedBandwidthGB: 1,
 								ManagementAddr:      "127.0.0.1",
 								SSHUser:             "root",
-								SSHPort:             40000,
+								SSHPort:             22,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1012,7 +1079,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "mrc",
-						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortUsage: "next relay ops mrc <relay> <value in USD>",
 						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1031,7 +1098,7 @@ func main() {
 					},
 					{
 						Name:       "overage",
-						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortUsage: "next relay ops overage <relay> <value in USD>",
 						ShortHelp:  "Set the overage value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1169,6 +1236,120 @@ func main() {
 							return nil
 						},
 					},
+					{
+						Name:       "addr",
+						ShortUsage: "next relay ops addr <relay> <IP address:port e.g 10.1.2.34:40000>",
+						ShortHelp:  "Set the external address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
+							}
+
+							opsExternalAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "mgmt",
+						ShortUsage: "next relay ops mgmt <relay> <IP address e.g 10.1.2.34>",
+						ShortHelp:  "Set the management address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address"), 0)
+							}
+
+							opsManagementAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "sshuser",
+						ShortUsage: "next relay ops sshuser <relay> <user name>",
+						ShortHelp:  "Set the username to use for SSHing into the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a username"), 0)
+							}
+
+							opsSSHUser(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "sshport",
+						ShortUsage: "next relay ops sshport <relay> <port number>",
+						ShortHelp:  "Set the SSH port for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a port number"), 0)
+							}
+
+							port, err := strconv.ParseInt(args[1], 10, 32)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
+							}
+
+							opsSSHPort(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
+					{
+						Name:       "maxsessions",
+						ShortUsage: "next relay ops maxsessions <relay> <session count>",
+						ShortHelp:  "Set the maximum number of concurrent sessions the specified relay can support",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a session count"), 0)
+							}
+
+							port, err := strconv.ParseInt(args[1], 10, 32)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
+							}
+
+							opsMaxSessions(rpcClient, env, args[0], port)
+							return nil
+						},
+					},
+					{
+						Name:       "internaladdr",
+						ShortUsage: "next relay ops internaladdr <relay> <IP address:port e.g 10.1.2.34:40000>",
+						ShortHelp:  "Set the internal network address for the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an IP address:port"), 0)
+							}
+
+							opsInternalAddr(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:       "traffic",
+				ShortUsage: "next relay traffic [regex]",
+				ShortHelp:  "Display detailed traffic stats for the specified relays",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) > 0 {
+						relayTraffic(rpcClient, env, args[0])
+					} else {
+						relayTraffic(rpcClient, env, "")
+					}
+					return nil
+				},
+			},
+			{
+				Name:       "info",
+				ShortUsage: "next relay info [regex]",
+				ShortHelp:  "Display detailed information for the specified relay(s)",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Must provide a relay name"), 0)
+					}
+
+					getDetailedRelayInfo(rpcClient, env, args[0])
+					return nil
 				},
 			},
 		},
@@ -1210,10 +1391,10 @@ func main() {
 		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0], datacenterIdSigned)
+				datacenters(rpcClient, env, args[0], datacenterIdSigned, datacentersCSV)
 				return nil
 			}
-			datacenters(rpcClient, env, "", datacenterIdSigned)
+			datacenters(rpcClient, env, "", datacenterIdSigned, datacentersCSV)
 			return nil
 		},
 	}
@@ -1254,23 +1435,13 @@ func main() {
 					jsonData := readJSONData("datacenters", args)
 
 					// Unmarshal the JSON and create the datacenter struct
-					var datacenter datacenter
-					if err := json.Unmarshal(jsonData, &datacenter); err != nil {
+					var dc datacenter
+					if err := json.Unmarshal(jsonData, &dc); err != nil {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter: %v\n", err), 1)
 					}
 
-					// Build the actual Datacenter struct from the input datacenter struct
-					did := crypto.HashID(datacenter.Name)
-					realDatacenter := routing.Datacenter{
-						ID:       did,
-						SignedID: int64(did),
-						Name:     datacenter.Name,
-						Enabled:  datacenter.Enabled,
-						Location: datacenter.Location,
-					}
-
 					// Add the Datacenter to storage
-					addDatacenter(rpcClient, env, realDatacenter)
+					addDatacenter(rpcClient, env, dc)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -1280,9 +1451,13 @@ func main() {
 						ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							example := datacenter{
-								Name:     "amazon.ohio.2",
-								Enabled:  false,
-								Location: routing.LocationNullIsland,
+								Name:          "some.locale.1",
+								Enabled:       false,
+								Latitude:      90,
+								Longitude:     180,
+								SupplierName:  "supplier.locale.1",
+								StreetAddress: "Somewhere, Else, Earth",
+								SellerID:      "some_seller",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1292,6 +1467,7 @@ func main() {
 
 							fmt.Println("Example JSON schema to add a new datacenter:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("Note: a valid Seller ID is required to add a datacenter.")
 							return nil
 						},
 					},
@@ -1386,12 +1562,10 @@ func main() {
 
 					// Add the Buyer to storage
 					addBuyer(rpcClient, env, routing.Buyer{
-						ID:        binary.LittleEndian.Uint64(publicKey[:8]),
-						Name:      b.Name,
-						Domain:    b.Domain,
-						Active:    b.Active,
-						Live:      b.Live,
-						PublicKey: publicKey,
+						CompanyCode: b.CompanyCode,
+						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
+						Live:        b.Live,
+						PublicKey:   publicKey,
 					})
 					return nil
 				},
@@ -1402,14 +1576,16 @@ func main() {
 						ShortHelp:  "Displays an example buyer for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
 							examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
+							_, err := rand.Read(examplePublicKey)
+							if err != nil {
+								return fmt.Errorf("Error generating random buyer public key: %v", err)
+							}
 							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
 
 							example := buyer{
-								Name:      "Psyonix",
-								Domain:    "example.com",
-								Active:    true,
-								Live:      true,
-								PublicKey: examplePublicKeyString,
+								CompanyCode: "microzon",
+								Live:        true,
+								PublicKey:   examplePublicKeyString,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1419,6 +1595,7 @@ func main() {
 
 							fmt.Println("Example JSON schema to add a new buyer:")
 							fmt.Println(string(jsonBytes))
+							fmt.Println("Note: a valid company code is required to add a buyer.")
 							return nil
 						},
 					},
@@ -1441,13 +1618,14 @@ func main() {
 				Name:       "datacenters",
 				ShortUsage: "next buyer datacenters <buyer id|name|string, optional>",
 				ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
+				FlagSet:    buyerfs,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
-						datacenterMapsForBuyer(rpcClient, env, "")
+						datacenterMapsForBuyer(rpcClient, env, "", csvOutput, signedIDs)
 						return nil
 					}
 
-					datacenterMapsForBuyer(rpcClient, env, args[0])
+					datacenterMapsForBuyer(rpcClient, env, args[0], csvOutput, signedIDs)
 					return nil
 				},
 			},
@@ -1455,6 +1633,7 @@ func main() {
 				Name:       "datacenter",
 				ShortUsage: "next buyer datacenter <command>",
 				ShortHelp:  "Display and manipulate datacenters and aliases",
+				FlagSet:    buyerfs,
 				Exec: func(_ context.Context, args []string) error {
 					return flag.ErrHelp
 				},
@@ -1466,11 +1645,11 @@ func main() {
 						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								datacenterMapsForBuyer(rpcClient, env, "")
+								datacenterMapsForBuyer(rpcClient, env, "", csvOutput, signedIDs)
 								return nil
 							}
 
-							datacenterMapsForBuyer(rpcClient, env, args[0])
+							datacenterMapsForBuyer(rpcClient, env, args[0], csvOutput, signedIDs)
 							return nil
 						},
 					},
@@ -1568,6 +1747,246 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					},
 				},
 			},
+			{ // internal config
+				Name:       "config",
+				ShortUsage: "next buyer config (buyer name or substring)",
+				ShortHelp:  "Return the internal config stored for a buyer",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring"), 0)
+					} else if len(args) > 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
+					}
+
+					getInternalConfig(rpcClient, env, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{ // add config
+						Name:       "add",
+						ShortUsage: "next buyer config add (internalconfig json)",
+						ShortHelp:  "Add an internal config for the specified buyer.",
+						LongHelp:   nextBuyerConfigAddJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("InternalConfig", args)
+
+							// Unmarshal the JSON and create the Buyer struct
+							var ic internalConfig
+							if err := json.Unmarshal(jsonData, &ic); err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not unmarshal internal config: %v\n", err), 1)
+							}
+
+							buyerID, err := strconv.ParseUint(ic.BuyerID, 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", ic.BuyerID, err), 0)
+							}
+
+							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
+								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:            int32(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+								ForceNext:                  ic.ForceNext,
+								LargeCustomer:              ic.LargeCustomer,
+								Uncommitted:                ic.Uncommitted,
+								MaxRTT:                     int32(ic.MaxLatencyTradeOff),
+							})
+
+							return nil
+						},
+					},
+					{ // remove config
+						Name:       "remove",
+						ShortUsage: "next buyer config remove (buyer name or substring)",
+						ShortHelp:  "Remove the internal config for the specified buyer.",
+						Exec: func(_ context.Context, args []string) error {
+
+							removeInternalConfig(rpcClient, env, args[0])
+							return nil
+						},
+					},
+					{ // update config
+						Name:       "update",
+						ShortUsage: "next buyer config update (buyer name or substring) (field name) (value)",
+						ShortHelp:  "Update the internal config for the specified buyer.",
+						LongHelp:   nextBuyerConfigUpdateJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 3 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
+							}
+
+							updateInternalConfig(rpcClient, env, args[0], args[1], args[2])
+							return nil
+						},
+					}},
+			},
+			{ // route shader
+				Name:       "shader",
+				ShortUsage: "next buyer shader (buyer name or substring)",
+				ShortHelp:  "Return the route shader stored for a buyer",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring"), 0)
+					} else if len(args) > 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
+					}
+
+					getRouteShader(rpcClient, env, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{ // add shader
+						Name:       "add",
+						ShortUsage: "next buyer shader add (internalconfig json)",
+						ShortHelp:  "Add a route shader for the specified buyer.",
+						LongHelp:   nextBuyerShaderAddJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("RouteShader", args)
+
+							// Unmarshal the JSON and create the Buyer struct
+							var rs routeShader
+							if err := json.Unmarshal(jsonData, &rs); err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not unmarshal route shader: %v\n", err), 1)
+							}
+
+							buyerID, err := strconv.ParseUint(rs.BuyerID, 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", rs.BuyerID, err), 0)
+							}
+
+							addRouteShader(rpcClient, env, buyerID, core.RouteShader{
+								DisableNetworkNext:        rs.DisableNetworkNext,
+								SelectionPercent:          int(rs.SelectionPercent),
+								ABTest:                    rs.ABTest,
+								ProMode:                   rs.ProMode,
+								ReduceLatency:             rs.ReduceLatency,
+								ReduceJitter:              rs.ReduceJitter,
+								ReducePacketLoss:          rs.ReducePacketLoss,
+								Multipath:                 rs.Multipath,
+								AcceptableLatency:         int32(rs.AcceptableLatency),
+								LatencyThreshold:          int32(rs.LatencyThreshold),
+								AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
+								BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
+								BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
+							})
+
+							return nil
+						},
+					},
+					{ // remove shader
+						Name:       "remove",
+						ShortUsage: "next buyer shader remove (buyer name or substring)",
+						ShortHelp:  "Remove the route shader for the specified buyer.",
+						Exec: func(_ context.Context, args []string) error {
+
+							removeRouteShader(rpcClient, env, args[0])
+							return nil
+						},
+					},
+					{ // update shader
+						Name:       "update",
+						ShortUsage: "next buyer shader update (buyer name or substring) (field name) (value)",
+						ShortHelp:  "Update the route shader for the specified buyer.",
+						LongHelp:   nextBuyerShaderUpdateJSONLongHelp,
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 3 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
+							}
+
+							updateRouteShader(rpcClient, env, args[0], args[1], args[2])
+							return nil
+						},
+					},
+				},
+			},
+			{ // banned users
+				Name:       "bannedusers",
+				ShortUsage: "next buyer bannedusers (buyer name or substring)",
+				ShortHelp:  "Return the list of banned user IDs stored for a buyer",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring"), 0)
+					} else if len(args) > 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
+					}
+
+					getBannedUsers(rpcClient, env, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{ // add banned user
+						Name:       "add",
+						ShortUsage: "next buyer bannedusers add (buyer name or substring) (user ID in hex)",
+						ShortHelp:  "Add a banned user to the list for the specified buyer.",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring and the user ID in hex"), 0)
+							}
+
+							userID, err := strconv.ParseUint(args[1], 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal user ID %s into a uint64: %v", args[1], err), 0)
+							}
+
+							addBannedUser(rpcClient, env, args[0], userID)
+							return nil
+						},
+					},
+					{ // remove banned user
+						Name:       "remove",
+						ShortUsage: "next buyer bannedusers remove (buyer name or substring) (user ID in hex)",
+						ShortHelp:  "Remove a banned user from the list for the specified buyer.",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring and the user ID in hex"), 0)
+							}
+							if len(args) != 2 {
+								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring and the user ID in hex"), 0)
+							}
+
+							userID, err := strconv.ParseUint(args[1], 16, 64)
+							if err != nil {
+								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal user ID %s into a uint64: %v", args[1], err), 0)
+							}
+
+							removeBannedUser(rpcClient, env, args[0], userID)
+							return nil
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var userCommand = &ffcli.Command{
+		Name:       "user",
+		ShortUsage: "next buyer <subcommand>",
+		ShortHelp:  "Manage users",
+		FlagSet:    buyersfs,
+		Exec: func(_ context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{ // hash
+				Name:       "hash",
+				ShortUsage: "next user hash <userid>",
+				ShortHelp:  "Prints the user hash in signed int format",
+				Exec: func(_ context.Context, args []string) error {
+					userId := ""
+					if len(args) >= 1 {
+						userId = args[0]
+					}
+					hash := fnv.New64a()
+					hash.Write([]byte(userId))
+					userHash := int64(hash.Sum64())
+					fmt.Printf("user hash: \"%s\" -> %d (%x)\n", userId, userHash, uint64(userHash))
+					return nil
+				},
+			},
 		},
 	}
 
@@ -1589,6 +2008,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					// Unmarshal the JSON and create the Seller struct
 					var sellerUSD struct {
 						Name            string
+						ShortName       string
+						CompanyCode     string
 						IngressPriceUSD string
 						EgressPriceUSD  string
 					}
@@ -1610,6 +2031,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					s := seller{
 						Name:                 sellerUSD.Name,
+						ShortName:            sellerUSD.ShortName,
+						CompanyCode:          sellerUSD.ShortName,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
@@ -1618,6 +2041,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					addSeller(rpcClient, env, routing.Seller{
 						ID:                        s.Name,
 						Name:                      s.Name,
+						ShortName:                 s.ShortName,
+						CompanyCode:               s.CompanyCode,
 						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
 						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
 					})
@@ -1631,10 +2056,12 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Exec: func(_ context.Context, args []string) error {
 							example := struct {
 								Name            string
+								ShortName       string
 								IngressPriceUSD string
 								EgressPriceUSD  string
 							}{
-								Name:            "amazon",
+								Name:            "Amazon.com, Inc.",
+								ShortName:       "amazon",
 								IngressPriceUSD: "0.01",
 								EgressPriceUSD:  "0.1",
 							}
@@ -1646,7 +2073,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
-							return nil
+
 							return nil
 						},
 					},
@@ -1683,45 +2110,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "set",
-				ShortUsage: "next shader set <buyer ID> [filepath]",
-				ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers\n"), 0)
-					}
-
-					jsonData := readJSONData("buyers", args[1:])
-
-					// Unmarshal the JSON and create the RoutingRuleSettings struct
-					var rrs routing.RoutingRulesSettings
-					if err := json.Unmarshal(jsonData, &rrs); err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not unmarshal route shader: %v\n", err), 1)
-					}
-
-					// Set the route shader in storage
-					setRoutingRulesSettings(rpcClient, env, args[0], rrs)
-					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "example",
-						ShortUsage: "next shader set example",
-						ShortHelp:  "Displays an example route shader for the correct JSON schema",
-						Exec: func(_ context.Context, args []string) error {
-							jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
-							if err != nil {
-								handleRunTimeError(fmt.Sprintln("Failed to marshal route shader struct"), 0)
-							}
-
-							fmt.Println("Example JSON schema to set a new route shader:")
-							fmt.Println(string(jsonBytes))
-							return nil
-						},
-					},
-				},
-			},
-			{
 				Name:       "id",
 				ShortUsage: "next shader id <buyer ID>",
 				ShortHelp:  "Retrieve route shader information for the given buyer ID",
@@ -1747,54 +2135,125 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "link",
-				ShortUsage: "next customer link <subcommand>",
-				ShortHelp:  "Edit customer links",
+				Name:       "add",
+				ShortUsage: "next customer add <json file>",
+				ShortHelp:  "Add a new customer to the database",
 				Exec: func(ctx context.Context, args []string) error {
-					return flag.ErrHelp
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("You need to supply json file."), 0)
+					}
+
+					jsonData := readJSONData("customers", args)
+
+					// Unmarshal the JSON and create the Seller struct
+					var customer struct {
+						Code                   string
+						Name                   string
+						AutomaticSignInDomains string
+						Active                 bool
+						Debug                  bool
+					}
+
+					if err := json.Unmarshal(jsonData, &customer); err != nil {
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal customer: %v\n", err), 1)
+					}
+
+					c := routing.Customer{
+						Code:                   customer.Code,
+						Name:                   customer.Name,
+						AutomaticSignInDomains: customer.AutomaticSignInDomains,
+						Active:                 customer.Active,
+						Debug:                  customer.Debug,
+						BuyerRef:               nil,
+						SellerRef:              nil,
+					}
+
+					addCustomer(rpcClient, env, c)
+
+					return nil
 				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "buyer",
-						ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
-						ShortHelp:  "Edit what buyer this customer is linked to",
-						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
+						Name:       "example",
+						ShortUsage: "next customer add example",
+						ShortHelp:  "Displays an example customer for the correct JSON schema",
+						Exec: func(_ context.Context, args []string) error {
+							example := struct {
+								Code                   string
+								Name                   string
+								AutomaticSignInDomains string
+								Active                 bool
+								Debug                  bool
+							}{
+								Code:                   "amazon",
+								Name:                   "Amazon.com, Inc.",
+								AutomaticSignInDomains: "amazon.networknext.com // comma separated list",
+								Active:                 true,
+								Debug:                  false,
 							}
 
-							if len(args) == 1 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a new buyer ID for the customer to link to"), 0)
-							}
-
-							buyerID, err := strconv.ParseUint(args[1], 10, 64)
+							jsonBytes, err := json.MarshalIndent(example, "", "\t")
 							if err != nil {
-								handleRunTimeError(fmt.Sprintf("Could not parse %s as an unsigned 64-bit integer\n", args[1]), 1)
+								handleRunTimeError(fmt.Sprintln("Failed to marshal customer struct"), 1)
 							}
 
-							customerLink(rpcClient, env, args[0], buyerID, "")
-							return nil
-						},
-					},
-					{
-						Name:       "seller",
-						ShortUsage: "next customer link seller <customer name> <new seller ID>",
-						ShortHelp:  "Edit what seller this customer is linked to",
-						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
-							}
+							fmt.Println("Example JSON schema to add a new customer:")
+							fmt.Println(string(jsonBytes))
 
-							if len(args) == 1 {
-								handleRunTimeError(fmt.Sprintln("You need to provide a new seller ID for the customer to link to"), 0)
-							}
-
-							customerLink(rpcClient, env, args[0], 0, args[1])
 							return nil
 						},
 					},
 				},
 			},
+			// {
+			// 	Name:       "link",
+			// 	ShortUsage: "next customer link <subcommand>",
+			// 	ShortHelp:  "Edit customer links",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		return flag.ErrHelp
+			// 	},
+			// 	Subcommands: []*ffcli.Command{
+			// 		{
+			// 			Name:       "buyer",
+			// 			ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
+			// 			ShortHelp:  "Edit what buyer this customer is linked to",
+			// 			Exec: func(ctx context.Context, args []string) error {
+			// 				if len(args) == 0 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
+			// 				}
+
+			// 				if len(args) == 1 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a new buyer ID for the customer to link to"), 0)
+			// 				}
+
+			// 				buyerID, err := strconv.ParseUint(args[1], 10, 64)
+			// 				if err != nil {
+			// 					handleRunTimeError(fmt.Sprintf("Could not parse %s as an unsigned 64-bit integer\n", args[1]), 1)
+			// 				}
+
+			// 				customerLink(rpcClient, env, args[0], buyerID, "")
+			// 				return nil
+			// 			},
+			// 		},
+			// 		{
+			// 			Name:       "seller",
+			// 			ShortUsage: "next customer link seller <customer name> <new seller ID>",
+			// 			ShortHelp:  "Edit what seller this customer is linked to",
+			// 			Exec: func(ctx context.Context, args []string) error {
+			// 				if len(args) == 0 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
+			// 				}
+
+			// 				if len(args) == 1 {
+			// 					handleRunTimeError(fmt.Sprintln("You need to provide a new seller ID for the customer to link to"), 0)
+			// 				}
+
+			// 				customerLink(rpcClient, env, args[0], 0, args[1])
+			// 				return nil
+			// 			},
+			// 		},
+			// 	},
+			// },
 		},
 	}
 
@@ -1922,8 +2381,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 		Subcommands: []*ffcli.Command{
 			{
-				Name:       "cost",
-				ShortUsage: "next view cost",
+				Name:       "costs",
+				ShortUsage: "next view costs",
 				ShortHelp:  "View the entries of the cost matrix",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "cost.bin"
@@ -1932,8 +2391,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				},
 			},
 			{
-				Name:       "route",
-				ShortUsage: "next view route [srcRelay] [destRelay]",
+				Name:       "routes",
+				ShortUsage: "next view routes [srcRelay] [destRelay]",
 				ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "optimize.bin"
@@ -1960,6 +2419,94 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var stagingCommand = &ffcli.Command{
+		Name:       "staging",
+		ShortUsage: "next staging <subcommand>",
+		ShortHelp:  "Interact with the staging environment",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "start",
+				ShortUsage: "next staging start [config file]",
+				ShortHelp:  "Start up the staging environment optionally using the configuration file provided.",
+				Exec: func(ctx context.Context, args []string) error {
+					config := DefaultStagingConfig
+
+					if len(args) > 0 {
+						if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
+							handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
+						}
+					}
+
+					if err := StartStaging(config); err != nil {
+						handleRunTimeError(err.Error(), 1)
+					}
+
+					return nil
+				},
+			},
+			{
+				Name:       "stop",
+				ShortUsage: "next staging stop",
+				ShortHelp:  "Shuts down the staging environment",
+				Exec: func(ctx context.Context, args []string) error {
+					if errs := StopStaging(); errs != nil && len(errs) != 0 {
+						handleRunTimeError(errs[0].Error(), 1)
+					}
+					return nil
+				},
+			},
+
+			{
+				Name:       "example",
+				ShortUsage: "next staging example",
+				ShortHelp:  "Displays an example JSON schema for the staging configuration",
+				Exec: func(ctx context.Context, args []string) error {
+					jsonBytes, err := json.MarshalIndent(DefaultStagingConfig, "", "    ")
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not marshal example JSON: %v", err), 1)
+					}
+
+					fmt.Println(string(jsonBytes))
+					return nil
+				},
+			},
+			// {
+			// 	Name:       "configure",
+			// 	ShortUsage: "next staging configure <config file>",
+			// 	ShortHelp:  "Reconfigures the staging environment with the given configuration file",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		var config StagingConfig
+			// 		if len(args) > 0 {
+			// 			if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
+			// 				handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
+			// 			}
+			// 		}
+
+			// 		if err := configureStaging(config); err != nil {
+			// 			handleRunTimeError(err.Error(), 1)
+			// 		}
+
+			// 		return nil
+			// 	},
+			// },
+			// {
+			// 	Name:       "resize",
+			// 	ShortUsage: "next staging resize",
+			// 	ShortHelp:  "Resizes the staging environment with the given flags",
+			// 	Exec: func(ctx context.Context, args []string) error {
+			// 		if err := resizeStaging(serverBackendCount, clientCount); err != nil {
+			// 			handleJSONRPCError(env, err)
+			// 		}
+
+			// 		return nil
+			// 	},
+			// },
+		},
+	}
+
 	var commands = []*ffcli.Command{
 		authCommand,
 		selectCommand,
@@ -1977,6 +2524,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		sellerCommand,
 		buyerCommand,
 		buyersCommand,
+		userCommand,
 		shaderCommand,
 		sshCommand,
 		costCommand,
@@ -1984,6 +2532,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		analyzeCommand,
 		debugCommand,
 		viewCommand,
+		stagingCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2013,3 +2562,98 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 	fmt.Printf("\n")
 }
+
+var nextBuyerConfigAddJSONLongHelp = `
+Add an internal config for the specified buyer. The config
+must be in a json file of the form:
+
+{
+  "RouteSelectThreshold": 2,
+  "RouteSwitchThreshold": 5,
+  "MaxLatencyTradeOff": 10,
+  "RTTVeto_Default": -10,
+  "RTTVeto_PacketLoss": -20,
+  "RTTVeto_Multipath": -20,
+  "MultipathOverloadThreshold": 500,
+  "TryBeforeYouBuy": false,
+  "ForceNext": true,
+  "LargeCustomer": false,
+  "Uncommitted": false,
+  "MaxRTT": 300,
+  "BuyerID": "205cca7361c2ae96"
+}
+
+A valid BuyerID (in hex) is required. Any other missing fields
+will be assigned the zero value for that type (0 or false).
+`
+
+var nextBuyerShaderAddJSONLongHelp = `
+Add an route shader for the specified buyer. The shader
+must be in a json file of the form:
+
+{
+	"DisableNetworkNext": false
+	"SelectionPercent": 100
+	"ABTest": false
+	"ProMode": false
+	"ReduceLatency": true
+	"ReduceJitter": false
+	"ReducePacketLoss": true
+	"Multipath": false
+	"AcceptableLatency": 25
+	"LatencyThreshold": 5
+	"AcceptablePacketLoss": 1.00000
+	"BandwidthEnvelopeUpKbps": 500
+	"BandwidthEnvelopeDownKbps": 1200,
+	"BuyerID": "205cca7361c2ae96"
+}
+
+A valid BuyerID (in hex) is required. Any other missing fields
+will be assigned the zero value for that type (0 or false).
+
+Note: Banned users are managed separately (e.g. next buyer banneduser add/remove...).
+`
+
+var nextBuyerConfigUpdateJSONLongHelp = `
+Update one field in the internal config for the specified buyer. The field
+must be one of the following and is case-sensitive:
+
+  RouteSelectThreshold       integer
+  RouteSwitchThreshold       integer
+  MaxLatencyTradeOff         integer
+  RTTVeto_Default            integer
+  RTTVeto_PacketLoss         integer
+  RTTVeto_Multipath          integer
+  MultipathOverloadThreshold integer
+  TryBeforeYouBuy            boolean
+  ForceNext                  boolean
+  LargeCustomer              boolean
+  Uncommitted                boolean
+  MaxRTT                     integer
+
+The value should be whatever type is appropriate for the field
+as defined above. A valid BuyerID (in hex) is required.
+`
+
+var nextBuyerShaderUpdateJSONLongHelp = `
+Update one field in the route shader for the specified buyer. The field
+must be one of the following and is case-sensitive:
+
+  DisableNetworkNext        bool
+  SelectionPercent          integer
+  ABTest                    bool
+  ProMode                   bool
+  ReduceLatency             bool
+  ReduceJitter              bool
+  ReducePacketLoss          bool
+  Multipath                 bool
+  AcceptableLatency         integer
+  LatencyThreshold          integer
+  AcceptablePacketLoss      float
+  BandwidthEnvelopeUpKbps   integer
+  BandwidthEnvelopeDownKbps integer
+  MaxRTT                    integer
+
+The value should be whatever type is appropriate for the field
+as defined above. A valid BuyerID (in hex) is required.
+`

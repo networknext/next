@@ -1,28 +1,43 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
 type datacenterReply struct {
 	Name         string
 	ID           string
-	Latitude     float64
-	Longitude    float64
+	Latitude     float32
+	Longitude    float32
 	Enabled      bool
 	SupplierName string
 }
 
-func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, signed bool) {
+func datacenters(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	filter string,
+	signed bool,
+	csvOutput bool,
+) {
 	args := localjsonrpc.DatacentersArgs{
 		Name: filter,
 	}
+
+	datacentersCSV := [][]string{}
+
+	datacentersCSV = append(datacentersCSV, []string{
+		"Name", "HexID", "Latitude", "Longitude",
+	})
 
 	var reply localjsonrpc.DatacentersReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
@@ -30,36 +45,97 @@ func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, si
 		return
 	}
 
-	var dcs []datacenterReply
+	if csvOutput {
+		if signed {
+			for _, dc := range reply.Datacenters {
+				datacentersCSV = append(datacentersCSV, []string{
+					dc.Name,
+					fmt.Sprintf("%d", int64(dc.ID)),
+					fmt.Sprintf("%.2f", dc.Latitude),
+					fmt.Sprintf("%.2f", dc.Longitude),
+				})
+			}
+		} else {
+			for _, dc := range reply.Datacenters {
+				datacentersCSV = append(datacentersCSV, []string{
+					dc.Name,
+					fmt.Sprintf("%d", dc.ID),
+					fmt.Sprintf("%.2f", dc.Latitude),
+					fmt.Sprintf("%.2f", dc.Longitude),
+				})
+			}
+		}
 
-	if signed {
-		for _, dc := range reply.Datacenters {
-			dcs = append(dcs, datacenterReply{
-				Name:         dc.Name,
-				ID:           fmt.Sprintf("%d", dc.SignedID),
-				Latitude:     dc.Latitude,
-				Longitude:    dc.Longitude,
-				Enabled:      dc.Enabled,
-				SupplierName: dc.SupplierName,
-			})
+		fileName := "./datacenters.csv"
+		f, err := os.Create(fileName)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
 		}
+
+		writer := csv.NewWriter(f)
+		err = writer.WriteAll(datacentersCSV)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+		}
+		fmt.Println("CSV file written: datacenters.csv")
+
 	} else {
-		for _, dc := range reply.Datacenters {
-			dcs = append(dcs, datacenterReply{
-				Name:         dc.Name,
-				ID:           fmt.Sprintf("%016x", dc.ID),
-				Latitude:     dc.Latitude,
-				Longitude:    dc.Longitude,
-				Enabled:      dc.Enabled,
-				SupplierName: dc.SupplierName,
-			})
+
+		var dcs []datacenterReply
+		if signed {
+			for _, dc := range reply.Datacenters {
+				dcs = append(dcs, datacenterReply{
+					Name: dc.Name,
+					// ID:           fmt.Sprintf("%d", dc.SignedID), // ToDo: could come from storage (exists in firestore)
+					ID:           fmt.Sprintf("%d", int64(dc.ID)),
+					Latitude:     dc.Latitude,
+					Longitude:    dc.Longitude,
+					Enabled:      dc.Enabled,
+					SupplierName: dc.SupplierName,
+				})
+			}
+		} else {
+			for _, dc := range reply.Datacenters {
+				dcs = append(dcs, datacenterReply{
+					Name:         dc.Name,
+					ID:           fmt.Sprintf("%016x", dc.ID),
+					Latitude:     dc.Latitude,
+					Longitude:    dc.Longitude,
+					Enabled:      dc.Enabled,
+					SupplierName: dc.SupplierName,
+				})
+			}
 		}
+		table.Output(dcs)
 	}
 
-	table.Output(dcs)
 }
 
-func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, datacenter routing.Datacenter) {
+func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) {
+
+	var sellerReply localjsonrpc.SellerReply
+	var sellerArg localjsonrpc.SellerArg
+
+	sellerArg.ID = dc.SellerID
+	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	did := crypto.HashID(dc.Name)
+	datacenter := routing.Datacenter{
+		ID:      did,
+		Name:    dc.Name,
+		Enabled: dc.Enabled,
+		Location: routing.Location{
+			Latitude:  dc.Latitude,
+			Longitude: dc.Longitude,
+		},
+		StreetAddress: dc.StreetAddress,
+		SupplierName:  dc.SupplierName,
+		SellerID:      sellerReply.Seller.DatabaseID,
+	}
+
 	args := localjsonrpc.AddDatacenterArgs{
 		Datacenter: datacenter,
 	}
@@ -106,7 +182,6 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 			dcIDs = append(dcIDs, dc.ID)
 		}
 	}
-
 
 	if len(dcIDs) == 0 {
 		fmt.Printf("No match for provided datacenter ID: %v\n", datacenter)

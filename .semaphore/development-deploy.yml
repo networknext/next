@@ -5,6 +5,8 @@ agent:
     type: e1-standard-8
     os_image: ubuntu1804
 global_job_config:
+  secrets:
+    - name: sdk4-repo-access
   prologue:
     commands:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
@@ -13,6 +15,10 @@ global_job_config:
       - checkout
       - sem-version go 1.13
       - make clean
+      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk4
+      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
+      - git submodule init sdk
+      - git submodule update sdk
 blocks:
   - name: Build & Publish Artifacts
     dependencies: []
@@ -26,6 +32,14 @@ blocks:
           commands:
             - make build-analytics-artifacts-dev
             - make publish-analytics-artifacts-dev
+        - name: API
+          commands:
+            - make build-api-artifacts-dev
+            - make publish-api-artifacts-dev
+        - name: Vanity
+          commands:
+            - make build-vanity-artifacts-dev
+            - make publish-vanity-artifacts-dev
         - name: Portal
           commands:
             - make build-portal-artifacts-dev
@@ -45,5 +59,23 @@ blocks:
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-dev
+        - name: Ghost Army
+          commands:
+            - make build-ghost-army-artifacts-dev
+            - make publish-ghost-army-artifacts-dev
+            - make publish-ghost-army-bootstrap-script-dev
+        - name: Relay Gateway
+          commands:
+            - make build-relay-gateway-artifacts-dev
+            - make publish-relay-gateway-artifacts-dev
+        - name: Optimizer
+          commands:
+            - make build-optimizer-artifacts-dev
+            - make publish-optimizer-artifacts-dev
+        - name: Route Matrix Selector
+          commands:
+            - make build-route-matrix-selector-artifacts-dev
+            - make publish-route-matrix-selector-artifacts-dev
+
       secrets:
         - name: google-cloud-platform

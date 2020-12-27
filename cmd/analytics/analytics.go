@@ -17,10 +17,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/metrics"
-	"github.com/networknext/backend/transport"
+
+	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport"
 )
 
 var (
@@ -198,7 +199,7 @@ func main() {
 			topicName := "ping_stats"
 			subscriptionName := "ping_stats"
 
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
 			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
@@ -244,10 +245,61 @@ func main() {
 			topicName := "relay_stats"
 			subscriptionName := "relay_stats"
 
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
 			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			go pubsubForwarder.Forward(ctx)
+		}
+	}
+
+	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
+	{
+		// BigQuery
+		if gcpOK {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+
+				relayNamesHashWriter = &b
+
+				go b.WriteLoop(ctx)
+			}
+		}
+
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
+				Logger: logger,
+			}
+
+			level.Info(logger).Log("msg", "detected pubsub emulator")
+		}
+
+		// google pubsub forwarder
+		if gcpOK || emulatorOK {
+			topicName := "route_matrix_stats"
+			subscriptionName := "route_matrix_stats"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+			defer cancelFunc()
+
+			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -281,6 +333,10 @@ func main() {
 				fmt.Printf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d route matrix stats entries received\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d route matrix entries submitted\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d route matrix entries queued\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d route matrix entries flushed\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -293,7 +349,7 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {

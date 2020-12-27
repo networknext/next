@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/modules/crypto"
 )
 
 // Fill in the "matches" string slice with datacenter hashes you want to brute force search.

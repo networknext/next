@@ -1,6 +1,6 @@
 /*
-   Network Next. You control the network.
-   Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+	Network Next. You control the network.
+	Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -22,10 +22,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/metrics"
-	"github.com/networknext/backend/transport"
+
+	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport"
 
 	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
@@ -288,7 +289,7 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 			router.Handle("/debug/vars", expvar.Handler())
 
 			port, ok := os.LookupEnv("PORT")

@@ -14,14 +14,14 @@ import (
 	"time"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/routing"
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 	"golang.org/x/crypto/nacl/box"
 )
 
 const (
-	LatestRelayVersion   = "1.0.4"
+	LatestRelayVersion   = "1.1.0"
 	MinimumUbuntuVersion = 18
 
 	// DisableRelayScript is the bash script used to disable relays
@@ -100,6 +100,28 @@ const (
 	PortCheckScript = `echo "$(sudo lsof -i -P -n 2>/dev/null | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
+func unitFormat(bits uint64) string {
+	const (
+		kilo = 1000
+		mega = 1000000
+		giga = 1000000000
+	)
+
+	if bits > giga {
+		return fmt.Sprintf("%.02fGb/s", float64(bits)/float64(giga))
+	}
+
+	if bits > mega {
+		return fmt.Sprintf("%.02fMb/s", float64(bits)/float64(mega))
+	}
+
+	if bits > kilo {
+		return fmt.Sprintf("%.02fKb/s", float64(bits)/float64(kilo))
+	}
+
+	return fmt.Sprintf("%d", bits)
+}
+
 type relayInfo struct {
 	id          uint64
 	name        string
@@ -108,7 +130,6 @@ type relayInfo struct {
 	sshPort     string
 	publicAddr  string
 	publicKey   string
-	updateKey   string
 	nicSpeed    string
 	firestoreID string
 	state       string
@@ -137,7 +158,6 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []
 			sshPort:     fmt.Sprintf("%d", r.SSHPort),
 			publicAddr:  r.Addr,
 			publicKey:   r.PublicKey,
-			updateKey:   r.UpdateKey,
 			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
 			firestoreID: r.FirestoreID,
 			state:       r.State,
@@ -526,26 +546,27 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	fmt.Printf("NIC speed set for %s\n", info.name)
 }
 
+// TODO modify to use the OpsService.UpdateRelay endpoint
 func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
 
-	var relay routing.Relay
+	var relayID uint64
 	var ok bool
-	if relay, ok = checkForRelay(rpcClient, env, oldName); !ok {
+	if relayID, ok = checkForRelay(rpcClient, env, oldName); !ok {
 		// error msg printed by called function
 		return
 	}
 
-	var reply localjsonrpc.RelayNameUpdateReply
-	args := localjsonrpc.RelayNameUpdateArgs{
-		RelayID:   relay.ID,
-		RelayName: newName,
+	var reply localjsonrpc.UpdateRelayReply
+	args := localjsonrpc.UpdateRelayArgs{
+		RelayID: relayID,
+		Field:   "Name",
+		Value:   newName,
 	}
 
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.UpdateRelay", args); err != nil {
 		fmt.Printf("error renaming relay: %v\n", (err))
 	} else {
 		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
-
 	}
 
 }
@@ -810,4 +831,42 @@ func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes
 			}
 		}
 	}
+}
+
+func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	type trafficStats struct {
+		Name      string `table:"Name"`
+		PingsTx   string `table:"Pings Tx"`
+		PingsRx   string `table:"Pings Rx"`
+		GameTx    string `table:"Game Tx"`
+		GameRx    string `table:"Game Rx"`
+		UnknownRx string `table:"Unknown Rx"`
+	}
+
+	statsList := []trafficStats{}
+
+	for i := range reply.Relays {
+		relay := &reply.Relays[i]
+
+		statsList = append(statsList, trafficStats{
+			Name:      relay.Name,
+			PingsTx:   unitFormat(relay.TrafficStats.OtherStatsTx() * 8),
+			PingsRx:   unitFormat(relay.TrafficStats.OtherStatsRx() * 8),
+			GameTx:    unitFormat(relay.TrafficStats.GameStatsTx() * 8),
+			GameRx:    unitFormat(relay.TrafficStats.GameStatsRx() * 8),
+			UnknownRx: unitFormat(relay.TrafficStats.UnknownRx * 8),
+		})
+	}
+
+	table.Output(statsList)
 }
