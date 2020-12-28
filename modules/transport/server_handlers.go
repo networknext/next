@@ -1121,6 +1121,7 @@ func PostSessionUpdate(
 		CommitVeto:                      sessionData.RouteState.CommitVeto,
 		RouteDiversity:                  uint32(routeDiversity),
 		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
+		Pro:                             sessionData.RouteState.ProMode,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
