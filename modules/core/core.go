@@ -1282,40 +1282,42 @@ type RouteState struct {
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_Multipath          int32
-	RTTVeto_PacketLoss         int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	HighFrequencyPings         bool
-	RouteDiversity             int32
-	MultipathThreshold         int32
+	RouteSelectThreshold        int32
+	RouteSwitchThreshold        int32
+	MaxLatencyTradeOff          int32
+	RTTVeto_Default             int32
+	RTTVeto_Multipath           int32
+	RTTVeto_PacketLoss          int32
+	MultipathOverloadThreshold  int32
+	TryBeforeYouBuy             bool
+	ForceNext                   bool
+	LargeCustomer               bool
+	Uncommitted                 bool
+	MaxRTT                      int32
+	HighFrequencyPings          bool
+	RouteDiversity              int32
+	MultipathThreshold          int32
+	MispredictMultipathOverload bool
 }
 
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
-		RouteSelectThreshold:       2,
-		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         20,
-		RTTVeto_Default:            -10,
-		RTTVeto_Multipath:          -20,
-		RTTVeto_PacketLoss:         -30,
-		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
-		ForceNext:                  false,
-		LargeCustomer:              false,
-		Uncommitted:                false,
-		MaxRTT:                     300,
-		HighFrequencyPings:         true,
-		RouteDiversity:             0,
-		MultipathThreshold:         20,
+		RouteSelectThreshold:        2,
+		RouteSwitchThreshold:        5,
+		MaxLatencyTradeOff:          20,
+		RTTVeto_Default:             -10,
+		RTTVeto_Multipath:           -20,
+		RTTVeto_PacketLoss:          -30,
+		MultipathOverloadThreshold:  500,
+		TryBeforeYouBuy:             false,
+		ForceNext:                   false,
+		LargeCustomer:               false,
+		Uncommitted:                 false,
+		MaxRTT:                      300,
+		HighFrequencyPings:          true,
+		RouteDiversity:              0,
+		MultipathThreshold:          25,
+		MispredictMultipathOverload: true,
 	}
 }
 
@@ -1505,20 +1507,15 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		return false
 	}
 
-	// don't multipath if the difference between next and direct RTT is too large
+	// don't multipath if we are reducing latency more than the multipath threshold
 
 	multipath := (proMode || routeShader.Multipath) && !userHasMultipathVeto
 
 	if internal.MultipathThreshold > 0 {
-		
-		difference := bestRouteCost - directLatency
-		if difference < 0 {
-			difference = -difference
-		}
-
-		if difference >= internal.MultipathThreshold {
+		difference := directLatency - bestRouteCost
+		if difference > internal.MultipathThreshold {
 			multipath = false
-		}		
+		}
 	}
 
 	// take the network next route
@@ -1559,6 +1556,10 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 			*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
 		}
 		routeState.Mispredict = true
+		if routeState.Multipath && internal.MispredictMultipathOverload {
+			routeState.MultipathOverload = true
+			*debug += "mispredict -> multipath overload\n"
+		}
 		return false, false
 	}
 

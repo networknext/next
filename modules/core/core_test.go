@@ -2730,7 +2730,7 @@ func TestTakeNetworkNext_ReduceLatency_RouteDiversity(t *testing.T) {
 	directLatency := int32(50)
 	directPacketLoss := float32(0.0)
 
-	sourceRelays := []int32{0,1,2,3,4}
+	sourceRelays := []int32{0, 1, 2, 3, 4}
 	sourceRelayCosts := []int32{10, 10, 10, 10, 10}
 
 	destRelays := []int32{5}
@@ -3313,7 +3313,7 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
 	multipathVetoUsers := map[uint64]bool{}
-	
+
 	internal := NewInternalConfig()
 	internal.MultipathThreshold = 100
 
@@ -3374,7 +3374,7 @@ func TestTakeNetworkNext_ReduceLatency_MultipathThreshold(t *testing.T) {
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
 	multipathVetoUsers := map[uint64]bool{}
-	
+
 	internal := NewInternalConfig()
 	internal.MultipathThreshold = 20
 

@@ -123,21 +123,22 @@ type routeShader struct {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold       int32 `firestore:"routeSelectThreshold"`
-	RouteSwitchThreshold       int32 `firestore:"routeSwitchThreshold"`
-	MaxLatencyTradeOff         int32 `firestore:"maxLatencyTradeOff"`
-	RTTVeto_Default            int32 `firestore:"rttVeto_default"`
-	RTTVeto_PacketLoss         int32 `firestore:"rttVeto_packetLoss"`
-	RTTVeto_Multipath          int32 `firestore:"rttVeto_multipath"`
-	MultipathOverloadThreshold int32 `firestore:"multipathOverloadThreshold"`
-	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
-	ForceNext                  bool  `firestore:"forceNext"`
-	LargeCustomer              bool  `firestore:"largeCustomer"`
-	Uncommitted                bool  `firestore:"uncommitted"`
-	MaxRTT                     int32 `firestore:"maxRTT"`
-	HighFrequencyPings         bool  `firestore:"highFrequencyPings"`
-	RouteDiversity             int32 `firestore:"routeDiversity"`
-	MultipathThreshold         int32 `firestore:"multipathThreshold"`
+	RouteSelectThreshold        int32 `firestore:"routeSelectThreshold"`
+	RouteSwitchThreshold        int32 `firestore:"routeSwitchThreshold"`
+	MaxLatencyTradeOff          int32 `firestore:"maxLatencyTradeOff"`
+	RTTVeto_Default             int32 `firestore:"rttVeto_default"`
+	RTTVeto_PacketLoss          int32 `firestore:"rttVeto_packetLoss"`
+	RTTVeto_Multipath           int32 `firestore:"rttVeto_multipath"`
+	MultipathOverloadThreshold  int32 `firestore:"multipathOverloadThreshold"`
+	TryBeforeYouBuy             bool  `firestore:"tryBeforeYouBuy"`
+	ForceNext                   bool  `firestore:"forceNext"`
+	LargeCustomer               bool  `firestore:"largeCustomer"`
+	Uncommitted                 bool  `firestore:"uncommitted"`
+	MaxRTT                      int32 `firestore:"maxRTT"`
+	HighFrequencyPings          bool  `firestore:"highFrequencyPings"`
+	RouteDiversity              int32 `firestore:"routeDiversity"`
+	MultipathThreshold          int32 `firestore:"multipathThreshold"`
+	MispredictMultipathOverload bool  `firestore:"mispredictMultipathOverload"`
 }
 
 type FirestoreError struct {
@@ -2277,6 +2278,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.HighFrequencyPings = tempIC.HighFrequencyPings
 	ic.RouteDiversity = tempIC.RouteDiversity
 	ic.MultipathThreshold = tempIC.MultipathThreshold
+	ic.MispredictMultipathOverload = tempIC.MispredictMultipathOverload
 
 	return ic, nil
 }
@@ -2285,22 +2287,23 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	internalConfigID := firestoreID + "_0"
 
 	icFirestore := map[string]interface{}{
-		"displayName":                name,
-		"routeSelectThreshold":       internalConfig.RouteSelectThreshold,
-		"routeSwitchThreshold":       internalConfig.RouteSwitchThreshold,
-		"maxLatencyTradeOff":         internalConfig.MaxLatencyTradeOff,
-		"rttVeto_default":            internalConfig.RTTVeto_Default,
-		"rttVeto_packetLoss":         internalConfig.RTTVeto_PacketLoss,
-		"rttVeto_multipath":          internalConfig.RTTVeto_Multipath,
-		"multipathOverloadThreshold": internalConfig.MultipathOverloadThreshold,
-		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
-		"forceNext":                  internalConfig.ForceNext,
-		"largeCustomer":              internalConfig.LargeCustomer,
-		"uncommitted":                internalConfig.Uncommitted,
-		"maxRTT":                     internalConfig.MaxRTT,
-		"highFrequencyPings":         internalConfig.HighFrequencyPings,
-		"routeDiversity":             internalConfig.RouteDiversity,
-		"multipathThreshold":         internalConfig.MultipathThreshold,
+		"displayName":                 name,
+		"routeSelectThreshold":        internalConfig.RouteSelectThreshold,
+		"routeSwitchThreshold":        internalConfig.RouteSwitchThreshold,
+		"maxLatencyTradeOff":          internalConfig.MaxLatencyTradeOff,
+		"rttVeto_default":             internalConfig.RTTVeto_Default,
+		"rttVeto_packetLoss":          internalConfig.RTTVeto_PacketLoss,
+		"rttVeto_multipath":           internalConfig.RTTVeto_Multipath,
+		"multipathOverloadThreshold":  internalConfig.MultipathOverloadThreshold,
+		"tryBeforeYouBuy":             internalConfig.TryBeforeYouBuy,
+		"forceNext":                   internalConfig.ForceNext,
+		"largeCustomer":               internalConfig.LargeCustomer,
+		"uncommitted":                 internalConfig.Uncommitted,
+		"maxRTT":                      internalConfig.MaxRTT,
+		"highFrequencyPings":          internalConfig.HighFrequencyPings,
+		"routeDiversity":              internalConfig.RouteDiversity,
+		"multipathThreshold":          internalConfig.MultipathThreshold,
+		"mispredictMultipathOverload": internalConfig.MispredictMultipathOverload,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)

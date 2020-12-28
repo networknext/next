@@ -260,5 +260,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["lackOfDiversity"] = entry.LackOfDiversity
 	}
 
+	if entry.Pro {
+		e["pro"] = entry.Pro
+	}
+
 	return e, "", nil
 }
