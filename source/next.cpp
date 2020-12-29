@@ -3302,6 +3302,11 @@ struct NextRelayPongPacket
 
 struct NextBeaconPacket
 {
+    NextBeaconPacket()
+    {
+        memset( this, 0, sizeof(NextBeaconPacket) );
+    }
+
     uint8_t version;
     uint64_t customer_id;
     uint64_t user_hash;
@@ -3309,20 +3314,27 @@ struct NextBeaconPacket
     uint64_t session_id;
     int platform_id;
     int connection_type;
+    bool enabled;
+    bool upgraded;
     bool next;
     bool fallback_to_direct;
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, version, 8 );
-        serialize_uint64( stream, customer_id );
-        serialize_uint64( stream, user_hash );
-        serialize_uint64( stream, address_hash );
-        serialize_uint64( stream, session_id );
-        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+        serialize_bool( stream, enabled );
+        serialize_bool( stream, upgraded );
         serialize_bool( stream, next );
         serialize_bool( stream, fallback_to_direct );
+        serialize_uint64( stream, customer_id );
+        if ( upgraded )
+        {
+            serialize_uint64( stream, user_hash );
+            serialize_uint64( stream, address_hash );
+            serialize_uint64( stream, session_id );
+        }
+        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         return true;
     }
 };
@@ -7471,6 +7483,7 @@ void next_client_internal_update_beacon( next_client_internal_t * client )
     packet.session_id = client->session_id;
     packet.platform_id = client->client_stats.platform_id;
     packet.connection_type = client->client_stats.connection_type;
+    packet.enabled = !next_global_config.disable_network_next;
     packet.next = client->client_stats.next;
     packet.fallback_to_direct = client->client_stats.fallback_to_direct;
 
@@ -16119,6 +16132,8 @@ void test_beacon()
     in.session_id = 0x123412432141ULL;
     in.platform_id = NEXT_PLATFORM_LINUX;
     in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
+    in.enabled = true;
+    in.upgraded = true;
     in.next = true;
     in.fallback_to_direct = true;
 
@@ -16134,6 +16149,8 @@ void test_beacon()
     next_check( in.session_id == out.session_id );
     next_check( in.platform_id == out.platform_id );
     next_check( in.connection_type == out.connection_type );
+    next_check( in.enabled == out.enabled );
+    next_check( in.upgraded == out.upgraded );
     next_check( in.next == out.next );
     next_check( in.fallback_to_direct == out.fallback_to_direct );
 }
