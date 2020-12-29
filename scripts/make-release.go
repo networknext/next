@@ -1,5 +1,5 @@
 /*
-   Network Next. Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+   Network Next. Copyright © 2017 - 2021 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -30,7 +30,7 @@ func bash(format string, args ...interface{}) bool {
 
 func main() {
 
-	version := "4.0.5"
+	version := "4.0.6"
 
 	basedir := fmt.Sprintf("next-%s", version)
 
