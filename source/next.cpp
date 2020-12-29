@@ -158,6 +158,7 @@
 #define NEXT_ROUTE_UPDATE_ACK_PACKET                                  115
 #define NEXT_RELAY_PING_PACKET                                        116
 #define NEXT_RELAY_PONG_PACKET                                        117
+#define NEXT_BEACON_PACKET                                            118
 
 #define NEXT_BACKEND_SERVER_UPDATE_PACKET                             220
 #define NEXT_BACKEND_SESSION_UPDATE_PACKET                            221
@@ -175,6 +176,8 @@
 
 #define NEXT_LOW_FREQUENCY_PING_RATE                                    1
 #define NEXT_HIGH_FREQUENCY_PING_RATE                                  10
+
+#define NEXT_BEACON_VERSION                                             0
 
 static uint8_t next_backend_public_key[] = 
 { 
@@ -3289,6 +3292,33 @@ struct NextRelayPongPacket
     }
 };
 
+struct NextBeaconPacket
+{
+    uint8_t version;
+    uint64_t buyer_id;
+    uint64_t user_hash;
+    uint64_t address_hash;
+    uint64_t session_id;
+    int platform_id;
+    int connection_type;
+    bool next;
+    bool fallback_to_direct;
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version, 8 );
+        serialize_uint64( stream, buyer_id );
+        serialize_uint64( stream, user_hash );
+        serialize_uint64( stream, address_hash );
+        serialize_uint64( stream, session_id );
+        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+        serialize_bool( stream, next );
+        serialize_bool( stream, fallback_to_direct );
+        return true;
+    }
+};
+
 int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_private_key, const uint8_t * encrypt_private_key )
 {
     next_assert( packet_object );
@@ -3416,6 +3446,17 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
             if ( !packet->Serialize( stream ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write relay pong packet" );
+                return NEXT_ERROR;
+            }
+        }
+        break;
+
+        case NEXT_BEACON_PACKET:
+        {
+            NextBeaconPacket * packet = (NextBeaconPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write beacon packet" );
                 return NEXT_ERROR;
             }
         }
@@ -3637,6 +3678,14 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         case NEXT_RELAY_PONG_PACKET:
         {
             NextRelayPongPacket * packet = (NextRelayPongPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BEACON_PACKET:
+        {
+            NextBeaconPacket * packet = (NextBeaconPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -15963,6 +16012,37 @@ void test_anonymize_address_ipv6()
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
+void test_beacon()
+{
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+
+    static NextBeaconPacket in, out;
+    in.version = NEXT_BEACON_VERSION;
+    in.buyer_id = 0x12345678910ULL;
+    in.user_hash = 0x5551111222255ULL;
+    in.address_hash = 0x116645234124ULL;
+    in.session_id = 0x123412432141ULL;
+    in.platform_id = NEXT_PLATFORM_LINUX;
+    in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
+    in.next = true;
+    in.fallback_to_direct = true;
+
+    int packet_bytes = 0;
+    next_check( next_write_packet( NEXT_BEACON_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) == NEXT_OK );
+
+    next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) == NEXT_BEACON_PACKET );
+
+    next_check( in.version == out.version );
+    next_check( in.buyer_id == out.buyer_id );
+    next_check( in.user_hash == out.user_hash );
+    next_check( in.address_hash == out.address_hash );
+    next_check( in.session_id == out.session_id );
+    next_check( in.platform_id == out.platform_id );
+    next_check( in.connection_type == out.connection_type );
+    next_check( in.next == out.next );
+    next_check( in.fallback_to_direct == out.fallback_to_direct );
+}
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -16025,6 +16105,7 @@ void next_test()
 #if defined(NEXT_PLATFORM_HAS_IPV6)
     RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+    RUN_TEST( test_beacon );
 }
 
 #ifdef _MSC_VER
