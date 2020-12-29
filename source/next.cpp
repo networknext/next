@@ -11507,6 +11507,35 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
+    // beacon packet
+
+    if ( packet_id == NEXT_BEACON_PACKET )
+    {
+        if ( next_beacon_address.type == NEXT_ADDRESS_NONE )
+            return;
+
+        uint64_t packet_sequence = 0;
+
+        NextBeaconPacket packet;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, NULL, NULL ) != packet_id )
+            return;
+
+        if ( packet.customer_id != next_global_config.customer_id )
+            return;
+
+        next_session_entry_t * session = next_session_manager_find_by_address( server->session_manager, from );
+        if ( session && packet.session_id != session->session_id )
+            return;
+
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_address_to_string( from, address_string );
+        packet.address_hash = next_hash_string( address_string );
+
+        packet.user_hash = session->user_hash;
+
+        next_server_internal_send_packet( server, &next_beacon_address, NEXT_BEACON_PACKET, &packet );
+    }
+
     // ----------------------------------
     // ENCRYPTED CLIENT TO SERVER PACKETS
     // ----------------------------------
