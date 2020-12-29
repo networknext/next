@@ -185,6 +185,8 @@
 #define NEXT_BEACON_ADDRESS                       "104.154.248.109:30000"
 #endif // #if !NEXT_DEVELOPMENT
 
+static next_address_t next_beacon_address;
+
 static uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -3956,6 +3958,15 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
+    next_address_parse( &next_beacon_address, NEXT_BEACON_ADDRESS );
+
+    const char * beacon_address_env = next_platform_getenv( "NEXT_BEACON_ADDRESS" );
+    if ( beacon_address_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "beacon address override: %s", beacon_address_env );
+        next_address_parse( &next_beacon_address, beacon_address_env );
+    }
+
     next_global_config = config;
 
     next_signed_packets[NEXT_UPGRADE_REQUEST_PACKET] = 1;
@@ -5810,9 +5821,13 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(11)
 
-    uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+    uint64_t last_beacon_send_time;
 
     NEXT_DECLARE_SENTINEL(12)
+
+    uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+
+    NEXT_DECLARE_SENTINEL(13)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -5832,6 +5847,7 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 10 )
     NEXT_INITIALIZE_SENTINEL( client, 11 )
     NEXT_INITIALIZE_SENTINEL( client, 12 )
+    NEXT_INITIALIZE_SENTINEL( client, 13 )
 
     next_relay_stats_initialize_sentinels( &client->near_relay_stats );
 
@@ -5858,6 +5874,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 10 )
     NEXT_VERIFY_SENTINEL( client, 11 )
     NEXT_VERIFY_SENTINEL( client, 12 )
+    NEXT_VERIFY_SENTINEL( client, 13 )
 
     if ( client->command_queue )
         next_queue_verify_sentinels( client->command_queue );
@@ -6012,6 +6029,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
+
+    client->last_beacon_send_time = next_time() + next_random_float() * 10.0f;
 
     return client;
 }
@@ -6911,6 +6930,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 memset( client->upgrade_response_packet_data, 0, sizeof(client->upgrade_response_packet_data) );
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
+                client->last_beacon_send_time = next_time() + next_random_float() * 10.0f;
 
                 next_platform_mutex_acquire( &client->packets_sent_mutex );
                 client->packets_sent = 0;
@@ -7427,6 +7447,35 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     }
 }
 
+void next_client_internal_update_beacon( next_client_internal_t * client )
+{
+    next_client_internal_verify_sentinels( client );
+
+    if ( client->server_address.type == NEXT_ADDRESS_NONE )
+        return;
+
+    const double current_time = next_time();
+
+    if ( client->last_beacon_send_time + 10.0 > current_time )
+        return;
+
+    client->last_beacon_send_time = current_time;
+
+    NextBeaconPacket packet;
+    packet.version = NEXT_BEACON_VERSION;
+    // todo
+
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    int packet_bytes = 0;
+    if ( next_write_packet( NEXT_BEACON_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client failed to write beacon packet" );
+        return;
+    }
+
+    next_platform_socket_send_packet( client->socket, &client->server_address, packet_data, packet_bytes );
+}
+
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
@@ -7458,6 +7507,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
             next_client_internal_update_route_manager( client );
 
             next_client_internal_update_upgrade_response( client );
+
+            next_client_internal_update_beacon( client );
 
             quit = next_client_internal_pump_commands( client );
 
