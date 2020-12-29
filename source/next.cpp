@@ -3303,7 +3303,7 @@ struct NextRelayPongPacket
 struct NextBeaconPacket
 {
     uint8_t version;
-    uint64_t buyer_id;
+    uint64_t customer_id;
     uint64_t user_hash;
     uint64_t address_hash;
     uint64_t session_id;
@@ -3315,7 +3315,7 @@ struct NextBeaconPacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, version, 8 );
-        serialize_uint64( stream, buyer_id );
+        serialize_uint64( stream, customer_id );
         serialize_uint64( stream, user_hash );
         serialize_uint64( stream, address_hash );
         serialize_uint64( stream, session_id );
@@ -3805,6 +3805,8 @@ int next_init( void * context, next_config_t * config_in )
         uint8_t decode_buffer[8+NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         if ( next_base64_decode_data( customer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
+            const uint8_t * p = decode_buffer;
+            config.customer_id = next_read_uint64( &p );
             memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key" );
         }
@@ -7463,7 +7465,14 @@ void next_client_internal_update_beacon( next_client_internal_t * client )
 
     NextBeaconPacket packet;
     packet.version = NEXT_BEACON_VERSION;
-    // todo
+    packet.customer_id = next_global_config.customer_id;
+    packet.user_hash = 0;
+    packet.address_hash = 0;
+    packet.session_id = client->session_id;
+    packet.platform_id = client->client_stats.platform_id;
+    packet.connection_type = client->client_stats.connection_type;
+    packet.next = client->client_stats.next;
+    packet.fallback_to_direct = client->client_stats.fallback_to_direct;
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     int packet_bytes = 0;
@@ -16075,7 +16084,7 @@ void test_beacon()
 
     static NextBeaconPacket in, out;
     in.version = NEXT_BEACON_VERSION;
-    in.buyer_id = 0x12345678910ULL;
+    in.customer_id = 0x12345678910ULL;
     in.user_hash = 0x5551111222255ULL;
     in.address_hash = 0x116645234124ULL;
     in.session_id = 0x123412432141ULL;
@@ -16090,7 +16099,7 @@ void test_beacon()
     next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) == NEXT_BEACON_PACKET );
 
     next_check( in.version == out.version );
-    next_check( in.buyer_id == out.buyer_id );
+    next_check( in.customer_id == out.customer_id );
     next_check( in.user_hash == out.user_hash );
     next_check( in.address_hash == out.address_hash );
     next_check( in.session_id == out.session_id );
