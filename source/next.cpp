@@ -3309,6 +3309,7 @@ struct NextBeaconPacket
 
     uint8_t version;
     uint64_t customer_id;
+    uint64_t datacenter_id;
     uint64_t user_hash;
     uint64_t address_hash;
     uint64_t session_id;
@@ -3322,19 +3323,33 @@ struct NextBeaconPacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, version, 8 );
+
         serialize_bool( stream, enabled );
         serialize_bool( stream, upgraded );
         serialize_bool( stream, next );
         serialize_bool( stream, fallback_to_direct );
+        
+        bool has_datacenter_id = Stream::IsWriting && datacenter_id != 0;
+        serialize_bool( stream, has_datacenter_id );
+        
         serialize_uint64( stream, customer_id );
+
+        if ( has_datacenter_id )
+        {
+            serialize_uint64( stream, datacenter_id );
+        }
+
         if ( upgraded )
         {
             serialize_uint64( stream, user_hash );
             serialize_uint64( stream, address_hash );
             serialize_uint64( stream, session_id );
         }
+
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+
         return true;
     }
 };
@@ -7478,6 +7493,7 @@ void next_client_internal_update_beacon( next_client_internal_t * client )
     NextBeaconPacket packet;
     packet.version = NEXT_BEACON_VERSION;
     packet.customer_id = next_global_config.customer_id;
+    packet.datacenter_id = 0;
     packet.user_hash = 0;
     packet.address_hash = 0;
     packet.session_id = client->session_id;
@@ -11545,6 +11561,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         packet.address_hash = next_hash_string( address_string );
 
         packet.user_hash = session->user_hash;
+
+        packet.datacenter_id = server->datacenter_id;
 
         next_server_internal_send_packet( server, &next_beacon_address, NEXT_BEACON_PACKET, &packet );
     }
@@ -16127,6 +16145,7 @@ void test_beacon()
     static NextBeaconPacket in, out;
     in.version = NEXT_BEACON_VERSION;
     in.customer_id = 0x12345678910ULL;
+    in.datacenter_id = 0x12317147141ULL;
     in.user_hash = 0x5551111222255ULL;
     in.address_hash = 0x116645234124ULL;
     in.session_id = 0x123412432141ULL;
@@ -16144,6 +16163,7 @@ void test_beacon()
 
     next_check( in.version == out.version );
     next_check( in.customer_id == out.customer_id );
+    next_check( in.datacenter_id == out.datacenter_id );
     next_check( in.user_hash == out.user_hash );
     next_check( in.address_hash == out.address_hash );
     next_check( in.session_id == out.session_id );
