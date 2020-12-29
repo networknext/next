@@ -12797,7 +12797,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         multipath = internal_entry->mutex_multipath;
         committed = internal_entry->mutex_committed;
         envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
-        send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
+        send_over_network_next = internal_entry->mutex_send_over_network_next && committed;
         send_upgraded_direct = !send_over_network_next;
         send_sequence = internal_entry->mutex_payload_send_sequence++;
         send_sequence |= uint64_t(1) << 63;
