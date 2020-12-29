@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"syscall"
-	"strconv"
 
 	"os"
 	"os/signal"
@@ -21,11 +21,80 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
 	"golang.org/x/sys/unix"
 )
+
+const (
+	NEXT_CONNECTION_TYPE_UNKNOWN  = 0
+	NEXT_CONNECTION_TYPE_WIRED    = 1
+	NEXT_CONNECTION_TYPE_WIFI     = 2
+	NEXT_CONNECTION_TYPE_CELLULAR = 3
+	NEXT_CONNECTION_TYPE_MAX      = 3
+)
+
+const (
+	NEXT_PLATFORM_UNKNOWN       = 0
+	NEXT_PLATFORM_WINDOWS       = 1
+	NEXT_PLATFORM_MAC           = 2
+	NEXT_PLATFORM_UNIX          = 3
+	NEXT_PLATFORM_SWITCH        = 4
+	NEXT_PLATFORM_PS4           = 5
+	NEXT_PLATFORM_IOS           = 6
+	NEXT_PLATFORM_XBOX_ONE      = 7
+	NEXT_PLATFORM_XBOX_SERIES_X = 8
+	NEXT_PLATFORM_PS5           = 9
+	NEXT_PLATFORM_MAX           = 9
+)
+
+type NextBeaconPacket struct {
+	Version          uint32
+	CustomerId       uint64
+	DatacenterId     uint64
+	UserHash         uint64
+	AddressHash      uint64
+	SessionId        uint64
+	PlatformId       int32
+	ConnectionType   int32
+	Enabled          bool
+	Upgraded         bool
+	Next             bool
+	FallbackToDirect bool
+}
+
+func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
+
+    stream.SerializeBits(&packet.Version, 8)
+
+    stream.SerializeBool(&packet.Enabled)
+    stream.SerializeBool(&packet.Upgraded)
+    stream.SerializeBool(&packet.Next)
+    stream.SerializeBool(&packet.FallbackToDirect)
+    
+    hasDatacenterId := stream.IsWriting() && packet.DatacenterId != 0
+    stream.SerializeBool(&hasDatacenterId)
+    
+    stream.SerializeUint64(&packet.CustomerId)
+
+    if hasDatacenterId {
+    	stream.SerializeUint64(&packet.DatacenterId)
+    }
+
+    if packet.Upgraded {
+    	stream.SerializeUint64(&packet.UserHash)
+    	stream.SerializeUint64(&packet.AddressHash)
+    	stream.SerializeUint64(&packet.SessionId)    	
+    }
+
+	stream.SerializeInteger(&packet.PlatformId, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX)
+
+	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
+
+	return stream.Error()
+}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -142,6 +211,9 @@ func mainReturnWithCode() int {
 			}
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
+
+			packet := NextBeaconPacket{}
+
 			for {
 				data := dataArray[:]
 				size, fromAddr, err := conn.ReadFromUDP(data)
@@ -160,7 +232,26 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				fmt.Printf("beacon packet\n")
+				readStream := encoding.CreateReadStream(data[1:])
+				err = packet.Serialize(readStream)
+				if err != nil {
+					fmt.Printf("error reading beacon packet: %v\n", err)
+					continue
+				}
+
+				fmt.Printf("beacon packet: %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
+					packet.CustomerId,
+					packet.DatacenterId,
+					packet.UserHash,
+					packet.AddressHash,
+					packet.SessionId,
+					packet.PlatformId,
+					packet.ConnectionType,
+					packet.Enabled,
+					packet.Upgraded,
+					packet.Next,
+					packet.FallbackToDirect,
+				)
 
 				// todo
 				_ = fromAddr
