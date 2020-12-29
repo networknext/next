@@ -7904,7 +7904,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             send_direct = true;
         }
 
-        if ( !committed && !multipath )
+        if ( !committed )
         {
             send_over_network_next = false;
             send_direct = true;
