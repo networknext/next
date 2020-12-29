@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"sync"
 	"syscall"
+	"strconv"
 
 	"os"
 	"os/signal"
@@ -117,6 +118,10 @@ func mainReturnWithCode() int {
 			return err
 		},
 	}
+
+	port, _ := strconv.Atoi(udpPort)
+
+	fmt.Printf("\nstarted beacon on port %d\n\n", port)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
