@@ -7500,6 +7500,7 @@ void next_client_internal_update_beacon( next_client_internal_t * client )
     packet.platform_id = client->client_stats.platform_id;
     packet.connection_type = client->client_stats.connection_type;
     packet.enabled = !next_global_config.disable_network_next;
+    packet.upgraded = client->upgraded;
     packet.next = client->client_stats.next;
     packet.fallback_to_direct = client->client_stats.fallback_to_direct;
 
@@ -7773,7 +7774,8 @@ void next_client_close_session( next_client_t * client )
 
     client->upgraded = false;
     client->fallback_to_direct = false;
-    client->session_id = 0;    memset( &client->client_stats, 0, sizeof(next_client_stats_t ) );
+    client->session_id = 0;    
+    memset( &client->client_stats, 0, sizeof(next_client_stats_t ) );
     memset( &client->server_address, 0, sizeof(next_address_t) );
     next_bandwidth_limiter_reset( &client->next_send_bandwidth );
     next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
@@ -10248,7 +10250,7 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
 
     next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
     server->state = NEXT_SERVER_STATE_RESOLVING_HOSTNAME;
-	server->next_resolve_hostname_time = next_time() + 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
+    server->next_resolve_hostname_time = next_time() + 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -11560,7 +11562,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_address_to_string( from, address_string );
         packet.address_hash = next_hash_string( address_string );
 
-        packet.user_hash = session->user_hash;
+        if ( session )
+            packet.user_hash = session->user_hash;
 
         packet.datacenter_id = server->datacenter_id;
 
@@ -11587,8 +11590,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_DIRECT_PING_PACKET )
     {
         next_assert( session );
-		if ( session == NULL )
-			return;
+        if ( session == NULL )
+            return;
 
         uint64_t packet_sequence = 0;
 
@@ -12051,11 +12054,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         state = server->state;
     }
 
-	uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-	
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    
     next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-	if ( state == NEXT_SERVER_STATE_INITIALIZING )
+    if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
