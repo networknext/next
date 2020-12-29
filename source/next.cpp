@@ -179,6 +179,12 @@
 
 #define NEXT_BEACON_VERSION                                             0
 
+#if !NEXT_DEVELOPMENT
+#define NEXT_BEACON_ADDRESS                        "35.192.100.115:30000"
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_BEACON_ADDRESS                       "104.154.248.109:30000"
+#endif // #if !NEXT_DEVELOPMENT
+
 static uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 

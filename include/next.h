@@ -77,7 +77,7 @@
 #define NEXT_PLATFORM_PS4                                         5
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
-#define NEXT_PLATFORM_XBOX_SERIESX                                8
+#define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
 #define NEXT_PLATFORM_MAX                                         9
 
