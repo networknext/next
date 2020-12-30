@@ -1562,7 +1562,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		routeState.Mispredict = true
 		if routeState.Multipath && internal.MispredictMultipathOverload {
 			routeState.MultipathOverload = true
-			*debug += "mispredict -> multipath overload\n"
+			if debug != nil {
+				*debug += "mispredict -> multipath overload\n"
+			}
 		}
 		return false, false
 	}
