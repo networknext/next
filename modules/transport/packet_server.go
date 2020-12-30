@@ -46,9 +46,9 @@ const (
 	PlatformTypeSwitch      = 4
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
-	PlatformTypeXBOXOne     = 7
+	PlatformTypeXBoxOne     = 7
 	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
-	PlatformTypeXBOXSeriesX = 8
+	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
 	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
 
@@ -114,9 +114,9 @@ func PlatformTypeText(platformType uint8) string {
 		return "PS4"
 	case PlatformTypeIOS:
 		return "IOS"
-	case PlatformTypeXBOXOne:
+	case PlatformTypeXBoxOne:
 		return "XBox One"
-	case PlatformTypeXBOXSeriesX:
+	case PlatformTypeXBoxSeriesX:
 		return "XBox Series X"
 	case PlatformTypePS5:
 		return "PS5"
@@ -139,8 +139,10 @@ func ParsePlatformType(conntype string) uint8 {
 		return PlatformTypePS4
 	case "IOS":
 		return PlatformTypeIOS
-	case "XBOXOne":
-		return PlatformTypeXBOXOne
+	case "XBox One":
+		return PlatformTypeXBoxOne
+	case "XBox Series X":
+		return PlatformTypeXBoxSeriesX
 	default:
 		return PlatformTypeUnknown
 	}
