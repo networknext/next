@@ -138,6 +138,14 @@ int main()
                     platform = "xbox one";
                     break;
 
+                case NEXT_PLATFORM_XBOX_SERIES_X:
+                    platform = "xbox series x";
+                    break;
+
+                case NEXT_PLATFORM_PS5:
+                    platform = "ps5";
+                    break;
+
                 default:
                     break;
             }

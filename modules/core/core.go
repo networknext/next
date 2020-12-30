@@ -1479,6 +1479,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	*out_routeDiversity = routeDiversity
 	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
 
+	if debug != nil && hasRoute {
+		*debug += fmt.Sprintf("route diversity %d\n", routeDiversity)
+	}
+
 	// if we don't have enough route diversity, we can't take network next
 
 	if routeDiversity < internal.RouteDiversity {
@@ -1558,7 +1562,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		routeState.Mispredict = true
 		if routeState.Multipath && internal.MispredictMultipathOverload {
 			routeState.MultipathOverload = true
-			*debug += "mispredict -> multipath overload\n"
+			if debug != nil {
+				*debug += "mispredict -> multipath overload\n"
+			}
 		}
 		return false, false
 	}
