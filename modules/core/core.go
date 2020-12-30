@@ -1479,6 +1479,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	*out_routeDiversity = routeDiversity
 	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
 
+	if debug != nil && hasRoute {
+		*debug += fmt.Sprintf("route diversity %d\n", routeDiversity)
+	}
+
 	// if we don't have enough route diversity, we can't take network next
 
 	if routeDiversity < internal.RouteDiversity {
