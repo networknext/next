@@ -115,7 +115,11 @@ func PlatformTypeText(platformType uint8) string {
 	case PlatformTypeIOS:
 		return "IOS"
 	case PlatformTypeXBOXOne:
-		return "XBOXOne"
+		return "XBox One"
+	case PlatformTypeXBOXSeriesX:
+		return "XBox Series X"
+	case PlatformTypePS5:
+		return "PS5"
 	default:
 		return "unknown"
 	}
