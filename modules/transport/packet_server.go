@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"fmt"
 	"math"
 	"net"
 
@@ -17,7 +16,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 5
+	SessionDataVersion = 6
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -601,9 +600,6 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
-	if stream.IsReading() && sessionData.Version > SessionDataVersion {
-		return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
-	}
 
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
@@ -716,6 +712,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	if sessionData.Version >= 5 {
 		stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
+	}
+
+	if sessionData.Version >= 6 {
+		stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
 	}
 
 	return stream.Error()
