@@ -1010,12 +1010,6 @@ func PostSessionUpdate(
 		inGamePacketLoss = packetLossServerToClient
 	}
 
-	multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
-	var multipathVetoed bool
-	if _, ok := multipathVetoMap[packet.UserHash]; ok {
-		multipathVetoed = true
-	}
-
 	var routeCost int32 = sessionData.RouteCost
 	if sessionData.RouteCost == math.MaxInt32 {
 		routeCost = 0
@@ -1092,7 +1086,7 @@ func PostSessionUpdate(
 		SDKVersion:                      packet.Version.String(),
 		PacketLoss:                      inGamePacketLoss,
 		PredictedNextRTT:                float32(routeCost),
-		MultipathVetoed:                 multipathVetoed,
+		MultipathVetoed:                 sessionData.RouteState.MultipathOverload,
 		UseDebug:                        buyer.Debug,
 		Debug:                           debugString,
 		FallbackToDirect:                packet.FallbackToDirect,
