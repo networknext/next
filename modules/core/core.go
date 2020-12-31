@@ -1279,6 +1279,7 @@ type RouteState struct {
 	DirectJitter       int32
 	Mispredict         bool
 	LackOfDiversity    bool
+	MispredictCounter  uint32
 }
 
 type InternalConfig struct {
@@ -1553,20 +1554,25 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		}
 	}
 
-	// if we mispredict RTT by 10ms or more, leave network next
+	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
 
 	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
-		if debug != nil {
-			*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
-		}
-		routeState.Mispredict = true
-		if routeState.Multipath && internal.MispredictMultipathOverload {
-			routeState.MultipathOverload = true
+		routeState.MispredictCounter++
+		if routeState.MispredictCounter == 3 {
 			if debug != nil {
-				*debug += "mispredict -> multipath overload\n"
+				*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
 			}
+			routeState.Mispredict = true
+			if routeState.Multipath && internal.MispredictMultipathOverload {
+				routeState.MultipathOverload = true
+				if debug != nil {
+					*debug += "mispredict -> multipath overload\n"
+				}
+			}
+			return false, false
 		}
-		return false, false
+	} else {
+		routeState.MispredictCounter = 0
 	}
 
 	// if we overload the connection in multipath, leave network next

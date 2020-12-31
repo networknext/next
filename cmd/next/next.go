@@ -480,11 +480,11 @@ func main() {
 	// Flags to hide relays in certain states
 	var relaysStateHideFlags [6]bool
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", true, "hide relays in maintenance")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", true, "hide disabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", true, "hide quarantined relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", true, "hide decommissioned relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", true, "hide offline relays")
 
 	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
 	var relaysDownFlag bool
@@ -503,7 +503,7 @@ func main() {
 	var csvOutputFlag bool
 	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
 
-	// Return a CSV file instead of a table
+	// Return all relays at this version
 	var relayVersionFilter string
 	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
 
@@ -691,8 +691,6 @@ func main() {
 			if relaysfs.NFlag() == 0 {
 				// If no flags are given, set the default set of flags
 				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateShowFlags[routing.RelayStateQuarantine] = true
-				relaysStateHideFlags[routing.RelayStateDecommissioned] = true
 			}
 
 			if relaysAllFlag {
@@ -702,10 +700,16 @@ func main() {
 				relaysStateShowFlags[routing.RelayStateDisabled] = true
 				relaysStateShowFlags[routing.RelayStateQuarantine] = true
 				relaysStateShowFlags[routing.RelayStateOffline] = true
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
+				relaysStateHideFlags[routing.RelayStateMaintenance] = false
+				relaysStateHideFlags[routing.RelayStateDisabled] = false
+				relaysStateHideFlags[routing.RelayStateQuarantine] = false
+				relaysStateHideFlags[routing.RelayStateOffline] = false
 			}
 
 			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-				//  Show decommissioned relays with --decommissioned flag by essentially disabling --nodecommissioned flag
+				//  Show decommissioned relays
+				relaysStateShowFlags[routing.RelayStateDecommissioned] = true
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
