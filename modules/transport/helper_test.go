@@ -130,9 +130,8 @@ func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []stri
 				Name: fmt.Sprintf("Seller %d", i),
 			},
 			Datacenter: routing.Datacenter{
-				ID:      crypto.HashID(fmt.Sprintf("Datacenter %d", i)),
-				Name:    fmt.Sprintf("Datacenter %d", i),
-				Enabled: true,
+				ID:   crypto.HashID(fmt.Sprintf("Datacenter %d", i)),
+				Name: fmt.Sprintf("Datacenter %d", i),
 			},
 			State: routing.RelayStateEnabled,
 		}

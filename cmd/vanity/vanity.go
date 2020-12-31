@@ -93,8 +93,15 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Get standard metrics handler for observational usage
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	// Get metrics for evaluating the performance of vanity metrics
-	vanityMetricMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
+	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
 		return 1
@@ -104,10 +111,6 @@ func mainReturnWithCode() int {
 	var vanitySubscriber pubsub.Subscriber
 	{
 		vanityPort := envvar.Get("FEATURE_VANITY_METRIC_PORT", "6666")
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
 
 		receiveBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_RECEIVE_BUFFER_SIZE", 1000000)
 		if err != nil {
@@ -139,12 +142,15 @@ func mainReturnWithCode() int {
 	// Get the redis host for the user session map
 	redisUserSessions := envvar.Get("FEATURE_VANITY_METRIC_REDIS_HOST_USER_SESSIONS_MAP", "127.0.0.1:6379")
 
-	// Get the max idle time (seconds) for a userHash in the redis
-	vanityMaxUserIdleTime, err := envvar.GetInt("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", 60*30)
+	// Get the max idle time for a sessionID in redis
+	vanityMaxUserIdleTime, err := envvar.GetDuration("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", time.Minute*5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	// Get the name of the set for redis
+	vanitySetName := envvar.Get("FEATURE_VANITY_METRIC_REDIS_SET_NAME", "RecentSessionIDs")
 
 	// Get the max idle connections for redis
 	redisMaxIdleConnections, err := envvar.GetInt("FEATURE_VANITY_METRIC_REDIS_MAX_IDLE_CONNECTIONS", 5)
@@ -177,15 +183,15 @@ func mainReturnWithCode() int {
 
 		go func() {
 			for {
-				vanityMetricMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				vanityMetricMetrics.MemoryAllocated.Set(memoryUsed())
+				vanityServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				vanityServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(vanityMetricMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", vanityMetricMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d messages received\n", int(vanityMetricMetrics.ReceivedVanityCount.Value()))
-				fmt.Printf("%d successful updates\n", int(vanityMetricMetrics.UpdateVanitySuccessCount.Value()))
-				fmt.Printf("%d failed updates\n", int(vanityMetricMetrics.UpdateVanityFailureCount.Value()))
+				fmt.Printf("%d goroutines\n", int(vanityServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", vanityServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d messages received\n", int(vanityServiceMetrics.ReceivedVanityCount.Value()))
+				fmt.Printf("%d successful updates\n", int(vanityServiceMetrics.UpdateVanitySuccessCount.Value()))
+				fmt.Printf("%d failed updates\n", int(vanityServiceMetrics.UpdateVanityFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -194,7 +200,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityMetricMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime)
+	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime, vanitySetName, logger)
 
 	// Start the goroutines for receiving vanity metrics from the backend and updating metrics
 	errChan := make(chan error, 1)
