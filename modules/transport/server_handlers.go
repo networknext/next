@@ -117,9 +117,8 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 	// We should always support the "local" datacenter, even without a datacenter mapping
 	if crypto.HashID("local") == datacenterID {
 		return routing.Datacenter{
-			ID:      crypto.HashID("local"),
-			Name:    "local",
-			Enabled: true,
+			ID:   crypto.HashID("local"),
+			Name: "local",
 		}, nil
 	}
 
@@ -217,6 +216,7 @@ func handleNearAndDestRelays(
 	nextPacketLoss int32,
 	firstRouteRelayID uint64,
 	destRelayIDs []uint64,
+	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
 	var nearRelaysChanged bool
 
@@ -255,7 +255,8 @@ func handleNearAndDestRelays(
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
 	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directLatency, directJitter, directPacketLoss, nextPacketLoss, firstRouteRelayID, sliceNumber, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
-	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
+	
+  return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
 func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
@@ -504,15 +505,15 @@ func SessionUpdateHandlerFunc(
 				nearRelays.IDs[i] = relayID
 				nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
 				nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-				nearRelays.RTTs[i] = int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayRTT[i])))
-				nearRelays.Jitters[i] = int32(math.Ceil(float64(prevSessionData.RouteState.NearRelayJitter[i])))
+				nearRelays.RTTs[i] = prevSessionData.RouteState.NearRelayRTT[i]
+				nearRelays.Jitters[i] = prevSessionData.RouteState.NearRelayJitter[i]
 
 				// We don't actually store the packet loss in the session data, so just use the
 				// values from the session update packet (no max history)
 				if nearRelays.RTTs[i] >= 255 {
 					nearRelays.PacketLosses[i] = 100
 				} else {
-					nearRelays.PacketLosses[i] = int32(math.Ceil(float64(packet.NearRelayPacketLoss[i])))
+					nearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
 				}
 			}
 
@@ -700,6 +701,7 @@ func SessionUpdateHandlerFunc(
 			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
 			sessionData.RouteRelayIDs[0],
 			destRelayIDs,
+			debug,
 		)
 
 		response.NearRelaysChanged = nearRelaysChanged
@@ -753,8 +755,6 @@ func SessionUpdateHandlerFunc(
 		}
 
 		var routeNumRelays int32
-		var routeRelayNames [core.MaxRelaysPerRoute]string
-		var routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
 
 		var nextRouteSwitched bool
 
@@ -774,7 +774,7 @@ func SessionUpdateHandlerFunc(
 				}
 			} else {
 				var stay bool
-				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
 					// Continue token
 
 					// Check if the route has changed
@@ -809,6 +809,10 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
+		if routeCost > routing.InvalidRouteValue {
+			routeCost = routing.InvalidRouteValue
+		}
+
 		response.Committed = sessionData.RouteState.Committed
 		response.Multipath = sessionData.RouteState.Multipath
 
@@ -820,15 +824,6 @@ func SessionUpdateHandlerFunc(
 		for i := int32(0); i < routeNumRelays; i++ {
 			relayID := routeMatrix.RelayIDs[routeRelays[i]]
 			sessionData.RouteRelayIDs[i] = relayID
-
-			// Get all of the necessary relay information for the post session update
-			relay, err := storer.Relay(relayID)
-			if err != nil {
-				continue
-			}
-
-			routeRelayNames[i] = relay.Name
-			routeRelaySellers[i] = relay.Seller
 		}
 
 		if debug != nil {
@@ -1155,8 +1150,10 @@ func PostSessionUpdate(
 		deltaRTT = packet.DirectRTT - packet.NextRTT
 	}
 
-	var predictedRTT int64
-	predictedRTT = int64(routeCost)
+	predictedRTT := float64(sessionData.RouteCost)
+	if sessionData.RouteCost >= routing.InvalidRouteValue {
+		predictedRTT = 0
+	}
 
 	portalData := &SessionPortalData{
 		Meta: SessionMeta{
@@ -1191,7 +1188,7 @@ func PostSessionUpdate(
 				PacketLoss: float64(packet.DirectPacketLoss),
 			},
 			Predicted: routing.Stats{
-				RTT: float64(predictedRTT),
+				RTT: predictedRTT,
 			},
 			Envelope: routing.Envelope{
 				Up:   int64(packet.NextKbpsUp),
