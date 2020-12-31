@@ -5079,12 +5079,48 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 
 	debug := ""
 
+	// first latency worse is fine
+
 	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.Multipath = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+	expectedRouteState.LatencyWorseCounter = 1
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	// second latency worse is fine
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState = RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.Multipath = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+	expectedRouteState.LatencyWorseCounter = 2
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	// third latency worse is veto
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState = RouteState{}
 	expectedRouteState.UserID = 100
 	expectedRouteState.Next = false
 	expectedRouteState.Multipath = true
@@ -5092,6 +5128,97 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 	expectedRouteState.LatencyWorse = true
 	expectedRouteState.Committed = true
 	expectedRouteState.Veto = true
+	expectedRouteState.LatencyWorseCounter = 3
+
+	assert.Equal(t, expectedRouteState, routeState)
+}
+
+func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 20)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+	directLatency := int32(10)
+
+	nextLatency := int32(50)
+
+	predictedLatency := int32(0)
+
+	directPacketLoss := float32(0)
+
+	nextPacketLoss := float32(0)
+
+	sourceRelays := []int32{0}
+	sourceRelayCosts := []int32{10}
+
+	destRelays := []int32{1}
+
+	routeCost := int32(0)
+	routeNumRelays := int32(0)
+	routeRelays := [MaxRelaysPerRoute]int32{}
+
+	routeShader := NewRouteShader()
+	routeState := RouteState{}
+	internal := NewInternalConfig()
+
+	routeState.Next = true
+	routeState.UserID = 100
+	routeState.Multipath = true
+	routeState.ReducePacketLoss = true
+	routeState.Committed = true
+
+	currentRouteNumRelays := int32(2)
+	currentRouteRelays := [MaxRelaysPerRoute]int32{0, 1}
+
+	debug := ""
+
+	// first latency worse is fine
+
+	result, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.Multipath = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+	expectedRouteState.LatencyWorseCounter = 1
+
+	assert.Equal(t, expectedRouteState, routeState)
+
+	// now latency is not worse, we should recover
+
+	nextLatency = int32(5)
+
+	result, nextRouteSwitched = MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &debug)
+
+	assert.True(t, result)
+	assert.False(t, nextRouteSwitched)
+
+	expectedRouteState = RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.Multipath = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+	expectedRouteState.LatencyWorseCounter = 0
 
 	assert.Equal(t, expectedRouteState, routeState)
 }

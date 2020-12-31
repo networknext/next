@@ -1244,42 +1244,43 @@ func NewRouteShader() RouteShader {
 }
 
 type RouteState struct {
-	UserID             uint64
-	Next               bool
-	Veto               bool
-	Banned             bool
-	Disabled           bool
-	NotSelected        bool
-	ABTest             bool
-	A                  bool
-	B                  bool
-	ForcedNext         bool
-	ReduceLatency      bool
-	ReducePacketLoss   bool
-	ProMode            bool
-	Multipath          bool
-	Committed          bool
-	CommitVeto         bool
-	CommitCounter      int32
-	LatencyWorse       bool
-	MultipathOverload  bool
-	NoRoute            bool
-	NextLatencyTooHigh bool
-	NumNearRelays      int32
-	NearRelayRTT       [MaxNearRelays]int32
-	NearRelayJitter    [MaxNearRelays]int32
-	NearRelayPLHistory [MaxNearRelays]uint32
-	NearRelayPLCount   [MaxNearRelays]uint32
-	DirectPLHistory    uint32
-	DirectPLCount      uint32
-	PLHistoryIndex     int32
-	PLHistorySamples   int32
-	RelayWentAway      bool
-	RouteLost          bool
-	DirectJitter       int32
-	Mispredict         bool
-	LackOfDiversity    bool
-	MispredictCounter  uint32
+	UserID              uint64
+	Next                bool
+	Veto                bool
+	Banned              bool
+	Disabled            bool
+	NotSelected         bool
+	ABTest              bool
+	A                   bool
+	B                   bool
+	ForcedNext          bool
+	ReduceLatency       bool
+	ReducePacketLoss    bool
+	ProMode             bool
+	Multipath           bool
+	Committed           bool
+	CommitVeto          bool
+	CommitCounter       int32
+	LatencyWorse        bool
+	MultipathOverload   bool
+	NoRoute             bool
+	NextLatencyTooHigh  bool
+	NumNearRelays       int32
+	NearRelayRTT        [MaxNearRelays]int32
+	NearRelayJitter     [MaxNearRelays]int32
+	NearRelayPLHistory  [MaxNearRelays]uint32
+	NearRelayPLCount    [MaxNearRelays]uint32
+	DirectPLHistory     uint32
+	DirectPLCount       uint32
+	PLHistoryIndex      int32
+	PLHistorySamples    int32
+	RelayWentAway       bool
+	RouteLost           bool
+	DirectJitter        int32
+	Mispredict          bool
+	LackOfDiversity     bool
+	MispredictCounter   uint32
+	LatencyWorseCounter uint32
 }
 
 type InternalConfig struct {
@@ -1585,7 +1586,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// if we have made rtt significantly worse, leave network next
+	// if we make rtt significantly worse leave network next
 
 	maxCost := int32(math.MaxInt32)
 
@@ -1604,12 +1605,39 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		// IMPORTANT: Here is where we abort the network next route if we see that we have
 		// made latency worse on the previous slice. This is disabled while we are not committed,
 		// so we can properly evaluate the route in try before you buy instead of vetoing it right away
-		if routeState.Committed && nextLatency > (directLatency-rttVeto) {
-			if debug != nil {
-				*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+
+		if routeState.Committed {
+
+			if !routeState.Multipath {
+
+				// If we make latency worse and we are not in multipath, leave network next right away
+				
+				if nextLatency > (directLatency-rttVeto) {
+					if debug != nil {
+						*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+					}
+					routeState.LatencyWorse = true
+					return false, false
+				}
+
+			} else {
+
+				// If we are in multipath, only leave network next if we make latency worse three slices in a row
+				
+				if nextLatency > (directLatency-rttVeto) {
+					routeState.LatencyWorseCounter++
+					if routeState.LatencyWorseCounter == 3 {
+						if debug != nil {
+							*debug += fmt.Sprintf("aborting route because we made latency worse 3X: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+						}
+						routeState.LatencyWorse = true
+						return false, false
+					}
+				} else {
+					routeState.LatencyWorseCounter = 0
+				}
+
 			}
-			routeState.LatencyWorse = true
-			return false, false
 		}
 
 		maxCost = directLatency - rttVeto

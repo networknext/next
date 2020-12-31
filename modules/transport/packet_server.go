@@ -16,7 +16,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 6
+	SessionDataVersion = 7
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -722,6 +722,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	if sessionData.Version >= 6 {
 		stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
+	}
+
+	if sessionData.Version >= 7 {
+		stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 	}
 
 	return stream.Error()
