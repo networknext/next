@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"fmt"
 	"math"
 	"net"
 
@@ -17,7 +16,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 5
+	SessionDataVersion = 6
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -47,9 +46,9 @@ const (
 	PlatformTypeSwitch      = 4
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
-	PlatformTypeXBOXOne     = 7
+	PlatformTypeXBoxOne     = 7
 	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
-	PlatformTypeXBOXSeriesX = 8
+	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
 	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
 
@@ -115,8 +114,12 @@ func PlatformTypeText(platformType uint8) string {
 		return "PS4"
 	case PlatformTypeIOS:
 		return "IOS"
-	case PlatformTypeXBOXOne:
-		return "XBOXOne"
+	case PlatformTypeXBoxOne:
+		return "XBox One"
+	case PlatformTypeXBoxSeriesX:
+		return "XBox Series X"
+	case PlatformTypePS5:
+		return "PS5"
 	default:
 		return "unknown"
 	}
@@ -136,8 +139,10 @@ func ParsePlatformType(conntype string) uint8 {
 		return PlatformTypePS4
 	case "IOS":
 		return PlatformTypeIOS
-	case "XBOXOne":
-		return PlatformTypeXBOXOne
+	case "XBox One":
+		return PlatformTypeXBoxOne
+	case "XBox Series X":
+		return PlatformTypeXBoxSeriesX
 	default:
 		return PlatformTypeUnknown
 	}
@@ -601,9 +606,6 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
-	if stream.IsReading() && sessionData.Version > SessionDataVersion {
-		return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
-	}
 
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
@@ -716,6 +718,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	if sessionData.Version >= 5 {
 		stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
+	}
+
+	if sessionData.Version >= 6 {
+		stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
 	}
 
 	return stream.Error()
