@@ -700,6 +700,11 @@ func main() {
 				relaysStateShowFlags[routing.RelayStateDisabled] = true
 				relaysStateShowFlags[routing.RelayStateQuarantine] = true
 				relaysStateShowFlags[routing.RelayStateOffline] = true
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
+				relaysStateHideFlags[routing.RelayStateMaintenance] = false
+				relaysStateHideFlags[routing.RelayStateDisabled] = false
+				relaysStateHideFlags[routing.RelayStateQuarantine] = false
+				relaysStateHideFlags[routing.RelayStateOffline] = false
 			}
 
 			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
