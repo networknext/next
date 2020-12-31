@@ -440,6 +440,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			RouteType:          int32(routing.RouteTypeDirect),
 			NumTokens:          0,
 			Tokens:             nil,
+			HighFrequencyPings: true,
 		}
 
 	} else {
@@ -512,6 +513,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			Committed:          committed,
 			NumTokens:          int32(numTokens),
 			Tokens:             tokenData,
+			HighFrequencyPings: true,
 		}
 	}
 

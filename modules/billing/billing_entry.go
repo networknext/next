@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(20)
+	BillingEntryVersion = uint8(23)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -81,7 +81,10 @@ const (
 		1 + // NoRoute
 		1 + // NextLatencyTooHigh
 		1 + // RouteChanged
-		1 // CommitVeto
+		1 + // CommitVeto
+		4 + // RouteDiversity
+		1 + // LackOfDiversity
+		1 // Pro
 )
 
 type BillingEntry struct {
@@ -152,6 +155,9 @@ type BillingEntry struct {
 	NextLatencyTooHigh              bool
 	RouteChanged                    bool
 	CommitVeto                      bool
+	RouteDiversity                  uint32
+	LackOfDiversity                 bool
+	Pro                             bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -266,6 +272,12 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.NextLatencyTooHigh)
 	encoding.WriteBool(data, &index, entry.RouteChanged)
 	encoding.WriteBool(data, &index, entry.CommitVeto)
+
+	encoding.WriteUint32(data, &index, entry.RouteDiversity)
+
+	encoding.WriteBool(data, &index, entry.LackOfDiversity)
+
+	encoding.WriteBool(data, &index, entry.Pro)
 
 	return data[:index]
 }
@@ -617,6 +629,24 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.CommitVeto) {
+			return false
+		}
+	}
+
+	if entry.Version >= 21 {
+		if !encoding.ReadUint32(data, &index, &entry.RouteDiversity) {
+			return false
+		}
+	}
+
+	if entry.Version >= 22 {
+		if !encoding.ReadBool(data, &index, &entry.LackOfDiversity) {
+			return false
+		}
+	}
+
+	if entry.Version >= 23 {
+		if !encoding.ReadBool(data, &index, &entry.Pro) {
 			return false
 		}
 	}
