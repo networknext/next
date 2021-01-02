@@ -41,7 +41,7 @@ func (rc *RelayCache) SetAllWithAddRemove(relayArr []*RelayStoreData) ([]*RelayS
 	var addArr []*RelayStoreData
 	var newArr []RelayStoreData
 	newMap := make(map[uint64]RelayStoreData)
-	for _, relay := range relayArr {
+		for _, relay := range relayArr {
 		newArr = append(newArr, *relay)
 		newMap[relay.ID] = *relay
 
