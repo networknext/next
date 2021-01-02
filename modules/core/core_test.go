@@ -2373,6 +2373,12 @@ type TestData struct {
 	debug				  string
 
 	routeDiversity        int32
+
+	nextLatency           int32
+	nextPacketLoss        float32
+	predictedLatency      int32
+	currentRouteNumRelays int32
+	currentRouteRelays    [MaxRelaysPerRoute]int32
 }
 
 func NewTestData(env *TestEnvironment) *TestData {
@@ -2413,6 +2419,29 @@ func (test *TestData) TakeNetworkNext() bool {
 		&test.routeNumRelays, 
 		test.routeRelays[:], 
 		&test.routeDiversity, 
+		&test.debug,
+	)
+}
+
+func (test *TestData) StayOnNetworkNext() (bool, bool) {
+	return MakeRouteDecision_StayOnNetworkNext(test.routeMatrix, 
+		test.relayNames, 
+		&test.routeShader, 
+		&test.routeState, 
+		&test.internal, 
+		test.directLatency, 
+		test.nextLatency, 
+		test.predictedLatency, 
+		test.directPacketLoss, 
+		test.nextPacketLoss, 
+		test.currentRouteNumRelays, 
+		test.currentRouteRelays, 
+		test.sourceRelays, 
+		test.sourceRelayCosts, 
+		test.destRelays, 
+		&test.routeCost, 
+		&test.routeNumRelays, 
+		test.routeRelays[:], 
 		&test.debug,
 	)
 }
@@ -3343,6 +3372,7 @@ func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
 
 // -----------------------------------------------------------------------------
 
+// todo
 func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
 
 	t.Parallel()
