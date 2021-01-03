@@ -512,7 +512,7 @@ func main() {
 	var csvOutputFlag bool
 	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
 
-	// Return a CSV file instead of a table
+	// Return all relays at this version
 	var relayVersionFilter string
 	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
 
@@ -725,10 +725,16 @@ func main() {
 				relaysStateShowFlags[routing.RelayStateDisabled] = true
 				relaysStateShowFlags[routing.RelayStateQuarantine] = true
 				relaysStateShowFlags[routing.RelayStateOffline] = true
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
+				relaysStateHideFlags[routing.RelayStateMaintenance] = false
+				relaysStateHideFlags[routing.RelayStateDisabled] = false
+				relaysStateHideFlags[routing.RelayStateQuarantine] = false
+				relaysStateHideFlags[routing.RelayStateOffline] = false
 			}
 
 			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-				//  Show decommissioned relays with --decommissioned flag by essentially disabling --nodecommissioned flag
+				//  Show decommissioned relays
+				relaysStateShowFlags[routing.RelayStateDecommissioned] = true
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
