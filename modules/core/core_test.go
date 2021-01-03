@@ -4816,40 +4816,19 @@ func TestTakeNetworkNext_Uncommitted(t *testing.T) {
 	env.SetCost("losangeles", "a", 1)
 	env.SetCost("a", "chicago", 1)
 
-	costMatrix, numRelays := env.GetCostMatrix()
+	test := NewTestData(env)
 
-	relayDatacenters := env.GetRelayDatacenters()
+	test.directLatency = int32(30)
 
-	numSegments := numRelays
+	test.sourceRelayCosts = []int32{10}
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	test.destRelays = []int32{1}
 
-	directLatency := int32(30)
+	test.internal.Uncommitted = true
 
-	directPacketLoss := float32(0)
+	test.routeState.UserID = 100
 
-	sourceRelays := []int32{0}
-	sourceRelayCosts := []int32{10}
-
-	destRelays := []int32{1}
-
-	routeCost := int32(0)
-	routeNumRelays := int32(0)
-	routeRelays := [MaxRelaysPerRoute]int32{}
-
-	routeShader := NewRouteShader()
-	routeState := RouteState{}
-	multipathVetoUsers := map[uint64]bool{}
-	internal := NewInternalConfig()
-	internal.Uncommitted = true
-
-	routeState.UserID = 100
-
-	debug := ""
-
-	routeDiversity := int32(0)
-
-	result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, multipathVetoUsers, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, &debug)
+	result := test.TakeNetworkNext()
 
 	assert.True(t, result)
 
@@ -4858,10 +4837,10 @@ func TestTakeNetworkNext_Uncommitted(t *testing.T) {
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 
-	assert.Equal(t, expectedRouteState, routeState)
-	assert.Equal(t, int32(12+CostBias), routeCost)
-	assert.Equal(t, int32(3), routeNumRelays)
-	assert.Equal(t, int32(1), routeDiversity)
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(12+CostBias), test.routeCost)
+	assert.Equal(t, int32(3), test.routeNumRelays)
+	assert.Equal(t, int32(1), test.routeDiversity)
 }
 
 func TestStayOnNetworkNext_Uncommitted(t *testing.T) {
