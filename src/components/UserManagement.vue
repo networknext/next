@@ -295,8 +295,6 @@ export default class UserManagement extends Vue {
       return
     }
     if (account.delete) {
-      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-      // HACK: This is a hack to get tests to work properly
       this.$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {

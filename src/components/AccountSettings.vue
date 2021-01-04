@@ -83,7 +83,6 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
 import { AlertType } from './types/AlertTypes'
-import { UserProfile } from './types/AuthTypes'
 import { cloneDeep } from 'lodash'
 
 /**
@@ -247,6 +246,7 @@ export default class AccountSettings extends Vue {
 
     Promise.all(promises)
       .then((responses: Array<any>) => {
+        // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
         this.$authService.refreshToken()
         this.message = 'Account settings updated successfully'
         this.alertType = AlertType.SUCCESS

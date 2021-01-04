@@ -45,7 +45,8 @@ export class AuthService {
     })
   }
 
-  public refreshToken () {
+  // TODO: This should be an async function instead of the weird nested promise
+  public refreshToken (): Promise<any> {
     return this.authClient.getTokenSilently({ ignoreCache: true })
       .then(() => {
         this.processAuthentication()

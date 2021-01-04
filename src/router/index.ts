@@ -134,6 +134,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
+    // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
     Vue.prototype.$authService.refreshToken()
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     next('/map')
