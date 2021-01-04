@@ -235,7 +235,6 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 				select {
 				// Buffer up some vanity metric entries to insert into StackDriver
 				case vanityData := <-vm.vanityMetricDataChan:
-					fmt.Printf("Got vanity data: %v\n", vanityData)
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
 
 					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {
@@ -392,6 +391,7 @@ func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	}
 
 	if !exists {
+		fmt.Printf("sessionID %s is not new\n", sessionIDStr)
 		// Not a new sessionID
 		return false, nil
 	}
@@ -401,7 +401,7 @@ func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	if err != nil {
 		return exists, err
 	}
-
+	fmt.Printf("NEW: sessionID %s\n", sessionIDStr)
 	return true, nil
 }
 
@@ -526,6 +526,7 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 				}
 			}
 		}
+		fmt.Printf("%s: max point val is %d\n", displayName, maxPointVal)
 
 		floatPointVal := float64(maxPointVal)
 		// Check if the a slice metric needs hours calculated
@@ -534,6 +535,7 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			hours := seconds.Hours()
 			// Round to 3 decimal places
 			floatPointVal = math.Round(hours*1000) / 1000
+			fmt.Printf("Hours %s: float point val is %v\n", displayName, floatPointVal)
 		}
 
 		// Add metric value to the final map
