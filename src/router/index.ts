@@ -130,7 +130,6 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
   // Email is verified
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
-    console.log('Sign up redirected!')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
