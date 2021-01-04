@@ -16,8 +16,12 @@
       <h1 class="h2">
         User Tool
       </h1>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
-        <div class="mr-auto"></div>
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
+        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.INFO" ref="verifyAlert">
+          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
+            Resend email
+          </a>
+        </Alert>
       </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchUserSessions()">
@@ -49,7 +53,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import UserSessions from '@/components/UserSessions.vue'
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
 
@@ -75,13 +79,15 @@ export default class UserToolWorkspace extends Vue {
   private alertType: string
   private message: string
   private searchID: string
+  private AlertType: any
 
   constructor () {
     super()
     this.alertType = ''
     this.searchID = ''
     this.message = 'Please enter a User ID to view their sessions.'
-    this.alertType = AlertTypes.INFO
+    this.alertType = AlertType.INFO
+    this.AlertType = AlertType
   }
 
   private created () {
@@ -89,9 +95,9 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    this.searchID = this.$route.params.pathMatch || ''
+    this.searchID = to.params.pathMatch || ''
     this.message = 'Please enter a User ID to view their sessions.'
-    this.alertType = AlertTypes.INFO
+    this.alertType = AlertType.INFO
     next()
   }
 
@@ -103,7 +109,7 @@ export default class UserToolWorkspace extends Vue {
     }
     if (this.searchID === '' && this.$route.path === '/user-tool') {
       this.message = 'Please enter a User ID to view their sessions.'
-      this.alertType = AlertTypes.INFO
+      this.alertType = AlertType.INFO
       return
     }
     const newRoute = `/user-tool/${this.searchID}`

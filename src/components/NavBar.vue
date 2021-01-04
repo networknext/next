@@ -8,7 +8,7 @@
     <ul class="navbar-nav px-3 w-100 mr-auto">
       <li class="nav-item text-nowrap">
         <router-link
-          to="/"
+          to="/map"
           class="nav-link"
           v-bind:class="{ active: $store.getters.currentPage == 'map' }"
           data-test="mapLink"
@@ -18,6 +18,7 @@
         <router-link
           to="/sessions"
           class="nav-link"
+          data-intercom="sessions"
           v-bind:class="{ active: $store.getters.currentPage == 'sessions' }"
           data-test="sessionsLink"
         >Sessions</router-link>
@@ -50,6 +51,7 @@
         <router-link
           to="/downloads"
           class="nav-link"
+          data-intercom="downloads"
           v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
           v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
         >Downloads</router-link>
@@ -104,6 +106,7 @@
       <li class="nav-item text-nowrap">
         <a
           data-test="signUpButton"
+          data-intercom="signUpButton"
           class="signup btn-sm btn-primary"
           href="#"
           @click="signUp()"

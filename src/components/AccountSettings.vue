@@ -7,7 +7,7 @@
       Update user account profile.
     </p>
     <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
-    <form @submit.prevent="updateCompanyInformation()">
+    <form @submit.prevent="updateAccountSettings()">
       <div class="form-group">
         <label for="companyName">
           Company Name
@@ -34,13 +34,21 @@
           <br/>
         </small>
       </div>
+      <div class="form-group">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent"/>
+          <small>
+            I would like to receive the Network Next newsletter
+          </small>
+        </div>
+      </div>
       <button type="submit" class="btn btn-primary btn-sm">
         Update Company Settings
       </button>
       <p class="text-muted text-small mt-2"></p>
     </form>
-    <form @submit.prevent="updateAccountSettings()">
-      <div class="form-group" v-if="false">
+    <form v-if="false">
+      <div class="form-group">
         <label for="newPassword">
           Update Password
         </label>
@@ -63,13 +71,7 @@
           <br/>
         </small>
       </div>
-      <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="updateAccountSettings()"/>
-        <small>
-          I would like to receive the Network Next newsletter
-        </small>
-      </div>
-      <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 1rem;" v-if="false">
+      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -80,8 +82,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
-import { ErrorTypes } from './types/ErrorTypes'
+import { AlertType } from './types/AlertTypes'
 import { UserProfile } from './types/AuthTypes'
 import { cloneDeep } from 'lodash'
 
@@ -120,11 +121,12 @@ export default class AccountSettings extends Vue {
   private companyCodeErrors: Array<string>
   private confirmPasswordErrors: Array<string>
   private newsletterConsent: boolean
+  private AlertType: any
 
   constructor () {
     super()
     this.message = ''
-    this.alertType = AlertTypes.DEFAULT
+    this.alertType = AlertType.DEFAULT
     this.companyName = ''
     this.companyCode = ''
     this.newPassword = ''
@@ -140,6 +142,7 @@ export default class AccountSettings extends Vue {
     this.companyCodeErrors = []
     this.confirmPasswordErrors = []
     this.newsletterConsent = false
+    this.AlertType = AlertType
   }
 
   private mounted () {
@@ -229,25 +232,27 @@ export default class AccountSettings extends Vue {
     }
   }
 
-  private updateCompanyInformation () {
-    if (!this.validCompanyInfo) {
-      this.message = ErrorTypes.INVALID_FORM_ENTRY
-      this.alertType = AlertTypes.ERROR
-      setTimeout(() => {
-        this.message = ''
-        this.alertType = AlertTypes.DEFAULT
-      }, 5000)
-      return
+  private updateAccountSettings () {
+    const promises = []
+    // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
+    if (this.validCompanyInfo && this.$store.getters.userProfile.companyName !== this.companyName && this.$store.getters.userProfile.companyCode !== this.companyCode) {
+      promises.push(
+        this.$apiService
+          .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
+      )
     }
-    this.$apiService
-      .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
-      .then((response: any) => {
+
+    promises.push(this.$apiService
+      .updateAccountSettings({ newsletter: this.newsletterConsent }))
+
+    Promise.all(promises)
+      .then((responses: Array<any>) => {
         this.$authService.refreshToken()
-        this.message = 'Company name updated successfully'
-        this.alertType = AlertTypes.SUCCESS
+        this.message = 'Account settings updated successfully'
+        this.alertType = AlertType.SUCCESS
         setTimeout(() => {
           this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          this.alertType = AlertType.DEFAULT
         }, 5000)
       })
       .catch((error: Error) => {
@@ -255,43 +260,12 @@ export default class AccountSettings extends Vue {
         console.log(error)
         this.companyName = this.$store.getters.userProfile.companyName
         this.companyCode = this.$store.getters.userProfile.companyCode
-        this.message = 'Failed to update company name'
-        this.alertType = AlertTypes.ERROR
-        setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
-        }, 5000)
-      })
-  }
-
-  private updateAccountSettings () {
-    if (!this.validPasswordForm) {
-      this.message = ErrorTypes.INVALID_FORM_ENTRY
-      this.alertType = AlertTypes.ERROR
-      setTimeout(() => {
-        this.message = ''
-        this.alertType = AlertTypes.DEFAULT
-      }, 5000)
-      return
-    }
-    this.$apiService
-      .updateAccountSettings({ newsletter: this.newsletterConsent })
-      .then((response: any) => {
-        this.message = 'Account settings updated successfully'
-        this.alertType = AlertTypes.SUCCESS
-        setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
-        }, 5000)
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong updating the account settings')
-        console.log(error)
+        this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
         this.message = 'Failed to update account settings'
-        this.alertType = AlertTypes.ERROR
+        this.alertType = AlertType.ERROR
         setTimeout(() => {
           this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          this.alertType = AlertType.DEFAULT
         }, 5000)
       })
   }

@@ -204,8 +204,11 @@
                 <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                     Nearby Relays
                 </dt>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
-                    No Nearby Relays
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && getBuyerIsLive(this.meta.customer_id)">
+                    No Near Relays
+                </dd>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && !getBuyerIsLive(this.meta.customer_id)">
+                    Customer is not live
                 </dd>
                 <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                   <thead>
@@ -230,7 +233,7 @@
                           <a class="text-dark">{{relay.name}}</a>&nbsp;
                         </td>
                         <td>
-                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.rtt).toFixed(2) }}
                         </td>
                         <td>
                           {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
@@ -260,7 +263,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 // import data1 from '../../test_data/session_details.json'
 
 /**
@@ -314,7 +317,7 @@ export default class SessionDetails extends Vue {
     super()
     this.searchID = ''
     this.message = ''
-    this.alertType = AlertTypes.ERROR
+    this.alertType = AlertType.ERROR
     // this.slices = (data1 as any).result.slices
     // this.meta = (data1 as any).result.meta
   }
@@ -351,6 +354,17 @@ export default class SessionDetails extends Vue {
       }
     }
     return 'Private'
+  }
+
+  private getBuyerIsLive (buyerID: string) {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerID) {
+        return allBuyers[i].is_live
+      }
+    }
+    return false
   }
 
   private fetchSessionDetails () {
@@ -477,7 +491,6 @@ export default class SessionDetails extends Vue {
     const bandwidthChartElement: HTMLElement | null = document.getElementById('bandwidth-chart-1')
 
     let directOnly = true
-    let lastPrediction = 0
 
     this.slices.map((slice: any, index: number) => {
       const timestamp = new Date(slice.timestamp).getTime() / 1000
@@ -490,13 +503,6 @@ export default class SessionDetails extends Vue {
       const nextRTT = parseFloat(slice.next.rtt)
       const directRTT = parseFloat(slice.direct.rtt)
 
-      let predictedRTT = 0
-
-      if (index > 0) {
-        predictedRTT = lastPrediction
-      }
-      lastPrediction = slice.predicted.rtt
-
       const nextJitter = parseFloat(slice.next.jitter)
       const directJitter = parseFloat(slice.direct.jitter)
 
@@ -505,14 +511,16 @@ export default class SessionDetails extends Vue {
 
       // Latency
       let next = (slice.is_multipath && nextRTT >= directRTT && !this.$store.getters.isAdmin) ? directRTT : nextRTT
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       let direct = directRTT
       latencyData[0].push(timestamp)
       latencyData[1].push(next)
       latencyData[2].push(direct)
-      latencyData[3].push(predictedRTT)
+      latencyData[3].push(slice.predicted.rtt)
 
       // Jitter
       next = (slice.is_multipath && nextJitter >= directJitter && !this.$store.getters.isAdmin) ? directJitter : nextJitter
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       direct = directJitter
       jitterData[0].push(timestamp)
       jitterData[1].push(next)
@@ -520,6 +528,7 @@ export default class SessionDetails extends Vue {
 
       // Packetloss
       next = (slice.is_multipath && nextPL >= directPL && !this.$store.getters.isAdmin) ? directPL : nextPL
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       direct = directPL
       packetLossData[0].push(timestamp)
       packetLossData[1].push(next)

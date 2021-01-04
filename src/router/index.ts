@@ -22,7 +22,7 @@ Vue.use(VueRouter)
 // All navigable routes for the Portal
 const routes: Array<RouteConfig> = [
   {
-    path: '/',
+    path: '/map',
     name: 'map',
     component: MapWorkspace
   },
@@ -88,6 +88,10 @@ const routes: Array<RouteConfig> = [
     ]
   },
   {
+    path: '/get-access',
+    name: 'get-access'
+  },
+  {
     path: '/explore',
     name: 'explore',
     component: Explore
@@ -113,7 +117,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
-    next('/')
+    next('/map')
     return
   }
   if (to.name === 'settings') {
@@ -131,7 +135,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     }
     Vue.prototype.$authService.refreshToken()
     store.commit('UPDATE_CURRENT_PAGE', 'map')
-    next('/')
+    next('/map')
     return
   }
   store.commit('UPDATE_CURRENT_PAGE', to.name)

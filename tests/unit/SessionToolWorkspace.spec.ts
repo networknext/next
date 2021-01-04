@@ -1,8 +1,10 @@
 import { createLocalVue, mount } from '@vue/test-utils'
+import Vuex from 'vuex'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 
 describe('SessionToolWorkspace.vue', () => {
   const localVue = createLocalVue()
+  localVue.use(Vuex)
 
   const $route = {
     path: '/session-tool',
@@ -20,13 +22,28 @@ describe('SessionToolWorkspace.vue', () => {
     }
   }
 
+  const defaultStore = new Vuex.Store({
+    state: {
+      userProfile: {
+        company: ''
+      }
+    },
+    getters: {
+      userProfile: (state: any) => state.userProfile,
+      isAdmin: () => false,
+      isOwner: () => false,
+      registeredToCompany: () => false
+    }
+  })
+
   const stubs = [
     'router-view'
   ]
 
   it('mounts the user sessions table successfully', () => {
+    const store = defaultStore
     const wrapper = mount(SessionToolWorkspace, {
-      localVue, mocks, stubs
+      localVue, mocks, stubs, store
     })
     expect(wrapper.exists()).toBe(true)
     wrapper.destroy()
@@ -34,8 +51,9 @@ describe('SessionToolWorkspace.vue', () => {
 
   it('check default view', () => {
     // Mount the component
+    const store = defaultStore
     const wrapper = mount(SessionToolWorkspace, {
-      localVue, mocks, stubs
+      localVue, mocks, stubs, store
     })
     // Check Title
     expect(wrapper.find('.h2').text()).toBe('Session Tool')

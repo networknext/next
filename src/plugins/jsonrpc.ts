@@ -1,3 +1,4 @@
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 import store from '@/store'
 
 export class JSONRPCService {
@@ -31,10 +32,10 @@ export class JSONRPCService {
           params: options,
           id
         })
-      }).then((response: any) => {
+      }).then((response: Response) => {
         response.json().then((json: any) => {
           if (json.error) {
-            reject(new Error(json.error))
+            reject(json.error)
           }
           resolve(json.result)
         })

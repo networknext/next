@@ -36,7 +36,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 import { cloneDeep } from 'lodash'
 
@@ -89,7 +89,7 @@ export default class GameConfiguration extends Vue {
       .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertTypes.SUCCESS
+        this.alertType = AlertType.SUCCESS
         this.message = 'Updated public key successfully'
         setTimeout(() => {
           this.message = ''
@@ -103,7 +103,7 @@ export default class GameConfiguration extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
-        this.alertType = AlertTypes.ERROR
+        this.alertType = AlertType.ERROR
         this.message = 'Failed to update public key'
         setTimeout(() => {
           this.message = ''

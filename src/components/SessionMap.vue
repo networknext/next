@@ -1,7 +1,7 @@
 <template>
   <div class="map-container-no-offset">
     <div class="map" id="map"></div>
-    <canvas id="deck-canvas"></canvas>
+    <canvas id="deck-canvas" data-intercom="map"></canvas>
   </div>
 </template>
 
@@ -90,7 +90,8 @@ export default class SessionMap extends Vue {
             zoom: 2,
             pitch: 0,
             bearing: 0,
-            container: 'map'
+            container: 'map',
+            minZoom: 1.9
           })
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }

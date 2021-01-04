@@ -22,22 +22,26 @@ export class AuthService {
   }
 
   public logout () {
-    this.authClient.logout()
+    this.authClient.logout({
+      returnTo: window.location.origin + '/map'
+    })
   }
 
   public login () {
     this.authClient
       .loginWithRedirect({
         connection: 'Username-Password-Authentication',
-        redirect_uri: window.location.origin
+        redirect_uri: window.location.origin + '/map'
       })
   }
 
-  public signUp () {
+  public signUp (email: string | undefined) {
+    const emailHint = email || ''
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin + '/?signup=true',
-      screen_hint: 'signup'
+      redirect_uri: window.location.origin + '/map?signup=true',
+      screen_hint: 'signup',
+      login_hint: emailHint
     })
   }
 
@@ -103,7 +107,6 @@ export class AuthService {
           company: companyCode
         })
       }
-
       if (query.includes('signup=true')) {
         store.commit('UPDATE_IS_SIGNUP', true)
       }
