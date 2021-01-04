@@ -252,6 +252,84 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 	})
 
+	t.Run("AddRelayWithNullables", func(t *testing.T) {
+
+		addr, err := net.ResolveUDPAddr("udp", "127.3.4.5:40000")
+		assert.NoError(t, err)
+
+		rid := crypto.HashID(addr.String())
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		// fields not stored in the database are not tested here
+		relay := routing.Relay{
+			ID:   rid,
+			Name: "nullable.local.1",
+			Addr: *addr,
+			// InternalAddr:   *internalAddr,
+			ManagementAddr: "1.2.3.5",
+			SSHPort:        22,
+			SSHUser:        "fred",
+			MaxSessions:    1000,
+			PublicKey:      publicKey,
+			// Datacenter:     outerDatacenter,
+			MRC:          19700000000000,
+			Overage:      26000000000000,
+			BWRule:       routing.BWRuleBurst,
+			ContractTerm: 12,
+			// StartDate:           time.Now(),
+			// EndDate:             time.Now(),
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
+			IncludedBandwidthGB: 10000,
+			NICSpeedMbps:        1000,
+		}
+
+		// adding a relay w/o a valid datacenter should return an FK violation error
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+
+		// TODO repeat the above test with bwrule, type and state
+
+		relay.Datacenter = outerDatacenter
+		err = db.AddRelay(ctx, relay)
+		assert.NoError(t, err)
+
+		// check only the fields set above
+		checkRelay, err := db.Relay(rid)
+		assert.NoError(t, err)
+
+		assert.Equal(t, relay.Name, checkRelay.Name)
+		assert.Equal(t, relay.Addr, checkRelay.Addr)
+		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)
+		assert.Equal(t, relay.SSHPort, checkRelay.SSHPort)
+		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
+		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
+		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
+		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
+		assert.Equal(t, relay.MRC, checkRelay.MRC)
+		assert.Equal(t, relay.Overage, checkRelay.Overage)
+		assert.Equal(t, relay.BWRule, checkRelay.BWRule)
+		assert.Equal(t, relay.ContractTerm, checkRelay.ContractTerm)
+
+		// dates are null, though no "zero" value for InternalAddr to test
+		assert.Equal(t, time.Time{}.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
+		assert.Equal(t, time.Time{}.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
+		assert.Equal(t, relay.Type, checkRelay.Type)
+		assert.Equal(t, relay.State, checkRelay.State)
+		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
+		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
+
+		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
+		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
+		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
+		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
+	})
+
 	t.Run("AddDatacenterMap", func(t *testing.T) {
 		dcMap := routing.DatacenterMap{
 			Alias:        "local.map",

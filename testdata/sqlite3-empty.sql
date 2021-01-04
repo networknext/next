@@ -103,7 +103,7 @@ create table relays (
   id integer primary key autoincrement,
   contract_term integer not null,
   display_name varchar not null unique,
-  end_date date not null,
+  end_date date,
   included_bandwidth_gb integer not null,
   internal_ip inet,
   internal_ip_port integer,
@@ -117,7 +117,7 @@ create table relays (
   public_key bytea not null,
   ssh_port integer not null,
   ssh_user varchar not null,
-  start_date date not null,
+  start_date date,
   bw_billing_rule integer not null,
   datacenter integer not null,
   machine_type integer not null,
@@ -142,7 +142,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2020/12/22 14:50:52
+-- File generation: 2021/01/04 13:09:30
 
 -- machine_types
 insert into machine_types values (0, 'none');
