@@ -218,8 +218,6 @@ export default class UserManagement extends Vue {
     this.companyCode = this.userProfile.companyCode || ''
     this.autoSignupDomains = this.userProfile.domains.join(', ')
     const promises = [
-      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-      // HACK: This is a hack to get tests to work properly
       this.$apiService.fetchAllAccounts(),
       this.$apiService.fetchAllRoles()
     ]
@@ -339,8 +337,6 @@ export default class UserManagement extends Vue {
       .map((x) => x.trim())
       .filter((x) => x !== '' && x !== ',')
 
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
     this.$apiService
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {

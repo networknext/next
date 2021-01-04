@@ -28,6 +28,8 @@ export class AuthService {
   }
 
   public login () {
+    // TODO: Redirect should be the page that the user is currently on not defaulting to map
+    // IE: User logs in on a session details drill down and redirect to the map?????
     this.authClient
       .loginWithRedirect({
         connection: 'Username-Password-Authentication',
