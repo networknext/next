@@ -2211,7 +2211,6 @@ Example JSON schema to add a new datacenter:
   "Enabled": false,
   "Latitude": 90,
   "Longitude": 180,
-  "SupplierName": "supplier.locale.1",
   "StreetAddress": "Somewhere, Else, Earth",
   "SellerID": "some_seller"
 }
