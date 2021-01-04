@@ -393,6 +393,7 @@ type NextBackendSessionResponsePacket struct {
 	Debug              string
 	ExcludeNearRelays  bool
 	NearRelayExcluded  [NEXT_MAX_NEAR_RELAYS]bool
+	HighFrequencyPings bool
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
@@ -455,6 +456,7 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 			stream.SerializeBool(&packet.NearRelayExcluded[i])
 		}
 	}
+	stream.SerializeBool(&packet.HighFrequencyPings)
 
 	return stream.Error()
 }
@@ -2593,6 +2595,7 @@ func main() {
 					NearRelayAddresses: nearRelayAddresses,
 					NumTokens:          0,
 					Tokens:             nil,
+					HighFrequencyPings: true,
 				}
 
 				sessionData.Route = nil
@@ -2680,6 +2683,7 @@ func main() {
 					Tokens:             tokens,
 					Multipath:          multipath,
 					Committed:          true,
+					HighFrequencyPings: true,
 				}
 
 				sessionData.Route = route
