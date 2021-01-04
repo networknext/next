@@ -1889,26 +1889,32 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	}
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:             int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
+		RouteSelectThreshold:        int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:        int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:          int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:              int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:           int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:            int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold:  int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:             ic.TryBeforeYouBuy,
+		ForceNext:                   ic.ForceNext,
+		LargeCustomer:               ic.LargeCustomer,
+		Uncommitted:                 ic.Uncommitted,
+		HighFrequencyPings:          ic.HighFrequencyPings,
+		RouteDiversity:              int64(ic.RouteDiversity),
+		MultipathThreshold:          int64(ic.MultipathThreshold),
+		MispredictMultipathOverload: ic.MispredictMultipathOverload,
+
+		MaxRTT: int64(ic.MaxRTT),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
 	sql.Write([]byte("(max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
-	sql.Write([]byte("large_customer, is_uncommitted, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
+	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1929,6 +1935,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.ForceNext,
 		internalConfig.LargeCustomer,
 		internalConfig.Uncommitted,
+		internalConfig.HighFrequencyPings,
+		internalConfig.RouteDiversity,
+		internalConfig.MultipathThreshold,
+		internalConfig.MispredictMultipathOverload,
 		buyer.DatabaseID,
 	)
 
@@ -2115,6 +2125,22 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id=$2"))
 		args = append(args, uncommitted, buyer.DatabaseID)
 		ic.Uncommitted = uncommitted
+	case "HighFrequencyPings":
+		highFrequencyPings, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("HighFrequencyPings: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id=$2"))
+		args = append(args, highFrequencyPings, buyer.DatabaseID)
+		ic.HighFrequencyPings = highFrequencyPings
+	case "MispredictMultipathOverload":
+		mispredictMultipathOverload, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("MispredictMultipathOverload: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set mispredict_multipath_overload=$1 where buyer_id=$2"))
+		args = append(args, mispredictMultipathOverload, buyer.DatabaseID)
+		ic.MispredictMultipathOverload = mispredictMultipathOverload
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
@@ -2123,6 +2149,22 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id=$2"))
 		args = append(args, maxRTT, buyer.DatabaseID)
 		ic.MaxRTT = maxRTT
+	case "RouteDiversity":
+		routeDiversity, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteDiversity: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id=$2"))
+		args = append(args, routeDiversity, buyer.DatabaseID)
+		ic.RouteDiversity = routeDiversity
+	case "MultipathThreshold":
+		multipathThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id=$2"))
+		args = append(args, multipathThreshold, buyer.DatabaseID)
+		ic.MultipathThreshold = multipathThreshold
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}
