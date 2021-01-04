@@ -143,6 +143,7 @@ create table metadata (
 
 -- File generation: 2021/01/04 15:11:36
 
+
 -- machine_types
 insert into machine_types values (0, 'none');
 insert into machine_types values (1, 'vm');
