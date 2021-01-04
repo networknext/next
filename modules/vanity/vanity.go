@@ -235,6 +235,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 				select {
 				// Buffer up some vanity metric entries to insert into StackDriver
 				case vanityData := <-vm.vanityMetricDataChan:
+					fmt.Printf("Got vanity data: %v\n", vanityData)
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
 
 					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {

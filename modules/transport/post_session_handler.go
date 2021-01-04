@@ -156,7 +156,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 							level.Debug(post.logger).Log("type", "vanity metrics", "msg", "billingEntry not on next, not sending vanity metric")
 							continue
 						}
-
+						fmt.Printf("Extracted vanity metrics: %v\n", extractedMetrics)
 						// Marshal the metrics
 						metricBinary, err := extractedMetrics.MarshalBinary()
 						if err != nil {
