@@ -123,8 +123,7 @@ func TestInsertSQL(t *testing.T) {
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.local.name",
-			SellerID:     outerSeller.DatabaseID,
+			SellerID: outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -136,7 +135,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, outerDatacenter.Name, datacenter.Name)
 		assert.Equal(t, outerDatacenter.Location.Latitude, datacenter.Location.Latitude)
 		assert.Equal(t, outerDatacenter.Location.Longitude, datacenter.Location.Longitude)
-		assert.Equal(t, outerDatacenter.SupplierName, datacenter.SupplierName)
 		assert.Equal(t, outerDatacenter.SellerID, datacenter.SellerID)
 	})
 
@@ -593,8 +591,7 @@ func TestUpdateSQL(t *testing.T) {
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.local.name",
-			SellerID:     sellerWithID.DatabaseID,
+			SellerID: sellerWithID.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -607,7 +604,6 @@ func TestUpdateSQL(t *testing.T) {
 		modifiedDatacenter.Name = "some.newlocale.name"
 		modifiedDatacenter.Location.Longitude = 70.5
 		modifiedDatacenter.Location.Latitude = 120.5
-		modifiedDatacenter.SupplierName = "supplier.nonlocal.name"
 
 		err = db.SetDatacenter(ctx, modifiedDatacenter)
 		assert.NoError(t, err)
@@ -617,7 +613,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
 		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
-		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
 	})
 
 	t.Run("UpdateCustomer", func(t *testing.T) {

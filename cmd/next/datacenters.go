@@ -128,8 +128,7 @@ func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) 
 			Latitude:  dc.Latitude,
 			Longitude: dc.Longitude,
 		},
-		SupplierName: dc.SupplierName,
-		SellerID:     sellerReply.Seller.DatabaseID,
+		SellerID: sellerReply.Seller.DatabaseID,
 	}
 
 	args := localjsonrpc.AddDatacenterArgs{
