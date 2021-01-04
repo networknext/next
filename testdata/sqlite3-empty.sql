@@ -78,6 +78,10 @@ create table rs_internal_configs (
   force_next boolean not null,
   large_customer boolean not null,
   is_uncommitted boolean not null,
+  high_frequency_pings boolean not null,
+  route_diversity integer not null,
+  multipath_threshold integer not null,
+  mispredict_multipath_overload boolean not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
@@ -94,7 +98,6 @@ create table datacenters (
   display_name varchar not null unique,
   latitude numeric not null,
   longitude numeric not null,
-  supplier_name varchar,
   seller_id integer not null,
   constraint fk_seller_id foreign key (seller_id) references sellers(id)
 );
@@ -142,7 +145,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/01/04 13:09:30
+-- File generation: 2021/01/04 16:05:32
 
 -- machine_types
 insert into machine_types values (0, 'none');

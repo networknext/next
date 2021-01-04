@@ -990,18 +990,23 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       2,
-			RouteSwitchThreshold:       5,
-			MaxLatencyTradeOff:         10,
-			RTTVeto_Default:            -10,
-			RTTVeto_PacketLoss:         -20,
-			RTTVeto_Multipath:          -20,
-			MultipathOverloadThreshold: 500,
-			TryBeforeYouBuy:            true,
-			ForceNext:                  true,
-			LargeCustomer:              true,
-			Uncommitted:                true,
-			MaxRTT:                     300,
+			RouteSelectThreshold:        2,
+			RouteSwitchThreshold:        5,
+			MaxLatencyTradeOff:          10,
+			RTTVeto_Default:             -10,
+			RTTVeto_PacketLoss:          -20,
+			RTTVeto_Multipath:           -20,
+			MultipathOverloadThreshold:  500,
+			TryBeforeYouBuy:             true,
+			ForceNext:                   true,
+			LargeCustomer:               true,
+			Uncommitted:                 true,
+			HighFrequencyPings:          true,
+			RouteDiversity:              10,
+			MultipathThreshold:          35,
+			MispredictMultipathOverload: true,
+
+			MaxRTT: 300,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
@@ -1021,6 +1026,10 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, true, outerInternalConfig.ForceNext)
 		assert.Equal(t, true, outerInternalConfig.LargeCustomer)
 		assert.Equal(t, true, outerInternalConfig.Uncommitted)
+		assert.Equal(t, true, outerInternalConfig.HighFrequencyPings)
+		assert.Equal(t, true, outerInternalConfig.MispredictMultipathOverload)
+		assert.Equal(t, int32(10), outerInternalConfig.RouteDiversity)
+		assert.Equal(t, int32(35), outerInternalConfig.MultipathThreshold)
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
 	})
 
