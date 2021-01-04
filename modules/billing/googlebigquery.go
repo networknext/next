@@ -252,5 +252,17 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["routeChanged"] = entry.RouteChanged
 	e["commitVeto"] = entry.CommitVeto
 
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = entry.RouteDiversity
+	}
+
+	if entry.LackOfDiversity {
+		e["lackOfDiversity"] = entry.LackOfDiversity
+	}
+
+	if entry.Pro {
+		e["pro"] = entry.Pro
+	}
+
 	return e, "", nil
 }
