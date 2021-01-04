@@ -2376,9 +2376,9 @@ must be of the form:
   "Overage": 100.00,  // US Dollars
   "BWRule": "flat",   // any valid bandwidth rule (see below)
   "ContractTerm": 12,
-  "StartDate": "December 15, 2020", // exactly this format
-  "EndDate": "December 15, 2020",   // exactly this format
-  "Type": "virtualmachine",          // any valid machine type (see below)
+  "StartDate": "December 15, 2020", // exactly this format (optional)
+  "EndDate": "December 15, 2020",   // exactly this format (optional)
+  "Type": "virtualmachine",         // any valid machine type (see below)
   "Seller": "colocrossing"
 }
 

@@ -1047,15 +1047,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 type sqlRelay struct {
 	ID                 uint64
 	Name               string
-	PublicIP           string // []byte?
+	PublicIP           string
 	PublicIPPort       int64
-	InternalIP         sql.NullString // []byte?
+	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
 	DatacenterID       int64
-	ManagementIP       string // []byte?
+	ManagementIP       string
 	SSHUser            string
 	SSHPort            int64
 	State              int64
@@ -1064,10 +1064,12 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
-	StartDate          time.Time
-	EndDate            time.Time
-	MachineType        int64
-	DatabaseID         int64
+	// StartDate          time.Time
+	// EndDate            time.Time
+	StartDate   sql.NullTime
+	EndDate     sql.NullTime
+	MachineType int64
+	DatabaseID  int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -1098,6 +1100,16 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		}
 	}
 
+	var startDate sql.NullTime
+	if !r.StartDate.IsZero() {
+		startDate.Time = r.StartDate
+	}
+
+	var endDate sql.NullTime
+	if !r.EndDate.IsZero() {
+		endDate.Time = r.EndDate
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
@@ -1117,8 +1129,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Overage:            int64(r.Overage),
 		BWRule:             int64(r.BWRule),
 		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          r.StartDate,
-		EndDate:            r.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 	}
 
@@ -1139,7 +1151,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate,
+		relay.EndDate.Time,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1151,7 +1163,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate,
+		relay.StartDate.Time,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1259,6 +1271,16 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		}
 	}
 
+	var startDate sql.NullTime
+	if !r.StartDate.IsZero() {
+		startDate.Time = r.StartDate
+	}
+
+	var endDate sql.NullTime
+	if !r.EndDate.IsZero() {
+		endDate.Time = r.EndDate
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
@@ -1278,8 +1300,8 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		Overage:            int64(r.Overage),
 		BWRule:             int64(r.BWRule),
 		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          r.StartDate,
-		EndDate:            r.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 	}
 
@@ -1300,7 +1322,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate,
+		relay.EndDate.Time,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1312,7 +1334,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate,
+		relay.StartDate.Time,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,

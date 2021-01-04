@@ -405,13 +405,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
-		// TODO: this should be treated as a legit address
-		// managementAddr, err := net.ResolveUDPAddr("udp", relay.ManagementIP)
-		// if err != nil {
-		// 	fmt.Printf("error parsing mgmt ip: %v\n", err)
-		// 	level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing management address", "err", err)
-		// }
-
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
@@ -456,13 +449,12 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
 			ContractTerm:        int32(relay.ContractTerm),
-			StartDate:           relay.StartDate,
-			EndDate:             relay.EndDate,
 			Type:                machineType,
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 		}
 
+		// nullable values follow
 		if relay.InternalIP.String != "" {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
@@ -470,6 +462,14 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
 			}
 			r.InternalAddr = *internalAddr
+		}
+
+		if relay.StartDate.Valid {
+			r.StartDate = relay.StartDate.Time
+		}
+
+		if relay.EndDate.Valid {
+			r.EndDate = relay.EndDate.Time
 		}
 
 		relays[rid] = r
