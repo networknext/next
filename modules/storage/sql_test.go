@@ -1115,6 +1115,34 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(400), checkInternalConfig.MaxRTT)
 
+		// HighFrequencyPings
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "HighFrequencyPings", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.HighFrequencyPings)
+
+		// RouteDiversity
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteDiversity", int32(40))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(40), checkInternalConfig.RouteDiversity)
+
+		// MultipathThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MultipathThreshold", int32(50))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(50), checkInternalConfig.MultipathThreshold)
+
+		// MispredictMultipathOverload
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MispredictMultipathOverload", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.MispredictMultipathOverload)
+
 	})
 
 	t.Run("RemoveInternalConfig", func(t *testing.T) {
