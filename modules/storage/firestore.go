@@ -1514,10 +1514,9 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
-		Name:         d.Name,
-		Latitude:     d.Location.Latitude,
-		Longitude:    d.Location.Longitude,
-		SupplierName: d.SupplierName,
+		Name:      d.Name,
+		Latitude:  d.Location.Latitude,
+		Longitude: d.Location.Longitude,
 	}
 
 	// Add the datacenter in remote storage
@@ -1621,10 +1620,9 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
-				"name":         d.Name,
-				"latitude":     d.Location.Latitude,
-				"longitude":    d.Location.Longitude,
-				"supplierName": d.SupplierName,
+				"name":      d.Name,
+				"latitude":  d.Location.Latitude,
+				"longitude": d.Location.Longitude,
 			}
 
 			// Update the datacenter in firestore
@@ -1764,7 +1762,6 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
 			},
-			SupplierName: d.SupplierName,
 		}
 	}
 
@@ -1912,7 +1909,6 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
 			},
-			SupplierName: d.SupplierName,
 		}
 
 		relay.Datacenter = datacenter

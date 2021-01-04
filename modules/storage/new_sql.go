@@ -319,9 +319,8 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 				Latitude:  dc.Latitude,
 				Longitude: dc.Longitude,
 			},
-			SupplierName: dc.SupplierName,
-			SellerID:     dc.SellerID,
-			DatabaseID:   dc.ID,
+			SellerID:   dc.SellerID,
+			DatabaseID: dc.ID,
 		}
 
 		datacenters[did] = d
