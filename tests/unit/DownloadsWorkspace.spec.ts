@@ -28,7 +28,7 @@ describe('DownloadsWorkspace.vue', () => {
     expect(wrapper.find('.card-title').text()).toBe('Network Next SDK')
 
     expect(wrapper.findAll('.btn').length).toBe(2)
-    expect(wrapper.findAll('.btn').at(0).text()).toBe('SDK v4.0.5')
+    expect(wrapper.findAll('.btn').at(0).text()).toBe('SDK v4.0.6')
     expect(wrapper.findAll('.btn').at(1).text()).toBe('Documentation')
     wrapper.destroy()
   })
