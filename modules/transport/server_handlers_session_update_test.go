@@ -1634,6 +1634,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1650,6 +1651,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
+			Committed:        true,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
@@ -1903,6 +1905,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   5,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -1919,6 +1922,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
+			Committed:        true,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
@@ -2401,6 +2405,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
+			Committed:     true,
 			ReduceLatency: true,
 			NumNearRelays: 2,
 			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
@@ -2507,7 +2512,6 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 			UserID:           requestPacket.UserHash,
 			Next:             true,
 			Committed:        true,
-			CommitCounter:    1,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
@@ -2622,6 +2626,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{5, 1},
 		RouteState: core.RouteState{
 			Next:          true,
+			Committed:     true,
 			ReduceLatency: true,
 			NumNearRelays: 2,
 			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
@@ -2713,6 +2718,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		Tokens:      tokenData,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -2729,6 +2735,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
+			Committed:        true,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
@@ -2843,6 +2850,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 		RouteRelayIDs:   [core.MaxRelaysPerRoute]uint64{1, 2},
 		RouteState: core.RouteState{
 			Next:          true,
+			Committed:     true,
 			ReduceLatency: true,
 			NumNearRelays: 2,
 			NearRelayRTT:  [core.MaxNearRelays]int32{10, 15},
@@ -2952,7 +2960,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 			UserID:           requestPacket.UserHash,
 			Next:             true,
 			Committed:        true,
-			CommitCounter:    1,
+			CommitCounter:    0,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
@@ -4159,6 +4167,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		RouteType:   routing.RouteTypeNew,
 		NumTokens:   4,
 		HasDebug:    true,
+		Committed:   true,
 	}
 
 	expectedSessionData := transport.SessionData{
@@ -4175,6 +4184,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
+			Committed:        true,
 			ReduceLatency:    true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{10, 15},
