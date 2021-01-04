@@ -1450,7 +1450,7 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 
 	sql.Write([]byte("update datacenters set ("))
 	sql.Write([]byte("display_name, latitude, longitude, "))
-	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4,) where id = $6"))
+	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4) where id = $5"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
