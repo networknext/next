@@ -14,12 +14,10 @@ import (
 )
 
 type datacenterReply struct {
-	Name         string
-	ID           string
-	Latitude     float32
-	Longitude    float32
-	Enabled      bool
-	SupplierName string
+	Name      string
+	ID        string
+	Latitude  float32
+	Longitude float32
 }
 
 func datacenters(
@@ -87,20 +85,18 @@ func datacenters(
 				dcs = append(dcs, datacenterReply{
 					Name: dc.Name,
 					// ID:           fmt.Sprintf("%d", dc.SignedID), // ToDo: could come from storage (exists in firestore)
-					ID:           fmt.Sprintf("%d", int64(dc.ID)),
-					Latitude:     dc.Latitude,
-					Longitude:    dc.Longitude,
-					SupplierName: dc.SupplierName,
+					ID:        fmt.Sprintf("%d", int64(dc.ID)),
+					Latitude:  dc.Latitude,
+					Longitude: dc.Longitude,
 				})
 			}
 		} else {
 			for _, dc := range reply.Datacenters {
 				dcs = append(dcs, datacenterReply{
-					Name:         dc.Name,
-					ID:           fmt.Sprintf("%016x", dc.ID),
-					Latitude:     dc.Latitude,
-					Longitude:    dc.Longitude,
-					SupplierName: dc.SupplierName,
+					Name:      dc.Name,
+					ID:        fmt.Sprintf("%016x", dc.ID),
+					Latitude:  dc.Latitude,
+					Longitude: dc.Longitude,
 				})
 			}
 		}
