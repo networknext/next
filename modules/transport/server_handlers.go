@@ -201,6 +201,7 @@ func (n nearRelayGroup) Copy(other *nearRelayGroup) {
 }
 
 func handleNearAndDestRelays(
+	sliceNumber int32,
 	routeMatrix *routing.RouteMatrix,
 	incomingNearRelays nearRelayGroup,
 	routeShader *core.RouteShader,
@@ -209,8 +210,11 @@ func handleNearAndDestRelays(
 	clientLat float32,
 	clientLong float32,
 	maxNearRelays int,
+	directLatency int32,
 	directJitter int32,
 	directPacketLoss int32,
+	nextPacketLoss int32,
+	firstRouteRelayID uint64,
 	destRelayIDs []uint64,
 	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
@@ -246,7 +250,8 @@ func handleNearAndDestRelays(
 	var numDestRelays int32
 	reframedDestRelays := make([]int32, len(destRelayIDs))
 
-	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, routeMatrix.RelayNames, directJitter, directPacketLoss, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays, debug)
+	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directLatency, directJitter, directPacketLoss, nextPacketLoss, firstRouteRelayID, sliceNumber, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
+
 	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
@@ -425,6 +430,7 @@ func SessionUpdateHandlerFunc(
 
 		var sessionData SessionData
 		var prevSessionData SessionData
+		var routeDiversity int32
 
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
@@ -508,7 +514,7 @@ func SessionUpdateHandlerFunc(
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, debug)
+				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, routeDiversity, debug)
 			}
 		}()
 
@@ -565,6 +571,15 @@ func SessionUpdateHandlerFunc(
 			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 			sessionData.RouteState.UserID = packet.UserHash
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
+
+			// Set the AB test field manually on the first slice only, so that
+			// existing sessions don't start or stop running the AB test
+			sessionData.RouteState.ABTest = buyer.RouteShader.ABTest
+
+			// Save constant session data in the prev session data so that they
+			// are displayed in the portal and billing correctly
+			prevSessionData.Location = sessionData.Location
+			prevSessionData.RouteState.ABTest = sessionData.RouteState.ABTest
 
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
@@ -667,6 +682,7 @@ func SessionUpdateHandlerFunc(
 		}
 
 		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
+			int32(packet.SliceNumber),
 			routeMatrix,
 			incomingNearRelays,
 			&buyer.RouteShader,
@@ -675,8 +691,11 @@ func SessionUpdateHandlerFunc(
 			sessionData.Location.Latitude,
 			sessionData.Location.Longitude,
 			maxNearRelays,
+			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),
 			int32(math.Floor(float64(packet.DirectPacketLoss)+0.5)),
+			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
+			sessionData.RouteRelayIDs[0],
 			destRelayIDs,
 			debug,
 		)
@@ -685,6 +704,7 @@ func SessionUpdateHandlerFunc(
 		response.NearRelayIDs = nearRelays.IDs
 		response.NearRelayAddresses = nearRelays.Addrs
 		response.NearRelaysChanged = nearRelaysChanged
+		response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
 
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "near relays changed") {
@@ -735,7 +755,7 @@ func SessionUpdateHandlerFunc(
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 		} else {
@@ -943,6 +963,7 @@ func PostSessionUpdate(
 	routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller,
 	nearRelays nearRelayGroup,
 	datacenter *routing.Datacenter,
+	routeDiversity int32,
 	debug *string,
 ) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
@@ -975,10 +996,9 @@ func PostSessionUpdate(
 		inGamePacketLoss = packetLossServerToClient
 	}
 
-	multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
-	var multipathVetoed bool
-	if _, ok := multipathVetoMap[packet.UserHash]; ok {
-		multipathVetoed = true
+	var routeCost int32 = sessionData.RouteCost
+	if sessionData.RouteCost == math.MaxInt32 {
+		routeCost = 0
 	}
 
 	var nearRelayRTT float32
@@ -1051,8 +1071,8 @@ func PostSessionUpdate(
 		PlatformType:                    uint8(packet.PlatformType),
 		SDKVersion:                      packet.Version.String(),
 		PacketLoss:                      inGamePacketLoss,
-		PredictedNextRTT:                float32(sessionData.RouteCost),
-		MultipathVetoed:                 multipathVetoed,
+		PredictedNextRTT:                float32(routeCost),
+		MultipathVetoed:                 sessionData.RouteState.MultipathOverload,
 		UseDebug:                        buyer.Debug,
 		Debug:                           debugString,
 		FallbackToDirect:                packet.FallbackToDirect,
@@ -1079,6 +1099,9 @@ func PostSessionUpdate(
 		NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
 		RouteChanged:                    sessionData.RouteChanged,
 		CommitVeto:                      sessionData.RouteState.CommitVeto,
+		RouteDiversity:                  uint32(routeDiversity),
+		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
+		Pro:                             sessionData.RouteState.ProMode,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)

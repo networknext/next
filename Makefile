@@ -43,6 +43,7 @@ export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVq
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 40000
+export NEXT_BEACON_ADDRESS = 127.0.0.1:35000
 
 ####################
 ##    RELAY ENV   ##
@@ -194,10 +195,6 @@ endif
 
 ifndef BILLING_ENTRY_VETO
 export BILLING_ENTRY_VETO = true
-endif
-
-ifndef USE_THREAD_POOL
-export USE_THREAD_POOL = true
 endif
 
 ifndef POST_SESSION_THREAD_COUNT
@@ -360,6 +357,10 @@ dev-server-backend: build-server-backend ## runs a local server backend
 dev-server-backend-valve: build-server-backend
 	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
 
+.PHONY: dev-beacon
+dev-beacon: build-beacon ## runs a local beacon
+	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
+
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
@@ -450,6 +451,12 @@ build-portal-local:
 build-relay-backend:
 	@printf "Building relay backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@printf "done\n"
+
+.PHONY: build-beacon
+build-beacon:
+	@printf "Building beacon..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon ./cmd/beacon/beacon.go
 	@printf "done\n"
 
 .PHONY: build-server-backend
