@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"fmt"
 	"math"
 	"net"
 
@@ -17,7 +16,8 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 4
+	SessionDataVersion = 7
+
 	MaxSessionDataSize = 511
 
 	MaxTokens = 7
@@ -47,9 +47,9 @@ const (
 	PlatformTypeSwitch      = 4
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
-	PlatformTypeXBOXOne     = 7
+	PlatformTypeXBoxOne     = 7
 	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
-	PlatformTypeXBOXSeriesX = 8
+	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
 	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
 
@@ -115,8 +115,12 @@ func PlatformTypeText(platformType uint8) string {
 		return "PS4"
 	case PlatformTypeIOS:
 		return "IOS"
-	case PlatformTypeXBOXOne:
-		return "XBOXOne"
+	case PlatformTypeXBoxOne:
+		return "XBox One"
+	case PlatformTypeXBoxSeriesX:
+		return "XBox Series X"
+	case PlatformTypePS5:
+		return "PS5"
 	default:
 		return "unknown"
 	}
@@ -136,8 +140,10 @@ func ParsePlatformType(conntype string) uint8 {
 		return PlatformTypePS4
 	case "IOS":
 		return PlatformTypeIOS
-	case "XBOXOne":
-		return PlatformTypeXBOXOne
+	case "XBox One":
+		return PlatformTypeXBoxOne
+	case "XBox Series X":
+		return PlatformTypeXBoxSeriesX
 	default:
 		return PlatformTypeUnknown
 	}
@@ -484,6 +490,7 @@ type SessionResponsePacket struct {
 	Debug              string
 	ExcludeNearRelays  bool
 	NearRelayExcluded  [core.MaxNearRelays]bool
+	HighFrequencyPings bool
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
@@ -552,6 +559,10 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 6) {
+		stream.SerializeBool(&packet.HighFrequencyPings)
+	}
+
 	return stream.Error()
 }
 
@@ -596,9 +607,6 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
-	if stream.IsReading() && sessionData.Version > SessionDataVersion {
-		return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
-	}
 
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
@@ -646,8 +654,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
 		}
-
 	}
+
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
@@ -709,6 +717,26 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
+
+	if sessionData.Version >= 4 {
+		stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
+
+		for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+			stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
+		}
+	}
+
+	if sessionData.Version >= 5 {
+		stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
+	}
+
+	if sessionData.Version >= 6 {
+		stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
+	}
+
+	if sessionData.Version >= 7 {
+		stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
+	}
 
 	return stream.Error()
 }
