@@ -163,8 +163,7 @@ func SeedSQLStorage(
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "usw2-az4",
-			SellerID:     localSeller.DatabaseID,
+			SellerID: localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
@@ -178,8 +177,7 @@ func SeedSQLStorage(
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.local.name",
-			SellerID:     localSeller.DatabaseID,
+			SellerID: localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
@@ -193,8 +191,7 @@ func SeedSQLStorage(
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.ghost.name",
-			SellerID:     ghostSeller.DatabaseID,
+			SellerID: ghostSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, ghostDatacenter); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding ghost datacenter: %w", err)
