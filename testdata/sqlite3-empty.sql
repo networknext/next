@@ -145,7 +145,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/01/04 15:58:33
+-- File generation: 2021/01/04 16:05:32
 
 -- machine_types
 insert into machine_types values (0, 'none');
