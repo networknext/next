@@ -453,16 +453,6 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid machine type", r.Type), 0)
 	}
 
-	startDate, err := time.Parse("January 2, 2006", r.StartDate)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.StartDate), 0)
-	}
-
-	endDate, err := time.Parse("January 2, 2006", r.EndDate)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.EndDate), 0)
-	}
-
 	sellerArg := localjsonrpc.SellerArg{
 		ID: r.Seller,
 	}
@@ -491,8 +481,6 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		Overage:             routing.DollarsToNibblins(r.Overage),
 		BWRule:              bwRule,
 		ContractTerm:        r.ContractTerm,
-		StartDate:           startDate,
-		EndDate:             endDate,
 		Type:                machineType,
 		Seller:              sellerReply.Seller,
 	}
@@ -504,6 +492,22 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 			handleRunTimeError(fmt.Sprintf("Could not resolve udp address for InternalAddr %s: %v\n", r.Addr, err), 1)
 		}
 		relay.InternalAddr = *internalAddr
+	}
+
+	if r.StartDate != "" {
+		startDate, err := time.Parse("January 2, 2006", r.StartDate)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.StartDate), 0)
+		}
+		relay.StartDate = startDate
+	}
+
+	if r.EndDate != "" {
+		endDate, err := time.Parse("January 2, 2006", r.EndDate)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.EndDate), 0)
+		}
+		relay.EndDate = endDate
 	}
 
 	args := localjsonrpc.AddRelayArgs{
