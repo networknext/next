@@ -574,6 +574,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
+	sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
+		return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
+	})
+
 	sort.Slice(reply.Slices, func(i, j int) bool {
 		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
 	})
@@ -1483,7 +1487,6 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	multipath,
 	nextBytesUp,
 	nextBytesDown,
-	initial,
 	datacenterID,
 	rttReduction,
 	packetLossReduction,
