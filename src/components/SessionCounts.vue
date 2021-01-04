@@ -60,11 +60,14 @@ interface TotalSessionsReply {
   }
 })
 export default class SessionCounts extends Vue {
+  get totalSessions () {
+    return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
+  }
+
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
   private countLoop: any
   private AlertType: any
-
   private filterOptions: Array<any>
 
   constructor () {
@@ -75,6 +78,7 @@ export default class SessionCounts extends Vue {
     }
     this.showCount = false
     this.AlertType = AlertType
+    this.filterOptions = []
   }
 
   private mounted () {

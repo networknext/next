@@ -75,7 +75,7 @@ if (useAPI) {
 Vue.prototype.$authService.processAuthentication().then(() => {
   const query = window.location.search
   if (query.includes('code=') && query.includes('state=')) {
-    router.push('/')
+    router.push('/map')
   }
   const app = new Vue({
     router,

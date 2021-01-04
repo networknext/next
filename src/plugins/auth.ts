@@ -39,14 +39,14 @@ export class AuthService {
     const emailHint = email || ''
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin + '/map?signup=true',
+      redirect_uri: window.location.origin + '/map',
       screen_hint: 'signup',
       login_hint: emailHint
     })
   }
 
   public refreshToken () {
-    this.authClient.getTokenSilently({ ignoreCache: true })
+    return this.authClient.getTokenSilently({ ignoreCache: true })
       .then(() => {
         this.processAuthentication()
       })
@@ -54,6 +54,10 @@ export class AuthService {
 
   public async processAuthentication (): Promise<any> {
     const query = window.location.search
+
+    if (query.replaceAll('%20', ' ').includes('Your email was verified. You can continue using the application.')) {
+      return this.refreshToken()
+    }
 
     const isAuthenticated =
       await this.authClient.isAuthenticated()
@@ -106,9 +110,6 @@ export class AuthService {
           avatar: authResult.picture,
           company: companyCode
         })
-      }
-      if (query.includes('signup=true')) {
-        store.commit('UPDATE_IS_SIGNUP', true)
       }
 
       store.commit('UPDATE_USER_PROFILE', userProfile)

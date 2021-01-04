@@ -50,7 +50,7 @@
             {{ session.location.isp }}
           </td>
           <td>
-            {{ session.datacenter }}
+            {{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}
           </td>
           <td>
             {{ session.server_addr }}
@@ -127,8 +127,6 @@ export default class UserSessions extends Vue {
       return
     }
 
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
     this.$apiService.fetchUserSessions({ user_id: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []

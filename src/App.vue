@@ -13,7 +13,6 @@ import {
   faCircle,
   faDownload,
   faPen,
-  faQuestionCircle,
   faTimes,
   faTrash
 } from '@fortawesome/free-solid-svg-icons'
@@ -37,7 +36,6 @@ const ICONS = [
   faCheck,
   faCircle,
   faDownload,
-  faQuestionCircle,
   faPen,
   faTimes,
   faTrash
