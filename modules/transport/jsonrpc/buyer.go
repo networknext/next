@@ -1251,7 +1251,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
-			SupplierName:   datacenter.SupplierName,
 		}
 
 		replySlice = append(replySlice, dcmFull)
