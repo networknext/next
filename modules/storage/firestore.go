@@ -92,11 +92,10 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name         string  `firestore:"name"`
-	Enabled      bool    `firestore:"enabled"`
-	Latitude     float32 `firestore:"latitude"`
-	Longitude    float32 `firestore:"longitude"`
-	SupplierName string  `firestore:"supplierName"`
+	Name      string  `firestore:"name"`
+	Enabled   bool    `firestore:"enabled"`
+	Latitude  float32 `firestore:"latitude"`
+	Longitude float32 `firestore:"longitude"`
 }
 
 type datacenterMap struct {
