@@ -94,7 +94,6 @@ create table datacenters (
   display_name varchar not null unique,
   latitude numeric not null,
   longitude numeric not null,
-  supplier_name varchar,
   seller_id integer not null,
   constraint fk_seller_id foreign key (seller_id) references sellers(id)
 );
@@ -142,7 +141,8 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/01/04 13:09:30
+-- File generation: 2021/01/04 15:11:36
+
 
 -- machine_types
 insert into machine_types values (0, 'none');

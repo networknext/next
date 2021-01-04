@@ -286,7 +286,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 	datacenterIDs := make(map[int64]uint64)
 
 	sql.Write([]byte("select id, display_name, latitude, longitude,"))
-	sql.Write([]byte("supplier_name, seller_id from datacenters"))
+	sql.Write([]byte("seller_id from datacenters"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -300,7 +300,6 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 			&dc.Name,
 			&dc.Latitude,
 			&dc.Longitude,
-			&dc.SupplierName,
 			&dc.SellerID,
 		)
 		if err != nil {
@@ -319,9 +318,8 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 				Latitude:  dc.Latitude,
 				Longitude: dc.Longitude,
 			},
-			SupplierName: dc.SupplierName,
-			SellerID:     dc.SellerID,
-			DatabaseID:   dc.ID,
+			SellerID:   dc.SellerID,
+			DatabaseID: dc.ID,
 		}
 
 		datacenters[did] = d
