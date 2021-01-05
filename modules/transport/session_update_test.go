@@ -74,10 +74,16 @@ func getRelays(t *testing.T, numRelays int32, rttType rttType, singleBadRTT bool
 				relays.RTTs = append(relays.RTTs, 0)
 
 			case badRTT:
-				relays.RTTs = append(relays.RTTs, int32(100+i*5))
+				relays.RTTs = append(relays.RTTs, 255)
 
 			case goodRTT:
-				relays.RTTs = append(relays.RTTs, int32(20+i*5))
+				relays.RTTs = append(relays.RTTs, int32(15+i*5))
+
+			case overloadedRTT:
+				relays.RTTs = append(relays.RTTs, 500)
+
+			case slightlyBadRTT:
+				relays.RTTs = append(relays.RTTs, int32(16+i*5))
 			}
 		}
 
@@ -163,7 +169,7 @@ func getRouteRelays(t *testing.T, numRelays int32, internal bool, badRoute bool,
 func getStats(rttType rttType) routing.Stats {
 	switch rttType {
 	case badRTT:
-		return routing.Stats{RTT: 100}
+		return routing.Stats{RTT: 255}
 
 	case goodRTT:
 		return routing.Stats{RTT: 15}
@@ -211,8 +217,11 @@ func getRouteInfo(
 	internal bool,
 	badRouteRelays bool,
 	badNearRelay bool,
+	connectionOverloaded bool,
+	noRouteCost bool,
+	vetoed bool,
 ) routeInfo {
-	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType, badNearRelay)
+	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType, badNearRelay || connectionOverloaded)
 	routeRelays := getRouteRelays(t, routeNumRelays, internal, badRouteRelays, badNearRelay)
 
 	nearRelayIndices := make([]int32, nearRelays.Count)
@@ -252,6 +261,14 @@ func getRouteInfo(
 		if routeCost <= 0 {
 			routeCost = core.GetBestRouteCost(routeMatrix.RouteEntries, nearRelayIndices, nearRelays.RTTs, destRelayIndices)
 		}
+	}
+
+	if routeCost > 10000 {
+		routeCost = 10000
+	}
+
+	if vetoed || noRouteCost {
+		routeCost = 0
 	}
 
 	switch routeType {
@@ -469,6 +486,7 @@ type sessionUpdateRequestConfig struct {
 	badRoute                  bool // The request sends up a route in the session data with relays that no longer exist
 	badNearRelay              bool // The request sends up a near relay with unroutable RTT
 	desyncedNearRelays        bool // The request sends up a different number of near relays than what is stored in the session data
+	noRouteCost               bool // The request sends up a 0 route cost in its session data. Useful for checking error cases while continuing routes
 }
 
 func NewSessionUpdateRequestConfig(t *testing.T) *sessionUpdateRequestConfig {
@@ -625,6 +643,9 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		false,
 		request.badRoute,
 		false,
+		request.directStats.RTT >= getStats(overloadedRTT).RTT || request.nextStats.RTT >= getStats(overloadedRTT).RTT,
+		request.noRouteCost,
+		false,
 	)
 
 	routeShader := core.NewRouteShader()
@@ -645,7 +666,14 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		}
 	}
 
-	initialSessionData := getInitialSessionData(t, startTime, request, prevRouteInfo, response, !internalConfig.TryBeforeYouBuy, commitCounter, routeShader.Multipath)
+	var initialCommitted bool
+	if request.prevRouteType != routing.RouteTypeDirect {
+		if !internalConfig.TryBeforeYouBuy {
+			initialCommitted = true
+		}
+	}
+
+	initialSessionData := getInitialSessionData(t, startTime, request, prevRouteInfo, response, initialCommitted, commitCounter, routeShader.Multipath)
 
 	var sessionDataSlice []byte
 	var err error
@@ -790,6 +818,9 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 			backend.internalAddresses,
 			false,
 			request.badNearRelay,
+			false,
+			false,
+			request.prevRouteType != routing.RouteTypeDirect && response.routeType == routing.RouteTypeDirect,
 		)
 	} else {
 		routeInfo = prevRouteInfo
@@ -807,9 +838,10 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	var multipathOverload bool
 	var latencyWorse bool
 	var commitVeto bool
+
 	if response.attemptFindRoute && request.prevRouteType != routing.RouteTypeDirect && response.routeType == routing.RouteTypeDirect {
 		if request.directStats.RTT < request.nextStats.RTT {
-			if internalConfig.TryBeforeYouBuy {
+			if internalConfig.TryBeforeYouBuy && commitCounter >= 3 {
 				commitVeto = true
 			} else {
 				latencyWorse = true
@@ -822,21 +854,23 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		}
 	}
 
-	committed := response.routeType == routing.RouteTypeContinue && (!internalConfig.Uncommitted && (!internalConfig.TryBeforeYouBuy || routeShader.Multipath))
-	if !committed {
-		if request.directStats.RTT <= request.nextStats.RTT {
-			committed = true
+	committed := initialSessionData.RouteState.Committed
+
+	if response.attemptFindRoute {
+		// Committed will stay true once it's set
+		if response.routeType != routing.RouteTypeDirect && !committed {
+			committed = !internalConfig.Uncommitted && (!internalConfig.TryBeforeYouBuy || routeShader.Multipath)
+
+			if internalConfig.TryBeforeYouBuy {
+				if request.nextStats.RTT <= request.directStats.RTT && request.nextStats.PacketLoss <= request.directStats.PacketLoss {
+					committed = true
+				}
+			}
 		}
-	}
 
-	fmt.Println(internalConfig.Uncommitted)
-	fmt.Println(internalConfig.TryBeforeYouBuy)
-	fmt.Println(routeShader.Multipath)
-	fmt.Println(request.directStats.RTT <= request.nextStats.RTT)
-	fmt.Println(committed)
-
-	if response.attemptFindRoute && internalConfig.TryBeforeYouBuy && response.routeType == routing.RouteTypeContinue {
-		commitCounter++
+		if internalConfig.TryBeforeYouBuy {
+			commitCounter++
+		}
 	}
 
 	numNearRelays := response.numNearRelays
@@ -1287,6 +1321,7 @@ func TestSessionUpdateHandlerLocalDatacenter(t *testing.T) {
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
 	response.attemptNearRelays = true
+	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
 	expectedMetrics.DirectSlices.Add(1)
@@ -1301,7 +1336,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	request.sliceNumber = 1
 	request.directStats = getStats(goodRTT)
 	request.numNearRelays = 2
-	request.nearRelayRTTType = badRTT
+	request.nearRelayRTTType = slightlyBadRTT
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
@@ -1557,6 +1592,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	request.nearRelayRTTType = goodRTT
 	request.prevRouteType = routing.RouteTypeContinue
 	request.prevRouteNumRelays = 2
+	request.noRouteCost = true // Set this flag to true so we can check the case for latency worse rather than mispredict
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
@@ -1615,7 +1651,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 // we should veto the session.
 func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
-	request.sliceNumber = 3
+	request.sliceNumber = 4
 	request.directStats = getStats(goodRTT)
 	request.nextStats = getStats(slightlyBadRTT)
 	request.numNearRelays = 2
