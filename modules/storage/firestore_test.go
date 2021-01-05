@@ -21,7 +21,6 @@ import (
 type customer struct {
 	Name                   string                 `firestore:"name"`
 	Code                   string                 `firestore:"code"`
-	Active                 bool                   `firestore:"active"`
 	AutomaticSignInDomains string                 `firestore:"automaticSigninDomains"`
 	BuyerRef               *firestore.DocumentRef `firestore:"buyerRef"`
 	SellerRef              *firestore.DocumentRef `firestore:"sellerRef"`
@@ -290,7 +289,6 @@ func TestFirestore(t *testing.T) {
 			expectedCustomer := routing.Customer{
 				Code:                   "local",
 				Name:                   "Local",
-				Active:                 false,
 				AutomaticSignInDomains: "",
 				BuyerRef:               nil,
 				SellerRef:              nil,
@@ -446,7 +444,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual := actualCustomer
-			actual.Active = true
 
 			err = fs.SetCustomer(ctx, actual)
 			assert.NoError(t, err)
@@ -454,8 +451,6 @@ func TestFirestore(t *testing.T) {
 			actual, err = fs.Customer(actualCustomer.Code)
 			assert.NoError(t, err)
 
-			assert.NotEqual(t, actualCustomer, actual)
-			actual.Active = false
 			assert.Equal(t, actualCustomer, actual)
 		})
 	})
@@ -647,7 +642,6 @@ func TestFirestore(t *testing.T) {
 			expectedCustomer := routing.Customer{
 				Code:                   "local",
 				Name:                   "Local",
-				Active:                 false,
 				AutomaticSignInDomains: "",
 				BuyerRef:               nil,
 				SellerRef:              nil,
@@ -1042,9 +1036,8 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expectedCustomer := routing.Customer{
-				Code:   "local",
-				Name:   expected.Name,
-				Active: true,
+				Code: "local",
+				Name: expected.Name,
 			}
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
@@ -1651,9 +1644,8 @@ func TestFirestore(t *testing.T) {
 			}
 
 			datacenter := routing.Datacenter{
-				ID:      crypto.HashID("datacenter name"),
-				Name:    "datacenter name",
-				Enabled: true,
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datacenter name",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -1724,9 +1716,8 @@ func TestFirestore(t *testing.T) {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID("datacenter name"),
-			Name:    "datacenter name",
-			Enabled: true,
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datacenter name",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
@@ -1891,9 +1882,8 @@ func TestFirestore(t *testing.T) {
 			}
 
 			datacenter := routing.Datacenter{
-				ID:      crypto.HashID("datacenter name"),
-				Name:    "datacenter name",
-				Enabled: true,
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datacenter name",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -1975,9 +1965,8 @@ func TestFirestore(t *testing.T) {
 			}
 
 			datacenter := routing.Datacenter{
-				ID:      crypto.HashID("datacenter name"),
-				Name:    "datacenter name",
-				Enabled: true,
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datacenter name",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -2067,9 +2056,8 @@ func TestFirestore(t *testing.T) {
 			}
 
 			datacenter := routing.Datacenter{
-				ID:      crypto.HashID("datacenter name"),
-				Name:    "datacenter name",
-				Enabled: true,
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datacenter name",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -2151,9 +2139,8 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Datacenter{
-				ID:      1,
-				Name:    "local",
-				Enabled: true,
+				ID:   1,
+				Name: "local",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -2181,18 +2168,16 @@ func TestFirestore(t *testing.T) {
 
 		expected := []routing.Datacenter{
 			{
-				ID:      1,
-				Name:    "local",
-				Enabled: true,
+				ID:   1,
+				Name: "local",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
 				},
 			},
 			{
-				ID:      2,
-				Name:    "local",
-				Enabled: false,
+				ID:   2,
+				Name: "local",
 				Location: routing.Location{
 					Latitude:  72.5,
 					Longitude: 122.5,
@@ -2219,9 +2204,8 @@ func TestFirestore(t *testing.T) {
 		}()
 
 		expected := routing.Datacenter{
-			ID:      1,
-			Name:    "local",
-			Enabled: true,
+			ID:   1,
+			Name: "local",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
@@ -2261,9 +2245,8 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			datacenter := routing.Datacenter{
-				ID:      crypto.HashID("local"),
-				Name:    "local",
-				Enabled: true,
+				ID:   crypto.HashID("local"),
+				Name: "local",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -2289,9 +2272,8 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			datacenter := routing.Datacenter{
-				ID:      1,
-				Name:    "local",
-				Enabled: true,
+				ID:   1,
+				Name: "local",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -2312,9 +2294,8 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Datacenter{
-				ID:      crypto.HashID("local"),
-				Name:    "local",
-				Enabled: true,
+				ID:   crypto.HashID("local"),
+				Name: "local",
 				Location: routing.Location{
 					Latitude:  70.5,
 					Longitude: 120.5,
@@ -2325,17 +2306,12 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual := expected
-			actual.Enabled = false
 
 			err = fs.SetDatacenter(ctx, actual)
 			assert.NoError(t, err)
 
 			actual, err = fs.Datacenter(expected.ID)
 			assert.NoError(t, err)
-
-			assert.NotEqual(t, expected, actual)
-			actual.Enabled = true
-			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -2367,9 +2343,8 @@ func TestFirestore(t *testing.T) {
 		id := crypto.HashID(expected.Alias + fmt.Sprintf("%x", expected.BuyerID) + fmt.Sprintf("%x", expected.DatacenterID))
 
 		datacenter := routing.Datacenter{
-			ID:      1,
-			Name:    "local",
-			Enabled: true,
+			ID:   1,
+			Name: "local",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
@@ -2434,9 +2409,8 @@ func TestFirestore(t *testing.T) {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:      1,
-			Name:    "local",
-			Enabled: true,
+			ID:   1,
+			Name: "local",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
@@ -2498,9 +2472,8 @@ func TestFirestore(t *testing.T) {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:      1,
-			Name:    "local",
-			Enabled: true,
+			ID:   1,
+			Name: "local",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
@@ -2566,9 +2539,8 @@ func TestFirestore(t *testing.T) {
 		}
 
 		expectedDatacenter := routing.Datacenter{
-			ID:      crypto.HashID("local"),
-			Name:    "local",
-			Enabled: true,
+			ID:   crypto.HashID("local"),
+			Name: "local",
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
