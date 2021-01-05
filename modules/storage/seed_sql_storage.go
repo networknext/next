@@ -41,6 +41,7 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Network Next",
 			Code:                   "next",
+			Active:                 true,
 			AutomaticSignInDomains: "networknext.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -49,6 +50,7 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
 			Code:                   "ghost-army",
+			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -57,6 +59,7 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Local",
 			Code:                   "local",
+			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -157,13 +160,16 @@ func SeedSQLStorage(
 		// req for happy path
 		localDCID := crypto.HashID("local")
 		localDatacenter := routing.Datacenter{
-			ID:   localDCID,
-			Name: "local",
+			ID:      localDCID,
+			Name:    "local",
+			Enabled: true,
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SellerID: localSeller.DatabaseID,
+			StreetAddress: "Somewhere, USA",
+			SupplierName:  "usw2-az4",
+			SellerID:      localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
@@ -171,13 +177,16 @@ func SeedSQLStorage(
 
 		localDCID = crypto.HashID("local.locale.name")
 		localDatacenter2 := routing.Datacenter{
-			ID:   localDCID,
-			Name: "local.locale.name",
+			ID:      localDCID,
+			Name:    "local.locale.name",
+			Enabled: true,
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SellerID: localSeller.DatabaseID,
+			StreetAddress: "Somewhere, USA",
+			SupplierName:  "supplier.local.name",
+			SellerID:      localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
@@ -185,13 +194,16 @@ func SeedSQLStorage(
 
 		ghostDCID := crypto.HashID("ghost-army.locale.name")
 		ghostDatacenter := routing.Datacenter{
-			ID:   ghostDCID,
-			Name: "ghost-army.locale.name",
+			ID:      ghostDCID,
+			Name:    "ghost-army.locale.name",
+			Enabled: true,
 			Location: routing.Location{
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SellerID: ghostSeller.DatabaseID,
+			StreetAddress: "Somewhere, Else, USA",
+			SupplierName:  "supplier.ghost.name",
+			SellerID:      ghostSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, ghostDatacenter); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding ghost datacenter: %w", err)

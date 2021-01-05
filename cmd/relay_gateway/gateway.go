@@ -9,18 +9,16 @@ import (
 	"context"
 	"expvar"
 	"fmt"
-	"net/http"
-	"os"
-	"os/signal"
-
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/relay_gateway"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
+	"net/http"
+	"os"
+	"os/signal"
 
 	"github.com/go-kit/kit/log/level"
 )
@@ -78,7 +76,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	relayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
+	relayMetrics, err, msg := relay_gateway.NewMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", msg, "err", err)
 		return 1

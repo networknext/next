@@ -579,15 +579,3 @@ func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID 
 func (m *InMemory) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
 	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in InMemory storer"))
 }
-
-func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateBuyer not impemented in InMemory storer")
-}
-
-func (m *InMemory) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
-	return fmt.Errorf("UpdateSeller not impemented in InMemory storer")
-}
-
-func (m *InMemory) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
-	return fmt.Errorf("UpdateCustomer not impemented in InMemory storer")
-}

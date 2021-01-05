@@ -14,8 +14,6 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/networknext/backend/modules/encoding"
@@ -52,19 +50,22 @@ func (e *ErrUnmarshalMessage) Error() string {
 	return fmt.Sprintf("could not unmarshal message: %v", e.err)
 }
 
+type UserSession struct {
+	SessionID string `redis:"sessionID"`
+	Timestamp string `redis:"timestamp"`
+}
+
 type VanityMetricHandler struct {
 	handler              metrics.Handler
 	metrics              *metrics.VanityServiceMetrics
 	vanityMetricDataChan chan *VanityMetrics
 	buyerMetricMap       map[string]*metrics.VanityMetric
 	mapMutex             sync.RWMutex
-	redisSessionsMap     *redis.Pool
-	redisSetName         string
-	maxUserIdleTime      time.Duration
+	redisUserSessionsMap *redis.Pool
+	maxUserIdleTime      int
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
-	logger               log.Logger
 }
 
 // VanityMetrics is the struct for all desired vanity metrics
@@ -84,15 +85,13 @@ type VanityMetrics struct {
 }
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
-	vanitySubscriber pubsub.Subscriber, redisSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int,
-	vanityMaxUserIdleTime time.Duration, vanitySetName string, logger log.Logger) *VanityMetricHandler {
+	vanitySubscriber pubsub.Subscriber, redisUserSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int, vanityMaxUserIdleTimeSeconds int) *VanityMetricHandler {
 
 	// Create Redis client for userHash -> sessionID, timestamp map
-	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisMaxIdleConnections, redisMaxActiveConnections)
+	vanityUserSessions := storage.NewRedisPool(redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections)
 
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
-		"Slices Accelerated":         true,
 		"Slices Latency Reduced":     true,
 		"Slices Packet Loss Reduced": true,
 		"Slices Jitter Reduced":      true,
@@ -112,13 +111,11 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		vanityMetricDataChan: make(chan *VanityMetrics, chanBufferSize),
 		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
 		mapMutex:             sync.RWMutex{},
-		redisSessionsMap:     vanitySessionsMap,
-		redisSetName:         vanitySetName,
-		maxUserIdleTime:      vanityMaxUserIdleTime,
+		redisUserSessionsMap: vanityUserSessions,
+		maxUserIdleTime:      vanityMaxUserIdleTimeSeconds,
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
-		logger:               logger,
 	}
 }
 
@@ -154,7 +151,7 @@ func (v VanityMetrics) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
-func (v *VanityMetrics) UnmarshalBinary(data []byte) error {
+func (v VanityMetrics) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	if !encoding.ReadUint64(data, &index, &v.BuyerID) {
@@ -242,7 +239,6 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 						errChan <- err
 						return
 					}
-					vanityMetricDataBuffer = vanityMetricDataBuffer[:0]
 				case <-ctx.Done():
 					return
 				}
@@ -271,7 +267,6 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		vm.metrics.ReceivedVanityCount.Add(1)
 
 		if messageInfo.Err != nil {
-			level.Error(vm.logger).Log("err", messageInfo.Err)
 			return &ErrReceiveMessage{err: messageInfo.Err}
 		}
 
@@ -279,13 +274,11 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		case pubsub.TopicVanityMetricData:
 			var vanityData VanityMetrics
 			if err := vanityData.UnmarshalBinary(messageInfo.Message); err != nil {
-				level.Error(vm.logger).Log("msg", "Could not unmarshal binary", "err", err)
 				return &ErrUnmarshalMessage{err: err}
 			}
 
 			select {
 			case vm.vanityMetricDataChan <- &vanityData:
-				level.Info(vm.logger).Log("msg", "Successfully received vanity data from ZeroMQ")
 			default:
 				return &ErrChannelFull{}
 			}
@@ -301,7 +294,6 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDataBuffer []*VanityMetrics) error {
 	for j := range vanityMetricDataBuffer {
 		buyerID := fmt.Sprintf("%016x", vanityMetricDataBuffer[j].BuyerID)
-		level.Debug(vm.logger).Log("msg", "Buyer ID obtained from data", "buyerID", buyerID)
 
 		// Get the counters / gauges / histograms per vanity metric for this buyer ID
 		// Check the map first for quick look up
@@ -317,7 +309,6 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			// or provides existing ones from a previous run
 			vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
 			if err != nil {
-				level.Error(vm.logger).Log("err", err)
 				return err
 			}
 
@@ -325,37 +316,17 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vm.mapMutex.Lock()
 			vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 			vm.mapMutex.Unlock()
-			level.Info(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
 		}
 
 		// Calculate sessionsAccelerated
-		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
+		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp)
 		if err != nil {
-			level.Error(vm.logger).Log("err", err)
 			return err
 		}
 		if newSession {
-			level.Debug(vm.logger).Log("msg", "Found new accelerated session for user", "userHash", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].UserHash), "sessionID", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].SessionID))
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
 
-		currentSlicesAccelerated := vanityMetricPerBuyer.SlicesAccelerated.Value()
-		currentSlicesLatencyReduced := vanityMetricPerBuyer.SlicesLatencyReduced.Value()
-		currentSlicesPacketLossReduced := vanityMetricPerBuyer.SlicesPacketLossReduced.Value()
-		currentSlicesJitterReduced := vanityMetricPerBuyer.SlicesJitterReduced.Value()
-		currentSessionsAccelerated := vanityMetricPerBuyer.SessionsAccelerated.Value()
-
-		level.Debug(vm.logger).Log("msg", "Before updating metric values",
-			"buyerID", buyerID,
-			"userHash", vanityMetricDataBuffer[j].UserHash,
-			"sessionID", vanityMetricDataBuffer[j].SessionID,
-			"timestamp", vanityMetricDataBuffer[j].Timestamp,
-			"SlicesAccelerated", currentSlicesAccelerated,
-			"SlicesLatencyReduced", currentSlicesLatencyReduced,
-			"SlicesPacketLossReduced", currentSlicesPacketLossReduced,
-			"SlicesJitterReduced", currentSlicesJitterReduced,
-			"SessionsAccelerated", currentSessionsAccelerated,
-		)
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
 		vanityMetricPerBuyer.SlicesAccelerated.Add(float64(vanityMetricDataBuffer[j].SlicesAccelerated))
@@ -364,44 +335,43 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		vanityMetricPerBuyer.SlicesJitterReduced.Add(float64(vanityMetricDataBuffer[j].SlicesJitterReduced))
 		vanityMetricPerBuyer.SessionsAccelerated.Add(float64(vanityMetricDataBuffer[j].SessionsAccelerated))
 
-		level.Debug(vm.logger).Log("msg", "Updating metric values",
-			"buyerID", buyerID,
-			"userHash", vanityMetricDataBuffer[j].UserHash,
-			"sessionID", vanityMetricDataBuffer[j].SessionID,
-			"timestamp", vanityMetricDataBuffer[j].Timestamp,
-			"SlicesAccelerated", vanityMetricPerBuyer.SlicesAccelerated.Value(),
-			"SlicesLatencyReduced", vanityMetricPerBuyer.SlicesLatencyReduced.Value(),
-			"SlicesPacketLossReduced", vanityMetricPerBuyer.SlicesPacketLossReduced.Value(),
-			"SlicesJitterReduced", vanityMetricPerBuyer.SlicesJitterReduced.Value(),
-			"SessionsAccelerated", vanityMetricPerBuyer.SessionsAccelerated.Value(),
-		)
-
 		vm.metrics.UpdateVanitySuccessCount.Add(1)
 	}
 
+	vanityMetricDataBuffer = vanityMetricDataBuffer[0:]
 	return nil
 }
 
 // Checks if a userHash has moved onto a new sessionID at a later point in time
-func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
+func (vm *VanityMetricHandler) IsNewSession(userHash uint64, sessionID uint64, timestamp uint64) (bool, error) {
+	userHashStr := fmt.Sprintf("%016x", userHash)
 	sessionIDStr := fmt.Sprintf("%016x", sessionID)
-	exists, err := vm.SessionIDExists(sessionIDStr)
+	timestampStr := fmt.Sprintf("%016x", timestamp)
+
+	// See if userHash is in redis
+	userSession, exists, err := vm.GetUserSession(userHashStr)
 	if err != nil {
-		return exists, nil
+		return false, err
 	}
 
-	if !exists {
-		// Not a new sessionID
-		return false, nil
+	newSession := false
+
+	// See if this is a new session for an existing userHash
+	if exists && sessionIDStr != userSession.SessionID && timestampStr > userSession.Timestamp {
+		newSession = true
 	}
 
-	// Found a new sessionID, add it to the set
-	err = vm.AddSessionID(sessionIDStr)
-	if err != nil {
-		return exists, err
+	if !exists || newSession {
+		// Update redis with the latest info for the userHash
+		newUserSession := &UserSession{SessionID: sessionIDStr, Timestamp: timestampStr}
+		err = vm.PutUserSession(userHashStr, newUserSession)
+		if err != nil {
+			return true, err
+		}
+		return true, nil
 	}
 
-	return true, nil
+	return false, nil
 }
 
 // Returns a marshaled JSON of an empty VanityMetrics struct
@@ -412,16 +382,6 @@ func (vm *VanityMetricHandler) GetEmptyMetrics() ([]byte, error) {
 	}
 
 	return ret_val, nil
-}
-
-// Deletes a metric descriptor from StackDriver, given a gcpProject ID, service name, and metric name
-// For vanity metrics, the service name would be the buyerID, and the metric name could be `vanity_metric.slices_accelerated`
-func (vm *VanityMetricHandler) DeleteMetricDescriptor(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, serviceName string, metricName string) error {
-	name := fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", gcpProjectID, serviceName, metricName)
-	req := &monitoringpb.DeleteMetricDescriptorRequest{Name: name}
-	err := sd.Client.DeleteMetricDescriptor(ctx, req)
-
-	return err
 }
 
 // Returns a marshaled JSON of all custom metrics tracked through Stackdriver
@@ -486,8 +446,9 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 
 	// Create max aggregation (used for Counters)
 	maxAgg := &monitoringpb.Aggregation{
-		AlignmentPeriod:  durationpb.New(duration),
-		PerSeriesAligner: monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
+		AlignmentPeriod:    durationpb.New(duration),
+		PerSeriesAligner:   monitoringpb.Aggregation_Aligner(11), // Get max values per alignment period
+		CrossSeriesReducer: monitoringpb.Aggregation_Reducer(3),  // Get single max value across alignment periods
 	}
 
 	// Create the final returned map
@@ -496,7 +457,6 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 	// Get all vanity metric names for the buyer ID
 	vanityMetricTypes, err := vm.GetCustomMetricTypes(ctx, sd, gcpProjectID, buyerID)
 	if err != nil {
-		level.Error(vm.logger).Log("err", err)
 		return nil, err
 	}
 
@@ -512,31 +472,29 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 		pointsList, err := vm.GetPointDetails(ctx, sd, tsName, tsFilter, tsInterval, maxAgg)
 		if err != nil {
 			errStr := fmt.Sprintf("Could not get point details for %s (%s)", displayName, metricType)
-			level.Error(vm.logger).Log("err", errStr)
 			return nil, errors.New(errStr)
 		}
 
 		// Extract the max point value from the list of points
-		maxPointVal := int64(0)
+		var maxPointVal float64
 		for _, points := range pointsList {
 			for _, point := range points {
-				if point.Value.GetInt64Value() > maxPointVal {
-					maxPointVal = point.Value.GetInt64Value()
+				if point.Value.GetDoubleValue() > maxPointVal {
+					maxPointVal = point.Value.GetDoubleValue()
 				}
 			}
 		}
 
-		floatPointVal := float64(maxPointVal)
-		// Check if the a slice metric needs hours calculated
+		// Check if the metric needs hours calculated
 		if vm.hourMetricsMap[displayName] {
 			seconds := time.Second * time.Duration(10*maxPointVal)
 			hours := seconds.Hours()
 			// Round to 3 decimal places
-			floatPointVal = math.Round(hours*1000) / 1000
+			maxPointVal = math.Round(hours*1000) / 1000
 		}
 
 		// Add metric value to the final map
-		metricsMap[vm.displayMap[displayName]] = floatPointVal
+		metricsMap[vm.displayMap[displayName]] = maxPointVal
 	}
 
 	// Encode the map of vanity metric names to their values
@@ -582,53 +540,67 @@ func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType
 	return fmt.Sprintf(`projects/%s/metricDescriptors/%s`, gcpProjectID, metricType)
 }
 
-func (vm *VanityMetricHandler) SessionIDExists(sessionID string) (exists bool, err error) {
-	conn := vm.redisSessionsMap.Get()
+// Gets a UserSession struct from Redis for a given userHash
+func (vm *VanityMetricHandler) GetUserSession(userHash string) (userSession *UserSession, exists bool, err error) {
+	conn := vm.redisUserSessionsMap.Get()
 	defer conn.Close()
-	member := fmt.Sprintf("sid-%s", sessionID)
-	score, err := conn.Do("ZSCORE", redis.Args{}.Add(vm.redisSetName).Add(member)...)
+	session := &UserSession{}
+
+	// Check if key exists
+	key := fmt.Sprintf("uh-%s", userHash)
+	exists, err = redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
-		return false, err
+		return session, false, err
+	}
+	if !exists {
+		return session, false, nil
 	}
 
-	if score != nil {
-		// If the sessionID exists, refresh its expiration time
-		err = vm.AddSessionID(sessionID)
-		if err != nil {
-			return true, err
-		}
-		return true, nil
+	// Get the session and time
+	replies, err := conn.Do("HGETALL", key)
+	if err != nil {
+		return session, true, err
 	}
 
-	return false, nil
+	// Parse the reply into a UserSession struct
+	err = redis.ScanStruct(replies.([]interface{}), session)
+	if err != nil {
+		return session, true, err
+	}
+
+	// Refresh the expire time
+	resp, err := conn.Do("EXPIRE", key, vm.maxUserIdleTime)
+	if err != nil {
+		return session, true, err
+	}
+	if resp != int64(1) {
+		errorStr := fmt.Sprintf("Could not reset expire time for userHash %s; response %d", userHash, resp)
+		return session, true, errors.New(errorStr)
+	}
+
+	return session, true, nil
 }
 
-func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
-	conn := vm.redisSessionsMap.Get()
+// Puts a userHash -> UserSession struct in Redis
+func (vm *VanityMetricHandler) PutUserSession(userHash string, userSession *UserSession) error {
+	conn := vm.redisUserSessionsMap.Get()
 	defer conn.Close()
 
-	// Refresh the expiration time for this key
-	refreshedTime := time.Now().Add(vm.maxUserIdleTime).UnixNano()
-	member := fmt.Sprintf("sid-%s", sessionID)
-	_, err := conn.Do("ZADD", redis.Args{}.Add(vm.redisSetName).Add(refreshedTime).Add(member)...)
-	if err != nil {
+	// Set the userHash -> UserSession in redis
+	key := fmt.Sprintf("uh-%s", userHash)
+	if _, err := conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(userSession)...); err != nil {
 		return err
 	}
 
-	// Expire old set members
-	err = vm.ExpireOldSessions(conn)
-
-	return err
-}
-
-func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
-	currentTime := time.Now().UnixNano()
-
-	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
-
-	if numRemoved != 0 {
-		level.Debug(vm.logger).Log("msg", "Removed Session IDs from redis", "numRemoved", numRemoved)
+	// Refresh the expire time
+	resp, err := conn.Do("EXPIRE", key, vm.maxUserIdleTime)
+	if err != nil {
+		return err
+	}
+	if resp != int64(1) {
+		errorStr := fmt.Sprintf("Could not reset expire time for userHash %s; response %d", userHash, resp)
+		return errors.New(errorStr)
 	}
 
-	return err
+	return nil
 }

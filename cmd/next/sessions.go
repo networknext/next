@@ -348,70 +348,73 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 	bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 		"SliceNumber",
 		"Timestamp",
+		"Buyer",
 		"SessionID",
+		"Next",
+		"DirectRTT",
+		"DirectJitter",
+		"DirectPacketLoss",
+		"NextRTT",
+		"NextJitter",
+		"NextPacketLoss",
+		"NextRelays",
+		"TotalPrice",
+		"ClientToServerPacketsLost",
+		"ServerToClientPacketsLost",
+		"Committed",
+		"Flagged",
+		"Multipath",
+		"NextBytesUp",
+		"NextBytesDown",
+		"Initial",
 		"Datacenter",
+		"RttReduction",
+		"PacketLossReduction",
+		"NextRelaysPrice",
 		"UserHash",
 		"Latitude",
 		"Longitude",
 		"ISP",
+		"ABTest",
 		"ConnectionType",
 		"PlatformType",
 		"SdkVersion",
-		"DirectRTT",
-		"NextRTT",
-		"PredictedNextRTT",
-		"DirectJitter",
-		"NextJitter",
-		"DirectPacketLoss",
-		"NextPacketLoss",
-		"NextRelays",
-		"NextRelaysPrice",
-		"TotalPrice",
-		"NextBytesUp",
-		"NextBytesDown",
+		"PacketLoss",
 		"EnvelopeBytesUp",
 		"EnvelopeBytesDown",
-		"ClientToServerPacketsLost",
-		"ServerToClientPacketsLost",
+		"PredictedNextRTT",
+		"MultipathVetoed",
+		"Debug String",
+		"FallbackToDirect",
+		"ClientFlags",
+		"UserFlags",
+		"NearRelayRTT",
 		"PacketsOutOfOrderClientToServer",
 		"PacketsOutOfOrderServerToClient",
 		"JitterClientToServer",
 		"JitterServerToClient",
-		"ClientFlags",
-		"UserFlags",
-		"NearRelayRTT",
 		"NumNearRelays",
 		"NearRelayIDs",
 		"NearRelayRTTs",
 		"NearRelayJitters",
 		"NearRelayPacketLosses",
+		"RelayWentAway",
+		"RouteLost",
 		"Tags",
-		"ABTest",
-		"Next",
-		"Committed",
-		"Flagged",
-		"Multipath",
-		"RttReduction",
-		"PacketLossReduction",
-		"FallbackToDirect",
 		"Mispredicted",
 		"Vetoed",
-		"MultipathVetoed",
 		"LatencyWorse",
 		"NoRoute",
 		"NextLatencyTooHigh",
 		"RouteChanged",
 		"CommitVeto",
-		"RelayWentAway",
-		"RouteLost",
-		"Debug String",
 	})
 
 	for _, billingEntry := range reply.SessionBillingInfo {
 		// Timestamp
 		timeStamp := billingEntry.Timestamp.String()
 		// BuyerString
-		// buyerName := billingEntry.BuyerString
+		buyerName := billingEntry.BuyerString
 		// SessionID
 		sessionID := fmt.Sprintf("%016x", uint64(billingEntry.SessionID))
 		// SliceNumber
@@ -419,9 +422,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// Next
 		next := ""
 		if billingEntry.Next.Valid {
-			if billingEntry.Next.Bool {
-				next = "true"
-			}
+			next = strconv.FormatBool(billingEntry.Next.Bool)
 		}
 		// DirectRTT
 		directRTT := fmt.Sprintf("%5.5f", billingEntry.DirectRTT)
@@ -467,19 +468,17 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// Committed
 		committed := ""
 		if billingEntry.Committed.Valid {
-			if billingEntry.Next.Bool {
-				committed = "true"
-			}
+			committed = strconv.FormatBool(billingEntry.Committed.Bool)
 		}
 		// Flagged
 		flagged := ""
-		if billingEntry.Flagged.Bool {
-			flagged = "true"
+		if billingEntry.Flagged.Valid {
+			flagged = strconv.FormatBool(billingEntry.Flagged.Bool)
 		}
 		// Multipath
 		multipath := ""
-		if billingEntry.Multipath.Bool {
-			multipath = "true"
+		if billingEntry.Next.Valid {
+			multipath = strconv.FormatBool(billingEntry.Next.Bool)
 		}
 		// NextBytesUp
 		nextBytesUp := ""
@@ -491,6 +490,11 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.NextBytesDown.Valid {
 			nextBytesDown = fmt.Sprintf("%d", billingEntry.NextBytesDown.Int64)
 		}
+		// Initial
+		initial := ""
+		if billingEntry.Initial.Valid {
+			initial = strconv.FormatBool(billingEntry.Initial.Bool)
+		}
 		// DatacenterString
 		datacenterName := ""
 		if billingEntry.DatacenterString.Valid {
@@ -498,13 +502,13 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		}
 		// RttReduction
 		rttReduction := ""
-		if billingEntry.RttReduction.Bool {
-			rttReduction = "true"
+		if billingEntry.RttReduction.Valid {
+			rttReduction = strconv.FormatBool(billingEntry.RttReduction.Bool)
 		}
 		// PacketLossReduction
 		plReduction := ""
-		if billingEntry.PacketLossReduction.Bool {
-			plReduction = "true"
+		if billingEntry.PacketLossReduction.Valid {
+			plReduction = strconv.FormatBool(billingEntry.PacketLossReduction.Bool)
 		}
 		// NextRelaysPrice
 		nextRelaysPrice := ""
@@ -533,8 +537,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		}
 		// ABTest
 		abTest := ""
-		if billingEntry.ABTest.Bool {
-			abTest = "true"
+		if billingEntry.ABTest.Valid {
+			abTest = strconv.FormatBool(billingEntry.ABTest.Bool)
 		}
 		// ConnectionType
 		connType := ""
@@ -550,6 +554,11 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		sdkVersion := ""
 		if billingEntry.SdkVersion.Valid {
 			sdkVersion = billingEntry.SdkVersion.StringVal
+		}
+		// PacketLoss
+		packetLoss := ""
+		if billingEntry.PacketLoss.Valid {
+			packetLoss = fmt.Sprintf("%2.8f", billingEntry.PacketLoss.Float64)
 		}
 		// EnvelopeBytesUp
 		envelopeBytesUp := ""
@@ -568,8 +577,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		}
 		// MultipathVetoed
 		multipathVetoed := ""
-		if billingEntry.MultipathVetoed.Bool {
-			multipathVetoed = "true"
+		if billingEntry.MultipathVetoed.Valid {
+			multipathVetoed = strconv.FormatBool(billingEntry.MultipathVetoed.Bool)
 		}
 		// Debug
 		debug := ""
@@ -578,8 +587,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		}
 		// FallbackToDirect
 		fallbackToDirect := ""
-		if billingEntry.FallbackToDirect.Bool {
-			fallbackToDirect = "true"
+		if billingEntry.FallbackToDirect.Valid {
+			fallbackToDirect = strconv.FormatBool(billingEntry.FallbackToDirect.Bool)
 		}
 		// ClientFlags
 		clientFlags := ""
@@ -655,13 +664,13 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		}
 		// RelayWentAway
 		relayWentAway := ""
-		if billingEntry.RelayWentAway.Bool {
-			relayWentAway = "true"
+		if billingEntry.RelayWentAway.Valid {
+			relayWentAway = strconv.FormatBool(billingEntry.RelayWentAway.Bool)
 		}
 		// RouteLost
 		routeLost := ""
-		if billingEntry.RouteLost.Bool {
-			routeLost = "true"
+		if billingEntry.RouteLost.Valid {
+			routeLost = strconv.FormatBool(billingEntry.RouteLost.Bool)
 		}
 		// Tags
 		tags := ""
@@ -673,100 +682,103 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		}
 		// Mispredicted
 		mispredicted := ""
-		if billingEntry.Mispredicted.Bool {
-			mispredicted = "true"
+		if billingEntry.Mispredicted.Valid {
+			mispredicted = strconv.FormatBool(billingEntry.Mispredicted.Bool)
 		}
 		// Vetoed
 		vetoed := ""
-		if billingEntry.Vetoed.Bool {
-			vetoed = "true"
+		if billingEntry.Vetoed.Valid {
+			vetoed = strconv.FormatBool(billingEntry.Vetoed.Bool)
 		}
 		// LatencyWorse
 		latencyWorse := ""
-		if billingEntry.LatencyWorse.Bool {
-			latencyWorse = "true"
+		if billingEntry.LatencyWorse.Valid {
+			latencyWorse = strconv.FormatBool(billingEntry.LatencyWorse.Bool)
 		}
 		// NoRoute
 		noRoute := ""
-		if billingEntry.NoRoute.Bool {
-			noRoute = "true"
+		if billingEntry.NoRoute.Valid {
+			noRoute = strconv.FormatBool(billingEntry.NoRoute.Bool)
 		}
 		// NextLatencyTooHigh
 		nextLatencyTooHigh := ""
-		if billingEntry.NextLatencyTooHigh.Bool {
-			nextLatencyTooHigh = "true"
+		if billingEntry.NextLatencyTooHigh.Valid {
+			nextLatencyTooHigh = strconv.FormatBool(billingEntry.NextLatencyTooHigh.Bool)
 		}
 		// RouteChanged
 		routeChanged := ""
-		if billingEntry.RouteChanged.Bool {
-			routeChanged = "true"
+		if billingEntry.RouteChanged.Valid {
+			routeChanged = strconv.FormatBool(billingEntry.RouteChanged.Bool)
 		}
 		// CommitVeto
 		commitVeto := ""
-		if billingEntry.CommitVeto.Bool {
-			commitVeto = "true"
+		if billingEntry.CommitVeto.Valid {
+			commitVeto = strconv.FormatBool(billingEntry.CommitVeto.Bool)
 		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
 			timeStamp,
+			buyerName,
 			sessionID,
+			next,
+			directRTT,
+			directJitter,
+			directPacketLoss,
+			nextRTT,
+			nextJitter,
+			nextPacketLoss,
+			nextRelays,
+			totalPrice,
+			clientToServerPacketsLost,
+			serverToClientPacketsLost,
+			committed,
+			flagged,
+			multipath,
+			nextBytesUp,
+			nextBytesDown,
+			initial,
 			datacenterName,
+			rttReduction,
+			plReduction,
+			nextRelaysPrice,
 			userHash,
 			latitude,
 			longitude,
 			isp,
+			abTest,
 			connType,
 			platformType,
 			sdkVersion,
-			directRTT,
-			nextRTT,
-			predictedNextRTT,
-			directJitter,
-			nextJitter,
-			directPacketLoss,
-			nextPacketLoss,
-			nextRelays,
-			nextRelaysPrice,
-			totalPrice,
-			nextBytesUp,
-			nextBytesDown,
+			packetLoss,
 			envelopeBytesUp,
 			envelopeBytesDown,
-			clientToServerPacketsLost,
-			serverToClientPacketsLost,
+			predictedNextRTT,
+			multipathVetoed,
+			debug,
+			fallbackToDirect,
+			clientFlags,
+			userFlags,
+			nearRelayRTT,
 			packetsOutOfOrderClientToServer,
 			packetsOutOfOrderServerToClient,
 			jitterClientToServer,
 			jitterServerToClient,
-			clientFlags,
-			userFlags,
-			nearRelayRTT,
 			numNearRelays,
 			nearRelayIDs,
 			nearRelayRTTs,
 			nearRelayJitters,
 			nearRelayPacketLosses,
+			relayWentAway,
+			routeLost,
 			tags,
-			abTest,
-			next,
-			committed,
-			flagged,
-			multipath,
-			rttReduction,
-			plReduction,
-			fallbackToDirect,
 			mispredicted,
 			vetoed,
-			multipathVetoed,
 			latencyWorse,
 			noRoute,
 			nextLatencyTooHigh,
 			routeChanged,
 			commitVeto,
-			relayWentAway,
-			routeLost,
-			debug,
 		})
 	}
 
