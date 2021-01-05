@@ -1421,6 +1421,8 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 
 	customerShortName := "shortName"
 	customer := routing.Customer{
+		Active:                 true,
+		Debug:                  true,
 		Code:                   customerShortName,
 		Name:                   "Company, Ltd.",
 		AutomaticSignInDomains: "fredscuttle.com",
@@ -1469,13 +1471,15 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 	// fmt.Printf("BuyerID: %d\n", outerBuyer.ID)
 
 	datacenter := routing.Datacenter{
-		ID:   crypto.HashID("some.locale.name"),
-		Name: "some.locale.name",
+		ID:      crypto.HashID("some.locale.name"),
+		Name:    "some.locale.name",
+		Enabled: true,
 		Location: routing.Location{
 			Latitude:  70.5,
 			Longitude: 120.5,
 		},
-		SellerID: outerSeller.DatabaseID,
+		StreetAddress: "Somewhere, USA",
+		SellerID:      outerSeller.DatabaseID,
 	}
 
 	err = storer.AddDatacenter(ctx, datacenter)
@@ -1629,6 +1633,7 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Multipath)
 		assert.Equal(t, bigquery.NullInt64{Int64: 127500, Valid: true}, reply.SessionBillingInfo[0].NextBytesUp)
 		assert.Equal(t, bigquery.NullInt64{Int64: 153750, Valid: true}, reply.SessionBillingInfo[0].NextBytesDown)
+		assert.Equal(t, bigquery.NullBool{Bool: false, Valid: true}, reply.SessionBillingInfo[0].Initial)
 		assert.Equal(t, bigquery.NullInt64{Int64: int64(outerDatacenter.ID), Valid: true}, reply.SessionBillingInfo[0].DatacenterID)
 		assert.Equal(t, bigquery.NullString{StringVal: outerDatacenter.Name, Valid: true}, reply.SessionBillingInfo[0].DatacenterString)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RttReduction)
@@ -1645,6 +1650,9 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].ConnectionType)
 		assert.Equal(t, bigquery.NullInt64{Int64: 1, Valid: true}, reply.SessionBillingInfo[0].PlatformType)
 		assert.Equal(t, bigquery.NullString{StringVal: "4.0.1", Valid: true}, reply.SessionBillingInfo[0].SdkVersion)
+
+		// empty/null column
+		assert.Equal(t, bigquery.NullFloat64{Float64: 0, Valid: false}, reply.SessionBillingInfo[0].PacketLoss)
 
 		assert.Equal(t, bigquery.NullInt64{Int64: 1280000, Valid: true}, reply.SessionBillingInfo[0].EnvelopeBytesUp)
 		assert.Equal(t, bigquery.NullInt64{Int64: 1280000, Valid: true}, reply.SessionBillingInfo[0].EnvelopeBytesDown)

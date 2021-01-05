@@ -146,10 +146,6 @@ func mainReturnWithCode() int {
 			os.Exit(1)
 		}
 	}()
-
-	//sleep for 10 seconds to allow the first pass of the cacheRunner to finish populating the relay map
-	time.Sleep(10*time.Second)
-
 	go func() {
 		err = svc.StartSubscriber()
 		if err != nil {

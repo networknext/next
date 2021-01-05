@@ -30,6 +30,7 @@ type BigQueryBillingEntry struct {
 	Multipath                       bigquery.NullBool
 	NextBytesUp                     bigquery.NullInt64
 	NextBytesDown                   bigquery.NullInt64
+	Initial                         bigquery.NullBool
 	DatacenterID                    bigquery.NullInt64
 	DatacenterString                bigquery.NullString
 	RttReduction                    bigquery.NullBool
@@ -43,6 +44,7 @@ type BigQueryBillingEntry struct {
 	ConnectionType                  bigquery.NullInt64
 	PlatformType                    bigquery.NullInt64
 	SdkVersion                      bigquery.NullString
+	PacketLoss                      bigquery.NullFloat64
 	EnvelopeBytesUp                 bigquery.NullInt64
 	EnvelopeBytesDown               bigquery.NullInt64
 	PredictedNextRTT                bigquery.NullFloat64

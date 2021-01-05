@@ -21,6 +21,8 @@ create table bw_billing_rules (
 
 create table customers (
   id integer primary key autoincrement,
+  active boolean not null,
+  debug boolean not null default false,
   automatic_signin_domain varchar null,
   customer_name varchar not null,
   customer_code varchar unique not null
@@ -92,8 +94,11 @@ create table banned_users (
 create table datacenters (
   id integer primary key autoincrement,
   display_name varchar not null unique,
+  enabled boolean not null,
   latitude numeric not null,
   longitude numeric not null,
+  supplier_name varchar,
+  street_address varchar not null,
   seller_id integer not null,
   constraint fk_seller_id foreign key (seller_id) references sellers(id)
 );
@@ -101,8 +106,8 @@ create table datacenters (
 create table relays (
   id integer primary key autoincrement,
   contract_term integer not null,
-  display_name varchar not null unique,
-  end_date date,
+  display_name varchar not null,
+  end_date date not null,
   included_bandwidth_gb integer not null,
   internal_ip inet,
   internal_ip_port integer,
@@ -116,7 +121,7 @@ create table relays (
   public_key bytea not null,
   ssh_port integer not null,
   ssh_user varchar not null,
-  start_date date,
+  start_date date not null,
   bw_billing_rule integer not null,
   datacenter integer not null,
   machine_type integer not null,
@@ -141,8 +146,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/01/04 15:11:36
-
+-- File generation: 2020/12/09 16:16:17
 
 -- machine_types
 insert into machine_types values (0, 'none');

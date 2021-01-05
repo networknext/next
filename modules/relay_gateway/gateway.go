@@ -2,24 +2,22 @@ package relay_gateway
 
 import (
 	"fmt"
-	"net/http"
-	"time"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/util/conn"
 	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
+	"net/http"
+	"time"
 )
 
 type Gateway struct {
 	Cfg         *Config
 	Logger      log.Logger
 	RelayLogger log.Logger
-	Metrics     *metrics.RelayGatewayMetrics
+	Metrics     *Metrics
 	Publishers  []pubsub.Publisher
 	Store       *storage.Storer
 	RelayStore  storage.RelayStore
@@ -33,14 +31,17 @@ func (g *Gateway) Shutdown() {
 }
 
 func (g *Gateway) RelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
+
 	fmt.Println("init request recieved")
 	Cfg := &transport.GatewayHandlerConfig{
 		RelayStore:       g.RelayStore,
 		RelayCache:       *g.RelayCache,
 		Storer:           *g.Store,
 		InitMetrics:      g.Metrics.RelayInitMetrics,
+		UpdateMetrics:    g.Metrics.RelayUpdateMetrics,
 		RouterPrivateKey: g.Cfg.RouterPrivateKey,
 	}
+
 	return transport.GatewayRelayInitHandlerFunc(g.Logger, Cfg)
 }
 
@@ -54,10 +55,12 @@ func (g *Gateway) RelayUpdateHandlerFunc() func(writer http.ResponseWriter, requ
 		RouterPrivateKey: g.Cfg.RouterPrivateKey,
 		Publishers:       g.Publishers,
 	}
+
 	return transport.GatewayRelayUpdateHandlerFunc(g.Logger, g.RelayLogger, Cfg)
 }
 
 func (g *Gateway) RelayCacheRunner() error {
+
 	errCount := 0
 	syncTimer := helpers.NewSyncTimer(g.Cfg.RelayCacheUpdate)
 	for !g.ShutdownSvc {
@@ -83,5 +86,6 @@ func (g *Gateway) RelayCacheRunner() error {
 
 		errCount = 0
 	}
+
 	return nil
 }
