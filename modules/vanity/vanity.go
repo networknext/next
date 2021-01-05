@@ -357,7 +357,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SlicesJitterReduced", currentSlicesJitterReduced,
 			"SessionsAccelerated", currentSessionsAccelerated,
 		)
-		fmt.Printf("Before updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %d\n\tSlicesLatencyReduced: %d\n\tSlicesPacketLossReduced: %d\n\tSlicesJitterReduced: %d\n\tSessionsAccelerated %d\n",
+		fmt.Printf("Before updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %v\n\tSlicesLatencyReduced: %v\n\tSlicesPacketLossReduced: %v\n\tSlicesJitterReduced: %v\n\tSessionsAccelerated %v\n",
 			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, currentSlicesAccelerated, currentSlicesLatencyReduced, currentSlicesPacketLossReduced, currentSlicesJitterReduced, currentSessionsAccelerated)
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
@@ -378,7 +378,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SlicesJitterReduced", vanityMetricPerBuyer.SlicesJitterReduced.Value(),
 			"SessionsAccelerated", vanityMetricPerBuyer.SessionsAccelerated.Value(),
 		)
-		fmt.Printf("After updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %d\n\tSlicesLatencyReduced: %d\n\tSlicesPacketLossReduced: %d\n\tSlicesJitterReduced: %d\n\tSessionsAccelerated %d\n",
+		fmt.Printf("After updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %vn\tSlicesLatencyReduced: %v\n\tSlicesPacketLossReduced: %v\n\tSlicesJitterReduced: %v\n\tSessionsAccelerated %v\n",
 			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, vanityMetricPerBuyer.SlicesAccelerated.Value(), vanityMetricPerBuyer.SlicesLatencyReduced.Value(), vanityMetricPerBuyer.SlicesPacketLossReduced.Value(), vanityMetricPerBuyer.SlicesJitterReduced.Value(), vanityMetricPerBuyer.SessionsAccelerated.Value())
 
 		vm.metrics.UpdateVanitySuccessCount.Add(1)
