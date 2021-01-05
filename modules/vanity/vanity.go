@@ -390,7 +390,7 @@ func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 		return exists, nil
 	}
 
-	if !exists {
+	if exists {
 		// Not a new sessionID
 		return false, nil
 	}
