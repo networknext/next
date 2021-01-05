@@ -339,6 +339,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
 
+		fmt.Printf("Received data: %v\n", vanityMetricDataBuffer[j])
 		currentSlicesAccelerated := vanityMetricPerBuyer.SlicesAccelerated.Value()
 		currentSlicesLatencyReduced := vanityMetricPerBuyer.SlicesLatencyReduced.Value()
 		currentSlicesPacketLossReduced := vanityMetricPerBuyer.SlicesPacketLossReduced.Value()
@@ -356,6 +357,8 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SlicesJitterReduced", currentSlicesJitterReduced,
 			"SessionsAccelerated", currentSessionsAccelerated,
 		)
+		fmt.Printf("Before updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %d\n\tSlicesLatencyReduced: %d\n\tSlicesPacketLossReduced: %d\n\tSlicesJitterReduced: %d\n\tSessionsAccelerated %d\n",
+			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, currentSlicesAccelerated, currentSlicesLatencyReduced, currentSlicesPacketLossReduced, currentSlicesJitterReduced, currentSessionsAccelerated)
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
 		vanityMetricPerBuyer.SlicesAccelerated.Add(float64(vanityMetricDataBuffer[j].SlicesAccelerated))
@@ -375,6 +378,8 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SlicesJitterReduced", vanityMetricPerBuyer.SlicesJitterReduced.Value(),
 			"SessionsAccelerated", vanityMetricPerBuyer.SessionsAccelerated.Value(),
 		)
+		fmt.Printf("After updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %d\n\tSlicesLatencyReduced: %d\n\tSlicesPacketLossReduced: %d\n\tSlicesJitterReduced: %d\n\tSessionsAccelerated %d\n",
+			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, vanityMetricPerBuyer.SlicesAccelerated.Value(), vanityMetricPerBuyer.SlicesLatencyReduced.Value(), vanityMetricPerBuyer.SlicesPacketLossReduced.Value(), vanityMetricPerBuyer.SlicesJitterReduced.Value(), vanityMetricPerBuyer.SessionsAccelerated.Value())
 
 		vm.metrics.UpdateVanitySuccessCount.Add(1)
 	}
@@ -484,7 +489,7 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 	// Create a interval and duration for all vanity metrics
 	tsInterval := &monitoringpb.TimeInterval{EndTime: timestamppb.New(endTime), StartTime: timestamppb.New(startTime)}
 	duration := endTime.Sub(startTime)
-
+	fmt.Printf("Duration is %v\n", duration)
 	// Create max aggregation (used for Counters)
 	maxAgg := &monitoringpb.Aggregation{
 		AlignmentPeriod:  durationpb.New(duration),
