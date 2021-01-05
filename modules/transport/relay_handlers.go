@@ -82,21 +82,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
-		if err != nil {
-			_ = level.Error(logger).Log("err", err)
-		}
-		if newRelayBackend && envvar.Exists("RELAY_GATEWAY_ADDRESS") {
-			go func() {
-				gatewayAddr := envvar.Get("RELAY_GATEWAY_ADDRESS", "")
-
-				resp, err := http.Post(fmt.Sprintf("http://%s/relay_init", gatewayAddr), "application/octet-stream", request.Body)
-				if err != nil || resp.StatusCode != http.StatusOK {
-					_ = level.Error(locallogger).Log("msg", "unable to send init to relay gateway", "err", err)
-				}
-			}()
-		}
-
 		locallogger = log.With(locallogger, "relay_addr", relayInitRequest.Address.String())
 
 		if relayInitRequest.Magic != InitRequestMagic {
@@ -134,8 +119,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		params.RelayMap.Lock()
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
-			level.Error(locallogger).Log("msg", "relay already initialized")
-			fmt.Printf("relay %v %v tried to reinitialized", relayData.ID, relayData.Name)
+			level.Warn(locallogger).Log("msg", "relay already initialized")
 			http.Error(writer, "relay already initialized", http.StatusConflict)
 			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
 			params.RelayMap.Unlock()
@@ -237,20 +221,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
-		}
-
-		newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
-		if err != nil {
-			_ = level.Error(logger).Log("err", err)
-		}
-		if newRelayBackend && envvar.Exists("RELAY_GATEWAY_ADDRESS") {
-			go func() {
-				gatewayAddr := envvar.Get("RELAY_GATEWAY_ADDRESS", "")
-				resp, err := http.Post(fmt.Sprintf("http://%s/relay_update", gatewayAddr), "application/octet-stream", request.Body)
-				if err != nil || resp.StatusCode != http.StatusOK {
-					_ = level.Error(locallogger).Log("msg", "unable to send update to relay gateway", "err", err)
-				}
-			}()
 		}
 
 		if relayUpdateRequest.Version > VersionNumberUpdateRequest {

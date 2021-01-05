@@ -574,10 +574,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
-	sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
-		return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
-	})
-
 	sort.Slice(reply.Slices, func(i, j int) bool {
 		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
 	})
@@ -1251,6 +1247,7 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
+			SupplierName:   datacenter.SupplierName,
 		}
 
 		replySlice = append(replySlice, dcmFull)
@@ -1486,6 +1483,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	multipath,
 	nextBytesUp,
 	nextBytesDown,
+	initial,
 	datacenterID,
 	rttReduction,
 	packetLossReduction,
@@ -2020,73 +2018,6 @@ func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, r
 		err = fmt.Errorf("RemoveBannedUser() error removing banned user for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
-	}
-
-	return nil
-}
-
-type BuyerArg struct {
-	BuyerID uint64
-}
-
-type BuyerReply struct {
-	Buyer routing.Buyer
-}
-
-func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply) error {
-
-	var b routing.Buyer
-	var err error
-
-	b, err = s.Storage.Buyer(arg.BuyerID)
-	if err != nil {
-		err = fmt.Errorf("Buyer() error retrieving buyer for ID %016x: %v", arg.BuyerID, err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	reply.Buyer = b
-
-	return nil
-}
-
-type UpdateBuyerArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
-}
-
-type UpdateBuyerReply struct{}
-
-func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
-		return nil
-	}
-
-	// sort out the value type here (comes from the next tool and javascript UI as a string)
-	switch args.Field {
-	case "Live", "Debug":
-		newValue, err := strconv.ParseBool(args.Value)
-		if err != nil {
-			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
-		}
-
-		err = s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, newValue)
-		if err != nil {
-			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-	case "ShortName":
-		err := s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, args.Value)
-		if err != nil {
-			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Buyer type", args.Field)
 	}
 
 	return nil

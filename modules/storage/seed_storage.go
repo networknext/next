@@ -45,6 +45,7 @@ func SeedStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Network Next",
 			Code:                   "next",
+			Active:                 true,
 			AutomaticSignInDomains: "networknext.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -52,6 +53,7 @@ func SeedStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
 			Code:                   "ghost-army",
+			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -59,6 +61,7 @@ func SeedStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Local",
 			Code:                   "local",
+			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -66,6 +69,7 @@ func SeedStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Valve",
 			Code:                   "valve",
+			Active:                 true,
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -106,8 +110,10 @@ func SeedStorage(
 		}
 		did := crypto.HashID("local")
 		datacenter := routing.Datacenter{
-			ID:   did,
-			Name: "local",
+			ID:           did,
+			SignedID:     int64(did),
+			Name:         "local",
+			SupplierName: "usw2-az4",
 		}
 		datacenterMap := routing.DatacenterMap{
 			BuyerID:      customerID,
