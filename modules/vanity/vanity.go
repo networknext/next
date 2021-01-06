@@ -225,9 +225,10 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	// Start the goroutines for preparing and updating the metrics for the write loop
 	for i := 0; i < numVanityUpdateGoroutines; i++ {
 		wg.Add(1)
+		fmt.Printf("starting vanity update goroutine %d\n", i)
 		go func() {
 			defer wg.Done()
-			fmt.Printf("starting vanity update goroutine %d\n", i)
+
 			// Each goroutine has its own buffer to avoid syncing
 			vanityMetricDataBuffer := make([]*VanityMetrics, 0)
 
@@ -238,6 +239,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
 
 					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {
+						fmt.Printf("ERROR: Could not update metrics: %v\n", err)
 						vm.metrics.UpdateVanityFailureCount.Add(1)
 						errChan <- err
 						return
@@ -318,6 +320,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
 			if err != nil {
 				level.Error(vm.logger).Log("err", err)
+				fmt.Printf("Error getting new vanity metric: %v\n", err)
 				return err
 			}
 
@@ -326,12 +329,16 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 			vm.mapMutex.Unlock()
 			level.Info(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
+			fmt.Printf("Found new buyer ID %s, inserted into map for quick lookup\n", buyerID)
+		} else {
+			fmt.Printf("Existing buyer ID %s\n", buyerID)
 		}
 
 		// Calculate sessionsAccelerated
 		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
 		if err != nil {
 			level.Error(vm.logger).Log("err", err)
+			fmt.Printf("Error determining if %v is a new session: %v\n", vanityMetricDataBuffer[j].SessionID, err)
 			return err
 		}
 		if newSession {
