@@ -537,13 +537,18 @@ func SessionUpdateHandlerFunc(
 		// Hack to support ESL - if a player has a "pro" tag, use pro mode in the route shader
 		// Do this for ESL or local, for testing
 		if buyer.ID == 0x1e4e8804454033c8 || buyer.ID == 0xbdbebdbf0f7be395 {
-			if packet.NumTags > 0 {
-				for i := int32(0); i < packet.NumTags; i++ {
-					if packet.Tags[i] == crypto.HashID("pro") {
-						buyer.RouteShader.ProMode = true
-						break
+			if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
+				if packet.NumTags > 0 {
+					for i := int32(0); i < packet.NumTags; i++ {
+						if packet.Tags[i] == crypto.HashID("pro") {
+							buyer.RouteShader.ProMode = true
+							break
+						}
 					}
 				}
+				// Case for older SDK versions where there was only 1 tag
+			} else if len(packet.Tags) > 0 && packet.Tags[0] == crypto.HashID("pro") {
+				buyer.RouteShader.ProMode = true
 			}
 		}
 
