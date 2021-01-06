@@ -117,7 +117,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, 5)
+	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", logger)
 
 	errChan := make(chan error, 1)
 	// Start HTTP server
@@ -178,7 +178,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 		// Parse the start time
 		startTime, err := time.Parse(time.RFC3339, rawStartTime[0])
 		if err != nil {
-			errStr := fmt.Sprintf("could not parse start=%s as RFC3339 format (i.e. 2006-01-02T15:04:05%%2b07:00): %v", rawStartTime[0], err)
+			errStr := fmt.Sprintf("could not parse start=%s as RFC3339 format (i.e. 2020-12-16T15:04:05-07:00 or 2020-12-16T23:04:05Z): %v", rawStartTime[0], err)
 			http.Error(w, errStr, http.StatusBadRequest)
 			return
 		}
@@ -193,7 +193,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			// Parse the end time
 			endTime, err = time.Parse(time.RFC3339, rawEndTime[0])
 			if err != nil {
-				errStr := fmt.Sprintf("could not parse end=%s as RFC3339 format (i.e. 2006-01-02T15:04:05%%2b07:00): %v", rawEndTime[0], err)
+				errStr := fmt.Sprintf("could not parse end=%s as RFC3339 format (i.e. 2020-12-16T15:04:05-07:00 or 2020-12-16T23:04:05Z): %v", rawEndTime[0], err)
 				http.Error(w, errStr, http.StatusBadRequest)
 				return
 			}
