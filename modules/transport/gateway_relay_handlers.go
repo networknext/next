@@ -5,16 +5,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/pubsub"
-	"io/ioutil"
-	"net/http"
-	"time"
 )
 
 type GatewayHandlerConfig struct {
@@ -261,16 +263,28 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 		allRelayData, err := params.RelayCache.GetAll()
+
+		enableInternalIPs, err := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
+		if err != nil {
+			level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
+		}
+
 		for _, v := range allRelayData {
-			if v.Address.String() != relayData.Address.String() {
-				relay, err := params.Storer.Relay(v.ID)
+			if v.ID != relay.ID {
+				otherRelay, err := params.Storer.Relay(v.ID)
 				if err != nil {
-					level.Error(localLogger).Log("msg", "failed to get other relay from storage", "err", err)
+					level.Error(logger).Log("msg", "failed to get other relay from storage", "err", err)
 					continue
 				}
 
-				if relay.State == routing.RelayStateEnabled {
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Address.String()})
+				if otherRelay.State == routing.RelayStateEnabled {
+					var address string
+					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && relay.InternalAddr.String() != ":0" && otherRelay.InternalAddr.String() != ":0" {
+						address = otherRelay.InternalAddr.String()
+					} else {
+						address = v.Address.String()
+					}
+					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: address})
 				}
 			}
 		}

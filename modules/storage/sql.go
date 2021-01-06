@@ -117,7 +117,6 @@ type sqlCustomer struct {
 	ID                     int64
 	Name                   string
 	AutomaticSignInDomains string
-	Active                 bool
 	Debug                  bool
 	CustomerCode           string
 	DatabaseID             int64
@@ -140,13 +139,12 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		CustomerCode:           c.Code,
 		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
-		Active:                 c.Active,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into customers ("))
-	sql.Write([]byte("active, automatic_signin_domain, customer_name, customer_code"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
+	sql.Write([]byte(") values ($1, $2, $3)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -154,7 +152,7 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(customer.Active,
+	result, err := stmt.Exec(
 		customer.AutomaticSignInDomains,
 		customer.Name,
 		customer.CustomerCode,
@@ -250,8 +248,8 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", c.Code)}
 	}
 
-	sql.Write([]byte("update customers set (active, debug, automatic_signin_domain, customer_name) ="))
-	sql.Write([]byte("($1, $2, $3, $4) where id = $5"))
+	sql.Write([]byte("update customers set (automatic_signin_domain, customer_name) ="))
+	sql.Write([]byte("($1, $2) where id = $5"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -259,7 +257,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(c.Active, c.Debug, c.AutomaticSignInDomains, c.Name, c.DatabaseID)
+	result, err := stmt.Exec(c.AutomaticSignInDomains, c.Name, c.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -844,7 +842,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if err != nil {
 			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
 		}
-		relay.Addr = *addr
+		relay.InternalAddr = *addr
 
 	case "PublicKey":
 		publicKey, ok := value.([]byte)
@@ -879,7 +877,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if state < 0 || state > 5 {
-			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(state))
+			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
 		}
 		updateSQL.Write([]byte("update relays set relay_state=$1 where id=$2"))
 		args = append(args, int64(state), relay.DatabaseID)
@@ -1049,15 +1047,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 type sqlRelay struct {
 	ID                 uint64
 	Name               string
-	PublicIP           string // []byte?
+	PublicIP           string
 	PublicIPPort       int64
-	InternalIP         string // []byte?
-	InternalIPPort     int64
+	InternalIP         sql.NullString
+	InternalIPPort     sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
 	DatacenterID       int64
-	ManagementIP       string // []byte?
+	ManagementIP       string
 	SSHUser            string
 	SSHPort            int64
 	State              int64
@@ -1066,16 +1064,18 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
-	StartDate          time.Time
-	EndDate            time.Time
-	MachineType        int64
-	DatabaseID         int64
+	// StartDate          time.Time
+	// EndDate            time.Time
+	StartDate   sql.NullTime
+	EndDate     sql.NullTime
+	MachineType int64
+	DatabaseID  int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
-	var sql bytes.Buffer
+	var sqlQuery bytes.Buffer
 
 	db.relayMutex.RLock()
 	_, ok := db.relays[r.ID]
@@ -1089,14 +1089,25 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	if err != nil {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
-	internalIP := ""
-	internalIPPort := int64(0)
+
+	var internalIP sql.NullString
+	var internalIPPort sql.NullInt64
 	if r.InternalAddr.String() != "" {
-		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
-		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
+	}
+
+	var startDate sql.NullTime
+	if !r.StartDate.IsZero() {
+		startDate.Time = r.StartDate
+	}
+
+	var endDate sql.NullTime
+	if !r.EndDate.IsZero() {
+		endDate.Time = r.EndDate
 	}
 
 	relay := sqlRelay{
@@ -1118,20 +1129,20 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Overage:            int64(r.Overage),
 		BWRule:             int64(r.BWRule),
 		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          r.StartDate,
-		EndDate:            r.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 	}
 
-	sql.Write([]byte("insert into relays ("))
-	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+	sqlQuery.Write([]byte("insert into relays ("))
+	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing AddRelay SQL", "err", err)
 		return err
@@ -1140,7 +1151,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate,
+		relay.EndDate.Time,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1152,7 +1163,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate,
+		relay.StartDate.Time,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1235,7 +1246,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 // TODO: chopping block
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
-	var sql bytes.Buffer
+	var sqlQuery bytes.Buffer
 
 	db.relayMutex.RLock()
 	_, ok := db.relays[r.ID]
@@ -1250,14 +1261,24 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
-	internalIP := ""
-	internalIPPort := int64(0)
+	var internalIP sql.NullString
+	var internalIPPort sql.NullInt64
 	if r.InternalAddr.String() != "" {
-		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
-		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
+	}
+
+	var startDate sql.NullTime
+	if !r.StartDate.IsZero() {
+		startDate.Time = r.StartDate
+	}
+
+	var endDate sql.NullTime
+	if !r.EndDate.IsZero() {
+		endDate.Time = r.EndDate
 	}
 
 	relay := sqlRelay{
@@ -1279,20 +1300,20 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		Overage:            int64(r.Overage),
 		BWRule:             int64(r.BWRule),
 		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          r.StartDate,
-		EndDate:            r.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 	}
 
-	sql.Write([]byte("update relays set ("))
-	sql.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sql.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
-	sql.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sql.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
-	sql.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sql.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) where id = $22"))
+	sqlQuery.Write([]byte("update relays set ("))
+	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) where id = $22"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing SetRelay SQL", "err", err)
 		return err
@@ -1301,7 +1322,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate,
+		relay.EndDate.Time,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1313,7 +1334,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate,
+		relay.StartDate.Time,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1430,7 +1451,6 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 //		Enabled
 //		Latitude
 //		Longitude
-//		SupplierName
 func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 
 	var sql bytes.Buffer
@@ -1444,18 +1464,15 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	}
 
 	dc := sqlDatacenter{
-		Name:          d.Name,
-		Enabled:       d.Enabled,
-		Latitude:      d.Location.Latitude,
-		Longitude:     d.Location.Longitude,
-		SupplierName:  d.SupplierName,
-		SellerID:      d.SellerID,
-		StreetAddress: d.StreetAddress,
+		Name:      d.Name,
+		Latitude:  d.Location.Latitude,
+		Longitude: d.Location.Longitude,
+		SellerID:  d.SellerID,
 	}
 
 	sql.Write([]byte("update datacenters set ("))
-	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
-	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4, $5, $6, $7) where id = $8"))
+	sql.Write([]byte("display_name, latitude, longitude, "))
+	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4) where id = $5"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1464,11 +1481,8 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	}
 
 	result, err := stmt.Exec(dc.Name,
-		dc.Enabled,
 		dc.Latitude,
 		dc.Longitude,
-		dc.SupplierName,
-		dc.StreetAddress,
 		dc.SellerID,
 		d.DatabaseID,
 	)
@@ -1758,14 +1772,11 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 }
 
 type sqlDatacenter struct {
-	ID            int64
-	Name          string
-	Enabled       bool
-	Latitude      float32
-	Longitude     float32
-	SupplierName  string
-	StreetAddress string
-	SellerID      int64
+	ID        int64
+	Name      string
+	Latitude  float32
+	Longitude float32
+	SellerID  int64
 }
 
 // AddDatacenter adds the provided datacenter to storage. It enforces business rule
@@ -1786,18 +1797,15 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	}
 
 	dc := sqlDatacenter{
-		Name:          datacenter.Name,
-		Enabled:       datacenter.Enabled,
-		Latitude:      datacenter.Location.Latitude,
-		Longitude:     datacenter.Location.Longitude,
-		SupplierName:  datacenter.SupplierName,
-		SellerID:      datacenter.SellerID,
-		StreetAddress: datacenter.StreetAddress,
+		Name:      datacenter.Name,
+		Latitude:  datacenter.Location.Latitude,
+		Longitude: datacenter.Location.Longitude,
+		SellerID:  datacenter.SellerID,
 	}
 
 	sql.Write([]byte("insert into datacenters ("))
-	sql.Write([]byte("display_name, enabled, latitude, longitude, supplier_name, street_address, "))
-	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5, $6, $7)"))
+	sql.Write([]byte("display_name, latitude, longitude, "))
+	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1806,11 +1814,8 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	}
 
 	result, err := stmt.Exec(dc.Name,
-		dc.Enabled,
 		dc.Latitude,
 		dc.Longitude,
-		dc.SupplierName,
-		dc.StreetAddress,
 		dc.SellerID,
 	)
 
@@ -2626,4 +2631,211 @@ func (db *SQL) SetFeatureFlagByName(ctx context.Context, flagName string, flagVa
 
 func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
+}
+
+func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	buyer, err := db.Buyer(buyerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	switch field {
+	case "Live":
+		live, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Live: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set is_live_customer=$1 where id=$2"))
+		args = append(args, live, buyer.DatabaseID)
+		buyer.Live = live
+	case "Debug":
+		debug, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Debug: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set debug=$1 where id=$2"))
+		args = append(args, debug, buyer.DatabaseID)
+		buyer.Debug = debug
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update buyers set short_name=$1 where id=$2"))
+		args = append(args, shortName, buyer.DatabaseID)
+		buyer.ShortName = shortName
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateBuyer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.buyerMutex.Lock()
+	db.buyers[buyerID] = buyer
+	db.buyerMutex.Unlock()
+
+	return nil
+}
+
+func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	customer, err := db.Customer(customerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%016x", customerID)}
+	}
+
+	switch field {
+	case "AutomaticSigninDomains":
+		domains, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set automatic_signin_domain=$1 where id=$2"))
+		args = append(args, domains, customer.DatabaseID)
+		customer.AutomaticSignInDomains = domains
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set customer_name=$1 where id=$2"))
+		args = append(args, name, customer.DatabaseID)
+		customer.Name = name
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateCustomer SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.customerMutex.Lock()
+	db.customers[customerID] = customer
+	db.customerMutex.Unlock()
+
+	return nil
+}
+
+func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	seller, err := db.Seller(sellerID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%016x", sellerID)}
+	}
+
+	switch field {
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update sellers set short_name=$1 where id=$2"))
+		args = append(args, shortName, seller.DatabaseID)
+		seller.ShortName = shortName
+	case "EgressPriceNibblinsPerGB":
+		egressPrice, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		egress := routing.DollarsToNibblins(egressPrice)
+		updateSQL.Write([]byte("update sellers set public_egress_price=$1 where id=$2"))
+		args = append(args, int64(egress), seller.DatabaseID)
+		seller.EgressPriceNibblinsPerGB = egress
+	case "IngressPriceNibblinsPerGB":
+		ingressPrice, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		ingress := routing.DollarsToNibblins(ingressPrice)
+		updateSQL.Write([]byte("update sellers set public_ingress_price=$1 where id=$2"))
+		args = append(args, int64(ingress), seller.DatabaseID)
+		seller.IngressPriceNibblinsPerGB = ingress
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateSeller SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.sellerMutex.Lock()
+	db.sellers[sellerID] = seller
+	db.sellerMutex.Unlock()
+
+	return nil
 }
