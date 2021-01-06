@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"errors"
 	"math"
 	"net"
 
@@ -16,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 7
+	SessionDataVersion = 8
 
 	MaxSessionDataSize = 511
 
@@ -591,6 +592,11 @@ func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
 }
 
 func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
+	// If we never got around to setting the session data version, set it here so that we can serialize it properly
+	if sessionData.Version == 0 {
+		sessionData.Version = SessionDataVersion
+	}
+
 	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
 	if err != nil {
 		return nil, err
@@ -607,6 +613,10 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
+
+	if sessionData.Version < 8 {
+		return errors.New("session data is too old")
+	}
 
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
@@ -633,24 +643,15 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeBytes(locationBytes)
 	}
 
-	if sessionData.Version >= 3 {
-		stream.SerializeBool(&sessionData.RouteChanged)
-	}
+	stream.SerializeBool(&sessionData.RouteChanged)
 
 	hasRoute := sessionData.RouteNumRelays > 0
 	stream.SerializeBool(&hasRoute)
 
-	if sessionData.Version >= 4 {
-		stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
-	}
+	stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
 
 	if hasRoute {
 		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, core.MaxRelaysPerRoute)
-
-		if sessionData.Version < 4 {
-			stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
-		}
-
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
 		}
@@ -678,9 +679,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
 
-	if sessionData.Version >= 2 {
-		stream.SerializeBool(&sessionData.RouteState.Mispredict)
-	}
+	stream.SerializeBool(&sessionData.RouteState.Mispredict)
 
 	stream.SerializeBool(&sessionData.EverOnNext)
 
@@ -691,52 +690,35 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
-		if sessionData.Version >= 1 {
-			if sessionData.Version >= 2 {
-				nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
-				stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
-				sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
-			} else {
-				stream.SerializeUint32(&sessionData.RouteState.NearRelayPLHistory[i])
-			}
-
-		}
+		nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
+		stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
+		sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
 	}
 
-	if sessionData.Version >= 2 {
-		directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
-		stream.SerializeInteger(&directPLHistory, 0, 255)
-		sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
-	}
+	directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
+	stream.SerializeInteger(&directPLHistory, 0, 255)
+	sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
 
-	if sessionData.Version >= 1 {
-		stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
-		stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
-	}
+	stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
+	stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
 
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
 
-	if sessionData.Version >= 4 {
-		stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
+	stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
 
-		for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-			stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
-		}
+	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+		stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
 	}
 
-	if sessionData.Version >= 5 {
-		stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
-	}
+	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
 
-	if sessionData.Version >= 6 {
-		stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
-	}
+	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
 
-	if sessionData.Version >= 7 {
-		stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
-	}
+	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
+
+	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!
 
 	return stream.Error()
 }
