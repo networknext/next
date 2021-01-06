@@ -1,9 +1,9 @@
 package transport
 
 import (
+	"errors"
 	"math"
 	"net"
-	"errors"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
@@ -592,6 +592,11 @@ func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
 }
 
 func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
+	// If we never got around to setting the session data version, set it here so that we can serialize it properly
+	if sessionData.Version == 0 {
+		sessionData.Version = SessionDataVersion
+	}
+
 	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
 	if err != nil {
 		return nil, err
