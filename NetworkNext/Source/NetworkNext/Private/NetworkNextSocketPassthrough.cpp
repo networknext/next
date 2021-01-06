@@ -21,6 +21,7 @@
 */
 
 #include "NetworkNextSocketPassthrough.h"
+#include "SocketSubsystem.h"
 
 FNetworkNextSocketPassthrough::FNetworkNextSocketPassthrough(const FString& InSocketDescription, const FName& InSocketProtocol)
     : FNetworkNextSocket(ENetworkNextSocketType::TYPE_Passthrough, InSocketDescription, InSocketProtocol)

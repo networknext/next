@@ -21,6 +21,11 @@
 */
 
 #include "NetworkNextSocketSubsystem.h"
+
+#include "NetworkNext.h"
+#include "NetworkNextSocket.h"
+#include "NetworkNextSocketClient.h"
+#include "NetworkNextSocketServer.h"
 #include "SocketSubsystemModule.h"
 
 FName CreateNetworkNextSocketSubsystem()
