@@ -221,7 +221,9 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 		NearRelayAddresses: make([]net.UDPAddr, 0),
 	}
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version:          transport.SessionDataVersion,
+	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
