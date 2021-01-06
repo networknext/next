@@ -21,6 +21,7 @@
 */
 
 #include "NetworkNextConnection.h"
+#include "NetworkNext.h"
 
 void UNetworkNextConnection::InitRemoteConnection(class UNetDriver* InDriver, class FSocket* InSocket, const FURL& InURL, const class FInternetAddr& InRemoteAddr, EConnectionState InState, int32 InMaxPacket, int32 InPacketOverhead)
 {
