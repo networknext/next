@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modood/table"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -419,7 +421,95 @@ func relays(
 
 }
 
-func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay) {
+func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
+
+	dcID, err := strconv.ParseUint(r.DatacenterID, 16, 64)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Could not parse %s in to a hex integer", r.DatacenterID), 0)
+	}
+
+	dcArg := localjsonrpc.DatacenterArg{
+		ID: dcID,
+	}
+
+	var dcReply localjsonrpc.DatacenterReply
+
+	if err := rpcClient.CallFor(&dcReply, "OpsService.Datacenter", dcArg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", r.Addr)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Could not resolve udp address for Addr %s: %v\n", r.Addr, err), 1)
+	}
+
+	bwRule, err := routing.ParseBandwidthRule(r.BWRule)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid bandwidth rule", r.BWRule), 0)
+	}
+
+	machineType, err := routing.ParseMachineType(r.Type)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid machine type", r.Type), 0)
+	}
+
+	sellerArg := localjsonrpc.SellerArg{
+		ID: r.Seller,
+	}
+
+	sellerReply := localjsonrpc.SellerReply{}
+
+	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	rid := crypto.HashID(r.Addr)
+	relay := routing.Relay{
+		ID:                  rid,
+		Name:                r.Name,
+		Addr:                *addr,
+		PublicKey:           []byte(r.PublicKey),
+		Datacenter:          dcReply.Datacenter,
+		NICSpeedMbps:        r.NicSpeedMbps,
+		IncludedBandwidthGB: r.IncludedBandwidthGB,
+		State:               routing.RelayStateMaintenance,
+		ManagementAddr:      r.ManagementAddr,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		MaxSessions:         r.MaxSessions,
+		MRC:                 routing.DollarsToNibblins(r.MRC),
+		Overage:             routing.DollarsToNibblins(r.Overage),
+		BWRule:              bwRule,
+		ContractTerm:        r.ContractTerm,
+		Type:                machineType,
+		Seller:              sellerReply.Seller,
+	}
+
+	var internalAddr *net.UDPAddr
+	if r.InternalAddr != "" {
+		internalAddr, err = net.ResolveUDPAddr("udp", r.InternalAddr)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not resolve udp address for InternalAddr %s: %v\n", r.Addr, err), 1)
+		}
+		relay.InternalAddr = *internalAddr
+	}
+
+	if r.StartDate != "" {
+		startDate, err := time.Parse("January 2, 2006", r.StartDate)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.StartDate), 0)
+		}
+		relay.StartDate = startDate
+	}
+
+	if r.EndDate != "" {
+		endDate, err := time.Parse("January 2, 2006", r.EndDate)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.EndDate), 0)
+		}
+		relay.EndDate = endDate
+	}
+
 	args := localjsonrpc.AddRelayArgs{
 		Relay: relay,
 	}
@@ -513,4 +603,50 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 
 	table.Output(relayList)
 
+}
+
+func modifyRelayField(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	field string,
+	value string,
+) error {
+
+	args := localjsonrpc.RelaysArgs{
+		Regex: relayRegex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return nil
+	}
+
+	if len(reply.Relays) == 0 {
+		handleRunTimeError(fmt.Sprintf("No relay matches found for '%s'", relayRegex), 0)
+	}
+
+	if len(reply.Relays) > 1 {
+		fmt.Printf("Found several  matches for '%s'", relayRegex)
+		for _, relay := range reply.Relays {
+			fmt.Printf("\t%s\n", relay.Name)
+		}
+		handleRunTimeError(fmt.Sprintln("Please be more specific."), 0)
+	}
+
+	emptyReply := localjsonrpc.ModifyRelayFieldReply{}
+
+	modifyArgs := localjsonrpc.ModifyRelayFieldArgs{
+		RelayID: reply.Relays[0].ID,
+		Field:   field,
+		Value:   value,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "OpsService.ModifyRelayField", modifyArgs); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Field %s for relay %s updated successfully.\n", field, reply.Relays[0].Name)
+	return nil
 }
