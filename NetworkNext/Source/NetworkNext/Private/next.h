@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2021 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "4.0.5"
+#define NEXT_VERSION_FULL                                   "4.0.6"
 #define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                    5
+#define NEXT_VERSION_PATCH_INT                                    6
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                  255
@@ -77,7 +77,7 @@
 #define NEXT_PLATFORM_PS4                                         5
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
-#define NEXT_PLATFORM_XBOX_SERIESX                                8
+#define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
 #define NEXT_PLATFORM_MAX                                         9
 
@@ -207,6 +207,7 @@ struct next_client_stats_t
     bool multipath;
     bool reported;
     bool fallback_to_direct;
+    bool high_frequency_pings;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;

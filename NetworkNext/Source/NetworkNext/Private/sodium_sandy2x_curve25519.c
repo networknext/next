@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+#include "sodium_private_common.h"
+
 #ifdef HAVE_AVX_ASM
 
 #include "sodium_utils.h"

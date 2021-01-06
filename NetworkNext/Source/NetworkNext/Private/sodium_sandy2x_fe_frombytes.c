@@ -3,6 +3,7 @@
 */
 
 #include "sodium_sandy2x_fe.h"
+#include "sodium_private_common.h"
 
 #ifdef HAVE_AVX_ASM
 
