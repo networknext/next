@@ -9,6 +9,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
+//go:generate moq -out storer_test_mocks.go . Storer
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
@@ -21,7 +22,11 @@ type Storer interface {
 
 	RemoveCustomer(ctx context.Context, code string) error
 
+	// TODO: chopping block (this is dangerous)
 	SetCustomer(ctx context.Context, customer routing.Customer) error
+
+	// UpdateCustomer modifies the givien field for the specified buyer
+	UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error
 
 	// Buyer gets a copy of a buyer with the specified buyer ID,
 	// and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
@@ -40,7 +45,11 @@ type Storer interface {
 	RemoveBuyer(ctx context.Context, id uint64) error
 
 	// SetBuyer updates the buyer in storage with the provided copy and returns an error if the buyer could not be updated.
+	// TODO: chopping block (this is dangerous)
 	SetBuyer(ctx context.Context, buyer routing.Buyer) error
+
+	// UpdateBuyer modifies the givien field for the specified buyer
+	UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error
 
 	// Seller gets a copy of a seller with the specified seller ID,
 	// and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
@@ -56,7 +65,11 @@ type Storer interface {
 	RemoveSeller(ctx context.Context, id string) error
 
 	// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
+	// TODO: chopping block - this is dangerous
 	SetSeller(ctx context.Context, seller routing.Seller) error
+
+	// UpdateSeller modifies the givien field for the specified buyer
+	UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error
 
 	// BuyerIDFromCustomerName returns the buyer ID associated with the given customer name and an error if the customer wasn't found.
 	// If the customer has no buyer linked, then it will return a buyer ID of 0 and no error.
