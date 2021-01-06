@@ -201,7 +201,7 @@ func mainReturnWithCode() int {
 
 	// Get the vanity metric handler for writing to StackDriver
 	vanityMetricHandler := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime, vanitySetName, logger)
-
+	fmt.Printf("successfully created vanity metric handler\n")
 	// Start the goroutines for receiving vanity metrics from the backend and updating metrics
 	errChan := make(chan error, 1)
 	go func() {

@@ -89,7 +89,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 
 	// Create Redis client for userHash -> sessionID, timestamp map
 	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisMaxIdleConnections, redisMaxActiveConnections)
-
+	fmt.Printf("Successfully created vanity sessions map\n")
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
 		"Slices Accelerated":         true,
@@ -203,7 +203,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
+		fmt.Printf("starting receive message goroutine\n")
 		for {
 			select {
 			case <-ctx.Done():
@@ -227,7 +227,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
+			fmt.Printf("starting vanity update goroutine %d\n", i)
 			// Each goroutine has its own buffer to avoid syncing
 			vanityMetricDataBuffer := make([]*VanityMetrics, 0)
 
