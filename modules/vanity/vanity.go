@@ -591,11 +591,11 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			hours := seconds.Hours()
 			// Round to 3 decimal places
 			floatPointVal = math.Round(hours*1000) / 1000
-			fmt.Printf("API vals:\n\tDisplayName: %s\n\tduration: %v\n\tmaxPointVal: %d\n\tfloatPointVal: %v\n\trawPoints: %v\n",
-				displayName, duration, maxPointVal, floatPointVal, extractedPointsList)
+			fmt.Printf("API vals:\n\tDisplayName: %s\n\tduration: %v\n\tmaxPointVal: %d\n\tpointList: %v\n\tfloatPointVal: %v\n\trawPoints: %v\n",
+				displayName, duration, maxPointVal, pointsList, floatPointVal, extractedPointsList)
 		} else {
-			fmt.Printf("API vals:\n\tDisplayName: %s\n\tduration: %v\n\tmaxPointVal: %d\n\trawPoints: %v\n",
-				displayName, duration, maxPointVal, extractedPointsList)
+			fmt.Printf("API vals:\n\tDisplayName: %s\n\tduration: %v\n\tmaxPointVal: %d\n\tpointList: %v\n\trawPoints: %v\n",
+				displayName, duration, maxPointVal, pointsList, extractedPointsList)
 		}
 
 		// Add metric value to the final map
