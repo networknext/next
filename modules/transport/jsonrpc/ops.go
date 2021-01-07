@@ -858,11 +858,10 @@ type datacenter struct {
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
-			Name:         d.Name,
-			ID:           d.ID,
-			Latitude:     d.Location.Latitude,
-			Longitude:    d.Location.Longitude,
-			SupplierName: d.SupplierName,
+			Name:      d.Name,
+			ID:        d.ID,
+			Latitude:  d.Location.Latitude,
+			Longitude: d.Location.Longitude,
 		})
 	}
 

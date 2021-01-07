@@ -1047,15 +1047,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 type sqlRelay struct {
 	ID                 uint64
 	Name               string
-	PublicIP           string // []byte?
+	PublicIP           string
 	PublicIPPort       int64
-	InternalIP         sql.NullString // []byte?
+	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
 	DatacenterID       int64
-	ManagementIP       string // []byte?
+	ManagementIP       string
 	SSHUser            string
 	SSHPort            int64
 	State              int64
@@ -1064,10 +1064,12 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
-	StartDate          time.Time
-	EndDate            time.Time
-	MachineType        int64
-	DatabaseID         int64
+	// StartDate          time.Time
+	// EndDate            time.Time
+	StartDate   sql.NullTime
+	EndDate     sql.NullTime
+	MachineType int64
+	DatabaseID  int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -1098,6 +1100,16 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		}
 	}
 
+	var startDate sql.NullTime
+	if !r.StartDate.IsZero() {
+		startDate.Time = r.StartDate
+	}
+
+	var endDate sql.NullTime
+	if !r.EndDate.IsZero() {
+		endDate.Time = r.EndDate
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
@@ -1117,8 +1129,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Overage:            int64(r.Overage),
 		BWRule:             int64(r.BWRule),
 		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          r.StartDate,
-		EndDate:            r.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 	}
 
@@ -1139,7 +1151,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate,
+		relay.EndDate.Time,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1151,7 +1163,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate,
+		relay.StartDate.Time,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1259,6 +1271,16 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		}
 	}
 
+	var startDate sql.NullTime
+	if !r.StartDate.IsZero() {
+		startDate.Time = r.StartDate
+	}
+
+	var endDate sql.NullTime
+	if !r.EndDate.IsZero() {
+		endDate.Time = r.EndDate
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
 		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
@@ -1278,8 +1300,8 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		Overage:            int64(r.Overage),
 		BWRule:             int64(r.BWRule),
 		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          r.StartDate,
-		EndDate:            r.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 	}
 
@@ -1300,7 +1322,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate,
+		relay.EndDate.Time,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1312,7 +1334,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate,
+		relay.StartDate.Time,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1429,7 +1451,6 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 //		Enabled
 //		Latitude
 //		Longitude
-//		SupplierName
 func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 
 	var sql bytes.Buffer
@@ -1443,16 +1464,15 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	}
 
 	dc := sqlDatacenter{
-		Name:         d.Name,
-		Latitude:     d.Location.Latitude,
-		Longitude:    d.Location.Longitude,
-		SupplierName: d.SupplierName,
-		SellerID:     d.SellerID,
+		Name:      d.Name,
+		Latitude:  d.Location.Latitude,
+		Longitude: d.Location.Longitude,
+		SellerID:  d.SellerID,
 	}
 
 	sql.Write([]byte("update datacenters set ("))
-	sql.Write([]byte("display_name, latitude, longitude, supplier_name, "))
-	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4, $5) where id = $6"))
+	sql.Write([]byte("display_name, latitude, longitude, "))
+	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4) where id = $5"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1463,7 +1483,6 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	result, err := stmt.Exec(dc.Name,
 		dc.Latitude,
 		dc.Longitude,
-		dc.SupplierName,
 		dc.SellerID,
 		d.DatabaseID,
 	)
@@ -1753,12 +1772,11 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 }
 
 type sqlDatacenter struct {
-	ID           int64
-	Name         string
-	Latitude     float32
-	Longitude    float32
-	SupplierName string
-	SellerID     int64
+	ID        int64
+	Name      string
+	Latitude  float32
+	Longitude float32
+	SellerID  int64
 }
 
 // AddDatacenter adds the provided datacenter to storage. It enforces business rule
@@ -1779,16 +1797,15 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	}
 
 	dc := sqlDatacenter{
-		Name:         datacenter.Name,
-		Latitude:     datacenter.Location.Latitude,
-		Longitude:    datacenter.Location.Longitude,
-		SupplierName: datacenter.SupplierName,
-		SellerID:     datacenter.SellerID,
+		Name:      datacenter.Name,
+		Latitude:  datacenter.Location.Latitude,
+		Longitude: datacenter.Location.Longitude,
+		SellerID:  datacenter.SellerID,
 	}
 
 	sql.Write([]byte("insert into datacenters ("))
-	sql.Write([]byte("display_name, latitude, longitude, supplier_name, "))
-	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5)"))
+	sql.Write([]byte("display_name, latitude, longitude, "))
+	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1799,7 +1816,6 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	result, err := stmt.Exec(dc.Name,
 		dc.Latitude,
 		dc.Longitude,
-		dc.SupplierName,
 		dc.SellerID,
 	)
 
@@ -1873,26 +1889,32 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	}
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:             int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
+		RouteSelectThreshold:        int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:        int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:          int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:              int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:           int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:            int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold:  int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:             ic.TryBeforeYouBuy,
+		ForceNext:                   ic.ForceNext,
+		LargeCustomer:               ic.LargeCustomer,
+		Uncommitted:                 ic.Uncommitted,
+		HighFrequencyPings:          ic.HighFrequencyPings,
+		RouteDiversity:              int64(ic.RouteDiversity),
+		MultipathThreshold:          int64(ic.MultipathThreshold),
+		MispredictMultipathOverload: ic.MispredictMultipathOverload,
+
+		MaxRTT: int64(ic.MaxRTT),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
 	sql.Write([]byte("(max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
-	sql.Write([]byte("large_customer, is_uncommitted, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
+	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1913,6 +1935,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.ForceNext,
 		internalConfig.LargeCustomer,
 		internalConfig.Uncommitted,
+		internalConfig.HighFrequencyPings,
+		internalConfig.RouteDiversity,
+		internalConfig.MultipathThreshold,
+		internalConfig.MispredictMultipathOverload,
 		buyer.DatabaseID,
 	)
 
@@ -2099,6 +2125,22 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id=$2"))
 		args = append(args, uncommitted, buyer.DatabaseID)
 		ic.Uncommitted = uncommitted
+	case "HighFrequencyPings":
+		highFrequencyPings, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("HighFrequencyPings: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id=$2"))
+		args = append(args, highFrequencyPings, buyer.DatabaseID)
+		ic.HighFrequencyPings = highFrequencyPings
+	case "MispredictMultipathOverload":
+		mispredictMultipathOverload, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("MispredictMultipathOverload: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set mispredict_multipath_overload=$1 where buyer_id=$2"))
+		args = append(args, mispredictMultipathOverload, buyer.DatabaseID)
+		ic.MispredictMultipathOverload = mispredictMultipathOverload
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
@@ -2107,6 +2149,22 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id=$2"))
 		args = append(args, maxRTT, buyer.DatabaseID)
 		ic.MaxRTT = maxRTT
+	case "RouteDiversity":
+		routeDiversity, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteDiversity: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id=$2"))
+		args = append(args, routeDiversity, buyer.DatabaseID)
+		ic.RouteDiversity = routeDiversity
+	case "MultipathThreshold":
+		multipathThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id=$2"))
+		args = append(args, multipathThreshold, buyer.DatabaseID)
+		ic.MultipathThreshold = multipathThreshold
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}

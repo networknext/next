@@ -1251,7 +1251,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
-			SupplierName:   datacenter.SupplierName,
 		}
 
 		replySlice = append(replySlice, dcmFull)
@@ -1759,7 +1758,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 	switch args.Field {
 	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT":
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold":
 		newInt, err := strconv.ParseInt(args.Value, 10, 32)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
@@ -1772,7 +1771,8 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return err
 		}
 
-	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted":
+	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
+		"HighFrequencyPings", "MispredictMultipathOverload":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)

@@ -163,8 +163,7 @@ func SeedSQLStorage(
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "usw2-az4",
-			SellerID:     localSeller.DatabaseID,
+			SellerID: localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
@@ -178,8 +177,7 @@ func SeedSQLStorage(
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.local.name",
-			SellerID:     localSeller.DatabaseID,
+			SellerID: localSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
@@ -193,8 +191,7 @@ func SeedSQLStorage(
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.ghost.name",
-			SellerID:     ghostSeller.DatabaseID,
+			SellerID: ghostSeller.DatabaseID,
 		}
 		if err := db.AddDatacenter(ctx, ghostDatacenter); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding ghost datacenter: %w", err)
@@ -342,18 +339,22 @@ func SeedSQLStorage(
 		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       2,
-			RouteSwitchThreshold:       5,
-			MaxLatencyTradeOff:         10,
-			RTTVeto_Default:            -10,
-			RTTVeto_PacketLoss:         -20,
-			RTTVeto_Multipath:          -20,
-			MultipathOverloadThreshold: 500,
-			TryBeforeYouBuy:            false,
-			ForceNext:                  true,
-			LargeCustomer:              false,
-			Uncommitted:                false,
-			MaxRTT:                     300,
+			RouteSelectThreshold:        2,
+			RouteSwitchThreshold:        5,
+			MaxLatencyTradeOff:          10,
+			RTTVeto_Default:             -10,
+			RTTVeto_PacketLoss:          -20,
+			RTTVeto_Multipath:           -20,
+			MultipathOverloadThreshold:  500,
+			TryBeforeYouBuy:             false,
+			ForceNext:                   true,
+			LargeCustomer:               false,
+			Uncommitted:                 false,
+			MaxRTT:                      300,
+			HighFrequencyPings:          true,
+			RouteDiversity:              20,
+			MultipathThreshold:          35,
+			MispredictMultipathOverload: true,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)
