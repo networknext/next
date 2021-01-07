@@ -86,13 +86,32 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNearRelays int) ([]uint64, error) {
+func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) ([]uint64, error) {
+
+	// Quantize to integer values so we don't have noise in low bits
+
+	sourceLatitude := float64(int64(source_latitude))
+	sourceLongitude := float64(int64(source_longitude))
+
+	destLatitude := float64(int64(dest_latitude))
+	destLongitude := float64(int64(dest_longitude))
+
+	// If direct latency is 0, we don't know it yet. Approximate it via speed of light * 2
+
+	if directLatency <= 0.0 {
+		directDistanceKilometers := core.HaversineDistance(sourceLatitude, sourceLongitude, destLatitude, destLongitude)
+		directLatency = float32(directDistanceKilometers/299792.458*1000.0) * 2
+	}
+
 	// Work with the near relays as an array of structs first for easier sorting
+
 	type NearRelayData struct {
-		ID       uint64
-		Addr     net.UDPAddr
-		Name     string
-		Distance int
+		ID        uint64
+		Addr      net.UDPAddr
+		Name      string
+		Distance  int
+		Latitude  float64
+		Longitude float64
 	}
 
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
@@ -102,16 +121,13 @@ func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNear
 	// when two relays are really close together, they can get sorted differently in
 	// subsequent passes otherwise.
 
-	lat1 := float64(int64(latitude))
-	long1 := float64(int64(longitude))
-
 	for i, relayID := range m.RelayIDs {
 		nearRelayData[i].ID = relayID
 		nearRelayData[i].Addr = m.RelayAddresses[i]
 		nearRelayData[i].Name = m.RelayNames[i]
-		lat2 := float64(m.RelayLatitudes[i])
-		long2 := float64(m.RelayLongitudes[i])
-		nearRelayData[i].Distance = int(core.HaversineDistance(lat1, long1, lat2, long2))
+		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
+		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
+		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
 	}
 
 	// IMPORTANT: Sort near relays by distance using a *stable sort*
@@ -127,17 +143,24 @@ func (m *RouteMatrix) GetNearRelays(latitude float32, longitude float32, maxNear
 		return nil, errors.New("no near relays")
 	}
 
-	if numNearRelays > maxNearRelays {
-		nearRelayData = nearRelayData[:maxNearRelays]
-		numNearRelays = maxNearRelays
+	// Exclude any near relays whose speed of light * 2/3rds route through them is greater than direct + threshold
+
+	latencyThreshold := float32(30.0)
+
+	nearRelayIds := make([]uint64, 0, numNearRelays)
+
+	for i := 0; i < len(nearRelayData); i++ {
+		if len(nearRelayIds) == numNearRelays || len(nearRelayIds) == maxNearRelays {
+			break
+		}
+		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
+		if nearRelayLatency > directLatency+latencyThreshold {
+			continue
+		}
+		nearRelayIds = append(nearRelayIds, nearRelayData[i].ID)
 	}
 
-	nearRelayIDs := make([]uint64, numNearRelays)
-	for i := 0; i < numNearRelays; i++ {
-		nearRelayIDs[i] = nearRelayData[i].ID
-	}
-
-	return nearRelayIDs, nil
+	return nearRelayIds, nil
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
