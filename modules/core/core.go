@@ -1619,8 +1619,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rela
 			if !routeState.Multipath {
 
 				// If we make latency worse and we are not in multipath, leave network next right away
-				
-				if nextLatency > (directLatency-rttVeto) {
+
+				if nextLatency > (directLatency - rttVeto) {
 					if debug != nil {
 						*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
 					}
@@ -1631,8 +1631,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rela
 			} else {
 
 				// If we are in multipath, only leave network next if we make latency worse three slices in a row
-				
-				if nextLatency > (directLatency-rttVeto) {
+
+				if nextLatency > (directLatency - rttVeto) {
 					routeState.LatencyWorseCounter++
 					if routeState.LatencyWorseCounter == 3 {
 						if debug != nil {

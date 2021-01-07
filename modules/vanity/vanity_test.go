@@ -308,7 +308,7 @@ func TestUpdateMetrics(t *testing.T) {
 		assert.Equal(t, int64(1), members)
 
 		// Sleep for 20 milliseconds to let the expiration time limit reach
-		time.Sleep(time.Millisecond*200)
+		time.Sleep(time.Millisecond * 200)
 
 		// Expire old sessions
 		err = vanityMetrics.ExpireOldSessions(conn)
