@@ -221,7 +221,9 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 		NearRelayAddresses: make([]net.UDPAddr, 0),
 	}
 
-	expectedSessionData := transport.SessionData{}
+	expectedSessionData := transport.SessionData{
+		Version: transport.SessionDataVersion,
+	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
@@ -240,6 +242,7 @@ func TestSessionUpdateHandlerClientPingTimedOut(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -308,6 +311,7 @@ func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -377,6 +381,7 @@ func TestSessionUpdateHandlerDatacenterNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -450,6 +455,7 @@ func TestSessionUpdateHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -523,6 +529,7 @@ func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -600,6 +607,7 @@ func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -672,6 +680,7 @@ func TestSessionUpdateHandlerReadSessionDataFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -764,6 +773,7 @@ func TestSessionUpdateHandlerSessionDataBadSessionID(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -856,6 +866,7 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -933,6 +944,7 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1012,6 +1024,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1124,6 +1137,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1230,6 +1244,7 @@ func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1326,6 +1341,7 @@ func TestSessionUpdateHandlerLocalDatacenter(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1463,6 +1479,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1679,6 +1696,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -1950,6 +1968,7 @@ func TestSessionUpdateHandlerNextRouteExternalIPs(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -2301,6 +2320,7 @@ func TestFeatureInternalIP(t *testing.T) {
 //	assert.NoError(t, err)
 //
 //	var sessionData transport.SessionData
+//  sessionData.Version = transport.SessionDataVersion
 //	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 //	assert.NoError(t, err)
 //
@@ -2539,6 +2559,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -2764,6 +2785,7 @@ func TestSessionUpdateHandlerRouteNoLongerExists(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -2990,6 +3012,7 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -3172,6 +3195,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -3372,6 +3396,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -3571,6 +3596,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -3792,6 +3818,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -4002,6 +4029,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -4212,6 +4240,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -4406,6 +4435,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -4597,6 +4627,7 @@ func TestSessionUpdateOneRelayInRouteMatrix(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
@@ -4818,6 +4849,7 @@ func TestSessionUpdateHandlerESLProMode(t *testing.T) {
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData
+	sessionData.Version = transport.SessionDataVersion
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 

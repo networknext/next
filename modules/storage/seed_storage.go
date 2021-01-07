@@ -106,9 +106,8 @@ func SeedStorage(
 		}
 		did := crypto.HashID("local")
 		datacenter := routing.Datacenter{
-			ID:           did,
-			Name:         "local",
-			SupplierName: "usw2-az4",
+			ID:   did,
+			Name: "local",
 		}
 		datacenterMap := routing.DatacenterMap{
 			BuyerID:      customerID,
