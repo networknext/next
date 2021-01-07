@@ -1064,7 +1064,7 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 		SessionID:            1111,
 		CustomerID:           100,
 		DatacenterID:         10,
-		DirectRTT:            40,
+		DirectRTT:            80,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}

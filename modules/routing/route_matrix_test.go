@@ -75,7 +75,7 @@ func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
 
 	expected := routeMatrix.RelayIDs
 
-	actual, err := routeMatrix.GetNearRelays(40, 0, 0, 0, 0, core.MaxNearRelays)
+	actual, err := routeMatrix.GetNearRelays(80, 0, 0, 0, 0, core.MaxNearRelays)
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected, actual)
@@ -86,7 +86,7 @@ func TestRouteMatrixGetNearRelaysSuccessWithMax(t *testing.T) {
 
 	expected := routeMatrix.RelayIDs[:1]
 
-	actual, err := routeMatrix.GetNearRelays(40, 0, 0, 0, 0, 1)
+	actual, err := routeMatrix.GetNearRelays(80, 0, 0, 0, 0, 1)
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected, actual)
