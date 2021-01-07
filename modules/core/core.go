@@ -1252,42 +1252,43 @@ func NewRouteShader() RouteShader {
 }
 
 type RouteState struct {
-	UserID             uint64
-	Next               bool
-	Veto               bool
-	Banned             bool
-	Disabled           bool
-	NotSelected        bool
-	ABTest             bool
-	A                  bool
-	B                  bool
-	ForcedNext         bool
-	ReduceLatency      bool
-	ReducePacketLoss   bool
-	ProMode            bool
-	Multipath          bool
-	Committed          bool
-	CommitVeto         bool
-	CommitCounter      int32
-	LatencyWorse       bool
-	MultipathOverload  bool
-	NoRoute            bool
-	NextLatencyTooHigh bool
-	NumNearRelays      int32
-	NearRelayRTT       [MaxNearRelays]int32
-	NearRelayJitter    [MaxNearRelays]int32
-	NearRelayPLHistory [MaxNearRelays]uint32
-	NearRelayPLCount   [MaxNearRelays]uint32
-	DirectPLHistory    uint32
-	DirectPLCount      uint32
-	PLHistoryIndex     int32
-	PLHistorySamples   int32
-	RelayWentAway      bool
-	RouteLost          bool
-	DirectJitter       int32
-	Mispredict         bool
-	LackOfDiversity    bool
-	MispredictCounter  uint32
+	UserID              uint64
+	Next                bool
+	Veto                bool
+	Banned              bool
+	Disabled            bool
+	NotSelected         bool
+	ABTest              bool
+	A                   bool
+	B                   bool
+	ForcedNext          bool
+	ReduceLatency       bool
+	ReducePacketLoss    bool
+	ProMode             bool
+	Multipath           bool
+	Committed           bool
+	CommitVeto          bool
+	CommitCounter       int32
+	LatencyWorse        bool
+	MultipathOverload   bool
+	NoRoute             bool
+	NextLatencyTooHigh  bool
+	NumNearRelays       int32
+	NearRelayRTT        [MaxNearRelays]int32
+	NearRelayJitter     [MaxNearRelays]int32
+	NearRelayPLHistory  [MaxNearRelays]uint32
+	NearRelayPLCount    [MaxNearRelays]uint32
+	DirectPLHistory     uint32
+	DirectPLCount       uint32
+	PLHistoryIndex      int32
+	PLHistorySamples    int32
+	RelayWentAway       bool
+	RouteLost           bool
+	DirectJitter        int32
+	Mispredict          bool
+	LackOfDiversity     bool
+	MispredictCounter   uint32
+	LatencyWorseCounter uint32
 }
 
 type InternalConfig struct {
@@ -1546,7 +1547,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
 	// if we early out, go direct
 
@@ -1593,7 +1594,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// if we have made rtt significantly worse, leave network next
+	// if we make rtt significantly worse leave network next
 
 	maxCost := int32(math.MaxInt32)
 
@@ -1612,12 +1613,39 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		// IMPORTANT: Here is where we abort the network next route if we see that we have
 		// made latency worse on the previous slice. This is disabled while we are not committed,
 		// so we can properly evaluate the route in try before you buy instead of vetoing it right away
-		if routeState.Committed && nextLatency > (directLatency-rttVeto) {
-			if debug != nil {
-				*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+
+		if routeState.Committed {
+
+			if !routeState.Multipath {
+
+				// If we make latency worse and we are not in multipath, leave network next right away
+				
+				if nextLatency > (directLatency-rttVeto) {
+					if debug != nil {
+						*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+					}
+					routeState.LatencyWorse = true
+					return false, false
+				}
+
+			} else {
+
+				// If we are in multipath, only leave network next if we make latency worse three slices in a row
+				
+				if nextLatency > (directLatency-rttVeto) {
+					routeState.LatencyWorseCounter++
+					if routeState.LatencyWorseCounter == 3 {
+						if debug != nil {
+							*debug += fmt.Sprintf("aborting route because we made latency worse 3X: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+						}
+						routeState.LatencyWorse = true
+						return false, false
+					}
+				} else {
+					routeState.LatencyWorseCounter = 0
+				}
+
 			}
-			routeState.LatencyWorse = true
-			return false, false
 		}
 
 		maxCost = directLatency - rttVeto
@@ -1668,12 +1696,24 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	*out_updatedRouteNumRelays = bestRouteNumRelays
 	copy(out_updatedRouteRelays, bestRouteRelays[:bestRouteNumRelays])
 
+	// print the network next route to debug
+
+	if debug != nil {
+		for i := 0; i < int(bestRouteNumRelays); i++ {
+			if i != int(bestRouteNumRelays-1) {
+				*debug += fmt.Sprintf("%s - ", relayNames[bestRouteRelays[i]])
+			} else {
+				*debug += fmt.Sprintf("%s\n", relayNames[bestRouteRelays[i]])
+			}
+		}
+	}
+
 	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
-	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
+	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, relayNames, routeShader, routeState, internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 
 	if routeState.Next && !stayOnNetworkNext {
 		routeState.Next = false

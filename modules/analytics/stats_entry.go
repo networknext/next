@@ -1,7 +1,6 @@
 package analytics
 
 import (
-	"math"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -374,24 +373,22 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 type RouteMatrixStatsEntry struct {
 	Timestamp uint64
 	Hash      uint64
-	Names     []string
+	IDs       []uint64
 }
 
 func WriteRouteMatrixStatsEntry(entry RouteMatrixStatsEntry) []byte {
 
-	length := 1 + 8
-	for _, name := range entry.Names {
-		length = length + 4 + 8 + 8 + len(name)
-	}
+	length := 1 + 8 + 8 + 4 + (len(entry.IDs) * 8)
+
 	data := make([]byte, length)
 	index := 0
 	encoding.WriteUint8(data, &index, RelayNamesHashEntryVersion)
 	encoding.WriteUint64(data, &index, uint64(entry.Timestamp))
 	encoding.WriteUint64(data, &index, uint64(entry.Hash))
-	encoding.WriteUint32(data, &index, uint32(len(entry.Names)))
+	encoding.WriteUint32(data, &index, uint32(len(entry.IDs)))
 
-	for _, name := range entry.Names {
-		encoding.WriteString(data, &index, name, uint32(len(name)))
+	for _, ids := range entry.IDs {
+		encoding.WriteUint64(data, &index, ids)
 	}
 	return data
 }
@@ -418,14 +415,14 @@ func ReadRouteMatrixStatsEntry(data []byte) (*RouteMatrixStatsEntry, bool) {
 		return nil, false
 	}
 
-	entry.Names = make([]string, length)
+	entry.IDs = make([]uint64, length)
 
-	for i := range entry.Names {
-		var name string
-		if !encoding.ReadString(data, &index, &name, math.MaxInt32) {
+	for i := range entry.IDs {
+		var id uint64
+		if !encoding.ReadUint64(data, &index, &id) {
 			return nil, false
 		}
-		entry.Names[i] = name
+		entry.IDs[i] = id
 	}
 
 	return entry, true
@@ -437,8 +434,8 @@ func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error
 	bqEntry := make(map[string]bigquery.Value)
 
 	bqEntry["timestamp"] = time.Unix(int64(e.Timestamp), 0)
-	bqEntry["relay_hash"] = int64(e.Hash)
-	bqEntry["relay_names"] = e.Names
+	bqEntry["down_relay_hash"] = int64(e.Hash)
+	bqEntry["down_relay_IDs"] = e.IDs
 
 	return bqEntry, "", nil
 }
