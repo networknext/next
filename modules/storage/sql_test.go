@@ -123,8 +123,7 @@ func TestInsertSQL(t *testing.T) {
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.local.name",
-			SellerID:     outerSeller.DatabaseID,
+			SellerID: outerSeller.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -136,7 +135,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, outerDatacenter.Name, datacenter.Name)
 		assert.Equal(t, outerDatacenter.Location.Latitude, datacenter.Location.Latitude)
 		assert.Equal(t, outerDatacenter.Location.Longitude, datacenter.Location.Longitude)
-		assert.Equal(t, outerDatacenter.SupplierName, datacenter.SupplierName)
 		assert.Equal(t, outerDatacenter.SellerID, datacenter.SellerID)
 	})
 
@@ -239,6 +237,84 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.ContractTerm, checkRelay.ContractTerm)
 		assert.Equal(t, relay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
 		assert.Equal(t, relay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
+		assert.Equal(t, relay.Type, checkRelay.Type)
+		assert.Equal(t, relay.State, checkRelay.State)
+		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
+		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
+
+		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
+		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
+		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
+		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
+	})
+
+	t.Run("AddRelayWithNullables", func(t *testing.T) {
+
+		addr, err := net.ResolveUDPAddr("udp", "127.3.4.5:40000")
+		assert.NoError(t, err)
+
+		rid := crypto.HashID(addr.String())
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		// fields not stored in the database are not tested here
+		relay := routing.Relay{
+			ID:   rid,
+			Name: "nullable.local.1",
+			Addr: *addr,
+			// InternalAddr:   *internalAddr,
+			ManagementAddr: "1.2.3.5",
+			SSHPort:        22,
+			SSHUser:        "fred",
+			MaxSessions:    1000,
+			PublicKey:      publicKey,
+			// Datacenter:     outerDatacenter,
+			MRC:          19700000000000,
+			Overage:      26000000000000,
+			BWRule:       routing.BWRuleBurst,
+			ContractTerm: 12,
+			// StartDate:           time.Now(),
+			// EndDate:             time.Now(),
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
+			IncludedBandwidthGB: 10000,
+			NICSpeedMbps:        1000,
+		}
+
+		// adding a relay w/o a valid datacenter should return an FK violation error
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+
+		// TODO repeat the above test with bwrule, type and state
+
+		relay.Datacenter = outerDatacenter
+		err = db.AddRelay(ctx, relay)
+		assert.NoError(t, err)
+
+		// check only the fields set above
+		checkRelay, err := db.Relay(rid)
+		assert.NoError(t, err)
+
+		assert.Equal(t, relay.Name, checkRelay.Name)
+		assert.Equal(t, relay.Addr, checkRelay.Addr)
+		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)
+		assert.Equal(t, relay.SSHPort, checkRelay.SSHPort)
+		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
+		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
+		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
+		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
+		assert.Equal(t, relay.MRC, checkRelay.MRC)
+		assert.Equal(t, relay.Overage, checkRelay.Overage)
+		assert.Equal(t, relay.BWRule, checkRelay.BWRule)
+		assert.Equal(t, relay.ContractTerm, checkRelay.ContractTerm)
+
+		// dates are null, though no "zero" value for InternalAddr to test
+		assert.Equal(t, time.Time{}.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
+		assert.Equal(t, time.Time{}.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
 		assert.Equal(t, relay.Type, checkRelay.Type)
 		assert.Equal(t, relay.State, checkRelay.State)
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
@@ -593,8 +669,7 @@ func TestUpdateSQL(t *testing.T) {
 				Latitude:  70.5,
 				Longitude: 120.5,
 			},
-			SupplierName: "supplier.local.name",
-			SellerID:     sellerWithID.DatabaseID,
+			SellerID: sellerWithID.DatabaseID,
 		}
 
 		err = db.AddDatacenter(ctx, datacenter)
@@ -607,7 +682,6 @@ func TestUpdateSQL(t *testing.T) {
 		modifiedDatacenter.Name = "some.newlocale.name"
 		modifiedDatacenter.Location.Longitude = 70.5
 		modifiedDatacenter.Location.Latitude = 120.5
-		modifiedDatacenter.SupplierName = "supplier.nonlocal.name"
 
 		err = db.SetDatacenter(ctx, modifiedDatacenter)
 		assert.NoError(t, err)
@@ -617,7 +691,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
 		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
-		assert.Equal(t, modifiedDatacenter.SupplierName, checkModDC.SupplierName)
 	})
 
 	t.Run("UpdateCustomer", func(t *testing.T) {
@@ -912,18 +985,23 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       2,
-			RouteSwitchThreshold:       5,
-			MaxLatencyTradeOff:         10,
-			RTTVeto_Default:            -10,
-			RTTVeto_PacketLoss:         -20,
-			RTTVeto_Multipath:          -20,
-			MultipathOverloadThreshold: 500,
-			TryBeforeYouBuy:            true,
-			ForceNext:                  true,
-			LargeCustomer:              true,
-			Uncommitted:                true,
-			MaxRTT:                     300,
+			RouteSelectThreshold:        2,
+			RouteSwitchThreshold:        5,
+			MaxLatencyTradeOff:          10,
+			RTTVeto_Default:             -10,
+			RTTVeto_PacketLoss:          -20,
+			RTTVeto_Multipath:           -20,
+			MultipathOverloadThreshold:  500,
+			TryBeforeYouBuy:             true,
+			ForceNext:                   true,
+			LargeCustomer:               true,
+			Uncommitted:                 true,
+			HighFrequencyPings:          true,
+			RouteDiversity:              10,
+			MultipathThreshold:          35,
+			MispredictMultipathOverload: true,
+
+			MaxRTT: 300,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
@@ -943,6 +1021,10 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, true, outerInternalConfig.ForceNext)
 		assert.Equal(t, true, outerInternalConfig.LargeCustomer)
 		assert.Equal(t, true, outerInternalConfig.Uncommitted)
+		assert.Equal(t, true, outerInternalConfig.HighFrequencyPings)
+		assert.Equal(t, true, outerInternalConfig.MispredictMultipathOverload)
+		assert.Equal(t, int32(10), outerInternalConfig.RouteDiversity)
+		assert.Equal(t, int32(35), outerInternalConfig.MultipathThreshold)
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
 	})
 
@@ -1032,6 +1114,34 @@ func TestInternalConfig(t *testing.T) {
 		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(400), checkInternalConfig.MaxRTT)
+
+		// HighFrequencyPings
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "HighFrequencyPings", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.HighFrequencyPings)
+
+		// RouteDiversity
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteDiversity", int32(40))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(40), checkInternalConfig.RouteDiversity)
+
+		// MultipathThreshold
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MultipathThreshold", int32(50))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(50), checkInternalConfig.MultipathThreshold)
+
+		// MispredictMultipathOverload
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MispredictMultipathOverload", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.MispredictMultipathOverload)
 
 	})
 
