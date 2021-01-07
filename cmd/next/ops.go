@@ -51,8 +51,15 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 		machineType = "virtual machine"
 	}
 
-	startDate := reply.Relay.StartDate.Format("January 2, 2006")
-	endDate := reply.Relay.EndDate.Format("January 2, 2006")
+	var startDate, endDate string
+
+	if !reply.Relay.StartDate.IsZero() {
+		startDate = reply.Relay.StartDate.Format("January 2, 2006")
+	}
+
+	if !reply.Relay.EndDate.IsZero() {
+		endDate = reply.Relay.EndDate.Format("January 2, 2006")
+	}
 
 	relay := "\nrelay info:\n"
 	relay += "  ID                 : " + fmt.Sprintf("%d", reply.Relay.ID) + "\n"

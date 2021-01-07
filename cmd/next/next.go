@@ -316,19 +316,23 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_PacketLoss         int32
-	RTTVeto_Multipath          int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	BuyerID                    string
+	RouteSelectThreshold        int32
+	RouteSwitchThreshold        int32
+	MaxLatencyTradeOff          int32
+	RTTVeto_Default             int32
+	RTTVeto_PacketLoss          int32
+	RTTVeto_Multipath           int32
+	MultipathOverloadThreshold  int32
+	TryBeforeYouBuy             bool
+	ForceNext                   bool
+	LargeCustomer               bool
+	Uncommitted                 bool
+	MaxRTT                      int32
+	HighFrequencyPings          bool
+	RouteDiversity              int32
+	MultipathThreshold          int32
+	MispredictMultipathOverload bool
+	BuyerID                     string
 }
 
 type routeShader struct {
@@ -1450,18 +1454,22 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							}
 
 							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
-								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:            int32(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
-								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-								ForceNext:                  ic.ForceNext,
-								LargeCustomer:              ic.LargeCustomer,
-								Uncommitted:                ic.Uncommitted,
-								MaxRTT:                     int32(ic.MaxRTT),
+								RouteSelectThreshold:        int32(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:        int32(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:          int32(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:             int32(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:          int32(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:           int32(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold:  int32(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:             ic.TryBeforeYouBuy,
+								ForceNext:                   ic.ForceNext,
+								LargeCustomer:               ic.LargeCustomer,
+								Uncommitted:                 ic.Uncommitted,
+								HighFrequencyPings:          ic.HighFrequencyPings,
+								RouteDiversity:              int32(ic.RouteDiversity),
+								MultipathThreshold:          int32(ic.MultipathThreshold),
+								MispredictMultipathOverload: ic.MispredictMultipathOverload,
+								MaxRTT:                      int32(ic.MaxRTT),
 							})
 
 							return nil
@@ -2211,7 +2219,6 @@ Example JSON schema to add a new datacenter:
   "Enabled": false,
   "Latitude": 90,
   "Longitude": 180,
-  "SupplierName": "supplier.locale.1",
   "StreetAddress": "Somewhere, Else, Earth",
   "SellerID": "some_seller"
 }
@@ -2236,6 +2243,10 @@ must be in a json file of the form:
   "LargeCustomer": false,
   "Uncommitted": false,
   "MaxRTT": 300,
+  "HighFrequencyPings": true,
+  "RouteDiversity": 0,
+  "MultipathThreshold": 25,
+  "MispredictMultipathOverload": true,
   "BuyerID": "205cca7361c2ae96"
 }
 
@@ -2274,18 +2285,22 @@ var nextBuyerConfigUpdateJSONLongHelp = `
 Update one field in the internal config for the specified buyer. The field
 must be one of the following and is case-sensitive:
 
-  RouteSelectThreshold       integer
-  RouteSwitchThreshold       integer
-  MaxLatencyTradeOff         integer
-  RTTVeto_Default            integer
-  RTTVeto_PacketLoss         integer
-  RTTVeto_Multipath          integer
-  MultipathOverloadThreshold integer
-  TryBeforeYouBuy            boolean
-  ForceNext                  boolean
-  LargeCustomer              boolean
-  Uncommitted                boolean
-  MaxRTT                     integer
+  RouteSelectThreshold        integer
+  RouteSwitchThreshold        integer
+  MaxLatencyTradeOff          integer
+  RTTVeto_Default             integer
+  RTTVeto_PacketLoss          integer
+  RTTVeto_Multipath           integer
+  MultipathOverloadThreshold  integer
+  TryBeforeYouBuy             boolean
+  ForceNext                   boolean
+  LargeCustomer               boolean
+  Uncommitted                 boolean
+  HighFrequencyPings          boolean 
+  RouteDiversity              integer
+  MultipathThreshold          integer
+  MispredictMultipathOverload boolean
+  MaxRTT                      integer
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
@@ -2376,9 +2391,9 @@ must be of the form:
   "Overage": 100.00,  // US Dollars
   "BWRule": "flat",   // any valid bandwidth rule (see below)
   "ContractTerm": 12,
-  "StartDate": "December 15, 2020", // exactly this format
-  "EndDate": "December 15, 2020",   // exactly this format
-  "Type": "virtualmachine",          // any valid machine type (see below)
+  "StartDate": "December 15, 2020", // exactly this format (optional)
+  "EndDate": "December 15, 2020",   // exactly this format (optional)
+  "Type": "virtualmachine",         // any valid machine type (see below)
   "Seller": "colocrossing"
 }
 
