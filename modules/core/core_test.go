@@ -2346,33 +2346,32 @@ func TestGetBestRoute_Update_NegativeMaxCost(t *testing.T) {
 // -------------------------------------------------------------------------------
 
 type TestData struct {
+	numRelays        int
+	relayNames       []string
+	relayDatacenters []uint64
+	costMatrix       []int32
+	routeMatrix      []RouteEntry
 
-	numRelays             int
-	relayNames            []string
-	relayDatacenters      []uint64
-	costMatrix            []int32
-	routeMatrix           []RouteEntry
+	directLatency    int32
+	directPacketLoss float32
 
-	directLatency 	      int32
-	directPacketLoss      float32
+	sourceRelays     []int32
+	sourceRelayCosts []int32
 
-	sourceRelays          []int32
-	sourceRelayCosts      []int32
+	destRelays []int32
 
-	destRelays            []int32
+	routeCost      int32
+	routeNumRelays int32
+	routeRelays    [MaxRelaysPerRoute]int32
 
-	routeCost             int32
-	routeNumRelays        int32
-	routeRelays           [MaxRelaysPerRoute]int32
+	internal           InternalConfig
+	routeShader        RouteShader
+	routeState         RouteState
+	multipathVetoUsers map[uint64]bool
 
-	internal              InternalConfig
-	routeShader           RouteShader
-	routeState            RouteState
-	multipathVetoUsers    map[uint64]bool
+	debug string
 
-	debug				  string
-
-	routeDiversity        int32
+	routeDiversity int32
 
 	nextLatency           int32
 	nextPacketLoss        float32
@@ -2382,66 +2381,66 @@ type TestData struct {
 }
 
 func NewTestData(env *TestEnvironment) *TestData {
-	
+
 	test := &TestData{}
-	
+
 	test.costMatrix, test.numRelays = env.GetCostMatrix()
-	
+
 	test.relayNames = env.GetRelayNames()
 
 	test.relayDatacenters = env.GetRelayDatacenters()
-	
+
 	numSegments := test.numRelays
 	costThreshold := int32(5)
 	test.routeMatrix = Optimize(test.numRelays, numSegments, test.costMatrix, costThreshold, test.relayDatacenters)
-	
+
 	test.routeShader = NewRouteShader()
-	
+
 	test.multipathVetoUsers = map[uint64]bool{}
-	
+
 	test.internal = NewInternalConfig()
 
 	return test
 }
 
 func (test *TestData) TakeNetworkNext() bool {
-	return MakeRouteDecision_TakeNetworkNext(test.routeMatrix, 
-		&test.routeShader, 
-		&test.routeState, 
-		test.multipathVetoUsers, 
-		&test.internal, 
-		test.directLatency, 
-		test.directPacketLoss, 
-		test.sourceRelays, 
-		test.sourceRelayCosts, 
-		test.destRelays, 
-		&test.routeCost, 
-		&test.routeNumRelays, 
-		test.routeRelays[:], 
-		&test.routeDiversity, 
+	return MakeRouteDecision_TakeNetworkNext(test.routeMatrix,
+		&test.routeShader,
+		&test.routeState,
+		test.multipathVetoUsers,
+		&test.internal,
+		test.directLatency,
+		test.directPacketLoss,
+		test.sourceRelays,
+		test.sourceRelayCosts,
+		test.destRelays,
+		&test.routeCost,
+		&test.routeNumRelays,
+		test.routeRelays[:],
+		&test.routeDiversity,
 		&test.debug,
 	)
 }
 
 func (test *TestData) StayOnNetworkNext() (bool, bool) {
-	return MakeRouteDecision_StayOnNetworkNext(test.routeMatrix, 
-		test.relayNames, 
-		&test.routeShader, 
-		&test.routeState, 
-		&test.internal, 
-		test.directLatency, 
-		test.nextLatency, 
-		test.predictedLatency, 
-		test.directPacketLoss, 
-		test.nextPacketLoss, 
-		test.currentRouteNumRelays, 
-		test.currentRouteRelays, 
-		test.sourceRelays, 
-		test.sourceRelayCosts, 
-		test.destRelays, 
-		&test.routeCost, 
-		&test.routeNumRelays, 
-		test.routeRelays[:], 
+	return MakeRouteDecision_StayOnNetworkNext(test.routeMatrix,
+		test.relayNames,
+		&test.routeShader,
+		&test.routeState,
+		&test.internal,
+		test.directLatency,
+		test.nextLatency,
+		test.predictedLatency,
+		test.directPacketLoss,
+		test.nextPacketLoss,
+		test.currentRouteNumRelays,
+		test.currentRouteRelays,
+		test.sourceRelays,
+		test.sourceRelayCosts,
+		test.destRelays,
+		&test.routeCost,
+		&test.routeNumRelays,
+		test.routeRelays[:],
 		&test.debug,
 	)
 }
@@ -2558,7 +2557,6 @@ func TestTakeNetworkNext_EarlyOutDirect_Disabled(t *testing.T) {
 
 	test.routeState.UserID = 100
 	test.routeState.Disabled = true
-
 
 	result := test.TakeNetworkNext()
 
@@ -3211,7 +3209,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 	env.SetCost("losangeles", "chicago", 10)
 
 	test := NewTestData(env)
-	
+
 	test.directLatency = int32(100)
 	test.directPacketLoss = float32(5.0)
 
@@ -4721,7 +4719,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	test.destRelays = []int32{}
 
 	test.routeShader.ReduceLatency = false
-	
+
 	test.internal.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
@@ -5265,7 +5263,7 @@ func TestPredictedRTT(t *testing.T) {
 	test := NewTestData(env)
 
 	test.directLatency = int32(1)
-	
+
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
 

@@ -21,8 +21,8 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
 	"golang.org/x/sys/unix"
@@ -67,27 +67,27 @@ type NextBeaconPacket struct {
 
 func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 
-    stream.SerializeBits(&packet.Version, 8)
+	stream.SerializeBits(&packet.Version, 8)
 
-    stream.SerializeBool(&packet.Enabled)
-    stream.SerializeBool(&packet.Upgraded)
-    stream.SerializeBool(&packet.Next)
-    stream.SerializeBool(&packet.FallbackToDirect)
-    
-    hasDatacenterId := stream.IsWriting() && packet.DatacenterId != 0
-    stream.SerializeBool(&hasDatacenterId)
-    
-    stream.SerializeUint64(&packet.CustomerId)
+	stream.SerializeBool(&packet.Enabled)
+	stream.SerializeBool(&packet.Upgraded)
+	stream.SerializeBool(&packet.Next)
+	stream.SerializeBool(&packet.FallbackToDirect)
 
-    if hasDatacenterId {
-    	stream.SerializeUint64(&packet.DatacenterId)
-    }
+	hasDatacenterId := stream.IsWriting() && packet.DatacenterId != 0
+	stream.SerializeBool(&hasDatacenterId)
 
-    if packet.Upgraded {
-    	stream.SerializeUint64(&packet.UserHash)
-    	stream.SerializeUint64(&packet.AddressHash)
-    	stream.SerializeUint64(&packet.SessionId)    	
-    }
+	stream.SerializeUint64(&packet.CustomerId)
+
+	if hasDatacenterId {
+		stream.SerializeUint64(&packet.DatacenterId)
+	}
+
+	if packet.Upgraded {
+		stream.SerializeUint64(&packet.UserHash)
+		stream.SerializeUint64(&packet.AddressHash)
+		stream.SerializeUint64(&packet.SessionId)
+	}
 
 	stream.SerializeInteger(&packet.PlatformId, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX)
 
