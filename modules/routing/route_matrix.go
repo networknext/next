@@ -150,6 +150,9 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	nearRelayIds := make([]uint64, 0, numNearRelays)
 
 	for i := 0; i < len(nearRelayData); i++ {
+		if len(nearRelayIds) == numNearRelays {
+			break
+		}
 		nearRelayLatency := float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
 		if nearRelayLatency > directLatency + latencyThreshold {
 			continue
