@@ -532,6 +532,7 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                `json:"id"`
+	HexID               string                `json:"hexID"`
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
@@ -568,6 +569,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			HexID:               fmt.Sprintf("%016x", r.ID),
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -1005,9 +1007,9 @@ type RouteSelectionReply struct {
 }
 
 type UpdateRelayArgs struct {
-	RelayID uint64
-	Field   string
-	Value   interface{}
+	RelayID uint64      `json:"relayID"`
+	Field   string      `json:"field"`
+	Value   interface{} `json:"value"`
 }
 
 type UpdateRelayReply struct{}
