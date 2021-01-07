@@ -102,9 +102,9 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		directDistanceKilometers := core.HaversineDistance(sourceLatitude, sourceLongitude, destLatitude, destLongitude)
 		directLatency = float32(directDistanceKilometers / 299792.458 * 1000.0)
 	}
-	
+
 	// Work with the near relays as an array of structs first for easier sorting
-	
+
 	type NearRelayData struct {
 		ID        uint64
 		Addr      net.UDPAddr
@@ -150,11 +150,11 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	nearRelayIds := make([]uint64, 0, numNearRelays)
 
 	for i := 0; i < len(nearRelayData); i++ {
-		if len(nearRelayIds) == numNearRelays {
+		if len(nearRelayIds) == numNearRelays || len(nearRelayIds) == maxNearRelays {
 			break
 		}
 		nearRelayLatency := float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
-		if nearRelayLatency > directLatency + latencyThreshold {
+		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
 		}
 		nearRelayIds = append(nearRelayIds, nearRelayData[i].ID)
