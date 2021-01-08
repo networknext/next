@@ -801,6 +801,11 @@ func SessionUpdateHandlerFunc(
 					// to avoid blocking the routing response
 				}
 
+				if sessionData.RouteState.Mispredict {
+					level.Warn(logger).Log("warn", "we mispredicted too many times")
+					metrics.MispredictVeto.Add(1)
+				}
+
 				if sessionData.RouteState.LatencyWorse {
 					level.Warn(logger).Log("warn", "this route makes latency worse")
 					metrics.LatencyWorse.Add(1)
