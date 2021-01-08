@@ -209,6 +209,8 @@ func handleNearAndDestRelays(
 	newSession bool,
 	clientLat float32,
 	clientLong float32,
+	serverLat float32,
+	serverLong float32,
 	maxNearRelays int,
 	directLatency int32,
 	directJitter int32,
@@ -219,7 +221,7 @@ func handleNearAndDestRelays(
 	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
 	if newSession {
-		nearRelayIDs, err := routeMatrix.GetNearRelays(clientLat, clientLong, maxNearRelays)
+		nearRelayIDs, err := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
 		if err != nil {
 			return false, nearRelayGroup{}, nil, err
 		}
@@ -695,6 +697,8 @@ func SessionUpdateHandlerFunc(
 			newSession,
 			sessionData.Location.Latitude,
 			sessionData.Location.Longitude,
+			datacenter.Location.Latitude,
+			datacenter.Location.Longitude,
 			maxNearRelays,
 			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),

@@ -1411,6 +1411,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 // with a set of near relays populated in the response packet
 func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
+	request.directStats = getStats(badRTT)
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}

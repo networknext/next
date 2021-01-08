@@ -307,7 +307,7 @@ func TestUpdateMetrics(t *testing.T) {
 		assert.NotNil(t, members)
 		assert.Equal(t, int64(1), members)
 
-		// Sleep for 20 milliseconds to let the expiration time limit reach
+		// Sleep for 200 milliseconds to let the expiration time limit reach
 		time.Sleep(time.Millisecond*200)
 
 		// Expire old sessions
@@ -319,11 +319,29 @@ func TestUpdateMetrics(t *testing.T) {
 		assert.Equal(t, int64(0), members)
 	})
 
-	t.Run("vanity data update metric success", func(t *testing.T) {
+	t.Run("vanity data update metric failure", func(t *testing.T) {
 		redisServer, _ := miniredis.Run()
-		vanityData := getTestVanityData(rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64())
+		buyerID := rand.Uint64()
+		vanityData := getTestVanityData(buyerID, rand.Uint64(), rand.Uint64(), rand.Uint64())
 
 		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", logger)
+
+		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
+		errStr := fmt.Sprintf("Could not find buyerID %016x in map", buyerID)
+		assert.EqualError(t, err, errStr)
+		assert.Equal(t, float64(0), vanityServiceMetrics.UpdateVanitySuccessCount.Value())
+	})
+
+	t.Run("vanity data update metric success", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		buyerID := rand.Uint64()
+		vanityData := getTestVanityData(buyerID, rand.Uint64(), rand.Uint64(), rand.Uint64())
+
+		vanityMetrics := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", logger)
+
+		exists, err := vanityMetrics.AddNewBuyerID(ctx, fmt.Sprintf("%016x", buyerID))
+		assert.NoError(t, err)
+		assert.Equal(t, true, exists)
 
 		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
 		assert.NoError(t, err)

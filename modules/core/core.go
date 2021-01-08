@@ -52,6 +52,14 @@ func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 	return d // kilometers
 }
 
+func SpeedOfLightTimeMilliseconds(a_lat float64, a_long float64, b_lat float64, b_long float64, c_lat float64, c_long float64) float64 {
+	ab_distance_kilometers := HaversineDistance(a_lat, a_long, b_lat, b_long)
+	bc_distance_kilometers := HaversineDistance(b_lat, b_long, c_lat, c_long)
+	total_distance_kilometers := ab_distance_kilometers + bc_distance_kilometers
+	speed_of_light_time_milliseconds := total_distance_kilometers / 299792.458 * 1000.0
+	return speed_of_light_time_milliseconds
+}
+
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
 }

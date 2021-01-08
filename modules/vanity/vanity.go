@@ -283,9 +283,21 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 				return &ErrUnmarshalMessage{err: err}
 			}
 
+			// Add any new buyers to map
+			buyerID := fmt.Sprintf("%016x", vanityData.BuyerID)
+			isNewBuyerID, err := vm.AddNewBuyerID(ctx, buyerID)
+			if err != nil {
+				return err
+			}
+			if isNewBuyerID {
+				level.Debug(vm.logger).Log("msg", "BuyerID is new", "BuyerID", buyerID)
+			} else {
+				level.Debug(vm.logger).Log("msg", "BuyerID already exists in map", "BuyerID", buyerID)
+			}
+
 			select {
 			case vm.vanityMetricDataChan <- &vanityData:
-				level.Info(vm.logger).Log("msg", "Successfully received vanity data from ZeroMQ")
+				level.Debug(vm.logger).Log("msg", "Successfully received vanity data from ZeroMQ")
 			default:
 				return &ErrChannelFull{}
 			}
@@ -297,6 +309,33 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 	}
 }
 
+// Adds a new buyerID to the buyer map if it doesn't already exist
+// Returns true if the buyerID is new
+func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string) (bool, error) {
+	vm.mapMutex.RLock()
+	_, exists := vm.buyerMetricMap[buyerID]
+	vm.mapMutex.RUnlock()
+
+	if !exists {
+		// Creates counters / gauges / histograms per vanity metric for this buyer ID,
+		// or provides existing ones from a previous run
+		vanityMetricPerBuyer, err := metrics.NewVanityMetric(ctx, vm.handler, buyerID)
+		if err != nil {
+			level.Error(vm.logger).Log("err", err)
+			return true, err
+		}
+
+		// Store this vanity metric in the map for future look up
+		vm.mapMutex.Lock()
+		vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
+		vm.mapMutex.Unlock()
+		level.Debug(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // Updates the metrics per buyer
 func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDataBuffer []*VanityMetrics) error {
 	for j := range vanityMetricDataBuffer {
@@ -304,28 +343,12 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		level.Debug(vm.logger).Log("msg", "Buyer ID obtained from data", "buyerID", buyerID)
 
 		// Get the counters / gauges / histograms per vanity metric for this buyer ID
-		// Check the map first for quick look up
-		var vanityMetricPerBuyer *metrics.VanityMetric
-		var err error
-
 		vm.mapMutex.RLock()
 		vanityMetricPerBuyer, exists := vm.buyerMetricMap[buyerID]
 		vm.mapMutex.RUnlock()
 
 		if !exists {
-			// Creates counters / gauges / histograms per vanity metric for this buyer ID,
-			// or provides existing ones from a previous run
-			vanityMetricPerBuyer, err = metrics.NewVanityMetric(ctx, vm.handler, buyerID)
-			if err != nil {
-				level.Error(vm.logger).Log("err", err)
-				return err
-			}
-
-			// Store this vanity metric in the map for future look up
-			vm.mapMutex.Lock()
-			vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
-			vm.mapMutex.Unlock()
-			level.Info(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
+			return fmt.Errorf("Could not find buyerID %s in map", buyerID)
 		}
 
 		// Calculate sessionsAccelerated
@@ -390,7 +413,7 @@ func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 		return exists, nil
 	}
 
-	if !exists {
+	if exists {
 		// Not a new sessionID
 		return false, nil
 	}
@@ -486,8 +509,9 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 
 	// Create max aggregation (used for Counters)
 	maxAgg := &monitoringpb.Aggregation{
-		AlignmentPeriod:  durationpb.New(duration),
-		PerSeriesAligner: monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
+		AlignmentPeriod:    durationpb.New(duration),
+		PerSeriesAligner:   monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
+		CrossSeriesReducer: monitoringpb.Aggregation_Reducer(4),  // Sum across each alignment period
 	}
 
 	// Create the final returned map
@@ -516,20 +540,18 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			return nil, errors.New(errStr)
 		}
 
-		// Extract the max point value from the list of points
-		maxPointVal := int64(0)
+		// Take the sum of the list of points
+		sumPointVal := int64(0)
 		for _, points := range pointsList {
 			for _, point := range points {
-				if point.Value.GetInt64Value() > maxPointVal {
-					maxPointVal = point.Value.GetInt64Value()
-				}
+				sumPointVal += point.Value.GetInt64Value()
 			}
 		}
 
-		floatPointVal := float64(maxPointVal)
+		floatPointVal := float64(sumPointVal)
 		// Check if the a slice metric needs hours calculated
 		if vm.hourMetricsMap[displayName] {
-			seconds := time.Second * time.Duration(10*maxPointVal)
+			seconds := time.Second * time.Duration(10*sumPointVal)
 			hours := seconds.Hours()
 			// Round to 3 decimal places
 			floatPointVal = math.Round(hours*1000) / 1000
