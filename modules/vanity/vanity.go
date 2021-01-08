@@ -203,7 +203,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Printf("starting receive message goroutine\n")
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -225,7 +225,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	// Start the goroutines for preparing and updating the metrics for the write loop
 	for i := 0; i < numVanityUpdateGoroutines; i++ {
 		wg.Add(1)
-		fmt.Printf("adding update goroutine %d\n", i)
+
 		go func() {
 			defer wg.Done()
 
@@ -283,25 +283,21 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 				level.Error(vm.logger).Log("msg", "Could not unmarshal binary", "err", err)
 				return &ErrUnmarshalMessage{err: err}
 			}
-			fmt.Printf("received and unmarshalled data: %v\n", vanityData)
+
 			// Add any new buyers to map
 			buyerID := fmt.Sprintf("%016x", vanityData.BuyerID)
 			isNewBuyerID, err := vm.AddNewBuyerID(ctx, buyerID)
 			if err != nil {
-				fmt.Printf("Error AddNewBuyer: %v\n", err)
 				return err
 			}
 			if isNewBuyerID {
-				fmt.Printf("BuyerID %s is new\n", buyerID)
 				level.Debug(vm.logger).Log("msg", "BuyerID is new", "BuyerID", buyerID)
 			} else {
-				fmt.Printf("BuyerID %s already exists in map\n", buyerID)
 				level.Debug(vm.logger).Log("msg", "BuyerID already exists in map", "BuyerID", buyerID)
 			}
 
 			select {
 			case vm.vanityMetricDataChan <- &vanityData:
-				fmt.Printf("Successfully received vanity data from ZMQ\n")
 				level.Debug(vm.logger).Log("msg", "Successfully received vanity data from ZeroMQ")
 			default:
 				return &ErrChannelFull{}
@@ -324,10 +320,8 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 	if !exists {
 		// Creates counters / gauges / histograms per vanity metric for this buyer ID,
 		// or provides existing ones from a previous run
-		fmt.Printf("New buyer does not exist, creating new buyer metric\n")
 		vanityMetricPerBuyer, err := metrics.NewVanityMetric(ctx, vm.handler, buyerID)
 		if err != nil {
-			fmt.Printf("Error getting new buyer metric: %v\n", err)
 			level.Error(vm.logger).Log("err", err)
 			return true, err
 		}
@@ -336,7 +330,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 		vm.mapMutex.Lock()
 		vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 		vm.mapMutex.Unlock()
-		fmt.Printf("Found new buyer ID %s, inserted into map for quick lookup\n", buyerID)
+
 		level.Debug(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
 		return true, nil
 	}
@@ -356,25 +350,19 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		vm.mapMutex.RUnlock()
 
 		if !exists {
-			fmt.Printf("Could not find buyerID %s in map", buyerID)
 			return fmt.Errorf("Could not find buyerID %s in map", buyerID)
 		}
 
 		// Calculate sessionsAccelerated
 		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
 		if err != nil {
-			fmt.Printf("Error IsNewSession getting new session: %v\n", err)
 			level.Error(vm.logger).Log("err", err)
 			return err
 		}
 		if newSession {
-			fmt.Printf("Got a new session %016x for user %016x\n", vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].UserHash)
 			level.Debug(vm.logger).Log("msg", "Found new accelerated session for user", "userHash", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].UserHash), "sessionID", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].SessionID))
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
-
-		fmt.Printf("Received data\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %v\n\tSlicesLatencyReduced: %v\n\tSlicesPacketLossReduced: %v\n\tSlicesJitterReduced: %v\n\tSessionsAccelerated %v\n",
-			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, vanityMetricDataBuffer[j].SlicesAccelerated, vanityMetricDataBuffer[j].SlicesLatencyReduced, vanityMetricDataBuffer[j].SlicesPacketLossReduced, vanityMetricDataBuffer[j].SlicesJitterReduced, vanityMetricDataBuffer[j].SessionsAccelerated)
 
 		currentSlicesAccelerated := vanityMetricPerBuyer.SlicesAccelerated.Value()
 		currentSlicesLatencyReduced := vanityMetricPerBuyer.SlicesLatencyReduced.Value()
@@ -393,8 +381,6 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SlicesJitterReduced", currentSlicesJitterReduced,
 			"SessionsAccelerated", currentSessionsAccelerated,
 		)
-		fmt.Printf("Before updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %v\n\tSlicesLatencyReduced: %v\n\tSlicesPacketLossReduced: %v\n\tSlicesJitterReduced: %v\n\tSessionsAccelerated %v\n",
-			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, currentSlicesAccelerated, currentSlicesLatencyReduced, currentSlicesPacketLossReduced, currentSlicesJitterReduced, currentSessionsAccelerated)
 
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
@@ -416,9 +402,6 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SessionsAccelerated", vanityMetricPerBuyer.SessionsAccelerated.Value(),
 		)
 
-		fmt.Printf("After updating metric values\n\tbuyerID: %s\n\tuserHash: %d\n\tsessionID: %d\n\ttimestamp: %d\n\tSlicesAccelerated: %v\n\tSlicesLatencyReduced: %v\n\tSlicesPacketLossReduced: %v\n\tSlicesJitterReduced: %v\n\tSessionsAccelerated %v\n",
-			buyerID, vanityMetricDataBuffer[j].UserHash, vanityMetricDataBuffer[j].SessionID, vanityMetricDataBuffer[j].Timestamp, vanityMetricPerBuyer.SlicesAccelerated.Value(), vanityMetricPerBuyer.SlicesLatencyReduced.Value(), vanityMetricPerBuyer.SlicesPacketLossReduced.Value(), vanityMetricPerBuyer.SlicesJitterReduced.Value(), vanityMetricPerBuyer.SessionsAccelerated.Value())
-
 		vm.metrics.UpdateVanitySuccessCount.Add(1)
 	}
 
@@ -434,7 +417,6 @@ func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	}
 
 	if exists {
-		fmt.Printf("sessionID %s is not new\n", sessionIDStr)
 		// Not a new sessionID
 		return false, nil
 	}
@@ -444,7 +426,7 @@ func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	if err != nil {
 		return exists, err
 	}
-	fmt.Printf("NEW: sessionID %s\n", sessionIDStr)
+
 	return true, nil
 }
 
@@ -532,7 +514,7 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 	maxAgg := &monitoringpb.Aggregation{
 		AlignmentPeriod:    durationpb.New(duration),
 		PerSeriesAligner:   monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
-		CrossSeriesReducer: monitoringpb.Aggregation_Reducer(4),
+		CrossSeriesReducer: monitoringpb.Aggregation_Reducer(4),  // Sum across each alignment period
 	}
 
 	// Create the final returned map
@@ -555,13 +537,6 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 		tsFilter := vm.GetTimeSeriesFilter(metricType)
 		tsName := vm.GetTimeSeriesName(gcpProjectID, metricType)
 		pointsList, err := vm.GetPointDetails(ctx, sd, tsName, tsFilter, tsInterval, maxAgg)
-		if err != nil {
-			errStr := fmt.Sprintf("Could not get point details for %s (%s)", displayName, metricType)
-			level.Error(vm.logger).Log("err", errStr)
-			return nil, errors.New(errStr)
-		}
-
-		rawPointsList, err := vm.GetRawPointDetails(ctx, sd, tsName, tsFilter, tsInterval)
 		if err != nil {
 			errStr := fmt.Sprintf("Could not get point details for %s (%s)", displayName, metricType)
 			level.Error(vm.logger).Log("err", errStr)
@@ -592,11 +567,6 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			hours := seconds.Hours()
 			// Round to 3 decimal places
 			floatPointVal = math.Round(hours*1000) / 1000
-			fmt.Printf("API vals:\n\tDisplayName: %s\n\tduration: %v\n\tmaxPointVal: %d\n\tpointList: %v\n\tfloatPointVal: %v\n\trawPoints: %v\n",
-				displayName, duration, maxPointVal, pointsList, floatPointVal, extractedPointsList)
-		} else {
-			fmt.Printf("API vals:\n\tDisplayName: %s\n\tduration: %v\n\tmaxPointVal: %d\n\tpointList: %v\n\trawPoints: %v\n",
-				displayName, duration, maxPointVal, pointsList, extractedPointsList)
 		}
 
 		// Add metric value to the final map
@@ -620,30 +590,6 @@ func (vm *VanityMetricHandler) GetPointDetails(ctx context.Context, sd *metrics.
 		Interval:    interval,
 		Aggregation: aggregation,
 		View:        monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
-	}
-	it := sd.Client.ListTimeSeries(ctx, req)
-
-	var pointSeries [][]*monitoringpb.Point
-	for {
-		resp, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		pointSeries = append(pointSeries, resp.GetPoints())
-	}
-
-	return pointSeries, nil
-}
-
-func (vm *VanityMetricHandler) GetRawPointDetails(ctx context.Context, sd *metrics.StackDriverHandler, name string, filter string, interval *monitoringpb.TimeInterval) ([][]*monitoringpb.Point, error) {
-	req := &monitoringpb.ListTimeSeriesRequest{
-		Name:     name,
-		Filter:   filter,
-		Interval: interval,
-		View:     monitoringpb.ListTimeSeriesRequest_TimeSeriesView(0),
 	}
 	it := sd.Client.ListTimeSeries(ctx, req)
 
