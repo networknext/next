@@ -1526,7 +1526,10 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	nextLatencyTooHigh,
 	routeChanged,
 	commitVeto,
-	tags
+	tags,
+	pro,
+	lackOfDiversity,
+	routeDiversity
     from `))
 
 	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
