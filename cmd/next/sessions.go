@@ -539,12 +539,46 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// ConnectionType
 		connType := ""
 		if billingEntry.ConnectionType.Valid {
-			connType = fmt.Sprintf("%d", billingEntry.ConnectionType.Int64)
+			switch billingEntry.ConnectionType.Int64 {
+			case 0:
+				connType = "Unknown"
+			case 1:
+				connType = "Wired"
+			case 2:
+				connType = "Wi-Fi"
+			case 3:
+				connType = "Cellular"
+			default:
+				connType = "none specified?"
+			}
 		}
 		// PlatformType
 		platformType := ""
 		if billingEntry.PlatformType.Valid {
-			platformType = fmt.Sprintf("%d", billingEntry.PlatformType.Int64)
+			switch billingEntry.PlatformType.Int64 {
+			case 0:
+				platformType = "Unknown"
+			case 1:
+				platformType = "Windows"
+			case 2:
+				platformType = "Mac"
+			case 3:
+				platformType = "Linux"
+			case 4:
+				platformType = "Nintendo Switch"
+			case 5:
+				platformType = "PS4"
+			case 6:
+				platformType = "IOS"
+			case 7:
+				platformType = "XBox One"
+			case 8:
+				platformType = "XBox Series X"
+			case 9:
+				platformType = "PS5"
+			default:
+				platformType = "none specified?"
+			}
 		}
 		// SdkVersion
 		sdkVersion := ""
