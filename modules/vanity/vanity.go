@@ -553,13 +553,6 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			}
 		}
 
-		var extractedPointsList []int64
-		for _, points := range rawPointsList {
-			for _, point := range points {
-				extractedPointsList = append(extractedPointsList, point.Value.GetInt64Value())
-			}
-		}
-
 		floatPointVal := float64(maxPointVal)
 		// Check if the a slice metric needs hours calculated
 		if vm.hourMetricsMap[displayName] {
