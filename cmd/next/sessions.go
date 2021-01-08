@@ -539,7 +539,18 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// ConnectionType
 		connType := ""
 		if billingEntry.ConnectionType.Valid {
-			connType = fmt.Sprintf("%d", billingEntry.ConnectionType.Int64)
+			switch billingEntry.ConnectionType.Int64 {
+			case 0:
+				connType = "Unknown"
+			case 1:
+				connType = "Wired"
+			case 2:
+				connType = "Wi-Fi"
+			case 3:
+				connType = "Cellular"
+			default:
+				connType = "none specified?"
+			}
 		}
 		// PlatformType
 		platformType := ""
