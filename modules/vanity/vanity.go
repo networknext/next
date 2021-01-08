@@ -540,20 +540,18 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 			return nil, errors.New(errStr)
 		}
 
-		// Extract the max point value from the list of points
-		maxPointVal := int64(0)
+		// Take the sum of the list of points
+		sumPointVal := int64(0)
 		for _, points := range pointsList {
 			for _, point := range points {
-				if point.Value.GetInt64Value() > maxPointVal {
-					maxPointVal = point.Value.GetInt64Value()
-				}
+				sumPointVal += point.Value.GetInt64Value()
 			}
 		}
 
-		floatPointVal := float64(maxPointVal)
+		floatPointVal := float64(sumPointVal)
 		// Check if the a slice metric needs hours calculated
 		if vm.hourMetricsMap[displayName] {
-			seconds := time.Second * time.Duration(10*maxPointVal)
+			seconds := time.Second * time.Duration(10*sumPointVal)
 			hours := seconds.Hours()
 			// Round to 3 decimal places
 			floatPointVal = math.Round(hours*1000) / 1000
