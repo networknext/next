@@ -45,7 +45,7 @@ type relayGroup struct {
 	PacketLosses []int32
 }
 
-func getRelays(t *testing.T, numRelays int32, rttType rttType, singleBadRTT bool) relayGroup {
+func getRelays(t *testing.T, numRelays int32, rttType rttType) relayGroup {
 	relays := relayGroup{
 		Count:        numRelays,
 		IDs:          make([]uint64, 0),
@@ -66,25 +66,21 @@ func getRelays(t *testing.T, numRelays int32, rttType rttType, singleBadRTT bool
 		relays.IDs = append(relays.IDs, uint64(i)+1)
 		relays.Addresses = append(relays.Addresses, *relayAddress)
 
-		if singleBadRTT && i == 1 {
+		switch rttType {
+		case noRTT:
+			relays.RTTs = append(relays.RTTs, 0)
+
+		case badRTT:
 			relays.RTTs = append(relays.RTTs, 255)
-		} else {
-			switch rttType {
-			case noRTT:
-				relays.RTTs = append(relays.RTTs, 0)
 
-			case badRTT:
-				relays.RTTs = append(relays.RTTs, 255)
+		case goodRTT:
+			relays.RTTs = append(relays.RTTs, int32(15+i*5))
 
-			case goodRTT:
-				relays.RTTs = append(relays.RTTs, int32(15+i*5))
+		case overloadedRTT:
+			relays.RTTs = append(relays.RTTs, 500)
 
-			case overloadedRTT:
-				relays.RTTs = append(relays.RTTs, 500)
-
-			case slightlyBadRTT:
-				relays.RTTs = append(relays.RTTs, int32(25+i*5))
-			}
+		case slightlyBadRTT:
+			relays.RTTs = append(relays.RTTs, int32(65+i*5))
 		}
 
 		relays.Jitters = append(relays.Jitters, 0)
@@ -94,7 +90,7 @@ func getRelays(t *testing.T, numRelays int32, rttType rttType, singleBadRTT bool
 	return relays
 }
 
-func getRouteRelays(t *testing.T, numRelays int32, internal bool, badRoute bool, alternateRoute bool) relayGroup {
+func getRouteRelays(t *testing.T, numRelays int32, internal bool, alternateRoute bool) relayGroup {
 	relays := relayGroup{
 		Count:        numRelays,
 		IDs:          make([]uint64, 0),
@@ -120,7 +116,7 @@ func getRouteRelays(t *testing.T, numRelays int32, internal bool, badRoute bool,
 
 			relays.IDs = append(relays.IDs, uint64(i+1))
 			relays.Addresses = append(relays.Addresses, *relayAddress)
-			relays.RTTs = append(relays.RTTs, int32(20+i*5))
+			relays.RTTs = append(relays.RTTs, int32(15+i*5))
 			relays.Jitters = append(relays.Jitters, 0)
 			relays.PacketLosses = append(relays.PacketLosses, 0)
 		}
@@ -130,7 +126,7 @@ func getRouteRelays(t *testing.T, numRelays int32, internal bool, badRoute bool,
 
 		relays.IDs = append(relays.IDs, 1)
 		relays.Addresses = append(relays.Addresses, *relayAddress)
-		relays.RTTs = append(relays.RTTs, 20)
+		relays.RTTs = append(relays.RTTs, 15)
 		relays.Jitters = append(relays.Jitters, 0)
 		relays.PacketLosses = append(relays.PacketLosses, 0)
 
@@ -146,19 +142,9 @@ func getRouteRelays(t *testing.T, numRelays int32, internal bool, badRoute bool,
 			assert.NoError(t, err)
 		}
 
-		// If the route is bad, make the second relay an unknown relay
-		if badRoute && i == 1 {
-			relays.IDs = append(relays.IDs, math.MaxUint64)
-			relays.Addresses = append(relays.Addresses, *relayAddress)
-			relays.RTTs = append(relays.RTTs, int32(20+i*5))
-			relays.Jitters = append(relays.RTTs, 0)
-			relays.PacketLosses = append(relays.RTTs, 0)
-			continue
-		}
-
 		relays.IDs = append(relays.IDs, uint64(i+1))
 		relays.Addresses = append(relays.Addresses, *relayAddress)
-		relays.RTTs = append(relays.RTTs, int32(20+i*5))
+		relays.RTTs = append(relays.RTTs, int32(15+i*5))
 		relays.Jitters = append(relays.Jitters, 0)
 		relays.PacketLosses = append(relays.PacketLosses, 0)
 	}
@@ -178,7 +164,7 @@ func getStats(rttType rttType) routing.Stats {
 		return routing.Stats{RTT: 500}
 
 	case slightlyBadRTT:
-		return routing.Stats{RTT: 25}
+		return routing.Stats{RTT: 65}
 	}
 
 	return routing.Stats{}
@@ -205,69 +191,148 @@ type routeInfo struct {
 	next                bool
 }
 
-func getRouteInfo(
+func getPrevRouteInfo(
 	t *testing.T,
+	routeMatrix *routing.RouteMatrix,
 	numNearRelays int32,
 	nearRelayRTTType rttType,
 	destRelay uint64,
-	routeMatrix *routing.RouteMatrix,
-	routeType int32,
-	routeNumRelays int32,
 	sessionVersion uint32,
+	routeNumRelays int32,
+	routeType int,
 	internal bool,
-	badRouteRelays bool,
-	badNearRelay bool,
-	connectionOverloaded bool,
 	noRouteCost bool,
-	vetoed bool,
-) routeInfo {
-	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType, badNearRelay || connectionOverloaded)
-	routeRelays := getRouteRelays(t, routeNumRelays, internal, badRouteRelays, badNearRelay)
+	badNearRelay bool,
+	badRoute bool,
 
+) routeInfo {
+	// Get the previous update's near relays and route relays
+	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType)
+	routeRelays := getRouteRelays(t, routeNumRelays, internal, false)
+
+	// Calculate the near and dest relay indices
 	nearRelayIndices := make([]int32, nearRelays.Count)
-	var prevBadRelays bool
-	var ok bool
 	for i := 0; i < len(nearRelayIndices); i++ {
-		nearRelayIndices[i], ok = routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
-		if !ok {
-			prevBadRelays = true
-			break
-		}
+		nearRelayIndices[i] = routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
 	}
 
 	routeRelayIndices := [core.MaxRelaysPerRoute]int32{}
 	for i := int32(0); i < routeRelays.Count; i++ {
-		routeRelayIndices[i], ok = routeMatrix.RelayIDsToIndices[routeRelays.IDs[i]]
-		if !ok {
-			prevBadRelays = true
-			break
-		}
+		routeRelayIndices[i] = routeMatrix.RelayIDsToIndices[routeRelays.IDs[i]]
 	}
 
-	destRelayIndex, ok := routeMatrix.RelayIDsToIndices[destRelay]
-	if !ok {
-		prevBadRelays = true
-	}
+	destRelayIndex := routeMatrix.RelayIDsToIndices[destRelay]
+	destRelayIndices := append([]int32{}, destRelayIndex)
 
 	var routeCost int32
 
-	if !prevBadRelays {
-		destRelayIndices := append([]int32{}, destRelayIndex)
+	if routeRelays.Count > 0 {
+		routeCost = core.GetCurrentRouteCost(routeMatrix.RouteEntries, routeRelays.Count, routeRelayIndices, nearRelayIndices, nearRelays.RTTs, destRelayIndices, nil)
+	}
 
-		if routeRelays.Count > 0 {
-			routeCost = core.GetCurrentRouteCost(routeMatrix.RouteEntries, routeRelays.Count, routeRelayIndices, nearRelayIndices, nearRelays.RTTs, destRelayIndices, nil)
-		}
-
-		if routeCost <= 0 {
-			routeCost = core.GetBestRouteCost(routeMatrix.RouteEntries, nearRelayIndices, nearRelays.RTTs, destRelayIndices)
-		}
+	if routeCost <= 0 {
+		routeCost = core.GetBestRouteCost(routeMatrix.RouteEntries, nearRelayIndices, nearRelays.RTTs, destRelayIndices)
 	}
 
 	if routeCost > 10000 {
 		routeCost = 10000
 	}
 
-	if vetoed || noRouteCost {
+	if noRouteCost {
+		routeCost = 0
+	}
+
+	// To simulate a near relay becoming unroutable, set it to 255 RTT
+	if badNearRelay {
+		if nearRelays.Count > 1 {
+			nearRelays.RTTs[1] = 255
+		}
+	}
+
+	// If the route is bad, make the second relay an unknown relay
+	if routeRelays.Count > 1 && badRoute {
+		routeRelays.IDs[1] = math.MaxUint64
+	}
+
+	switch routeType {
+	case routing.RouteTypeNew:
+		return routeInfo{
+			sessionVersion:      sessionVersion + 1,
+			initial:             true,
+			routeRelayIDs:       routeRelays.IDs,
+			routeRelayAddresses: routeRelays.Addresses,
+			routeCost:           routeCost,
+			next:                true,
+		}
+
+	case routing.RouteTypeContinue:
+		return routeInfo{
+			sessionVersion:      sessionVersion,
+			initial:             false,
+			routeRelayIDs:       routeRelays.IDs,
+			routeRelayAddresses: routeRelays.Addresses,
+			routeCost:           routeCost,
+			next:                true,
+		}
+	}
+
+	routeInfo := routeInfo{
+		sessionVersion:      sessionVersion,
+		initial:             false,
+		routeRelayIDs:       nil,
+		routeRelayAddresses: nil,
+		routeCost:           routeCost,
+		next:                false,
+	}
+
+	return routeInfo
+}
+
+func getRouteInfo(
+	t *testing.T,
+	routeMatrix *routing.RouteMatrix,
+	numNearRelays int32,
+	nearRelayRTTType rttType,
+	destRelay uint64,
+	sessionVersion uint32,
+	routeNumRelays int32,
+	routeType int,
+	internal bool,
+	alternateRoute bool,
+	vetoed bool,
+) routeInfo {
+	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType)
+	routeRelays := getRouteRelays(t, routeNumRelays, internal, alternateRoute)
+
+	nearRelayIndices := make([]int32, nearRelays.Count)
+	for i := 0; i < len(nearRelayIndices); i++ {
+		nearRelayIndices[i] = routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
+	}
+
+	routeRelayIndices := [core.MaxRelaysPerRoute]int32{}
+	for i := int32(0); i < routeRelays.Count; i++ {
+		routeRelayIndices[i] = routeMatrix.RelayIDsToIndices[routeRelays.IDs[i]]
+	}
+
+	destRelayIndex := routeMatrix.RelayIDsToIndices[destRelay]
+	destRelayIndices := append([]int32{}, destRelayIndex)
+
+	var routeCost int32
+
+	if routeRelays.Count > 0 {
+		var debug string
+		routeCost = core.GetCurrentRouteCost(routeMatrix.RouteEntries, routeRelays.Count, routeRelayIndices, nearRelayIndices, nearRelays.RTTs, destRelayIndices, &debug)
+	}
+
+	if routeCost <= 0 {
+		routeCost = core.GetBestRouteCost(routeMatrix.RouteEntries, nearRelayIndices, nearRelays.RTTs, destRelayIndices)
+	}
+
+	if routeCost > 10000 {
+		routeCost = 10000
+	}
+
+	if vetoed {
 		routeCost = 0
 	}
 
@@ -324,7 +389,12 @@ func getInitialSessionData(
 ) *transport.SessionData {
 	var sessionData *transport.SessionData
 
-	nearRelays := getRelays(t, request.numNearRelays, request.nearRelayRTTType, request.badNearRelay)
+	nearRelays := getRelays(t, request.numNearRelays, request.nearRelayRTTType)
+	if request.badNearRelay {
+		if nearRelays.Count > 1 {
+			nearRelays.RTTs[1] = 255
+		}
+	}
 
 	if request.badSessionDataSessionID {
 		sessionData = &transport.SessionData{}
@@ -336,7 +406,7 @@ func getInitialSessionData(
 		prevRequest := *request
 		prevRequest.sliceNumber -= 1
 
-		sd := getExpectedSessionData(t, transport.SessionData{}, uint64(time.Now().Unix()), &prevRequest, routeInfo, response, request.numNearRelays, request.nearRelayRTTType, false, request.badRoute, false, false, false, false, committed, commitCounter, multipath)
+		sd := getExpectedSessionData(t, transport.SessionData{}, uint64(time.Now().Unix()), &prevRequest, routeInfo, response, request.numNearRelays, request.nearRelayRTTType, false, request.badRoute, false, false, false, false, committed, commitCounter, multipath, 0)
 		sessionData = &sd
 	} else if request.sliceNumber > 0 {
 		sessionData = &transport.SessionData{
@@ -384,6 +454,7 @@ func getExpectedSessionData(
 	committed bool,
 	commitCounter int32,
 	multipath bool,
+	mispredictCounter uint32,
 ) transport.SessionData {
 	if response.unchangedSessionData {
 		initialSessionData.Version = transport.SessionDataVersion
@@ -403,7 +474,12 @@ func getExpectedSessionData(
 		}
 	}
 
-	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType, badNearRelay)
+	nearRelays := getRelays(t, numNearRelays, nearRelayRTTType)
+	if request.badNearRelay {
+		if nearRelays.Count > 1 {
+			nearRelays.RTTs[1] = 255
+		}
+	}
 
 	var everOnNext bool
 	var reduceLatency bool
@@ -438,10 +514,12 @@ func getExpectedSessionData(
 			NoRoute:           noRoute,
 			MultipathOverload: multipathOverload,
 			LatencyWorse:      latencyWorse,
+			MispredictCounter: mispredictCounter,
 		},
 		Initial:          routeInfo.initial,
 		FellBackToDirect: request.fallbackToDirect,
 		EverOnNext:       everOnNext,
+		RouteChanged:     request.prevRouteType == routing.RouteTypeContinue && response.routeType == routing.RouteTypeNew,
 	}
 
 	if response.attemptFindRoute {
@@ -479,7 +557,7 @@ type sessionUpdateRequestConfig struct {
 	nearRelayRTTType          rttType
 	directStats               routing.Stats
 	nextStats                 routing.Stats
-	prevRouteType             int32
+	prevRouteType             int
 	prevRouteNumRelays        int32
 	badSessionData            bool // The request sends up bad session data (fails to unmarshal)
 	badSessionDataSessionID   bool // The request sends up a mismatched session ID in the session data
@@ -542,7 +620,7 @@ type sessionUpdateResponseConfig struct {
 	unchangedSessionData bool // The backend should not have altered the session data
 	attemptNearRelays    bool // Should the backend have even attempted to find or update the near relays?
 	attemptFindRoute     bool // Should the backend have even attempted to find a route (run through the core logic)?
-	routeType            int32
+	routeType            int
 	routeNumRelays       int32
 	proMode              bool
 	debug                bool // The backend should have sent down a debug string
@@ -567,9 +645,14 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 
 	var nearRelays relayGroup
 	if request.desyncedNearRelays {
-		nearRelays = getRelays(t, 0, noRTT, false)
+		nearRelays = getRelays(t, 0, noRTT)
 	} else {
-		nearRelays = getRelays(t, request.numNearRelays, request.nearRelayRTTType, request.badNearRelay)
+		nearRelays = getRelays(t, request.numNearRelays, request.nearRelayRTTType)
+		if request.badNearRelay {
+			if nearRelays.Count > 1 {
+				nearRelays.RTTs[1] = 255
+			}
+		}
 	}
 
 	sessionVersion := uint32(1)
@@ -577,7 +660,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		sessionVersion = 0
 	}
 
-	relays := getRelays(t, backend.numRouteMatrixRelays, goodRTT, false)
+	relays := getRelays(t, backend.numRouteMatrixRelays, goodRTT)
 
 	statsdb := routing.NewStatsDatabase()
 	var routeMatrix routing.RouteMatrix
@@ -636,21 +719,19 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		destRelay = nearRelays.IDs[0]
 	}
 
-	prevRouteInfo := getRouteInfo(
+	prevRouteInfo := getPrevRouteInfo(
 		t,
+		&routeMatrix,
 		request.numNearRelays,
 		request.nearRelayRTTType,
 		destRelay,
-		&routeMatrix,
-		request.prevRouteType,
-		request.prevRouteNumRelays,
 		sessionVersion,
+		request.prevRouteNumRelays,
+		request.prevRouteType,
 		false,
-		request.badRoute,
-		false,
-		request.directStats.RTT >= getStats(overloadedRTT).RTT || request.nextStats.RTT >= getStats(overloadedRTT).RTT,
 		request.noRouteCost,
-		false,
+		request.badNearRelay,
+		request.badRoute,
 	)
 
 	routeShader := core.NewRouteShader()
@@ -818,18 +899,15 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	if response.attemptFindRoute {
 		routeInfo = getRouteInfo(
 			t,
+			&routeMatrix,
 			request.numNearRelays,
 			request.nearRelayRTTType,
 			destRelay,
-			&routeMatrix,
-			response.routeType,
-			response.routeNumRelays,
 			initialSessionData.SessionVersion,
+			response.routeNumRelays,
+			response.routeType,
 			backend.internalAddresses,
-			false,
 			request.badNearRelay,
-			false,
-			false,
 			request.prevRouteType != routing.RouteTypeDirect && response.routeType == routing.RouteTypeDirect,
 		)
 	} else {
@@ -877,7 +955,6 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 			} else {
 				latencyWorse = true
 			}
-
 		} else if request.directStats == getStats(overloadedRTT) {
 			multipathOverload = true
 		} else if response.routeNumRelays == 0 {
@@ -888,6 +965,11 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	numNearRelays := response.numNearRelays
 	if !response.attemptNearRelays {
 		numNearRelays = request.numNearRelays
+	}
+
+	var mispredictCounter uint32
+	if response.attemptFindRoute && int32(request.nextStats.RTT) >= routeInfo.routeCost+10 && !request.badRoute && !request.noRouteCost {
+		mispredictCounter++
 	}
 
 	expectedSessionData := getExpectedSessionData(
@@ -908,12 +990,13 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		committed,
 		commitCounter,
 		routeShader.Multipath,
+		mispredictCounter,
 	)
 
 	sessionDataSlice, err = transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
 
-	nearRelays = getRelays(t, response.numNearRelays, noRTT, false)
+	nearRelays = getRelays(t, response.numNearRelays, noRTT)
 
 	expectedResponse := transport.SessionResponsePacket{
 		Version:          request.sdkVersion,
@@ -1132,6 +1215,7 @@ func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 
 func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
+	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
@@ -1207,6 +1291,7 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 
 func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
+	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: false}
@@ -1224,6 +1309,7 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 
 func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
+	request.noRouteCost = true
 	request.fallbackToDirect = true
 
 	backend := NewSessionUpdateBackendConfig(t)
@@ -1242,6 +1328,7 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 
 func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
+	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
@@ -1295,6 +1382,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 // with a set of near relays populated in the response packet
 func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
+	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
@@ -1688,6 +1776,36 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
 	expectedMetrics.DirectSlices.Add(1)
+
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+}
+
+// When the buyer has multipath enabled, we want to make sure that the
+// routing logic works correctly and the response packet has multipath set to true
+func TestSessionUpdateMultipath(t *testing.T) {
+	request := NewSessionUpdateRequestConfig(t)
+	request.sliceNumber = 1
+	request.directStats = getStats(slightlyBadRTT)
+	request.numNearRelays = 2
+	request.nearRelayRTTType = goodRTT
+
+	routeShader := core.NewRouteShader()
+	routeShader.Multipath = true
+
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, Debug: true, RouteShader: routeShader, InternalConfig: core.NewInternalConfig()}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 2
+
+	response := NewSessionUpdateResponseConfig(t)
+	response.routeType = routing.RouteTypeNew
+	response.routeNumRelays = 2
+	response.numNearRelays = 2
+	response.attemptFindRoute = true
+
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.NextSlices.Add(1)
 
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
