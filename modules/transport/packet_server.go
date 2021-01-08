@@ -2,7 +2,6 @@ package transport
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net"
 
@@ -616,16 +615,7 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
-	if stream.IsWriting() {
-		version := uint32(SessionDataVersion)
-		stream.SerializeBits(&version, 8)
-	} else {
-		stream.SerializeBits(&sessionData.Version, 8)
-
-		if sessionData.Version > SessionDataVersion {
-			return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
-		}
-	}
+	stream.SerializeBits(&sessionData.Version, 8)
 
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
