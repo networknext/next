@@ -364,6 +364,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NextJitter",
 		"DirectPacketLoss",
 		"NextPacketLoss",
+		"RouteDiversity",
 		"NextRelays",
 		"NextRelaysPrice",
 		"TotalPrice",
@@ -398,6 +399,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Vetoed",
 		"MultipathVetoed",
 		"LatencyWorse",
+		"Pro",
+		"LackOfDiversity",
 		"NoRoute",
 		"NextLatencyTooHigh",
 		"RouteChanged",
@@ -740,6 +743,21 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.CommitVeto.Bool {
 			commitVeto = "true"
 		}
+		// Pro
+		pro := ""
+		if billingEntry.Pro.Bool {
+			pro = "true"
+		}
+		// LackOfDiversity
+		lackOfDiversity := ""
+		if billingEntry.LackOfDiversity.Bool {
+			lackOfDiversity = "true"
+		}
+		// RouteDiversity
+		routeDiversity := ""
+		if billingEntry.RouteDiversity.Valid {
+			routeDiversity = fmt.Sprintf("%d", billingEntry.RouteDiversity.Int64)
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -760,6 +778,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextJitter,
 			directPacketLoss,
 			nextPacketLoss,
+			routeDiversity,
 			nextRelays,
 			nextRelaysPrice,
 			totalPrice,
@@ -794,6 +813,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			vetoed,
 			multipathVetoed,
 			latencyWorse,
+			pro,
+			lackOfDiversity,
 			noRoute,
 			nextLatencyTooHigh,
 			routeChanged,
