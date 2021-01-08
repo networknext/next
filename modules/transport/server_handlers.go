@@ -220,14 +220,10 @@ func handleNearAndDestRelays(
 	destRelayIDs []uint64,
 	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
-	var nearRelaysChanged bool
-
 	if newSession {
-		nearRelaysChanged = true
-
 		nearRelayIDs, err := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
 		if err != nil {
-			return nearRelaysChanged, nearRelayGroup{}, nil, err
+			return false, nearRelayGroup{}, nil, err
 		}
 
 		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
@@ -243,14 +239,14 @@ func handleNearAndDestRelays(
 		}
 
 		routeState.NumNearRelays = nearRelays.Count
-		return nearRelaysChanged, nearRelays, nil, nil
+		return true, nearRelays, nil, nil
 	}
 
 	var nearRelays nearRelayGroup
 	incomingNearRelays.Copy(&nearRelays)
 
 	if nearRelays.Count != routeState.NumNearRelays {
-		return nearRelaysChanged, nearRelays, nil, fmt.Errorf("near relays changed from %d to %d", routeState.NumNearRelays, nearRelays.Count)
+		return false, nearRelayGroup{}, nil, fmt.Errorf("near relays changed from %d to %d", routeState.NumNearRelays, nearRelays.Count)
 	}
 
 	var numDestRelays int32
@@ -258,7 +254,7 @@ func handleNearAndDestRelays(
 
 	core.ReframeRelays(routeShader, routeState, routeMatrix.RelayIDsToIndices, directLatency, directJitter, directPacketLoss, nextPacketLoss, firstRouteRelayID, sliceNumber, incomingNearRelays.IDs, incomingNearRelays.RTTs, incomingNearRelays.Jitters, incomingNearRelays.PacketLosses, destRelayIDs, nearRelays.RTTs, nearRelays.Jitters, &numDestRelays, reframedDestRelays)
 
-	return nearRelaysChanged, nearRelays, reframedDestRelays[:numDestRelays], nil
+	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
 func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
@@ -455,7 +451,7 @@ func SessionUpdateHandlerFunc(
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
-			if sessionData.RouteState.Next {
+			if response.RouteType != routing.RouteTypeDirect {
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
 			} else {
@@ -543,13 +539,18 @@ func SessionUpdateHandlerFunc(
 		// Hack to support ESL - if a player has a "pro" tag, use pro mode in the route shader
 		// Do this for ESL or local, for testing
 		if buyer.ID == 0x1e4e8804454033c8 || buyer.ID == 0xbdbebdbf0f7be395 {
-			if packet.NumTags > 0 {
-				for i := int32(0); i < packet.NumTags; i++ {
-					if packet.Tags[i] == crypto.HashID("pro") {
-						buyer.RouteShader.ProMode = true
-						break
+			if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
+				if packet.NumTags > 0 {
+					for i := int32(0); i < packet.NumTags; i++ {
+						if packet.Tags[i] == crypto.HashID("pro") {
+							buyer.RouteShader.ProMode = true
+							break
+						}
 					}
 				}
+				// Case for older SDK versions where there was only 1 tag
+			} else if len(packet.Tags) > 0 && packet.Tags[0] == crypto.HashID("pro") {
+				buyer.RouteShader.ProMode = true
 			}
 		}
 
@@ -708,7 +709,11 @@ func SessionUpdateHandlerFunc(
 			debug,
 		)
 
+		response.NumNearRelays = nearRelays.Count
+		response.NearRelayIDs = nearRelays.IDs
+		response.NearRelayAddresses = nearRelays.Addrs
 		response.NearRelaysChanged = nearRelaysChanged
+		response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
 
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "near relays changed") {
@@ -721,11 +726,6 @@ func SessionUpdateHandlerFunc(
 
 			return
 		}
-
-		response.NumNearRelays = nearRelays.Count
-		response.NearRelayIDs = nearRelays.IDs
-		response.NearRelayAddresses = nearRelays.Addrs
-		response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
 
 		// First slice always direct
 		if newSession {
@@ -770,45 +770,49 @@ func SessionUpdateHandlerFunc(
 		} else {
 			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
 
-				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
-				metrics.RouteDoesNotExist.Add(1)
+				routeRelays = [core.MaxRelaysPerRoute]int32{}
 
-				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
+				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist. Clearing route.")
+				metrics.RouteDoesNotExist.Add(1)
+			}
+
+			var stay bool
+			if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+
+				// Continue token
+
+				// Check if the route has changed
+				if nextRouteSwitched {
+					metrics.RouteSwitched.Add(1)
+
+					// Create a next token here rather than a continue token since the route has switched
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				} else {
+					HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 				}
 			} else {
-				var stay bool
-				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
-					// Continue token
+				// Route was vetoed - check to see why
+				if sessionData.RouteState.NoRoute {
+					level.Warn(logger).Log("warn", "route no longer exists")
+					metrics.NoRoute.Add(1)
+				}
 
-					// Check if the route has changed
-					if nextRouteSwitched {
-						metrics.RouteSwitched.Add(1)
+				if sessionData.RouteState.MultipathOverload {
+					level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+					metrics.MultipathOverload.Add(1)
 
-						// Create a next token here rather than a continue token since the route has switched
-						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-					} else {
-						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-					}
-				} else {
-					// Route was vetoed - check to see why
-					if sessionData.RouteState.NoRoute {
-						level.Warn(logger).Log("warn", "route no longer exists")
-						metrics.NoRoute.Add(1)
-					}
+					// We will handle updating the multipath veto redis in the post session update
+					// to avoid blocking the routing response
+				}
 
-					if sessionData.RouteState.MultipathOverload {
-						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
-						metrics.MultipathOverload.Add(1)
+				if sessionData.RouteState.Mispredict {
+					level.Warn(logger).Log("warn", "we mispredicted too many times")
+					metrics.MispredictVeto.Add(1)
+				}
 
-						// We will handle updating the multipath veto redis in the post session update
-						// to avoid blocking the routing response
-					}
-
-					if sessionData.RouteState.LatencyWorse {
-						level.Warn(logger).Log("warn", "this route makes latency worse")
-						metrics.LatencyWorse.Add(1)
-					}
+				if sessionData.RouteState.LatencyWorse {
+					level.Warn(logger).Log("warn", "this route makes latency worse")
+					metrics.LatencyWorse.Add(1)
 				}
 			}
 		}
@@ -922,6 +926,8 @@ func GetRouteAddressesAndPublicKeys(
 	totalNumRelays := int32(len(allRelayIDs))
 	foundRelayCount := int32(0)
 
+	enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
+
 	for i := int32(0); i < numTokens-2; i++ {
 		relayIndex := routeRelays[i]
 		if relayIndex < totalNumRelays {
@@ -931,7 +937,6 @@ func GetRouteAddressesAndPublicKeys(
 				continue
 			}
 
-			enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
 			routeAddresses = AddAddress(enableInternalIPs, i, relay, allRelayIDs, storer, routeRelays, routeAddresses)
 
 			routePublicKeys[i+1] = relay.PublicKey
