@@ -201,7 +201,6 @@ func getPrevRouteInfo(
 	routeNumRelays int32,
 	routeType int,
 	internal bool,
-	noRouteCost bool,
 	badNearRelay bool,
 	badRoute bool,
 
@@ -236,10 +235,6 @@ func getPrevRouteInfo(
 
 	if routeCost > 10000 {
 		routeCost = 10000
-	}
-
-	if noRouteCost {
-		routeCost = 0
 	}
 
 	// To simulate a near relay becoming unroutable, set it to 255 RTT
@@ -565,7 +560,6 @@ type sessionUpdateRequestConfig struct {
 	badRoute                  bool // The request sends up a route in the session data with relays that no longer exist
 	badNearRelay              bool // The request sends up a near relay with unroutable RTT
 	desyncedNearRelays        bool // The request sends up a different number of near relays than what is stored in the session data
-	noRouteCost               bool // The request sends up a 0 route cost in its session data. Useful for checking error cases while continuing routes
 }
 
 func NewSessionUpdateRequestConfig(t *testing.T) *sessionUpdateRequestConfig {
@@ -591,7 +585,6 @@ func NewSessionUpdateRequestConfig(t *testing.T) *sessionUpdateRequestConfig {
 		badRoute:                  false,
 		badNearRelay:              false,
 		desyncedNearRelays:        false,
-		noRouteCost:               false,
 	}
 }
 
@@ -719,20 +712,22 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		destRelay = nearRelays.IDs[0]
 	}
 
-	prevRouteInfo := getPrevRouteInfo(
-		t,
-		&routeMatrix,
-		request.numNearRelays,
-		request.nearRelayRTTType,
-		destRelay,
-		sessionVersion,
-		request.prevRouteNumRelays,
-		request.prevRouteType,
-		false,
-		request.noRouteCost,
-		request.badNearRelay,
-		request.badRoute,
-	)
+	var prevRouteInfo routeInfo
+	if request.sliceNumber > 0 {
+		prevRouteInfo = getPrevRouteInfo(
+			t,
+			&routeMatrix,
+			request.numNearRelays,
+			request.nearRelayRTTType,
+			destRelay,
+			sessionVersion,
+			request.prevRouteNumRelays,
+			request.prevRouteType,
+			false,
+			request.badNearRelay,
+			request.badRoute,
+		)
+	}
 
 	routeShader := core.NewRouteShader()
 	if backend.buyer != nil {
@@ -968,7 +963,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	}
 
 	var mispredictCounter uint32
-	if response.attemptFindRoute && int32(request.nextStats.RTT) >= routeInfo.routeCost+10 && !request.badRoute && !request.noRouteCost {
+	if response.attemptFindRoute && int32(request.nextStats.RTT) >= routeInfo.routeCost+10 && !request.badRoute {
 		mispredictCounter++
 	}
 
@@ -1215,7 +1210,6 @@ func TestSessionUpdateHandlerDatacenterNotAllowed(t *testing.T) {
 
 func TestSessionUpdateHandlerClientLocateFailure(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
-	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
@@ -1291,7 +1285,6 @@ func TestSessionUpdateHandlerSessionDataBadSliceNumber(t *testing.T) {
 
 func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
-	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: false}
@@ -1309,7 +1302,6 @@ func TestSessionUpdateHandlerBuyerNotLive(t *testing.T) {
 
 func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
-	request.noRouteCost = true
 	request.fallbackToDirect = true
 
 	backend := NewSessionUpdateBackendConfig(t)
@@ -1328,7 +1320,6 @@ func TestSessionUpdateHandlerFallbackToDirect(t *testing.T) {
 
 func TestSessionUpdateHandlerNoDestRelays(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
-	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
@@ -1382,7 +1373,6 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 // with a set of near relays populated in the response packet
 func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
-	request.noRouteCost = true
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
@@ -1693,7 +1683,6 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	request.nearRelayRTTType = goodRTT
 	request.prevRouteType = routing.RouteTypeContinue
 	request.prevRouteNumRelays = 2
-	request.noRouteCost = true // Set this flag to true so we can check the case for latency worse rather than mispredict
 
 	backend := NewSessionUpdateBackendConfig(t)
 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
@@ -1711,6 +1700,36 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
+
+// The session was vetoed from taking network next because
+// nextwork next route actually increased latency over the direct route.
+// func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
+// 	request := NewSessionUpdateRequestConfig(t)
+// 	request.sliceNumber = 2
+// 	request.directStats = getStats(goodRTT)
+// 	request.nextStats = getStats(badRTT)
+// 	request.numNearRelays = 2
+// 	request.nearRelayRTTType = goodRTT
+// 	request.prevRouteType = routing.RouteTypeContinue
+// 	request.prevRouteNumRelays = 2
+// 	request.noRouteCost = true // Set this flag to true so we can check the case for latency worse rather than mispredict
+
+// 	backend := NewSessionUpdateBackendConfig(t)
+// 	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
+// 	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
+// 	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+// 	backend.numRouteMatrixRelays = 3
+
+// 	response := NewSessionUpdateResponseConfig(t)
+// 	response.numNearRelays = 2
+// 	response.attemptFindRoute = true
+
+// 	expectedMetrics := getBlankSessionUpdateMetrics(t)
+// 	expectedMetrics.DirectSlices.Add(1)
+// 	expectedMetrics.LatencyWorse.Add(1)
+
+// 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+// }
 
 // The session has try before you buy enabled, so this test
 // validates that we don't actually commit to the route
