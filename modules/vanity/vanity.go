@@ -509,8 +509,9 @@ func (vm *VanityMetricHandler) GetVanityMetricJSON(ctx context.Context, sd *metr
 
 	// Create max aggregation (used for Counters)
 	maxAgg := &monitoringpb.Aggregation{
-		AlignmentPeriod:  durationpb.New(duration),
-		PerSeriesAligner: monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
+		AlignmentPeriod:    durationpb.New(duration),
+		PerSeriesAligner:   monitoringpb.Aggregation_Aligner(14), // Get summed values per alignment period
+		CrossSeriesReducer: monitoringpb.Aggregation_Reducer(4),  // Sum across each alignment period
 	}
 
 	// Create the final returned map
