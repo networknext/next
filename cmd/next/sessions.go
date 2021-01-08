@@ -364,6 +364,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NextJitter",
 		"DirectPacketLoss",
 		"NextPacketLoss",
+		"RouteDiversity",
 		"NextRelays",
 		"NextRelaysPrice",
 		"TotalPrice",
@@ -392,12 +393,14 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Flagged",
 		"Multipath",
 		"RttReduction",
+		"Pro",
 		"PacketLossReduction",
 		"FallbackToDirect",
 		"Mispredicted",
 		"Vetoed",
 		"MultipathVetoed",
 		"LatencyWorse",
+		"LackOfDiversity",
 		"NoRoute",
 		"NextLatencyTooHigh",
 		"RouteChanged",
@@ -539,12 +542,46 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// ConnectionType
 		connType := ""
 		if billingEntry.ConnectionType.Valid {
-			connType = fmt.Sprintf("%d", billingEntry.ConnectionType.Int64)
+			switch billingEntry.ConnectionType.Int64 {
+			case 0:
+				connType = "Unknown"
+			case 1:
+				connType = "Wired"
+			case 2:
+				connType = "Wi-Fi"
+			case 3:
+				connType = "Cellular"
+			default:
+				connType = "none specified?"
+			}
 		}
 		// PlatformType
 		platformType := ""
 		if billingEntry.PlatformType.Valid {
-			platformType = fmt.Sprintf("%d", billingEntry.PlatformType.Int64)
+			switch billingEntry.PlatformType.Int64 {
+			case 0:
+				platformType = "Unknown"
+			case 1:
+				platformType = "Windows"
+			case 2:
+				platformType = "Mac"
+			case 3:
+				platformType = "Linux"
+			case 4:
+				platformType = "Nintendo Switch"
+			case 5:
+				platformType = "PS4"
+			case 6:
+				platformType = "IOS"
+			case 7:
+				platformType = "XBox One"
+			case 8:
+				platformType = "XBox Series X"
+			case 9:
+				platformType = "PS5"
+			default:
+				platformType = "none specified?"
+			}
 		}
 		// SdkVersion
 		sdkVersion := ""
@@ -706,6 +743,21 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.CommitVeto.Bool {
 			commitVeto = "true"
 		}
+		// Pro
+		pro := ""
+		if billingEntry.Pro.Bool {
+			pro = "true"
+		}
+		// LackOfDiversity
+		lackOfDiversity := ""
+		if billingEntry.LackOfDiversity.Bool {
+			lackOfDiversity = "true"
+		}
+		// RouteDiversity
+		routeDiversity := ""
+		if billingEntry.RouteDiversity.Valid {
+			routeDiversity = fmt.Sprintf("%d", billingEntry.RouteDiversity.Int64)
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -726,6 +778,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextJitter,
 			directPacketLoss,
 			nextPacketLoss,
+			routeDiversity,
 			nextRelays,
 			nextRelaysPrice,
 			totalPrice,
@@ -754,12 +807,14 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			flagged,
 			multipath,
 			rttReduction,
+			pro,
 			plReduction,
 			fallbackToDirect,
 			mispredicted,
 			vetoed,
 			multipathVetoed,
 			latencyWorse,
+			lackOfDiversity,
 			noRoute,
 			nextLatencyTooHigh,
 			routeChanged,
