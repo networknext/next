@@ -1712,7 +1712,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 }
 
 // The session was vetoed from taking network next because
-// nextwork next route actually increased latency over the direct route.
+// network next route actually increased latency over the direct route.
 func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 	request.sliceNumber = 2
