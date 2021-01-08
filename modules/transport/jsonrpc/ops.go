@@ -532,6 +532,7 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                `json:"id"`
+	HexID               string                `json:"hexID"`
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
@@ -568,6 +569,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			HexID:               fmt.Sprintf("%016x", r.ID),
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -1005,15 +1007,27 @@ type RouteSelectionReply struct {
 }
 
 type UpdateRelayArgs struct {
-	RelayID uint64
-	Field   string
-	Value   interface{}
+	RelayID    uint64      `json:"relayID"`    // used by next tool
+	HexRelayID string      `json:"hexRelayID"` // used by javascript clients
+	Field      string      `json:"field"`
+	Value      interface{} `json:"value"`
 }
 
 type UpdateRelayReply struct{}
 
 func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
-	err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+
+	relayID := args.RelayID
+	var err error
+	if args.HexRelayID != "" {
+		relayID, err = strconv.ParseUint(args.HexRelayID, 16, 64)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() failed to parse HexRelayID %s: %w", args.HexRelayID, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+	err = s.Storage.UpdateRelay(context.Background(), relayID, args.Field, args.Value)
 	if err != nil {
 		err = fmt.Errorf("UpdateRelay() failed to modify relay record for field %s with value %v: %w", args.Field, args.Value, err)
 		s.Logger.Log("err", err)
