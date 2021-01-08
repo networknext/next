@@ -86,7 +86,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) ([]uint64, error) {
+func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) []uint64 {
 
 	// Quantize to integer values so we don't have noise in low bits
 
@@ -116,10 +116,52 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
-	// IMPORTANT: Truncate the lat/long values to nearest integer.
-	// This fixes numerical instabilities that can happen in the haversine function
-	// when two relays are really close together, they can get sorted differently in
-	// subsequent passes otherwise.
+	for i, relayID := range m.RelayIDs {
+		nearRelayData[i].ID = relayID
+		nearRelayData[i].Addr = m.RelayAddresses[i]
+		nearRelayData[i].Name = m.RelayNames[i]
+		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
+		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
+		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
+	}
+
+	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
+
+	numNearRelays := len(nearRelayData)
+
+	// Exclude any near relays whose 2/3rds speed of light * 2/3rds route through them is greater than direct + threshold
+	// or who are further than x kilometers away from the player's location
+
+	distanceThreshold := 2500
+
+	latencyThreshold := float32(30.0)
+
+	nearRelayIds := make([]uint64, 0, maxNearRelays)
+
+	for i := 0; i < len(nearRelayData); i++ {
+		if len(nearRelayIds) == maxNearRelays {
+			break
+		}
+		if nearRelayData[i].Distance > distanceThreshold {
+			break
+		}
+		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
+		if nearRelayLatency > directLatency+latencyThreshold {
+			continue
+		}
+		nearRelayIds = append(nearRelayIds, nearRelayData[i].ID)
+	}
+
+	// If we already have enough relays, stop and return them
+
+	if len(nearRelayIds) == maxNearRelays {
+		return nearRelayIds, nil
+	}
+
+	// We need more relays. Look for near relays around the *destination*
+	// Paradoxically, this can really help, especially for cases like South America <-> Miami
+
+	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
 	for i, relayID := range m.RelayIDs {
 		nearRelayData[i].ID = relayID
@@ -130,24 +172,9 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
 	}
 
-	// IMPORTANT: Sort near relays by distance using a *stable sort*
-	// This is necessary to ensure that relays are always sorted in the same order,
-	// even when some relays have the same integer distance from the client. Without this
-	// the set of near relays passed down to the SDK can be different from one slice to the next!
-
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
-	numNearRelays := len(nearRelayData)
-
-	if numNearRelays == 0 {
-		return nil, errors.New("no near relays")
-	}
-
-	// Exclude any near relays whose speed of light * 2/3rds route through them is greater than direct + threshold
-
-	latencyThreshold := float32(30.0)
-
-	nearRelayIds := make([]uint64, 0, numNearRelays)
+	numNearRelays = len(nearRelayData)
 
 	for i := 0; i < len(nearRelayData); i++ {
 		if len(nearRelayIds) == maxNearRelays {
