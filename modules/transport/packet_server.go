@@ -2,6 +2,7 @@ package transport
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net"
 
@@ -437,7 +438,10 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
 			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
 		} else {
-			var rtt, jitter, packetLoss float32
+			rtt := float32(packet.NearRelayRTT[i])
+			jitter := float32(packet.NearRelayJitter[i])
+			packetLoss := float32(packet.NearRelayPacketLoss[i])
+
 			stream.SerializeFloat32(&rtt)
 			stream.SerializeFloat32(&jitter)
 			stream.SerializeFloat32(&packetLoss)
@@ -612,7 +616,16 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
-	stream.SerializeBits(&sessionData.Version, 8)
+	if stream.IsWriting() {
+		version := uint32(SessionDataVersion)
+		stream.SerializeBits(&version, 8)
+	} else {
+		stream.SerializeBits(&sessionData.Version, 8)
+
+		if sessionData.Version > SessionDataVersion {
+			return fmt.Errorf("bad session data version %d, exceeds current version %d", sessionData.Version, SessionDataVersion)
+		}
+	}
 
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
