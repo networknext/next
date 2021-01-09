@@ -327,7 +327,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 		// or provides existing ones from a previous run
 		vanityMetricPerBuyer, err := metrics.NewVanityMetric(ctx, vm.handler, buyerID)
 		if err != nil {
-			fmt.Printf("Error getting new vanity metric: %v\n")
+			fmt.Printf("Error getting new vanity metric: %v\n", err)
 			level.Error(vm.logger).Log("err", err)
 			return true, err
 		}
