@@ -237,8 +237,9 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 				// Buffer up some vanity metric entries to insert into StackDriver
 				case vanityData := <-vm.vanityMetricDataChan:
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
-
+					fmt.Printf("got data from channel %v\n", vanityData)
 					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {
+						fmt.Printf("Error updating metrics: %v\n", err)
 						vm.metrics.UpdateVanityFailureCount.Add(1)
 						errChan <- err
 						return
@@ -270,8 +271,9 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 
 	case messageInfo := <-vm.subscriber.ReceiveMessage():
 		vm.metrics.ReceivedVanityCount.Add(1)
-
+		fmt.Printf("received message from ZMQ\n")
 		if messageInfo.Err != nil {
+			fmt.Printf("Error from message info: %v\n", messageInfo.Err)
 			level.Error(vm.logger).Log("err", messageInfo.Err)
 			return &ErrReceiveMessage{err: messageInfo.Err}
 		}
@@ -280,6 +282,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		case pubsub.TopicVanityMetricData:
 			var vanityData VanityMetrics
 			if err := vanityData.UnmarshalBinary(messageInfo.Message); err != nil {
+				fmt.Printf("Error from unmarshaling binary: %v\n", err)
 				level.Error(vm.logger).Log("msg", "Could not unmarshal binary", "err", err)
 				return &ErrUnmarshalMessage{err: err}
 			}
@@ -288,6 +291,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 			buyerID := fmt.Sprintf("%016x", vanityData.BuyerID)
 			isNewBuyerID, err := vm.AddNewBuyerID(ctx, buyerID)
 			if err != nil {
+				fmt.Printf("Error from AddNewBuyerID(): %v\n", err)
 				return err
 			}
 			if isNewBuyerID {
@@ -298,6 +302,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 
 			select {
 			case vm.vanityMetricDataChan <- &vanityData:
+				fmt.Printf("Inserted vanity data into data chan\n")
 				level.Debug(vm.logger).Log("msg", "Successfully received vanity data from ZeroMQ")
 			default:
 				return &ErrChannelFull{}
@@ -322,6 +327,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 		// or provides existing ones from a previous run
 		vanityMetricPerBuyer, err := metrics.NewVanityMetric(ctx, vm.handler, buyerID)
 		if err != nil {
+			fmt.Printf("Error getting new vanity metric: %v\n")
 			level.Error(vm.logger).Log("err", err)
 			return true, err
 		}
@@ -330,7 +336,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 		vm.mapMutex.Lock()
 		vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 		vm.mapMutex.Unlock()
-
+		fmt.Printf("Found new buyerID %s inserted into map\n", buyerID)
 		level.Debug(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
 		return true, nil
 	}
@@ -350,12 +356,14 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		vm.mapMutex.RUnlock()
 
 		if !exists {
+			fmt.Printf("Error could not find buyerID %s in map\n", buyerID)
 			return fmt.Errorf("Could not find buyerID %s in map", buyerID)
 		}
 
 		// Calculate sessionsAccelerated
 		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
 		if err != nil {
+			fmt.Printf("Error from IsNewSession(): %v\n", err)
 			level.Error(vm.logger).Log("err", err)
 			return err
 		}
