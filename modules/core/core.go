@@ -1462,6 +1462,8 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		}
 		maxCost = directLatency + internal.MaxLatencyTradeOff - internal.RouteSelectThreshold
 		proMode = true
+		reduceLatency = false
+		reducePacketLoss = false
 	}
 
 	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes

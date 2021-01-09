@@ -3322,7 +3322,6 @@ func TestTakeNetworkNext_ProMode(t *testing.T) {
 	expectedRouteState.ProMode = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.Committed = true
-	expectedRouteState.ReduceLatency = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)
