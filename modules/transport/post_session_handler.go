@@ -344,7 +344,7 @@ func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.Billi
 			packetLossReduced = 1
 		}
 
-		jitterReduced := 1
+		jitterReduced := 0
 		if billingEntry.DirectJitter-billingEntry.NextJitter > 0 {
 			jitterReduced = 1
 		}
