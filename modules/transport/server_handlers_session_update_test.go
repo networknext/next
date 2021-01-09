@@ -4820,7 +4820,6 @@ func TestSessionUpdateHandlerESLProMode(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:           requestPacket.UserHash,
 			Next:             true,
-			ReduceLatency:    true,
 			Committed:        true,
 			NumNearRelays:    2,
 			NearRelayRTT:     [core.MaxNearRelays]int32{30, 35},
