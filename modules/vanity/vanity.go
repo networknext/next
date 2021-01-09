@@ -685,7 +685,7 @@ func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
 	currentTime := time.Now().UnixNano()
 	fmt.Printf("Before ZREMRANGEBYSCORE\n")
 	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
-	fmt.Printf("After ZREMRANGEBYSCORE, err is %v\n")
+	fmt.Printf("After ZREMRANGEBYSCORE, err is %v\n", err)
 	if numRemoved != 0 {
 		fmt.Printf("Removed %d SessionIDs from Redis\n", numRemoved)
 		level.Debug(vm.logger).Log("msg", "Removed Session IDs from redis", "numRemoved", numRemoved)
