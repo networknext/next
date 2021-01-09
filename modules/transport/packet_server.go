@@ -614,6 +614,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
 
+	// IMPORTANT: If you ever make this serialize not backwards compatible with old session data
+	// you must update the too old version number here and it will be a disruptive update (sessions will fall back to direct!)
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
 	}
