@@ -966,23 +966,6 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	if routeShader.ReducePacketLoss {
 
-		// if packet loss occurred on direct, penalize the near relay for the route
-
-		if firstRouteRelayId != 0 && nextPacketLoss > 0 {
-
-			for i := range sourceRelayId {
-
-				if sourceRelayId[i] == firstRouteRelayId {
-
-					if sourceRelayPacketLoss[i] == 0 {
-						routeState.NearRelayPLCount[i]++
-					}
-
-					break
-				}
-			}
-		}
-
 		// exclude near relays with higher number of packet loss events than direct (sporadic packet loss)
 
 		if directPacketLoss > 0 {
