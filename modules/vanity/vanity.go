@@ -429,21 +429,26 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 // Checks if a userHash has moved onto a new sessionID at a later point in time
 func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	sessionIDStr := fmt.Sprintf("%016x", sessionID)
+	fmt.Printf("Before SessionIDExists()")
 	exists, err := vm.SessionIDExists(sessionIDStr)
 	if err != nil {
+		fmt.Printf("Error from SessionIDExists(): %v\n", err)
 		return exists, nil
 	}
-
+	fmt.Printf("After SessionIDExists()\n")
 	if exists {
 		// Not a new sessionID
+		fmt.Printf("Not a new sessionID\n")
 		return false, nil
 	}
-
+	fmt.Printf("Before AddSessionID\n")
 	// Found a new sessionID, add it to the set
 	err = vm.AddSessionID(sessionIDStr)
 	if err != nil {
+		fmt.Printf("Error from AddSessionID(): %v\n", err)
 		return exists, err
 	}
+	fmt.Printf("After AddSessionID()")
 
 	return true, nil
 }
@@ -626,18 +631,24 @@ func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType
 }
 
 func (vm *VanityMetricHandler) SessionIDExists(sessionID string) (exists bool, err error) {
+	fmt.Printf("Inside SessionIDExists()\n")
 	conn := vm.redisSessionsMap.Get()
+	fmt.Printf("Got connection for SessionIDExists\n")
 	defer conn.Close()
 	member := fmt.Sprintf("sid-%s", sessionID)
+	fmt.Printf("Before ZSCORE\n")
 	score, err := conn.Do("ZSCORE", redis.Args{}.Add(vm.redisSetName).Add(member)...)
 	if err != nil {
+		fmt.Printf("Error from ZSCORE: %v\n", err)
 		return false, err
 	}
+	fmt.Printf("After ZSCORE\n")
 
 	if score != nil {
 		// If the sessionID exists, refresh its expiration time
 		err = vm.AddSessionID(sessionID)
 		if err != nil {
+			fmt.Printf("Error from AddSessionID() in SessionIDExists(): %v\n", err)
 			return true, err
 		}
 		return true, nil
@@ -647,29 +658,36 @@ func (vm *VanityMetricHandler) SessionIDExists(sessionID string) (exists bool, e
 }
 
 func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
+	fmt.Printf("Inside AddSessionID()\n")
 	conn := vm.redisSessionsMap.Get()
+	fmt.Printf("Got connection for AddSessionID()\n")
 	defer conn.Close()
 
 	// Refresh the expiration time for this key
 	refreshedTime := time.Now().Add(vm.maxUserIdleTime).UnixNano()
 	member := fmt.Sprintf("sid-%s", sessionID)
+	fmt.Printf("Before ZADD\n")
 	_, err := conn.Do("ZADD", redis.Args{}.Add(vm.redisSetName).Add(refreshedTime).Add(member)...)
 	if err != nil {
+		fmt.Printf("Error from AddSessionID(): %v\n", err)
 		return err
 	}
-
+	fmt.Printf("After ZADD\n")
+	fmt.Printf("Before ExpireOldSessions()\n")
 	// Expire old set members
 	err = vm.ExpireOldSessions(conn)
-
+	fmt.Printf("After ExpireOldSessions(), err is %v\n", err)
 	return err
 }
 
 func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
+	fmt.Printf("Inside ExpireOldSessions()\n")
 	currentTime := time.Now().UnixNano()
-
+	fmt.Printf("Before ZREMRANGEBYSCORE\n")
 	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
-
+	fmt.Printf("After ZREMRANGEBYSCORE, err is %v\n")
 	if numRemoved != 0 {
+		fmt.Printf("Removed %d SessionIDs from Redis\n", numRemoved)
 		level.Debug(vm.logger).Log("msg", "Removed Session IDs from redis", "numRemoved", numRemoved)
 	}
 
