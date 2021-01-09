@@ -255,10 +255,12 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	// Wait until either there is an error or the context is done
 	select {
 	case err := <-errChan:
+		fmt.Printf("The exit error is: %v\n", err)
 		return err
 	case <-ctx.Done():
 		// Let the goroutines finish up
 		wg.Wait()
+		fmt.Printf("Waitgroups are done, return ctx error: %v", ctx.Err())
 		return ctx.Err()
 	}
 }
@@ -346,20 +348,26 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 
 // Updates the metrics per buyer
 func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDataBuffer []*VanityMetrics) error {
+	fmt.Printf("inside UpdateMetrics()\n")
 	for j := range vanityMetricDataBuffer {
+		fmt.Printf("Inside update metric loop\n")
 		buyerID := fmt.Sprintf("%016x", vanityMetricDataBuffer[j].BuyerID)
 		level.Debug(vm.logger).Log("msg", "Buyer ID obtained from data", "buyerID", buyerID)
-
+		fmt.Printf("Got buyerID from data %s\n", buyerID)
 		// Get the counters / gauges / histograms per vanity metric for this buyer ID
+		fmt.Printf("before RLock\n")
 		vm.mapMutex.RLock()
+		fmt.Printf("After RLock()\n")
 		vanityMetricPerBuyer, exists := vm.buyerMetricMap[buyerID]
+		fmt.Printf("Accessed buyerMetricMap: %v, %v\n", vanityMetricPerBuyer, exists)
 		vm.mapMutex.RUnlock()
+		fmt.Printf("After RUnlock()\n")
 
 		if !exists {
 			fmt.Printf("Error could not find buyerID %s in map\n", buyerID)
 			return fmt.Errorf("Could not find buyerID %s in map", buyerID)
 		}
-
+		fmt.Printf("After !exists\n")
 		// Calculate sessionsAccelerated
 		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
 		if err != nil {
@@ -368,9 +376,11 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			return err
 		}
 		if newSession {
+			fmt.Printf("newSession is True\n")
 			level.Debug(vm.logger).Log("msg", "Found new accelerated session for user", "userHash", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].UserHash), "sessionID", fmt.Sprintf("%016x", vanityMetricDataBuffer[j].SessionID))
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
+		fmt.Printf("After IsNewSession() check\n")
 
 		currentSlicesAccelerated := vanityMetricPerBuyer.SlicesAccelerated.Value()
 		currentSlicesLatencyReduced := vanityMetricPerBuyer.SlicesLatencyReduced.Value()
@@ -389,7 +399,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SlicesJitterReduced", currentSlicesJitterReduced,
 			"SessionsAccelerated", currentSessionsAccelerated,
 		)
-
+		fmt.Printf("Before updating metric values\n")
 		// Update each metric's value
 		// Writing to stack driver is taken care of by the tsMetricsHandler's WriteLoop() in cmd/vanity/vanity.go
 		vanityMetricPerBuyer.SlicesAccelerated.Add(float64(vanityMetricDataBuffer[j].SlicesAccelerated))
@@ -397,7 +407,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		vanityMetricPerBuyer.SlicesPacketLossReduced.Add(float64(vanityMetricDataBuffer[j].SlicesPacketLossReduced))
 		vanityMetricPerBuyer.SlicesJitterReduced.Add(float64(vanityMetricDataBuffer[j].SlicesJitterReduced))
 		vanityMetricPerBuyer.SessionsAccelerated.Add(float64(vanityMetricDataBuffer[j].SessionsAccelerated))
-
+		fmt.Printf("After updating metric values")
 		level.Debug(vm.logger).Log("msg", "Updating metric values",
 			"buyerID", buyerID,
 			"userHash", vanityMetricDataBuffer[j].UserHash,
