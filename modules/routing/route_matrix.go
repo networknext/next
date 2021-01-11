@@ -133,56 +133,63 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	latencyThreshold := float32(30.0)
 
-	nearRelayIds := make([]uint64, 0, maxNearRelays)
+	nearRelayIDs := make([]uint64, 0, maxNearRelays)
+	nearRelayIDMap := map[uint64]struct{}{}
 
 	for i := 0; i < len(nearRelayData); i++ {
-		if len(nearRelayIds) == maxNearRelays {
+		if len(nearRelayIDs) == maxNearRelays {
 			break
 		}
+
 		if nearRelayData[i].Distance > distanceThreshold {
 			break
 		}
+
 		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
 		}
-		nearRelayIds = append(nearRelayIds, nearRelayData[i].ID)
+
+		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
+
+		// Store the near relay ID in a map so that we don't reinsert it later
+		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
 	}
 
 	// If we already have enough relays, stop and return them
 
-	if len(nearRelayIds) == maxNearRelays {
-		return nearRelayIds
+	if len(nearRelayIDs) == maxNearRelays {
+		return nearRelayIDs
 	}
 
 	// We need more relays. Look for near relays around the *destination*
 	// Paradoxically, this can really help, especially for cases like South America <-> Miami
 
-	nearRelayData = make([]NearRelayData, len(m.RelayIDs))
-
-	for i, relayID := range m.RelayIDs {
-		nearRelayData[i].ID = relayID
-		nearRelayData[i].Addr = m.RelayAddresses[i]
-		nearRelayData[i].Name = m.RelayNames[i]
-		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
-		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
+	for i := range m.RelayIDs {
 		nearRelayData[i].Distance = int(core.HaversineDistance(destLatitude, destLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
 	}
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
 	for i := 0; i < len(nearRelayData); i++ {
-		if len(nearRelayIds) == maxNearRelays {
+		if len(nearRelayIDs) == maxNearRelays {
 			break
 		}
+
+		// Don't add the relay if we've already added it
+		if _, ok := nearRelayIDMap[nearRelayData[i].ID]; ok {
+			continue
+		}
+
 		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
 		}
-		nearRelayIds = append(nearRelayIds, nearRelayData[i].ID)
+
+		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
 	}
 
-	return nearRelayIds
+	return nearRelayIDs
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -225,9 +226,9 @@ func handleNearAndDestRelays(
 	if newSession {
 		nearRelaysChanged = true
 
-		nearRelayIDs, err := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
-		if err != nil {
-			return nearRelaysChanged, nearRelayGroup{}, nil, err
+		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
+		if len(nearRelayIDs) == 0 {
+			return nearRelaysChanged, nearRelayGroup{}, nil, errors.New("no near relays")
 		}
 
 		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
