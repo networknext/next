@@ -2,7 +2,6 @@ package routing
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -127,8 +126,6 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
-	numNearRelays := len(nearRelayData)
-
 	// Exclude any near relays whose 2/3rds speed of light * 2/3rds route through them is greater than direct + threshold
 	// or who are further than x kilometers away from the player's location
 
@@ -155,13 +152,13 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	// If we already have enough relays, stop and return them
 
 	if len(nearRelayIds) == maxNearRelays {
-		return nearRelayIds, nil
+		return nearRelayIds
 	}
 
 	// We need more relays. Look for near relays around the *destination*
 	// Paradoxically, this can really help, especially for cases like South America <-> Miami
 
-	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
+	nearRelayData = make([]NearRelayData, len(m.RelayIDs))
 
 	for i, relayID := range m.RelayIDs {
 		nearRelayData[i].ID = relayID
@@ -169,12 +166,10 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		nearRelayData[i].Name = m.RelayNames[i]
 		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
 		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
-		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
+		nearRelayData[i].Distance = int(core.HaversineDistance(destLatitude, destLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
 	}
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
-
-	numNearRelays = len(nearRelayData)
 
 	for i := 0; i < len(nearRelayData); i++ {
 		if len(nearRelayIds) == maxNearRelays {
@@ -187,7 +182,7 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		nearRelayIds = append(nearRelayIds, nearRelayData[i].ID)
 	}
 
-	return nearRelayIds, nil
+	return nearRelayIds
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
