@@ -510,7 +510,10 @@ func getExpectedSessionData(
 	if request.prevRouteType != routing.RouteTypeDirect || response.routeType != routing.RouteTypeDirect {
 		// These fields are "sticky" - they will remain true as long as we take network next once
 		everOnNext = true
-		reduceLatency = true
+
+		if !response.proMode {
+			reduceLatency = true
+		}
 	}
 
 	sessionData := transport.SessionData{
@@ -1896,16 +1899,15 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
 
-// Verify that the hack for ESL works correctly.
-// When a session update comes in with a buyer of ESL and
-// a tag that contains "pro", enable pro mode.
+// Verify that the pro tag works correctly.
+// When a session update comes in with a tag
+// that contains "pro", enable pro mode.
 func TestSessionUpdateESLProMode(t *testing.T) {
 	request := NewSessionUpdateRequestConfig(t)
 	request.sliceNumber = 1
 	request.directStats = getStats(slightlyBadRTT)
 	request.numNearRelays = 2
 	request.nearRelayRTTType = goodRTT
-	request.buyerID = 0x1e4e8804454033c8 // ESL's buyerID
 	request.tags = []uint64{crypto.HashID("pro")}
 
 	backend := NewSessionUpdateBackendConfig(t)

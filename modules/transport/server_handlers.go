@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -221,9 +222,9 @@ func handleNearAndDestRelays(
 	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
 	if newSession {
-		nearRelayIDs, err := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
-		if err != nil {
-			return false, nearRelayGroup{}, nil, err
+		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
+		if len(nearRelayIDs) == 0 {
+			return false, nearRelayGroup{}, nil, errors.New("no near relays")
 		}
 
 		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
@@ -536,22 +537,17 @@ func SessionUpdateHandlerFunc(
 			debug = new(string)
 		}
 
-		// Hack to support ESL - if a player has a "pro" tag, use pro mode in the route shader
-		// Do this for ESL or local, for testing
-		if buyer.ID == 0x1e4e8804454033c8 || buyer.ID == 0xbdbebdbf0f7be395 {
-			if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
-				if packet.NumTags > 0 {
-					for i := int32(0); i < packet.NumTags; i++ {
-						if packet.Tags[i] == crypto.HashID("pro") {
-							buyer.RouteShader.ProMode = true
-							break
-						}
-					}
+		// If a player has the "pro" tag, set pro mode in the route shader
+		if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
+			for i := int32(0); i < packet.NumTags; i++ {
+				if packet.Tags[i] == crypto.HashID("pro") {
+					buyer.RouteShader.ProMode = true
+					break
 				}
-				// Case for older SDK versions where there was only 1 tag
-			} else if len(packet.Tags) > 0 && packet.Tags[0] == crypto.HashID("pro") {
-				buyer.RouteShader.ProMode = true
 			}
+			// Case for older SDK versions where there was only 1 tag
+		} else if len(packet.Tags) > 0 && packet.Tags[0] == crypto.HashID("pro") {
+			buyer.RouteShader.ProMode = true
 		}
 
 		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
