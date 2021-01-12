@@ -4594,18 +4594,17 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
     return RELAY_OK;
 }
 
-int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay, bool shutdown )
+int relay_update( CURL * curl, const char * hostname, const char * relay_address, uint8_t * update_response_memory, relay_t * relay, bool * first_update, bool shutdown )
 {
     // build update data
 
-    uint32_t update_version = 0;
+    uint32_t update_version = 1;
 
-    uint8_t update_data[10*1024 + 8 + 8 + 8 + 1]; // + 8 for the session count, + 8 for the bytes sent counter, + 8 for the bytes received counter, + 1 for the shutdown flag
+    uint8_t update_data[10*1024];
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
     relay_write_string( &p, relay_address, 256 );
-    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
 
     relay_platform_mutex_acquire( relay->mutex );
     relay_stats_t stats;
@@ -4693,7 +4692,15 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     uint64_t timestamp = relay_read_uint64( &q );
-    (void) timestamp;
+
+    if ( *first_update )
+    {
+        relay->initialize_time = relay_platform_time();
+        relay->initialize_router_timestamp = timestamp;
+        *first_update = false;
+    }
+
+    // todo: handle drift
 
     uint32_t num_relays = relay_read_uint32( &q );
 
@@ -5502,45 +5509,10 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    uint8_t relay_token[RELAY_TOKEN_BYTES];
-    relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
-
-    printf( "\nInitializing relay\n" );
-
-    bool relay_initialized = false;
-
-    uint64_t router_timestamp = 0;
-
-    for ( int i = 0; i < 60; ++i )
-    {
-        if ( relay_init( curl, backend_hostname, relay_token, relay_address_string, router_public_key, relay_private_key, &router_timestamp ) == RELAY_OK )
-        {
-            printf( "\n" );
-            relay_initialized = true;
-            break;
-        }
-
-        printf( "." );
-        fflush( stdout );
-
-        relay_platform_sleep( 1.0 );
-    }
-
-    if ( !relay_initialized )
-    {
-        printf( "\nerror: could not initialize relay\n\n" );
-        relay_platform_socket_destroy( socket );
-        curl_easy_cleanup( curl );
-        relay_term();
-        return 1;
-    }
-
     relay_t relay;
     relay.relay_manager = nullptr;
     relay.socket = nullptr;
     relay.mutex = nullptr;
-    relay.initialize_time = relay_platform_time();
-    relay.initialize_router_timestamp = router_timestamp;
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
@@ -5583,8 +5555,6 @@ int main( int argc, const char ** argv )
         quit = 1;
     }
 
-    printf( "Relay initialized\n\n" );
-
     signal( SIGINT, interrupt_handler );
     signal( SIGTERM, interrupt_handler );
     signal( SIGHUP, clean_shutdown_handler );
@@ -5595,9 +5565,11 @@ int main( int argc, const char ** argv )
 
     int update_attempts = 0;
 
+    bool first_update = true;
+
     while ( !quit )
     {
-        if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+        if ( relay_update( curl, backend_hostname, relay_address_string, update_response_memory, &relay, &first_update, false ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -5634,7 +5606,8 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        bool first_update_dummy = false;
+        while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_address_string, update_response_memory, &relay, &first_update_dummy, false ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }

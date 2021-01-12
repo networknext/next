@@ -80,7 +80,7 @@ const NEXT_FLAGS_COUNT = 12
 const NEXT_RELAY_INIT_REQUEST_MAGIC = uint32(0x9083708f)
 const NEXT_RELAY_INIT_REQUEST_VERSION = 0
 const NEXT_RELAY_INIT_RESPONSE_VERSION = 0
-const NEXT_RELAY_UPDATE_REQUEST_VERSION = 0
+const NEXT_RELAY_UPDATE_REQUEST_VERSION = 1
 const NEXT_RELAY_UPDATE_RESPONSE_VERSION = 0
 const NEXT_MAX_RELAY_ADDRESS_LENGTH = 256
 const NEXT_RELAY_TOKEN_BYTES = 32
@@ -528,7 +528,6 @@ type RelayEntry struct {
 	name       string
 	address    *net.UDPAddr
 	lastUpdate int64
-	token      []byte
 }
 
 type ServerEntry struct {
@@ -792,89 +791,11 @@ func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte)
 }
 
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
-	body, err := ioutil.ReadAll(request.Body)
+	_, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
 	}
 	defer request.Body.Close()
-
-	index := 0
-
-	var magic uint32
-	if !ReadUint32(body, &index, &magic) || magic != NEXT_RELAY_INIT_REQUEST_MAGIC {
-		return
-	}
-
-	var version uint32
-	if !ReadUint32(body, &index, &version) || version != NEXT_RELAY_INIT_REQUEST_VERSION {
-		return
-	}
-
-	var nonce []byte
-	if !ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
-		return
-	}
-
-	var relay_address string
-	if !ReadString(body, &index, &relay_address, NEXT_MAX_RELAY_ADDRESS_LENGTH) {
-		return
-	}
-
-	var encrypted_token []byte
-	if !ReadBytes(body, &index, &encrypted_token, NEXT_RELAY_TOKEN_BYTES+C.crypto_box_MACBYTES) {
-		return
-	}
-
-	if !CryptoCheck(encrypted_token, nonce, relayPublicKey[:], routerPrivateKey[:]) {
-		return
-	}
-
-	key := relay_address
-
-	backend.mutex.RLock()
-	_, relayAlreadyExists := backend.relayDatabase[key]
-	backend.mutex.RUnlock()
-
-	if relayAlreadyExists {
-		writer.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	relayEntry := RelayEntry{}
-	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
-	relayEntry.address = ParseAddress(relay_address)
-	relayEntry.lastUpdate = time.Now().Unix()
-	relayEntry.token = RandomBytes(NEXT_RELAY_TOKEN_BYTES)
-
-	backend.mutex.Lock()
-	backend.relayDatabase[key] = relayEntry
-	backend.dirty = true
-	backend.mutex.Unlock()
-
-	writer.Header().Set("Content-Type", "application/octet-stream")
-
-	responseData := make([]byte, 64)
-	index = 0
-	WriteUint32(responseData, &index, NEXT_RELAY_INIT_RESPONSE_VERSION)
-	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-	WriteBytes(responseData, &index, relayEntry.token, NEXT_RELAY_TOKEN_BYTES)
-	responseData = responseData[:index]
-	writer.Write(responseData)
-}
-
-func CompareTokens(a []byte, b []byte) bool {
-	if len(a) != len(b) {
-		fmt.Printf("token length is wrong\n")
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			fmt.Printf("token value is wrong: %d vs. %d\n", a[i], b[i])
-			return false
-		}
-	}
-	return true
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
@@ -896,25 +817,26 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	var token []byte
-	if !ReadBytes(body, &index, &token, NEXT_RELAY_TOKEN_BYTES) {
-		return
-	}
-
 	key := relay_address
 
 	backend.mutex.RLock()
-	relayEntry, ok := backend.relayDatabase[key]
-	found := false
-	if ok && CompareTokens(token, relayEntry.token) {
-		found = true
-	}
+	relayEntry, found := backend.relayDatabase[key]
 	backend.mutex.RUnlock()
 
+	// todo: obviously, security checks and ordering done here
+
+	relayEntry = RelayEntry{}
+	relayEntry.name = relay_address
+	relayEntry.id = GetRelayId(relay_address)
+	relayEntry.address = ParseAddress(relay_address)
+	relayEntry.lastUpdate = time.Now().Unix()
+
+	backend.mutex.Lock()
+	backend.relayDatabase[key] = relayEntry
 	if !found {
-		writer.WriteHeader(http.StatusNotFound)
-		return
+		backend.dirty = true
 	}
+	backend.mutex.Unlock()
 
 	var num_relays uint32
 	if !ReadUint32(body, &index, &num_relays) {
@@ -942,13 +864,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	relayEntry = RelayEntry{}
-	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
-	relayEntry.address = ParseAddress(relay_address)
-	relayEntry.lastUpdate = time.Now().Unix()
-	relayEntry.token = token
-
 	type RelayPingData struct {
 		id      uint64
 		address string
@@ -957,7 +872,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	relaysToPing := make([]RelayPingData, 0)
 
 	backend.mutex.Lock()
-	backend.relayDatabase[key] = relayEntry
 	for k, v := range backend.relayDatabase {
 		if k != relay_address {
 			if k != relay_address {
