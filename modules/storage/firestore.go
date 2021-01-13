@@ -1279,7 +1279,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
-				"name":            r.Name,
+				"displayName":     r.Name,
 				"publicAddress":   r.Addr.String(),
 				"state":           r.State,
 				"lastUpdateTime":  r.LastUpdateTime,
