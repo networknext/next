@@ -270,7 +270,7 @@ func GetShortNameBuyerIDMap(env string) map[string]string {
 		}
 	case "staging":
 		return map[string]string{
-			"Next":   "bdbebdbf0f7be395", // Network Next
+			"next":   "bdbebdbf0f7be395", // Network Next
 			"global": "global_staging",   // Global staging metrics
 		}
 	case "dev":
