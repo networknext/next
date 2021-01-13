@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"os"
@@ -817,10 +818,15 @@ func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, buyerRegex strin
 	}
 
 	buyerInfo := "Buyer " + reply.Buyer.ShortName + " info:\n"
-	buyerInfo += "  CompanyCode: " + reply.Buyer.CompanyCode + "\n"
-	buyerInfo += "  ShortName  : " + reply.Buyer.ShortName + "\n"
-	buyerInfo += "  Live       : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
-	buyerInfo += "  Debug      : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
+	buyerInfo += "  CompanyCode  : " + reply.Buyer.CompanyCode + "\n"
+	buyerInfo += "  ShortName    : " + reply.Buyer.ShortName + "\n"
+	buyerInfo += "  Live         : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
+	buyerInfo += "  Debug        : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
+	buyerInfo += "  ID           : " + fmt.Sprintf("%d", uint64(reply.Buyer.ID)) + "\n"
+	buyerInfo += "  ID           : " + fmt.Sprintf("%016x", uint64(reply.Buyer.ID)) + "\n"
+	buyerInfo += "  Public Key (encoded): " + base64.StdEncoding.EncodeToString(reply.Buyer.PublicKey) + "\n"
+	buyerInfo += "  Public Key (string ): " + string(reply.Buyer.PublicKey) + "\n"
+	buyerInfo += "  Full Public Key     : " + reply.Buyer.EncodedPublicKey() + "\n"
 
 	fmt.Println(buyerInfo)
 	os.Exit(0)

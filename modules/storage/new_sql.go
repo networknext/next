@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -486,6 +485,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 }
 
 type sqlBuyer struct {
+	SdkID          int64
 	ID             uint64
 	IsLiveCustomer bool
 	Debug          bool
@@ -505,7 +505,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
 	buyerIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -517,6 +517,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(
+			&buyer.SdkID,
 			&buyer.DatabaseID,
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
@@ -529,7 +530,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			return err
 		}
 
-		buyer.ID = binary.LittleEndian.Uint64(buyer.PublicKey[:8])
+		buyer.ID = uint64(buyer.SdkID)
 
 		buyerIDs[buyer.DatabaseID] = buyer.ID
 

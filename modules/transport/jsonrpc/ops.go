@@ -195,7 +195,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	for _, b := range s.Storage.Buyers() {
 		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() could not find Customer %s: %v", b.CompanyCode, err)
+			err = fmt.Errorf("Buyers() could not find Customer %s fo %s: %v", b.CompanyCode, b.String(), err)
 			s.Logger.Log("err", err)
 			return err
 		}
