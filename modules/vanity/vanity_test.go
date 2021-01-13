@@ -1,6 +1,7 @@
 package vanity_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -469,6 +470,10 @@ func TestReadingMetrics(t *testing.T) {
 		jsonMarshal, err := vanityMetrics.GetVanityMetricJSON(ctx, sd, gcpProjectID, fmt.Sprintf("%016x", buyerID), startTime, endTime)
 		assert.NoError(t, err)
 		assert.NotNil(t, jsonMarshal)
+
+		emptyMapJSON, err := json.Marshal(make(map[string]float64))
+		assert.NoError(t, err)
+		assert.NotEqual(t, emptyMapJSON, jsonMarshal)
 	})
 
 	// Stop the submit routine
