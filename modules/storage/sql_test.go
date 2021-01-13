@@ -144,10 +144,10 @@ func TestInsertSQL(t *testing.T) {
 		_, err := rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			// ID:          internalID,
+			ID:          internalID,
 			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
@@ -387,10 +387,10 @@ func TestDeleteSQL(t *testing.T) {
 		_, err := rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			// ID:          internalID,
+			ID:          internalID,
 			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
@@ -599,10 +599,10 @@ func TestUpdateSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			// ID:          internalID,
+			ID:          internalID,
 			ShortName:   customerWithID.Code,
 			CompanyCode: customerWithID.Code,
 			Live:        true,
