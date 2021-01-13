@@ -28,6 +28,7 @@ var (
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
 	sd            *metrics.StackDriverHandler
+	shortNameMap  map[string]string
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -48,6 +49,9 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", "ENV not set")
 		return 1
 	}
+
+	// Set the map for buyer short name to buyerID
+	shortNameMap = GetShortNameBuyerIDMap(env)
 
 	gcpProjectID = backend.GetGCPProjectID()
 	gcpOK := gcpProjectID != ""
@@ -117,7 +121,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", logger)
+	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", env, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
+		return 1
+	}
 
 	errChan := make(chan error, 1)
 	// Start HTTP server
@@ -162,12 +170,17 @@ func mainReturnWithCode() int {
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rawBuyerID, ok := r.URL.Query()["id"]
+		rawShortName, ok := r.URL.Query()["id"]
 		if !ok {
 			http.Error(w, "id is missing", http.StatusBadRequest)
 			return
 		}
-		buyerID := rawBuyerID[0]
+		shortName := rawShortName[0]
+		buyerID, exists := shortNameMap[shortName]
+		if !exists {
+			http.Error(w, "id is not valid", http.StatusBadRequest)
+			return
+		}
 
 		// Get start time
 		rawStartTime, ok := r.URL.Query()["start"]
@@ -231,5 +244,49 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(statusCode)
 		w.Write([]byte(http.StatusText(statusCode)))
+	}
+}
+
+func GetShortNameBuyerIDMap(env string) (map[string]string) {
+	switch env {
+	case "prod":
+		return map[string]string{
+			"gryadki": "f43f9358918c145f", // GryadkiTeam
+			"liquid": "f0d3cc73dca0bc89", // Liquid Bit
+			"velan": "e5cee310ae3e26bc", // Velan Studios
+			"orionark": "e2cd4671821abeb2", // Orionark
+			"Next": "cd8d3fe954852686", // Network Next
+			"blue": "c46cf0f66b4f1ac7", // Blue Mammoth Games
+			"turtle": "c0ed3f02466425fb", // Turtle Rock Studios
+			"psyonix": "b8e4f84ca63b2021", // Psyonix
+			"project": "a955f6f111256ab4", // Project Games
+			"gregyp": "9ccf980c401aa166", // gregyp
+			"hangzhou": "838d793ef34d9bd3", // Hangzhou 24 Entertainment Network Technology Co. Ltd.
+			"dylon": "2f51620acca790b1", // Dylon
+			"raspberry": "2b9c891211588152", // Raspberry
+			"esl": "1e4e8804454033c8", // ESL Gaming Online, Inc.
+			"ghost": "0000000000000000", // Ghost Army
+			"global": "global_prod", // Global prod metrics
+		}
+	case "staging":
+		return map[string]string{
+			"Next": "bdbebdbf0f7be395", // Network Next
+			"global": "global_staging", // Global staging metrics
+		}
+	case "dev":
+		return map[string]string{
+			"Next": "d25bfa9554e11583", // Network Next
+			"next": "bdbebdbf0f7be395", // networknext
+			"wolfjaw": "395a327867345157", // Wolfjaw Studios
+			"raspberry": "2b9c891211588152", // Raspberry
+			"valve":	"22edfbe14c08f419", // Valve
+			"ghost":	"0000000000000000", // Ghost Army
+			"global": "global_dev", // Global dev metrics
+		}
+	default:
+		return map[string]string{
+			"local": "bdbebdbf0f7be395", // Local testing
+			"global": "global_local", // Global local metrics
+		}
 	}
 }
