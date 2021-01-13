@@ -496,7 +496,7 @@ func (vm *VanityMetricHandler) DeleteMetricDescriptor(ctx context.Context, sd *m
 	return err
 }
 
-// Returns a marshaled JSON of all custom metrics tracked through Stackdriver
+// Returns a marshaled JSON of all custom metrics for a given service tracked through Stackdriver
 func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, serviceName string) ([]byte, error) {
 	descFilter := fmt.Sprintf(`metric.type = starts_with("custom.googleapis.com/%s")`, serviceName)
 	descReq := &monitoringpb.ListMetricDescriptorsRequest{
@@ -526,10 +526,10 @@ func (vm *VanityMetricHandler) ListCustomMetrics(ctx context.Context, sd *metric
 	return ret_val, nil
 }
 
-// Returns a map of display name to metric type for a custom service tracked through Stackdriver
-// Example: {"Route Matrix Bytes": "custom.googleapis.com/server_backend/route_matrix_update.bytes"}
+// Returns a map of display name to vanity metric type for a custom service tracked through Stackdriver
+// Example: {"Sessions Accelerated": "custom.googleapis.com/bdbebdbf0f7be395/vanity_metric.bdbebdbf0f7be395.sessions_accelerated"}
 func (vm *VanityMetricHandler) GetCustomMetricTypes(ctx context.Context, sd *metrics.StackDriverHandler, gcpProjectID string, serviceName string) (map[string]string, error) {
-	descFilter := fmt.Sprintf(`metric.type = starts_with("custom.googleapis.com/%s")`, serviceName)
+	descFilter := fmt.Sprintf(`metric.type = starts_with("custom.googleapis.com/%s/vanity_metric.%s")`, serviceName, serviceName)
 	descReq := &monitoringpb.ListMetricDescriptorsRequest{
 		Name:   fmt.Sprintf("projects/%s", gcpProjectID),
 		Filter: descFilter,
