@@ -318,7 +318,7 @@ func TestUpdateMetrics(t *testing.T) {
 		assert.Equal(t, int64(1), members)
 
 		// Sleep for 200 milliseconds to let the expiration time limit reach
-		time.Sleep(time.Millisecond*200)
+		time.Sleep(time.Millisecond * 200)
 
 		// Expire old sessions
 		err = vanityMetrics.ExpireOldSessions(conn)
@@ -464,7 +464,7 @@ func TestReadingMetrics(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Wait for StackDriver to write the result
-		time.Sleep(time.Second*2)
+		time.Sleep(time.Second * 2)
 
 		jsonMarshal, err := vanityMetrics.GetVanityMetricJSON(ctx, sd, gcpProjectID, fmt.Sprintf("%016x", buyerID), startTime, endTime)
 		assert.NoError(t, err)

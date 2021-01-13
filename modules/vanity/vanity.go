@@ -64,7 +64,7 @@ type VanityMetricHandler struct {
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
-	globalMetrics 		 *metrics.VanityMetric
+	globalMetrics        *metrics.VanityMetric
 	logger               log.Logger
 }
 
@@ -127,7 +127,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		subscriber:           vanitySubscriber,
 		hourMetricsMap:       vanityHourMetricsMap,
 		displayMap:           vanityDisplayMap,
-		globalMetrics:		  globalMetrics,
+		globalMetrics:        globalMetrics,
 		logger:               logger,
 	}, nil
 }
@@ -235,7 +235,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	// Start the goroutines for preparing and updating the metrics for the write loop
 	for i := 0; i < numVanityUpdateGoroutines; i++ {
 		wg.Add(1)
-		
+
 		go func() {
 			defer wg.Done()
 

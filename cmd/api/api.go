@@ -247,47 +247,47 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetShortNameBuyerIDMap(env string) (map[string]string) {
+func GetShortNameBuyerIDMap(env string) map[string]string {
 	switch env {
 	case "prod":
 		return map[string]string{
-			"gryadki": "f43f9358918c145f", // GryadkiTeam
-			"liquid": "f0d3cc73dca0bc89", // Liquid Bit
-			"velan": "e5cee310ae3e26bc", // Velan Studios
-			"orionark": "e2cd4671821abeb2", // Orionark
-			"Next": "cd8d3fe954852686", // Network Next
-			"blue": "c46cf0f66b4f1ac7", // Blue Mammoth Games
-			"turtle": "c0ed3f02466425fb", // Turtle Rock Studios
-			"psyonix": "b8e4f84ca63b2021", // Psyonix
-			"project": "a955f6f111256ab4", // Project Games
-			"gregyp": "9ccf980c401aa166", // gregyp
-			"hangzhou": "838d793ef34d9bd3", // Hangzhou 24 Entertainment Network Technology Co. Ltd.
-			"dylon": "2f51620acca790b1", // Dylon
+			"gryadki":   "f43f9358918c145f", // GryadkiTeam
+			"liquid":    "f0d3cc73dca0bc89", // Liquid Bit
+			"velan":     "e5cee310ae3e26bc", // Velan Studios
+			"orionark":  "e2cd4671821abeb2", // Orionark
+			"Next":      "cd8d3fe954852686", // Network Next
+			"blue":      "c46cf0f66b4f1ac7", // Blue Mammoth Games
+			"turtle":    "c0ed3f02466425fb", // Turtle Rock Studios
+			"psyonix":   "b8e4f84ca63b2021", // Psyonix
+			"project":   "a955f6f111256ab4", // Project Games
+			"gregyp":    "9ccf980c401aa166", // gregyp
+			"hangzhou":  "838d793ef34d9bd3", // Hangzhou 24 Entertainment Network Technology Co. Ltd.
+			"dylon":     "2f51620acca790b1", // Dylon
 			"raspberry": "2b9c891211588152", // Raspberry
-			"esl": "1e4e8804454033c8", // ESL Gaming Online, Inc.
-			"ghost": "0000000000000000", // Ghost Army
-			"global": "global_prod", // Global prod metrics
+			"esl":       "1e4e8804454033c8", // ESL Gaming Online, Inc.
+			"ghost":     "0000000000000000", // Ghost Army
+			"global":    "global_prod",      // Global prod metrics
 		}
 	case "staging":
 		return map[string]string{
-			"Next": "bdbebdbf0f7be395", // Network Next
-			"global": "global_staging", // Global staging metrics
+			"Next":   "bdbebdbf0f7be395", // Network Next
+			"global": "global_staging",   // Global staging metrics
 		}
 	case "dev":
 		return map[string]string{
-			"Next": "d25bfa9554e11583", // Network Next
-			"next": "bdbebdbf0f7be395", // networknext
-			"wolfjaw": "395a327867345157", // Wolfjaw Studios
+			"Next":      "d25bfa9554e11583", // Network Next
+			"next":      "bdbebdbf0f7be395", // networknext
+			"wolfjaw":   "395a327867345157", // Wolfjaw Studios
 			"raspberry": "2b9c891211588152", // Raspberry
-			"valve":	"22edfbe14c08f419", // Valve
-			"ghost":	"0000000000000000", // Ghost Army
-			"global": "global_dev", // Global dev metrics
+			"valve":     "22edfbe14c08f419", // Valve
+			"ghost":     "0000000000000000", // Ghost Army
+			"global":    "global_dev",       // Global dev metrics
 		}
 	default:
 		return map[string]string{
-			"local": "bdbebdbf0f7be395", // Local testing
+			"local":     "bdbebdbf0f7be395", // Local testing
 			"raspberry": "2b9c891211588152", // Raspberry
-			"global": "global_local", // Global local metrics
+			"global":    "global_local",     // Global local metrics
 		}
 	}
 }
