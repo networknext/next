@@ -286,6 +286,7 @@ func GetShortNameBuyerIDMap(env string) (map[string]string) {
 	default:
 		return map[string]string{
 			"local": "bdbebdbf0f7be395", // Local testing
+			"raspberry": "2b9c891211588152", // Raspberry
 			"global": "global_local", // Global local metrics
 		}
 	}
