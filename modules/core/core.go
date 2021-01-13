@@ -1290,7 +1290,6 @@ type InternalConfig struct {
 	HighFrequencyPings          bool
 	RouteDiversity              int32
 	MultipathThreshold          int32
-	MispredictMultipathOverload bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1310,7 +1309,6 @@ func NewInternalConfig() InternalConfig {
 		HighFrequencyPings:          true,
 		RouteDiversity:              0,
 		MultipathThreshold:          25,
-		MispredictMultipathOverload: true,
 	}
 }
 
@@ -1557,12 +1555,6 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rela
 				*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
 			}
 			routeState.Mispredict = true
-			if routeState.Multipath && internal.MispredictMultipathOverload {
-				routeState.MultipathOverload = true
-				if debug != nil {
-					*debug += "mispredict -> multipath overload\n"
-				}
-			}
 			return false, false
 		}
 	} else {
