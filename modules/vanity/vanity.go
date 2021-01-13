@@ -235,6 +235,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 	// Start the goroutines for preparing and updating the metrics for the write loop
 	for i := 0; i < numVanityUpdateGoroutines; i++ {
 		wg.Add(1)
+		
 		go func() {
 			defer wg.Done()
 
@@ -372,6 +373,18 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			vanityMetricDataBuffer[j].SessionsAccelerated = 1
 		}
 
+		level.Debug(vm.logger).Log("msg", "Received vanity values",
+			"buyerID", buyerID,
+			"userHash", vanityMetricDataBuffer[j].UserHash,
+			"sessionID", vanityMetricDataBuffer[j].SessionID,
+			"timestamp", vanityMetricDataBuffer[j].Timestamp,
+			"SlicesAccelerated", vanityMetricDataBuffer[j].SlicesAccelerated,
+			"SlicesLatencyReduced", vanityMetricDataBuffer[j].SlicesLatencyReduced,
+			"SlicesPacketLossReduced", vanityMetricDataBuffer[j].SlicesPacketLossReduced,
+			"SlicesJitterReduced", vanityMetricDataBuffer[j].SlicesJitterReduced,
+			"SessionsAccelerated", vanityMetricDataBuffer[j].SessionsAccelerated,
+		)
+
 		level.Debug(vm.logger).Log("msg", "Before updating buyer metric values",
 			"buyerID", buyerID,
 			"userHash", vanityMetricDataBuffer[j].UserHash,
@@ -423,7 +436,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SessionsAccelerated", vanityMetricPerBuyer.SessionsAccelerated.Value(),
 		)
 
-		level.Debug(vm.logger).Log("msg", "After updating buyer metric values",
+		level.Debug(vm.logger).Log("msg", "After updating global metric values",
 			"buyerID", buyerID,
 			"userHash", vanityMetricDataBuffer[j].UserHash,
 			"sessionID", vanityMetricDataBuffer[j].SessionID,
