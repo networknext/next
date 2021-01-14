@@ -180,20 +180,14 @@ func mainReturnWithCode() int {
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var buyerID string
 		rawCompanyCode, ok := r.URL.Query()["id"]
 		if !ok {
-			http.Error(w, "id is missing", http.StatusBadRequest)
-			return
-		}
-
-		companyCode := rawCompanyCode[0]
-		var buyerID string
-
-		if companyCode == "global" {
-			// Global vanity metrics
+			// id was not provided, assume buyerID is global
 			buyerID = fmt.Sprintf("global_%s", env)
 		} else {
-			// Vanity metrics for specific customer
+			companyCode := rawCompanyCode[0]
+			// Vanity metrics for specific buyer
 			buyer, err := storer.BuyerWithCompanyCode(companyCode)
 			if err != nil {
 				errStr := fmt.Sprintf("id is not valid: %v", err)
