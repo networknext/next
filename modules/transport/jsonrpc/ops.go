@@ -689,9 +689,11 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
 
+	// want: “$(relayname)-removed-$(date-time-of-removal)”
 	shortDate := time.Now().Format("2006-01-02")
 	shortTime := time.Now().Format("15:04:05")
-	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
+	relay.Name = fmt.Sprintf("%s-removed-%s-%s", relay.Name, shortDate, shortTime)
+
 	relay.Addr = net.UDPAddr{} // clear the address to 0 when removed
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
