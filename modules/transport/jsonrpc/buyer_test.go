@@ -1406,7 +1406,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	})
 }
 
-// moved to backend/cmd/next - will have to port the test
+// moved to /backend/cmd/next - will have to port the test
 // func TestGetAllSessionBillingInfo(t *testing.T) {
 // 	// this test follows all the add& rules for the SQL storer
 
