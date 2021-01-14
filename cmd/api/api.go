@@ -16,6 +16,7 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/vanity"
 )
@@ -28,7 +29,8 @@ var (
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
 	sd            *metrics.StackDriverHandler
-	shortNameMap  map[string]string
+	storer        storage.Storer
+	env           string
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -44,14 +46,15 @@ func mainReturnWithCode() int {
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		level.Error(logger).Log("err", "ENV not set")
-		return 1
+	// Get env and set the variable
+	{
+		envName, err := backend.GetEnv()
+		if err != nil {
+			level.Error(logger).Log("err", "ENV not set")
+			return 1
+		}
+		env = envName
 	}
-
-	// Set the map for buyer short name to buyerID
-	shortNameMap = GetShortNameBuyerIDMap(env)
 
 	gcpProjectID = backend.GetGCPProjectID()
 	gcpOK := gcpProjectID != ""
@@ -63,7 +66,14 @@ func mainReturnWithCode() int {
 	}
 
 	// StackDriver Logging
-	logger, err = backend.GetLogger(ctx, gcpProjectID, "api")
+	logger, err := backend.GetLogger(ctx, gcpProjectID, "api")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get storer for customer code to buyerID lookup
+	storer, err = backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -170,16 +180,27 @@ func mainReturnWithCode() int {
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rawShortName, ok := r.URL.Query()["id"]
+		rawCompanyCode, ok := r.URL.Query()["id"]
 		if !ok {
 			http.Error(w, "id is missing", http.StatusBadRequest)
 			return
 		}
-		shortName := rawShortName[0]
-		buyerID, exists := shortNameMap[shortName]
-		if !exists {
-			http.Error(w, "id is not valid", http.StatusBadRequest)
-			return
+
+		companyCode := rawCompanyCode[0]
+		var buyerID string
+
+		if companyCode == "global" {
+			// Global vanity metrics
+			buyerID = fmt.Sprintf("global_%s", env)
+		} else {
+			// Vanity metrics for specific customer
+			buyer, err := storer.BuyerWithCompanyCode(companyCode)
+			if err != nil {
+				errStr := fmt.Sprintf("id is not valid: %v", err)
+				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
+			buyerID = fmt.Sprintf("%016x", buyer.ID)
 		}
 
 		// Get start time
@@ -244,50 +265,5 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(statusCode)
 		w.Write([]byte(http.StatusText(statusCode)))
-	}
-}
-
-func GetShortNameBuyerIDMap(env string) map[string]string {
-	switch env {
-	case "prod":
-		return map[string]string{
-			"gryadki":   "f43f9358918c145f", // GryadkiTeam
-			"liquid":    "f0d3cc73dca0bc89", // Liquid Bit
-			"velan":     "e5cee310ae3e26bc", // Velan Studios
-			"orionark":  "e2cd4671821abeb2", // Orionark
-			"Next":      "cd8d3fe954852686", // Network Next
-			"blue":      "c46cf0f66b4f1ac7", // Blue Mammoth Games
-			"turtle":    "c0ed3f02466425fb", // Turtle Rock Studios
-			"psyonix":   "b8e4f84ca63b2021", // Psyonix
-			"project":   "a955f6f111256ab4", // Project Games
-			"gregyp":    "9ccf980c401aa166", // gregyp
-			"hangzhou":  "838d793ef34d9bd3", // Hangzhou 24 Entertainment Network Technology Co. Ltd.
-			"dylon":     "2f51620acca790b1", // Dylon
-			"raspberry": "2b9c891211588152", // Raspberry
-			"esl":       "1e4e8804454033c8", // ESL Gaming Online, Inc.
-			"ghost":     "0000000000000000", // Ghost Army
-			"global":    "global_prod",      // Global prod metrics
-		}
-	case "staging":
-		return map[string]string{
-			"next":   "bdbebdbf0f7be395", // Network Next
-			"global": "global_staging",   // Global staging metrics
-		}
-	case "dev":
-		return map[string]string{
-			"Next":      "d25bfa9554e11583", // Network Next
-			"next":      "bdbebdbf0f7be395", // networknext
-			"wolfjaw":   "395a327867345157", // Wolfjaw Studios
-			"raspberry": "2b9c891211588152", // Raspberry
-			"valve":     "22edfbe14c08f419", // Valve
-			"ghost":     "0000000000000000", // Ghost Army
-			"global":    "global_dev",       // Global dev metrics
-		}
-	default:
-		return map[string]string{
-			"local":     "bdbebdbf0f7be395", // Local testing
-			"raspberry": "2b9c891211588152", // Raspberry
-			"global":    "global_local",     // Global local metrics
-		}
 	}
 }
