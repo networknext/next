@@ -483,7 +483,7 @@ func main() {
 
 	// Flags to only show relays in certain states
 	var relaysStateShowFlags [6]bool
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", true, "only show enabled relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
@@ -492,7 +492,7 @@ func main() {
 
 	// Flags to hide relays in certain states
 	var relaysStateHideFlags [6]bool
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", true, "hide enabled relays")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", true, "hide relays in maintenance")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", true, "hide disabled relays")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", true, "hide quarantined relays")
@@ -720,6 +720,7 @@ func main() {
 			if relaysfs.NFlag() == 0 {
 				// If no flags are given, set the default set of flags
 				relaysStateShowFlags[routing.RelayStateEnabled] = true
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
 			}
 
 			if relaysAllFlag {
@@ -736,9 +737,27 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateOffline] = false
 			}
 
+			if relaysStateShowFlags[routing.RelayStateEnabled] {
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateMaintenance] {
+				relaysStateHideFlags[routing.RelayStateMaintenance] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateDisabled] {
+				relaysStateHideFlags[routing.RelayStateDisabled] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateQuarantine] {
+				relaysStateHideFlags[routing.RelayStateQuarantine] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateOffline] {
+				relaysStateHideFlags[routing.RelayStateOffline] = false
+			}
+
 			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-				//  Show decommissioned relays
-				relaysStateShowFlags[routing.RelayStateDecommissioned] = true
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
