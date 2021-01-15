@@ -80,7 +80,6 @@ func NewPortalCruncher(
 	btInstanceID string,
 	btTableName string,
 	btCfName string,
-	btMaxAgeDays int,
 	chanBufferSize int,
 	logger log.Logger,
 	metrics *metrics.PortalCruncherMetrics,
@@ -110,7 +109,7 @@ func NewPortalCruncher(
 	var btCfNames []string
 
 	if useBigtable {
-		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, btMaxAgeDays, logger)
+		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -449,7 +448,6 @@ func SetupBigtable(ctx context.Context,
 	btInstanceID string,
 	btTableName string,
 	btCfName string,
-	btMaxAgeDays int,
 	logger log.Logger) (*storage.BigTable, []string, error) {
 	// Setup Bigtable
 	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
@@ -481,18 +479,7 @@ func SetupBigtable(ctx context.Context,
 
 	if !tableExists {
 		level.Debug(logger).Log("msg", "Could not find table in bigtable instance")
-		// Create a table with the given name and column families
-		if err = btAdmin.CreateTable(ctx, btTableName, btCfNames); err != nil {
-			return nil, nil, err
-		}
-
-		// Set a garbage collection policy of maxAgeDays
-		maxAge := time.Hour * time.Duration(24*btMaxAgeDays)
-		if err = btAdmin.SetMaxAgePolicy(ctx, btTableName, btCfNames, maxAge); err != nil {
-			return nil, nil, fmt.Errorf("SetupBigtable() Failed to set max age policy: %v", err)
-		}
-
-		level.Debug(logger).Log("msg", "Successfully created table in bigtable instance")
+		return nil, nil, fmt.Errorf("SetupBigtable() Could not find table %s in bigtable instance. Create the table before starting the portal cruncher", btTableName)
 	} else {
 		level.Debug(logger).Log("msg", "Found table in bigtable instance")
 	}
