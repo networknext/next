@@ -409,12 +409,14 @@ func TestNewPortalCruncher(t *testing.T) {
 			tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 			assert.NoError(t, err)
 			assert.Equal(t, tableExists, true)
-			fmt.Printf("Test: table exists: %v\n", tableExists)
 
-			defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+			defer func() {
 				err := btAdmin.DeleteTable(ctx, btTableName)
 				assert.NoError(t, err)
-			}(t, ctx, btAdmin, btTableName)
+
+				err = btAdmin.Close()
+				assert.NoError(t, err)
+			}()
 		}
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -617,10 +619,13 @@ func TestPingRedis(t *testing.T) {
 			assert.NoError(t, err)
 			err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 			assert.NoError(t, err)
-			defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+			defer func() {
 				err := btAdmin.DeleteTable(ctx, btTableName)
 				assert.NoError(t, err)
-			}(t, ctx, btAdmin, btTableName)
+
+				err = btAdmin.Close()
+				assert.NoError(t, err)
+			}()
 		}
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -677,10 +682,13 @@ func TestPingRedis(t *testing.T) {
 			assert.NoError(t, err)
 			err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 			assert.NoError(t, err)
-			defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+			defer func() {
 				err := btAdmin.DeleteTable(ctx, btTableName)
 				assert.NoError(t, err)
-			}(t, ctx, btAdmin, btTableName)
+
+				err = btAdmin.Close()
+				assert.NoError(t, err)
+			}()
 		}
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -737,10 +745,13 @@ func TestPingRedis(t *testing.T) {
 			assert.NoError(t, err)
 			err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 			assert.NoError(t, err)
-			defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+			defer func() {
 				err := btAdmin.DeleteTable(ctx, btTableName)
 				assert.NoError(t, err)
-			}(t, ctx, btAdmin, btTableName)
+
+				err = btAdmin.Close()
+				assert.NoError(t, err)
+			}()
 		}
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -797,10 +808,13 @@ func TestPingRedis(t *testing.T) {
 			assert.NoError(t, err)
 			err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 			assert.NoError(t, err)
-			defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+			defer func() {
 				err := btAdmin.DeleteTable(ctx, btTableName)
 				assert.NoError(t, err)
-			}(t, ctx, btAdmin, btTableName)
+
+				err = btAdmin.Close()
+				assert.NoError(t, err)
+			}()
 		}
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -857,10 +871,13 @@ func TestPingRedis(t *testing.T) {
 			assert.NoError(t, err)
 			err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 			assert.NoError(t, err)
-			defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+			defer func() {
 				err := btAdmin.DeleteTable(ctx, btTableName)
 				assert.NoError(t, err)
-			}(t, ctx, btAdmin, btTableName)
+
+				err = btAdmin.Close()
+				assert.NoError(t, err)
+			}()
 		}
 
 		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -921,10 +938,13 @@ func TestDirectSession(t *testing.T) {
 		assert.NoError(t, err)
 		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 		assert.NoError(t, err)
-		defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+		defer func() {
 			err := btAdmin.DeleteTable(ctx, btTableName)
 			assert.NoError(t, err)
-		}(t, ctx, btAdmin, btTableName)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -1044,10 +1064,13 @@ func TestNextSession(t *testing.T) {
 		assert.NoError(t, err)
 		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 		assert.NoError(t, err)
-		defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+		defer func() {
 			err := btAdmin.DeleteTable(ctx, btTableName)
 			assert.NoError(t, err)
-		}(t, ctx, btAdmin, btTableName)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -1167,10 +1190,13 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 		assert.NoError(t, err)
-		defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+		defer func() {
 			err := btAdmin.DeleteTable(ctx, btTableName)
 			assert.NoError(t, err)
-		}(t, ctx, btAdmin, btTableName)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -1286,10 +1312,13 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 		assert.NoError(t, err)
-		defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+		defer func() {
 			err := btAdmin.DeleteTable(ctx, btTableName)
 			assert.NoError(t, err)
-		}(t, ctx, btAdmin, btTableName)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -1439,10 +1468,13 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		assert.NoError(t, err)
 		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 		assert.NoError(t, err)
-		defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+		defer func() {
 			err := btAdmin.DeleteTable(ctx, btTableName)
 			assert.NoError(t, err)
-		}(t, ctx, btAdmin, btTableName)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
@@ -1570,10 +1602,13 @@ func TestNoReinsertion(t *testing.T) {
 		assert.NoError(t, err)
 		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
 		assert.NoError(t, err)
-		defer func(t *testing.T, ctx context.Context, btAdmin *storage.BigTableAdmin, btTableName string) {
+		defer func() {
 			err := btAdmin.DeleteTable(ctx, btTableName)
 			assert.NoError(t, err)
-		}(t, ctx, btAdmin, btTableName)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
 	}
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 4, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
