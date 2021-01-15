@@ -2119,7 +2119,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		buyerCommand,
 		buyersCommand,
 		userCommand,
-		shaderCommand,
 		sshCommand,
 		costCommand,
 		optimizeCommand,
