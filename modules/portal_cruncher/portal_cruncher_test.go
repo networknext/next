@@ -672,9 +672,6 @@ func TestPingRedis(t *testing.T) {
 		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
-		// debug
-		ctx := context.Background()
-		logger := log.NewNopLogger()
 
 		if useBigtable {
 			// Create the bigtable table
@@ -735,9 +732,6 @@ func TestPingRedis(t *testing.T) {
 		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
-		// debug
-		ctx := context.Background()
-		logger := log.NewNopLogger()
 
 		if useBigtable {
 			// Create the bigtable table
@@ -798,9 +792,6 @@ func TestPingRedis(t *testing.T) {
 		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
-		// debug
-		ctx := context.Background()
-		logger := log.NewNopLogger()
 
 		if useBigtable {
 			// Create the bigtable table
@@ -861,9 +852,6 @@ func TestPingRedis(t *testing.T) {
 		btCfName := os.Getenv("BIGTABLE_CF_NAME")
 
 		btMaxAgeDays := 1
-		// debug
-		ctx := context.Background()
-		logger := log.NewNopLogger()
 
 		if useBigtable {
 			// Create the bigtable table
