@@ -1220,7 +1220,7 @@ func main() {
 			},
 			{ // info
 				Name:       "info",
-				ShortUsage: "next buyer info (id)",
+				ShortUsage: "next buyer info (id, name or substring)",
 				ShortHelp:  "Get detailed information for the specified buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
