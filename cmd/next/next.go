@@ -1292,19 +1292,6 @@ func main() {
 					return nil
 				},
 			},
-			{ // update
-				Name:       "update ",
-				ShortUsage: "next buyer remove (buyer name or substring) (field name) (value)",
-				ShortHelp:  "Remove a buyer from storage",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) != 3 {
-						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
-					}
-
-					updateBuyer(rpcClient, env, args[0], args[1], args[2])
-					return nil
-				},
-			},
 			{
 				Name:       "datacenters",
 				ShortUsage: "next buyer datacenters <buyer id|name|string, optional>",
