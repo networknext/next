@@ -4486,6 +4486,7 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
 void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
 {
     (void) manager;
+#if NEXT_ENABLE_MEMORY_CHECKS
     next_assert( manager );
     NEXT_VERIFY_SENTINEL( manager, 0 )
     NEXT_VERIFY_SENTINEL( manager, 1 )
@@ -4495,9 +4496,9 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 5 )
     NEXT_VERIFY_SENTINEL( manager, 6 )
     NEXT_VERIFY_SENTINEL( manager, 7 )
-
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
+#endif // #if NEXT_ENABLE_MEMORY_CHECKS
 }
 
 void next_relay_manager_reset( next_relay_manager_t * manager );
@@ -8365,6 +8366,7 @@ void next_pending_session_manager_initialize_sentinels( next_pending_session_man
 void next_pending_session_manager_verify_sentinels( next_pending_session_manager_t * session_manager )
 {
     (void) session_manager;
+#if NEXT_ENABLE_MEMORY_CHECKS
     next_assert( session_manager );
     NEXT_VERIFY_SENTINEL( session_manager, 0 )
     NEXT_VERIFY_SENTINEL( session_manager, 1 )
@@ -8376,6 +8378,7 @@ void next_pending_session_manager_verify_sentinels( next_pending_session_manager
             next_pending_session_entry_verify_sentinels( &session_manager->entries[i] );
         }
     }
+#endif // #if NEXT_ENABLE_MEMORY_CHECKS
 }
 
 void next_pending_session_manager_destroy( next_pending_session_manager_t * pending_session_manager );
@@ -8665,6 +8668,7 @@ void next_proxy_session_manager_initialize_sentinels( next_proxy_session_manager
 void next_proxy_session_manager_verify_sentinels( next_proxy_session_manager_t * session_manager )
 {
     (void) session_manager;
+#if NEXT_ENABLE_MEMORY_CHECKS
     next_assert( session_manager );
     NEXT_VERIFY_SENTINEL( session_manager, 0 )
     NEXT_VERIFY_SENTINEL( session_manager, 1 )
@@ -8676,6 +8680,7 @@ void next_proxy_session_manager_verify_sentinels( next_proxy_session_manager_t *
             next_proxy_session_entry_verify_sentinels( &session_manager->entries[i] );
         }
     }
+#endif // #if NEXT_ENABLE_MEMORY_CHECKS
 }
 
 void next_proxy_session_manager_destroy( next_proxy_session_manager_t * session_manager );
@@ -9490,6 +9495,7 @@ void next_session_manager_initialize_sentinels( next_session_manager_t * session
 void next_session_manager_verify_sentinels( next_session_manager_t * session_manager )
 {
     (void) session_manager;
+#if NEXT_ENABLE_MEMORY_CHECKS
     next_assert( session_manager );
     NEXT_VERIFY_SENTINEL( session_manager, 0 )
     NEXT_VERIFY_SENTINEL( session_manager, 1 )
@@ -9501,6 +9507,7 @@ void next_session_manager_verify_sentinels( next_session_manager_t * session_man
             next_session_entry_verify_sentinels( &session_manager->entries[i] );
         }
     }
+#endif // #if NEXT_ENABLE_MEMORY_CHECKS
 }
 
 void next_session_manager_destroy( next_session_manager_t * session_manager );
