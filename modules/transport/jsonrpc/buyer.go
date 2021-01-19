@@ -1775,7 +1775,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 		}
 
 	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
-		"HighFrequencyPings", "MispredictMultipathOverload":
+		"HighFrequencyPings", "MispredictMultipathOverload", "EnableVanityMetrics":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
