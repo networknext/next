@@ -1291,6 +1291,7 @@ type InternalConfig struct {
 	RouteDiversity              int32
 	MultipathThreshold          int32
 	MispredictMultipathOverload bool
+	EnableVanityMetrics			bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1311,6 +1312,7 @@ func NewInternalConfig() InternalConfig {
 		RouteDiversity:              0,
 		MultipathThreshold:          25,
 		MispredictMultipathOverload: true,
+		EnableVanityMetrics:		 false,
 	}
 }
 

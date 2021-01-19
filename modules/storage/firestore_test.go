@@ -505,6 +505,46 @@ func TestFirestore(t *testing.T) {
 
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("internal config for buyer id", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			expectedCustomer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			expected := routing.Buyer{
+				CompanyCode: "local",
+				ID:          1,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+			}
+
+			err = fs.AddCustomer(ctx, expectedCustomer)
+			assert.NoError(t, err)
+
+			err = fs.AddBuyer(ctx, expected)
+			assert.NoError(t, err)
+
+			actual, err := fs.Buyer(expected.ID)
+			assert.NoError(t, err)
+
+			expected.RouteShader = core.NewRouteShader()
+			expected.InternalConfig = core.NewInternalConfig()
+
+			assert.Equal(t, expected, actual)
+
+			ic, err := fs.InternalConfig(expected.ID)
+			assert.NoError(t, err)
+			assert.Equal(t, expected.InternalConfig, ic)
+		})
 	})
 
 	t.Run("Buyers", func(t *testing.T) {
