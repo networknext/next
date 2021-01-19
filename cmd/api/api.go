@@ -198,14 +198,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Check if vanity metrics enabled for this buyer
-			internal, err := storer.InternalConfig(buyer.ID)
-			if err != nil {
-				errStr := fmt.Sprintf("could not get internal config for buyer %s: %v", companyCode, err)
-				http.Error(w, errStr, http.StatusBadRequest)
-				return
-			}
-
-			if !internal.EnableVanityMetrics {
+			if !buyer.InternalConfig.EnableVanityMetrics {
 				// Vanity metrics are not enabled for this buyer
 				errStr := fmt.Sprintf("vanity metrics are not enabled for buyer %s", companyCode)
 				http.Error(w, errStr, http.StatusBadRequest)
