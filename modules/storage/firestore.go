@@ -138,7 +138,7 @@ type internalConfig struct {
 	RouteDiversity              int32 `firestore:"routeDiversity"`
 	MultipathThreshold          int32 `firestore:"multipathThreshold"`
 	MispredictMultipathOverload bool  `firestore:"mispredictMultipathOverload"`
-	EnableVanityMetrics 		bool  `firestore:"enableVanityMetrics"`
+	EnableVanityMetrics         bool  `firestore:"enableVanityMetrics"`
 }
 
 type FirestoreError struct {
@@ -2296,7 +2296,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"routeDiversity":              internalConfig.RouteDiversity,
 		"multipathThreshold":          internalConfig.MultipathThreshold,
 		"mispredictMultipathOverload": internalConfig.MispredictMultipathOverload,
-		"enableVanityMetrics":		   internalConfig.EnableVanityMetrics,
+		"enableVanityMetrics":         internalConfig.EnableVanityMetrics,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
