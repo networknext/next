@@ -181,16 +181,33 @@ func mainReturnWithCode() int {
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buyerID string
+		ctx := context.Background()
 		rawCompanyCode, ok := r.URL.Query()["id"]
 		if !ok {
 			// id was not provided, assume buyerID is global
 			buyerID = fmt.Sprintf("global_%s", env)
 		} else {
 			companyCode := rawCompanyCode[0]
+
 			// Vanity metrics for specific buyer
 			buyer, err := storer.BuyerWithCompanyCode(companyCode)
 			if err != nil {
 				errStr := fmt.Sprintf("id is not valid: %v", err)
+				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
+
+			// Check if vanity metrics enabled for this buyer
+			internal, err := storer.InternalConfig(buyer.ID)
+			if err != nil {
+				errStr := fmt.Sprintf("could not get internal config for buyer %s: %v", companyCode, err)
+				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
+
+			if !internal.EnableVanityMetrics {
+				// Vanity metrics are not enabled for this buyer
+				errStr := fmt.Sprintf("vanity metrics are not enabled for buyer %s", companyCode)
 				http.Error(w, errStr, http.StatusBadRequest)
 				return
 			}
@@ -234,7 +251,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		data, err := vanityMetrics.GetVanityMetricJSON(context.Background(), sd, gcpProjectID, buyerID, startTime, endTime)
+		data, err := vanityMetrics.GetVanityMetricJSON(ctx, sd, gcpProjectID, buyerID, startTime, endTime)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
