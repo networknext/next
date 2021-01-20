@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/beacon"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
@@ -50,51 +51,12 @@ const (
 	NEXT_PLATFORM_MAX           = 9
 )
 
-type NextBeaconPacket struct {
-	Version          uint32
-	CustomerId       uint64
-	DatacenterId     uint64
-	UserHash         uint64
-	AddressHash      uint64
-	SessionId        uint64
-	PlatformId       int32
-	ConnectionType   int32
-	Enabled          bool
-	Upgraded         bool
-	Next             bool
-	FallbackToDirect bool
-}
-
-func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
-
-	stream.SerializeBits(&packet.Version, 8)
-
-	stream.SerializeBool(&packet.Enabled)
-	stream.SerializeBool(&packet.Upgraded)
-	stream.SerializeBool(&packet.Next)
-	stream.SerializeBool(&packet.FallbackToDirect)
-
-	hasDatacenterId := stream.IsWriting() && packet.DatacenterId != 0
-	stream.SerializeBool(&hasDatacenterId)
-
-	stream.SerializeUint64(&packet.CustomerId)
-
-	if hasDatacenterId {
-		stream.SerializeUint64(&packet.DatacenterId)
-	}
-
-	if packet.Upgraded {
-		stream.SerializeUint64(&packet.UserHash)
-		stream.SerializeUint64(&packet.AddressHash)
-		stream.SerializeUint64(&packet.SessionId)
-	}
-
-	stream.SerializeInteger(&packet.PlatformId, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX)
-
-	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
-
-	return stream.Error()
-}
+var (
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
+)
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -103,6 +65,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
+	fmt.Printf("beacon: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	serviceName := "beacon"
 
@@ -128,6 +91,9 @@ func mainReturnWithCode() int {
 			return 1
 		}
 	}
+
+	// TODO: Create bigquery client and start write loop
+	// TODO: create metrics handler
 
 	// Start HTTP server
 	{
@@ -212,7 +178,7 @@ func mainReturnWithCode() int {
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 
-			packet := NextBeaconPacket{}
+			packet := beacon.NextBeaconPacket{}
 
 			for {
 				data := dataArray[:]
@@ -255,6 +221,9 @@ func mainReturnWithCode() int {
 
 				// todo
 				_ = fromAddr
+
+				// TODO: insert into bigquery if gcpOK
+				// TODO: write metrics to stackdriver / local metrics 
 
 			}
 
