@@ -2303,35 +2303,6 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	return err
 }
 
-func (fs *Firestore) GetFirestoreIDFromBuyerID(ctx context.Context, buyerID uint64) (string, error) {
-	buyerDocs := fs.Client.Collection("Buyer").Documents(ctx)
-	defer buyerDocs.Stop()
-
-	for {
-		buyerDoc, err := buyerDocs.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return "", err
-		}
-
-		var b buyer
-		err = buyerDoc.DataTo(&b)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", buyerDoc.Ref.ID), "err", err)
-			continue
-		}
-
-		if uint64(b.ID) == buyerID {
-			return buyerDoc.Ref.ID, nil
-		}
-	}
-
-	level.Error(fs.Logger).Log("err", fmt.Sprintf("could not find firestore id for buyer id %d", buyerID))
-	return "", fmt.Errorf("could not find firestore id for buyer id")
-}
-
 func (fs *Firestore) GetFeatureFlags() map[string]bool {
 	return map[string]bool{}
 }
@@ -2349,18 +2320,7 @@ func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName strin
 }
 
 func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
-	ctx := context.Background()
-	firestoreID, err := fs.GetFirestoreIDFromBuyerID(ctx, buyerID)
-	if err != nil {
-		return core.InternalConfig{}, err
-	}
-
-	ic, err := fs.GetInternalConfigForBuyerID(ctx, firestoreID)
-	if err != nil {
-		return core.InternalConfig{}, err
-	}
-
-	return ic, nil
+	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) RouteShader(buyerID uint64) (core.RouteShader, error) {
