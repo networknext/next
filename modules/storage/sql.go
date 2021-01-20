@@ -1904,8 +1904,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		RouteDiversity:              int64(ic.RouteDiversity),
 		MultipathThreshold:          int64(ic.MultipathThreshold),
 		MispredictMultipathOverload: ic.MispredictMultipathOverload,
-
-		MaxRTT: int64(ic.MaxRTT),
+		EnableVanityMetrics:         ic.EnableVanityMetrics,
+		MaxRTT:                      int64(ic.MaxRTT),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -1913,8 +1913,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
+	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, enable_vanity_metrics, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1939,6 +1939,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.RouteDiversity,
 		internalConfig.MultipathThreshold,
 		internalConfig.MispredictMultipathOverload,
+		internalConfig.EnableVanityMetrics,
 		buyer.DatabaseID,
 	)
 
