@@ -1714,7 +1714,8 @@ func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfi
 
 	ic, err := s.Storage.InternalConfig(arg.BuyerID)
 	if err != nil {
-		// no InternalConfig stored for the buyer
+		err = fmt.Errorf("GetInternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
