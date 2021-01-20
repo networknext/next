@@ -72,11 +72,9 @@ if (useAPI) {
   Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
 }
 
-const gtagID = process.env.VUE_APP_GTAG_ID || ''
-
-if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && gtagID !== '') {
+if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
   Vue.use(VueGtag, {
-    config: { id: gtagID }
+    config: { id: 'UA-141272717-1' }
   }, router)
 }
 

@@ -1,12 +1,12 @@
 <template>
-  <div :class="[{'alert': true}, className]" role="alert" v-if="alertMessage !== ''">
+  <div :class="[{'alert': true}, className]" role="alert">
     {{ alertMessage }}
     <slot v-if="showSlots"></slot>
   </div>
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue, Prop } from 'vue-property-decorator'
 
 /**
  * This component is a reusable alert component
@@ -16,40 +16,48 @@ import { Component, Vue } from 'vue-property-decorator'
  *  passed in alert type
  */
 
+/**
+ * TODO: Add helper function that make it easier to set the message and alert type
+ *  It is kind of a pain to deal with when there are multiple alerts on the page
+ *  Similar idea to the sessions count component
+ */
+
 import { AlertType } from '@/components/types/AlertTypes'
 
 @Component
 export default class Alert extends Vue {
+  @Prop({ required: false, type: String, default: '' }) message!: string
+  @Prop({ required: false, type: String, default: AlertType.DEFAULT }) alertType!: string
+
   get alertMessage (): string {
-    return this.message
+    if (this.message !== this.givenMessage) {
+      this.givenMessage = this.message
+      return this.givenMessage
+    }
+    return this.currentMessage
   }
 
   get className (): string {
-    return this.alertType
+    if (this.alertType !== this.givenClass) {
+      this.givenClass = this.alertType
+      return this.givenClass
+    }
+    return this.currentClass
   }
 
-  private message: string
-  private alertType: AlertType
+  private givenMessage: string
+  private givenClass: string
+  private currentMessage: string
+  private currentClass: string
   private showSlots: boolean
 
   constructor () {
     super()
-    this.message = ''
-    this.alertType = AlertType.DEFAULT
+    this.givenMessage = this.message
+    this.givenClass = this.alertType
+    this.currentMessage = this.givenMessage
+    this.currentClass = this.givenClass
     this.showSlots = true
-  }
-
-  public setMessage (message: string) {
-    this.message = message
-  }
-
-  public setAlertType (alertType: AlertType) {
-    this.alertType = alertType
-  }
-
-  public resetAlert () {
-    this.alertType = AlertType.DEFAULT
-    this.message = ''
   }
 
   public resendVerificationEmail () {
@@ -65,11 +73,12 @@ export default class Alert extends Vue {
       })
       .then((response: any) => {
         this.showSlots = false
-        this.setMessage('Verification email was sent successfully. Please check your email for futher instructions.')
-        this.setAlertType(AlertType.SUCCESS)
+        this.currentMessage =
+          'Verification email was sent successfully. Please check your email for futher instructions.'
+        this.currentClass = AlertType.SUCCESS
         setTimeout(() => {
-          this.setMessage('')
-          this.setAlertType(AlertType.DEFAULT)
+          this.currentMessage = this.givenMessage
+          this.currentClass = this.givenClass
           this.showSlots = true
         }, 5000)
       })
@@ -77,11 +86,12 @@ export default class Alert extends Vue {
         this.showSlots = false
         console.log('something went wrong with resending verification email')
         console.log(error)
-        this.setMessage('Something went wrong sending the verification email. Please try again later.')
-        this.setAlertType(AlertType.ERROR)
+        this.currentMessage =
+          'Something went wrong sending the verification email. Please try again later.'
+        this.currentClass = AlertType.ERROR
         setTimeout(() => {
-          this.setMessage('')
-          this.setAlertType(AlertType.DEFAULT)
+          this.currentMessage = this.givenMessage
+          this.currentClass = this.givenClass
           this.showSlots = true
         }, 5000)
       })

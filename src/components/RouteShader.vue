@@ -3,7 +3,7 @@
     <h5 class="card-title">
         Route Shader
     </h5>
-    <Alert ref="responseAlert"/>
+    <Alert :alertType="alertType" :message="message" v-if="message !== ''"/>
     <form v-on:submit.prevent="updateRouteShader()">
         <div class="form-group row">
             <div class="col-sm-2">Enable Network Next</div>
@@ -119,11 +119,6 @@ import { UserProfile } from '@/components/types/AuthTypes.ts'
   }
 })
 export default class RouteShader extends Vue {
-  // Register the alert component to access its set methods
-  $refs!: {
-    responseAlert: Alert;
-  }
-
   private routeShader: any
   private message: string
   private alertType: string
@@ -152,11 +147,10 @@ export default class RouteShader extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong updating the route shader')
         console.log(error)
-        this.$refs.responseAlert.setMessage('Failed to update router shader')
-        this.$refs.responseAlert.setAlertType(AlertType.ERROR)
+        this.alertType = AlertType.ERROR
+        this.message = 'Failed to update router shader'
         setTimeout(() => {
-          this.$refs.responseAlert.setMessage('')
-          this.$refs.responseAlert.setAlertType(AlertType.DEFAULT)
+          this.message = ''
         }, 5000)
       })
   }

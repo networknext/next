@@ -2,7 +2,7 @@
   <div class="card-body" id="config-page">
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">Manage how your game connects to Network Next.</p>
-    <Alert ref="responseAlert" />
+    <Alert :message="message" :alertType="alertType" v-if="message || '' !== ''" />
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
         <label>Company Name</label>
@@ -56,13 +56,10 @@ import { cloneDeep } from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
-  // Register the alert component to access its set methods
-  $refs!: {
-    responseAlert: Alert;
-  }
-
   private companyName: string
   private pubKey: string
+  private message: string
+  private alertType: string
   private userProfile: UserProfile
   private unwatch: any
 
@@ -70,6 +67,8 @@ export default class GameConfiguration extends Vue {
     super()
     this.companyName = ''
     this.pubKey = ''
+    this.message = ''
+    this.alertType = ''
     this.userProfile = {} as UserProfile
   }
 
@@ -108,10 +107,10 @@ export default class GameConfiguration extends Vue {
       .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.$refs.responseAlert.setMessage('Updated public key successfully')
-        this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
+        this.alertType = AlertType.SUCCESS
+        this.message = 'Updated public key successfully'
         setTimeout(() => {
-          this.$refs.responseAlert.resetAlert()
+          this.message = ''
         }, 5000)
         this.$apiService.fetchAllBuyers()
           .then((response: any) => {
@@ -122,10 +121,10 @@ export default class GameConfiguration extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
-        this.$refs.responseAlert.setMessage('Failed to update public key')
-        this.$refs.responseAlert.setAlertType(AlertType.ERROR)
+        this.alertType = AlertType.ERROR
+        this.message = 'Failed to update public key'
         setTimeout(() => {
-          this.$refs.responseAlert.resetAlert()
+          this.message = ''
         }, 5000)
       })
   }

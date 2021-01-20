@@ -15,8 +15,8 @@
       <h1 class="h2">
         Session Tool
       </h1>
-      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-show="$store.getters.isAnonymousPlus">
-        <Alert ref="verifyAlert">
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
+        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.INFO" ref="verifyAlert">
           <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
             Resend email
           </a>
@@ -45,7 +45,7 @@
         </div>
       </div>
     </form>
-    <Alert ref="inputAlert"/>
+    <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/session-tool'"/>
     <router-view :key="$route.fullPath"/>
   </div>
 </template>
@@ -70,28 +70,18 @@ import { AlertType } from '@/components/types/AlertTypes'
   }
 })
 export default class SessionToolWorkspace extends Vue {
-  // Register the alert component to access its set methods
-  $refs!: {
-    verifyAlert: Alert;
-    inputAlert: Alert;
-  }
-
   private alertType: string
+  private message: string
   private searchID: string
+  private AlertType: any
 
   constructor () {
     super()
     this.alertType = ''
     this.searchID = ''
-  }
-
-  private mounted () {
-    this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
-    this.$refs.verifyAlert.setAlertType(AlertType.INFO)
-    if (this.$route.path === '/session-tool') {
-      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
-      this.$refs.inputAlert.setAlertType(AlertType.INFO)
-    }
+    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = AlertType.INFO
+    this.AlertType = AlertType
   }
 
   private created () {
@@ -100,22 +90,20 @@ export default class SessionToolWorkspace extends Vue {
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
     this.searchID = to.params.pathMatch || ''
-    if (this.searchID === '') {
-      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
-      this.$refs.inputAlert.setAlertType(AlertType.INFO)
-    }
+    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = AlertType.INFO
     next()
   }
 
   private fetchSessionDetails () {
-    this.$refs.inputAlert.resetAlert()
+    this.message = ''
     if (this.searchID === '' && this.$route.path !== '/session-tool') {
       this.$router.push({ path: '/session-tool' })
       return
     }
     if (this.searchID === '' && this.$route.path === '/session-tool') {
-      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
-      this.$refs.inputAlert.setAlertType(AlertType.INFO)
+      this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+      this.alertType = AlertType.INFO
       return
     }
     const newRoute = `/session-tool/${this.searchID}`
