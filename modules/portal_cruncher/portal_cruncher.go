@@ -469,13 +469,13 @@ func SetupBigtable(ctx context.Context,
 	if err != nil {
 		return nil, nil, err
 	}
-  
+
 	// Check if the table exists in the instance
 	tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("SetupBigtable() Failed to verify if table exists: %v", err)
 	}
-	
+
 	if !tableExists {
 		level.Debug(logger).Log("msg", "Could not find table in bigtable instance")
 		return nil, nil, fmt.Errorf("SetupBigtable() Could not find table %s in bigtable instance. Create the table before starting the portal cruncher", btTableName)
