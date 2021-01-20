@@ -966,23 +966,6 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	if routeShader.ReducePacketLoss {
 
-		// if packet loss occurred on direct, penalize the near relay for the route
-
-		if firstRouteRelayId != 0 && nextPacketLoss > 0 {
-
-			for i := range sourceRelayId {
-
-				if sourceRelayId[i] == firstRouteRelayId {
-
-					if sourceRelayPacketLoss[i] == 0 {
-						routeState.NearRelayPLCount[i]++
-					}
-
-					break
-				}
-			}
-		}
-
 		// exclude near relays with higher number of packet loss events than direct (sporadic packet loss)
 
 		if directPacketLoss > 0 {
@@ -1308,6 +1291,7 @@ type InternalConfig struct {
 	RouteDiversity              int32
 	MultipathThreshold          int32
 	MispredictMultipathOverload bool
+	EnableVanityMetrics         bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1328,6 +1312,7 @@ func NewInternalConfig() InternalConfig {
 		RouteDiversity:              0,
 		MultipathThreshold:          25,
 		MispredictMultipathOverload: true,
+		EnableVanityMetrics:         false,
 	}
 }
 
@@ -1430,7 +1415,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 			if debug != nil {
 				*debug += "try to reduce latency\n"
 			}
-			maxCost = directLatency - routeShader.LatencyThreshold
+			maxCost = directLatency - (routeShader.LatencyThreshold + internal.RouteSelectThreshold)
 			reduceLatency = true
 		} else {
 			if debug != nil {
@@ -1447,7 +1432,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
-		maxCost = directLatency + internal.MaxLatencyTradeOff
+		maxCost = directLatency + internal.MaxLatencyTradeOff - internal.RouteSelectThreshold
 		reducePacketLoss = true
 	}
 
@@ -1460,8 +1445,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		if debug != nil {
 			*debug += "pro mode\n"
 		}
-		maxCost = directLatency + internal.MaxLatencyTradeOff
+		maxCost = directLatency + internal.MaxLatencyTradeOff - internal.RouteSelectThreshold
 		proMode = true
+		reduceLatency = false
+		reducePacketLoss = false
 	}
 
 	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes

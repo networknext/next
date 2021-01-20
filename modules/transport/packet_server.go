@@ -437,7 +437,10 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
 			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
 		} else {
-			var rtt, jitter, packetLoss float32
+			rtt := float32(packet.NearRelayRTT[i])
+			jitter := float32(packet.NearRelayJitter[i])
+			packetLoss := float32(packet.NearRelayPacketLoss[i])
+
 			stream.SerializeFloat32(&rtt)
 			stream.SerializeFloat32(&jitter)
 			stream.SerializeFloat32(&packetLoss)
@@ -614,6 +617,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
 
+	// IMPORTANT: If you ever make this serialize not backwards compatible with old session data
+	// you must update the too old version number here and it will be a disruptive update (sessions will fall back to direct!)
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
 	}
