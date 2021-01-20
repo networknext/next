@@ -212,8 +212,8 @@ func main() {
 		}
 
 		if !tableExists {
-			level.Info(logger).Log("envvar", "BIGTABLE_TABLE_NAME", "msg", "Table does not exist in Bigtable instance. Creating empty table to run portal.")
-			btAdmin.CreateTable(ctx, btTableName, []string{btCfName})
+			level.Error(logger).Log("table", btTableName, "err", "Table does not exist in Bigtable instance. Create the table before starting the portal")
+			os.Exit(1)
 		}
 
 		// Close the admin client

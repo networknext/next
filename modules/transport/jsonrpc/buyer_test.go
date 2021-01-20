@@ -1693,5 +1693,9 @@ func TestGetAllSessionBillingInfo(t *testing.T) {
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].RouteChanged)
 		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].CommitVeto)
 
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].Pro)
+		assert.Equal(t, bigquery.NullBool{Bool: true, Valid: true}, reply.SessionBillingInfo[0].LackOfDiversity)
+		assert.Equal(t, bigquery.NullInt64{Int64: 25, Valid: true}, reply.SessionBillingInfo[0].RouteDiversity)
+
 	})
 }
