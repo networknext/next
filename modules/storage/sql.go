@@ -58,6 +58,8 @@ type SQL struct {
 	routeShaderMutex    sync.RWMutex
 	bannedUserMutex     sync.RWMutex
 
+	//  int64: PostgreSQL primary key
+	// uint64: backend/storer internal ID
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
 	customerIDs   map[int64]string
@@ -2163,6 +2165,15 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id=$2"))
 		args = append(args, multipathThreshold, buyer.DatabaseID)
 		ic.MultipathThreshold = multipathThreshold
+	case "EnableVanityMetrics":
+		enableVanityMetrics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id=$2"))
+		args = append(args, enableVanityMetrics, buyer.DatabaseID)
+		ic.EnableVanityMetrics = enableVanityMetrics
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}
