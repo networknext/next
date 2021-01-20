@@ -91,6 +91,7 @@ type SessionUpdateMetrics struct {
 	NoRoute                                    Counter
 	MultipathOverload                          Counter
 	LatencyWorse                               Counter
+	MispredictVeto                             Counter
 	WriteResponseFailure                       Counter
 }
 
@@ -131,6 +132,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	NoRoute:                                    &EmptyCounter{},
 	MultipathOverload:                          &EmptyCounter{},
 	LatencyWorse:                               &EmptyCounter{},
+	MispredictVeto:                             &EmptyCounter{},
 	WriteResponseFailure:                       &EmptyCounter{},
 }
 
@@ -841,6 +843,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".latency_worse",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + "'s latency was made worse by network next.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.MispredictVeto, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Mispredict Veto",
+		ServiceName: serviceName,
+		ID:          handlerID + ".mispredict_veto",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + "was vetoed due too mispredicting too many times.",
 	})
 	if err != nil {
 		return nil, err
