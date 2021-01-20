@@ -195,7 +195,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	for _, b := range s.Storage.Buyers() {
 		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() could not find Customer %s: %v", b.CompanyCode, err)
+			err = fmt.Errorf("Buyers() could not find Customer %s fo %s: %v", b.CompanyCode, b.String(), err)
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -689,9 +689,11 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
 
+	// want: “$(relayname)-removed-$(date-time-of-removal)”
 	shortDate := time.Now().Format("2006-01-02")
 	shortTime := time.Now().Format("15:04:05")
-	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
+	relay.Name = fmt.Sprintf("%s-removed-%s-%s", relay.Name, shortDate, shortTime)
+
 	relay.Addr = net.UDPAddr{} // clear the address to 0 when removed
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {

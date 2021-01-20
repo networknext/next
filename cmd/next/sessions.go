@@ -12,6 +12,7 @@ import (
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
@@ -364,6 +365,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NextJitter",
 		"DirectPacketLoss",
 		"NextPacketLoss",
+		"RouteDiversity",
 		"NextRelays",
 		"NextRelaysPrice",
 		"TotalPrice",
@@ -392,12 +394,14 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Flagged",
 		"Multipath",
 		"RttReduction",
+		"Pro",
 		"PacketLossReduction",
 		"FallbackToDirect",
 		"Mispredicted",
 		"Vetoed",
 		"MultipathVetoed",
 		"LatencyWorse",
+		"LackOfDiversity",
 		"NoRoute",
 		"NextLatencyTooHigh",
 		"RouteChanged",
@@ -539,12 +543,12 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// ConnectionType
 		connType := ""
 		if billingEntry.ConnectionType.Valid {
-			connType = fmt.Sprintf("%d", billingEntry.ConnectionType.Int64)
+			connType = transport.ConnectionTypeText(uint8(billingEntry.ConnectionType.Int64))
 		}
 		// PlatformType
 		platformType := ""
 		if billingEntry.PlatformType.Valid {
-			platformType = fmt.Sprintf("%d", billingEntry.PlatformType.Int64)
+			platformType = transport.PlatformTypeText(uint8(billingEntry.PlatformType.Int64))
 		}
 		// SdkVersion
 		sdkVersion := ""
@@ -706,6 +710,21 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.CommitVeto.Bool {
 			commitVeto = "true"
 		}
+		// Pro
+		pro := ""
+		if billingEntry.Pro.Bool {
+			pro = "true"
+		}
+		// LackOfDiversity
+		lackOfDiversity := ""
+		if billingEntry.LackOfDiversity.Bool {
+			lackOfDiversity = "true"
+		}
+		// RouteDiversity
+		routeDiversity := ""
+		if billingEntry.RouteDiversity.Valid {
+			routeDiversity = fmt.Sprintf("%d", billingEntry.RouteDiversity.Int64)
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -726,6 +745,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nextJitter,
 			directPacketLoss,
 			nextPacketLoss,
+			routeDiversity,
 			nextRelays,
 			nextRelaysPrice,
 			totalPrice,
@@ -754,12 +774,14 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			flagged,
 			multipath,
 			rttReduction,
+			pro,
 			plReduction,
 			fallbackToDirect,
 			mispredicted,
 			vetoed,
 			multipathVetoed,
 			latencyWorse,
+			lackOfDiversity,
 			noRoute,
 			nextLatencyTooHigh,
 			routeChanged,

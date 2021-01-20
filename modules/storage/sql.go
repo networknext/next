@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"sort"
@@ -340,10 +339,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
 	}
 
-	internalID := binary.LittleEndian.Uint64(b.PublicKey[:8])
-
 	buyer := sqlBuyer{
-		ID:             internalID,
+		ID:             b.ID,
 		CompanyCode:    b.CompanyCode,
 		ShortName:      b.CompanyCode,
 		IsLiveCustomer: b.Live,
@@ -354,8 +351,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("short_name, is_live_customer, debug, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -364,6 +361,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	result, err := stmt.Exec(
+		int64(buyer.ID),
 		buyer.ShortName,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
@@ -391,7 +389,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	db.syncBuyers(ctx)
 
 	db.buyerMutex.RLock()
-	newBuyer := db.buyers[internalID]
+	newBuyer := db.buyers[buyer.ID]
 	db.buyerMutex.RUnlock()
 
 	newBuyer.RouteShader = core.NewRouteShader()
@@ -399,7 +397,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// update local fields
 	db.buyerMutex.Lock()
-	db.buyers[internalID] = newBuyer
+	db.buyers[buyer.ID] = newBuyer
 	db.buyerMutex.Unlock()
 
 	db.customerMutex.Lock()

@@ -1461,7 +1461,7 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	cachedBuyerName := ""
 	cachedDatacenterID := int64(0)
 	var cachedDatacenterName bigquery.NullString
-	cachedRelayNames := []int64{}
+	// cachedRelayNames := []int64{}
 
 	var dbName string
 	var sql bytes.Buffer
@@ -1526,7 +1526,10 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 	nextLatencyTooHigh,
 	routeChanged,
 	commitVeto,
-	tags
+	tags,
+	pro,
+	lackOfDiversity,
+	routeDiversity
     from `))
 
 	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
@@ -1638,22 +1641,22 @@ func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSe
 		}
 
 		// sort then compare (these are very small slices)
-		sort.Slice(row.NextRelays, func(i, j int) bool {
-			return row.NextRelays[i] < row.NextRelays[j]
-		})
+		// sort.Slice(row.NextRelays, func(i, j int) bool {
+		// 	return row.NextRelays[i] < row.NextRelays[j]
+		// })
 
-		if !slicesAreEqual(row.NextRelays, cachedRelayNames) {
-			for _, relayID := range row.NextRelays {
-				relay, err := s.Storage.Relay(uint64(relayID))
-				if err != nil {
-					err = fmt.Errorf("GetAllSessionBillingInfo() could not parse Relay ID: %v", err)
-					level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(relayID)))
-					return err
-				}
-				rows[index].NextRelaysStrings = append(rows[index].NextRelaysStrings, relay.Name)
-				cachedRelayNames = append(cachedRelayNames, relayID)
+		// if !slicesAreEqual(row.NextRelays, cachedRelayNames) {
+		for _, relayID := range row.NextRelays {
+			relay, err := s.Storage.Relay(uint64(relayID))
+			if err != nil {
+				err = fmt.Errorf("GetAllSessionBillingInfo() could not parse Relay ID: %v", err)
+				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(relayID)))
+				return err
 			}
+			rows[index].NextRelaysStrings = append(rows[index].NextRelaysStrings, relay.Name)
+			// cachedRelayNames = append(cachedRelayNames, relayID)
 		}
+		// }
 
 	}
 
@@ -1711,7 +1714,8 @@ func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfi
 
 	ic, err := s.Storage.InternalConfig(arg.BuyerID)
 	if err != nil {
-		// no InternalConfig stored for the buyer
+		err = fmt.Errorf("GetInternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -1772,7 +1776,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 		}
 
 	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
-		"HighFrequencyPings", "MispredictMultipathOverload":
+		"HighFrequencyPings", "MispredictMultipathOverload", "EnableVanityMetrics":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
