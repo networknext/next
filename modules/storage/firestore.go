@@ -138,6 +138,7 @@ type internalConfig struct {
 	RouteDiversity              int32 `firestore:"routeDiversity"`
 	MultipathThreshold          int32 `firestore:"multipathThreshold"`
 	MispredictMultipathOverload bool  `firestore:"mispredictMultipathOverload"`
+	EnableVanityMetrics         bool  `firestore:"enableVanityMetrics"`
 }
 
 type FirestoreError struct {
@@ -1279,7 +1280,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
-				"name":            r.Name,
+				"displayName":     r.Name,
 				"publicAddress":   r.Addr.String(),
 				"state":           r.State,
 				"lastUpdateTime":  r.LastUpdateTime,
@@ -2269,6 +2270,7 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.RouteDiversity = tempIC.RouteDiversity
 	ic.MultipathThreshold = tempIC.MultipathThreshold
 	ic.MispredictMultipathOverload = tempIC.MispredictMultipathOverload
+	ic.EnableVanityMetrics = tempIC.EnableVanityMetrics
 
 	return ic, nil
 }
@@ -2294,6 +2296,7 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 		"routeDiversity":              internalConfig.RouteDiversity,
 		"multipathThreshold":          internalConfig.MultipathThreshold,
 		"mispredictMultipathOverload": internalConfig.MispredictMultipathOverload,
+		"enableVanityMetrics":         internalConfig.EnableVanityMetrics,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
@@ -2305,73 +2308,73 @@ func (fs *Firestore) GetFeatureFlags() map[string]bool {
 }
 
 func (fs *Firestore) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
-	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not impemented in Firestore storer"))
+	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error {
-	return fmt.Errorf(("SetFeatureFlagByName not impemented in Firestore storer"))
+	return fmt.Errorf(("SetFeatureFlagByName not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName string) error {
-	return fmt.Errorf(("RemoveFeatureFlagByName not impemented in Firestore storer"))
+	return fmt.Errorf(("RemoveFeatureFlagByName not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
-	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in Firestore storer"))
+	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) RouteShader(buyerID uint64) (core.RouteShader, error) {
-	return core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in Firestore storer"))
+	return core.RouteShader{}, fmt.Errorf(("RouteShaders not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
-	return fmt.Errorf("AddInternalConfig not impemented in Firestore storer")
+	return fmt.Errorf("AddInternalConfig not implemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateInternalConfig not impemented in Firestore storer")
+	return fmt.Errorf("UpdateInternalConfig not implemented in Firestore storer")
 }
 
 func (fs *Firestore) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveInternalConfig not impemented in Firestore storer")
+	return fmt.Errorf("RemoveInternalConfig not implemented in Firestore storer")
 }
 
 func (fs *Firestore) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	return fmt.Errorf("AddRouteShader not impemented in Firestore storer")
+	return fmt.Errorf("AddRouteShader not implemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateRouteShader not impemented in Firestore storer")
+	return fmt.Errorf("UpdateRouteShader not implemented in Firestore storer")
 }
 
 func (fs *Firestore) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveRouteShader not impemented in Firestore storer")
+	return fmt.Errorf("RemoveRouteShader not implemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
-	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+	return fmt.Errorf(("UpdateRelay not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("AddBannedUser not impemented in Firestore storer"))
+	return fmt.Errorf(("AddBannedUser not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("RemoveBannedUser not impemented in Firestore storer"))
+	return fmt.Errorf(("RemoveBannedUser not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
-	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not impemented in Firestore storer"))
+	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not implemented in Firestore storer"))
 }
 
 func (fs *Firestore) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateBuyer not impemented in Firestore storer")
+	return fmt.Errorf("UpdateBuyer not implemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
-	return fmt.Errorf("UpdateSeller not impemented in Firestore storer")
+	return fmt.Errorf("UpdateSeller not implemented in Firestore storer")
 }
 
 func (fs *Firestore) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
-	return fmt.Errorf("UpdateCustomer not impemented in Firestore storer")
+	return fmt.Errorf("UpdateCustomer not implemented in Firestore storer")
 }

@@ -71,20 +71,16 @@ func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID strin
 
 // Gets a list of tables for the instance
 func (bt *BigTableAdmin) GetTableList(ctx context.Context) ([]string, error) {
-	fmt.Printf("Inside GetTableList(), getting tables...\n")
 	return bt.Client.Tables(ctx)
 }
 
 // Checks if a table exists in the instance
 func (bt *BigTableAdmin) VerifyTableExists(ctx context.Context, tableName string) (bool, error) {
-	fmt.Printf("Inside VerifyTableExists(), tableName is %s, getting table list from admin client...\n", tableName)
 	tableList, err := bt.GetTableList(ctx)
 	if err != nil {
-		fmt.Printf("Error while getting table list: %v\n", err)
 		return false, err
 	}
 
-	fmt.Printf("Got table list: %v\n", tableList)
 	if len(tableList) == 0 {
 		return false, nil
 	}
