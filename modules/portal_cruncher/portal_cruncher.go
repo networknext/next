@@ -464,7 +464,6 @@ func SetupBigtable(ctx context.Context,
 
 	// Put the column family names in a slice
 	btCfNames := []string{btCfName}
-
 	// Create a bigtable admin for setup
 	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
 	if err != nil {
