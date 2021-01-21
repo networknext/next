@@ -37,7 +37,7 @@
       </div>
     </div>
     <Alert ref="newUsersAlert"/>
-    <form v-show="true" @submit.prevent="addNewUsers()">
+    <form @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
           Add users by email address

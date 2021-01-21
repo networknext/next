@@ -14,7 +14,7 @@
       <h1 class="h2">
         Settings
       </h1>
-      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-show="$store.getters.isAnonymousPlus">
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert">
           <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
             Resend email
@@ -78,8 +78,10 @@ export default class SettingsWorkspace extends Vue {
   }
 
   private mounted () {
-    this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
-    this.$refs.verifyAlert.setAlertType(AlertType.INFO)
+    if (this.$store.getters.isAnonymousPlus) {
+      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
+    }
   }
 }
 </script>
