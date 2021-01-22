@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"os"
 	"os/signal"
@@ -27,28 +29,6 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
 	"golang.org/x/sys/unix"
-)
-
-const (
-	NEXT_CONNECTION_TYPE_UNKNOWN  = 0
-	NEXT_CONNECTION_TYPE_WIRED    = 1
-	NEXT_CONNECTION_TYPE_WIFI     = 2
-	NEXT_CONNECTION_TYPE_CELLULAR = 3
-	NEXT_CONNECTION_TYPE_MAX      = 3
-)
-
-const (
-	NEXT_PLATFORM_UNKNOWN       = 0
-	NEXT_PLATFORM_WINDOWS       = 1
-	NEXT_PLATFORM_MAC           = 2
-	NEXT_PLATFORM_UNIX          = 3
-	NEXT_PLATFORM_SWITCH        = 4
-	NEXT_PLATFORM_PS4           = 5
-	NEXT_PLATFORM_IOS           = 6
-	NEXT_PLATFORM_XBOX_ONE      = 7
-	NEXT_PLATFORM_XBOX_SERIES_X = 8
-	NEXT_PLATFORM_PS5           = 9
-	NEXT_PLATFORM_MAX           = 9
 )
 
 var (
@@ -72,6 +52,7 @@ func mainReturnWithCode() int {
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
+	gcpOK := gcpProjectID != ""
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
@@ -85,15 +66,94 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	if gcpProjectID != "" {
+	// Get metrics handler
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Create beacon metrics
+	beaconServiceMetrics, err := metrics.NewBeaconServiceMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
+	}
+
+	if gcpOK {
+		// Stackdriver Profiler
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
 			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
 			return 1
 		}
+
+		// Google Bigquery
+		{
+			beaconDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_BEACON", "")
+			if beaconDataset != "" {
+				batchSize := beacon.DefaultBigQueryBatchSize
+
+				batchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", beacon.DefaultBigQueryBatchSize)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					return 1
+				}
+
+				// Create biquery client and start write loop
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					return 1
+				}
+
+				beaconTable := envvar.Get("GOOGLE_BIGQUERY_TABLE_BEACON", "")
+
+				b := beacon.GoogleBigQueryClient{
+					Metrics:       &beaconServiceMetrics.BeaconMetrics,
+					Logger:        logger,
+					TableInserter: bqClient.Dataset(beaconDataset).Table(beaconTable).Inserter(),
+					BatchSize:     batchSize,
+				}
+
+
+
+				// Start the background WriteLoop to batch write to BigQuery
+				go func() {
+					b.WriteLoop(ctx)
+				}()
+			}
+		}
 	}
 
-	// TODO: Create bigquery client and start write loop
-	// TODO: create metrics handler
+	// TODO: setup stackdriver metrics
+	// TODO: googlepubsub?
+
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+
+				beaconServiceMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(beaconServiceMetrics.ServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d beacon entries queued\n", int(beaconServiceMetrics.BeaconMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
 
 	// Start HTTP server
 	{
@@ -206,12 +266,12 @@ func mainReturnWithCode() int {
 				}
 
 				fmt.Printf("beacon packet: %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
-					packet.CustomerId,
-					packet.DatacenterId,
+					packet.CustomerID,
+					packet.DatacenterID,
 					packet.UserHash,
 					packet.AddressHash,
-					packet.SessionId,
-					packet.PlatformId,
+					packet.SessionID,
+					packet.PlatformID,
 					packet.ConnectionType,
 					packet.Enabled,
 					packet.Upgraded,
