@@ -29,7 +29,7 @@ type GoogleBigQueryClient struct {
 	entries 	  chan *NextBeaconPacket
 }
 
-// Bill pushes an Entry to the channel
+// SendBeaconEntry pushes an Entry to the channel
 func (bq *GoogleBigQueryClient) SendBeaconEntry(ctx context.Context, entry *NextBeaconPacket) error {
 	bq.Metrics.EntriesSubmitted.Add(1)
 	if bq.entries == nil {

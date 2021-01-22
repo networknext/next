@@ -114,8 +114,6 @@ func mainReturnWithCode() int {
 					BatchSize:     batchSize,
 				}
 
-
-
 				// Start the background WriteLoop to batch write to BigQuery
 				go func() {
 					b.WriteLoop(ctx)
