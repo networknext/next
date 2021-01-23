@@ -79,6 +79,63 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
 	}
 
+	// Create a local beaconer
+	var beaconer beacon.Beaconer = &beacon.LocalBeaconer{
+		Logger: logger,
+		Metrics: beaconServiceMetrics.BeaconMetrics,
+	}
+
+	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+
+	if gcpOK || pubsubEmulatorOK {
+		pubsubCtx := ctx
+		if pubsubEmulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			clientCount, err := envvar.GetInt("BEACON_CLIENT_COUNT", 1)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			countThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_COUNT", 100)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			byteThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_MIN_BYTES", 1024)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			// We do our own batching so don't stack the library's batching on top of ours
+			// Specifically, don't stack the message count thresholds
+			settings := googlepubsub.DefaultPublishSettings
+			settings.CountThreshold = 1
+			settings.ByteThreshold = byteThreshold
+			settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub beaconer", "err", err)
+				return 1
+			}
+
+			beaconer = pubsub
+		}
+	}
+
 	if gcpOK {
 		// Stackdriver Profiler
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -114,6 +171,9 @@ func mainReturnWithCode() int {
 					BatchSize:     batchSize,
 				}
 
+				// Set the Biller to BigQuery
+				beaconer = &b
+
 				// Start the background WriteLoop to batch write to BigQuery
 				go func() {
 					b.WriteLoop(ctx)
@@ -123,7 +183,6 @@ func mainReturnWithCode() int {
 	}
 
 	// TODO: setup stackdriver metrics
-	// TODO: googlepubsub?
 
 	// Setup the stats print routine
 	{
