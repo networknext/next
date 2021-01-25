@@ -373,7 +373,7 @@ export default class SessionDetails extends Vue {
         this.meta = response.meta
         this.slices = response.slices
 
-        this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
+        this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
         if (!this.showDetails) {
           this.showDetails = true

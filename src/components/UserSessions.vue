@@ -44,13 +44,13 @@
             {{ session.platform }}
           </td>
           <td>
-            {{ session.connection }}
+            {{ session.connection === "wifi" ? "Wi-Fi" : session.connection.charAt(0).toUpperCase() + session.connection.slice(1) }}
           </td>
           <td>
-            {{ session.location.isp }}
+            {{ session.location.isp || "Unknown"}}
           </td>
           <td>
-            {{ session.datacenter }}
+            {{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}
           </td>
           <td>
             {{ session.server_addr }}
