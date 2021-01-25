@@ -98,28 +98,31 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	var accountList *management.UserList
 
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
-		return err
+		err := JSONRPCErrorCodes[ERROR_INSUFFICIENT_PRIVILEGES]
+		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+		return &err
 	}
 
 	reply.UserAccounts = make([]account, 0)
 	accountList, err := s.UserManager.List()
 	if err != nil {
-		err := fmt.Errorf("AllAcounts() failed to fetch user list: %v", err)
-		s.Logger.Log("err", err)
-		return err
+		err := JSONRPCErrorCodes[ERROR_AUTH0_FAILURE]
+		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+		return &err
 	}
 
 	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
-		err = fmt.Errorf("AllAcounts() unable to parse user from token")
-		s.Logger.Log("err", err)
-		return err
+		err := JSONRPCErrorCodes[ERROR_JWT_PARSE_FAILURE]
+		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+		return &err
 	}
 
 	requestCompany, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
-		return fmt.Errorf("AllAcounts(): user is not assigned to a company")
+		err := JSONRPCErrorCodes[ERROR_USER_IS_NOT_ASSIGNED]
+		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+		return &err
 	}
 
 	for _, a := range accountList.Users {
@@ -129,17 +132,17 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		}
 		userRoles, err := s.UserManager.Roles(*a.ID)
 		if err != nil {
-			err = fmt.Errorf("AllAcounts() failed to fetch user roles: %v", err)
-			s.Logger.Log("err", err)
-			return err
+			err := JSONRPCErrorCodes[ERROR_AUTH0_FAILURE]
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+			return &err
 		}
 
 		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
 		company, err := s.Storage.Customer(companyCode)
 		if err != nil {
-			err = fmt.Errorf("AllAcounts() failed to fetch company: %v", err)
-			s.Logger.Log("err", err)
-			return err
+			err := JSONRPCErrorCodes[ERROR_STORAGE_FAILURE]
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+			return &err
 		}
 
 		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name, company.Code))
