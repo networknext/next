@@ -116,7 +116,8 @@ describe('UserSessions.vue no sessions', () => {
             location: {
               isp: 'local'
             },
-            datacenter: 'local',
+            datacenter_name: 'local',
+            datacenter_alias: '',
             server_addr: '127.0.0.1'
           }]
         })
@@ -154,7 +155,7 @@ describe('UserSessions.vue no sessions', () => {
     const row = wrapper.findAll('#data-row td')
     expect(row.at(0).text()).toBe('123456789')
     expect(row.at(1).text()).toBe('PS5')
-    expect(row.at(2).text()).toBe('star link')
+    expect(row.at(2).text()).toBe('Star link')
     expect(row.at(3).text()).toBe('local')
     expect(row.at(4).text()).toBe('local')
     expect(row.at(5).text()).toBe('127.0.0.1')
