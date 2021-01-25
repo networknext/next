@@ -505,6 +505,7 @@ func TestFirestore(t *testing.T) {
 
 			assert.Equal(t, expected, actual)
 		})
+
 	})
 
 	t.Run("Buyers", func(t *testing.T) {

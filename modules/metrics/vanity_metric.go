@@ -32,7 +32,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	m.SlicesAccelerated, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Slices Accelerated",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.slices_accelerated",
+		ID:          fmt.Sprintf("vanity_metric.%s.slices_accelerated", buyerID),
 		Unit:        "slices",
 		Description: fmt.Sprintf("The number of slices that have been accelerated for customer %s", buyerID),
 	})
@@ -43,7 +43,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	m.SlicesLatencyReduced, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Slices Latency Reduced",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.slices_latency_reduced",
+		ID:          fmt.Sprintf("vanity_metric.%s.slices_latency_reduced", buyerID),
 		Unit:        "slices",
 		Description: fmt.Sprintf("The number of slices where latency was reduced over Network Next for customer %s", buyerID),
 	})
@@ -54,7 +54,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	m.SlicesPacketLossReduced, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Slices Packet Loss Reduced",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.slices_packet_loss_reduced",
+		ID:          fmt.Sprintf("vanity_metric.%s.slices_packet_loss_reduced", buyerID),
 		Unit:        "slices",
 		Description: fmt.Sprintf("The number of slices where packet loss was reduced over Network Next for customer %s", buyerID),
 	})
@@ -65,7 +65,7 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	m.SlicesJitterReduced, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Slices Jitter Reduced",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.slices_jitter_reduced",
+		ID:          fmt.Sprintf("vanity_metric.%s.slices_jitter_reduced", buyerID),
 		Unit:        "slices",
 		Description: fmt.Sprintf("The number of slices where jitter was reduced over Network Next for customer %s", buyerID),
 	})
@@ -76,13 +76,13 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	m.SessionsAccelerated, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Sessions Accelerated",
 		ServiceName: buyerID,
-		ID:          "vanity_metric.sessions_accelerated",
+		ID:          fmt.Sprintf("vanity_metric.%s.sessions_accelerated", buyerID),
 		Unit:        "sessions",
 		Description: fmt.Sprintf("The number of sessions that have been accelerated for customer %s", buyerID),
 	})
 	if err != nil {
 		return nil, err
 	}
-
+	
 	return m, nil
 }
