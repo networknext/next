@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -229,10 +228,10 @@ func (db *SQL) Sync(ctx context.Context) error {
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
 	// 	1 Customers
-	//  2 InternalConfigs
-	//  3 BannedUsers
-	//  4 RouteShaders
-	//	5 Buyers
+	//	2 Buyers
+	//  3 InternalConfigs
+	//  4 BannedUsers
+	//  5 RouteShaders
 	//	6 Sellers
 	// 	7 Datacenters
 	// 	8 DatacenterMaps
@@ -240,6 +239,10 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 	if err := db.syncCustomers(ctx); err != nil {
 		return fmt.Errorf("failed to sync customers: %v", err)
+	}
+
+	if err := db.syncBuyers(ctx); err != nil {
+		return fmt.Errorf("failed to sync buyers: %v", err)
 	}
 
 	if err := db.syncInternalConfigs(ctx); err != nil {
@@ -252,10 +255,6 @@ func (db *SQL) Sync(ctx context.Context) error {
 
 	if err := db.syncRouteShaders(ctx); err != nil {
 		return fmt.Errorf("failed to sync route shaders: %v", err)
-	}
-
-	if err := db.syncBuyers(ctx); err != nil {
-		return fmt.Errorf("failed to sync buyers: %v", err)
 	}
 
 	if err := db.syncSellers(ctx); err != nil {
@@ -486,6 +485,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 }
 
 type sqlBuyer struct {
+	SdkID          int64
 	ID             uint64
 	IsLiveCustomer bool
 	Debug          bool
@@ -505,7 +505,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
 	buyerIDs := make(map[int64]uint64)
 
-	sql.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -517,6 +517,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(
+			&buyer.SdkID,
 			&buyer.DatabaseID,
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
@@ -529,21 +530,14 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			return err
 		}
 
-		buyer.ID = binary.LittleEndian.Uint64(buyer.PublicKey[:8])
+		buyer.ID = uint64(buyer.SdkID)
 
 		buyerIDs[buyer.DatabaseID] = buyer.ID
 
-		// apply default values if a custom RouteShader or InternalConfig
-		// is not saved for the buyer
-		rs, err := db.RouteShader(buyer.ID)
-		if err != nil {
-			rs = core.NewRouteShader()
-		}
-
-		ic, err := db.InternalConfig(buyer.ID)
-		if err != nil {
-			ic = core.NewInternalConfig()
-		}
+		// apply default values - custom values will be attached in
+		// syncInternalConfigs() and syncRouteShaders() if they exist
+		rs := core.NewRouteShader()
+		ic := core.NewInternalConfig()
 
 		b := routing.Buyer{
 			ID:             buyer.ID,
@@ -733,18 +727,22 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 }
 
 type sqlInternalConfig struct {
-	RouteSelectThreshold       int64
-	RouteSwitchThreshold       int64
-	MaxLatencyTradeOff         int64
-	RTTVetoDefault             int64
-	RTTVetoPacketLoss          int64
-	RTTVetoMultipath           int64
-	MultipathOverloadThreshold int64
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int64
+	RouteSelectThreshold        int64
+	RouteSwitchThreshold        int64
+	MaxLatencyTradeOff          int64
+	RTTVetoDefault              int64
+	RTTVetoPacketLoss           int64
+	RTTVetoMultipath            int64
+	MultipathOverloadThreshold  int64
+	TryBeforeYouBuy             bool
+	ForceNext                   bool
+	LargeCustomer               bool
+	Uncommitted                 bool
+	HighFrequencyPings          bool
+	RouteDiversity              int64
+	MultipathThreshold          int64
+	MispredictMultipathOverload bool
+	MaxRTT                      int64
 }
 
 func (db *SQL) syncInternalConfigs(ctx context.Context) error {
@@ -757,7 +755,8 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 	sql.Write([]byte("select max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
-	sql.Write([]byte("large_customer, is_uncommitted, buyer_id from rs_internal_configs"))
+	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
+	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, buyer_id from rs_internal_configs"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -781,6 +780,10 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			&sqlIC.ForceNext,
 			&sqlIC.LargeCustomer,
 			&sqlIC.Uncommitted,
+			&sqlIC.HighFrequencyPings,
+			&sqlIC.RouteDiversity,
+			&sqlIC.MultipathThreshold,
+			&sqlIC.MispredictMultipathOverload,
 			&buyerID,
 		)
 		if err != nil {
@@ -789,21 +792,33 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 		}
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       int32(sqlIC.RouteSelectThreshold),
-			RouteSwitchThreshold:       int32(sqlIC.RouteSwitchThreshold),
-			MaxLatencyTradeOff:         int32(sqlIC.MaxLatencyTradeOff),
-			RTTVeto_Default:            int32(sqlIC.RTTVetoDefault),
-			RTTVeto_PacketLoss:         int32(sqlIC.RTTVetoPacketLoss),
-			RTTVeto_Multipath:          int32(sqlIC.RTTVetoMultipath),
-			MultipathOverloadThreshold: int32(sqlIC.MultipathOverloadThreshold),
-			TryBeforeYouBuy:            sqlIC.TryBeforeYouBuy,
-			ForceNext:                  sqlIC.ForceNext,
-			LargeCustomer:              sqlIC.LargeCustomer,
-			Uncommitted:                sqlIC.Uncommitted,
-			MaxRTT:                     int32(sqlIC.MaxRTT),
+			RouteSelectThreshold:        int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold:        int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:          int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:             int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:          int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:           int32(sqlIC.RTTVetoMultipath),
+			MultipathOverloadThreshold:  int32(sqlIC.MultipathOverloadThreshold),
+			TryBeforeYouBuy:             sqlIC.TryBeforeYouBuy,
+			ForceNext:                   sqlIC.ForceNext,
+			LargeCustomer:               sqlIC.LargeCustomer,
+			Uncommitted:                 sqlIC.Uncommitted,
+			HighFrequencyPings:          sqlIC.HighFrequencyPings,
+			RouteDiversity:              int32(sqlIC.RouteDiversity),
+			MultipathThreshold:          int32(sqlIC.MultipathThreshold),
+			MispredictMultipathOverload: sqlIC.MispredictMultipathOverload,
+			MaxRTT:                      int32(sqlIC.MaxRTT),
 		}
 
 		id := db.buyerIDs[buyerID]
+
+		buyer := db.buyers[id]
+		buyer.InternalConfig = internalConfig
+
+		db.buyerMutex.Lock()
+		db.buyers[id] = buyer
+		db.buyerMutex.Unlock()
+
 		internalConfigs[id] = internalConfig
 	}
 
@@ -887,6 +902,13 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 		}
 
 		id := db.buyerIDs[buyerID]
+		buyer := db.buyers[id]
+		buyer.RouteShader = routeShader
+
+		db.buyerMutex.Lock()
+		db.buyers[id] = buyer
+		db.buyerMutex.Unlock()
+
 		if bannedUsers, ok := db.bannedUsers[id]; ok {
 			routeShader.BannedUsers = bannedUsers
 		}

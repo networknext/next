@@ -23,11 +23,12 @@ create table customers (
   id integer primary key autoincrement,
   automatic_signin_domain varchar null,
   customer_name varchar not null,
-  customer_code varchar unique not null
+  customer_code varchar unique not null unique
 );
 
 create table buyers (
   id integer primary key autoincrement,
+  sdk_generated_id integer not null,
   is_live_customer boolean not null default false,
   debug boolean not null default false,
   public_key bytea not null,
@@ -78,6 +79,10 @@ create table rs_internal_configs (
   force_next boolean not null,
   large_customer boolean not null,
   is_uncommitted boolean not null,
+  high_frequency_pings boolean not null,
+  route_diversity integer not null,
+  multipath_threshold integer not null,
+  mispredict_multipath_overload boolean not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
@@ -141,8 +146,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/01/04 15:11:36
-
+-- File generation: 2021/01/13 11:12:26
 
 -- machine_types
 insert into machine_types values (0, 'none');

@@ -528,23 +528,26 @@ func getInternalConfig(
 		BuyerID: buyerID,
 	}
 	if err := rpcClient.CallFor(&reply, "BuyersService.GetInternalConfig", arg); err != nil {
-		fmt.Println("No InternalConfig stored for this buyer (they use the defaults).")
-		return nil
+		handleJSONRPCError(env, err)
 	}
 
 	fmt.Printf("InternalConfig for buyer %s:\n", buyerName)
-	fmt.Printf("  RouteSelectThreshold      : %d\n", reply.InternalConfig.RouteSelectThreshold)
-	fmt.Printf("  RouteSwitchThreshold      : %d\n", reply.InternalConfig.RouteSwitchThreshold)
-	fmt.Printf("  MaxLatencyTradeOff        : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
-	fmt.Printf("  RTTVeto_Default           : %d\n", reply.InternalConfig.RTTVeto_Default)
-	fmt.Printf("  RTTVeto_PacketLoss        : %d\n", reply.InternalConfig.RTTVeto_PacketLoss)
-	fmt.Printf("  RTTVeto_Multipath         : %d\n", reply.InternalConfig.RTTVeto_Multipath)
-	fmt.Printf("  MultipathOverloadThreshold: %d\n", reply.InternalConfig.MultipathOverloadThreshold)
-	fmt.Printf("  TryBeforeYouBuy           : %t\n", reply.InternalConfig.TryBeforeYouBuy)
-	fmt.Printf("  ForceNext                 : %t\n", reply.InternalConfig.ForceNext)
-	fmt.Printf("  LargeCustomer             : %t\n", reply.InternalConfig.LargeCustomer)
-	fmt.Printf("  Uncommitted               : %t\n", reply.InternalConfig.Uncommitted)
-	fmt.Printf("  MaxRTT                    : %d\n", reply.InternalConfig.MaxRTT)
+	fmt.Printf("  RouteSelectThreshold       : %d\n", reply.InternalConfig.RouteSelectThreshold)
+	fmt.Printf("  RouteSwitchThreshold       : %d\n", reply.InternalConfig.RouteSwitchThreshold)
+	fmt.Printf("  MaxLatencyTradeOff         : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
+	fmt.Printf("  RTTVeto_Default            : %d\n", reply.InternalConfig.RTTVeto_Default)
+	fmt.Printf("  RTTVeto_PacketLoss         : %d\n", reply.InternalConfig.RTTVeto_PacketLoss)
+	fmt.Printf("  RTTVeto_Multipath          : %d\n", reply.InternalConfig.RTTVeto_Multipath)
+	fmt.Printf("  MultipathOverloadThreshold : %d\n", reply.InternalConfig.MultipathOverloadThreshold)
+	fmt.Printf("  TryBeforeYouBuy            : %t\n", reply.InternalConfig.TryBeforeYouBuy)
+	fmt.Printf("  ForceNext                  : %t\n", reply.InternalConfig.ForceNext)
+	fmt.Printf("  LargeCustomer              : %t\n", reply.InternalConfig.LargeCustomer)
+	fmt.Printf("  Uncommitted                : %t\n", reply.InternalConfig.Uncommitted)
+	fmt.Printf("  MaxRTT                     : %d\n", reply.InternalConfig.MaxRTT)
+	fmt.Printf("  HighFrequencyPings         : %t\n", reply.InternalConfig.HighFrequencyPings)
+	fmt.Printf("  RouteDiversity             : %d\n", reply.InternalConfig.RouteDiversity)
+	fmt.Printf("  MultipathThreshold         : %d\n", reply.InternalConfig.MultipathThreshold)
+	fmt.Printf("  MispredictMultipathOverload: %t\n", reply.InternalConfig.MispredictMultipathOverload)
 
 	return nil
 }
@@ -817,6 +820,8 @@ func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, buyerRegex strin
 	buyerInfo += "  ShortName  : " + reply.Buyer.ShortName + "\n"
 	buyerInfo += "  Live       : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
 	buyerInfo += "  Debug      : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
+	buyerInfo += "  ID         : " + fmt.Sprintf("%016x", uint64(reply.Buyer.ID)) + "\n"
+	buyerInfo += "  Public Key : " + reply.Buyer.EncodedPublicKey() + "\n"
 
 	fmt.Println(buyerInfo)
 	os.Exit(0)
