@@ -12,6 +12,7 @@ func NewRedisPool(hostname string, maxIdleConnections int, maxActiveConnections 
 		MaxIdle:     maxIdleConnections,
 		MaxActive:   maxActiveConnections,
 		IdleTimeout: 60 * time.Second,
+		Wait:        true,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", hostname)
 		},

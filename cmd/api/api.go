@@ -16,6 +16,7 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/vanity"
 )
@@ -28,6 +29,8 @@ var (
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
 	sd            *metrics.StackDriverHandler
+	storer        storage.Storer
+	env           string
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -43,10 +46,14 @@ func mainReturnWithCode() int {
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		level.Error(logger).Log("err", "ENV not set")
-		return 1
+	// Get env and set the variable
+	{
+		envName, err := backend.GetEnv()
+		if err != nil {
+			level.Error(logger).Log("err", "ENV not set")
+			return 1
+		}
+		env = envName
 	}
 
 	gcpProjectID = backend.GetGCPProjectID()
@@ -59,7 +66,14 @@ func mainReturnWithCode() int {
 	}
 
 	// StackDriver Logging
-	logger, err = backend.GetLogger(ctx, gcpProjectID, "api")
+	logger, err := backend.GetLogger(ctx, gcpProjectID, "api")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Get storer for customer code to buyerID lookup
+	storer, err = backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -117,7 +131,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", logger)
+	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", env, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
+		return 1
+	}
 
 	errChan := make(chan error, 1)
 	// Start HTTP server
@@ -162,12 +180,32 @@ func mainReturnWithCode() int {
 
 func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rawBuyerID, ok := r.URL.Query()["id"]
+		var buyerID string
+		ctx := context.Background()
+		rawCompanyCode, ok := r.URL.Query()["id"]
 		if !ok {
-			http.Error(w, "id is missing", http.StatusBadRequest)
-			return
+			// id was not provided, assume buyerID is global
+			buyerID = fmt.Sprintf("global_%s", env)
+		} else {
+			companyCode := rawCompanyCode[0]
+
+			// Vanity metrics for specific buyer
+			buyer, err := storer.BuyerWithCompanyCode(companyCode)
+			if err != nil {
+				errStr := fmt.Sprintf("id is not valid: %v", err)
+				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
+
+			// Check if vanity metrics enabled for this buyer
+			if !buyer.InternalConfig.EnableVanityMetrics {
+				// Vanity metrics are not enabled for this buyer
+				errStr := fmt.Sprintf("vanity metrics are not enabled for buyer %s", companyCode)
+				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
+			buyerID = fmt.Sprintf("%016x", buyer.ID)
 		}
-		buyerID := rawBuyerID[0]
 
 		// Get start time
 		rawStartTime, ok := r.URL.Query()["start"]
@@ -206,7 +244,7 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		data, err := vanityMetrics.GetVanityMetricJSON(context.Background(), sd, gcpProjectID, buyerID, startTime, endTime)
+		data, err := vanityMetrics.GetVanityMetricJSON(ctx, sd, gcpProjectID, buyerID, startTime, endTime)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
