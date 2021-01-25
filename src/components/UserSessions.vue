@@ -50,7 +50,7 @@
             {{ session.location.isp || "Unknown"}}
           </td>
           <td>
-            {{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}
+            {{ session.datacenter_alias !== "" ? session.datacenter_alias : session.datacenter_name }}
           </td>
           <td>
             {{ session.server_addr }}
