@@ -64,10 +64,6 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
-        - name: Load Test
-          commands:
-            - make build-load-test-artifacts-staging
-            - make publish-load-test-artifacts-staging
         - name: Load Test Server
           commands:
             - make build-load-test-server-artifacts

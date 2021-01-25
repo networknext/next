@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -39,6 +40,10 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 			EgressPriceUSD:  fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
 		})
 	}
+
+	sort.Slice(sellers, func(i int, j int) bool {
+		return sellers[i].ID < sellers[j].ID
+	})
 
 	table.Output(sellers)
 }
