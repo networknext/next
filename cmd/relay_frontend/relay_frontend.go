@@ -4,16 +4,17 @@ import (
 	"context"
 	"expvar"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/transport"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	rm "github.com/networknext/backend/modules/route_matrix_selector"
+	"github.com/gorilla/mux"
+	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/transport"
+
+	rm "github.com/networknext/backend/modules/relay_frontend"
 	"github.com/networknext/backend/modules/storage"
 
 	//logging
@@ -30,20 +31,20 @@ var (
 
 func main() {
 
-	serviceName := "route_matrix_selector"
+	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 	gcpProjectID := backend.GetGCPProjectID()
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(2)
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 
 	cfg, err := rm.GetConfig()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		_ = level.Error(logger).Log("err", err)
 	}
 
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
@@ -96,20 +97,27 @@ func main() {
 				continue
 			}
 
-			if !svc.AmMaster() {
-				continue
+			if svc.AmMaster() {
+				err = svc.UpdateLiveRouteMatrixOptimizer()
+				if err != nil {
+					_ = level.Error(logger).Log("error", err)
+				}
+
+				err = svc.CleanUpDB()
+				if err != nil {
+					_ = level.Error(logger).Log("error", err)
+				}
 			}
 
-			err = svc.UpdateLiveRouteMatrix()
+			err = svc.CacheMatrix(storage.MatrixTypeNormal)
 			if err != nil {
-				_ = level.Error(logger).Log("error", err)
+				_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
 			}
 
-			err = svc.CleanUpDB()
+			err = svc.CacheMatrix(storage.MatrixTypeValve)
 			if err != nil {
-				_ = level.Error(logger).Log("error", err)
+				_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
 			}
-
 		}
 	}()
 
@@ -117,17 +125,19 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
+	router.HandleFunc("/route_matrix", svc.GetMatrix()).Methods("GET")
+	router.HandleFunc("/route_matrix_valve", svc.GetMatrixValve()).Methods("GET")
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
 	go func() {
 		port := envvar.Get("PORT", "30005")
 
-		level.Info(logger).Log("addr", ":"+port)
+		_ = level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			_ = level.Error(logger).Log("err", err)
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()

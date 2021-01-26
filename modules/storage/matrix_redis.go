@@ -20,12 +20,14 @@ const (
 	get   = "GET"
 	mGet  = "MGET"
 
-	optimizer       = "OptimizerHash"
-	masters         = "MatrixMastersHash"
-	matrixSvc       = "MatrixServiceHash"
-	svcMaster       = "ServiceMaster"
-	matrixMaster    = "LiveMatrix"
-	optimizerMaster = "OptimizerMaster"
+	optimizer            = "OptimizerHash"
+	masters              = "MatrixMastersHash"
+	matrixSvc            = "MatrixServiceHash"
+	svcMaster            = "ServiceMaster"
+	matrixMaster         = "LiveMatrix"
+	optimizerMaster      = "OptimizerMaster"
+	relayBackendLiveData = "RelayBackendLiveData"
+	RelayBackendMaster   = "RelayBackendMaster"
 )
 
 type RedisMatrixStore struct {
@@ -192,4 +194,62 @@ func (r *RedisMatrixStore) GetOptimizerMaster() (uint64, error) {
 	}
 
 	return value, err
+}
+
+func (r *RedisMatrixStore) SetRelayBackendLiveData(data RelayBackendLiveData) error {
+	bin, err := RelayBackendLiveDataToJSON(data)
+	if err != nil {
+		return err
+	}
+
+	conn := r.pool.Get()
+	key := fmt.Sprintf("%s-%s", relayBackendLiveData, data.Address)
+	_, err = conn.Do("SET", key, bin, "EX", r.matrixTimeout.Milliseconds())
+	return err
+}
+
+func (r *RedisMatrixStore) GetRelayBackendLiveData(addresses []string) ([]RelayBackendLiveData, error) {
+	conn := r.pool.Get()
+	var rbArr []RelayBackendLiveData
+	for _, addr := range addresses {
+		key := fmt.Sprintf("%s-%s", relayBackendLiveData, addr)
+		bin, err := redis.Bytes(conn.Do("GET", key))
+		if err == redis.ErrNil {
+			continue
+		}
+		if err != nil {
+			return []RelayBackendLiveData{}, fmt.Errorf("issue with db: %s", err.Error())
+		}
+
+		relayData, err := RelayBackendLiveDataFromJson(bin)
+		if err != nil {
+			return []RelayBackendLiveData{}, fmt.Errorf("unable to unmarshal relay data: %s", err.Error())
+		}
+
+		rbArr = append(rbArr, relayData)
+	}
+	return rbArr, nil
+}
+
+func (r *RedisMatrixStore) SetRelayBackendMaster(data RelayBackendLiveData) error {
+	conn := r.pool.Get()
+	bin, err := RelayBackendLiveDataToJSON(data)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do(hSet, masters, RelayBackendMaster, bin)
+	return err
+}
+
+func (r *RedisMatrixStore) GetRelayBackendMaster() (RelayBackendLiveData, error) {
+	conn := r.pool.Get()
+	bin, err := redis.Bytes(conn.Do(hGet, masters, RelayBackendMaster))
+	if err == redis.ErrNil {
+		return RelayBackendLiveData{}, fmt.Errorf("relay backend master not found")
+	}
+	if err != nil {
+		return RelayBackendLiveData{}, fmt.Errorf("issue with db: %s", err.Error())
+	}
+
+	return RelayBackendLiveDataFromJson(bin)
 }
