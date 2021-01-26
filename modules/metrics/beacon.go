@@ -34,18 +34,18 @@ type BeaconErrorMetrics struct {
 	// BeaconPublishFailure     Counter
 	// BeaconReadFailure        Counter
 	// BeaconBatchedReadFailure Counter
-	BeaconSubmitFailure           Counter
-	BeaconInternalTransferFailure Counter
-	BeaconWriteFailure            Counter
+	BeaconSubmitFailure Counter
+	BeaconChannelFull   Counter
+	BeaconWriteFailure  Counter
 }
 
 var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
 	// BeaconPublishFailure:     &EmptyCounter{},
 	// BeaconReadFailure:        &EmptyCounter{},
 	// BeaconBatchedReadFailure: &EmptyCounter{},
-	BeaconSubmitFailure:           &EmptyCounter{},
-	BeaconInternalTransferFailure: &EmptyCounter{},
-	BeaconWriteFailure:            &EmptyCounter{},
+	BeaconSubmitFailure: &EmptyCounter{},
+	BeaconChannelFull:   &EmptyCounter{},
+	BeaconWriteFailure:  &EmptyCounter{},
 }
 
 func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconServiceMetrics, error) {
@@ -126,10 +126,10 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconInternalTransferFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Beacon Batched Internal Transfer Failure",
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Channel Full",
 		ServiceName: "beacon",
-		ID:          "beacon.error.internal_transfer_failure",
+		ID:          "beacon.error.channel_full",
 		Unit:        "errors",
 		Description: "The total number of beacon entries that could not be inserted into the internal channel for submission to BigQuery",
 	})

@@ -204,7 +204,7 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d beacon entries queued\n", int(beaconServiceMetrics.BeaconMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
 				fmt.Printf("%d beacon entry submission failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSubmitFailure.Value()))
-				fmt.Printf("%d beacon entry internal transfer failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconInternalTransferFailure.Value()))
+				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Value()))
 				fmt.Printf("%d beacon entry write failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconWriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
@@ -350,7 +350,7 @@ func mainReturnWithCode() int {
 				case beaconPacketChan <- beaconPacket:
 					beaconServiceMetrics.BeaconMetrics.EntriesReceived.Add(1)
 				default:
-					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconInternalTransferFailure.Add(1)
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Add(1)
 					continue
 				}
 
