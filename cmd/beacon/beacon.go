@@ -151,7 +151,7 @@ func mainReturnWithCode() int {
 	errChan := make(chan error, 1)
 
 	// Create an internal channel to receive beacon packets and submit them
-	beaconPacketChan := make(chan *beacon.NextBeaconPacket, channelBufferSize)
+	beaconPacketChan := make(chan *transport.NextBeaconPacket, channelBufferSize)
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func() {
@@ -296,7 +296,7 @@ func mainReturnWithCode() int {
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 
-			beaconPacket := &beacon.NextBeaconPacket{}
+			beaconPacket := &transport.NextBeaconPacket{}
 
 			for {
 				data := dataArray[:]

@@ -3,6 +3,8 @@ package beacon
 import (
 	"context"
 	"sync/atomic"
+
+	"github.com/networknext/backend/modules/transport"
 )
 
 // NoOpBeacon does not perform any beacon actions. Useful for when the beacon is not configured or for testing.
@@ -11,7 +13,7 @@ type NoOpBeacon struct {
 }
 
 // Bill does nothing
-func (noop *NoOpBeacon) Submit(ctx context.Context, entry *NextBeaconPacket) error {
+func (noop *NoOpBeacon) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
 	atomic.AddUint64(&noop.submitted, 1)
 	return nil
 }

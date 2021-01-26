@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport"
 )
 
 type LocalBeaconer struct {
@@ -16,7 +17,7 @@ type LocalBeaconer struct {
 	Metrics *metrics.BeaconMetrics
 }
 
-func (local *LocalBeaconer) Submit(ctx context.Context, entry *NextBeaconPacket) error {
+func (local *LocalBeaconer) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
 	local.Metrics.EntriesSubmitted.Add(1)
 
 	if local.Logger == nil {

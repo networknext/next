@@ -12,6 +12,7 @@ import (
 
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport"
 )
 
 // GooglePubSubBeaconer is an implementation of a beacon handler that sends billing data to Google Pub/Sub through multiple clients
@@ -88,7 +89,7 @@ func NewGooglePubSubBeaconer(ctx context.Context, beaconMetrics *metrics.BeaconM
 	return beaconer, nil
 }
 
-func (beaconer *GooglePubSubBeaconer) Submit(ctx context.Context, entry *NextBeaconPacket) error {
+func (beaconer *GooglePubSubBeaconer) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
 	if beaconer.clients == nil {
 		return fmt.Errorf("beacon: clients not initialized")
 	}
@@ -96,7 +97,7 @@ func (beaconer *GooglePubSubBeaconer) Submit(ctx context.Context, entry *NextBea
 	index := entry.SessionID % uint64(len(beaconer.clients))
 	client := beaconer.clients[index]
 
-	entryBytes, err := WriteBeaconEntry(entry)
+	entryBytes, err := transport.WriteBeaconEntry(entry)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport"
 )
 
 const (
@@ -23,16 +24,16 @@ type GoogleBigQueryClient struct {
 	TableInserter *bigquery.Inserter
 	BatchSize     int
 
-	buffer      []*NextBeaconPacket
+	buffer      []*transport.NextBeaconPacket
 	bufferMutex sync.RWMutex
 
-	entries chan *NextBeaconPacket
+	entries chan *transport.NextBeaconPacket
 }
 
 // Submit pushes an Entry to the channel
-func (bq *GoogleBigQueryClient) Submit(ctx context.Context, entry *NextBeaconPacket) error {
+func (bq *GoogleBigQueryClient) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
 	if bq.entries == nil {
-		bq.entries = make(chan *NextBeaconPacket, DefaultBigQueryChannelSize)
+		bq.entries = make(chan *transport.NextBeaconPacket, DefaultBigQueryChannelSize)
 	}
 
 	bq.bufferMutex.RLock()
@@ -57,7 +58,7 @@ func (bq *GoogleBigQueryClient) Submit(ctx context.Context, entry *NextBeaconPac
 // only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
 func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	if bq.entries == nil {
-		bq.entries = make(chan *NextBeaconPacket, DefaultBigQueryChannelSize)
+		bq.entries = make(chan *transport.NextBeaconPacket, DefaultBigQueryChannelSize)
 	}
 	for entry := range bq.entries {
 		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
@@ -83,27 +84,4 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		bq.bufferMutex.Unlock()
 	}
 	return nil
-}
-
-// Save implements the bigquery.ValueSaver interface for an Entry
-// so it can be used in Put()
-func (entry *NextBeaconPacket) Save() (map[string]bigquery.Value, string, error) {
-	e := make(map[string]bigquery.Value)
-
-	e["version"] = int(entry.Version)
-	e["timestamp"] = int(entry.Timestamp)
-	e["customerID"] = int(entry.CustomerID)
-	e["datacenterID"] = int(entry.DatacenterID)
-	e["userHash"] = int(entry.UserHash)
-	e["addressHash"] = int(entry.AddressHash)
-	e["sessionID"] = int(entry.SessionID)
-	e["platformID"] = int(entry.PlatformID)
-	e["connectionType"] = int(entry.ConnectionType)
-
-	e["enabled"] = entry.Enabled
-	e["upgraded"] = entry.Upgraded
-	e["next"] = entry.Next
-	e["fallbackToDirect"] = entry.FallbackToDirect
-
-	return e, "", nil
 }
