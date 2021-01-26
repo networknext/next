@@ -1887,21 +1887,21 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	}
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:        int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:        int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:          int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:              int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:           int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:            int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold:  int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:             ic.TryBeforeYouBuy,
-		ForceNext:                   ic.ForceNext,
-		LargeCustomer:               ic.LargeCustomer,
-		Uncommitted:                 ic.Uncommitted,
-		HighFrequencyPings:          ic.HighFrequencyPings,
-		RouteDiversity:              int64(ic.RouteDiversity),
-		MultipathThreshold:          int64(ic.MultipathThreshold),
-		MispredictMultipathOverload: ic.MispredictMultipathOverload,
+		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:             int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+		ForceNext:                  ic.ForceNext,
+		LargeCustomer:              ic.LargeCustomer,
+		Uncommitted:                ic.Uncommitted,
+		HighFrequencyPings:         ic.HighFrequencyPings,
+		RouteDiversity:             int64(ic.RouteDiversity),
+		MultipathThreshold:         int64(ic.MultipathThreshold),
+		EnableVanityMetrics:        ic.EnableVanityMetrics,
 
 		MaxRTT: int64(ic.MaxRTT),
 	}
@@ -1936,7 +1936,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.HighFrequencyPings,
 		internalConfig.RouteDiversity,
 		internalConfig.MultipathThreshold,
-		internalConfig.MispredictMultipathOverload,
+		internalConfig.EnableVanityMetrics,
 		buyer.DatabaseID,
 	)
 
@@ -2131,14 +2131,14 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id=$2"))
 		args = append(args, highFrequencyPings, buyer.DatabaseID)
 		ic.HighFrequencyPings = highFrequencyPings
-	case "MispredictMultipathOverload":
-		mispredictMultipathOverload, ok := value.(bool)
+	case "EnableVanityMetrics":
+		enableVanityMetrics, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("MispredictMultipathOverload: %v is not a valid boolean type (%T)", value, value)
+			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set mispredict_multipath_overload=$1 where buyer_id=$2"))
-		args = append(args, mispredictMultipathOverload, buyer.DatabaseID)
-		ic.MispredictMultipathOverload = mispredictMultipathOverload
+		args = append(args, enableVanityMetrics, buyer.DatabaseID)
+		ic.EnableVanityMetrics = enableVanityMetrics
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {

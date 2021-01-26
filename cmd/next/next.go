@@ -316,23 +316,23 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold        int32
-	RouteSwitchThreshold        int32
-	MaxLatencyTradeOff          int32
-	RTTVeto_Default             int32
-	RTTVeto_PacketLoss          int32
-	RTTVeto_Multipath           int32
-	MultipathOverloadThreshold  int32
-	TryBeforeYouBuy             bool
-	ForceNext                   bool
-	LargeCustomer               bool
-	Uncommitted                 bool
-	MaxRTT                      int32
-	HighFrequencyPings          bool
-	RouteDiversity              int32
-	MultipathThreshold          int32
-	MispredictMultipathOverload bool
-	BuyerID                     string
+	RouteSelectThreshold       int32
+	RouteSwitchThreshold       int32
+	MaxLatencyTradeOff         int32
+	RTTVeto_Default            int32
+	RTTVeto_PacketLoss         int32
+	RTTVeto_Multipath          int32
+	MultipathOverloadThreshold int32
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int32
+	HighFrequencyPings         bool
+	RouteDiversity             int32
+	MultipathThreshold         int32
+	EnableVanityMetrics        bool
+	BuyerID                    string
 }
 
 type routeShader struct {
@@ -1460,22 +1460,22 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							}
 
 							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
-								RouteSelectThreshold:        int32(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:        int32(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:          int32(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:             int32(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:          int32(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:           int32(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold:  int32(ic.MultipathOverloadThreshold),
-								TryBeforeYouBuy:             ic.TryBeforeYouBuy,
-								ForceNext:                   ic.ForceNext,
-								LargeCustomer:               ic.LargeCustomer,
-								Uncommitted:                 ic.Uncommitted,
-								HighFrequencyPings:          ic.HighFrequencyPings,
-								RouteDiversity:              int32(ic.RouteDiversity),
-								MultipathThreshold:          int32(ic.MultipathThreshold),
-								MispredictMultipathOverload: ic.MispredictMultipathOverload,
-								MaxRTT:                      int32(ic.MaxRTT),
+								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:            int32(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+								ForceNext:                  ic.ForceNext,
+								LargeCustomer:              ic.LargeCustomer,
+								Uncommitted:                ic.Uncommitted,
+								HighFrequencyPings:         ic.HighFrequencyPings,
+								RouteDiversity:             int32(ic.RouteDiversity),
+								MultipathThreshold:         int32(ic.MultipathThreshold),
+								EnableVanityMetrics:        ic.EnableVanityMetrics,
+								MaxRTT:                     int32(ic.MaxRTT),
 							})
 
 							return nil
@@ -2220,7 +2220,7 @@ must be in a json file of the form:
   "HighFrequencyPings": true,
   "RouteDiversity": 0,
   "MultipathThreshold": 25,
-  "MispredictMultipathOverload": true,
+  "EnableVanityMetrics": true,
   "BuyerID": "205cca7361c2ae96"
 }
 
@@ -2270,11 +2270,11 @@ must be one of the following and is case-sensitive:
   ForceNext                   boolean
   LargeCustomer               boolean
   Uncommitted                 boolean
+  MaxRTT                      integer
   HighFrequencyPings          boolean 
   RouteDiversity              integer
   MultipathThreshold          integer
-  MispredictMultipathOverload boolean
-  MaxRTT                      integer
+  EnableVanityMetrics         boolean
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.

@@ -727,22 +727,22 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 }
 
 type sqlInternalConfig struct {
-	RouteSelectThreshold        int64
-	RouteSwitchThreshold        int64
-	MaxLatencyTradeOff          int64
-	RTTVetoDefault              int64
-	RTTVetoPacketLoss           int64
-	RTTVetoMultipath            int64
-	MultipathOverloadThreshold  int64
-	TryBeforeYouBuy             bool
-	ForceNext                   bool
-	LargeCustomer               bool
-	Uncommitted                 bool
-	HighFrequencyPings          bool
-	RouteDiversity              int64
-	MultipathThreshold          int64
-	MispredictMultipathOverload bool
-	MaxRTT                      int64
+	RouteSelectThreshold       int64
+	RouteSwitchThreshold       int64
+	MaxLatencyTradeOff         int64
+	RTTVetoDefault             int64
+	RTTVetoPacketLoss          int64
+	RTTVetoMultipath           int64
+	MultipathOverloadThreshold int64
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int64
+	HighFrequencyPings         bool
+	RouteDiversity             int64
+	MultipathThreshold         int64
+	EnableVanityMetrics        bool
 }
 
 func (db *SQL) syncInternalConfigs(ctx context.Context) error {
@@ -783,7 +783,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			&sqlIC.HighFrequencyPings,
 			&sqlIC.RouteDiversity,
 			&sqlIC.MultipathThreshold,
-			&sqlIC.MispredictMultipathOverload,
+			&sqlIC.EnableVanityMetrics,
 			&buyerID,
 		)
 		if err != nil {
@@ -792,22 +792,22 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 		}
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:        int32(sqlIC.RouteSelectThreshold),
-			RouteSwitchThreshold:        int32(sqlIC.RouteSwitchThreshold),
-			MaxLatencyTradeOff:          int32(sqlIC.MaxLatencyTradeOff),
-			RTTVeto_Default:             int32(sqlIC.RTTVetoDefault),
-			RTTVeto_PacketLoss:          int32(sqlIC.RTTVetoPacketLoss),
-			RTTVeto_Multipath:           int32(sqlIC.RTTVetoMultipath),
-			MultipathOverloadThreshold:  int32(sqlIC.MultipathOverloadThreshold),
-			TryBeforeYouBuy:             sqlIC.TryBeforeYouBuy,
-			ForceNext:                   sqlIC.ForceNext,
-			LargeCustomer:               sqlIC.LargeCustomer,
-			Uncommitted:                 sqlIC.Uncommitted,
-			HighFrequencyPings:          sqlIC.HighFrequencyPings,
-			RouteDiversity:              int32(sqlIC.RouteDiversity),
-			MultipathThreshold:          int32(sqlIC.MultipathThreshold),
-			MispredictMultipathOverload: sqlIC.MispredictMultipathOverload,
-			MaxRTT:                      int32(sqlIC.MaxRTT),
+			RouteSelectThreshold:       int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold:       int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:         int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:            int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:         int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:          int32(sqlIC.RTTVetoMultipath),
+			MultipathOverloadThreshold: int32(sqlIC.MultipathOverloadThreshold),
+			TryBeforeYouBuy:            sqlIC.TryBeforeYouBuy,
+			ForceNext:                  sqlIC.ForceNext,
+			LargeCustomer:              sqlIC.LargeCustomer,
+			Uncommitted:                sqlIC.Uncommitted,
+			HighFrequencyPings:         sqlIC.HighFrequencyPings,
+			RouteDiversity:             int32(sqlIC.RouteDiversity),
+			MultipathThreshold:         int32(sqlIC.MultipathThreshold),
+			EnableVanityMetrics:        sqlIC.EnableVanityMetrics,
+			MaxRTT:                     int32(sqlIC.MaxRTT),
 		}
 
 		id := db.buyerIDs[buyerID]
