@@ -1888,7 +1888,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
-	internalConfig := sqlInternalConfig {
+	internalConfig := sqlInternalConfig{
 		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
 		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
 		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
@@ -1900,7 +1900,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		ForceNext:                  ic.ForceNext,
 		LargeCustomer:              ic.LargeCustomer,
 		Uncommitted:                ic.Uncommitted,
-    MaxRTT:                     int64(ic.MaxRTT),
+		MaxRTT:                     int64(ic.MaxRTT),
 		HighFrequencyPings:         ic.HighFrequencyPings,
 		RouteDiversity:             int64(ic.RouteDiversity),
 		MultipathThreshold:         int64(ic.MultipathThreshold),
@@ -1912,8 +1912,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, enable_vanity_metrics, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
+	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2132,14 +2132,6 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id=$2"))
 		args = append(args, highFrequencyPings, buyer.DatabaseID)
 		ic.HighFrequencyPings = highFrequencyPings
-	case "EnableVanityMetrics":
-		enableVanityMetrics, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set mispredict_multipath_overload=$1 where buyer_id=$2"))
-		args = append(args, enableVanityMetrics, buyer.DatabaseID)
-		ic.EnableVanityMetrics = enableVanityMetrics
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {

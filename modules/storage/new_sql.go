@@ -756,7 +756,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, enable_vanity_metrics, buyer_id from rs_internal_configs"))
+	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, buyer_id from rs_internal_configs"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -791,7 +791,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			return err
 		}
 
-		internalConfig := core.InternalConfig {
+		internalConfig := core.InternalConfig{
 			RouteSelectThreshold:       int32(sqlIC.RouteSelectThreshold),
 			RouteSwitchThreshold:       int32(sqlIC.RouteSwitchThreshold),
 			MaxLatencyTradeOff:         int32(sqlIC.MaxLatencyTradeOff),
@@ -803,7 +803,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			ForceNext:                  sqlIC.ForceNext,
 			LargeCustomer:              sqlIC.LargeCustomer,
 			Uncommitted:                sqlIC.Uncommitted,
-      MaxRTT:                     int32(sqlIC.MaxRTT),
+			MaxRTT:                     int32(sqlIC.MaxRTT),
 			HighFrequencyPings:         sqlIC.HighFrequencyPings,
 			RouteDiversity:             int32(sqlIC.RouteDiversity),
 			MultipathThreshold:         int32(sqlIC.MultipathThreshold),
