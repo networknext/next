@@ -3275,6 +3275,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) 
 	expectedRouteState.UserID = 100
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = false
+	expectedRouteState.MultipathRestricted = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.ReducePacketLoss = true
 	expectedRouteState.Committed = true
@@ -3362,6 +3363,7 @@ func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
 
 	expectedRouteState := RouteState{}
 	expectedRouteState.UserID = 100
+	expectedRouteState.MultipathRestricted = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)

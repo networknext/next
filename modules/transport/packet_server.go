@@ -728,6 +728,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 
 	if sessionData.Version >= 9 {
+		stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+
 		stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
 		stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
 		stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
