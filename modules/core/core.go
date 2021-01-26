@@ -52,6 +52,14 @@ func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 	return d // kilometers
 }
 
+func SpeedOfLightTimeMilliseconds(a_lat float64, a_long float64, b_lat float64, b_long float64, c_lat float64, c_long float64) float64 {
+	ab_distance_kilometers := HaversineDistance(a_lat, a_long, b_lat, b_long)
+	bc_distance_kilometers := HaversineDistance(b_lat, b_long, c_lat, c_long)
+	total_distance_kilometers := ab_distance_kilometers + bc_distance_kilometers
+	speed_of_light_time_milliseconds := total_distance_kilometers / 299792.458 * 1000.0
+	return speed_of_light_time_milliseconds
+}
+
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
 }
@@ -958,23 +966,6 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	if routeShader.ReducePacketLoss {
 
-		// if packet loss occurred on direct, penalize the near relay for the route
-
-		if firstRouteRelayId != 0 && nextPacketLoss > 0 {
-
-			for i := range sourceRelayId {
-
-				if sourceRelayId[i] == firstRouteRelayId {
-
-					if sourceRelayPacketLoss[i] == 0 {
-						routeState.NearRelayPLCount[i]++
-					}
-
-					break
-				}
-			}
-		}
-
 		// exclude near relays with higher number of packet loss events than direct (sporadic packet loss)
 
 		if directPacketLoss > 0 {
@@ -1300,6 +1291,7 @@ type InternalConfig struct {
 	RouteDiversity              int32
 	MultipathThreshold          int32
 	MispredictMultipathOverload bool
+	EnableVanityMetrics         bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1320,6 +1312,7 @@ func NewInternalConfig() InternalConfig {
 		RouteDiversity:              0,
 		MultipathThreshold:          25,
 		MispredictMultipathOverload: true,
+		EnableVanityMetrics:         false,
 	}
 }
 
@@ -1422,7 +1415,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 			if debug != nil {
 				*debug += "try to reduce latency\n"
 			}
-			maxCost = directLatency - routeShader.LatencyThreshold
+			maxCost = directLatency - (routeShader.LatencyThreshold + internal.RouteSelectThreshold)
 			reduceLatency = true
 		} else {
 			if debug != nil {
@@ -1439,7 +1432,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
-		maxCost = directLatency + internal.MaxLatencyTradeOff
+		maxCost = directLatency + internal.MaxLatencyTradeOff - internal.RouteSelectThreshold
 		reducePacketLoss = true
 	}
 
@@ -1452,8 +1445,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		if debug != nil {
 			*debug += "pro mode\n"
 		}
-		maxCost = directLatency + internal.MaxLatencyTradeOff
+		maxCost = directLatency + internal.MaxLatencyTradeOff - internal.RouteSelectThreshold
 		proMode = true
+		reduceLatency = false
+		reducePacketLoss = false
 	}
 
 	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
@@ -1611,8 +1606,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rela
 			if !routeState.Multipath {
 
 				// If we make latency worse and we are not in multipath, leave network next right away
-				
-				if nextLatency > (directLatency-rttVeto) {
+
+				if nextLatency > (directLatency - rttVeto) {
 					if debug != nil {
 						*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
 					}
@@ -1623,8 +1618,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rela
 			} else {
 
 				// If we are in multipath, only leave network next if we make latency worse three slices in a row
-				
-				if nextLatency > (directLatency-rttVeto) {
+
+				if nextLatency > (directLatency - rttVeto) {
 					routeState.LatencyWorseCounter++
 					if routeState.LatencyWorseCounter == 3 {
 						if debug != nil {

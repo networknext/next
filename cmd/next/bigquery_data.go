@@ -1,4 +1,4 @@
-package transport
+package main
 
 import (
 	"time"
@@ -20,8 +20,12 @@ type BigQueryBillingEntry struct {
 	NextRTT                         bigquery.NullFloat64
 	NextJitter                      bigquery.NullFloat64
 	NextPacketLoss                  bigquery.NullFloat64
-	NextRelays                      []int64
-	NextRelaysStrings               []string
+	NextRelay0                      bigquery.NullInt64
+	NextRelay1                      bigquery.NullInt64
+	NextRelay2                      bigquery.NullInt64
+	NextRelay3                      bigquery.NullInt64
+	NextRelay4                      bigquery.NullInt64
+	NextRelaysStrings               string
 	TotalPrice                      int64
 	ClientToServerPacketsLost       bigquery.NullInt64
 	ServerToClientPacketsLost       bigquery.NullInt64

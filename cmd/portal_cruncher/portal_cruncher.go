@@ -207,12 +207,6 @@ func mainReturnWithCode() int {
 	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
 	// Get the column family name
 	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
-	// Get the max number of days the data should be kept in Bigtable
-	btMaxAgeDays, err := envvar.GetInt("BIGTABLE_MAX_AGE_DAYS", 90)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
 
 	btGoroutineCount, err := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
 	if err != nil {
@@ -231,7 +225,6 @@ func mainReturnWithCode() int {
 		btInstanceID,
 		btTableName,
 		btCfName,
-		btMaxAgeDays,
 		messageChanSize,
 		logger,
 		portalCruncherMetrics,

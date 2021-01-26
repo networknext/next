@@ -483,7 +483,7 @@ func main() {
 
 	// Flags to only show relays in certain states
 	var relaysStateShowFlags [6]bool
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", true, "only show enabled relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
@@ -493,11 +493,11 @@ func main() {
 	// Flags to hide relays in certain states
 	var relaysStateHideFlags [6]bool
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", true, "hide relays in maintenance")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", true, "hide disabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", true, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", true, "hide decommissioned relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", true, "hide offline relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
 
 	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
 	var relaysDownFlag bool
@@ -720,6 +720,7 @@ func main() {
 			if relaysfs.NFlag() == 0 {
 				// If no flags are given, set the default set of flags
 				relaysStateShowFlags[routing.RelayStateEnabled] = true
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
 			}
 
 			if relaysAllFlag {
@@ -734,12 +735,6 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateDisabled] = false
 				relaysStateHideFlags[routing.RelayStateQuarantine] = false
 				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-				//  Show decommissioned relays
-				relaysStateShowFlags[routing.RelayStateDecommissioned] = true
-				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
 			var arg string
@@ -1201,7 +1196,7 @@ func main() {
 			},
 			{ // info
 				Name:       "info",
-				ShortUsage: "next buyer info (id)",
+				ShortUsage: "next buyer info (id, name or substring)",
 				ShortHelp:  "Get detailed information for the specified buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
@@ -1270,19 +1265,6 @@ func main() {
 					}
 
 					removeBuyer(rpcClient, env, args[0])
-					return nil
-				},
-			},
-			{ // update
-				Name:       "update ",
-				ShortUsage: "next buyer remove (buyer name or substring) (field name) (value)",
-				ShortHelp:  "Remove a buyer from storage",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) != 3 {
-						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
-					}
-
-					updateBuyer(rpcClient, env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1769,37 +1751,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
-	var shaderCommand = &ffcli.Command{
-		Name:       "shader",
-		ShortUsage: "next shader <buyer name or substring>",
-		ShortHelp:  "Retrieve route shader settings for the specified buyer",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintf("No buyer name or substring provided.\nUsage:\nnext shader <buyer name or substring>\n"), 0)
-			}
-
-			// Get the buyer's route shader
-			routingRulesSettings(rpcClient, env, args[0])
-			return nil
-		},
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "id",
-				ShortUsage: "next shader id <buyer ID>",
-				ShortHelp:  "Retrieve route shader information for the given buyer ID",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers\n"), 0)
-					}
-
-					// Get the buyer's route shader
-					routingRulesSettingsByID(rpcClient, env, args[0])
-					return nil
-				},
-			},
-		},
-	}
-
 	var customerCommand = &ffcli.Command{
 		Name:       "customer",
 		ShortUsage: "next customer <subcommand>",
@@ -2144,7 +2095,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		buyerCommand,
 		buyersCommand,
 		userCommand,
-		shaderCommand,
 		sshCommand,
 		costCommand,
 		optimizeCommand,

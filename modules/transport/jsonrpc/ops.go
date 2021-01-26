@@ -189,18 +189,20 @@ type buyer struct {
 	CompanyCode string `json:"company_code"`
 	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
+	HexID       string `json:"hexID"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() could not find Customer %s: %v", b.CompanyCode, err)
+			err = fmt.Errorf("Buyers() could not find Customer %s fo %s: %v", b.CompanyCode, b.String(), err)
 			s.Logger.Log("err", err)
 			return err
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
+			HexID:       fmt.Sprintf("%016x", b.ID),
 			CompanyName: c.Name,
 			CompanyCode: b.CompanyCode,
 			ShortName:   b.ShortName,
@@ -532,6 +534,7 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                `json:"id"`
+	HexID               string                `json:"hexID"`
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
@@ -568,6 +571,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			HexID:               fmt.Sprintf("%016x", r.ID),
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -687,9 +691,11 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
 
+	// want: “$(relayname)-removed-$(date-time-of-removal)”
 	shortDate := time.Now().Format("2006-01-02")
 	shortTime := time.Now().Format("15:04:05")
-	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
+	relay.Name = fmt.Sprintf("%s-removed-%s-%s", relay.Name, shortDate, shortTime)
+
 	relay.Addr = net.UDPAddr{} // clear the address to 0 when removed
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
@@ -848,6 +854,7 @@ type DatacentersReply struct {
 
 type datacenter struct {
 	Name         string  `json:"name"`
+	HexID        string  `json:"hexID"`
 	ID           uint64  `json:"id"`
 	SignedID     int64   `json:"signed_id"`
 	Latitude     float32 `json:"latitude"`
@@ -859,6 +866,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:      d.Name,
+			HexID:     fmt.Sprintf("%016x", d.ID),
 			ID:        d.ID,
 			Latitude:  d.Location.Latitude,
 			Longitude: d.Location.Longitude,
@@ -1005,15 +1013,27 @@ type RouteSelectionReply struct {
 }
 
 type UpdateRelayArgs struct {
-	RelayID uint64
-	Field   string
-	Value   interface{}
+	RelayID    uint64      `json:"relayID"`    // used by next tool
+	HexRelayID string      `json:"hexRelayID"` // used by javascript clients
+	Field      string      `json:"field"`
+	Value      interface{} `json:"value"`
 }
 
 type UpdateRelayReply struct{}
 
 func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
-	err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+
+	relayID := args.RelayID
+	var err error
+	if args.HexRelayID != "" {
+		relayID, err = strconv.ParseUint(args.HexRelayID, 16, 64)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() failed to parse HexRelayID %s: %w", args.HexRelayID, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+	err = s.Storage.UpdateRelay(context.Background(), relayID, args.Field, args.Value)
 	if err != nil {
 		err = fmt.Errorf("UpdateRelay() failed to modify relay record for field %s with value %v: %w", args.Field, args.Value, err)
 		s.Logger.Log("err", err)

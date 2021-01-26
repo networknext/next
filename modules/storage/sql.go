@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"sort"
@@ -59,6 +58,8 @@ type SQL struct {
 	routeShaderMutex    sync.RWMutex
 	bannedUserMutex     sync.RWMutex
 
+	//  int64: PostgreSQL primary key
+	// uint64: backend/storer internal ID
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
 	customerIDs   map[int64]string
@@ -340,10 +341,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
 	}
 
-	internalID := binary.LittleEndian.Uint64(b.PublicKey[:8])
-
 	buyer := sqlBuyer{
-		ID:             internalID,
+		ID:             b.ID,
 		CompanyCode:    b.CompanyCode,
 		ShortName:      b.CompanyCode,
 		IsLiveCustomer: b.Live,
@@ -354,8 +353,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("short_name, is_live_customer, debug, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -364,6 +363,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	result, err := stmt.Exec(
+		int64(buyer.ID),
 		buyer.ShortName,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
@@ -391,7 +391,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	db.syncBuyers(ctx)
 
 	db.buyerMutex.RLock()
-	newBuyer := db.buyers[internalID]
+	newBuyer := db.buyers[buyer.ID]
 	db.buyerMutex.RUnlock()
 
 	newBuyer.RouteShader = core.NewRouteShader()
@@ -399,7 +399,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// update local fields
 	db.buyerMutex.Lock()
-	db.buyers[internalID] = newBuyer
+	db.buyers[buyer.ID] = newBuyer
 	db.buyerMutex.Unlock()
 
 	db.customerMutex.Lock()
@@ -1904,8 +1904,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		RouteDiversity:              int64(ic.RouteDiversity),
 		MultipathThreshold:          int64(ic.MultipathThreshold),
 		MispredictMultipathOverload: ic.MispredictMultipathOverload,
-
-		MaxRTT: int64(ic.MaxRTT),
+		EnableVanityMetrics:         ic.EnableVanityMetrics,
+		MaxRTT:                      int64(ic.MaxRTT),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -1913,8 +1913,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
+	sql.Write([]byte("multipath_threshold, mispredict_multipath_overload, enable_vanity_metrics, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1939,6 +1939,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.RouteDiversity,
 		internalConfig.MultipathThreshold,
 		internalConfig.MispredictMultipathOverload,
+		internalConfig.EnableVanityMetrics,
 		buyer.DatabaseID,
 	)
 
@@ -2165,6 +2166,15 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id=$2"))
 		args = append(args, multipathThreshold, buyer.DatabaseID)
 		ic.MultipathThreshold = multipathThreshold
+	case "EnableVanityMetrics":
+		enableVanityMetrics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id=$2"))
+		args = append(args, enableVanityMetrics, buyer.DatabaseID)
+		ic.EnableVanityMetrics = enableVanityMetrics
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}

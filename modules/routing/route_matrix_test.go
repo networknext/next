@@ -10,34 +10,37 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const LosAngelesLatitude = 33.9909
+const LosAngelesLongitude = -118.2144
+
+const TokyoLatitude = 35.6762
+const TokyoLongitude = 139.6503
+
+const PapuaNewGuineaLatitude = -6.3150
+const PapuaNewGuineaLongitude = 143.9555
+
+const HonoluluLatitude = 21.3069
+const HonoluluLongitude = -157.8583
+
 func getRouteMatrix(t *testing.T) routing.RouteMatrix {
 	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
 	assert.NoError(t, err)
 	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
 	assert.NoError(t, err)
+	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+	assert.NoError(t, err)
+	relayAddr4, err := net.ResolveUDPAddr("udp", "127.0.0.1:10003")
+	assert.NoError(t, err)
 
 	expected := routing.RouteMatrix{
-		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1},
-		RelayIDs:           []uint64{1, 2},
-		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
-		RelayNames:         []string{"test.relay.1", "test.relay.2"},
-		RelayLatitudes:     []float32{90, 89},
-		RelayLongitudes:    []float32{180, 179},
-		RelayDatacenterIDs: []uint64{10, 10},
-		RouteEntries: []core.RouteEntry{
-			{
-				DirectCost:     65,
-				NumRoutes:      int32(core.TriMatrixLength(2)),
-				RouteCost:      [core.MaxRoutesPerEntry]int32{35},
-				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
-				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
-					{
-						0, 1,
-					},
-				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
-			},
-		},
+		RelayIDsToIndices:  map[uint64]int32{1: 0, 2: 1, 3: 2, 4: 3},
+		RelayIDs:           []uint64{1, 2, 3, 4},
+		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2, *relayAddr3, *relayAddr4},
+		RelayNames:         []string{"test.relay.1", "test.relay.2", "test.relay.3", "test.relay.4"},
+		RelayLatitudes:     []float32{TokyoLatitude, PapuaNewGuineaLatitude, HonoluluLatitude, LosAngelesLatitude},
+		RelayLongitudes:    []float32{TokyoLongitude, PapuaNewGuineaLongitude, HonoluluLongitude, LosAngelesLongitude},
+		RelayDatacenterIDs: []uint64{10, 10, 10, 10},
+		RouteEntries:       []core.RouteEntry{},
 	}
 
 	return expected
@@ -65,29 +68,56 @@ func TestRouteMatrixSerialize(t *testing.T) {
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
-	nearRelays, err := routeMatrix.GetNearRelays(0, 0, core.MaxNearRelays)
-	assert.EqualError(t, err, "no near relays")
+	nearRelays := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
 	assert.Empty(t, nearRelays)
 }
 
-func TestRouteMatrixGetNearRelaysSuccess(t *testing.T) {
+func TestRouteMatrixGetNearRelays(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expected := routeMatrix.RelayIDs
+	expected := []uint64{1, 4, 3}
 
-	actual, err := routeMatrix.GetNearRelays(0, 0, core.MaxNearRelays)
-	assert.NoError(t, err)
+	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
 
-func TestRouteMatrixGetNearRelaysSuccessWithMax(t *testing.T) {
+func TestRouteMatrixGetNearRelaysWithMax(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
 	expected := routeMatrix.RelayIDs[:1]
 
-	actual, err := routeMatrix.GetNearRelays(0, 0, 1)
-	assert.NoError(t, err)
+	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
+	routeMatrix := getRouteMatrix(t)
+
+	// Zero out the Tokyo relay lat/long so that it is far enough away that it
+	// won't be picked up by the speed of light check
+	routeMatrix.RelayLatitudes[0] = 0
+	routeMatrix.RelayLongitudes[0] = 0
+
+	expected := []uint64{4, 3}
+
+	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
+	routeMatrix := getRouteMatrix(t)
+
+	// Zero out the Los Angeles relay lat/long so that it is far enough away that it
+	// won't be picked up by the speed of light check
+	routeMatrix.RelayLatitudes[len(routeMatrix.RelayLatitudes)-1] = 0
+	routeMatrix.RelayLongitudes[len(routeMatrix.RelayLatitudes)-1] = 0
+
+	expected := []uint64{1, 3}
+
+	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
@@ -103,7 +133,7 @@ func TestRouteMatrixGetDatacenterIDsEmpty(t *testing.T) {
 func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 	routeMatrix := getRouteMatrix(t)
 
-	expected := []uint64{1, 2}
+	expected := routeMatrix.RelayIDs
 	actual := routeMatrix.GetDatacenterRelayIDs(10)
 	assert.Equal(t, expected, actual)
 }
