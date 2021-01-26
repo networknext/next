@@ -135,12 +135,12 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	channelBufferSize, err := envvar.GetInt("BEACON_CHANNEL_BUFFER_SIZE", 100000)
+	channelBufferSize, err := envvar.GetInt("CHANNEL_BUFFER_SIZE", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-	numGoroutines, err := envvar.GetInt("BEACON_NUM_GOROUTINES", 1)
+	numGoroutines, err := envvar.GetInt("NUM_GOROUTINES", 1)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
