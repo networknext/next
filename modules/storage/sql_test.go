@@ -984,7 +984,7 @@ func TestInternalConfig(t *testing.T) {
 		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
-		internalConfig := core.InternalConfig{
+		internalConfig := core.InternalConfig {
 			RouteSelectThreshold:       2,
 			RouteSwitchThreshold:       5,
 			MaxLatencyTradeOff:         10,
@@ -1025,6 +1025,7 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, int32(10), outerInternalConfig.RouteDiversity)
 		assert.Equal(t, int32(35), outerInternalConfig.MultipathThreshold)
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
+		assert.Equal(t, true, outerInternalConfig.EnableVanityMetrics)
 	})
 
 	t.Run("UpdateInternalConfig", func(t *testing.T) {
@@ -1142,6 +1143,12 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
 
+		// EnableVanityMetrics
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "EnableVanityMetrics", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
 	})
 
 	t.Run("RemoveInternalConfig", func(t *testing.T) {
