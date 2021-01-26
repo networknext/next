@@ -56,7 +56,7 @@ func NewGooglePubSubBeaconer(ctx context.Context, beaconMetrics *metrics.BeaconM
 			return nil, fmt.Errorf("could not create pubsub client %v: %v", i, err)
 		}
 
-		// Create the billing topic if running locally with the pubsub emulator
+		// Create the beacon topic if running locally with the pubsub emulator
 		if projectID == "local" {
 			if _, err := client.PubsubClient.CreateTopic(ctx, beaconTopicID); err != nil {
 				// Not the best, but the underlying error type is internal so we can't check for it
@@ -78,7 +78,7 @@ func NewGooglePubSubBeaconer(ctx context.Context, beaconMetrics *metrics.BeaconM
 		client.CancelContextFunc = cancelFunc
 
 		go client.pubsubResults(cancelCtx)
-
+		
 		clients[i] = client
 	}
 
@@ -146,7 +146,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context) {
 			_, err := result.Get(ctx)
 			if err != nil {
 				level.Error(client.Logger).Log("beacon", "failed to publish to pub/sub", "err", err)
-				// client.Metrics.ErrorMetrics.BeaconPublishFailure.Add(1)
+				client.Metrics.ErrorMetrics.BeaconPublishFailure.Add(1)
 			} else {
 				level.Debug(client.Logger).Log("beacon", "successfully published beacon data")
 			}

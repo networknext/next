@@ -31,7 +31,7 @@ import (
 	"github.com/networknext/backend/modules/transport"
 	"golang.org/x/sys/unix"
 
-	"cloud.google.com/go/bigquery"
+	googlepubsub "cloud.google.com/go/pubsub"
 )
 
 var (
@@ -89,6 +89,57 @@ func mainReturnWithCode() int {
 		Metrics: &beaconServiceMetrics.BeaconMetrics,
 	}
 
+	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+	if gcpOK || pubsubEmulatorOK {
+
+		pubsubCtx := ctx
+		if pubsubEmulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			clientCount, err := envvar.GetInt("BEACON_CLIENT_COUNT", 1)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			countThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_COUNT", 10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			byteThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_MIN_BYTES", 512)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			// We do our own batching so don't stack the library's batching on top of ours
+			// Specifically, don't stack the message count thresholds
+			settings := googlepubsub.DefaultPublishSettings
+			settings.CountThreshold = 1
+			settings.ByteThreshold = byteThreshold
+			settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, &beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub beaconer", "err", err)
+				return 1
+			}
+
+			beaconer = pubsub
+		}
+	}
+
 	if gcpOK {
 		// Stackdriver Profiler
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -96,43 +147,43 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// Google Bigquery
-		{
-			beaconDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_BEACON", "")
-			if beaconDataset != "" {
-				batchSize := beacon.DefaultBigQueryBatchSize
+		// // Google Bigquery
+		// {
+		// 	beaconDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_BEACON", "")
+		// 	if beaconDataset != "" {
+		// 		batchSize := beacon.DefaultBigQueryBatchSize
 
-				batchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", beacon.DefaultBigQueryBatchSize)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					return 1
-				}
+		// 		batchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", beacon.DefaultBigQueryBatchSize)
+		// 		if err != nil {
+		// 			level.Error(logger).Log("err", err)
+		// 			return 1
+		// 		}
 
-				// Create biquery client and start write loop
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					return 1
-				}
+		// 		// Create biquery client and start write loop
+		// 		bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+		// 		if err != nil {
+		// 			level.Error(logger).Log("err", err)
+		// 			return 1
+		// 		}
 
-				beaconTable := envvar.Get("GOOGLE_BIGQUERY_TABLE_BEACON", "")
+		// 		beaconTable := envvar.Get("GOOGLE_BIGQUERY_TABLE_BEACON", "")
 
-				b := beacon.GoogleBigQueryClient{
-					Metrics:       &beaconServiceMetrics.BeaconMetrics,
-					Logger:        logger,
-					TableInserter: bqClient.Dataset(beaconDataset).Table(beaconTable).Inserter(),
-					BatchSize:     batchSize,
-				}
+		// 		b := beacon.GoogleBigQueryClient{
+		// 			Metrics:       &beaconServiceMetrics.BeaconMetrics,
+		// 			Logger:        logger,
+		// 			TableInserter: bqClient.Dataset(beaconDataset).Table(beaconTable).Inserter(),
+		// 			BatchSize:     batchSize,
+		// 		}
 
-				// Set the Beaconer to BigQuery
-				beaconer = &b
+		// 		// Set the Beaconer to BigQuery
+		// 		beaconer = &b
 
-				// Start the background WriteLoop to batch write to BigQuery
-				go func() {
-					b.WriteLoop(ctx)
-				}()
-			}
-		}
+		// 		// Start the background WriteLoop to batch write to BigQuery
+		// 		go func() {
+		// 			b.WriteLoop(ctx)
+		// 		}()
+		// 	}
+		// }
 	}
 
 	channelBufferSize, err := envvar.GetInt("CHANNEL_BUFFER_SIZE", 100000)
@@ -162,8 +213,8 @@ func mainReturnWithCode() int {
 				case beaconPacket := <-beaconPacketChan:
 					err := beaconer.Submit(ctx, beaconPacket)
 					if err != nil {
-						level.Error(logger).Log("msg", "Could not send beacon packet to BigQuery", "err", err)
-						beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSubmitFailure.Add(1)
+						level.Error(logger).Log("msg", "Could not send beacon packet to Google Pubsub", "err", err)
+						beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Add(1)
 						errChan <- err
 						return
 					}
@@ -203,7 +254,7 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d beacon entries queued\n", int(beaconServiceMetrics.BeaconMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d beacon entry submission failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSubmitFailure.Value()))
+				fmt.Printf("%d beacon entry send failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Value()))
 				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Value()))
 				fmt.Printf("%d beacon entry write failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconWriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")

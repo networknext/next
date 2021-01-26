@@ -31,19 +31,19 @@ var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
 }
 
 type BeaconErrorMetrics struct {
-	// BeaconPublishFailure     Counter
+	BeaconPublishFailure Counter
 	// BeaconReadFailure        Counter
 	// BeaconBatchedReadFailure Counter
-	BeaconSubmitFailure Counter
+	BeaconSendFailure   Counter
 	BeaconChannelFull   Counter
 	BeaconWriteFailure  Counter
 }
 
 var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
-	// BeaconPublishFailure:     &EmptyCounter{},
+	BeaconPublishFailure: &EmptyCounter{},
 	// BeaconReadFailure:        &EmptyCounter{},
 	// BeaconBatchedReadFailure: &EmptyCounter{},
-	BeaconSubmitFailure: &EmptyCounter{},
+	BeaconSendFailure: 	 &EmptyCounter{},
 	BeaconChannelFull:   &EmptyCounter{},
 	BeaconWriteFailure:  &EmptyCounter{},
 }
@@ -74,7 +74,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		ServiceName: "beacon",
 		ID:          "beacon.entries.sent",
 		Unit:        "entries",
-		Description: "The total number of beacon entries sent to be submitted to BigQuery",
+		Description: "The total number of beacon entries sent to be submitted to Google Pubsub",
 	})
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		ServiceName: "beacon",
 		ID:          "beacon.entries.submitted",
 		Unit:        "entries",
-		Description: "The total number of beacon entries submitted to be batch written to BigQuery",
+		Description: "The total number of beacon entries submitted to Google Pubsub",
 	})
 	if err != nil {
 		return nil, err
@@ -107,20 +107,20 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		ServiceName: "beacon",
 		ID:          "beacon.entries.written",
 		Unit:        "entries",
-		Description: "The total number of beacon entries written to BigQuery",
+		Description: "The total number of beacon entries written to Google Pubsub",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSubmitFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Beacon Submit Failure",
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Send Failure",
 		ServiceName: "beacon",
-		ID:          "beacon.error.submit_failure",
+		ID:          "beacon.error.send_failure",
 		Unit:        "errors",
-		Description: "The total number of beacon entries that could not be submitted to BigQuery",
+		Description: "The total number of beacon entries that could not be submitted to Google Pubsub",
 	})
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		ServiceName: "beacon",
 		ID:          "beacon.error.channel_full",
 		Unit:        "errors",
-		Description: "The total number of beacon entries that could not be inserted into the internal channel for submission to BigQuery",
+		Description: "The total number of beacon entries that could not be inserted into the internal channel for submission to Google Pubsub",
 	})
 	if err != nil {
 		return nil, err
