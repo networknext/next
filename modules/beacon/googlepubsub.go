@@ -96,7 +96,10 @@ func (beaconer *GooglePubSubBeaconer) Submit(ctx context.Context, entry *NextBea
 	index := entry.SessionID % uint64(len(beaconer.clients))
 	client := beaconer.clients[index]
 
-	entryBytes := WriteBeaconEntry(entry)
+	entryBytes, err := WriteBeaconEntry(entry)
+	if err != nil {
+		return err
+	}
 
 	data := make([]byte, 4+len(entryBytes))
 	var offset int

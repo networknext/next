@@ -91,6 +91,7 @@ func (entry *NextBeaconPacket) Save() (map[string]bigquery.Value, string, error)
 	e := make(map[string]bigquery.Value)
 
 	e["version"] = int(entry.Version)
+	e["timestamp"] = int(entry.Timestamp)
 	e["customerID"] = int(entry.CustomerID)
 	e["datacenterID"] = int(entry.DatacenterID)
 	e["userHash"] = int(entry.UserHash)

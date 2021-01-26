@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/transport"
 )
 
 const (
@@ -46,8 +47,24 @@ const (
 		1 // FallbackToDirect
 )
 
-type RawBeaconPacket struct {
+// type RawBeaconPacket struct {
+// 	Version          uint32
+// 	CustomerID       uint64
+// 	DatacenterID     uint64
+// 	UserHash         uint64
+// 	AddressHash      uint64
+// 	SessionID        uint64
+// 	PlatformID       int32
+// 	ConnectionType   int32
+// 	Enabled          bool
+// 	Upgraded         bool
+// 	Next             bool
+// 	FallbackToDirect bool
+// }
+
+type NextBeaconPacket struct {
 	Version          uint32
+	Timestamp        uint64
 	CustomerID       uint64
 	DatacenterID     uint64
 	UserHash         uint64
@@ -61,28 +78,12 @@ type RawBeaconPacket struct {
 	FallbackToDirect bool
 }
 
-type NextBeaconPacket struct {
-	Version          uint32
-	Timestamp        uint64
-	CustomerID       uint64
-	DatacenterID     uint64
-	UserHash         uint64
-	AddressHash      uint64
-	SessionID        uint64
-	PlatformID       uint32
-	ConnectionType   uint32
-	Enabled          bool
-	Upgraded         bool
-	Next             bool
-	FallbackToDirect bool
-}
-
 // Beaconer is a beacon service interface that handles sending beacon packet entries through google pubsub to bigquery
 type Beaconer interface {
 	Submit(ctx context.Context, entry *NextBeaconPacket) error
 }
 
-func (packet *RawBeaconPacket) Serialize(stream encoding.Stream) error {
+func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&packet.Version, 8)
 
@@ -113,89 +114,106 @@ func (packet *RawBeaconPacket) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func WriteBeaconEntry(entry *NextBeaconPacket) []byte {
+func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("recovered from panic during beacon packet entry write: %v\n", r)
 		}
 	}()
 
-	data := make([]byte, MaxNextBeaconPacketBytes)
-	index := 0
+	// data := make([]byte, MaxNextBeaconPacketBytes)
+	// index := 0
 
-	encoding.WriteUint32(data, &index, entry.Version)
+	// encoding.WriteUint32(data, &index, entry.Version)
 
-	encoding.WriteUint64(data, &index, entry.Timestamp)
-	encoding.WriteUint64(data, &index, entry.CustomerID)
-	encoding.WriteUint64(data, &index, entry.DatacenterID)
-	encoding.WriteUint64(data, &index, entry.UserHash)
-	encoding.WriteUint64(data, &index, entry.AddressHash)
-	encoding.WriteUint64(data, &index, entry.SessionID)
+	// encoding.WriteUint64(data, &index, entry.Timestamp)
+	// encoding.WriteUint64(data, &index, entry.CustomerID)
+	// encoding.WriteUint64(data, &index, entry.DatacenterID)
+	// encoding.WriteUint64(data, &index, entry.UserHash)
+	// encoding.WriteUint64(data, &index, entry.AddressHash)
+	// encoding.WriteUint64(data, &index, entry.SessionID)
 
-	encoding.WriteUint32(data, &index, entry.PlatformID)
-	encoding.WriteUint32(data, &index, entry.ConnectionType)
+	// encoding.WriteUint32(data, &index, entry.PlatformID)
+	// encoding.WriteUint32(data, &index, entry.ConnectionType)
 
-	encoding.WriteBool(data, &index, entry.Enabled)
-	encoding.WriteBool(data, &index, entry.Upgraded)
-	encoding.WriteBool(data, &index, entry.Next)
-	encoding.WriteBool(data, &index, entry.FallbackToDirect)
+	// encoding.WriteBool(data, &index, entry.Enabled)
+	// encoding.WriteBool(data, &index, entry.Upgraded)
+	// encoding.WriteBool(data, &index, entry.Next)
+	// encoding.WriteBool(data, &index, entry.FallbackToDirect)
 
-	return data
+	// return data
+
+	ws, err := encoding.CreateWriteStream(transport.DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
-func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) bool {
-	index := 0
-	if !encoding.ReadUint32(data, &index, &entry.Version) {
-		return false
-	}
+func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) error {
+	// index := 0
+	// if !encoding.ReadUint32(data, &index, &entry.Version) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
-		return false
-	}
+	// if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint64(data, &index, &entry.CustomerID) {
-		return false
-	}
+	// if !encoding.ReadUint64(data, &index, &entry.CustomerID) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
-		return false
-	}
+	// if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint64(data, &index, &entry.UserHash) {
-		return false
-	}
+	// if !encoding.ReadUint64(data, &index, &entry.UserHash) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint64(data, &index, &entry.AddressHash) {
-		return false
-	}
+	// if !encoding.ReadUint64(data, &index, &entry.AddressHash) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
-		return false
-	}
+	// if !encoding.ReadUint64(data, &index, &entry.SessionID) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint32(data, &index, &entry.PlatformID) {
-		return false
-	}
+	// if !encoding.ReadUint32(data, &index, &entry.PlatformID) {
+	// 	return false
+	// }
 
-	if !encoding.ReadUint32(data, &index, &entry.ConnectionType) {
-		return false
-	}
+	// if !encoding.ReadUint32(data, &index, &entry.ConnectionType) {
+	// 	return false
+	// }
 
-	if !encoding.ReadBool(data, &index, &entry.Enabled) {
-		return false
-	}
+	// if !encoding.ReadBool(data, &index, &entry.Enabled) {
+	// 	return false
+	// }
 
-	if !encoding.ReadBool(data, &index, &entry.Upgraded) {
-		return false
-	}
+	// if !encoding.ReadBool(data, &index, &entry.Upgraded) {
+	// 	return false
+	// }
 
-	if !encoding.ReadBool(data, &index, &entry.Next) {
-		return false
-	}
+	// if !encoding.ReadBool(data, &index, &entry.Next) {
+	// 	return false
+	// }
 
-	if !encoding.ReadBool(data, &index, &entry.FallbackToDirect) {
-		return false
-	}
+	// if !encoding.ReadBool(data, &index, &entry.FallbackToDirect) {
+	// 	return false
+	// }
 
-	return true
+	// return true
+
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
