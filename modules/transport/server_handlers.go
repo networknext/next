@@ -1116,6 +1116,7 @@ func PostSessionUpdate(
 		RouteDiversity:                  uint32(routeDiversity),
 		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
 		Pro:                             sessionData.RouteState.ProMode,
+		MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
