@@ -964,103 +964,96 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		out_sourceRelayJitter[i] = routeState.NearRelayJitter[i]
 	}
 
-	if routeShader.ReducePacketLoss {
+	// exclude near relays with higher number of packet loss events than direct (sporadic packet loss)
 
-		// exclude near relays with higher number of packet loss events than direct (sporadic packet loss)
+	if directPacketLoss > 0 {
+		routeState.DirectPLCount++
+	}
 
-		if directPacketLoss > 0 {
-			routeState.DirectPLCount++
-		}
-
-		// IMPORTANT: Only run for nonexistent or sporadic direct PL
-		if int32(routeState.DirectPLCount*10) <= sliceNumber {
-
-			for i := range sourceRelayPacketLoss {
-
-				if sourceRelayPacketLoss[i] > 0 {
-					routeState.NearRelayPLCount[i]++
-				}
-
-				if routeState.NearRelayPLCount[i] > routeState.DirectPLCount {
-					out_sourceRelayLatency[i] = 255
-				}
-			}
-		}
-
-		// exclude near relays with a history of packet loss values worse than direct (continuous packet loss)
-
-		routeState.PLHistorySamples++
-		if routeState.PLHistorySamples > 8 {
-			routeState.PLHistorySamples = 8
-		}
-
-		index := routeState.PLHistoryIndex
-
-		samples := routeState.PLHistorySamples
-
-		temp_threshold := samples / 2
-
-		if directPacketLoss > 0 {
-			routeState.DirectPLHistory |= (1 << index)
-		} else {
-			routeState.DirectPLHistory &= ^(1 << index)
-		}
+	// IMPORTANT: Only run for nonexistent or sporadic direct PL
+	if int32(routeState.DirectPLCount*10) <= sliceNumber {
 
 		for i := range sourceRelayPacketLoss {
 
-			if sourceRelayPacketLoss[i] > directPacketLoss {
-				routeState.NearRelayPLHistory[i] |= (1 << index)
-			} else {
-				routeState.NearRelayPLHistory[i] &= ^(1 << index)
+			if sourceRelayPacketLoss[i] > 0 {
+				routeState.NearRelayPLCount[i]++
 			}
 
-			plCount := int32(0)
-			for j := 0; j < int(samples); j++ {
-				if (routeState.NearRelayPLHistory[i] & (1 << j)) != 0 {
-					plCount++
-				}
-			}
-
-			if plCount > temp_threshold {
+			if routeState.NearRelayPLCount[i] > routeState.DirectPLCount {
 				out_sourceRelayLatency[i] = 255
 			}
 		}
-
-		routeState.PLHistoryIndex = (routeState.PLHistoryIndex + 1) % 8
-
 	}
 
-	if routeShader.ReduceJitter {
+	// exclude near relays with a history of packet loss values worse than direct (continuous packet loss)
 
-		// exclude near relays with (significantly) higher jitter than direct
+	routeState.PLHistorySamples++
+	if routeState.PLHistorySamples > 8 {
+		routeState.PLHistorySamples = 8
+	}
 
+	index := routeState.PLHistoryIndex
+
+	samples := routeState.PLHistorySamples
+
+	temp_threshold := samples / 2
+
+	if directPacketLoss > 0 {
+		routeState.DirectPLHistory |= (1 << index)
+	} else {
+		routeState.DirectPLHistory &= ^(1 << index)
+	}
+
+	for i := range sourceRelayPacketLoss {
+
+		if sourceRelayPacketLoss[i] > directPacketLoss {
+			routeState.NearRelayPLHistory[i] |= (1 << index)
+		} else {
+			routeState.NearRelayPLHistory[i] &= ^(1 << index)
+		}
+
+		plCount := int32(0)
+		for j := 0; j < int(samples); j++ {
+			if (routeState.NearRelayPLHistory[i] & (1 << j)) != 0 {
+				plCount++
+			}
+		}
+
+		if plCount > temp_threshold {
+			out_sourceRelayLatency[i] = 255
+		}
+	}
+
+	routeState.PLHistoryIndex = (routeState.PLHistoryIndex + 1) % 8
+
+	// exclude near relays with (significantly) higher jitter than direct
+
+	for i := range sourceRelayLatency {
+
+		if routeState.NearRelayJitter[i] > routeState.DirectJitter+JitterThreshold {
+			out_sourceRelayLatency[i] = 255
+		}
+	}
+
+	// exclude near relays with (significantly) higher than average jitter
+
+	count := 0
+	totalJitter := 0.0
+	for i := range sourceRelayLatency {
+		if out_sourceRelayLatency[i] != 255 {
+			totalJitter += float64(out_sourceRelayJitter[i])
+			count++
+		}
+	}
+
+	if count > 0 {
+		averageJitter := int32(math.Ceil(totalJitter / float64(count)))
 		for i := range sourceRelayLatency {
-
-			if routeState.NearRelayJitter[i] > routeState.DirectJitter+JitterThreshold {
+			if out_sourceRelayLatency[i] == 255 {
+				continue
+			}
+			if out_sourceRelayJitter[i] > averageJitter+JitterThreshold {
 				out_sourceRelayLatency[i] = 255
-			}
-		}
-
-		// exclude near relays with (significantly) higher than average jitter
-
-		count := 0
-		totalJitter := 0.0
-		for i := range sourceRelayLatency {
-			if out_sourceRelayLatency[i] != 255 {
-				totalJitter += float64(out_sourceRelayJitter[i])
-				count++
-			}
-		}
-
-		if count > 0 {
-			averageJitter := int32(math.Ceil(totalJitter / float64(count)))
-			for i := range sourceRelayLatency {
-				if out_sourceRelayLatency[i] == 255 {
-					continue
-				}
-				if out_sourceRelayJitter[i] > averageJitter+JitterThreshold {
-					out_sourceRelayLatency[i] = 255
-				}
 			}
 		}
 	}
@@ -1272,6 +1265,7 @@ type RouteState struct {
 	LackOfDiversity     bool
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
+	MultipathRestricted bool
 }
 
 type InternalConfig struct {
@@ -1438,10 +1432,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we enable pro mode?
 
-	userHasMultipathVeto := multipathVetoUsers[routeState.UserID]
+	routeState.MultipathRestricted = multipathVetoUsers[routeState.UserID]
 
 	proMode := false
-	if routeShader.ProMode && !userHasMultipathVeto {
+	if routeShader.ProMode && !routeState.MultipathRestricted {
 		if debug != nil {
 			*debug += "pro mode\n"
 		}
@@ -1510,7 +1504,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// don't multipath if we are reducing latency more than the multipath threshold
 
-	multipath := (proMode || routeShader.Multipath) && !userHasMultipathVeto
+	multipath := (proMode || routeShader.Multipath) && !routeState.MultipathRestricted
 
 	if internal.MultipathThreshold > 0 {
 		difference := directLatency - bestRouteCost
