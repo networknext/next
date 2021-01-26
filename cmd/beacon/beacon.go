@@ -312,7 +312,7 @@ func mainReturnWithCode() int {
 
 				data = data[:size]
 
-				if data[0] != 118 {
+				if data[0] != transport.PacketTypeBeacon {
 					continue
 				}
 

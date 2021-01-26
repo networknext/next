@@ -9,6 +9,8 @@ import (
 )
 
 const (
+	PacketTypeBeacon = 118 // Magic number to indicate beacon packet
+
 	MaxNextBeaconPacketBytes = 4 + // Version
 		8 + // Timestamp
 		8 + // CustomerID
