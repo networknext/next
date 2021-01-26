@@ -13,39 +13,41 @@ var EmptyBeaconServiceMetrics BeaconServiceMetrics = BeaconServiceMetrics{
 }
 
 type BeaconMetrics struct {
-	EntriesReceived  Counter
-	EntriesSent      Counter
-	EntriesSubmitted Counter
-	EntriesQueued    Gauge
-	EntriesFlushed   Counter
-	ErrorMetrics     BeaconErrorMetrics
+	EntriesReceived   Counter
+	EntriesTransfered Counter
+	EntriesSent       Counter
+	EntriesSubmitted  Counter
+	EntriesQueued     Gauge
+	EntriesFlushed    Counter
+	ErrorMetrics      BeaconErrorMetrics
 }
 
 var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
-	EntriesReceived:  &EmptyCounter{},
-	EntriesSent:      &EmptyCounter{},
-	EntriesSubmitted: &EmptyCounter{},
-	EntriesQueued:    &EmptyGauge{},
-	EntriesFlushed:   &EmptyCounter{},
-	ErrorMetrics:     EmptyBeaconErrorMetrics,
+	EntriesReceived:   &EmptyCounter{},
+	EntriesTransfered: &EmptyCounter{},
+	EntriesSent:       &EmptyCounter{},
+	EntriesSubmitted:  &EmptyCounter{},
+	EntriesQueued:     &EmptyGauge{},
+	EntriesFlushed:    &EmptyCounter{},
+	ErrorMetrics:      EmptyBeaconErrorMetrics,
 }
 
 type BeaconErrorMetrics struct {
-	BeaconPublishFailure Counter
-	// BeaconReadFailure        Counter
-	// BeaconBatchedReadFailure Counter
-	BeaconSendFailure   Counter
-	BeaconChannelFull   Counter
-	BeaconWriteFailure  Counter
+	BeaconPublishFailure     Counter
+	BeaconReadFailure        Counter
+	BeaconBatchedReadFailure Counter
+	BeaconSendFailure        Counter
+	BeaconChannelFull        Counter
+	BeaconWriteFailure       Counter
 }
 
 var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
-	BeaconPublishFailure: &EmptyCounter{},
-	// BeaconReadFailure:        &EmptyCounter{},
-	// BeaconBatchedReadFailure: &EmptyCounter{},
-	BeaconSendFailure: 	 &EmptyCounter{},
-	BeaconChannelFull:   &EmptyCounter{},
-	BeaconWriteFailure:  &EmptyCounter{},
+	BeaconPublishFailure:     &EmptyCounter{},
+	BeaconReadFailure:        &EmptyCounter{},
+	BeaconBatchedReadFailure: &EmptyCounter{},
+	BeaconSendFailure:        &EmptyCounter{},
+	BeaconChannelFull:        &EmptyCounter{},
+	BeaconWriteFailure:       &EmptyCounter{},
 }
 
 func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconServiceMetrics, error) {
@@ -63,7 +65,18 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		ServiceName: "beacon",
 		ID:          "beacon.entries.received",
 		Unit:        "entries",
-		Description: "The total number of beacon entries received",
+		Description: "The total number of beacon entries received from the server",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.EntriesTransfered, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries Transfered",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.transfered",
+		Unit:        "entries",
+		Description: "The total number of beacon entries successfully received through Google Pubsub",
 	})
 	if err != nil {
 		return nil, err
@@ -114,6 +127,28 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 	}
 
 	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
+
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Read Failure",
+		ServiceName: "beacon",
+		ID:          "beacon.error.read_failure",
+		Unit:        "errors",
+		Description: "The total number of beacon entries that could not be read by Google Pubsub Forwarder",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Batched Read Failure",
+		ServiceName: "beacon",
+		ID:          "beacon.error.batched_read_failure",
+		Unit:        "errors",
+		Description: "The total number of batched beacon entries that could not be unbatched by Google Pubsub Forwarder",
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Send Failure",
