@@ -547,7 +547,7 @@ func getInternalConfig(
 	fmt.Printf("  HighFrequencyPings         : %t\n", reply.InternalConfig.HighFrequencyPings)
 	fmt.Printf("  RouteDiversity             : %d\n", reply.InternalConfig.RouteDiversity)
 	fmt.Printf("  MultipathThreshold         : %d\n", reply.InternalConfig.MultipathThreshold)
-	fmt.Printf("  MispredictMultipathOverload: %t\n", reply.InternalConfig.MispredictMultipathOverload)
+	fmt.Printf("  EnableVanityMetrics        : %t\n", reply.InternalConfig.EnableVanityMetrics)
 
 	return nil
 }

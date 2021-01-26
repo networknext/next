@@ -82,7 +82,7 @@ create table rs_internal_configs (
   high_frequency_pings boolean not null,
   route_diversity integer not null,
   multipath_threshold integer not null,
-  mispredict_multipath_overload boolean not null,
+  enable_vanity_metrics boolean not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
