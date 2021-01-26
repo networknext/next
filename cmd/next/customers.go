@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -18,6 +19,10 @@ func customers(rpcClient jsonrpc.RPCClient, env Environment) {
 		handleJSONRPCError(env, err)
 		return
 	}
+
+	sort.Slice(reply.Customers, func(i int, j int) bool {
+		return reply.Customers[i].Code < reply.Customers[j].Code
+	})
 
 	table.Output(reply.Customers)
 }

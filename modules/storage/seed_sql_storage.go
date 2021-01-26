@@ -339,18 +339,22 @@ func SeedSQLStorage(
 		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       2,
-			RouteSwitchThreshold:       5,
-			MaxLatencyTradeOff:         10,
-			RTTVeto_Default:            -10,
-			RTTVeto_PacketLoss:         -20,
-			RTTVeto_Multipath:          -20,
-			MultipathOverloadThreshold: 500,
-			TryBeforeYouBuy:            false,
-			ForceNext:                  true,
-			LargeCustomer:              false,
-			Uncommitted:                false,
-			MaxRTT:                     300,
+			RouteSelectThreshold:        2,
+			RouteSwitchThreshold:        5,
+			MaxLatencyTradeOff:          10,
+			RTTVeto_Default:             -10,
+			RTTVeto_PacketLoss:          -20,
+			RTTVeto_Multipath:           -20,
+			MultipathOverloadThreshold:  500,
+			TryBeforeYouBuy:             false,
+			ForceNext:                   true,
+			LargeCustomer:               false,
+			Uncommitted:                 false,
+			MaxRTT:                      300,
+			HighFrequencyPings:          true,
+			RouteDiversity:              20,
+			MultipathThreshold:          35,
+			MispredictMultipathOverload: true,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)

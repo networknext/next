@@ -316,19 +316,23 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_PacketLoss         int32
-	RTTVeto_Multipath          int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	BuyerID                    string
+	RouteSelectThreshold        int32
+	RouteSwitchThreshold        int32
+	MaxLatencyTradeOff          int32
+	RTTVeto_Default             int32
+	RTTVeto_PacketLoss          int32
+	RTTVeto_Multipath           int32
+	MultipathOverloadThreshold  int32
+	TryBeforeYouBuy             bool
+	ForceNext                   bool
+	LargeCustomer               bool
+	Uncommitted                 bool
+	MaxRTT                      int32
+	HighFrequencyPings          bool
+	RouteDiversity              int32
+	MultipathThreshold          int32
+	MispredictMultipathOverload bool
+	BuyerID                     string
 }
 
 type routeShader struct {
@@ -479,7 +483,7 @@ func main() {
 
 	// Flags to only show relays in certain states
 	var relaysStateShowFlags [6]bool
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", true, "only show enabled relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
 	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
@@ -488,7 +492,7 @@ func main() {
 
 	// Flags to hide relays in certain states
 	var relaysStateHideFlags [6]bool
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", true, "hide enabled relays")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", true, "hide relays in maintenance")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", true, "hide disabled relays")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", true, "hide quarantined relays")
@@ -716,6 +720,7 @@ func main() {
 			if relaysfs.NFlag() == 0 {
 				// If no flags are given, set the default set of flags
 				relaysStateShowFlags[routing.RelayStateEnabled] = true
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
 			}
 
 			if relaysAllFlag {
@@ -732,9 +737,27 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateOffline] = false
 			}
 
+			if relaysStateShowFlags[routing.RelayStateEnabled] {
+				relaysStateHideFlags[routing.RelayStateEnabled] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateMaintenance] {
+				relaysStateHideFlags[routing.RelayStateMaintenance] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateDisabled] {
+				relaysStateHideFlags[routing.RelayStateDisabled] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateQuarantine] {
+				relaysStateHideFlags[routing.RelayStateQuarantine] = false
+			}
+
+			if relaysStateShowFlags[routing.RelayStateOffline] {
+				relaysStateHideFlags[routing.RelayStateOffline] = false
+			}
+
 			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-				//  Show decommissioned relays
-				relaysStateShowFlags[routing.RelayStateDecommissioned] = true
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
@@ -1197,7 +1220,7 @@ func main() {
 			},
 			{ // info
 				Name:       "info",
-				ShortUsage: "next buyer info (id)",
+				ShortUsage: "next buyer info (id, name or substring)",
 				ShortHelp:  "Get detailed information for the specified buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
@@ -1266,19 +1289,6 @@ func main() {
 					}
 
 					removeBuyer(rpcClient, env, args[0])
-					return nil
-				},
-			},
-			{ // update
-				Name:       "update ",
-				ShortUsage: "next buyer remove (buyer name or substring) (field name) (value)",
-				ShortHelp:  "Remove a buyer from storage",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) != 3 {
-						handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
-					}
-
-					updateBuyer(rpcClient, env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1450,18 +1460,22 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							}
 
 							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
-								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:            int32(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
-								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-								ForceNext:                  ic.ForceNext,
-								LargeCustomer:              ic.LargeCustomer,
-								Uncommitted:                ic.Uncommitted,
-								MaxRTT:                     int32(ic.MaxRTT),
+								RouteSelectThreshold:        int32(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:        int32(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:          int32(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:             int32(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:          int32(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:           int32(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold:  int32(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:             ic.TryBeforeYouBuy,
+								ForceNext:                   ic.ForceNext,
+								LargeCustomer:               ic.LargeCustomer,
+								Uncommitted:                 ic.Uncommitted,
+								HighFrequencyPings:          ic.HighFrequencyPings,
+								RouteDiversity:              int32(ic.RouteDiversity),
+								MultipathThreshold:          int32(ic.MultipathThreshold),
+								MispredictMultipathOverload: ic.MispredictMultipathOverload,
+								MaxRTT:                      int32(ic.MaxRTT),
 							})
 
 							return nil
@@ -1755,37 +1769,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					updateSeller(rpcClient, env, args[0], args[1], args[2])
-					return nil
-				},
-			},
-		},
-	}
-
-	var shaderCommand = &ffcli.Command{
-		Name:       "shader",
-		ShortUsage: "next shader <buyer name or substring>",
-		ShortHelp:  "Retrieve route shader settings for the specified buyer",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintf("No buyer name or substring provided.\nUsage:\nnext shader <buyer name or substring>\n"), 0)
-			}
-
-			// Get the buyer's route shader
-			routingRulesSettings(rpcClient, env, args[0])
-			return nil
-		},
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "id",
-				ShortUsage: "next shader id <buyer ID>",
-				ShortHelp:  "Retrieve route shader information for the given buyer ID",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers\n"), 0)
-					}
-
-					// Get the buyer's route shader
-					routingRulesSettingsByID(rpcClient, env, args[0])
 					return nil
 				},
 			},
@@ -2136,7 +2119,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		buyerCommand,
 		buyersCommand,
 		userCommand,
-		shaderCommand,
 		sshCommand,
 		costCommand,
 		optimizeCommand,
@@ -2235,6 +2217,10 @@ must be in a json file of the form:
   "LargeCustomer": false,
   "Uncommitted": false,
   "MaxRTT": 300,
+  "HighFrequencyPings": true,
+  "RouteDiversity": 0,
+  "MultipathThreshold": 25,
+  "MispredictMultipathOverload": true,
   "BuyerID": "205cca7361c2ae96"
 }
 
@@ -2273,18 +2259,22 @@ var nextBuyerConfigUpdateJSONLongHelp = `
 Update one field in the internal config for the specified buyer. The field
 must be one of the following and is case-sensitive:
 
-  RouteSelectThreshold       integer
-  RouteSwitchThreshold       integer
-  MaxLatencyTradeOff         integer
-  RTTVeto_Default            integer
-  RTTVeto_PacketLoss         integer
-  RTTVeto_Multipath          integer
-  MultipathOverloadThreshold integer
-  TryBeforeYouBuy            boolean
-  ForceNext                  boolean
-  LargeCustomer              boolean
-  Uncommitted                boolean
-  MaxRTT                     integer
+  RouteSelectThreshold        integer
+  RouteSwitchThreshold        integer
+  MaxLatencyTradeOff          integer
+  RTTVeto_Default             integer
+  RTTVeto_PacketLoss          integer
+  RTTVeto_Multipath           integer
+  MultipathOverloadThreshold  integer
+  TryBeforeYouBuy             boolean
+  ForceNext                   boolean
+  LargeCustomer               boolean
+  Uncommitted                 boolean
+  HighFrequencyPings          boolean 
+  RouteDiversity              integer
+  MultipathThreshold          integer
+  MispredictMultipathOverload boolean
+  MaxRTT                      integer
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.

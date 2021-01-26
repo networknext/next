@@ -437,7 +437,10 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
 			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
 		} else {
-			var rtt, jitter, packetLoss float32
+			rtt := float32(packet.NearRelayRTT[i])
+			jitter := float32(packet.NearRelayJitter[i])
+			packetLoss := float32(packet.NearRelayPacketLoss[i])
+
 			stream.SerializeFloat32(&rtt)
 			stream.SerializeFloat32(&jitter)
 			stream.SerializeFloat32(&packetLoss)
