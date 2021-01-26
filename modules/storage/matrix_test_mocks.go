@@ -7,6 +7,25 @@ import (
 	"sync"
 )
 
+var (
+	lockMatrixStoreMockDeleteMatrixSvc         sync.RWMutex
+	lockMatrixStoreMockDeleteOptimizerMatrix   sync.RWMutex
+	lockMatrixStoreMockGetLiveMatrix           sync.RWMutex
+	lockMatrixStoreMockGetMatrixSvcMaster      sync.RWMutex
+	lockMatrixStoreMockGetMatrixSvcs           sync.RWMutex
+	lockMatrixStoreMockGetOptimizerMaster      sync.RWMutex
+	lockMatrixStoreMockGetOptimizerMatrices    sync.RWMutex
+	lockMatrixStoreMockGetRelayBackendLiveData sync.RWMutex
+	lockMatrixStoreMockGetRelayBackendMaster   sync.RWMutex
+	lockMatrixStoreMockSetRelayBackendLiveData sync.RWMutex
+	lockMatrixStoreMockSetRelayBackendMaster   sync.RWMutex
+	lockMatrixStoreMockUpdateLiveMatrix        sync.RWMutex
+	lockMatrixStoreMockUpdateMatrixSvc         sync.RWMutex
+	lockMatrixStoreMockUpdateMatrixSvcMaster   sync.RWMutex
+	lockMatrixStoreMockUpdateOptimizerMaster   sync.RWMutex
+	lockMatrixStoreMockUpdateOptimizerMatrix   sync.RWMutex
+)
+
 // Ensure, that MatrixStoreMock does implement MatrixStore.
 // If this is not the case, regenerate this file with moq.
 var _ MatrixStore = &MatrixStoreMock{}
@@ -37,6 +56,18 @@ var _ MatrixStore = &MatrixStoreMock{}
 //             },
 //             GetOptimizerMatricesFunc: func() ([]Matrix, error) {
 // 	               panic("mock out the GetOptimizerMatrices method")
+//             },
+//             GetRelayBackendLiveDataFunc: func(address []string) ([]RelayBackendLiveData, error) {
+// 	               panic("mock out the GetRelayBackendLiveData method")
+//             },
+//             GetRelayBackendMasterFunc: func() (RelayBackendLiveData, error) {
+// 	               panic("mock out the GetRelayBackendMaster method")
+//             },
+//             SetRelayBackendLiveDataFunc: func(data RelayBackendLiveData) error {
+// 	               panic("mock out the SetRelayBackendLiveData method")
+//             },
+//             SetRelayBackendMasterFunc: func(in1 RelayBackendLiveData) error {
+// 	               panic("mock out the SetRelayBackendMaster method")
 //             },
 //             UpdateLiveMatrixFunc: func(matrixData []byte, matrixType string) error {
 // 	               panic("mock out the UpdateLiveMatrix method")
@@ -80,6 +111,18 @@ type MatrixStoreMock struct {
 
 	// GetOptimizerMatricesFunc mocks the GetOptimizerMatrices method.
 	GetOptimizerMatricesFunc func() ([]Matrix, error)
+
+	// GetRelayBackendLiveDataFunc mocks the GetRelayBackendLiveData method.
+	GetRelayBackendLiveDataFunc func(address []string) ([]RelayBackendLiveData, error)
+
+	// GetRelayBackendMasterFunc mocks the GetRelayBackendMaster method.
+	GetRelayBackendMasterFunc func() (RelayBackendLiveData, error)
+
+	// SetRelayBackendLiveDataFunc mocks the SetRelayBackendLiveData method.
+	SetRelayBackendLiveDataFunc func(data RelayBackendLiveData) error
+
+	// SetRelayBackendMasterFunc mocks the SetRelayBackendMaster method.
+	SetRelayBackendMasterFunc func(in1 RelayBackendLiveData) error
 
 	// UpdateLiveMatrixFunc mocks the UpdateLiveMatrix method.
 	UpdateLiveMatrixFunc func(matrixData []byte, matrixType string) error
@@ -127,6 +170,24 @@ type MatrixStoreMock struct {
 		// GetOptimizerMatrices holds details about calls to the GetOptimizerMatrices method.
 		GetOptimizerMatrices []struct {
 		}
+		// GetRelayBackendLiveData holds details about calls to the GetRelayBackendLiveData method.
+		GetRelayBackendLiveData []struct {
+			// Address is the address argument value.
+			Address []string
+		}
+		// GetRelayBackendMaster holds details about calls to the GetRelayBackendMaster method.
+		GetRelayBackendMaster []struct {
+		}
+		// SetRelayBackendLiveData holds details about calls to the SetRelayBackendLiveData method.
+		SetRelayBackendLiveData []struct {
+			// Data is the data argument value.
+			Data RelayBackendLiveData
+		}
+		// SetRelayBackendMaster holds details about calls to the SetRelayBackendMaster method.
+		SetRelayBackendMaster []struct {
+			// In1 is the in1 argument value.
+			In1 RelayBackendLiveData
+		}
 		// UpdateLiveMatrix holds details about calls to the UpdateLiveMatrix method.
 		UpdateLiveMatrix []struct {
 			// MatrixData is the matrixData argument value.
@@ -155,18 +216,6 @@ type MatrixStoreMock struct {
 			Matrix Matrix
 		}
 	}
-	lockDeleteMatrixSvc       sync.RWMutex
-	lockDeleteOptimizerMatrix sync.RWMutex
-	lockGetLiveMatrix         sync.RWMutex
-	lockGetMatrixSvcMaster    sync.RWMutex
-	lockGetMatrixSvcs         sync.RWMutex
-	lockGetOptimizerMaster    sync.RWMutex
-	lockGetOptimizerMatrices  sync.RWMutex
-	lockUpdateLiveMatrix      sync.RWMutex
-	lockUpdateMatrixSvc       sync.RWMutex
-	lockUpdateMatrixSvcMaster sync.RWMutex
-	lockUpdateOptimizerMaster sync.RWMutex
-	lockUpdateOptimizerMatrix sync.RWMutex
 }
 
 // DeleteMatrixSvc calls DeleteMatrixSvcFunc.
@@ -179,9 +228,9 @@ func (mock *MatrixStoreMock) DeleteMatrixSvc(id uint64) error {
 	}{
 		ID: id,
 	}
-	mock.lockDeleteMatrixSvc.Lock()
+	lockMatrixStoreMockDeleteMatrixSvc.Lock()
 	mock.calls.DeleteMatrixSvc = append(mock.calls.DeleteMatrixSvc, callInfo)
-	mock.lockDeleteMatrixSvc.Unlock()
+	lockMatrixStoreMockDeleteMatrixSvc.Unlock()
 	return mock.DeleteMatrixSvcFunc(id)
 }
 
@@ -194,9 +243,9 @@ func (mock *MatrixStoreMock) DeleteMatrixSvcCalls() []struct {
 	var calls []struct {
 		ID uint64
 	}
-	mock.lockDeleteMatrixSvc.RLock()
+	lockMatrixStoreMockDeleteMatrixSvc.RLock()
 	calls = mock.calls.DeleteMatrixSvc
-	mock.lockDeleteMatrixSvc.RUnlock()
+	lockMatrixStoreMockDeleteMatrixSvc.RUnlock()
 	return calls
 }
 
@@ -212,9 +261,9 @@ func (mock *MatrixStoreMock) DeleteOptimizerMatrix(id uint64, matrixType string)
 		ID:         id,
 		MatrixType: matrixType,
 	}
-	mock.lockDeleteOptimizerMatrix.Lock()
+	lockMatrixStoreMockDeleteOptimizerMatrix.Lock()
 	mock.calls.DeleteOptimizerMatrix = append(mock.calls.DeleteOptimizerMatrix, callInfo)
-	mock.lockDeleteOptimizerMatrix.Unlock()
+	lockMatrixStoreMockDeleteOptimizerMatrix.Unlock()
 	return mock.DeleteOptimizerMatrixFunc(id, matrixType)
 }
 
@@ -229,9 +278,9 @@ func (mock *MatrixStoreMock) DeleteOptimizerMatrixCalls() []struct {
 		ID         uint64
 		MatrixType string
 	}
-	mock.lockDeleteOptimizerMatrix.RLock()
+	lockMatrixStoreMockDeleteOptimizerMatrix.RLock()
 	calls = mock.calls.DeleteOptimizerMatrix
-	mock.lockDeleteOptimizerMatrix.RUnlock()
+	lockMatrixStoreMockDeleteOptimizerMatrix.RUnlock()
 	return calls
 }
 
@@ -245,9 +294,9 @@ func (mock *MatrixStoreMock) GetLiveMatrix(matrixType string) ([]byte, error) {
 	}{
 		MatrixType: matrixType,
 	}
-	mock.lockGetLiveMatrix.Lock()
+	lockMatrixStoreMockGetLiveMatrix.Lock()
 	mock.calls.GetLiveMatrix = append(mock.calls.GetLiveMatrix, callInfo)
-	mock.lockGetLiveMatrix.Unlock()
+	lockMatrixStoreMockGetLiveMatrix.Unlock()
 	return mock.GetLiveMatrixFunc(matrixType)
 }
 
@@ -260,9 +309,9 @@ func (mock *MatrixStoreMock) GetLiveMatrixCalls() []struct {
 	var calls []struct {
 		MatrixType string
 	}
-	mock.lockGetLiveMatrix.RLock()
+	lockMatrixStoreMockGetLiveMatrix.RLock()
 	calls = mock.calls.GetLiveMatrix
-	mock.lockGetLiveMatrix.RUnlock()
+	lockMatrixStoreMockGetLiveMatrix.RUnlock()
 	return calls
 }
 
@@ -273,9 +322,9 @@ func (mock *MatrixStoreMock) GetMatrixSvcMaster() (uint64, error) {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetMatrixSvcMaster.Lock()
+	lockMatrixStoreMockGetMatrixSvcMaster.Lock()
 	mock.calls.GetMatrixSvcMaster = append(mock.calls.GetMatrixSvcMaster, callInfo)
-	mock.lockGetMatrixSvcMaster.Unlock()
+	lockMatrixStoreMockGetMatrixSvcMaster.Unlock()
 	return mock.GetMatrixSvcMasterFunc()
 }
 
@@ -286,9 +335,9 @@ func (mock *MatrixStoreMock) GetMatrixSvcMasterCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetMatrixSvcMaster.RLock()
+	lockMatrixStoreMockGetMatrixSvcMaster.RLock()
 	calls = mock.calls.GetMatrixSvcMaster
-	mock.lockGetMatrixSvcMaster.RUnlock()
+	lockMatrixStoreMockGetMatrixSvcMaster.RUnlock()
 	return calls
 }
 
@@ -299,9 +348,9 @@ func (mock *MatrixStoreMock) GetMatrixSvcs() ([]MatrixSvcData, error) {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetMatrixSvcs.Lock()
+	lockMatrixStoreMockGetMatrixSvcs.Lock()
 	mock.calls.GetMatrixSvcs = append(mock.calls.GetMatrixSvcs, callInfo)
-	mock.lockGetMatrixSvcs.Unlock()
+	lockMatrixStoreMockGetMatrixSvcs.Unlock()
 	return mock.GetMatrixSvcsFunc()
 }
 
@@ -312,9 +361,9 @@ func (mock *MatrixStoreMock) GetMatrixSvcsCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetMatrixSvcs.RLock()
+	lockMatrixStoreMockGetMatrixSvcs.RLock()
 	calls = mock.calls.GetMatrixSvcs
-	mock.lockGetMatrixSvcs.RUnlock()
+	lockMatrixStoreMockGetMatrixSvcs.RUnlock()
 	return calls
 }
 
@@ -325,9 +374,9 @@ func (mock *MatrixStoreMock) GetOptimizerMaster() (uint64, error) {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetOptimizerMaster.Lock()
+	lockMatrixStoreMockGetOptimizerMaster.Lock()
 	mock.calls.GetOptimizerMaster = append(mock.calls.GetOptimizerMaster, callInfo)
-	mock.lockGetOptimizerMaster.Unlock()
+	lockMatrixStoreMockGetOptimizerMaster.Unlock()
 	return mock.GetOptimizerMasterFunc()
 }
 
@@ -338,9 +387,9 @@ func (mock *MatrixStoreMock) GetOptimizerMasterCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetOptimizerMaster.RLock()
+	lockMatrixStoreMockGetOptimizerMaster.RLock()
 	calls = mock.calls.GetOptimizerMaster
-	mock.lockGetOptimizerMaster.RUnlock()
+	lockMatrixStoreMockGetOptimizerMaster.RUnlock()
 	return calls
 }
 
@@ -351,9 +400,9 @@ func (mock *MatrixStoreMock) GetOptimizerMatrices() ([]Matrix, error) {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetOptimizerMatrices.Lock()
+	lockMatrixStoreMockGetOptimizerMatrices.Lock()
 	mock.calls.GetOptimizerMatrices = append(mock.calls.GetOptimizerMatrices, callInfo)
-	mock.lockGetOptimizerMatrices.Unlock()
+	lockMatrixStoreMockGetOptimizerMatrices.Unlock()
 	return mock.GetOptimizerMatricesFunc()
 }
 
@@ -364,9 +413,128 @@ func (mock *MatrixStoreMock) GetOptimizerMatricesCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetOptimizerMatrices.RLock()
+	lockMatrixStoreMockGetOptimizerMatrices.RLock()
 	calls = mock.calls.GetOptimizerMatrices
-	mock.lockGetOptimizerMatrices.RUnlock()
+	lockMatrixStoreMockGetOptimizerMatrices.RUnlock()
+	return calls
+}
+
+// GetRelayBackendLiveData calls GetRelayBackendLiveDataFunc.
+func (mock *MatrixStoreMock) GetRelayBackendLiveData(address []string) ([]RelayBackendLiveData, error) {
+	if mock.GetRelayBackendLiveDataFunc == nil {
+		panic("MatrixStoreMock.GetRelayBackendLiveDataFunc: method is nil but MatrixStore.GetRelayBackendLiveData was just called")
+	}
+	callInfo := struct {
+		Address []string
+	}{
+		Address: address,
+	}
+	lockMatrixStoreMockGetRelayBackendLiveData.Lock()
+	mock.calls.GetRelayBackendLiveData = append(mock.calls.GetRelayBackendLiveData, callInfo)
+	lockMatrixStoreMockGetRelayBackendLiveData.Unlock()
+	return mock.GetRelayBackendLiveDataFunc(address)
+}
+
+// GetRelayBackendLiveDataCalls gets all the calls that were made to GetRelayBackendLiveData.
+// Check the length with:
+//     len(mockedMatrixStore.GetRelayBackendLiveDataCalls())
+func (mock *MatrixStoreMock) GetRelayBackendLiveDataCalls() []struct {
+	Address []string
+} {
+	var calls []struct {
+		Address []string
+	}
+	lockMatrixStoreMockGetRelayBackendLiveData.RLock()
+	calls = mock.calls.GetRelayBackendLiveData
+	lockMatrixStoreMockGetRelayBackendLiveData.RUnlock()
+	return calls
+}
+
+// GetRelayBackendMaster calls GetRelayBackendMasterFunc.
+func (mock *MatrixStoreMock) GetRelayBackendMaster() (RelayBackendLiveData, error) {
+	if mock.GetRelayBackendMasterFunc == nil {
+		panic("MatrixStoreMock.GetRelayBackendMasterFunc: method is nil but MatrixStore.GetRelayBackendMaster was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockMatrixStoreMockGetRelayBackendMaster.Lock()
+	mock.calls.GetRelayBackendMaster = append(mock.calls.GetRelayBackendMaster, callInfo)
+	lockMatrixStoreMockGetRelayBackendMaster.Unlock()
+	return mock.GetRelayBackendMasterFunc()
+}
+
+// GetRelayBackendMasterCalls gets all the calls that were made to GetRelayBackendMaster.
+// Check the length with:
+//     len(mockedMatrixStore.GetRelayBackendMasterCalls())
+func (mock *MatrixStoreMock) GetRelayBackendMasterCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockMatrixStoreMockGetRelayBackendMaster.RLock()
+	calls = mock.calls.GetRelayBackendMaster
+	lockMatrixStoreMockGetRelayBackendMaster.RUnlock()
+	return calls
+}
+
+// SetRelayBackendLiveData calls SetRelayBackendLiveDataFunc.
+func (mock *MatrixStoreMock) SetRelayBackendLiveData(data RelayBackendLiveData) error {
+	if mock.SetRelayBackendLiveDataFunc == nil {
+		panic("MatrixStoreMock.SetRelayBackendLiveDataFunc: method is nil but MatrixStore.SetRelayBackendLiveData was just called")
+	}
+	callInfo := struct {
+		Data RelayBackendLiveData
+	}{
+		Data: data,
+	}
+	lockMatrixStoreMockSetRelayBackendLiveData.Lock()
+	mock.calls.SetRelayBackendLiveData = append(mock.calls.SetRelayBackendLiveData, callInfo)
+	lockMatrixStoreMockSetRelayBackendLiveData.Unlock()
+	return mock.SetRelayBackendLiveDataFunc(data)
+}
+
+// SetRelayBackendLiveDataCalls gets all the calls that were made to SetRelayBackendLiveData.
+// Check the length with:
+//     len(mockedMatrixStore.SetRelayBackendLiveDataCalls())
+func (mock *MatrixStoreMock) SetRelayBackendLiveDataCalls() []struct {
+	Data RelayBackendLiveData
+} {
+	var calls []struct {
+		Data RelayBackendLiveData
+	}
+	lockMatrixStoreMockSetRelayBackendLiveData.RLock()
+	calls = mock.calls.SetRelayBackendLiveData
+	lockMatrixStoreMockSetRelayBackendLiveData.RUnlock()
+	return calls
+}
+
+// SetRelayBackendMaster calls SetRelayBackendMasterFunc.
+func (mock *MatrixStoreMock) SetRelayBackendMaster(in1 RelayBackendLiveData) error {
+	if mock.SetRelayBackendMasterFunc == nil {
+		panic("MatrixStoreMock.SetRelayBackendMasterFunc: method is nil but MatrixStore.SetRelayBackendMaster was just called")
+	}
+	callInfo := struct {
+		In1 RelayBackendLiveData
+	}{
+		In1: in1,
+	}
+	lockMatrixStoreMockSetRelayBackendMaster.Lock()
+	mock.calls.SetRelayBackendMaster = append(mock.calls.SetRelayBackendMaster, callInfo)
+	lockMatrixStoreMockSetRelayBackendMaster.Unlock()
+	return mock.SetRelayBackendMasterFunc(in1)
+}
+
+// SetRelayBackendMasterCalls gets all the calls that were made to SetRelayBackendMaster.
+// Check the length with:
+//     len(mockedMatrixStore.SetRelayBackendMasterCalls())
+func (mock *MatrixStoreMock) SetRelayBackendMasterCalls() []struct {
+	In1 RelayBackendLiveData
+} {
+	var calls []struct {
+		In1 RelayBackendLiveData
+	}
+	lockMatrixStoreMockSetRelayBackendMaster.RLock()
+	calls = mock.calls.SetRelayBackendMaster
+	lockMatrixStoreMockSetRelayBackendMaster.RUnlock()
 	return calls
 }
 
@@ -382,9 +550,9 @@ func (mock *MatrixStoreMock) UpdateLiveMatrix(matrixData []byte, matrixType stri
 		MatrixData: matrixData,
 		MatrixType: matrixType,
 	}
-	mock.lockUpdateLiveMatrix.Lock()
+	lockMatrixStoreMockUpdateLiveMatrix.Lock()
 	mock.calls.UpdateLiveMatrix = append(mock.calls.UpdateLiveMatrix, callInfo)
-	mock.lockUpdateLiveMatrix.Unlock()
+	lockMatrixStoreMockUpdateLiveMatrix.Unlock()
 	return mock.UpdateLiveMatrixFunc(matrixData, matrixType)
 }
 
@@ -399,9 +567,9 @@ func (mock *MatrixStoreMock) UpdateLiveMatrixCalls() []struct {
 		MatrixData []byte
 		MatrixType string
 	}
-	mock.lockUpdateLiveMatrix.RLock()
+	lockMatrixStoreMockUpdateLiveMatrix.RLock()
 	calls = mock.calls.UpdateLiveMatrix
-	mock.lockUpdateLiveMatrix.RUnlock()
+	lockMatrixStoreMockUpdateLiveMatrix.RUnlock()
 	return calls
 }
 
@@ -415,9 +583,9 @@ func (mock *MatrixStoreMock) UpdateMatrixSvc(matrixSvcData MatrixSvcData) error 
 	}{
 		MatrixSvcData: matrixSvcData,
 	}
-	mock.lockUpdateMatrixSvc.Lock()
+	lockMatrixStoreMockUpdateMatrixSvc.Lock()
 	mock.calls.UpdateMatrixSvc = append(mock.calls.UpdateMatrixSvc, callInfo)
-	mock.lockUpdateMatrixSvc.Unlock()
+	lockMatrixStoreMockUpdateMatrixSvc.Unlock()
 	return mock.UpdateMatrixSvcFunc(matrixSvcData)
 }
 
@@ -430,9 +598,9 @@ func (mock *MatrixStoreMock) UpdateMatrixSvcCalls() []struct {
 	var calls []struct {
 		MatrixSvcData MatrixSvcData
 	}
-	mock.lockUpdateMatrixSvc.RLock()
+	lockMatrixStoreMockUpdateMatrixSvc.RLock()
 	calls = mock.calls.UpdateMatrixSvc
-	mock.lockUpdateMatrixSvc.RUnlock()
+	lockMatrixStoreMockUpdateMatrixSvc.RUnlock()
 	return calls
 }
 
@@ -446,9 +614,9 @@ func (mock *MatrixStoreMock) UpdateMatrixSvcMaster(id uint64) error {
 	}{
 		ID: id,
 	}
-	mock.lockUpdateMatrixSvcMaster.Lock()
+	lockMatrixStoreMockUpdateMatrixSvcMaster.Lock()
 	mock.calls.UpdateMatrixSvcMaster = append(mock.calls.UpdateMatrixSvcMaster, callInfo)
-	mock.lockUpdateMatrixSvcMaster.Unlock()
+	lockMatrixStoreMockUpdateMatrixSvcMaster.Unlock()
 	return mock.UpdateMatrixSvcMasterFunc(id)
 }
 
@@ -461,9 +629,9 @@ func (mock *MatrixStoreMock) UpdateMatrixSvcMasterCalls() []struct {
 	var calls []struct {
 		ID uint64
 	}
-	mock.lockUpdateMatrixSvcMaster.RLock()
+	lockMatrixStoreMockUpdateMatrixSvcMaster.RLock()
 	calls = mock.calls.UpdateMatrixSvcMaster
-	mock.lockUpdateMatrixSvcMaster.RUnlock()
+	lockMatrixStoreMockUpdateMatrixSvcMaster.RUnlock()
 	return calls
 }
 
@@ -477,9 +645,9 @@ func (mock *MatrixStoreMock) UpdateOptimizerMaster(id uint64) error {
 	}{
 		ID: id,
 	}
-	mock.lockUpdateOptimizerMaster.Lock()
+	lockMatrixStoreMockUpdateOptimizerMaster.Lock()
 	mock.calls.UpdateOptimizerMaster = append(mock.calls.UpdateOptimizerMaster, callInfo)
-	mock.lockUpdateOptimizerMaster.Unlock()
+	lockMatrixStoreMockUpdateOptimizerMaster.Unlock()
 	return mock.UpdateOptimizerMasterFunc(id)
 }
 
@@ -492,9 +660,9 @@ func (mock *MatrixStoreMock) UpdateOptimizerMasterCalls() []struct {
 	var calls []struct {
 		ID uint64
 	}
-	mock.lockUpdateOptimizerMaster.RLock()
+	lockMatrixStoreMockUpdateOptimizerMaster.RLock()
 	calls = mock.calls.UpdateOptimizerMaster
-	mock.lockUpdateOptimizerMaster.RUnlock()
+	lockMatrixStoreMockUpdateOptimizerMaster.RUnlock()
 	return calls
 }
 
@@ -508,9 +676,9 @@ func (mock *MatrixStoreMock) UpdateOptimizerMatrix(matrix Matrix) error {
 	}{
 		Matrix: matrix,
 	}
-	mock.lockUpdateOptimizerMatrix.Lock()
+	lockMatrixStoreMockUpdateOptimizerMatrix.Lock()
 	mock.calls.UpdateOptimizerMatrix = append(mock.calls.UpdateOptimizerMatrix, callInfo)
-	mock.lockUpdateOptimizerMatrix.Unlock()
+	lockMatrixStoreMockUpdateOptimizerMatrix.Unlock()
 	return mock.UpdateOptimizerMatrixFunc(matrix)
 }
 
@@ -523,8 +691,8 @@ func (mock *MatrixStoreMock) UpdateOptimizerMatrixCalls() []struct {
 	var calls []struct {
 		Matrix Matrix
 	}
-	mock.lockUpdateOptimizerMatrix.RLock()
+	lockMatrixStoreMockUpdateOptimizerMatrix.RLock()
 	calls = mock.calls.UpdateOptimizerMatrix
-	mock.lockUpdateOptimizerMatrix.RUnlock()
+	lockMatrixStoreMockUpdateOptimizerMatrix.RUnlock()
 	return calls
 }

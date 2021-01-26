@@ -2,8 +2,9 @@ package relay_gateway
 
 import (
 	"fmt"
-	"github.com/networknext/backend/modules/envvar"
 	"time"
+
+	"github.com/networknext/backend/modules/envvar"
 )
 
 type Config struct {
@@ -15,6 +16,7 @@ type Config struct {
 	RelayStoreReadTimeout  time.Duration
 	RelayStoreWriteTimeout time.Duration
 	RelayStoreRelayTimeout time.Duration
+	RelayBackendAddresses  []string
 }
 
 func NewConfig() (*Config, error) {
@@ -61,6 +63,9 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 	cfg.PublisherSendBuffer = publisherSendBuffer
+
+	relayBackendAddresses := envvar.GetList("RELAY_BACKEND_ADDRESSES", []string{"127.0.0.1:5555"})
+	cfg.RelayBackendAddresses = relayBackendAddresses
 
 	return cfg, nil
 }

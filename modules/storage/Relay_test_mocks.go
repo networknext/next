@@ -7,6 +7,14 @@ import (
 	"sync"
 )
 
+var (
+	lockRelayStoreMockDelete      sync.RWMutex
+	lockRelayStoreMockExpireReset sync.RWMutex
+	lockRelayStoreMockGet         sync.RWMutex
+	lockRelayStoreMockGetAll      sync.RWMutex
+	lockRelayStoreMockSet         sync.RWMutex
+)
+
 // Ensure, that RelayStoreMock does implement RelayStore.
 // If this is not the case, regenerate this file with moq.
 var _ RelayStore = &RelayStoreMock{}
@@ -80,11 +88,6 @@ type RelayStoreMock struct {
 			In1 RelayStoreData
 		}
 	}
-	lockDelete      sync.RWMutex
-	lockExpireReset sync.RWMutex
-	lockGet         sync.RWMutex
-	lockGetAll      sync.RWMutex
-	lockSet         sync.RWMutex
 }
 
 // Delete calls DeleteFunc.
@@ -97,9 +100,9 @@ func (mock *RelayStoreMock) Delete(relayID uint64) error {
 	}{
 		RelayID: relayID,
 	}
-	mock.lockDelete.Lock()
+	lockRelayStoreMockDelete.Lock()
 	mock.calls.Delete = append(mock.calls.Delete, callInfo)
-	mock.lockDelete.Unlock()
+	lockRelayStoreMockDelete.Unlock()
 	return mock.DeleteFunc(relayID)
 }
 
@@ -112,9 +115,9 @@ func (mock *RelayStoreMock) DeleteCalls() []struct {
 	var calls []struct {
 		RelayID uint64
 	}
-	mock.lockDelete.RLock()
+	lockRelayStoreMockDelete.RLock()
 	calls = mock.calls.Delete
-	mock.lockDelete.RUnlock()
+	lockRelayStoreMockDelete.RUnlock()
 	return calls
 }
 
@@ -128,9 +131,9 @@ func (mock *RelayStoreMock) ExpireReset(relayID uint64) error {
 	}{
 		RelayID: relayID,
 	}
-	mock.lockExpireReset.Lock()
+	lockRelayStoreMockExpireReset.Lock()
 	mock.calls.ExpireReset = append(mock.calls.ExpireReset, callInfo)
-	mock.lockExpireReset.Unlock()
+	lockRelayStoreMockExpireReset.Unlock()
 	return mock.ExpireResetFunc(relayID)
 }
 
@@ -143,9 +146,9 @@ func (mock *RelayStoreMock) ExpireResetCalls() []struct {
 	var calls []struct {
 		RelayID uint64
 	}
-	mock.lockExpireReset.RLock()
+	lockRelayStoreMockExpireReset.RLock()
 	calls = mock.calls.ExpireReset
-	mock.lockExpireReset.RUnlock()
+	lockRelayStoreMockExpireReset.RUnlock()
 	return calls
 }
 
@@ -159,9 +162,9 @@ func (mock *RelayStoreMock) Get(relayID uint64) (*RelayStoreData, error) {
 	}{
 		RelayID: relayID,
 	}
-	mock.lockGet.Lock()
+	lockRelayStoreMockGet.Lock()
 	mock.calls.Get = append(mock.calls.Get, callInfo)
-	mock.lockGet.Unlock()
+	lockRelayStoreMockGet.Unlock()
 	return mock.GetFunc(relayID)
 }
 
@@ -174,9 +177,9 @@ func (mock *RelayStoreMock) GetCalls() []struct {
 	var calls []struct {
 		RelayID uint64
 	}
-	mock.lockGet.RLock()
+	lockRelayStoreMockGet.RLock()
 	calls = mock.calls.Get
-	mock.lockGet.RUnlock()
+	lockRelayStoreMockGet.RUnlock()
 	return calls
 }
 
@@ -187,9 +190,9 @@ func (mock *RelayStoreMock) GetAll() ([]*RelayStoreData, error) {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetAll.Lock()
+	lockRelayStoreMockGetAll.Lock()
 	mock.calls.GetAll = append(mock.calls.GetAll, callInfo)
-	mock.lockGetAll.Unlock()
+	lockRelayStoreMockGetAll.Unlock()
 	return mock.GetAllFunc()
 }
 
@@ -200,9 +203,9 @@ func (mock *RelayStoreMock) GetAllCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetAll.RLock()
+	lockRelayStoreMockGetAll.RLock()
 	calls = mock.calls.GetAll
-	mock.lockGetAll.RUnlock()
+	lockRelayStoreMockGetAll.RUnlock()
 	return calls
 }
 
@@ -216,9 +219,9 @@ func (mock *RelayStoreMock) Set(in1 RelayStoreData) error {
 	}{
 		In1: in1,
 	}
-	mock.lockSet.Lock()
+	lockRelayStoreMockSet.Lock()
 	mock.calls.Set = append(mock.calls.Set, callInfo)
-	mock.lockSet.Unlock()
+	lockRelayStoreMockSet.Unlock()
 	return mock.SetFunc(in1)
 }
 
@@ -231,8 +234,8 @@ func (mock *RelayStoreMock) SetCalls() []struct {
 	var calls []struct {
 		In1 RelayStoreData
 	}
-	mock.lockSet.RLock()
+	lockRelayStoreMockSet.RLock()
 	calls = mock.calls.Set
-	mock.lockSet.RUnlock()
+	lockRelayStoreMockSet.RUnlock()
 	return calls
 }

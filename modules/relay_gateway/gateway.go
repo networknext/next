@@ -47,12 +47,13 @@ func (g *Gateway) RelayInitHandlerFunc() func(writer http.ResponseWriter, reques
 func (g *Gateway) RelayUpdateHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
 	fmt.Println("update request recieved")
 	Cfg := &transport.GatewayHandlerConfig{
-		RelayStore:       g.RelayStore,
-		RelayCache:       *g.RelayCache,
-		Storer:           *g.Store,
-		UpdateMetrics:    g.Metrics.RelayUpdateMetrics,
-		RouterPrivateKey: g.Cfg.RouterPrivateKey,
-		Publishers:       g.Publishers,
+		RelayStore:            g.RelayStore,
+		RelayCache:            *g.RelayCache,
+		Storer:                *g.Store,
+		UpdateMetrics:         g.Metrics.RelayUpdateMetrics,
+		RouterPrivateKey:      g.Cfg.RouterPrivateKey,
+		Publishers:            g.Publishers,
+		RelayBackendAddresses: g.Cfg.RelayBackendAddresses,
 	}
 	return transport.GatewayRelayUpdateHandlerFunc(g.Logger, g.RelayLogger, Cfg)
 }

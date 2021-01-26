@@ -1,4 +1,3 @@
-//go:generate moq -out storage_test_mocks.go . Storer
 package storage
 
 import (
@@ -9,7 +8,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
-//go:generate moq -out storer_test_mocks.go . Storer
+//go:generate moq -out storage_test_mocks.go . Storer
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
 

@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/storage"
+
 	"github.com/networknext/backend/modules/common"
 
 	"github.com/networknext/backend/modules/common/helpers"
@@ -170,6 +172,85 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	backend15, err := envvar.GetBool("FEATURE_RELAY_BACKEND_1.5", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	backend15NoInit, err := envvar.GetBool("FEATURE_RELAY_BACKEND_1.5_NO_INIT", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	//update redis so relay frontend knows this backend is live
+	if backend15 {
+		if !envvar.Exists("FEATURE_RELAY_BACKEND_1.5_ADDRESSES") {
+			level.Error(logger).Log("MATRIX_STORE_ADDRESS not set")
+			return 1
+		}
+		backendAddresses := envvar.GetList("FEATURE_RELAY_BACKEND_1.5_ADDRESSES", []string{})
+		var backendAddr string
+		addrFound := false
+		host, _ := os.Hostname()
+		addrs, _ := net.LookupIP(host)
+		for _, addr := range addrs {
+			if ipv4 := addr.To4(); ipv4 != nil {
+				for _, addr := range backendAddresses {
+					if ipv4.String() == addr {
+						backendAddr = addr
+						addrFound = true
+						break
+					}
+				}
+			}
+			if addrFound {
+				break
+			}
+		}
+		if !addrFound {
+			level.Error(logger).Log("relay backend address not found")
+		}
+
+		if !envvar.Exists("MATRIX_STORE_ADDRESS") {
+			level.Error(logger).Log("MATRIX_STORE_ADDRESS not set")
+			return 1
+		}
+		matrixStoreAddress := envvar.Get("MATRIX_STORE_ADDRESS", "")
+
+		matrixStoreReadTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log(err.Error())
+			return 1
+		}
+
+		matrixStoreWriteTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log(err.Error())
+			return 1
+		}
+		matrixStore, err := storage.NewRedisMatrixStore(matrixStoreAddress, matrixStoreReadTimeout, matrixStoreWriteTimeout, 0)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		go func() {
+			ld := storage.RelayBackendLiveData{}
+			ld.Id = gcpProjectID
+			ld.Address = backendAddr
+			ld.InitAt = time.Now()
+			syncTimer := helpers.NewSyncTimer(time.Second)
+			for {
+				syncTimer.Run()
+				ld.UpdatedAt = time.Now()
+				err := matrixStore.SetRelayBackendLiveData(ld)
+				level.Error(logger).Log(err)
+			}
+		}()
+	}
+
 	// Create the relay map
 	cleanupCallback := func(relayData *routing.RelayData) error {
 		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
@@ -290,6 +371,7 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
+
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
@@ -787,10 +869,11 @@ func mainReturnWithCode() int {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap: relayMap,
-		StatsDB:  statsdb,
-		Metrics:  relayUpdateMetrics,
-		Storer:   storer,
+		RelayMap:   relayMap,
+		StatsDB:    statsdb,
+		Metrics:    relayUpdateMetrics,
+		Storer:     storer,
+		RB15NoInit: backend15NoInit,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {

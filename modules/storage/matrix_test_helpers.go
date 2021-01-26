@@ -15,6 +15,8 @@ func (ts *matrixTestSuite) RunAll(t *testing.T, store MatrixStore) {
 	ts.TestMatrixSvcData(t, store)
 	ts.UpdateAndGetSvcMaster(t, store)
 	ts.UpdateAndGetOptimizerMaster(t, store)
+	ts.TestRelayBackendLiveData(t, store)
+	ts.TestRelayBackendMaster(t, store)
 }
 
 func (ts *matrixTestSuite) TestLiveMatrix(t *testing.T, store MatrixStore) {
@@ -154,4 +156,38 @@ func (ts *matrixTestSuite) testOptimizerMatricesData() []Matrix {
 		{2, time.Now().Add(-20 * time.Second), time.Now().Add(-1 * time.Second), MatrixTypeNormal, []byte("optimizer2")},
 		{3, time.Now().Add(-40 * time.Second), time.Now().Add(-3 * time.Second), MatrixTypeNormal, []byte("optimizer3")},
 	}
+}
+
+func (ts *matrixTestSuite) TestRelayBackendLiveData(t *testing.T, store MatrixStore) {
+	currTime := time.Now()
+	ld := NewRelayBackendLiveData("12345", "1.1.1.1", currTime.Add(-10*time.Minute), currTime)
+	ld2 := NewRelayBackendLiveData("54321", "2.2.2.2", ld.UpdatedAt.Add(-5*time.Minute), currTime)
+
+	err := store.SetRelayBackendLiveData(ld)
+	assert.Nil(t, err)
+
+	err = store.SetRelayBackendLiveData(ld2)
+	assert.Nil(t, err)
+
+	rbArr, err := store.GetRelayBackendLiveData([]string{ld.Address, ld2.Address})
+	assert.Nil(t, err)
+	assert.Equal(t, ld.Id, rbArr[0].Id)
+	assert.Equal(t, ld2.Id, rbArr[1].Id)
+
+	rbArr, err = store.GetRelayBackendLiveData([]string{"fake", ld2.Address})
+	assert.Nil(t, err)
+	assert.Equal(t, ld2.Id, rbArr[0].Id)
+
+}
+
+func (ts *matrixTestSuite) TestRelayBackendMaster(t *testing.T, store MatrixStore) {
+	currTime := time.Now()
+	ld := NewRelayBackendLiveData("12345", "1.1.1.1", currTime.Add(-10*time.Minute), currTime)
+
+	err := store.SetRelayBackendMaster(ld)
+	assert.Nil(t, err)
+
+	master, err := store.GetRelayBackendMaster()
+	assert.Nil(t, err)
+	assert.Equal(t, ld.Id, master.Id)
 }

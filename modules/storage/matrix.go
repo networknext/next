@@ -34,6 +34,12 @@ type MatrixStore interface {
 	//optimizer master
 	GetOptimizerMaster() (uint64, error)
 	UpdateOptimizerMaster(id uint64) error
+
+	//relay backend
+	SetRelayBackendLiveData(data RelayBackendLiveData) error
+	GetRelayBackendLiveData(address []string) ([]RelayBackendLiveData, error)
+	SetRelayBackendMaster(RelayBackendLiveData) error
+	GetRelayBackendMaster() (RelayBackendLiveData, error)
 }
 
 type Matrix struct {
@@ -93,4 +99,34 @@ func MatrixSvcFromJSON(data []byte) (MatrixSvcData, error) {
 		return *m, wrap("unable to unmarshal", err.Error(), "")
 	}
 	return *m, nil
+}
+
+type RelayBackendLiveData struct {
+	Id        string    `json:"id"`
+	Address   string    `json:"address"`
+	InitAt    time.Time `json:"init_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func NewRelayBackendLiveData(id, address string, InitAt, UpdatedAt time.Time) RelayBackendLiveData {
+	rb := new(RelayBackendLiveData)
+	rb.Id = id
+	rb.Address = address
+	rb.InitAt = InitAt
+	rb.UpdatedAt = UpdatedAt
+
+	return *rb
+}
+
+func RelayBackendLiveDataToJSON(data RelayBackendLiveData) ([]byte, error) {
+	return json.Marshal(data)
+}
+
+func RelayBackendLiveDataFromJson(data []byte) (RelayBackendLiveData, error) {
+	r := new(RelayBackendLiveData)
+	err := json.Unmarshal(data, r)
+	if err != nil {
+		err = wrap("unable to unmarshal relay backend live data", err.Error(), "")
+	}
+	return *r, err
 }
