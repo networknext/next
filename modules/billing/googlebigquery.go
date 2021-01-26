@@ -264,5 +264,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["pro"] = entry.Pro
 	}
 
+	if entry.MultipathRestricted {
+		e["multipathRestricted"] = entry.MultipathRestricted
+	}
+
 	return e, "", nil
 }

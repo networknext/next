@@ -1272,6 +1272,7 @@ type RouteState struct {
 	LackOfDiversity     bool
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
+	MultipathRestricted bool
 }
 
 type InternalConfig struct {
@@ -1438,10 +1439,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we enable pro mode?
 
-	userHasMultipathVeto := multipathVetoUsers[routeState.UserID]
+	routeState.MultipathRestricted = multipathVetoUsers[routeState.UserID]
 
 	proMode := false
-	if routeShader.ProMode && !userHasMultipathVeto {
+	if routeShader.ProMode && !routeState.MultipathRestricted {
 		if debug != nil {
 			*debug += "pro mode\n"
 		}
@@ -1510,7 +1511,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// don't multipath if we are reducing latency more than the multipath threshold
 
-	multipath := (proMode || routeShader.Multipath) && !userHasMultipathVeto
+	multipath := (proMode || routeShader.Multipath) && !routeState.MultipathRestricted
 
 	if internal.MultipathThreshold > 0 {
 		difference := directLatency - bestRouteCost

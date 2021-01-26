@@ -723,6 +723,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 
+	stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+
 	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!
 
 	return stream.Error()
