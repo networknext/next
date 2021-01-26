@@ -323,23 +323,8 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				// beaconPacket := &packet
+				// Set the timestamp of the packet
 				beaconPacket.Timestamp = uint64(time.Now().Unix())
-				// beaconPacket := &beacon.NextBeaconPacket{
-				// 	Version:          packet.Version,
-				// 	Timestamp:        uint64(time.Now().Unix()),
-				// 	CustomerID:       packet.CustomerID,
-				// 	DatacenterID:     packet.DatacenterID,
-				// 	UserHash:         packet.UserHash,
-				// 	AddressHash:      packet.AddressHash,
-				// 	SessionID:        packet.SessionID,
-				// 	PlatformID:       uint32(packet.PlatformID),
-				// 	ConnectionType:   uint32(packet.ConnectionType),
-				// 	Enabled:          packet.Enabled,
-				// 	Upgraded:         packet.Upgraded,
-				// 	Next:             packet.Next,
-				// 	FallbackToDirect: packet.FallbackToDirect,
-				// }
 
 				fmt.Printf("beacon packet: %d, %v, %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
 					beaconPacket.Version,

@@ -7,7 +7,7 @@ package beacon
 
 import (
 	"context"
-	
+
 	"github.com/networknext/backend/modules/transport"
 )
 

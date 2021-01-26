@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/bigquery"
-	
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -39,7 +39,6 @@ type NextBeaconPacket struct {
 	Next             bool
 	FallbackToDirect bool
 }
-
 
 func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 
