@@ -23,15 +23,14 @@ type GoogleBigQueryClient struct {
 	TableInserter *bigquery.Inserter
 	BatchSize     int
 
-	buffer        []*NextBeaconPacket
-	bufferMutex   sync.RWMutex
+	buffer      []*NextBeaconPacket
+	bufferMutex sync.RWMutex
 
-	entries 	  chan *NextBeaconPacket
+	entries chan *NextBeaconPacket
 }
 
-// SendBeaconEntry pushes an Entry to the channel
-func (bq *GoogleBigQueryClient) SendBeaconEntry(ctx context.Context, entry *NextBeaconPacket) error {
-	bq.Metrics.EntriesSubmitted.Add(1)
+// Submit pushes an Entry to the channel
+func (bq *GoogleBigQueryClient) Submit(ctx context.Context, entry *NextBeaconPacket) error {
 	if bq.entries == nil {
 		bq.entries = make(chan *NextBeaconPacket, DefaultBigQueryChannelSize)
 	}
@@ -46,6 +45,7 @@ func (bq *GoogleBigQueryClient) SendBeaconEntry(ctx context.Context, entry *Next
 
 	select {
 	case bq.entries <- entry:
+		bq.Metrics.EntriesSubmitted.Add(1)
 		return nil
 	default:
 		return errors.New("entries channel full")

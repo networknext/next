@@ -1,11 +1,14 @@
 /*
    Network Next. You control the network.
-   Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+   Copyright © 2017 - 2021 Network Next, Inc. All rights reserved.
 */
 
 package beacon
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -29,6 +32,7 @@ const (
 	NEXT_PLATFORM_MAX           = 9
 
 	MaxNextBeaconPacketBytes = 4 + // Version
+		8 + // Timestamp
 		8 + // CustomerID
 		8 + // DatacenterID
 		8 + // UserHash
@@ -42,7 +46,7 @@ const (
 		1 // FallbackToDirect
 )
 
-type NextBeaconPacket struct {
+type RawBeaconPacket struct {
 	Version          uint32
 	CustomerID       uint64
 	DatacenterID     uint64
@@ -57,12 +61,28 @@ type NextBeaconPacket struct {
 	FallbackToDirect bool
 }
 
-// Beaconer is a beacon service interface that handles sending beacon packet entries to remote services
+type NextBeaconPacket struct {
+	Version          uint32
+	Timestamp        uint64
+	CustomerID       uint64
+	DatacenterID     uint64
+	UserHash         uint64
+	AddressHash      uint64
+	SessionID        uint64
+	PlatformID       uint32
+	ConnectionType   uint32
+	Enabled          bool
+	Upgraded         bool
+	Next             bool
+	FallbackToDirect bool
+}
+
+// Beaconer is a beacon service interface that handles sending beacon packet entries through google pubsub to bigquery
 type Beaconer interface {
 	Submit(ctx context.Context, entry *NextBeaconPacket) error
 }
 
-func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
+func (packet *RawBeaconPacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&packet.Version, 8)
 
@@ -104,24 +124,32 @@ func WriteBeaconEntry(entry *NextBeaconPacket) []byte {
 	index := 0
 
 	encoding.WriteUint32(data, &index, entry.Version)
+
+	encoding.WriteUint64(data, &index, entry.Timestamp)
 	encoding.WriteUint64(data, &index, entry.CustomerID)
 	encoding.WriteUint64(data, &index, entry.DatacenterID)
 	encoding.WriteUint64(data, &index, entry.UserHash)
 	encoding.WriteUint64(data, &index, entry.AddressHash)
 	encoding.WriteUint64(data, &index, entry.SessionID)
 
-	encoding.WriteInt32(data, &index, entry.PlatformID)
-	encoding.WriteInt32(data, &index, entry.ConnectionType)
+	encoding.WriteUint32(data, &index, entry.PlatformID)
+	encoding.WriteUint32(data, &index, entry.ConnectionType)
 
 	encoding.WriteBool(data, &index, entry.Enabled)
 	encoding.WriteBool(data, &index, entry.Upgraded)
 	encoding.WriteBool(data, &index, entry.Next)
 	encoding.WriteBool(data, &index, entry.FallbackToDirect)
+
+	return data
 }
 
 func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) bool {
 	index := 0
 	if !encoding.ReadUint32(data, &index, &entry.Version) {
+		return false
+	}
+
+	if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
 		return false
 	}
 
@@ -145,11 +173,11 @@ func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) bool {
 		return false
 	}
 
-	if !encoding.ReadInt32(data, &index, &entry.PlatformID) {
+	if !encoding.ReadUint32(data, &index, &entry.PlatformID) {
 		return false
 	}
 
-	if !encoding.ReadInt32(data, &index, &entry.ConnectionType) {
+	if !encoding.ReadUint32(data, &index, &entry.ConnectionType) {
 		return false
 	}
 
@@ -170,4 +198,4 @@ func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) bool {
 	}
 
 	return true
-} 
+}

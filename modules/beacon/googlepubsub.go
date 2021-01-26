@@ -37,7 +37,7 @@ type GooglePubSubClient struct {
 
 // NewBeaconer creates a new GooglePubSubBeaconer, sets up the pubsub clients, and starts goroutines to listen for publish results.
 // To clean up the results goroutine, use ctx.Done().
-func NewGooglePubSubBeaconer(ctx context.Context, beaconMetrics *metrics.BeaconMetrics, resultLogger log.Logger, projectID string, beaconTopicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (Biller, error) {
+func NewGooglePubSubBeaconer(ctx context.Context, beaconMetrics *metrics.BeaconMetrics, resultLogger log.Logger, projectID string, beaconTopicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (Beaconer, error) {
 	if settings == nil {
 		return nil, errors.New("nil google pubsub publish settings")
 	}
@@ -129,7 +129,7 @@ func (beaconer *GooglePubSubBeaconer) Submit(ctx context.Context, entry *NextBea
 	return nil
 }
 
-func (beaconer *GooglePubSubBiller) Stop() {
+func (beaconer *GooglePubSubBeaconer) Stop() {
 	for _, client := range beaconer.clients {
 		client.CancelContextFunc()
 	}
@@ -142,7 +142,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context) {
 			_, err := result.Get(ctx)
 			if err != nil {
 				level.Error(client.Logger).Log("beacon", "failed to publish to pub/sub", "err", err)
-				client.Metrics.ErrorMetrics.BeaconPublishFailure.Add(1)
+				// client.Metrics.ErrorMetrics.BeaconPublishFailure.Add(1)
 			} else {
 				level.Debug(client.Logger).Log("beacon", "successfully published beacon data")
 			}

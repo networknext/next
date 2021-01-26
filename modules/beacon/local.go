@@ -11,12 +11,12 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 )
 
-type LocalBeacon struct {
+type LocalBeaconer struct {
 	Logger  log.Logger
 	Metrics *metrics.BeaconMetrics
 }
 
-func (local *LocalBeacon) Submit(ctx context.Context, entry *NextBeaconPacket) error {
+func (local *LocalBeaconer) Submit(ctx context.Context, entry *NextBeaconPacket) error {
 	local.Metrics.EntriesSubmitted.Add(1)
 
 	if local.Logger == nil {

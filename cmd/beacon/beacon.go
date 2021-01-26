@@ -27,8 +27,11 @@ import (
 	"github.com/networknext/backend/modules/beacon"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 	"golang.org/x/sys/unix"
+
+	"cloud.google.com/go/bigquery"
 )
 
 var (
@@ -77,63 +80,13 @@ func mainReturnWithCode() int {
 	beaconServiceMetrics, err := metrics.NewBeaconServiceMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
+		return 1
 	}
 
 	// Create a local beaconer
 	var beaconer beacon.Beaconer = &beacon.LocalBeaconer{
-		Logger: logger,
-		Metrics: beaconServiceMetrics.BeaconMetrics,
-	}
-
-	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-
-	if gcpOK || pubsubEmulatorOK {
-		pubsubCtx := ctx
-		if pubsubEmulatorOK {
-			gcpProjectID = "local"
-
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
-		}
-
-		// Google Pubsub
-		{
-			clientCount, err := envvar.GetInt("BEACON_CLIENT_COUNT", 1)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			countThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_COUNT", 100)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			byteThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_MIN_BYTES", 1024)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			// We do our own batching so don't stack the library's batching on top of ours
-			// Specifically, don't stack the message count thresholds
-			settings := googlepubsub.DefaultPublishSettings
-			settings.CountThreshold = 1
-			settings.ByteThreshold = byteThreshold
-			settings.NumGoroutines = runtime.GOMAXPROCS(0)
-
-			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub beaconer", "err", err)
-				return 1
-			}
-
-			beaconer = pubsub
-		}
+		Logger:  logger,
+		Metrics: &beaconServiceMetrics.BeaconMetrics,
 	}
 
 	if gcpOK {
@@ -171,7 +124,7 @@ func mainReturnWithCode() int {
 					BatchSize:     batchSize,
 				}
 
-				// Set the Biller to BigQuery
+				// Set the Beaconer to BigQuery
 				beaconer = &b
 
 				// Start the background WriteLoop to batch write to BigQuery
@@ -180,6 +133,50 @@ func mainReturnWithCode() int {
 				}()
 			}
 		}
+	}
+
+	channelBufferSize, err := envvar.GetInt("BEACON_CHANNEL_BUFFER_SIZE", 100000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+	numGoroutines, err := envvar.GetInt("BEACON_NUM_GOROUTINES", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	var wg sync.WaitGroup
+	// Create error channel to error out from any goroutines
+	errChan := make(chan error, 1)
+
+	// Create an internal channel to receive beacon packets and submit them
+	beaconPacketChan := make(chan *beacon.NextBeaconPacket, channelBufferSize)
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case beaconPacket := <-beaconPacketChan:
+					err := beaconer.Submit(ctx, beaconPacket)
+					if err != nil {
+						level.Error(logger).Log("msg", "Could not send beacon packet to BigQuery", "err", err)
+						beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSubmitFailure.Add(1)
+						errChan <- err
+						return
+					}
+
+					beaconServiceMetrics.BeaconMetrics.EntriesSent.Add(1)
+				case <-ctx.Done():
+					level.Error(logger).Log("err", ctx.Err())
+					errChan <- ctx.Err()
+					return
+				default:
+				}
+			}
+		}()
 	}
 
 	// TODO: setup stackdriver metrics
@@ -202,9 +199,13 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d goroutines\n", int(beaconServiceMetrics.ServiceMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
 				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d beacon entries queued\n", int(beaconServiceMetrics.BeaconMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d beacon entry submission failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSubmitFailure.Value()))
+				fmt.Printf("%d beacon entry internal transfer failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconInternalTransferFailure.Value()))
+				fmt.Printf("%d beacon entry write failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconWriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -216,6 +217,7 @@ func mainReturnWithCode() int {
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
 
 		go func() {
@@ -224,6 +226,7 @@ func mainReturnWithCode() int {
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
+				errChan <- err
 				return
 			}
 		}()
@@ -248,8 +251,6 @@ func mainReturnWithCode() int {
 	}
 
 	udpPort := envvar.Get("UDP_PORT", "30000")
-
-	var wg sync.WaitGroup
 
 	wg.Add(numThreads)
 
@@ -295,7 +296,7 @@ func mainReturnWithCode() int {
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 
-			packet := beacon.NextBeaconPacket{}
+			packet := beacon.RawBeaconPacket{}
 
 			for {
 				data := dataArray[:]
@@ -322,26 +323,51 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				fmt.Printf("beacon packet: %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
-					packet.CustomerID,
-					packet.DatacenterID,
-					packet.UserHash,
-					packet.AddressHash,
-					packet.SessionID,
-					packet.PlatformID,
-					packet.ConnectionType,
-					packet.Enabled,
-					packet.Upgraded,
-					packet.Next,
-					packet.FallbackToDirect,
+				beaconPacket := &beacon.NextBeaconPacket{
+					Version:          packet.Version,
+					Timestamp:        uint64(time.Now().Unix()),
+					CustomerID:       packet.CustomerID,
+					DatacenterID:     packet.DatacenterID,
+					UserHash:         packet.UserHash,
+					AddressHash:      packet.AddressHash,
+					SessionID:        packet.SessionID,
+					PlatformID:       uint32(packet.PlatformID),
+					ConnectionType:   uint32(packet.ConnectionType),
+					Enabled:          packet.Enabled,
+					Upgraded:         packet.Upgraded,
+					Next:             packet.Next,
+					FallbackToDirect: packet.FallbackToDirect,
+				}
+
+				fmt.Printf("beacon packet: %d, %v, %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
+					beaconPacket.Version,
+					beaconPacket.Timestamp,
+					beaconPacket.CustomerID,
+					beaconPacket.DatacenterID,
+					beaconPacket.UserHash,
+					beaconPacket.AddressHash,
+					beaconPacket.SessionID,
+					beaconPacket.PlatformID,
+					beaconPacket.ConnectionType,
+					beaconPacket.Enabled,
+					beaconPacket.Upgraded,
+					beaconPacket.Next,
+					beaconPacket.FallbackToDirect,
 				)
 
-				// todo
+				// Not sure if we need fromAddr for anything else
 				_ = fromAddr
 
-				// TODO: insert into bigquery if gcpOK
-				// TODO: write metrics to stackdriver / local metrics 
+				// Insert packet into internal channel for local or bigquery
+				select {
+				case beaconPacketChan <- beaconPacket:
+					beaconServiceMetrics.BeaconMetrics.EntriesReceived.Add(1)
+				default:
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconInternalTransferFailure.Add(1)
+					continue
+				}
 
+				// TODO: write metrics to stackdriver / local metrics
 			}
 
 			wg.Done()
@@ -353,7 +379,15 @@ func mainReturnWithCode() int {
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
-	<-sigint
 
-	return 0
+	select {
+	case <-sigint:
+		return 0
+	case <-ctx.Done():
+		// Let the goroutines finish up
+		wg.Wait()
+		return 1
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		return 1
+	}
 }
