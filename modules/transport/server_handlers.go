@@ -713,7 +713,7 @@ func SessionUpdateHandlerFunc(
 
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "near relays changed") {
-				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
+				level.Error(logger).Log("msg", "near relays changed", "err", err)
 				metrics.NearRelaysChanged.Add(1)
 			} else {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
@@ -772,43 +772,52 @@ func SessionUpdateHandlerFunc(
 				metrics.RouteDoesNotExist.Add(1)
 			}
 
-			var stay bool
-			if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+			// The SDK sent up "next = false" but didn't fall back to direct - the SDK "aborted" this session
+			if !packet.Next {
+				sessionData.RouteState.Next = false
+				sessionData.RouteState.Veto = true
 
-				// Continue token
-
-				// Check if the route has changed
-				if nextRouteSwitched {
-					metrics.RouteSwitched.Add(1)
-
-					// Create a next token here rather than a continue token since the route has switched
-					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-				} else {
-					HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-				}
+				level.Warn(logger).Log("warn", "SDK aborted session")
+				metrics.SDKAborted.Add(1)
 			} else {
-				// Route was vetoed - check to see why
-				if sessionData.RouteState.NoRoute {
-					level.Warn(logger).Log("warn", "route no longer exists")
-					metrics.NoRoute.Add(1)
-				}
+				var stay bool
+				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
 
-				if sessionData.RouteState.MultipathOverload {
-					level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
-					metrics.MultipathOverload.Add(1)
+					// Continue token
 
-					// We will handle updating the multipath veto redis in the post session update
-					// to avoid blocking the routing response
-				}
+					// Check if the route has changed
+					if nextRouteSwitched {
+						metrics.RouteSwitched.Add(1)
 
-				if sessionData.RouteState.Mispredict {
-					level.Warn(logger).Log("warn", "we mispredicted too many times")
-					metrics.MispredictVeto.Add(1)
-				}
+						// Create a next token here rather than a continue token since the route has switched
+						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+					} else {
+						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+					}
+				} else {
+					// Route was vetoed - check to see why
+					if sessionData.RouteState.NoRoute {
+						level.Warn(logger).Log("warn", "route no longer exists")
+						metrics.NoRoute.Add(1)
+					}
 
-				if sessionData.RouteState.LatencyWorse {
-					level.Warn(logger).Log("warn", "this route makes latency worse")
-					metrics.LatencyWorse.Add(1)
+					if sessionData.RouteState.MultipathOverload {
+						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+						metrics.MultipathOverload.Add(1)
+
+						// We will handle updating the multipath veto redis in the post session update
+						// to avoid blocking the routing response
+					}
+
+					if sessionData.RouteState.Mispredict {
+						level.Warn(logger).Log("warn", "we mispredicted too many times")
+						metrics.MispredictVeto.Add(1)
+					}
+
+					if sessionData.RouteState.LatencyWorse {
+						level.Warn(logger).Log("warn", "this route makes latency worse")
+						metrics.LatencyWorse.Add(1)
+					}
 				}
 			}
 		}
