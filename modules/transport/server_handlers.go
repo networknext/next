@@ -447,6 +447,8 @@ func SessionUpdateHandlerFunc(
 			RouteType:   routing.RouteTypeDirect,
 		}
 
+		var slicePacketLoss uint64
+
 		var debug *string
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
@@ -460,6 +462,12 @@ func SessionUpdateHandlerFunc(
 			}
 
 			packet.ClientAddress = AnonymizeAddr(packet.ClientAddress) // Make sure to always anonymize the client's IP address
+
+			// Store the packets sent and lost in the session data to calculate the next slice's delta
+			sessionData.PrevPacketsSentClientToServer = packet.PacketsSentClientToServer
+			sessionData.PrevPacketsSentServerToClient = packet.PacketsSentServerToClient
+			sessionData.PrevPacketsLostClientToServer = packet.PacketsLostClientToServer
+			sessionData.PrevPacketsLostServerToClient = packet.PacketsLostServerToClient
 
 			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
 				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
@@ -517,7 +525,7 @@ func SessionUpdateHandlerFunc(
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, routeDiversity, debug)
+				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, routeDiversity, float32(slicePacketLoss), debug)
 			}
 		}()
 
@@ -615,6 +623,14 @@ func SessionUpdateHandlerFunc(
 
 			sessionData.SliceNumber = packet.SliceNumber + 1
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+
+			slicePacketLossClientToServer := packet.PacketsLostClientToServer - sessionData.PrevPacketsLostClientToServer
+			slicePacketLossServerToClient := packet.PacketsLostServerToClient - sessionData.PrevPacketsLostServerToClient
+
+			slicePacketLoss = slicePacketLossClientToServer
+			if slicePacketLossServerToClient > slicePacketLossClientToServer {
+				slicePacketLoss = slicePacketLossServerToClient
+			}
 		}
 
 		// Don't accelerate any sessions if the buyer is not yet live
@@ -698,7 +714,7 @@ func SessionUpdateHandlerFunc(
 			maxNearRelays,
 			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),
-			int32(math.Floor(float64(packet.DirectPacketLoss)+0.5)),
+			int32(slicePacketLoss),
 			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
 			sessionData.RouteRelayIDs[0],
 			destRelayIDs,
@@ -760,7 +776,7 @@ func SessionUpdateHandlerFunc(
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), float32(slicePacketLoss), nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 		} else {
@@ -773,7 +789,7 @@ func SessionUpdateHandlerFunc(
 			}
 
 			var stay bool
-			if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+			if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, float32(slicePacketLoss), packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
 
 				// Continue token
 
@@ -978,6 +994,7 @@ func PostSessionUpdate(
 	nearRelays nearRelayGroup,
 	datacenter *routing.Datacenter,
 	routeDiversity int32,
+	slicePacketLoss float32,
 	debug *string,
 ) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
@@ -999,15 +1016,6 @@ func PostSessionUpdate(
 	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
 	for i := 0; i < core.MaxRelaysPerRoute; i++ {
 		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
-	}
-
-	packetLossClientToServer := float32(packet.PacketsLostClientToServer) / float32(packet.PacketsSentClientToServer) * 100.0
-	packetLossServerToClient := float32(packet.PacketsLostServerToClient) / float32(packet.PacketsSentServerToClient) * 100.0
-
-	// Take the max of packet loss client -> server or server -> client
-	inGamePacketLoss := packetLossClientToServer
-	if inGamePacketLoss < packetLossServerToClient {
-		inGamePacketLoss = packetLossServerToClient
 	}
 
 	var routeCost int32 = sessionData.RouteCost
@@ -1084,7 +1092,7 @@ func PostSessionUpdate(
 		ConnectionType:                  uint8(packet.ConnectionType),
 		PlatformType:                    uint8(packet.PlatformType),
 		SDKVersion:                      packet.Version.String(),
-		PacketLoss:                      inGamePacketLoss,
+		PacketLoss:                      slicePacketLoss,
 		PredictedNextRTT:                float32(routeCost),
 		MultipathVetoed:                 sessionData.RouteState.MultipathOverload,
 		UseDebug:                        buyer.Debug,

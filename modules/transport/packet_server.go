@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 8
+	SessionDataVersion = 9
 
 	MaxSessionDataSize = 511
 
@@ -571,20 +571,24 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 }
 
 type SessionData struct {
-	Version          uint32
-	SessionID        uint64
-	SessionVersion   uint32
-	SliceNumber      uint32
-	ExpireTimestamp  uint64
-	Initial          bool
-	Location         routing.Location
-	RouteChanged     bool
-	RouteNumRelays   int32
-	RouteCost        int32
-	RouteRelayIDs    [core.MaxRelaysPerRoute]uint64
-	RouteState       core.RouteState
-	EverOnNext       bool
-	FellBackToDirect bool
+	Version                       uint32
+	SessionID                     uint64
+	SessionVersion                uint32
+	SliceNumber                   uint32
+	ExpireTimestamp               uint64
+	Initial                       bool
+	Location                      routing.Location
+	RouteChanged                  bool
+	RouteNumRelays                int32
+	RouteCost                     int32
+	RouteRelayIDs                 [core.MaxRelaysPerRoute]uint64
+	RouteState                    core.RouteState
+	EverOnNext                    bool
+	FellBackToDirect              bool
+	PrevPacketsSentClientToServer uint64
+	PrevPacketsSentServerToClient uint64
+	PrevPacketsLostClientToServer uint64
+	PrevPacketsLostServerToClient uint64
 }
 
 func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
@@ -723,7 +727,14 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 
-	stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+	if sessionData.Version >= 9 {
+		stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+
+		stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
+		stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
+		stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
+		stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
+	}
 
 	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!
 

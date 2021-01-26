@@ -492,12 +492,12 @@ func main() {
 
 	// Flags to hide relays in certain states
 	var relaysStateHideFlags [6]bool
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", true, "hide enabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", true, "hide relays in maintenance")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", true, "hide disabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", true, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", true, "hide decommissioned relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", true, "hide offline relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
 
 	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
 	var relaysDownFlag bool
@@ -735,30 +735,6 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateDisabled] = false
 				relaysStateHideFlags[routing.RelayStateQuarantine] = false
 				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateEnabled] {
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateMaintenance] {
-				relaysStateHideFlags[routing.RelayStateMaintenance] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateDisabled] {
-				relaysStateHideFlags[routing.RelayStateDisabled] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateQuarantine] {
-				relaysStateHideFlags[routing.RelayStateQuarantine] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateOffline] {
-				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
-
-			if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
 			var arg string
