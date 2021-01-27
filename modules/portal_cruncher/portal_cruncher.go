@@ -15,6 +15,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
@@ -223,20 +225,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 
 	if cruncher.useBigtable {
 		// Get the current env and ghost army buyerID
-		var env string
-		var ghostArmyBuyerID string
-		{
-			if envStr, ok := os.LookupEnv("ENV"); !ok {
-				env = "local"
-			} else {
-				env = envStr
-			}
-			if ghostArmyBuyerIDStr, ok := os.LookupEnv("GHOST_ARMY_BUYER_ID"); !ok {
-				ghostArmyBuyerID = "0000000000000000"
-			} else {
-				ghostArmyBuyerID = ghostArmyBuyerIDStr
-			}
-		}
+		env := envvar.Get("ENV", "local")
+		ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(env)
 
 		// Start the bigtable goroutines
 		for i := 0; i < numBigtableInsertGoroutines; i++ {
@@ -624,13 +614,13 @@ func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []s
 	return nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData, env string, ghostArmyBuyerID string) error {
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData, env string, ghostArmyBuyerID uint64) error {
 	for j := range btPortalDataBuffer {
 		meta := &btPortalDataBuffer[j].Meta
 		slice := &btPortalDataBuffer[j].Slice
 
 		// Do not insert ghost army in prod
-		if env == "prod" && fmt.Sprintf("%016x", meta.BuyerID) == ghostArmyBuyerID {
+		if env == "prod" && meta.BuyerID == ghostArmyBuyerID {
 			continue
 		}
 
