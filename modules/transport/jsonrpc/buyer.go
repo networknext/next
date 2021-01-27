@@ -107,7 +107,8 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions []transport.SessionMeta `json:"sessions"`
+	Sessions   []transport.SessionMeta `json:"sessions"`
+	TimeStamps []string                `json:"time_stamps"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -176,6 +177,12 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		liveIDString := strings.Join(sessionIDs, ",")
 
 		var sessionMeta transport.SessionMeta
+		var sessionSlice transport.SessionSlice
+
+		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("slices"),
+			bigtable.LatestNFilter(1),
+		)
+
 		if len(rowsByHash) > 0 {
 			for _, row := range rowsByHash {
 				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
@@ -185,6 +192,22 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					reply.Sessions = append(reply.Sessions, sessionMeta)
 				}
 			}
+
+			sliceRowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter))
+			if err != nil {
+				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+				err = fmt.Errorf("UserSessions() failed to fetch historic user session slices: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			for _, row := range sliceRowsByHash {
+				if err = sessionSlice.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+					return err
+				}
+				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
+				}
+			}
 		} else if len(rowsByID) > 0 {
 			for _, row := range rowsByID {
 				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
@@ -192,6 +215,22 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
+				}
+			}
+
+			sliceRowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter))
+			if err != nil {
+				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+				err = fmt.Errorf("UserSessions() failed to fetch historic user session slices: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			for _, row := range sliceRowsByID {
+				if err = sessionSlice.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+					return err
+				}
+				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
 				}
 			}
 		}
