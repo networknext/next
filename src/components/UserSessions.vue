@@ -5,6 +5,11 @@
         <tr>
           <th>
             <span>
+              Date
+            </span>
+          </th>
+          <th>
+            <span>
               Session ID
             </span>
           </th>
@@ -37,6 +42,9 @@
       </thead>
       <tbody v-if="sessions.length > 0">
         <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
+          <td>
+            {{ session.date }}
+          </td>
           <td>
               <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
           </td>
