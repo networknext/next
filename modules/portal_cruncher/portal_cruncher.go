@@ -15,6 +15,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
@@ -222,6 +224,10 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 	}
 
 	if cruncher.useBigtable {
+		// Get the current env and ghost army buyerID
+		env := envvar.Get("ENV", "local")
+		ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(env)
+
 		// Start the bigtable goroutines
 		for i := 0; i < numBigtableInsertGoroutines; i++ {
 			wg.Add(1)
@@ -235,7 +241,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 					case portalData := <-cruncher.btDataMessageChan:
 						btPortalDataBuffer = append(btPortalDataBuffer, portalData)
 
-						if err := cruncher.InsertIntoBigtable(ctx, btPortalDataBuffer); err != nil {
+						if err := cruncher.InsertIntoBigtable(ctx, btPortalDataBuffer, env, ghostArmyBuyerID); err != nil {
 							errChan <- err
 							return
 						}
@@ -608,10 +614,15 @@ func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []s
 	return nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData, env string, ghostArmyBuyerID uint64) error {
 	for j := range btPortalDataBuffer {
 		meta := &btPortalDataBuffer[j].Meta
 		slice := &btPortalDataBuffer[j].Slice
+
+		// Do not insert ghost army in prod
+		if env == "prod" && meta.BuyerID == ghostArmyBuyerID {
+			continue
+		}
 
 		// This seems redundant, try to figure out a better prefix to limit the number of keys
 		// Key for session ID
