@@ -18,7 +18,7 @@ const (
 	SessionCountDataVersion  = 0
 	SessionPortalDataVersion = 1
 	SessionMetaVersion       = 0
-	SessionSliceVersion      = 1
+	SessionSliceVersion      = 2
 	SessionMapPointVersion   = 0
 )
 
@@ -701,26 +701,29 @@ func ObscureString(source string, delim string, count int) string {
 }
 
 type SessionSlice struct {
-	Timestamp         time.Time        `json:"timestamp"`
-	Next              routing.Stats    `json:"next"`
-	Direct            routing.Stats    `json:"direct"`
-	Predicted         routing.Stats    `json:"predicted"`
-	Envelope          routing.Envelope `json:"envelope"`
-	OnNetworkNext     bool             `json:"on_network_next"`
-	IsMultiPath       bool             `json:"is_multipath"`
-	IsTryBeforeYouBuy bool             `json:"is_try_before_you_buy"`
+	Version             uint32           `json:"version"`
+	Timestamp           time.Time        `json:"timestamp"`
+	Next                routing.Stats    `json:"next"`
+	Direct              routing.Stats    `json:"direct"`
+	Predicted           routing.Stats    `json:"predicted"`
+	ClientToServerStats routing.Stats    `json:"client_to_server_stats"`
+	ServerToClientStats routing.Stats    `json:"server_to_client_stats"`
+	RouteDiversity      uint32           `json:"route_diversity"`
+	Envelope            routing.Envelope `json:"envelope"`
+	OnNetworkNext       bool             `json:"on_network_next"`
+	IsMultiPath         bool             `json:"is_multipath"`
+	IsTryBeforeYouBuy   bool             `json:"is_try_before_you_buy"`
 }
 
 func (s *SessionSlice) UnmarshalBinary(data []byte) error {
 	index := 0
 
-	var version uint32
-	if !encoding.ReadUint32(data, &index, &version) {
+	if !encoding.ReadUint32(data, &index, &s.Version) {
 		return errors.New("[SessionSlice] invalid read at version number")
 	}
 
-	if version > SessionSliceVersion {
-		return fmt.Errorf("unknown session slice version: %d", version)
+	if s.Version > SessionSliceVersion {
+		return fmt.Errorf("unknown session slice version: %d", s.Version)
 	}
 
 	var timestamp uint64
@@ -749,9 +752,31 @@ func (s *SessionSlice) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionSlice] invalid read at direct packet loss")
 	}
 
-	if SessionSliceVersion > 0 {
+	if s.Version >= 1 {
 		if !encoding.ReadFloat64(data, &index, &s.Predicted.RTT) {
 			return errors.New("[SessionSlice] invalid read at predicted RTT")
+		}
+	}
+
+	if s.Version >= 2 {
+		if !encoding.ReadFloat64(data, &index, &s.ClientToServerStats.Jitter) {
+			return errors.New("[SessionSlice] invalid read at client to server jitter")
+		}
+
+		if !encoding.ReadFloat64(data, &index, &s.ClientToServerStats.PacketLoss) {
+			return errors.New("[SessionSlice] invalid read at client to server packet loss")
+		}
+
+		if !encoding.ReadFloat64(data, &index, &s.ServerToClientStats.Jitter) {
+			return errors.New("[SessionSlice] invalid read at server to client jitter")
+		}
+
+		if !encoding.ReadFloat64(data, &index, &s.ServerToClientStats.PacketLoss) {
+			return errors.New("[SessionSlice] invalid read at server to client packet loss")
+		}
+
+		if !encoding.ReadUint32(data, &index, &s.RouteDiversity) {
+			return errors.New("[SessionSlice] invalid read at route diversity")
 		}
 	}
 
@@ -795,17 +820,22 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 	encoding.WriteFloat64(data, &index, s.Direct.Jitter)
 	encoding.WriteFloat64(data, &index, s.Direct.PacketLoss)
 	encoding.WriteFloat64(data, &index, s.Predicted.RTT)
+	encoding.WriteFloat64(data, &index, s.ClientToServerStats.Jitter)
+	encoding.WriteFloat64(data, &index, s.ClientToServerStats.PacketLoss)
+	encoding.WriteFloat64(data, &index, s.ServerToClientStats.Jitter)
+	encoding.WriteFloat64(data, &index, s.ServerToClientStats.PacketLoss)
+	encoding.WriteUint32(data, &index, s.RouteDiversity)
 	encoding.WriteUint64(data, &index, uint64(s.Envelope.Up))
 	encoding.WriteUint64(data, &index, uint64(s.Envelope.Down))
 	encoding.WriteBool(data, &index, s.OnNetworkNext)
 	encoding.WriteBool(data, &index, s.IsMultiPath)
 	encoding.WriteBool(data, &index, s.IsTryBeforeYouBuy)
 
-	return data, nil
+	return data[:index], nil
 }
 
 func (s SessionSlice) Size() uint64 {
-	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + 1 + 1 + 1
+	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + (2 * 8) + 4 + (2 * 8) + 1 + 1 + 1
 }
 
 func (s SessionSlice) RedisString() string {
@@ -824,20 +854,47 @@ func (s SessionSlice) RedisString() string {
 		isTryBeforeYouBuyString = "1"
 	}
 
-	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s|%s", s.Timestamp.Unix(), s.Next.RedisString(), s.Direct.RedisString(), s.Predicted.RedisString(), s.Envelope.RedisString(), onNetworkNextString, isMultipathString, isTryBeforeYouBuyString)
+	return fmt.Sprintf("%d|%d|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s",
+		s.Version,
+		s.Timestamp.Unix(),
+		s.Next.RedisString(),
+		s.Direct.RedisString(),
+		s.Predicted.RedisString(),
+		s.ClientToServerStats.RedisString(),
+		s.ServerToClientStats.RedisString(),
+		s.RouteDiversity,
+		s.Envelope.RedisString(),
+		onNetworkNextString,
+		isMultipathString,
+		isTryBeforeYouBuyString,
+	)
 }
 
 func (s *SessionSlice) ParseRedisString(values []string) error {
 	var index int
 	var err error
 
-	var timestamp int64
-	if timestamp, err = strconv.ParseInt(values[index], 10, 64); err != nil {
-		return fmt.Errorf("[SessionSlice] failed to read timestamp from redis data: %v", err)
+	var version int64
+	if version, err = strconv.ParseInt(values[index], 10, 64); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read version from redis data: %v", err)
 	}
 	index++
 
-	s.Timestamp = time.Unix(timestamp, 0)
+	// The original data didn't have the version serialized, so it was actually the timestamp
+	if version > SessionSliceVersion {
+		s.Timestamp = time.Unix(version, 0)
+		version = 0
+	} else {
+		s.Version = uint32(version)
+
+		var timestamp int64
+		if timestamp, err = strconv.ParseInt(values[index], 10, 64); err != nil {
+			return fmt.Errorf("[SessionSlice] failed to read timestamp from redis data: %v", err)
+		}
+		index++
+
+		s.Timestamp = time.Unix(timestamp, 0)
+	}
 
 	if err := s.Next.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
 		return fmt.Errorf("[SessionSlice] failed to read next stats from redis data: %v", err)
@@ -853,6 +910,26 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 		return fmt.Errorf("[SessionSlice] failed to read predicted stats from redis data: %v", err)
 	}
 	index += 3
+
+	if s.Version >= 2 {
+		if err := s.ClientToServerStats.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+			return fmt.Errorf("[SessionSlice] failed to read client to server stats from redis data: %v", err)
+		}
+		index += 3
+
+		if err := s.ServerToClientStats.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+			return fmt.Errorf("[SessionSlice] failed to read server to client stats from redis data: %v", err)
+		}
+		index += 3
+
+		var routeDiversity uint64
+		if routeDiversity, err = strconv.ParseUint(values[index], 10, 32); err != nil {
+			return fmt.Errorf("[SessionSlice] failed to read on network next from redis data: %v", err)
+		}
+		index++
+
+		s.RouteDiversity = uint32(routeDiversity)
+	}
 
 	if err := s.Envelope.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
 		return fmt.Errorf("[SessionSlice] failed to read envelope from redis data: %v", err)
