@@ -855,7 +855,7 @@ func (s SessionSlice) RedisString() string {
 	}
 
 	return fmt.Sprintf("%d|%d|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s",
-		s.Version,
+		SessionSliceVersion,
 		s.Timestamp.Unix(),
 		s.Next.RedisString(),
 		s.Direct.RedisString(),
@@ -924,7 +924,7 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 
 		var routeDiversity uint64
 		if routeDiversity, err = strconv.ParseUint(values[index], 10, 32); err != nil {
-			return fmt.Errorf("[SessionSlice] failed to read on network next from redis data: %v", err)
+			return fmt.Errorf("[SessionSlice] failed to read route diversity from redis data: %v", err)
 		}
 		index++
 
