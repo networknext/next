@@ -43,7 +43,7 @@
       <tbody v-if="sessions.length > 0">
         <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
           <td>
-            {{ session.date }}
+            {{ timeStamps[index] }}
           </td>
           <td>
               <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
@@ -89,17 +89,18 @@ import { AlertType } from './types/AlertTypes'
 @Component
 export default class UserSessions extends Vue {
   private sessions: Array<any>
+  private timeStamps: Array<any>
   private sessionLoop: any
   private showSessions: boolean
   private searchID: string
   private message: string
   private alertType: string
-  private unwatch: any
 
   constructor () {
     super()
     this.searchID = ''
     this.sessions = []
+    this.timeStamps = []
     this.showSessions = false
     this.sessionLoop = null
     this.message = 'Failed to fetch user sessions'
@@ -141,6 +142,7 @@ export default class UserSessions extends Vue {
     this.$apiService.fetchUserSessions({ user_id: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
+        this.timeStamps = response.time_stamps
         this.showSessions = true
       })
       .catch((error: Error) => {
