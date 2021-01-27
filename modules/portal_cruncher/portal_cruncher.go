@@ -15,7 +15,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
@@ -134,7 +133,7 @@ func NewPortalCruncher(
 	}, nil
 }
 
-func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, numBigtableInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int) error {
+func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, numBigtableInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int, env string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
@@ -224,8 +223,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 	}
 
 	if cruncher.useBigtable {
-		// Get the current env and ghost army buyerID
-		env := envvar.Get("ENV", "local")
+		// Get the Ghost Army buyerID
 		ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(env)
 
 		// Start the bigtable goroutines
