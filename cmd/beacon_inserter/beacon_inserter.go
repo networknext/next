@@ -42,7 +42,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	fmt.Printf("beacon: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("beacon_inserter: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	serviceName := "beacon_inserter"
 
@@ -133,7 +133,7 @@ func mainReturnWithCode() int {
 			if pubsubEmulatorOK {
 				gcpProjectID = "local"
 			}
-			
+
 			topicName := "beacon"
 			subscriptionName := "beacon"
 
