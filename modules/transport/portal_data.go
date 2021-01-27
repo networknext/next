@@ -16,7 +16,7 @@ import (
 
 const (
 	SessionCountDataVersion  = 0
-	SessionPortalDataVersion = 2
+	SessionPortalDataVersion = 1
 	SessionMetaVersion       = 0
 	SessionSliceVersion      = 2
 	SessionMapPointVersion   = 0
