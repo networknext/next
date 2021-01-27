@@ -155,7 +155,6 @@ describe('UserSessions.vue no sessions', () => {
     expect(rows.length).toBe(1)
 
     const row = wrapper.findAll('#data-row td')
-    expect(row.at(0).text()).toBe('')
     expect(row.at(1).text()).toBe('123456789')
     expect(row.at(2).text()).toBe('PS5')
     expect(row.at(3).text()).toBe('Star link')
