@@ -854,7 +854,7 @@ func (s SessionSlice) RedisString() string {
 		isTryBeforeYouBuyString = "1"
 	}
 
-	return fmt.Sprintf("%d|%d|%s|%s|%s|%s|%s|%s|%d|%s|%s|%s",
+	return fmt.Sprintf("%d|%d|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s",
 		s.Version,
 		s.Timestamp.Unix(),
 		s.Next.RedisString(),
@@ -862,8 +862,8 @@ func (s SessionSlice) RedisString() string {
 		s.Predicted.RedisString(),
 		s.ClientToServerStats.RedisString(),
 		s.ServerToClientStats.RedisString(),
-		s.Envelope.RedisString(),
 		s.RouteDiversity,
+		s.Envelope.RedisString(),
 		onNetworkNextString,
 		isMultipathString,
 		isTryBeforeYouBuyString,
