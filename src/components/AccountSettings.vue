@@ -256,9 +256,14 @@ export default class AccountSettings extends Vue {
           .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
       )
     }
+    if (this.$store.getters.userProfile.newsletterConsent !== this.newsletterConsent) {
+      promises.push(this.$apiService
+        .updateAccountSettings({ newsletter: this.newsletterConsent }))
+    }
 
-    promises.push(this.$apiService
-      .updateAccountSettings({ newsletter: this.newsletterConsent }))
+    if (promises.length === 0) {
+      return
+    }
 
     Promise.all(promises)
       .then((responses: Array<any>) => {

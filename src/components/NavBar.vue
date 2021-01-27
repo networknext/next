@@ -44,7 +44,7 @@
               $store.getters.currentPage == 'user-tool' ||
               $store.getters.currentPage == 'user-sessions'
           }"
-          v-if="!$store.getters.isAnonymous"
+          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
         >User Tool</router-link>
       </li>
       <li class="nav-item text-nowrap">
@@ -77,7 +77,7 @@
               $store.getters.currentPage == 'users' ||
               $store.getters.currentPage == 'route-shader'
           }"
-          v-if="!$store.getters.isAnonymous"
+          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
         >Settings</router-link>
       </li>
     </ul>
