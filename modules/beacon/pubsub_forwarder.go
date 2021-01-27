@@ -18,12 +18,12 @@ import (
 type PubSubForwarder struct {
 	Beaconer Beaconer
 	Logger   log.Logger
-	Metrics  *metrics.BeaconMetrics
+	Metrics  *metrics.BeaconInserterMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, beaconer Beaconer, logger log.Logger, metrics *metrics.BeaconMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, beaconer Beaconer, logger log.Logger, metrics *metrics.BeaconInserterMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -52,13 +52,14 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		entries, err := psf.unbatchMessages(m)
 		if err != nil {
 			level.Error(psf.Logger).Log("err", err)
-			psf.Metrics.ErrorMetrics.BeaconBatchedReadFailure.Add(1)
+			psf.Metrics.ErrorMetrics.BeaconInserterBatchedReadFailure.Add(1)
 		}
 
 		psf.Metrics.EntriesTransfered.Add(float64(len(entries)))
 
 		beaconEntries := make([]*transport.NextBeaconPacket, len(entries))
 		for i := range beaconEntries {
+			
 			if err = transport.ReadBeaconEntry(beaconEntries[i], entries[i]); err != nil {
 
 				if err := psf.Beaconer.Submit(context.Background(), beaconEntries[i]); err != nil {
@@ -71,7 +72,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				entryVeto, err := envvar.GetBool("BEACON_ENTRY_VETO", false)
 				if err != nil {
 					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
-					psf.Metrics.ErrorMetrics.BeaconReadFailure.Add(1)
+					psf.Metrics.ErrorMetrics.BeaconInserterReadFailure.Add(1)
 					return
 				}
 
@@ -80,7 +81,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 					return
 				}
 
-				psf.Metrics.ErrorMetrics.BeaconReadFailure.Add(1)
+				psf.Metrics.ErrorMetrics.BeaconInserterReadFailure.Add(1)
 			}
 		}
 	})

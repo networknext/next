@@ -83,6 +83,14 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	if gcpOK {
+		// Stackdriver Profiler
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
+		}
+	}
+
 	// Create a local beaconer
 	var beaconer beacon.Beaconer = &beacon.LocalBeaconer{
 		Logger:  logger,
@@ -97,7 +105,7 @@ func mainReturnWithCode() int {
 			gcpProjectID = "local"
 
 			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
 			level.Info(logger).Log("msg", "Detected pubsub emulator")
@@ -138,52 +146,6 @@ func mainReturnWithCode() int {
 
 			beaconer = pubsub
 		}
-	}
-
-	if gcpOK {
-		// Stackdriver Profiler
-		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-			return 1
-		}
-
-		// // Google Bigquery
-		// {
-		// 	beaconDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_BEACON", "")
-		// 	if beaconDataset != "" {
-		// 		batchSize := beacon.DefaultBigQueryBatchSize
-
-		// 		batchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", beacon.DefaultBigQueryBatchSize)
-		// 		if err != nil {
-		// 			level.Error(logger).Log("err", err)
-		// 			return 1
-		// 		}
-
-		// 		// Create biquery client and start write loop
-		// 		bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-		// 		if err != nil {
-		// 			level.Error(logger).Log("err", err)
-		// 			return 1
-		// 		}
-
-		// 		beaconTable := envvar.Get("GOOGLE_BIGQUERY_TABLE_BEACON", "")
-
-		// 		b := beacon.GoogleBigQueryClient{
-		// 			Metrics:       &beaconServiceMetrics.BeaconMetrics,
-		// 			Logger:        logger,
-		// 			TableInserter: bqClient.Dataset(beaconDataset).Table(beaconTable).Inserter(),
-		// 			BatchSize:     batchSize,
-		// 		}
-
-		// 		// Set the Beaconer to BigQuery
-		// 		beaconer = &b
-
-		// 		// Start the background WriteLoop to batch write to BigQuery
-		// 		go func() {
-		// 			b.WriteLoop(ctx)
-		// 		}()
-		// 	}
-		// }
 	}
 
 	channelBufferSize, err := envvar.GetInt("CHANNEL_BUFFER_SIZE", 100000)
@@ -252,11 +214,10 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
 				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d beacon entries queued\n", int(beaconServiceMetrics.BeaconMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
 				fmt.Printf("%d beacon entry send failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Value()))
 				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Value()))
-				fmt.Printf("%d beacon entry write failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconWriteFailure.Value()))
+				fmt.Printf("%d beacon entry publish failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

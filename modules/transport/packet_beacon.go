@@ -43,8 +43,12 @@ type NextBeaconPacket struct {
 }
 
 func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
-
+	fmt.Printf("%v", packet)
 	stream.SerializeBits(&packet.Version, 8)
+
+	if stream.IsReading() {
+		stream.SerializeUint64(&packet.Timestamp)
+	}
 
 	stream.SerializeBool(&packet.Enabled)
 	stream.SerializeBool(&packet.Upgraded)

@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/transport"
 )
 
-// GooglePubSubBeaconer is an implementation of a beacon handler that sends billing data to Google Pub/Sub through multiple clients
+// GooglePubSubBeaconer is an implementation of a beacon handler that sends beacon data to Google Pub/Sub through multiple clients
 type GooglePubSubBeaconer struct {
 	clients []*GooglePubSubClient
 }
@@ -78,7 +78,7 @@ func NewGooglePubSubBeaconer(ctx context.Context, beaconMetrics *metrics.BeaconM
 		client.CancelContextFunc = cancelFunc
 
 		go client.pubsubResults(cancelCtx)
-		
+
 		clients[i] = client
 	}
 

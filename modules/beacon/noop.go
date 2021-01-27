@@ -12,7 +12,7 @@ type NoOpBeacon struct {
 	submitted uint64
 }
 
-// Bill does nothing
+// Submit does nothing
 func (noop *NoOpBeacon) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
 	atomic.AddUint64(&noop.submitted, 1)
 	return nil
