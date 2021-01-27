@@ -85,6 +85,7 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 			Longitude: 90,
 		},
 		Slice: transport.SessionSlice{
+			Version:   transport.SessionSliceVersion,
 			Timestamp: timestamp.Truncate(time.Second),
 			Envelope: routing.Envelope{
 				Up:   100,
