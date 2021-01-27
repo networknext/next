@@ -487,16 +487,29 @@ func getExpectedSessionData(
 		return initialSessionData
 	}
 
+	packetsSent := uint64(0)
+	if request.sliceNumber > 0 {
+		packetsSent = uint64(request.sliceNumber) * 600
+	}
+
 	if request.badSessionData || request.badSessionDataSessionID {
 		return transport.SessionData{
-			Version: transport.SessionDataVersion,
+			Version:                       transport.SessionDataVersion,
+			PrevPacketsSentClientToServer: packetsSent,
+			PrevPacketsSentServerToClient: packetsSent,
+			PrevPacketsLostClientToServer: 0,
+			PrevPacketsLostServerToClient: 0,
 		}
 	}
 
 	if request.badSessionDataSliceNumber {
 		return transport.SessionData{
-			Version:   transport.SessionDataVersion,
-			SessionID: request.sessionID,
+			Version:                       transport.SessionDataVersion,
+			SessionID:                     request.sessionID,
+			PrevPacketsSentClientToServer: packetsSent,
+			PrevPacketsSentServerToClient: packetsSent,
+			PrevPacketsLostClientToServer: 0,
+			PrevPacketsLostServerToClient: 0,
 		}
 	}
 
@@ -546,10 +559,14 @@ func getExpectedSessionData(
 			MispredictCounter: mispredictCounter,
 			Mispredict:        mispredictVeto,
 		},
-		Initial:          routeInfo.initial,
-		FellBackToDirect: request.fallbackToDirect,
-		EverOnNext:       everOnNext,
-		RouteChanged:     request.prevRouteType == routing.RouteTypeContinue && response.routeType == routing.RouteTypeNew,
+		Initial:                       routeInfo.initial,
+		FellBackToDirect:              request.fallbackToDirect,
+		EverOnNext:                    everOnNext,
+		RouteChanged:                  request.prevRouteType == routing.RouteTypeContinue && response.routeType == routing.RouteTypeNew,
+		PrevPacketsSentClientToServer: packetsSent,
+		PrevPacketsSentServerToClient: packetsSent,
+		PrevPacketsLostClientToServer: 0,
+		PrevPacketsLostServerToClient: 0,
 	}
 
 	if response.attemptUpdateNearRelays && !request.desyncedNearRelays {
@@ -823,34 +840,40 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	copy(tags[:], request.tags)
 
 	requestPacket := transport.SessionUpdatePacket{
-		Version:              request.sdkVersion,
-		SessionID:            request.sessionID,
-		UserHash:             request.userHash,
-		CustomerID:           request.buyerID,
-		DatacenterID:         request.datacenterID,
-		SliceNumber:          request.sliceNumber,
-		ClientRoutePublicKey: publicKey[:],
-		ServerRoutePublicKey: privateKey[:],
-		ClientAddress:        *clientAddr,
-		ServerAddress:        *serverAddr,
-		ClientPingTimedOut:   request.clientPingTimedOut,
-		NumTags:              int32(len(request.tags)),
-		Tags:                 tags,
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          requestSessionData,
-		NumNearRelays:        nearRelays.Count,
-		NearRelayIDs:         nearRelays.IDs,
-		NearRelayRTT:         nearRelays.RTTs,
-		NearRelayJitter:      nearRelays.Jitters,
-		NearRelayPacketLoss:  nearRelays.PacketLosses,
-		FallbackToDirect:     request.fallbackToDirect,
-		Next:                 request.prevRouteType != routing.RouteTypeDirect,
-		DirectRTT:            float32(request.directStats.RTT),
-		DirectJitter:         float32(request.directStats.Jitter),
-		DirectPacketLoss:     float32(request.directStats.PacketLoss),
-		NextRTT:              float32(request.nextStats.RTT),
-		NextJitter:           float32(request.nextStats.Jitter),
-		NextPacketLoss:       float32(request.nextStats.PacketLoss),
+		Version:                         request.sdkVersion,
+		SessionID:                       request.sessionID,
+		UserHash:                        request.userHash,
+		CustomerID:                      request.buyerID,
+		DatacenterID:                    request.datacenterID,
+		SliceNumber:                     request.sliceNumber,
+		ClientRoutePublicKey:            publicKey[:],
+		ServerRoutePublicKey:            privateKey[:],
+		ClientAddress:                   *clientAddr,
+		ServerAddress:                   *serverAddr,
+		ClientPingTimedOut:              request.clientPingTimedOut,
+		NumTags:                         int32(len(request.tags)),
+		Tags:                            tags,
+		SessionDataBytes:                int32(len(sessionDataSlice)),
+		SessionData:                     requestSessionData,
+		NumNearRelays:                   nearRelays.Count,
+		NearRelayIDs:                    nearRelays.IDs,
+		NearRelayRTT:                    nearRelays.RTTs,
+		NearRelayJitter:                 nearRelays.Jitters,
+		NearRelayPacketLoss:             nearRelays.PacketLosses,
+		FallbackToDirect:                request.fallbackToDirect,
+		Next:                            request.prevRouteType != routing.RouteTypeDirect,
+		DirectRTT:                       float32(request.directStats.RTT),
+		DirectJitter:                    float32(request.directStats.Jitter),
+		DirectPacketLoss:                float32(request.directStats.PacketLoss),
+		NextRTT:                         float32(request.nextStats.RTT),
+		NextJitter:                      float32(request.nextStats.Jitter),
+		NextPacketLoss:                  float32(request.nextStats.PacketLoss),
+		PacketsSentClientToServer:       uint64(request.sliceNumber) * 600,
+		PacketsSentServerToClient:       uint64(request.sliceNumber) * 600,
+		PacketsLostClientToServer:       0,
+		PacketsLostServerToClient:       0,
+		PacketsOutOfOrderClientToServer: 0,
+		PacketsOutOfOrderServerToClient: 0,
 	}
 
 	if request.sdkAborted {
