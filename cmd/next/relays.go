@@ -34,6 +34,9 @@ func opsRelays(
 		Regex: regex,
 	}
 
+	// debugPrintRelayViewFlags("function entry", relaysStateHideFlags, relaysStateShowFlags)
+	// os.Exit(0)
+
 	var reply localjsonrpc.RelaysReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
@@ -57,13 +60,15 @@ func opsRelays(
 		Type                string
 		IncludedBandwidthGB string
 		NICSpeedMbps        string
+		State               string
+		IPAddress           string
 	}{}
 
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
 		"Name", "MRC", "Overage", "BW Rule",
-		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed"})
+		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address"})
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
@@ -161,43 +166,51 @@ func opsRelays(
 		}
 
 		// return csv file
-		if csvOutputFlag {
-			relaysCSV = append(relaysCSV, []string{
-				relay.Name,
-				mrc,
-				overage,
-				bwRule,
-				contractTerm,
-				startDate,
-				endDate,
-				machineType,
-				bandwidth,
-				nicSpeed,
-			})
-		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
-			relays = append(relays, struct {
-				Name                string
-				MRC                 string
-				Overage             string
-				BWRule              string
-				ContractTerm        string
-				StartDate           string
-				EndDate             string
-				Type                string
-				IncludedBandwidthGB string
-				NICSpeedMbps        string
-			}{
-				relay.Name,
-				mrc,
-				overage,
-				bwRule,
-				contractTerm,
-				startDate,
-				endDate,
-				machineType,
-				bandwidth,
-				nicSpeed,
-			})
+		if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+			if csvOutputFlag {
+				relaysCSV = append(relaysCSV, []string{
+					relay.Name,
+					mrc,
+					overage,
+					bwRule,
+					contractTerm,
+					startDate,
+					endDate,
+					machineType,
+					bandwidth,
+					nicSpeed,
+					relay.State,
+					strings.Split(relay.Addr, ":")[0],
+				})
+			} else {
+				relays = append(relays, struct {
+					Name                string
+					MRC                 string
+					Overage             string
+					BWRule              string
+					ContractTerm        string
+					StartDate           string
+					EndDate             string
+					Type                string
+					IncludedBandwidthGB string
+					NICSpeedMbps        string
+					State               string
+					IPAddress           string
+				}{
+					relay.Name,
+					mrc,
+					overage,
+					bwRule,
+					contractTerm,
+					startDate,
+					endDate,
+					machineType,
+					bandwidth,
+					nicSpeed,
+					relay.State,
+					strings.Split(relay.Addr, ":")[0],
+				})
+			}
 		}
 
 	}

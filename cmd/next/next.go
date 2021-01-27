@@ -717,7 +717,9 @@ func main() {
 		ShortHelp:  "List relays",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
-			if relaysfs.NFlag() == 0 {
+			if relaysfs.NFlag() == 0 ||
+				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
+				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
 				// If no flags are given, set the default set of flags
 				relaysStateShowFlags[routing.RelayStateEnabled] = true
 				relaysStateHideFlags[routing.RelayStateEnabled] = false
