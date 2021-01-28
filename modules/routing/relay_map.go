@@ -81,7 +81,9 @@ type RelayData struct {
 
 func NewRelayData() *RelayData {
 	return &RelayData{
-		TrafficStatsBuff: make([]TrafficStats, 0),
+		TrafficStatsBuff:     make([]TrafficStats, 0),
+		LastUpdateTime:       time.Now(),
+		LastStatsPublishTime: time.Now(),
 	}
 }
 
@@ -165,6 +167,15 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	relayMap.RUnlock()
 
 	return relays
+}
+
+func (relayMap *RelayMap) ClearRelayData(relayAddress string) {
+	entry := relayMap.relays[relayAddress]
+	entry.LastStatsPublishTime = time.Now()
+	entry.PeakTrafficStats.SessionCount = 0
+	entry.PeakTrafficStats.EnvelopeUpKbps = 0
+	entry.PeakTrafficStats.EnvelopeDownKbps = 0
+	entry.TrafficStatsBuff = entry.TrafficStatsBuff[:0]
 }
 
 func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
