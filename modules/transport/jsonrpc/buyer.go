@@ -107,7 +107,8 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions []transport.SessionMeta `json:"sessions"`
+	Sessions   []transport.SessionMeta `json:"sessions"`
+	TimeStamps []string                `json:"time_stamps"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -118,6 +119,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	reply.Sessions = make([]transport.SessionMeta, 0)
 	sessionIDs := make([]string, 0)
+
+	var sessionSlice transport.SessionSlice
 
 	userID := args.UserID
 
@@ -144,6 +147,25 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) {
 			reply.Sessions = append(reply.Sessions, session)
 			sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+			defer sessionSlicesClient.Close()
+
+			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "-1"))
+			if err != nil && err != redis.ErrNil {
+				err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			sliceString := strings.Split(slices[0], "|")
+			if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+				err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
 		}
 	}
 
@@ -176,6 +198,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		liveIDString := strings.Join(sessionIDs, ",")
 
 		var sessionMeta transport.SessionMeta
+
 		if len(rowsByHash) > 0 {
 			for _, row := range rowsByHash {
 				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
@@ -183,6 +206,23 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
+
+					sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+					if err != nil {
+						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+						err = fmt.Errorf("UserSessions() failed to fetch historic slice information: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					if len(sliceRows) == 0 {
+						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+						err = fmt.Errorf("UserSessions() failed getting session slices")
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
 				}
 			}
 		} else if len(rowsByID) > 0 {
@@ -192,6 +232,23 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 					reply.Sessions = append(reply.Sessions, sessionMeta)
+
+					sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+					if err != nil {
+						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+						err = fmt.Errorf("UserSessions() failed to fetch historic slice information: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					if len(sliceRows) == 0 {
+						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+						err = fmt.Errorf("UserSessions() failed getting session slices")
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
 				}
 			}
 		}
