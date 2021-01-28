@@ -221,6 +221,10 @@ ifndef CRUNCHER_RECEIVE_BUFFER_SIZE
 export CRUNCHER_RECEIVE_BUFFER_SIZE = 100
 endif
 
+ifndef GHOST_ARMY_PEAK_SESSION_COUNT
+export GHOST_ARMY_PEAK_SESSION_COUNT = 10
+endif
+
 ifndef GHOST_ARMY_BIN
 export GHOST_ARMY_BIN = ./dist/ghost_army.bin
 endif
