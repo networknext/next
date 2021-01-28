@@ -43,7 +43,7 @@
       <tbody v-if="sessions.length > 0">
         <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
           <td>
-            {{ timeStamps[index] }}
+            {{ convertUTCDateToLocalDate(new Date(timeStamps[index])) }}
           </td>
           <td>
               <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
@@ -155,6 +155,14 @@ export default class UserSessions extends Vue {
           console.log(error)
         }
       })
+  }
+
+  private convertUTCDateToLocalDate (date: Date) {
+    const newDate = new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000)
+
+    newDate.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+
+    return newDate.toLocaleString().replace(',', '')
   }
 }
 
