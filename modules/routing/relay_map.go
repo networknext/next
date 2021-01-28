@@ -66,7 +66,7 @@ type RelayData struct {
 	// Traffic stats from last update
 	TrafficStats TrafficStats
 
-	// Highest values from the traffic stats seen since the last publis interval
+	// Highest values from the traffic stats seen since the last publish interval
 	PeakTrafficStats PeakTrafficStats
 
 	// contains all the traffic stats updates since the last publish
