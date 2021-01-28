@@ -238,6 +238,10 @@ func TestUserSessions(t *testing.T) {
 	err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin3, sliceRowKeys3)
 	assert.NoError(t, err)
 
+	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID1), slice1.RedisString())
+	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID2), slice2.RedisString())
+	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID3), slice3.RedisString())
+
 	svc := jsonrpc.BuyersService{
 		Storage:                &storer,
 		UseBigtable:            true,
