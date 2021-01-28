@@ -152,7 +152,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
 			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
+				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
@@ -161,7 +161,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			if len(slices) > 0 {
 				sliceString := strings.Split(slices[0], "|")
 				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
-					err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
 					level.Error(s.Logger).Log("err", err)
 					return err
 				}
