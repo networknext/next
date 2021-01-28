@@ -108,7 +108,7 @@ type UserSessionsArgs struct {
 
 type UserSessionsReply struct {
 	Sessions   []transport.SessionMeta `json:"sessions"`
-	TimeStamps []string                `json:"time_stamps"`
+	TimeStamps []time.Time             `json:"time_stamps"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -151,8 +151,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
 			defer sessionSlicesClient.Close()
 
-			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "-1"))
-			if err != nil && err != redis.ErrNil {
+			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+			if (err != nil && err != redis.ErrNil) || len(slices) == 0 {
 				err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
@@ -165,7 +165,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				return err
 			}
 
-			reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
+			reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
 		}
 	}
 
@@ -214,15 +214,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						level.Error(s.Logger).Log("err", err)
 						return err
 					}
-					if len(sliceRows) == 0 {
-						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-						err = fmt.Errorf("UserSessions() failed getting session slices")
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
+					s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 					sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
-					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
+					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
 				}
 			}
 		} else if len(rowsByID) > 0 {
@@ -240,15 +235,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						level.Error(s.Logger).Log("err", err)
 						return err
 					}
-					if len(sliceRows) == 0 {
-						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-						err = fmt.Errorf("UserSessions() failed getting session slices")
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
+					s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 					sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
-					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.String())
+					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
 				}
 			}
 		}
@@ -547,12 +537,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		if len(metaRows) == 0 {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed getting session meta")
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Set historic to true when bigtable should be used
 		historic = true
@@ -615,12 +600,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		if len(sliceRows) == 0 {
-			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed getting session slices")
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
+		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 		for _, row := range sliceRows {
 			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
