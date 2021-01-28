@@ -62,8 +62,10 @@ type BuyersService struct {
 	RedisPoolSessionSlices *redis.Pool
 	RedisPoolSessionMap    *redis.Pool
 	RedisPoolUserSessions  *redis.Pool
-	Storage                storage.Storer
-	Logger                 log.Logger
+
+	Metrics *metrics.BuyerServiceMetrics
+	Storage storage.Storer
+	Logger  log.Logger
 }
 
 type FlushSessionsArgs struct{}
@@ -107,7 +109,8 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions []transport.SessionMeta `json:"sessions"`
+	Sessions   []transport.SessionMeta `json:"sessions"`
+	TimeStamps []time.Time             `json:"time_stamps"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -118,6 +121,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	reply.Sessions = make([]transport.SessionMeta, 0)
 	sessionIDs := make([]string, 0)
+
+	var sessionSlice transport.SessionSlice
 
 	userID := args.UserID
 
@@ -142,8 +147,33 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	for _, session := range liveSessions {
 		// Check both the ID and the hash just in case the ID is actually a hash from the top sessions table
 		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) {
-			reply.Sessions = append(reply.Sessions, session)
-			sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+			defer sessionSlicesClient.Close()
+
+			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+			if err != nil && err != redis.ErrNil {
+				err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			// If a slice exists, add the session and the timestamp
+			if len(slices) > 0 {
+				sliceString := strings.Split(slices[0], "|")
+				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+					err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+				reply.Sessions = append(reply.Sessions, session)
+				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+			} else {
+				// Increment counter
+				s.Metrics.NoSlicesFailure.Add(1)
+			}
 		}
 	}
 
@@ -176,13 +206,32 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		liveIDString := strings.Join(sessionIDs, ",")
 
 		var sessionMeta transport.SessionMeta
+
 		if len(rowsByHash) > 0 {
 			for _, row := range rowsByHash {
 				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
 					return err
 				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-					reply.Sessions = append(reply.Sessions, sessionMeta)
+					sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+					if err != nil {
+						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+						err = fmt.Errorf("UserSessions() failed to fetch historic slice information: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
+
+					// If a slice exists, add the session and the timestamp
+					if len(sliceRows) > 0 {
+						sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+						reply.Sessions = append(reply.Sessions, sessionMeta)
+						reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+					} else {
+						// Increment counter
+						s.Metrics.NoSlicesFailure.Add(1)
+					}
 				}
 			}
 		} else if len(rowsByID) > 0 {
@@ -191,7 +240,25 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-					reply.Sessions = append(reply.Sessions, sessionMeta)
+					sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+					if err != nil {
+						s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+						err = fmt.Errorf("UserSessions() failed to fetch historic slice information: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
+
+					// If a slice exists, add the session and the timestamp
+					if len(sliceRows) > 0 {
+						sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+						reply.Sessions = append(reply.Sessions, sessionMeta)
+						reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+					} else {
+						// Increment counter
+						s.Metrics.NoSlicesFailure.Add(1)
+					}
 				}
 			}
 		}
@@ -490,12 +557,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		if len(metaRows) == 0 {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed getting session meta")
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Set historic to true when bigtable should be used
 		historic = true
@@ -558,12 +620,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		if len(sliceRows) == 0 {
-			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed getting session slices")
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
+		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 		for _, row := range sliceRows {
 			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
