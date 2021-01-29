@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue } from '@vue/test-utils'
+import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import Vuex from 'vuex'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
@@ -74,7 +74,7 @@ describe('SettingsWorkspace.vue', () => {
 
   it('mounts the settings workspace successfully', () => {
     const store = defaultStore
-    const wrapper = shallowMount(SettingsWorkspace, { localVue, store, mocks, stubs })
+    const wrapper = mount(SettingsWorkspace, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBe(true)
     wrapper.destroy()
   })

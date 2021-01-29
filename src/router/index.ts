@@ -109,10 +109,17 @@ const router = new VueRouter({
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  // TODO: Make sure these are doing what we want them to do.
-  // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
-  // BUG: Re-routes valid users to the map when it should just refresh the page...
+  // TODO: Make sure all edge cases for illegal routing are caught here
+  // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  if (store.getters.isAnonymous && (to.name === 'user-sessions' || to.name === 'account-settings')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')

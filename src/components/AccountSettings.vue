@@ -6,7 +6,7 @@
     <p class="card-text">
       Update user account profile.
     </p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
+    <Alert ref="responseAlert"/>
     <form @submit.prevent="updateAccountSettings()">
       <div class="form-group">
         <label for="companyName">
@@ -101,6 +101,11 @@ import { UserProfile } from './types/AuthTypes'
   }
 })
 export default class AccountSettings extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    responseAlert: Alert;
+  }
+
   get validCompanyInfo (): boolean {
     return this.validCompanyName && this.validCompanyCode
   }
@@ -268,11 +273,11 @@ export default class AccountSettings extends Vue {
     Promise.all(promises)
       .then((responses: Array<any>) => {
         this.$authService.refreshToken()
-        this.message = 'Account settings updated successfully'
-        this.alertType = AlertType.SUCCESS
+        this.$refs.responseAlert.setMessage('Account settings updated successfully')
+        this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertType.DEFAULT
+          this.$refs.responseAlert.setMessage('')
+          this.$refs.responseAlert.setAlertType(AlertType.DEFAULT)
         }, 5000)
       })
       .catch((error: Error) => {
@@ -281,11 +286,11 @@ export default class AccountSettings extends Vue {
         this.companyName = this.$store.getters.userProfile.companyName
         this.companyCode = this.$store.getters.userProfile.companyCode
         this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
-        this.message = 'Failed to update account settings'
-        this.alertType = AlertType.ERROR
+        this.$refs.responseAlert.setMessage('Failed to update account settings')
+        this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertType.DEFAULT
+          this.$refs.responseAlert.setMessage('')
+          this.$refs.responseAlert.setAlertType(AlertType.DEFAULT)
         }, 5000)
       })
   }
