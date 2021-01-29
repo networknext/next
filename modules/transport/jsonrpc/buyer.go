@@ -63,7 +63,7 @@ type BuyersService struct {
 	RedisPoolSessionMap    *redis.Pool
 	RedisPoolUserSessions  *redis.Pool
 
-	Metrics *metrics.BuyerServiceMetrics
+	Metrics *metrics.BuyerEndpointMetrics
 	Storage storage.Storer
 	Logger  log.Logger
 }

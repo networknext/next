@@ -329,7 +329,7 @@ func main() {
 	// 	}
 	// }
 
-	serviceMetrics, err := metrics.NewBuyerServiceMetrics(ctx, metricsHandler)
+	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create service metrics", "err", err)
 		os.Exit(1)
