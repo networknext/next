@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue, Wrapper } from '@vue/test-utils'
+import { shallowMount, createLocalVue } from '@vue/test-utils'
 import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import VueRouter from 'vue-router'
@@ -120,7 +120,8 @@ describe('UserSessions.vue no sessions', () => {
             datacenter_name: 'local',
             datacenter_alias: '',
             server_addr: '127.0.0.1'
-          }]
+          }],
+          time_stamps: ['']
         })
     })
 
