@@ -627,13 +627,10 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 		sessionRowKey := fmt.Sprintf("%016x", meta.ID)
 		sliceRowKey := fmt.Sprintf("%016x#%v", meta.ID, slice.Timestamp)
 
-		// Key for all buyer specific sessions
-		buyerRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
-
 		// Key for all user specific
 		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
 
-		metaRowKeys := []string{sessionRowKey, buyerRowKey, userRowKey}
+		metaRowKeys := []string{sessionRowKey, userRowKey}
 		sliceRowKeys := []string{sliceRowKey}
 
 		// Have 2 columns under 1 column family

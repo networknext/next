@@ -196,9 +196,8 @@ func TestUserSessions(t *testing.T) {
 	assert.NoError(t, err)
 	sessionRowKey1 := sessionID1
 	sliceRowKey1 := fmt.Sprintf("%s#%v", sessionID1, slice1.Timestamp)
-	buyerRowKey1 := fmt.Sprintf("%016x#%s", 999, sessionID1)
 	userRowKey1 := fmt.Sprintf("%016x#%s", userHash2, sessionID1)
-	metaRowKeys1 := []string{sessionRowKey1, buyerRowKey1, userRowKey1}
+	metaRowKeys1 := []string{sessionRowKey1, userRowKey1}
 	sliceRowKeys1 := []string{sliceRowKey1}
 
 	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
@@ -208,9 +207,8 @@ func TestUserSessions(t *testing.T) {
 	assert.NoError(t, err)
 	sessionRowKey2 := sessionID2
 	sliceRowKey2 := fmt.Sprintf("%s#%v", sessionID2, slice2.Timestamp)
-	buyerRowKey2 := fmt.Sprintf("%016x#%s", 888, sessionID1)
 	userRowKey2 := fmt.Sprintf("%016x#%s", userHash1, sessionID2)
-	metaRowKeys2 := []string{sessionRowKey2, buyerRowKey2, userRowKey2}
+	metaRowKeys2 := []string{sessionRowKey2, userRowKey2}
 	sliceRowKeys2 := []string{sliceRowKey2}
 
 	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
@@ -220,9 +218,8 @@ func TestUserSessions(t *testing.T) {
 	assert.NoError(t, err)
 	sessionRowKey3 := sessionID3
 	sliceRowKey3 := fmt.Sprintf("%s#%v", sessionID3, slice3.Timestamp)
-	buyerRowKey3 := fmt.Sprintf("%016x#%s", 888, sessionID3)
 	userRowKey3 := fmt.Sprintf("%016x#%s", userHash1, sessionID3)
-	metaRowKeys3 := []string{sessionRowKey3, buyerRowKey3, userRowKey3}
+	metaRowKeys3 := []string{sessionRowKey3, userRowKey3}
 	sliceRowKeys3 := []string{sliceRowKey3}
 
 	err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin1, metaRowKeys1)
@@ -309,9 +306,8 @@ func TestUserSessions(t *testing.T) {
 		assert.NoError(t, err)
 		sessionRowKey4 := sessionID4
 		sliceRowKey4 := fmt.Sprintf("%s#%v", sessionID4, slice4.Timestamp)
-		buyerRowKey4 := fmt.Sprintf("%016x#%s", 999, sessionID4)
 		userRowKey4 := fmt.Sprintf("%016x#%s", userHash2, sessionID4)
-		metaRowKeys4 := []string{sessionRowKey4, buyerRowKey4, userRowKey4}
+		metaRowKeys4 := []string{sessionRowKey4, userRowKey4}
 		sliceRowKeys4 := []string{sliceRowKey4}
 
 		metaBin5, err := transport.SessionMeta{ID: 555, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
@@ -321,9 +317,8 @@ func TestUserSessions(t *testing.T) {
 		assert.NoError(t, err)
 		sessionRowKey5 := sessionID5
 		sliceRowKey5 := fmt.Sprintf("%s#%v", sessionID5, slice5.Timestamp)
-		buyerRowKey5 := fmt.Sprintf("%016x#%s", 888, sessionID5)
 		userRowKey5 := fmt.Sprintf("%016x#%s", userHash1, sessionID5)
-		metaRowKeys5 := []string{sessionRowKey5, buyerRowKey5, userRowKey5}
+		metaRowKeys5 := []string{sessionRowKey5, userRowKey5}
 		sliceRowKeys5 := []string{sliceRowKey5}
 
 		err = btClient.InsertSessionMetaData(ctx, []string{btCfName}, metaBin4, metaRowKeys4)
@@ -852,8 +847,7 @@ func TestSessionDetails(t *testing.T) {
 	sessionRowKey := sessionID
 	sliceRowKey3 := fmt.Sprintf("%s#%v", sessionID, slice3.Timestamp)
 	sliceRowKey4 := fmt.Sprintf("%s#%v", sessionID, slice4.Timestamp)
-	buyerRowKey := fmt.Sprintf("%016x#%s", 111, sessionID)
-	metaRowKeys := []string{sessionRowKey, buyerRowKey}
+	metaRowKeys := []string{sessionRowKey}
 	sliceRowKeys3 := []string{sliceRowKey3}
 	sliceRowKeys4 := []string{sliceRowKey4}
 
