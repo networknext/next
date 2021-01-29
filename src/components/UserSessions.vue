@@ -5,6 +5,11 @@
         <tr>
           <th>
             <span>
+              Date
+            </span>
+          </th>
+          <th>
+            <span>
               Session ID
             </span>
           </th>
@@ -37,6 +42,9 @@
       </thead>
       <tbody v-if="sessions.length > 0">
         <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
+          <td>
+            {{ convertUTCDateToLocalDate(new Date(timeStamps[index])) }}
+          </td>
           <td>
               <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
           </td>
@@ -80,6 +88,7 @@ import { NavigationGuardNext, Route } from 'vue-router'
 @Component
 export default class UserSessions extends Vue {
   private sessions: Array<any>
+  private timeStamps: Array<any>
   private sessionLoop: any
   private showSessions: boolean
   private searchID: string
@@ -88,6 +97,7 @@ export default class UserSessions extends Vue {
     super()
     this.searchID = ''
     this.sessions = []
+    this.timeStamps = []
     this.showSessions = false
     this.sessionLoop = null
   }
@@ -127,6 +137,7 @@ export default class UserSessions extends Vue {
     this.$apiService.fetchUserSessions({ user_id: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
+        this.timeStamps = response.time_stamps
         this.showSessions = true
       })
       .catch((error: Error) => {
@@ -138,6 +149,14 @@ export default class UserSessions extends Vue {
           console.log(error)
         }
       })
+  }
+
+  private convertUTCDateToLocalDate (date: Date) {
+    const newDate = new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000)
+
+    newDate.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+
+    return newDate.toLocaleString().replace(',', '')
   }
 }
 
