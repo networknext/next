@@ -14,8 +14,8 @@
       <h1 class="h2">
         Settings
       </h1>
-      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4" v-if="$store.getters.isAnonymousPlus">
-        <Alert :message="`Please confirm your email address: ${$store.getters.userProfile.email}`" :alertType="AlertType.INFO" ref="verifyAlert">
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+        <Alert ref="verifyAlert">
           <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
             Resend email
           </a>
@@ -64,15 +64,24 @@ import { FeatureEnum } from '../components/types/FeatureTypes'
   }
 })
 export default class SettingsWorkspace extends Vue {
-  // Empty for now
+  // Register the alert component to access its set methods
+  $refs!: {
+    verifyAlert: Alert;
+  }
+
   private featureEnums: any
-  private AlertType: any
 
   constructor () {
     super()
     // TODO: This probably shouldn't be necessary?
     this.featureEnums = FeatureEnum
-    this.AlertType = AlertType
+  }
+
+  private mounted () {
+    if (this.$store.getters.isAnonymousPlus) {
+      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
+    }
   }
 }
 </script>

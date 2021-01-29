@@ -79,7 +79,6 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
-import { AlertType } from './types/AlertTypes'
 
 /**
  * This component displays all of the information related to the user
@@ -93,8 +92,6 @@ export default class UserSessions extends Vue {
   private sessionLoop: any
   private showSessions: boolean
   private searchID: string
-  private message: string
-  private alertType: string
 
   constructor () {
     super()
@@ -103,8 +100,6 @@ export default class UserSessions extends Vue {
     this.timeStamps = []
     this.showSessions = false
     this.sessionLoop = null
-    this.message = 'Failed to fetch user sessions'
-    this.alertType = AlertType.ERROR
   }
 
   private mounted () {
@@ -150,7 +145,6 @@ export default class UserSessions extends Vue {
           clearInterval(this.sessionLoop)
         }
         if (this.sessions.length === 0) {
-          this.message = 'Failed to fetch session details'
           console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
           console.log(error)
         }
