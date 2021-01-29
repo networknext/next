@@ -940,7 +940,12 @@ func TestDirectSession(t *testing.T) {
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0)
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -1066,7 +1071,12 @@ func TestNextSession(t *testing.T) {
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0)
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -1192,7 +1202,12 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0)
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -1314,7 +1329,12 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0)
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
@@ -1470,7 +1490,12 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0)
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
@@ -1604,7 +1629,12 @@ func TestNoReinsertion(t *testing.T) {
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0)
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
