@@ -97,7 +97,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	var accountList *management.UserList
 
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := JSONRPCErrorCodes[ERROR_INSUFFICIENT_PRIVILEGES]
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 		return &err
 	}
