@@ -428,7 +428,6 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Name:        *u.Name,
 		Email:       *u.Email,
 		Roles:       r,
-		CreatedAt:   *u.CreatedAt,
 	}
 
 	return account
