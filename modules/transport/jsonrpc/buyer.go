@@ -124,8 +124,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	var sessionSlice transport.SessionSlice
 
-	userID := args.UserID // Raw user input
-	var hexUserID string  // Hex of userID converted from string to int
+	// Raw user input
+	userID := args.UserID
+
+	// Hex of the userID in case it's a signed decimal hash
+	var hexUserID string
 	{
 		userIDInt, err := strconv.Atoi(userID)
 		if err == nil {
@@ -219,6 +222,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
+
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		liveIDString := strings.Join(sessionIDs, ",")
