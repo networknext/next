@@ -735,7 +735,6 @@ func (r *Relay) String() string {
 	relay += "\tManagementAddr     : " + r.ManagementAddr + "\n"
 	relay += "\tSSHUser            : " + r.SSHUser + "\n"
 	relay += "\tSSHPort            : " + fmt.Sprintf("%d", r.SSHPort) + "\n"
-	// TrafficStats TrafficStats `json:"traffic_stats"`
 	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
 	relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
 	relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
