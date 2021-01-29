@@ -294,7 +294,9 @@ func mainReturnWithCode() int {
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
 				count := 0
-				for _, relay := range allRelayData {
+				for i := range allRelayData {
+					relay := &allRelayData[i]
+
 					// convert peak to mbps
 
 					var traffic routing.TrafficStats
@@ -304,17 +306,13 @@ func mainReturnWithCode() int {
 						stats := &relay.TrafficStatsBuff[i]
 						traffic = traffic.Add(stats)
 					}
-					relay.TrafficStatsBuff = relay.TrafficStatsBuff[:0]
 					numSessions := relay.PeakTrafficStats.SessionCount
 					envUp := relay.PeakTrafficStats.EnvelopeUpKbps
 					envDown := relay.PeakTrafficStats.EnvelopeDownKbps
-					relay.PeakTrafficStats.SessionCount = 0
-					relay.PeakTrafficStats.EnvelopeUpKbps = 0
-					relay.PeakTrafficStats.EnvelopeDownKbps = 0
-					relay.TrafficMu.Unlock()
-
 					elapsed := time.Since(relay.LastStatsPublishTime)
-					relay.LastStatsPublishTime = time.Now()
+
+					relayMap.ClearRelayData(relay.Addr.String())
+					relay.TrafficMu.Unlock()
 
 					fsrelay, err := storer.Relay(relay.ID)
 					if err != nil {
@@ -330,7 +328,9 @@ func mainReturnWithCode() int {
 					envRecvMbps := float32(float64(envDown) / 1000.0)
 
 					var numRouteable uint32 = 0
-					for _, otherRelay := range allRelayData {
+					for i := range allRelayData {
+						otherRelay := &allRelayData[i]
+
 						if relay.ID == otherRelay.ID {
 							continue
 						}
@@ -375,9 +375,12 @@ func mainReturnWithCode() int {
 					count++
 				}
 
-				if err := relayStatsPublisher.Publish(ctx, entries[:count]); err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+				entriesToPublish := entries[:count]
+				if len(entriesToPublish) > 0 {
+					if err := relayStatsPublisher.Publish(ctx, entriesToPublish); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+					}
 				}
 			}
 		}()
