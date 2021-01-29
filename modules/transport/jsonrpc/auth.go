@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -74,7 +73,6 @@ type account struct {
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
-	CreatedAt   time.Time          `json:"created_at"`
 }
 
 var roleIDs []string = []string{
