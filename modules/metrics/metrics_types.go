@@ -122,11 +122,11 @@ var EmptyPortalCruncherMetrics = PortalCruncherMetrics{
 	ReceivedMessageCount: &EmptyCounter{},
 }
 
-type BuyerServiceMetrics struct {
+type BuyerEndpointMetrics struct {
 	NoSlicesFailure Counter
 }
 
-var EmptyBuyerServiceMetrics = BuyerServiceMetrics{
+var EmptyBuyerEndpointMetrics = BuyerEndpointMetrics{
 	NoSlicesFailure: &EmptyCounter{},
 }
 
@@ -772,14 +772,14 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 	return &analyticsMetrics, nil
 }
 
-func NewBuyerServiceMetrics(ctx context.Context, metricsHandler Handler) (*BuyerServiceMetrics, error) {
-	buyerServiceMetrics := BuyerServiceMetrics{}
+func NewBuyerEndpointMetrics(ctx context.Context, metricsHandler Handler) (*BuyerEndpointMetrics, error) {
+	buyerEndpointMetrics := BuyerEndpointMetrics{}
 	var err error
 
-	buyerServiceMetrics.NoSlicesFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	buyerEndpointMetrics.NoSlicesFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session has no slice data",
-		ServiceName: "buyerService",
-		ID:          "buyerService.slices.empty",
+		ServiceName: "buyerEndpoint",
+		ID:          "buyerEndpoint.slices.empty",
 		Unit:        "sessions",
 		Description: "The total number of sessions with out slices",
 	})
@@ -787,5 +787,5 @@ func NewBuyerServiceMetrics(ctx context.Context, metricsHandler Handler) (*Buyer
 		return nil, err
 	}
 
-	return &buyerServiceMetrics, nil
+	return &buyerEndpointMetrics, nil
 }
