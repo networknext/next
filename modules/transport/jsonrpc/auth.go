@@ -105,8 +105,8 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	reply.UserAccounts = make([]account, 0)
 	accountList, err := s.UserManager.List()
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -131,16 +131,16 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		}
 		userRoles, err := s.UserManager.Roles(*a.ID)
 		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to get user roles", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 			return &err
 		}
 
 		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
 		company, err := s.Storage.Customer(companyCode)
 		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 
@@ -180,8 +180,8 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	userAccount, err := s.UserManager.Read(args.UserID)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Failed to get user account details", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 	companyCode, ok := userAccount.AppMetadata["company_code"].(string)
@@ -192,16 +192,16 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	if companyCode != "" {
 		company, err = s.Storage.Customer(companyCode)
 		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Could not find customer account for customer code: %v", err.Error(), companyCode))
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 	}
 	buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
 	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Failed to get user account roles", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -229,8 +229,8 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	}
 	user, err := s.UserManager.Read(args.UserID)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("DeleteUserAccount(): %v: Failed to read user account", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -252,8 +252,8 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 			"company_code": "",
 		},
 	}); err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("DeleteUserAccount(): %v: Failed to update deleted user company code", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 	return nil
@@ -295,8 +295,8 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	registered := make(map[string]*management.User)
 	accountList, err := s.UserManager.List()
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to get user list", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 	emailString := strings.Join(emails, ",")
@@ -306,7 +306,6 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			registered[*a.Email] = a
 		}
 	}
-	currentTime := time.Now()
 
 	// Create an account for each new email
 	var newUser *management.User
@@ -328,17 +327,16 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				AppMetadata: map[string]interface{}{
 					"company_code": userCompanyCode,
 				},
-				CreatedAt: &currentTime,
 			}
 			if err = s.UserManager.Create(newUser); err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to create new user account", err.Error()))
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
 			if len(args.Roles) > 0 {
 				if err = s.UserManager.AssignRoles(*newUser.ID, args.Roles...); err != nil {
-					err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 					s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to assign new user roles", err.Error()))
+					err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 					return &err
 				}
 			}
@@ -349,8 +347,8 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				},
 			}
 			if err = s.UserManager.Update(*user.ID, newUser); err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to update user account", err.Error()))
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
 			roles := []*management.Role{
@@ -366,14 +364,14 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				},
 			}
 			if err = s.UserManager.RemoveRoles(*user.ID, roles...); err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to remove exist roles from user account", err.Error()))
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
 			if len(args.Roles) > 0 {
 				if err = s.UserManager.AssignRoles(*user.ID, args.Roles...); err != nil {
-					err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 					s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to assign new roles to user account", err.Error()))
+					err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 					return &err
 				}
 			}
@@ -381,8 +379,8 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 
 		company, err := s.Storage.Customer(userCompanyCode)
 		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code))
@@ -430,7 +428,6 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Name:        *u.Name,
 		Email:       *u.Email,
 		Roles:       r,
-		CreatedAt:   *u.CreatedAt,
 	}
 
 	return account
@@ -506,8 +503,8 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 	userRoles, err := s.UserManager.Roles(args.UserID)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UserRoles(): %v: Failed to fetch user roles", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -533,8 +530,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	userRoles, err := s.UserManager.Roles(args.UserID)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateUserRoles(): %v: failed to fetch user roles", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -555,15 +552,15 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		if VerifyAllRoles(r, AdminRole) {
 			err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
 			if err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				s.Logger.Log("err", fmt.Errorf("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error()))
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
 		} else {
 			err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
 			if err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				s.Logger.Log("err", fmt.Errorf("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error()))
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
 		}
@@ -585,8 +582,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	err = s.UserManager.AssignRoles(args.UserID, args.Roles...)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateUserRoles(): %v: Failed to assign user roles", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -662,8 +659,8 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			Code: newCompanyCode,
 			Name: args.CompanyName,
 		}); err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("UpdateCompanyInformation(): %v: Failed to add new customer entry", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 		roles = []*management.Role{
@@ -712,9 +709,9 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			"company_code": args.CompanyCode,
 		},
 	}); err != nil {
-		err = fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err)
-		s.Logger.Log("err", err)
-		return err
+		s.Logger.Log("err", fmt.Errorf("UpdateCompanyInformation() failed to update user company code: %v", err))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
 	}
 
 	if !VerifyAllRoles(r, AdminRole) {
@@ -730,14 +727,14 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				Description: &roleDescriptions[1],
 			},
 		}...); err != nil {
-			err := fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %w", err)
-			s.Logger.Log("err", err)
-			return err
+			s.Logger.Log("err", fmt.Errorf("UpdateCompanyInformation() failed to remove roles: %v", err))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
 		}
 		if err = s.UserManager.AssignRoles(requestID, roles...); err != nil {
-			err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
-			s.Logger.Log("err", err)
-			return err
+			s.Logger.Log("err", fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %v", err))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
 		}
 		reply.NewRoles = roles
 	}
@@ -775,8 +772,8 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 
 	userAccount, err := s.UserManager.Read(requestID)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateAccountSettings(): %v: Failed to read user account", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -790,8 +787,8 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 		},
 	})
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateAccountSettings(): %v: Failed to update user account", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -821,8 +818,8 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 
 	err := s.JobManager.VerifyEmail(job)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to generate verification link", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
@@ -889,8 +886,8 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 
 	company, err := s.Storage.Customer(customerCode)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
@@ -898,8 +895,8 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 
 	err = s.Storage.SetCustomer(ctx, company)
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
