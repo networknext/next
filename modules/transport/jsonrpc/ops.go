@@ -666,8 +666,6 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	fmt.Printf("relay:\n$s\n", args.Relay.String())
-
 	if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
 		s.Logger.Log("err", err)
