@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 
@@ -43,12 +44,7 @@ type NextBeaconPacket struct {
 }
 
 func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
-	fmt.Printf("%v", packet)
 	stream.SerializeBits(&packet.Version, 8)
-
-	if stream.IsReading() {
-		stream.SerializeUint64(&packet.Timestamp)
-	}
 
 	stream.SerializeBool(&packet.Enabled)
 	stream.SerializeBool(&packet.Upgraded)
@@ -74,6 +70,13 @@ func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 
+	hasTimestamp := stream.IsReading() && packet.Timestamp != 0 || stream.IsWriting()
+	stream.SerializeBool(&hasTimestamp)
+
+	if hasTimestamp {
+		stream.SerializeUint64(&packet.Timestamp)
+	}
+	
 	return stream.Error()
 }
 
@@ -83,6 +86,11 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 			fmt.Printf("recovered from panic during beacon packet entry write: %v\n", r)
 		}
 	}()
+
+	// Set the timestamp if needed so that we can serialize it properly
+	if entry.Timestamp == 0 {
+		entry.Timestamp = uint64(time.Now().Unix())
+	}
 
 	ws, err := encoding.CreateWriteStream(MaxNextBeaconPacketBytes)
 	if err != nil {

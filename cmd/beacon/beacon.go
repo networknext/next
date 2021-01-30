@@ -308,9 +308,10 @@ func mainReturnWithCode() int {
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 
-			beaconPacket := &transport.NextBeaconPacket{}
+			var beaconPacket *transport.NextBeaconPacket
 
 			for {
+				beaconPacket = &transport.NextBeaconPacket{}
 				data := dataArray[:]
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
@@ -335,24 +336,7 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				// Set the timestamp of the packet
-				beaconPacket.Timestamp = uint64(time.Now().Unix())
-
-				fmt.Printf("beacon packet: %d, %v, %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
-					beaconPacket.Version,
-					beaconPacket.Timestamp,
-					beaconPacket.CustomerID,
-					beaconPacket.DatacenterID,
-					beaconPacket.UserHash,
-					beaconPacket.AddressHash,
-					beaconPacket.SessionID,
-					beaconPacket.PlatformID,
-					beaconPacket.ConnectionType,
-					beaconPacket.Enabled,
-					beaconPacket.Upgraded,
-					beaconPacket.Next,
-					beaconPacket.FallbackToDirect,
-				)
+				fmt.Printf("Beacon Packet: %+v\n", beaconPacket)
 
 				// Not sure if we need fromAddr for anything else
 				_ = fromAddr
