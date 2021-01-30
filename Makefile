@@ -361,6 +361,10 @@ dev-server-backend-valve: build-server-backend
 dev-beacon: build-beacon ## runs a local beacon
 	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
 
+.PHONY: dev-beacon-inserter
+dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
+	@PORT=35001 ./dist/beacon_inserter
+
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
@@ -457,6 +461,12 @@ build-relay-backend:
 build-beacon:
 	@printf "Building beacon..."
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon ./cmd/beacon/beacon.go
+	@printf "done\n"
+
+.PHONY: build-beacon-inserter
+build-beacon-inserter:
+	@printf "Building beacon inserter..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
 	@printf "done\n"
 
 .PHONY: build-server-backend
