@@ -535,6 +535,7 @@ type RelaysReply struct {
 type relay struct {
 	ID                  uint64                `json:"id"`
 	HexID               string                `json:"hexID"`
+	DatacenterHexID     string                `json:"datacenterHexID"`
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
@@ -572,6 +573,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		relay := relay{
 			ID:                  r.ID,
 			HexID:               fmt.Sprintf("%016x", r.ID),
+			DatacenterHexID:     fmt.Sprintf("%016x", r.Datacenter.ID),
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -655,7 +657,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 }
 
 type AddRelayArgs struct {
-	Relay routing.Relay
+	Relay routing.Relay `json:"Relay"`
 }
 
 type AddRelayReply struct{}
@@ -669,6 +671,45 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 		s.Logger.Log("err", err)
 		return err
 	}
+
+	return nil
+}
+
+type JSAddRelayArgs struct {
+	Name                string `json:"name"`
+	Addr                string `json:"addr"`
+	InternalAddr        string `json:"internal_addr"`
+	PublicKey           string `json:"public_key"`
+	SellerID            string `json:"seller"`
+	DatacenterID        string `json:"datacenter"`
+	NICSpeedMbps        int    `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int    `json:"includedBandwidthGB"`
+	ManagementAddr      string `json:"management_addr"`
+	SSHUser             string `json:"ssh_user"`
+	SSHPort             int    `json:"ssh_port"`
+	MaxSessions         int    `json:"max_sessions"`
+	MRC                 int    `json:"monthlyRecurringChargeNibblins"`
+	Overage             int    `json:"overage"`
+	BWRule              int    `json:"bandwidthRule"`
+	ContractTerm        int    `json:"contractTerm"`
+	StartDate           string `json:"startDate"`
+	EndDate             string `json:"endDate"`
+	Type                int    `json:"machineType"`
+}
+
+type JSAddRelayReply struct{}
+
+func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JSAddRelayReply) error {
+	// ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	// defer cancelFunc()
+
+	fmt.Printf("relay name:\n%s\n", args.Name)
+
+	// if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
+	// 	err = fmt.Errorf("AddRelay() error: %w", err)
+	// 	s.Logger.Log("err", err)
+	// 	return err
+	// }
 
 	return nil
 }
