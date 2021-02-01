@@ -147,7 +147,7 @@ func main() {
 	{
 		fmt.Printf("setting up portal cruncher\n")
 
-		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
+		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555", "tcp://127.0.0.1:5556"})
 
 		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
 		if !ok {
