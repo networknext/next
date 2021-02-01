@@ -316,6 +316,7 @@ func mainReturnWithCode() int {
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure.Add(1)
 					break
 				}
 
@@ -325,14 +326,22 @@ func mainReturnWithCode() int {
 
 				data = data[:size]
 
+				// Check if we received a non-beacon packet
 				if data[0] != transport.PacketTypeBeacon {
+					level.Error(logger).Log("err", "unknown packet type", "packet_type", data[0])
+					beaconServiceMetrics.BeaconMetrics.NonBeaconPacketsReceived.Add(1)
 					continue
 				}
+
+				// Start timer for packet processing
+				timeStart := time.Now()
 
 				readStream := encoding.CreateReadStream(data[1:])
 				err = beaconPacket.Serialize(readStream)
 				if err != nil {
 					fmt.Printf("error reading beacon packet: %v\n", err)
+					level.Error(logger).Log("msg", "failed to serialize beacon packet", "err", err)
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure.Add(1)
 					continue
 				}
 
@@ -346,11 +355,18 @@ func mainReturnWithCode() int {
 				case beaconPacketChan <- beaconPacket:
 					beaconServiceMetrics.BeaconMetrics.EntriesReceived.Add(1)
 				default:
+					level.Error(logger).Log("err", "Beacon channel full")
 					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Add(1)
 					continue
 				}
 
-				// TODO: write metrics to stackdriver / local metrics
+				// Finish timing packet processing
+				milliseconds := float64(time.Since(timeStart).Milliseconds())
+				beaconServiceMetrics.HandlerMetrics.Duration.Set(milliseconds)
+
+				if milliseconds > 100 {
+					beaconServiceMetrics.HandlerMetrics.LongDuration.Add(1)
+				}
 			}
 
 			wg.Done()

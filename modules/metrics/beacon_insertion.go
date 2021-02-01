@@ -3,28 +3,28 @@ package metrics
 import "context"
 
 type BeaconInserterServiceMetrics struct {
-	ServiceMetrics ServiceMetrics
-	BeaconInserterMetrics  BeaconInserterMetrics
+	ServiceMetrics        ServiceMetrics
+	BeaconInserterMetrics BeaconInserterMetrics
 }
 
 var EmptyBeaconInserterServiceMetrics BeaconInserterServiceMetrics = BeaconInserterServiceMetrics{
-	ServiceMetrics: EmptyServiceMetrics,
-	BeaconInserterMetrics:  EmptyBeaconInserterMetrics,
+	ServiceMetrics:        EmptyServiceMetrics,
+	BeaconInserterMetrics: EmptyBeaconInserterMetrics,
 }
 
 type BeaconInserterMetrics struct {
 	EntriesTransfered Counter
 	EntriesSubmitted  Counter
-	EntriesQueued     Gauge 
+	EntriesQueued     Gauge
 	EntriesFlushed    Counter
 	ErrorMetrics      BeaconInserterErrorMetrics
 }
 
 var EmptyBeaconInserterMetrics BeaconInserterMetrics = BeaconInserterMetrics{
-	EntriesSubmitted:  &EmptyCounter{},
-	EntriesQueued:     &EmptyGauge{},
-	EntriesFlushed:    &EmptyCounter{},
-	ErrorMetrics:      EmptyBeaconInserterErrorMetrics,
+	EntriesSubmitted: &EmptyCounter{},
+	EntriesQueued:    &EmptyGauge{},
+	EntriesFlushed:   &EmptyCounter{},
+	ErrorMetrics:     EmptyBeaconInserterErrorMetrics,
 }
 
 type BeaconInserterErrorMetrics struct {

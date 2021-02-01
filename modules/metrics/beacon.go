@@ -4,6 +4,7 @@ import "context"
 
 type BeaconServiceMetrics struct {
 	ServiceMetrics ServiceMetrics
+	HandlerMetrics PacketHandlerMetrics
 	BeaconMetrics  BeaconMetrics
 }
 
@@ -13,31 +14,37 @@ var EmptyBeaconServiceMetrics BeaconServiceMetrics = BeaconServiceMetrics{
 }
 
 type BeaconMetrics struct {
-	EntriesReceived   Counter
-	EntriesSent       Counter
-	EntriesSubmitted  Counter
-	EntriesFlushed    Counter
-	ErrorMetrics      BeaconErrorMetrics
+	NonBeaconPacketsReceived Counter
+	EntriesReceived          Counter
+	EntriesSent              Counter
+	EntriesSubmitted         Counter
+	EntriesFlushed           Counter
+	ErrorMetrics             BeaconErrorMetrics
 }
 
 var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
-	EntriesReceived:   &EmptyCounter{},
-	EntriesSent:       &EmptyCounter{},
-	EntriesSubmitted:  &EmptyCounter{},
-	EntriesFlushed:    &EmptyCounter{},
-	ErrorMetrics:      EmptyBeaconErrorMetrics,
+	NonBeaconPacketsReceived: &EmptyCounter{},
+	EntriesReceived:          &EmptyCounter{},
+	EntriesSent:              &EmptyCounter{},
+	EntriesSubmitted:         &EmptyCounter{},
+	EntriesFlushed:           &EmptyCounter{},
+	ErrorMetrics:             EmptyBeaconErrorMetrics,
 }
 
 type BeaconErrorMetrics struct {
-	BeaconPublishFailure     Counter
-	BeaconSendFailure        Counter
-	BeaconChannelFull        Counter
+	BeaconReadPacketFailure      Counter
+	BeaconSerializePacketFailure Counter
+	BeaconPublishFailure         Counter
+	BeaconSendFailure            Counter
+	BeaconChannelFull            Counter
 }
 
 var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
-	BeaconPublishFailure:     &EmptyCounter{},
-	BeaconSendFailure:        &EmptyCounter{},
-	BeaconChannelFull:        &EmptyCounter{},
+	BeaconReadPacketFailure:      &EmptyCounter{},
+	BeaconSerializePacketFailure: &EmptyCounter{},
+	BeaconPublishFailure:         &EmptyCounter{},
+	BeaconSendFailure:            &EmptyCounter{},
+	BeaconChannelFull:            &EmptyCounter{},
 }
 
 func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconServiceMetrics, error) {
@@ -50,12 +57,29 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 	}
 	beaconServiceMetrics.ServiceMetrics = *serviceMetrics
 
+	handlerMetrics, err := NewPacketHandlerMetrics(ctx, metricsHandler, "beacon", "beacon", "Beacon", "beacon packet")
+	if err != nil {
+		return nil, err
+	}
+	beaconServiceMetrics.HandlerMetrics = *handlerMetrics
+
+	beaconServiceMetrics.BeaconMetrics.NonBeaconPacketsReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Non Beacon Packets Received",
+		ServiceName: "beacon",
+		ID:          "beacon.non.beacon.packets.received",
+		Unit:        "packets",
+		Description: "The total number of non beacon packets received by the beacon service",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	beaconServiceMetrics.BeaconMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Entries Received",
 		ServiceName: "beacon",
 		ID:          "beacon.entries.received",
 		Unit:        "entries",
-		Description: "The total number of beacon entries received from the server",
+		Description: "The total number of beacon entries successfully received from the server",
 	})
 	if err != nil {
 		return nil, err
@@ -94,8 +118,29 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Read Packet Failure",
+		ServiceName: "beacon",
+		ID:          "beacon.read.packet.failure",
+		Unit:        "packets",
+		Description: "The total number of packets the beacon service failed to read",
+	})
+	if err != nil {
+		return nil, err
+	}
 
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Serialize Packet Failure",
+		ServiceName: "beacon",
+		ID:          "beacon.serialize.packet.failure",
+		Unit:        "packets",
+		Description: "The total number of beacon packets that could not be serialized",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
 
 	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Send Failure",
