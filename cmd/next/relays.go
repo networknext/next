@@ -34,6 +34,9 @@ func opsRelays(
 		Regex: regex,
 	}
 
+	// debugPrintRelayViewFlags("function entry", relaysStateHideFlags, relaysStateShowFlags)
+	// os.Exit(0)
+
 	var reply localjsonrpc.RelaysReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
@@ -57,13 +60,15 @@ func opsRelays(
 		Type                string
 		IncludedBandwidthGB string
 		NICSpeedMbps        string
+		State               string
+		IPAddress           string
 	}{}
 
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
 		"Name", "MRC", "Overage", "BW Rule",
-		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed"})
+		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address"})
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
@@ -161,43 +166,51 @@ func opsRelays(
 		}
 
 		// return csv file
-		if csvOutputFlag {
-			relaysCSV = append(relaysCSV, []string{
-				relay.Name,
-				mrc,
-				overage,
-				bwRule,
-				contractTerm,
-				startDate,
-				endDate,
-				machineType,
-				bandwidth,
-				nicSpeed,
-			})
-		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
-			relays = append(relays, struct {
-				Name                string
-				MRC                 string
-				Overage             string
-				BWRule              string
-				ContractTerm        string
-				StartDate           string
-				EndDate             string
-				Type                string
-				IncludedBandwidthGB string
-				NICSpeedMbps        string
-			}{
-				relay.Name,
-				mrc,
-				overage,
-				bwRule,
-				contractTerm,
-				startDate,
-				endDate,
-				machineType,
-				bandwidth,
-				nicSpeed,
-			})
+		if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+			if csvOutputFlag {
+				relaysCSV = append(relaysCSV, []string{
+					relay.Name,
+					mrc,
+					overage,
+					bwRule,
+					contractTerm,
+					startDate,
+					endDate,
+					machineType,
+					bandwidth,
+					nicSpeed,
+					relay.State,
+					strings.Split(relay.Addr, ":")[0],
+				})
+			} else {
+				relays = append(relays, struct {
+					Name                string
+					MRC                 string
+					Overage             string
+					BWRule              string
+					ContractTerm        string
+					StartDate           string
+					EndDate             string
+					Type                string
+					IncludedBandwidthGB string
+					NICSpeedMbps        string
+					State               string
+					IPAddress           string
+				}{
+					relay.Name,
+					mrc,
+					overage,
+					bwRule,
+					contractTerm,
+					startDate,
+					endDate,
+					machineType,
+					bandwidth,
+					nicSpeed,
+					relay.State,
+					strings.Split(relay.Addr, ":")[0],
+				})
+			}
 		}
 
 	}
@@ -247,6 +260,9 @@ func relays(
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
+
+	// debugPrintRelayViewFlags("function entry", relaysStateHideFlags, relaysStateShowFlags)
+	// os.Exit(0)
 
 	var reply localjsonrpc.RelaysReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
@@ -381,7 +397,6 @@ func relays(
 	}
 
 	if csvOutputFlag {
-
 		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
 			relaysCSV = relaysCSV[:relaysCount+2] // +2 for heading lines
 		}
@@ -649,4 +664,25 @@ func modifyRelayField(
 
 	fmt.Printf("Field %s for relay %s updated successfully.\n", field, reply.Relays[0].Name)
 	return nil
+}
+
+func debugPrintRelayViewFlags(where string, hide [6]bool, show [6]bool) {
+	fmt.Printf("\nHidden States ( %s ):\n", where)
+	for i, hiddenRelayState := range hide {
+		state, err := routing.GetRelayStateSQL(int64(i))
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("error parsing relay state: %v'", err), 0)
+		}
+		fmt.Printf("\t%s: %t\n", state, hiddenRelayState)
+	}
+
+	fmt.Printf("\nShown States ( %s ):\n", where)
+	for i, shownRelayState := range show {
+		state, err := routing.GetRelayStateSQL(int64(i))
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("error parsing relay state: %v'", err), 0)
+		}
+		fmt.Printf("\t%s: %t\n", state, shownRelayState)
+	}
+	fmt.Println()
 }

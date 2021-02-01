@@ -850,13 +850,16 @@ func TestAddUserAccount(t *testing.T) {
 		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
-		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
-			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{
+			Roles: []*management.Role{
+				{
+					ID:          &roleIDs[0],
+					Name:        &roleNames[0],
+					Description: &roleDescriptions[0],
+				},
 			},
-		}, Emails: []string{"test@test1.com"}}, &reply)
+			Emails: []string{"test@test1.com"},
+		}, &reply)
 		assert.NoError(t, err)
 	})
 }
@@ -1314,7 +1317,7 @@ func TestUpdateCompanyInformation(t *testing.T) {
 
 	t.Run("success - unassigned - new company", func(t *testing.T) {
 		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "testing", CompanyName: "Testing"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 2, len(reply.NewRoles))
@@ -1334,9 +1337,9 @@ func TestUpdateCompanyInformation(t *testing.T) {
 		assert.Equal(t, roleIDs[1], *userRoles.Roles[1].ID)
 		assert.Equal(t, roleDescriptions[1], *userRoles.Roles[1].Description)
 		customers := storer.Customers()
-		assert.Equal(t, 1, len(customers))
-		assert.Equal(t, "test", customers[0].Code)
-		assert.Equal(t, "Test", customers[0].Name)
+		assert.Equal(t, 2, len(customers))
+		assert.Equal(t, "testing", customers[1].Code)
+		assert.Equal(t, "Testing", customers[1].Name)
 	})
 
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test-test", Name: "Test Test", AutomaticSignInDomains: "test2.com"})
@@ -1369,7 +1372,7 @@ func TestUpdateCompanyInformation(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success - assigned - different code", func(t *testing.T) {
+	t.Run("failure - assigned - different code", func(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
 			"Owner",
@@ -1377,19 +1380,7 @@ func TestUpdateCompanyInformation(t *testing.T) {
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.CompanyNameReply
 		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test", CompanyName: "Test Test Test"}, &reply)
-		assert.NoError(t, err)
-
-		customers := storer.Customers()
-		assert.Equal(t, 2, len(customers))
-		assert.Equal(t, "test-test-test", customers[1].Code)
-		assert.Equal(t, "Test Test Test", customers[1].Name)
-		buyer, err := storer.BuyerWithCompanyCode("test-test-test")
-		assert.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%016x", 123), fmt.Sprintf("%016x", buyer.ID))
-		assert.Equal(t, "test-test-test", buyer.CompanyCode)
-		userAccount, err := userManager.Read("123")
-		assert.NoError(t, err)
-		assert.Equal(t, "test-test-test", userAccount.AppMetadata["company_code"])
+		assert.Error(t, err)
 	})
 
 	t.Run("failure - assigned - same code - insufficient privileges", func(t *testing.T) {
@@ -1412,25 +1403,13 @@ func TestUpdateCompanyInformation(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success - assigned - same code", func(t *testing.T) {
+	t.Run("failure - assigned - same code", func(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test-test-test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.CompanyNameReply
 		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test", CompanyName: "Test 3"}, &reply)
-		assert.NoError(t, err)
-
-		customer, err := storer.Customer("test-test-test")
-		assert.NoError(t, err)
-		assert.Equal(t, "test-test-test", customer.Code)
-		assert.Equal(t, "Test 3", customer.Name)
-		buyer, err := storer.BuyerWithCompanyCode("test-test-test")
-		assert.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%016x", 123), fmt.Sprintf("%016x", buyer.ID))
-		assert.Equal(t, "test-test-test", buyer.CompanyCode)
-		userAccount, err := userManager.Read("123")
-		assert.NoError(t, err)
-		assert.Equal(t, "test-test-test", userAccount.AppMetadata["company_code"])
+		assert.Error(t, err)
 	})
 }
 
