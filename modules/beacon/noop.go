@@ -7,25 +7,25 @@ import (
 	"github.com/networknext/backend/modules/transport"
 )
 
-// NoOpBeacon does not perform any beacon actions. Useful for when the beacon is not configured or for testing.
-type NoOpBeacon struct {
+// NoOpBeaconer does not perform any beacon actions. Useful for when the beacon is not configured or for testing.
+type NoOpBeaconer struct {
 	submitted uint64
 }
 
 // Submit does nothing
-func (noop *NoOpBeacon) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
+func (noop *NoOpBeaconer) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {
 	atomic.AddUint64(&noop.submitted, 1)
 	return nil
 }
 
-func (noop *NoOpBeacon) NumSubmitted() uint64 {
+func (noop *NoOpBeaconer) NumSubmitted() uint64 {
 	return atomic.LoadUint64(&noop.submitted)
 }
 
-func (noop *NoOpBeacon) NumQueued() uint64 {
+func (noop *NoOpBeaconer) NumQueued() uint64 {
 	return 0
 }
 
-func (noop *NoOpBeacon) NumFlushed() uint64 {
+func (noop *NoOpBeaconer) NumFlushed() uint64 {
 	return atomic.LoadUint64(&noop.submitted)
 }

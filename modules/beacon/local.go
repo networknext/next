@@ -21,7 +21,7 @@ func (local *LocalBeaconer) Submit(ctx context.Context, entry *transport.NextBea
 	local.Metrics.EntriesSubmitted.Add(1)
 
 	if local.Logger == nil {
-		return errors.New("no logger for local beacon, can't display entry")
+		return errors.New("no logger for local beaconer, can't display entry")
 	}
 
 	level.Info(local.Logger).Log("msg", "submitted beacon entry")

@@ -78,7 +78,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create a no-op beaconer
-	var beaconer beacon.Beaconer = &beacon.NoOpBeacon{}
+	var beaconer beacon.Beaconer = &beacon.NoOpBeaconer{}
 
 	if gcpOK {
 		// Stackdriver Profiler
