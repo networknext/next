@@ -60,7 +60,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		beaconEntries := make([]transport.NextBeaconPacket, len(entries))
 		for i := range beaconEntries {
 
-			if err = transport.ReadBeaconEntry(&beaconEntries[i], entries[i]); err != nil {
+			if err = transport.ReadBeaconEntry(&beaconEntries[i], entries[i]); err == nil {
 
 				if err := psf.Beaconer.Submit(context.Background(), &beaconEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit beacon entry", "err", err)
