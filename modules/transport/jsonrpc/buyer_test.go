@@ -415,7 +415,7 @@ func TestUserSessions(t *testing.T) {
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
 			assert.NoError(t, err)
 
 			assert.Equal(t, len(reply.Sessions), 2)
