@@ -566,6 +566,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information from bigtable: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(metaRows) == 0 {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -628,6 +634,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	} else {
 		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
+			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information from bigtable: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(sliceRows) == 0 {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
 			level.Error(s.Logger).Log("err", err)
