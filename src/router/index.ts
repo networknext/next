@@ -113,7 +113,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
-    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
     next('/map')
@@ -129,7 +129,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
   if (to.name === 'settings') {
     store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
-    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
     next('/settings/account')
@@ -137,16 +137,17 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
   // Email is verified
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
-    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
+    // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
     Vue.prototype.$authService.refreshToken()
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     next('/map')
     return
   }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
-  if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+  if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
     (window as any).Intercom('update')
   }
   next()

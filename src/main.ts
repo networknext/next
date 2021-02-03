@@ -20,6 +20,20 @@ import { FeatureEnum, Flag } from './components/types/FeatureTypes'
  *  initializing auth0 related functionality
  */
 
+const gtagID = process.env.VUE_APP_GTAG_ID || ''
+
+if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && gtagID !== '') {
+  Vue.use(VueGtag, {
+    config: { id: gtagID }
+  }, router)
+}
+
+// This is VERY hacky. It would be much better to do this within the router but going that route (no pun intended) mounts half the app before hitting the redirect which is funky
+// TODO: Look into a lifecycle hook that handles this better...
+if (window.location.pathname === '/get-access') {
+  Vue.prototype.$authService.signUp(window.location.search.split('?email=')[1])
+}
+
 Vue.config.productionTip = false
 
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
@@ -72,19 +86,11 @@ if (useAPI) {
   Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
 }
 
-const gtagID = process.env.VUE_APP_GTAG_ID || ''
-
-if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && gtagID !== '') {
-  Vue.use(VueGtag, {
-    config: { id: gtagID }
-  }, router)
-}
-
-// This is VERY hacky. It would be much better to do this within the router but going that route (no pun intended) mounts half the app before hitting the redirect which is funky
-// TODO: Look into a lifecycle hook that handles this better...
-if (window.location.pathname === '/get-access') {
-  Vue.prototype.$authService.signUp(window.location.search.split('?email=')[1])
-} else {
+Vue.prototype.$authService.processAuthentication().then(() => {
+  const query = window.location.search
+  if (query.includes('code=') && query.includes('state=')) {
+    router.push('/map')
+  }
   const app = new Vue({
     router,
     store,
@@ -96,4 +102,4 @@ if (window.location.pathname === '/get-access') {
   if (win.Cypress) {
     win.app = app
   }
-}
+})

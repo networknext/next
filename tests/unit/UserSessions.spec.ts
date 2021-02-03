@@ -118,7 +118,7 @@ describe('UserSessions.vue no sessions', () => {
               isp: 'local'
             },
             datacenter_name: 'local',
-            datacenter_alias: '',
+            datacenter_alias: 'local',
             server_addr: '127.0.0.1'
           }],
           time_stamps: ['']

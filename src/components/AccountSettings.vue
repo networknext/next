@@ -83,7 +83,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
 import { AlertType } from './types/AlertTypes'
-import { UserProfile } from './types/AuthTypes'
+import { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -116,7 +116,6 @@ export default class AccountSettings extends Vue {
   private companyCode: string
   private newPassword: string
   private confirmPassword: string
-  private unwatch: any
   private validPassword: boolean
   private validPasswordForm: boolean
   private validCompanyCode: boolean
@@ -151,28 +150,13 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
-    if (this.$store.getters.userProfile) {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-    this.unwatch = this.$store.watch(
-      (_, getters: any) => getters.userProfile,
-      (userProfile: any) => {
-        this.checkUserProfile(userProfile)
-      }
-    )
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
+    const userProfile = cloneDeep(this.$store.getters.userProfile)
     this.companyName = userProfile.companyName || ''
     this.companyCode = userProfile.companyCode || ''
     this.newsletterConsent = userProfile.newsletterConsent || false
     this.checkCompanyName()
     this.checkCompanyCode()
     this.checkConfirmPassword()
-  }
-
-  private destory () {
-    this.unwatch()
   }
 
   private checkCompanyName () {
@@ -272,6 +256,7 @@ export default class AccountSettings extends Vue {
 
     Promise.all(promises)
       .then((responses: Array<any>) => {
+        // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
         this.$authService.refreshToken()
         this.$refs.responseAlert.setMessage('Account settings updated successfully')
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)

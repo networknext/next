@@ -38,7 +38,7 @@ declare module '*.vue' {
     logout (): void;
     login (): void;
     signUp (): void;
-    refreshToken (): void;
+    refreshToken (): Promise<any>;
   }
 
   export class VueAuthServicePlugin {

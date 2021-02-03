@@ -24,18 +24,9 @@
       <div class="mr-auto"></div>
       <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
         <select class="form-control" v-on:change="updateFilter($event.target.value)">
-          <option
-            :value="getBuyerCode()"
-            v-if="!$store.getters.isAdmin && $store.getters.isBuyer"
-            :selected="getBuyerCode() === $store.getters.currentFilter"
-          >{{ getBuyerName() }}</option>
-          <option :value="''" :selected="$store.getters.currentFilter === ''">All</option>
-          <option
-            :value="buyer.company_code"
-            v-for="buyer in allBuyers"
-            v-bind:key="buyer.company_code"
-            :selected="buyer.company_code === $store.getters.currentFilter"
-          >{{ buyer.company_name }}</option>
+          <option v-for="option in filterOptions" :key="option.value" v-bind:value="option.value" v-bind:selected="$store.getters.currentFilter.companyCode === option.value">
+            {{ option.name }}
+          </option>
         </select>
       </div>
     </div>
@@ -82,14 +73,11 @@ export default class SessionCounts extends Vue {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
   }
 
-  get allBuyers () {
-    if (!this.$store.getters.isAdmin) {
-      return []
-    }
-    return this.$store.getters.allBuyers.filter((buyer: any) => {
-      return buyer.is_live || this.$store.getters.isAdmin
-    })
-  }
+  private totalSessionsReply: TotalSessionsReply
+  private showCount: boolean
+  private countLoop: any
+  private AlertType: any
+  private filterOptions: Array<any>
 
   constructor () {
     super()
@@ -98,9 +86,24 @@ export default class SessionCounts extends Vue {
       onNN: 0
     }
     this.showCount = false
+    this.filterOptions = []
   }
 
   private mounted () {
+    this.filterOptions.push({
+      name: 'All',
+      value: ''
+    })
+
+    this.$store.getters.allBuyers.forEach((buyer: any) => {
+      if (!this.$store.getters.isAdmin || (this.$store.getters.isAdmin && buyer.is_live)) {
+        this.filterOptions.push({
+          name: buyer.company_name,
+          value: buyer.company_code
+        })
+      }
+    })
+
     if (this.$store.getters.isAnonymousPlus) {
       this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
       this.$refs.verifyAlert.setAlertType(AlertType.INFO)
@@ -113,7 +116,7 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode || '' })
+    this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next

@@ -1,8 +1,8 @@
 import store from '@/store'
-import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
+import Vue from 'vue'
 
 export class AuthService {
   private clientID: string
@@ -18,7 +18,6 @@ export class AuthService {
       cacheLocation: 'localstorage',
       useRefreshTokens: true
     })
-    this.processAuthentication()
   }
 
   public logout () {
@@ -28,6 +27,8 @@ export class AuthService {
   }
 
   public login () {
+    // TODO: Redirect should be the page that the user is currently on not defaulting to map
+    // IE: User logs in on a session details drill down and redirect to the map?????
     this.authClient
       .loginWithRedirect({
         connection: 'Username-Password-Authentication',
@@ -39,21 +40,26 @@ export class AuthService {
     const emailHint = email || ''
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin + '/map?signup=true',
+      redirect_uri: window.location.origin + '/map',
       screen_hint: 'signup',
       login_hint: emailHint
     })
   }
 
-  public refreshToken () {
-    this.authClient.getTokenSilently({ ignoreCache: true })
+  // TODO: This should be an async function instead of the weird nested promise
+  public refreshToken (): Promise<any> {
+    return this.authClient.getTokenSilently({ ignoreCache: true })
       .then(() => {
         this.processAuthentication()
       })
   }
 
-  private async processAuthentication () {
+  public async processAuthentication (): Promise<any> {
     const query = window.location.search
+
+    if (query.replaceAll('%20', ' ').includes('Your email was verified. You can continue using the application.')) {
+      return this.refreshToken()
+    }
 
     const isAuthenticated =
       await this.authClient.isAuthenticated()
@@ -78,45 +84,38 @@ export class AuthService {
         domains: []
       }
 
-      this.authClient
-        .getIdTokenClaims()
-        .then((authResult: any) => {
-          const nnScope = authResult[
-            'https://networknext.com/userData'
-          ]
-          const roles: Array<any> = nnScope.roles || { roles: [] }
-          const companyCode: string = nnScope.company_code || ''
-          const newsletterConsent: boolean = nnScope.newsletter || false
-          const email = authResult.email || ''
-          const token = authResult.__raw
+      const authResult = await this.authClient.getIdTokenClaims()
+      const nnScope = authResult[
+        'https://networknext.com/userData'
+      ]
+      const roles: Array<any> = nnScope.roles || { roles: [] }
+      const companyCode: string = nnScope.company_code || ''
+      const newsletterConsent: boolean = nnScope.newsletter || false
+      const email = authResult.email || ''
+      const token = authResult.__raw
 
-          userProfile.roles = roles
-          userProfile.email = email
-          userProfile.idToken = token
-          userProfile.auth0ID = authResult.sub
-          userProfile.verified = authResult.email_verified
-          userProfile.companyCode = companyCode
-          userProfile.newsletterConsent = newsletterConsent
-          // TODO: There should be a better way to access the Vue instance rather than through the router object
-          if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
-            (window as any).Intercom('boot', {
-              api_base: process.env.VUE_APP_INTERCOM_BASE_API,
-              app_id: process.env.VUE_APP_INTERCOM_ID,
-              email: email,
-              user_id: userProfile.auth0ID,
-              unsubscribed_from_emails: newsletterConsent,
-              avatar: authResult.picture,
-              company: companyCode
-            })
-          }
+      userProfile.roles = roles
+      userProfile.email = email
+      userProfile.idToken = token
+      userProfile.auth0ID = authResult.sub
+      userProfile.verified = authResult.email_verified
+      userProfile.companyCode = companyCode
+      userProfile.newsletterConsent = newsletterConsent
+      // TODO: There should be a better way to access the Vue instance rather than through the router object
+      if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+        (window as any).Intercom('boot', {
+          api_base: process.env.VUE_APP_INTERCOM_BASE_API,
+          app_id: process.env.VUE_APP_INTERCOM_ID,
+          email: email,
+          user_id: userProfile.auth0ID,
+          unsubscribed_from_emails: newsletterConsent,
+          avatar: authResult.picture,
+          company: companyCode
+        })
+      }
 
-          store.commit('UPDATE_USER_PROFILE', userProfile)
-        })
-        .catch((error: Error) => {
-          console.log('Something went wrong fetching user details')
-          console.log(error.message)
-        })
-      return
+      store.commit('UPDATE_USER_PROFILE', userProfile)
+      return store.dispatch('processAuthChange')
     }
     if (query.includes('code=') && query.includes('state=')) {
       await this.authClient.handleRedirectCallback()
@@ -124,12 +123,10 @@ export class AuthService {
           console.log('something went wrong with parsing the redirect callback')
           console.log(error)
         })
-      this.processAuthentication()
-      router.push('/map')
-      return
+      return this.processAuthentication()
     }
     // TODO: There should be a better way to access the Vue instance rather than through the router object
-    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
         api_base: process.env.VUE_APP_INTERCOM_BASE_API,
         app_id: process.env.VUE_APP_INTERCOM_ID

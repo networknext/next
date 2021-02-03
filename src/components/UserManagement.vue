@@ -193,7 +193,6 @@ export default class UserManagement extends Vue {
   private showTable: boolean
   private newUserEmails: string
   private autoSignupDomains: string
-  private unwatch: any
   private companyCode: string
   private userProfile: UserProfile
 
@@ -216,31 +215,10 @@ export default class UserManagement extends Vue {
   }
 
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-  }
-
-  private destory () {
-    this.unwatch()
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
-    if (!userProfile) {
-      return
-    }
-    this.companyCode = userProfile.companyCode || ''
-    this.autoSignupDomains = userProfile.domains.join(', ')
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
+    this.companyCode = this.userProfile.companyCode || ''
+    this.autoSignupDomains = this.userProfile.domains.join(', ')
     const promises = [
-      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-      // HACK: This is a hack to get tests to work properly
       this.$apiService.fetchAllAccounts(),
       this.$apiService.fetchAllRoles()
     ]
@@ -254,7 +232,6 @@ export default class UserManagement extends Vue {
         })
         this.companyUsersReadOnly = cloneDeep(this.companyUsers)
       })
-    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private editUser (account: any, index: number): void {
@@ -317,7 +294,6 @@ export default class UserManagement extends Vue {
       return
     }
     if (account.delete) {
-      // HACK: This is a hack to get tests to work properly
       this.$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
@@ -362,8 +338,6 @@ export default class UserManagement extends Vue {
       .map((x) => x.trim())
       .filter((x) => x !== '' && x !== ',')
 
-    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
-    // HACK: This is a hack to get tests to work properly
     this.$apiService
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {
