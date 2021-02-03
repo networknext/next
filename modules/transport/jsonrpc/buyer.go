@@ -203,7 +203,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		)
 
 		// Fetch historic sessions by user hash if there are any
-		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), fmt.Sprintf("%s#%s", userHash, "997d739f60f18d41"), bigtable.RowFilter(chainFilter), bigtable.LimitRows(6))
+		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), fmt.Sprintf("%s#%s", userHash, ""), bigtable.RowFilter(chainFilter), bigtable.LimitRows(5))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -213,7 +213,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Fetch historic sessions by user ID if there are any
-		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), fmt.Sprintf("%s#%s", userID, "997d739f60f18d41"), bigtable.RowFilter(chainFilter), bigtable.LimitRows(6))
+		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), fmt.Sprintf("%s#%s", userID, ""), bigtable.RowFilter(chainFilter), bigtable.LimitRows(5))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -223,7 +223,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Fetch historic sessions by hex user ID if there are any
-		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), fmt.Sprintf("%s#%s", hexUserID, "997d739f60f18d41"), bigtable.RowFilter(chainFilter), bigtable.LimitRows(6))
+		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), fmt.Sprintf("%s#%s", hexUserID, ""), bigtable.RowFilter(chainFilter), bigtable.LimitRows(5))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
