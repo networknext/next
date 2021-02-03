@@ -102,6 +102,20 @@ func TestUserSessions(t *testing.T) {
 
 	var storer = storage.InMemory{}
 
+	buyer := routing.Buyer{
+		ID:          0,
+		CompanyCode: "local",
+	}
+
+	customer := routing.Customer{
+		Code: "local",
+		Name: "Local",
+	}
+
+	ctx := context.Background()
+	storer.AddBuyer(ctx, buyer)
+	storer.AddCustomer(ctx, customer)
+
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -148,7 +162,6 @@ func TestUserSessions(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
 
-	ctx := context.Background()
 	logger := log.NewNopLogger()
 
 	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
@@ -402,7 +415,7 @@ func TestUserSessions(t *testing.T) {
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
 			assert.Equal(t, len(reply.Sessions), 2)
