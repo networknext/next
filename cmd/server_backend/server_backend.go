@@ -342,18 +342,24 @@ func mainReturnWithCode() int {
 						}
 
 						if routeEntriesReader == nil {
+							routeMatrixMutex.Lock()
+							routeMatrix = &routing.RouteMatrix{}
+							routeMatrixMutex.Unlock()
+
 							continue
 						}
 
 						buffer, err = ioutil.ReadAll(routeEntriesReader)
-
-						if routeEntriesReader != nil {
-							routeEntriesReader.Close()
-						}
+						routeEntriesReader.Close()
 
 						if err != nil {
 							level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
-							continue // Don't swap route matrix if we fail to read
+
+							routeMatrixMutex.Lock()
+							routeMatrix = &routing.RouteMatrix{}
+							routeMatrixMutex.Unlock()
+
+							continue
 						}
 					}
 					var newRouteMatrix routing.RouteMatrix
@@ -361,7 +367,12 @@ func mainReturnWithCode() int {
 						rs := encoding.CreateReadStream(buffer)
 						if err := newRouteMatrix.Serialize(rs); err != nil {
 							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
-							continue // Don't swap route matrix if we fail to serialize
+
+							routeMatrixMutex.Lock()
+							routeMatrix = &routing.RouteMatrix{}
+							routeMatrixMutex.Unlock()
+
+							continue
 						}
 					}
 

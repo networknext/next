@@ -125,6 +125,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Committed",
 		"Flagged",
 		"Multipath",
+		"MultipathRestricted",
 		"RttReduction",
 		"PacketLossReduction",
 		"FallbackToDirect",
@@ -434,6 +435,11 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.CommitVeto.Bool {
 			commitVeto = "true"
 		}
+		// MultipathRestricted
+		multipathRestricted := ""
+		if billingEntry.MultipathRestricted.Bool {
+			multipathRestricted = "true"
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -481,6 +487,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			committed,
 			flagged,
 			multipath,
+			multipathRestricted,
 			rttReduction,
 			plReduction,
 			fallbackToDirect,
@@ -546,6 +553,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	committed,
 	flagged,
 	multipath,
+	multipathRestricted,
 	nextBytesUp,
 	nextBytesDown,
 	datacenterID,
