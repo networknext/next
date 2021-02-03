@@ -110,7 +110,9 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private fetchUserSessions () {
-    this.$refs.inputAlert.resetAlert()
+    if (this.$refs.inputAlert) {
+      this.$refs.inputAlert.resetAlert()
+    }
     if (this.searchID === '' && this.$route.path !== '/user-tool') {
       this.$router.push({ path: '/user-tool' })
       return

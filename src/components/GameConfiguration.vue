@@ -93,7 +93,9 @@ export default class GameConfiguration extends Vue {
         this.$refs.responseAlert.setMessage('Updated public key successfully')
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.$refs.responseAlert.resetAlert()
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
         this.$apiService.fetchAllBuyers()
           .then((response: any) => {
@@ -107,7 +109,9 @@ export default class GameConfiguration extends Vue {
         this.$refs.responseAlert.setMessage('Failed to update public key')
         this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.$refs.responseAlert.resetAlert()
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
   }

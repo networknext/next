@@ -68,8 +68,7 @@ export default class Alert extends Vue {
         this.setMessage('Verification email was sent successfully. Please check your email for futher instructions.')
         this.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.setMessage('')
-          this.setAlertType(AlertType.DEFAULT)
+          this.resetAlert()
           this.showSlots = true
         }, 5000)
       })
@@ -80,8 +79,7 @@ export default class Alert extends Vue {
         this.setMessage('Something went wrong sending the verification email. Please try again later.')
         this.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.setMessage('')
-          this.setAlertType(AlertType.DEFAULT)
+          this.resetAlert()
           this.showSlots = true
         }, 5000)
       })

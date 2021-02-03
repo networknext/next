@@ -189,7 +189,6 @@ export default class UserManagement extends Vue {
   private companyUsers: Array<any>
   private companyUsersReadOnly: Array<any>
   private newUserRoles: Array<any>
-  private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
   private autoSignupDomains: string
@@ -200,11 +199,6 @@ export default class UserManagement extends Vue {
     super()
     this.newUserEmails = ''
     this.showTable = false
-    this.alertTypes = {
-      autoDomains: '',
-      newUsers: '',
-      editUser: ''
-    }
     this.allRoles = []
     this.newUserRoles = []
     this.companyUsers = []
@@ -252,7 +246,9 @@ export default class UserManagement extends Vue {
         this.$refs.autoDomainsAlert.setMessage('Successfully update signup domains')
         this.$refs.autoDomainsAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.$refs.autoDomainsAlert.resetAlert()
+          if (this.$refs.autoDomainsAlert) {
+            this.$refs.autoDomainsAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
@@ -261,7 +257,9 @@ export default class UserManagement extends Vue {
         this.$refs.autoDomainsAlert.setMessage('Failed to edit user account')
         this.$refs.autoDomainsAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.$refs.autoDomainsAlert.resetAlert()
+          if (this.$refs.autoDomainsAlert) {
+            this.$refs.autoDomainsAlert.resetAlert()
+          }
         }, 5000)
       })
   }
@@ -276,7 +274,9 @@ export default class UserManagement extends Vue {
           this.$refs.editUserAlert.setMessage('User account edited successfully')
           this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
           setTimeout(() => {
-            this.$refs.editUserAlert.resetAlert()
+            if (this.$refs.editUserAlert) {
+              this.$refs.editUserAlert.resetAlert()
+            }
           }, 5000)
         })
         .catch((error: Error) => {
@@ -285,7 +285,9 @@ export default class UserManagement extends Vue {
           this.$refs.editUserAlert.setMessage('Failed to edit user account')
           this.$refs.editUserAlert.setAlertType(AlertType.ERROR)
           setTimeout(() => {
-            this.$refs.editUserAlert.resetAlert()
+            if (this.$refs.editUserAlert) {
+              this.$refs.editUserAlert.resetAlert()
+            }
           }, 5000)
         })
         .finally(() => {
@@ -301,7 +303,9 @@ export default class UserManagement extends Vue {
           this.$refs.editUserAlert.setMessage('User account deleted successfully')
           this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
           setTimeout(() => {
-            this.$refs.editUserAlert.resetAlert()
+            if (this.$refs.editUserAlert) {
+              this.$refs.editUserAlert.resetAlert()
+            }
           }, 5000)
         })
         .catch((error: Error) => {
@@ -310,7 +314,9 @@ export default class UserManagement extends Vue {
           this.$refs.newUsersAlert.setMessage('Failed to delete user account')
           this.$refs.newUsersAlert.setAlertType(AlertType.ERROR)
           setTimeout(() => {
-            this.$refs.newUsersAlert.resetAlert()
+            if (this.$refs.newUsersAlert) {
+              this.$refs.newUsersAlert.resetAlert()
+            }
           }, 5000)
         })
     }
@@ -352,7 +358,9 @@ export default class UserManagement extends Vue {
         this.$refs.newUsersAlert.setMessage('User account(s) added successfully')
         this.$refs.newUsersAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.$refs.newUsersAlert.resetAlert()
+          if (this.$refs.newUsersAlert) {
+            this.$refs.newUsersAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
@@ -361,7 +369,9 @@ export default class UserManagement extends Vue {
         this.$refs.newUsersAlert.setMessage('Failed to add user account(s)')
         this.$refs.newUsersAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.$refs.newUsersAlert.resetAlert()
+          if (this.$refs.newUsersAlert) {
+            this.$refs.newUsersAlert.resetAlert()
+          }
         }, 5000)
       })
     this.newUserRoles = []
