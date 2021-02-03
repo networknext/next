@@ -107,16 +107,16 @@ func TestUserSessions(t *testing.T) {
 		CompanyCode: "local0",
 	}
 	buyer7 := routing.Buyer{
-		ID:	777,
-		CompanyCode: "local7"
+		ID:          777,
+		CompanyCode: "local7",
 	}
 	buyer8 := routing.Buyer{
-		ID:	888,
-		CompanyCode: "local8"
+		ID:          888,
+		CompanyCode: "local8",
 	}
 	buyer9 := routing.Buyer{
-		ID:	999,
-		CompanyCode: "local9"
+		ID:          999,
+		CompanyCode: "local9",
 	}
 
 	customer0 := routing.Customer{
