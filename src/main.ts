@@ -20,6 +20,20 @@ import { FeatureEnum, Flag } from './components/types/FeatureTypes'
  *  initializing auth0 related functionality
  */
 
+const gtagID = process.env.VUE_APP_GTAG_ID || ''
+
+if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && gtagID !== '') {
+  Vue.use(VueGtag, {
+    config: { id: gtagID }
+  }, router)
+}
+
+// This is VERY hacky. It would be much better to do this within the router but going that route (no pun intended) mounts half the app before hitting the redirect which is funky
+// TODO: Look into a lifecycle hook that handles this better...
+if (window.location.pathname === '/get-access') {
+  Vue.prototype.$authService.signUp(window.location.search.split('?email=')[1])
+}
+
 Vue.config.productionTip = false
 
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID

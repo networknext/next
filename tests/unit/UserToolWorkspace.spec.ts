@@ -1,6 +1,7 @@
 import { createLocalVue, mount } from '@vue/test-utils'
 import Vuex from 'vuex'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
+import Alert from '@/components/Alert.vue'
 
 describe('UserToolWorkspace.vue', () => {
   const localVue = createLocalVue()
@@ -50,12 +51,15 @@ describe('UserToolWorkspace.vue', () => {
     wrapper.destroy()
   })
 
-  it('check no sessions for user', () => {
+  it('check no sessions for user', async () => {
     // Mount the component
     const store = defaultStore
     const wrapper = mount(UserToolWorkspace, {
       localVue, mocks, stubs, store
     })
+
+    await localVue.nextTick()
+
     // Check Title
     expect(wrapper.find('.h2').text()).toBe('User Tool')
 
@@ -71,8 +75,10 @@ describe('UserToolWorkspace.vue', () => {
     // Check button
     expect(wrapper.find('button').text()).toBe('View Sessions')
 
+    // Check that the verify alert is hidden (no message)
+    expect(wrapper.findAllComponents(Alert).at(0).text()).toBe('')
     // Check for an info alert
-    expect(wrapper.find('.alert').text()).toBe('Please enter a User ID to view their sessions.')
+    expect(wrapper.findAllComponents(Alert).at(1).text()).toBe('Please enter a User ID to view their sessions.')
     wrapper.destroy()
   })
 })

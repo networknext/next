@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
+    <Alert ref="inputAlert"/>
     <div class="row" v-if="showDetails">
       <div class="col-12 col-lg-8">
         <div class="card mb-2">
@@ -282,6 +282,11 @@ import { AlertType } from './types/AlertTypes'
   }
 })
 export default class SessionDetails extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    inputAlert: Alert;
+  }
+
   private showDetails = false
 
   private searchID: string
@@ -310,14 +315,9 @@ export default class SessionDetails extends Vue {
     minZoom: 0
   }
 
-  private message: string
-  private alertType: string
-
   constructor () {
     super()
     this.searchID = ''
-    this.message = ''
-    this.alertType = AlertType.ERROR
     // this.slices = (data1 as any).result.slices
     // this.meta = (data1 as any).result.meta
   }
@@ -373,7 +373,7 @@ export default class SessionDetails extends Vue {
         this.meta = response.meta
         this.slices = response.slices
 
-        this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
+        this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
         if (!this.showDetails) {
           this.showDetails = true
@@ -452,9 +452,10 @@ export default class SessionDetails extends Vue {
           clearInterval(this.detailsLoop)
         }
         if (this.slices.length === 0) {
-          this.message = 'Failed to fetch session details'
           console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
           console.log(error)
+          this.$refs.inputAlert.setMessage('Failed to fetch session details')
+          this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
   }

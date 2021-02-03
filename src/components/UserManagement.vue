@@ -7,7 +7,7 @@
       <p class="card-text">
         Save time by allowing users with verified email addresses automatic access to your Network Next account.
       </p>
-      <Alert :message="messages.autoDomains" :alertType="alertTypes.autoDomains" v-if="messages.autoDomains !== ''"/>
+      <Alert ref="autoDomainsAlert"/>
       <form v-on:submit.prevent="saveAutoSignUp()">
         <div class="form-group">
           <label for="auto-signup-domains">
@@ -36,8 +36,8 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <Alert :message="messages.newUsers" :alertType="alertTypes.newUsers" v-if="messages.newUsers !== ''"/>
-    <form v-show="true" @submit.prevent="addNewUsers()">
+    <Alert ref="newUsersAlert"/>
+    <form @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
           Add users by email address
@@ -69,7 +69,7 @@
     <p class="card-text">
       Manage the list of users that currently have access to your Network Next account.
     </p>
-    <Alert :message="messages.editUser" :alertType="alertTypes.editUser" v-if="messages.editUser !== ''"/>
+    <Alert ref="editUserAlert"/>
     <table class="table table-sm mt-4">
       <thead class="thead-light">
         <tr>
@@ -178,11 +178,17 @@ import { UserProfile } from './types/AuthTypes'
   }
 })
 export default class UserManagement extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    autoDomainsAlert: Alert;
+    newUsersAlert: Alert;
+    editUserAlert: Alert;
+  }
+
   private allRoles: Array<any>
   private companyUsers: Array<any>
   private companyUsersReadOnly: Array<any>
   private newUserRoles: Array<any>
-  private messages: any
   private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
@@ -194,11 +200,6 @@ export default class UserManagement extends Vue {
     super()
     this.newUserEmails = ''
     this.showTable = false
-    this.messages = {
-      autoDomains: '',
-      newUsers: '',
-      editUser: ''
-    }
     this.alertTypes = {
       autoDomains: '',
       newUsers: '',
@@ -248,19 +249,19 @@ export default class UserManagement extends Vue {
       .then((response: any) => {
         this.userProfile.domains = domains
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertTypes.autoDomains = AlertType.SUCCESS
-        this.messages.autoDomains = 'Successfully update signup domains'
+        this.$refs.autoDomainsAlert.setMessage('Successfully update signup domains')
+        this.$refs.autoDomainsAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.messages.autoDomains = ''
+          this.$refs.autoDomainsAlert.resetAlert()
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong adding auto signup domains')
         console.log(error)
-        this.alertTypes.autoDomains = AlertType.ERROR
-        this.messages.autoDomains = 'Failed to edit user account'
+        this.$refs.autoDomainsAlert.setMessage('Failed to edit user account')
+        this.$refs.autoDomainsAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.messages.autoDomains = ''
+          this.$refs.autoDomainsAlert.resetAlert()
         }, 5000)
       })
   }
@@ -272,19 +273,19 @@ export default class UserManagement extends Vue {
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
-          this.alertTypes.editUser = AlertType.SUCCESS
-          this.messages.editUser = 'User account edited successfully'
+          this.$refs.editUserAlert.setMessage('User account edited successfully')
+          this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
           setTimeout(() => {
-            this.messages.editUser = ''
+            this.$refs.editUserAlert.resetAlert()
           }, 5000)
         })
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
-          this.alertTypes.editUser = AlertType.ERROR
-          this.messages.editUser = 'Failed to edit user account'
+          this.$refs.editUserAlert.setMessage('Failed to edit user account')
+          this.$refs.editUserAlert.setAlertType(AlertType.ERROR)
           setTimeout(() => {
-            this.messages.editUser = ''
+            this.$refs.editUserAlert.resetAlert()
           }, 5000)
         })
         .finally(() => {
@@ -297,19 +298,19 @@ export default class UserManagement extends Vue {
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
-          this.alertTypes.editUser = AlertType.SUCCESS
-          this.messages.editUser = 'User account deleted successfully'
+          this.$refs.editUserAlert.setMessage('User account deleted successfully')
+          this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
           setTimeout(() => {
-            this.messages.editUser = ''
+            this.$refs.editUserAlert.resetAlert()
           }, 5000)
         })
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
-          this.alertTypes.newUsers = AlertType.ERROR
-          this.messages.newUsers = 'Failed to delete user account'
+          this.$refs.newUsersAlert.setMessage('Failed to delete user account')
+          this.$refs.newUsersAlert.setAlertType(AlertType.ERROR)
           setTimeout(() => {
-            this.messages.newUsers = ''
+            this.$refs.newUsersAlert.resetAlert()
           }, 5000)
         })
     }
@@ -348,19 +349,19 @@ export default class UserManagement extends Vue {
         })
 
         this.companyUsers = this.companyUsers.concat(newAccounts)
-        this.alertTypes.newUsers = AlertType.SUCCESS
-        this.messages.newUsers = 'User account(s) added successfully'
+        this.$refs.newUsersAlert.setMessage('User account(s) added successfully')
+        this.$refs.newUsersAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.messages.newUsers = ''
+          this.$refs.newUsersAlert.resetAlert()
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong creating new users')
         console.log(error)
-        this.alertTypes.newUsers = AlertType.ERROR
-        this.messages.newUsers = 'Failed to add user account(s)'
+        this.$refs.newUsersAlert.setMessage('Failed to add user account(s)')
+        this.$refs.newUsersAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.messages.newUsers = ''
+          this.$refs.newUsersAlert.resetAlert()
         }, 5000)
       })
     this.newUserRoles = []

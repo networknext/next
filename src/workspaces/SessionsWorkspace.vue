@@ -96,12 +96,12 @@
                 class="text-dark fixed-width"
               >{{ session.user_hash }}</router-link>
             </td>
-            <td>{{ session.location.isp != "" ? session.location.isp : "Unknown" }}</td>
+            <td>{{ session.location.isp !== "" ? session.location.isp : "Unknown" }}</td>
             <td v-if="$store.getters.isAdmin">{{ getCustomerName(session.customer_id) }}</td>
             <td>
               <span
                 class="text-dark"
-              >{{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}</span>
+              >{{ session.datacenter_alias !== "" ? session.datacenter_alias : session.datacenter_name }}</span>
             </td>
             <td
               class="text-right"

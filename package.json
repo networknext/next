@@ -19,10 +19,8 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.29",
     "@fortawesome/free-solid-svg-icons": "^5.13.1",
     "@fortawesome/vue-fontawesome": "^0.1.10",
-    "@types/vuelidate": "^0.7.13",
     "bootstrap": "^4.5.0",
     "core-js": "^3.6.5",
-    "deck.gl": "^8.2.3",
     "jquery": "^3.5.1",
     "lodash": "^4.17.19",
     "popper.js": "^1.16.1",
@@ -33,7 +31,6 @@
     "vue-multiselect": "^2.1.6",
     "vue-property-decorator": "^8.4.2",
     "vue-router": "^3.2.0",
-    "vuelidate": "^0.7.5",
     "vuex": "^3.4.0"
   },
   "devDependencies": {
