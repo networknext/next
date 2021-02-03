@@ -206,15 +206,7 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys1 := []string{sessionRowKey1, userRowKey1}
 	sliceRowKeys1 := []string{sliceRowKey1}
 
-	metaBin2, err := transport.SessionMeta{
-		ID:              222,
-		UserHash:        userHash1,
-		BuyerID:         888,
-		ServerAddr:      "1.1.1.1",
-		Hops:            []transport.RelayHop{},
-		DatacenterAlias: "",
-		NearbyRelays:    []transport.NearRelayPortalData{},
-	}.MarshalBinary()
+	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
 	slice2 := transport.SessionSlice{}
 	sliceBin2, err := slice2.MarshalBinary()
@@ -225,15 +217,7 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys2 := []string{sessionRowKey2, userRowKey2}
 	sliceRowKeys2 := []string{sliceRowKey2}
 
-	metaBin3, err := transport.SessionMeta{
-		ID:              333,
-		UserHash:        userHash1,
-		BuyerID:         888,
-		ServerAddr:      "1.1.1.1",
-		Hops:            []transport.RelayHop{},
-		DatacenterAlias: "",
-		NearbyRelays:    []transport.NearRelayPortalData{},
-	}.MarshalBinary()
+	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
 	slice3 := transport.SessionSlice{}
 	sliceBin3, err := slice3.MarshalBinary()
