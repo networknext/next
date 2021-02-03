@@ -102,19 +102,49 @@ func TestUserSessions(t *testing.T) {
 
 	var storer = storage.InMemory{}
 
-	buyer := routing.Buyer{
+	buyer0 := routing.Buyer{
 		ID:          0,
-		CompanyCode: "local",
+		CompanyCode: "local0",
+	}
+	buyer7 := routing.Buyer{
+		ID:	777,
+		CompanyCode: "local7"
+	}
+	buyer8 := routing.Buyer{
+		ID:	888,
+		CompanyCode: "local8"
+	}
+	buyer9 := routing.Buyer{
+		ID:	999,
+		CompanyCode: "local9"
 	}
 
-	customer := routing.Customer{
-		Code: "local",
-		Name: "Local",
+	customer0 := routing.Customer{
+		Code: "local0",
+		Name: "Local0",
+	}
+	customer7 := routing.Customer{
+		Code: "local7",
+		Name: "Local7",
+	}
+	customer8 := routing.Customer{
+		Code: "local8",
+		Name: "Local8",
+	}
+	customer9 := routing.Customer{
+		Code: "local9",
+		Name: "Local9",
 	}
 
 	ctx := context.Background()
-	storer.AddBuyer(ctx, buyer)
-	storer.AddCustomer(ctx, customer)
+	storer.AddBuyer(ctx, buyer0)
+	storer.AddBuyer(ctx, buyer7)
+	storer.AddBuyer(ctx, buyer8)
+	storer.AddBuyer(ctx, buyer9)
+	storer.AddCustomer(ctx, customer0)
+	storer.AddCustomer(ctx, customer7)
+	storer.AddCustomer(ctx, customer8)
+	storer.AddCustomer(ctx, customer9)
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
