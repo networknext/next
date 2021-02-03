@@ -76,12 +76,10 @@ export default class SessionToolWorkspace extends Vue {
     inputAlert: Alert;
   }
 
-  private alertType: string
   private searchID: string
 
   constructor () {
     super()
-    this.alertType = ''
     this.searchID = ''
   }
 

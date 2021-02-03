@@ -125,16 +125,12 @@ export default class RouteShader extends Vue {
   }
 
   private routeShader: any
-  private message: string
-  private alertType: string
   private userProfile: UserProfile
 
   constructor () {
     super()
     this.userProfile = cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
-    this.message = ''
-    this.alertType = ''
   }
 
   public updateRouteShader () {
@@ -143,10 +139,12 @@ export default class RouteShader extends Vue {
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertType.SUCCESS
-        this.message = 'Updated route shader successfully'
+        this.$refs.responseAlert.setMessage('Updated route shader successfully')
+        this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
