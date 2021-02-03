@@ -110,8 +110,6 @@ export default class AccountSettings extends Vue {
     return this.validCompanyName && this.validCompanyCode
   }
 
-  private message: any
-  private alertType: any
   private companyName: string
   private companyCode: string
   private newPassword: string
@@ -129,8 +127,6 @@ export default class AccountSettings extends Vue {
 
   constructor () {
     super()
-    this.message = ''
-    this.alertType = AlertType.DEFAULT
     this.companyName = ''
     this.companyCode = ''
     this.newPassword = ''
@@ -274,8 +270,9 @@ export default class AccountSettings extends Vue {
         this.$refs.responseAlert.setMessage('Failed to update account settings')
         this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.$refs.responseAlert.setMessage('')
-          this.$refs.responseAlert.setAlertType(AlertType.DEFAULT)
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
   }

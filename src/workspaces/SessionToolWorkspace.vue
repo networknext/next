@@ -110,7 +110,9 @@ export default class SessionToolWorkspace extends Vue {
   }
 
   private fetchSessionDetails () {
-    this.$refs.inputAlert.resetAlert()
+    if (this.$refs.inputAlert) {
+      this.$refs.inputAlert.resetAlert()
+    }
     if (this.searchID === '' && this.$route.path !== '/session-tool') {
       this.$router.push({ path: '/session-tool' })
       return

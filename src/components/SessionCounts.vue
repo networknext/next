@@ -60,6 +60,10 @@ interface TotalSessionsReply {
   }
 })
 export default class SessionCounts extends Vue {
+  get totalSessions () {
+    return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
+  }
+
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;
@@ -68,15 +72,6 @@ export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
   private countLoop: any
-
-  get totalSessions () {
-    return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
-  }
-
-  private totalSessionsReply: TotalSessionsReply
-  private showCount: boolean
-  private countLoop: any
-  private AlertType: any
   private filterOptions: Array<any>
 
   constructor () {

@@ -155,8 +155,9 @@ export default class RouteShader extends Vue {
         this.$refs.responseAlert.setMessage('Failed to update router shader')
         this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.$refs.responseAlert.setMessage('')
-          this.$refs.responseAlert.setAlertType(AlertType.DEFAULT)
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
   }
