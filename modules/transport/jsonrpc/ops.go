@@ -682,34 +682,102 @@ type JSAddRelayArgs struct {
 	PublicKey           string `json:"public_key"`
 	SellerID            string `json:"seller"`
 	DatacenterID        string `json:"datacenter"`
-	NICSpeedMbps        int    `json:"nicSpeedMbps"`
-	IncludedBandwidthGB int    `json:"includedBandwidthGB"`
+	NICSpeedMbps        int64  `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int64  `json:"includedBandwidthGB"`
 	ManagementAddr      string `json:"management_addr"`
 	SSHUser             string `json:"ssh_user"`
-	SSHPort             int    `json:"ssh_port"`
-	MaxSessions         int    `json:"max_sessions"`
-	MRC                 int    `json:"monthlyRecurringChargeNibblins"`
-	Overage             int    `json:"overage"`
-	BWRule              int    `json:"bandwidthRule"`
-	ContractTerm        int    `json:"contractTerm"`
+	SSHPort             int64  `json:"ssh_port"`
+	MaxSessions         int64  `json:"max_sessions"`
+	MRC                 int64  `json:"monthlyRecurringChargeNibblins"`
+	Overage             int64  `json:"overage"`
+	BWRule              int64  `json:"bandwidthRule"`
+	ContractTerm        int64  `json:"contractTerm"`
 	StartDate           string `json:"startDate"`
 	EndDate             string `json:"endDate"`
-	Type                int    `json:"machineType"`
+	Type                int64  `json:"machineType"`
 }
 
 type JSAddRelayReply struct{}
 
 func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JSAddRelayReply) error {
-	// ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	// defer cancelFunc()
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
 
-	fmt.Printf("relay name:\n%s\n", args.Name)
+	addr, err := net.ResolveUDPAddr("udp", args.Addr)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
 
-	// if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
-	// 	err = fmt.Errorf("AddRelay() error: %w", err)
-	// 	s.Logger.Log("err", err)
-	// 	return err
-	// }
+	fmt.Printf("relay        DatacenterID: %s\n", args.DatacenterID)
+	dcID, err := strconv.ParseUint(args.DatacenterID, 16, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// seller is not required for SQL Storer AddRelay() method
+	var datacenter routing.Datacenter
+	if datacenter, err = s.Storage.Datacenter(dcID); err != nil {
+		err = fmt.Errorf("Datacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	rid := crypto.HashID(args.Addr)
+	relay := routing.Relay{
+		ID:                  rid,
+		Name:                args.Name,
+		Addr:                *addr,
+		PublicKey:           []byte(args.PublicKey),
+		Datacenter:          datacenter,
+		NICSpeedMbps:        int32(args.NICSpeedMbps),
+		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
+		State:               routing.RelayStateMaintenance,
+		ManagementAddr:      args.ManagementAddr,
+		SSHUser:             args.SSHUser,
+		SSHPort:             args.SSHPort,
+		MaxSessions:         uint32(args.MaxSessions),
+		MRC:                 routing.Nibblin(args.MRC),
+		Overage:             routing.Nibblin(args.Overage),
+		BWRule:              routing.BandWidthRule(args.BWRule),
+		ContractTerm:        int32(args.ContractTerm),
+		Type:                routing.MachineType(args.Type),
+	}
+
+	var internalAddr *net.UDPAddr
+	if args.InternalAddr != "" {
+		internalAddr, err = net.ResolveUDPAddr("udp", args.InternalAddr)
+		if err != nil {
+			s.Logger.Log("err", err)
+			return err
+		}
+		relay.InternalAddr = *internalAddr
+	}
+
+	if args.StartDate != "" {
+		startDate, err := time.Parse("2006-01-02", args.StartDate)
+		if err != nil {
+			s.Logger.Log("err", err)
+			return err
+		}
+		relay.StartDate = startDate
+	}
+
+	if args.EndDate != "" {
+		endDate, err := time.Parse("2006-01-02", args.EndDate)
+		if err != nil {
+			s.Logger.Log("err", err)
+			return err
+		}
+		relay.EndDate = endDate
+	}
+
+	if err := s.Storage.AddRelay(ctx, relay); err != nil {
+		err = fmt.Errorf("AddRelay() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
 	return nil
 }
