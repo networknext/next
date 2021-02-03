@@ -314,7 +314,7 @@ export default class UserManagement extends Vue {
           this.$refs.newUsersAlert.setMessage('Failed to delete user account')
           this.$refs.newUsersAlert.setAlertType(AlertType.ERROR)
           setTimeout(() => {
-            if (this.$refs.editUserAlert) {
+            if (this.$refs.newUsersAlert) {
               this.$refs.newUsersAlert.resetAlert()
             }
           }, 5000)
