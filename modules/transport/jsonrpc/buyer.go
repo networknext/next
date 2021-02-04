@@ -1501,7 +1501,7 @@ func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
 	}
 }
 
-func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode string) ([]transport.SessionMeta, error) {
+func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilter string) ([]transport.SessionMeta, error) {
 	var err error
 	var topSessionsA []string
 	var topSessionsB []string
@@ -1514,7 +1514,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 	defer topSessionsClient.Close()
 
 	// get the top session IDs globally or for a buyer from the sorted set
-	switch companyCode {
+	switch companyCodeFilter {
 	case "":
 		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
@@ -1530,18 +1530,19 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 			return sessions, err
 		}
 	default:
-		buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
-		if err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting company with code: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return sessions, err
-		}
-		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
 			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return sessions, err
 		}
+
+		buyer, err := s.Storage.BuyerWithCompanyCode(companyCodeFilter)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+		buyerID := fmt.Sprintf("%016x", buyer.ID)
 
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
@@ -1591,7 +1592,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 			continue
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+
+		if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 			meta.Anonymise()
 		}
 
