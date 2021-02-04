@@ -2079,6 +2079,49 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var metricsCommand = &ffcli.Command{
+		Name:       "metrics",
+		ShortUsage: "next metrics [dashboard ID]",
+		ShortHelp:  "Retrieve the StackDriver metrics dashboards in a compact JSON file, with an optional filter to select a single dashboard",
+		Exec: func(ctx context.Context, args []string) error {
+			// TODO: implement
+			return nil
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "update",
+				ShortUsage: "next metrics update <JSON dashboard file>",
+				ShortHelp:  "Updates the metrics dashboards according to the provided JSON file (see -h for an example)",
+				LongHelp:   nextMetricsUpdateJSONLongHelp,
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						handleRunTimeError("Provide a JSON dashboard file to update the dashboards with. To get the JSON file for the current dashboards, use next metrics", 0)
+					}
+
+					dashboardFile, err := os.Open(args[0])
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("could not open file at %s: %v", args[0], err), 1)
+					}
+
+					dashboardData, err := ioutil.ReadAll(dashboardFile)
+					if err != nil {
+						handleRunTimeError(fmt.Sprintf("error reading file at %s: %v", args[0], err), 1)
+					}
+
+					var dashboards []MetricsDashboard
+					if err := json.Unmarshal(dashboardData, &dashboards); err != nil {
+						handleRunTimeError(fmt.Sprintf("file contains invalid JSON: %v", err), 0)
+					}
+
+					if err := setMetricsDashboards(dashboards); err != nil {
+						handleRunTimeError(err.Error(), 1)
+					}
+					return nil
+				},
+			},
+		},
+	}
+
 	var commands = []*ffcli.Command{
 		authCommand,
 		selectCommand,
@@ -2104,6 +2147,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		debugCommand,
 		viewCommand,
 		stagingCommand,
+		metricsCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2133,6 +2177,69 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 	fmt.Printf("\n")
 }
+
+var nextMetricsUpdateJSONLongHelp = `
+Create or update a metrics dashboard. The input data is can be retrieved from
+
+    next metrics [dashboard ID]
+
+or provided by a JSON file of the form:
+[
+  {
+	"id": "server-backend",
+    "displayName": "Server Backend",
+    "columns": "2",
+    "charts": [
+      {
+        "title": "Server Invocations",
+        "metrics": [
+          {
+            "type": "counter",
+            "id": "server_backend/server_init.invocations"
+          },
+          {
+            "type": "counter",
+            "id": "server_backend/server_update.invocations"
+          }
+        ]
+      },
+      {
+        "title": "Session Invocations",
+        "metrics": [
+          {
+            "type": "counter",
+            "id": "server_backend/session_update.invocations"
+          },
+          {
+            "type": "counter",
+            "id": "server_backend/session_update.direct_slices"
+          },
+          {
+            "type": "counter",
+            "id": "server_backend/session_update.next_slices"
+          }
+        ]
+      },
+      {
+        "title": "Durations",
+        "metrics": [
+          {
+            "type": "gauge",
+            "id": "server_backend/server_init.duration"
+          },
+          {
+            "type": "gauge",
+            "id": "server_backend/server_update.duration"
+          },
+          {
+            "type": "gauge",
+            "id": "server_backend/session_update.duration"
+          }
+        ]
+      }
+    ]
+  }
+]`
 
 var nextBuyerAddJSONLongHelp = `
 Add a buyer entry for the provided customer. The input data is 
