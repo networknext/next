@@ -1,14 +1,12 @@
 package jsonrpc
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"sort"
@@ -19,7 +17,6 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/bigtable"
-	"google.golang.org/api/iterator"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -65,8 +62,10 @@ type BuyersService struct {
 	RedisPoolSessionSlices *redis.Pool
 	RedisPoolSessionMap    *redis.Pool
 	RedisPoolUserSessions  *redis.Pool
-	Storage                storage.Storer
-	Logger                 log.Logger
+
+	Metrics *metrics.BuyerEndpointMetrics
+	Storage storage.Storer
+	Logger  log.Logger
 }
 
 type FlushSessionsArgs struct{}
@@ -110,7 +109,8 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions []transport.SessionMeta `json:"sessions"`
+	Sessions   []transport.SessionMeta `json:"sessions"`
+	TimeStamps []time.Time             `json:"time_stamps"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -122,7 +122,20 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	reply.Sessions = make([]transport.SessionMeta, 0)
 	sessionIDs := make([]string, 0)
 
+	var sessionSlice transport.SessionSlice
+
+	// Raw user input
 	userID := args.UserID
+
+	// Hex of the userID in case it's a signed decimal hash
+	var hexUserID string
+	{
+		userIDInt, err := strconv.Atoi(userID)
+		if err == nil {
+			// userID was an int that we need to convert to hex and lookup
+			hexUserID = fmt.Sprintf("%016x", userIDInt)
+		}
+	}
 
 	// Hash the ID
 	hash := fnv.New64a()
@@ -143,10 +156,46 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	for _, session := range liveSessions {
-		// Check both the ID and the hash just in case the ID is actually a hash from the top sessions table
-		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) {
-			reply.Sessions = append(reply.Sessions, session)
-			sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+		// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
+		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
+			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+			defer sessionSlicesClient.Close()
+
+			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+			if err != nil && err != redis.ErrNil {
+				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			// If a slice exists, add the session and the timestamp
+			if len(slices) > 0 {
+				sliceString := strings.Split(slices[0], "|")
+				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+				buyer, err := s.Storage.Buyer(session.BuyerID)
+				if err != nil {
+					err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					session.Anonymise()
+				}
+
+				reply.Sessions = append(reply.Sessions, session)
+				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+			} else {
+				// Increment counter
+				s.Metrics.NoSlicesFailure.Add(1)
+			}
 		}
 	}
 
@@ -157,7 +206,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		)
 
 		// Fetch historic sessions by user hash if there are any
-		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter))
+		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -167,7 +216,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Fetch historic sessions by user ID if there are any
-		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter))
+		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -176,26 +225,76 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
+		// Fetch historic sessions by hex user ID if there are any
+		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+
 		liveIDString := strings.Join(sessionIDs, ",")
 
-		var sessionMeta transport.SessionMeta
 		if len(rowsByHash) > 0 {
-			for _, row := range rowsByHash {
-				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
-					return err
-				}
-				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-					reply.Sessions = append(reply.Sessions, sessionMeta)
-				}
+			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice); err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
 			}
 		} else if len(rowsByID) > 0 {
-			for _, row := range rowsByID {
-				if err = sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice); err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		} else if len(rowsByHexID) > 0 {
+			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
+	var sessionMeta transport.SessionMeta
+
+	for _, row := range rows {
+		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+			return err
+		}
+		if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+			if err != nil {
+				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+				err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
+				return err
+			}
+			s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
+
+			// If a slice exists, add the session and the timestamp
+			if len(sliceRows) > 0 {
+				sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
+				if err != nil {
+					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
+					level.Error(s.Logger).Log("err", err)
 					return err
 				}
-				if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-					reply.Sessions = append(reply.Sessions, sessionMeta)
+
+				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					sessionMeta.Anonymise()
 				}
+
+				reply.Sessions = append(reply.Sessions, sessionMeta)
+				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+			} else {
+				// Increment counter
+				s.Metrics.NoSlicesFailure.Add(1)
 			}
 		}
 	}
@@ -489,16 +588,17 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information from bigtable: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		if len(metaRows) == 0 {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed getting session meta")
+			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Set historic to true when bigtable should be used
 		historic = true
@@ -518,7 +618,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
-
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -557,16 +656,17 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information from bigtable: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		if len(sliceRows) == 0 {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed getting session slices")
+			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
+		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 		for _, row := range sliceRows {
 			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
@@ -1318,7 +1418,7 @@ func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
 	}
 }
 
-func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode string) ([]transport.SessionMeta, error) {
+func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilter string) ([]transport.SessionMeta, error) {
 	var err error
 	var topSessionsA []string
 	var topSessionsB []string
@@ -1331,7 +1431,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 	defer topSessionsClient.Close()
 
 	// get the top session IDs globally or for a buyer from the sorted set
-	switch companyCode {
+	switch companyCodeFilter {
 	case "":
 		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
@@ -1347,18 +1447,19 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 			return sessions, err
 		}
 	default:
-		buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
-		if err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting company with code: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return sessions, err
-		}
-		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
 			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return sessions, err
 		}
+
+		buyer, err := s.Storage.BuyerWithCompanyCode(companyCodeFilter)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+		buyerID := fmt.Sprintf("%016x", buyer.ID)
 
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
@@ -1408,7 +1509,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 			continue
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+
+		if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -1442,262 +1550,6 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 	return sessions, err
 }
 
-type GetAllSessionBillingInfoArg struct {
-	SessionID uint64
-}
-
-type GetAllSessionBillingInfoReply struct {
-	SessionBillingInfo []transport.BigQueryBillingEntry
-}
-
-func (s *BuyersService) GetAllSessionBillingInfo(r *http.Request, args *GetAllSessionBillingInfoArg, reply *GetAllSessionBillingInfoReply) error {
-
-	ctx := context.Background()
-	sessionID := int64(args.SessionID)
-
-	var rows []transport.BigQueryBillingEntry
-
-	cachedBuyerID := int64(0)
-	cachedBuyerName := ""
-	cachedDatacenterID := int64(0)
-	var cachedDatacenterName bigquery.NullString
-	// cachedRelayNames := []int64{}
-
-	var dbName string
-	var sql bytes.Buffer
-	sql.Write([]byte(`select 
-	timeStamp,
-	buyerID,
-	sessionID,
-	sliceNumber,
-	next,
-	directRTT,
-	directJitter,
-	directPacketLoss,
-	nextRTT,
-	nextJitter,
-	nextPacketLoss,
-	nextRelays,
-	totalPrice,
-	clientToServerPacketsLost,
-	serverToClientPacketsLost,
-	committed,
-	flagged,
-	multipath,
-	nextBytesUp,
-	nextBytesDown,
-	datacenterID,
-	rttReduction,
-	packetLossReduction,
-	nextRelaysPrice,
-	userHash,
-	latitude,
-	longitude,
-	isp,
-	abTest,
-	connectionType,
-	platformType,
-	sdkVersion,
-	packetLoss,
-	envelopeBytesUp,
-	envelopeBytesDown,
-	predictedNextRTT,
-	multipathVetoed,
-	debug,
-	fallbackToDirect,
-	clientFlags,
-	userFlags,
-	nearRelayRTT,
-	packetsOutOfOrderClientToServer,
-	packetsOutOfOrderServerToClient,
-	jitterClientToServer,
-	jitterServerToClient,
-	numNearRelays,
-	nearRelayIDs,
-	nearRelayRTTs,
-	nearRelayJitters,
-	nearRelayPacketLosses,
-	relayWentAway,
-	routeLost,
-	mispredicted,
-	vetoed,
-	latencyWorse,
-	noRoute,
-	nextLatencyTooHigh,
-	routeChanged,
-	commitVeto,
-	tags,
-	pro,
-	lackOfDiversity,
-	routeDiversity
-    from `))
-
-	if s.Env != "prod" && s.Env != "dev" && s.Env != "staging" {
-		// env == local (unit test)
-		// env == ""    (e.g. go test -run TestGetAllSessionBillingInfo)
-		var err error
-		rows, err = returnLocalTestData(reply)
-		if err != nil {
-			err = fmt.Errorf("GetAllSessionBillingInfo() error returning local json: %v", err)
-			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-			return err
-		}
-	} else {
-		if s.Env == "prod" {
-			sql.Write([]byte("network-next-v3-prod.prod.billing"))
-			dbName = "network-next-v3-prod"
-
-		} else if s.Env == "dev" {
-			sql.Write([]byte("network-next-v3-dev.dev.billing"))
-			dbName = "network-next-v3-dev"
-		}
-
-		sql.Write([]byte(" where sessionId = "))
-		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
-		// a timestamp must be provided although it is not relevant to this query
-		sql.Write([]byte(" and DATE(timestamp) >= '1968-05-01'"))
-		sql.Write([]byte(" order by sliceNumber asc"))
-
-		bqClient, err := bigquery.NewClient(ctx, dbName)
-		if err != nil {
-			err = fmt.Errorf("GetAllSessionBillingInfo() failed to create BigQuery client: %v", err)
-			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-			return err
-		}
-		defer bqClient.Close()
-
-		q := bqClient.Query(string(sql.String()))
-
-		job, err := q.Run(ctx)
-		if err != nil {
-			err = fmt.Errorf("GetAllSessionBillingInfo() failed to query BigQuery: %v", err)
-			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-			return err
-		}
-
-		status, err := job.Wait(ctx)
-		if err != nil {
-			err = fmt.Errorf("GetAllSessionBillingInfo() error waiting for job to complete: %v", err)
-			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-			return err
-		}
-		if err := status.Err(); err != nil {
-			err = fmt.Errorf("GetAllSessionBillingInfo() job returned an error: %v", err)
-			level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", sessionID))
-			return err
-		}
-
-		it, err := job.Read(ctx)
-		if err != nil {
-			return err
-		}
-
-		// process result set and load rows
-		for {
-			var rec transport.BigQueryBillingEntry
-			err := it.Next(&rec)
-
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				return err
-			}
-			rows = append(rows, rec)
-		}
-	}
-
-	// wire up relay, datacenter and buyer names
-	for index, row := range rows {
-
-		if row.BuyerID != cachedBuyerID {
-			buyer, err := s.Storage.Buyer(uint64(row.BuyerID))
-			if err != nil {
-				err = fmt.Errorf("GetAllSessionBillingInfo() could not parse BuyerID: %v", err)
-				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(row.BuyerID)))
-				return err
-			}
-			rows[index].BuyerString = buyer.ShortName
-			cachedBuyerID = row.BuyerID
-			cachedBuyerName = buyer.ShortName
-		} else {
-			rows[index].BuyerString = cachedBuyerName
-		}
-
-		if row.DatacenterID.Valid {
-			if row.DatacenterID.Int64 != cachedDatacenterID {
-				dc, err := s.Storage.Datacenter(uint64(row.DatacenterID.Int64))
-				if err != nil {
-					err = fmt.Errorf("GetAllSessionBillingInfo() could not parse DatacenterID: %v", err)
-					level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(row.DatacenterID.Int64)))
-					return err
-				}
-				rows[index].DatacenterString = bigquery.NullString{StringVal: dc.Name, Valid: true}
-				cachedDatacenterID = row.DatacenterID.Int64
-				cachedDatacenterName = bigquery.NullString{StringVal: dc.Name, Valid: true}
-			} else {
-				rows[index].DatacenterString = cachedDatacenterName
-			}
-		}
-
-		// sort then compare (these are very small slices)
-		// sort.Slice(row.NextRelays, func(i, j int) bool {
-		// 	return row.NextRelays[i] < row.NextRelays[j]
-		// })
-
-		// if !slicesAreEqual(row.NextRelays, cachedRelayNames) {
-		for _, relayID := range row.NextRelays {
-			relay, err := s.Storage.Relay(uint64(relayID))
-			if err != nil {
-				err = fmt.Errorf("GetAllSessionBillingInfo() could not parse Relay ID: %v", err)
-				level.Error(s.Logger).Log("err", err, "GetAllSessionBillingInfo", fmt.Sprintf("%016x", uint64(relayID)))
-				return err
-			}
-			rows[index].NextRelaysStrings = append(rows[index].NextRelaysStrings, relay.Name)
-			// cachedRelayNames = append(cachedRelayNames, relayID)
-		}
-		// }
-
-	}
-
-	reply.SessionBillingInfo = rows
-
-	return nil
-
-}
-
-func returnLocalTestData(reply *GetAllSessionBillingInfoReply) ([]transport.BigQueryBillingEntry, error) {
-	var localRow transport.BigQueryBillingEntry
-	var rows []transport.BigQueryBillingEntry
-
-	bqRow, err := ioutil.ReadFile("../../../testdata/bq_billing_row.json")
-	if err != nil {
-		err = fmt.Errorf("returnLocalTestData() error opening local testdata file: %v", err)
-		return []transport.BigQueryBillingEntry{}, err
-	}
-	err = json.Unmarshal(bqRow, &localRow)
-	if err != nil {
-		err = fmt.Errorf("returnLocalTestData() error unmarshalling json from local file: %v", err)
-		return []transport.BigQueryBillingEntry{}, err
-	}
-
-	rows = append(rows, localRow)
-
-	return rows, nil
-}
-
-func slicesAreEqual(a, b []int64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // InternalConfig CRUD endpoints
 type GetInternalConfigArg struct {
 	BuyerID uint64
@@ -1714,7 +1566,8 @@ func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfi
 
 	ic, err := s.Storage.InternalConfig(arg.BuyerID)
 	if err != nil {
-		// no InternalConfig stored for the buyer
+		err = fmt.Errorf("GetInternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -1775,7 +1628,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 		}
 
 	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
-		"HighFrequencyPings", "MispredictMultipathOverload", "EnableVanityMetrics":
+		"HighFrequencyPings", "EnableVanityMetrics":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)

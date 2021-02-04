@@ -425,6 +425,7 @@ func getInitialSessionData(
 			false,
 			false,
 			false,
+			false,
 			committed,
 			commitCounter,
 			multipath,
@@ -475,6 +476,7 @@ func getExpectedSessionData(
 	latencyWorse bool,
 	commitVeto bool,
 	mispredictVeto bool,
+	sdkAborted bool,
 	committed bool,
 	commitCounter int32,
 	multipath bool,
@@ -485,16 +487,29 @@ func getExpectedSessionData(
 		return initialSessionData
 	}
 
+	packetsSent := uint64(0)
+	if request.sliceNumber > 0 {
+		packetsSent = uint64(request.sliceNumber) * 600
+	}
+
 	if request.badSessionData || request.badSessionDataSessionID {
 		return transport.SessionData{
-			Version: transport.SessionDataVersion,
+			Version:                       transport.SessionDataVersion,
+			PrevPacketsSentClientToServer: packetsSent,
+			PrevPacketsSentServerToClient: packetsSent,
+			PrevPacketsLostClientToServer: 0,
+			PrevPacketsLostServerToClient: 0,
 		}
 	}
 
 	if request.badSessionDataSliceNumber {
 		return transport.SessionData{
-			Version:   transport.SessionDataVersion,
-			SessionID: request.sessionID,
+			Version:                       transport.SessionDataVersion,
+			SessionID:                     request.sessionID,
+			PrevPacketsSentClientToServer: packetsSent,
+			PrevPacketsSentServerToClient: packetsSent,
+			PrevPacketsLostClientToServer: 0,
+			PrevPacketsLostServerToClient: 0,
 		}
 	}
 
@@ -529,7 +544,7 @@ func getExpectedSessionData(
 			UserID:            request.userHash,
 			NumNearRelays:     int32(nearRelays.Count),
 			Next:              routeInfo.next,
-			Veto:              noRoute || multipathOverload || latencyWorse || commitVeto || mispredictVeto,
+			Veto:              noRoute || multipathOverload || latencyWorse || commitVeto || mispredictVeto || sdkAborted,
 			ReduceLatency:     reduceLatency,
 			ProMode:           response.proMode,
 			Committed:         committed,
@@ -544,13 +559,17 @@ func getExpectedSessionData(
 			MispredictCounter: mispredictCounter,
 			Mispredict:        mispredictVeto,
 		},
-		Initial:          routeInfo.initial,
-		FellBackToDirect: request.fallbackToDirect,
-		EverOnNext:       everOnNext,
-		RouteChanged:     request.prevRouteType == routing.RouteTypeContinue && response.routeType == routing.RouteTypeNew,
+		Initial:                       routeInfo.initial,
+		FellBackToDirect:              request.fallbackToDirect,
+		EverOnNext:                    everOnNext,
+		RouteChanged:                  request.prevRouteType == routing.RouteTypeContinue && response.routeType == routing.RouteTypeNew,
+		PrevPacketsSentClientToServer: packetsSent,
+		PrevPacketsSentServerToClient: packetsSent,
+		PrevPacketsLostClientToServer: 0,
+		PrevPacketsLostServerToClient: 0,
 	}
 
-	if response.attemptFindRoute {
+	if response.attemptUpdateNearRelays && !request.desyncedNearRelays {
 		sessionData.RouteState.PLHistoryIndex = initialSessionData.RouteState.PLHistoryIndex + 1
 		sessionData.RouteState.PLHistorySamples = initialSessionData.RouteState.PLHistorySamples + 1
 	}
@@ -593,6 +612,7 @@ type sessionUpdateRequestConfig struct {
 	badRoute                  bool // The request sends up a route in the session data with relays that no longer exist
 	badNearRelay              bool // The request sends up a near relay with unroutable RTT
 	desyncedNearRelays        bool // The request sends up a different number of near relays than what is stored in the session data
+	sdkAborted                bool // The request sends up "next = false" when we expect the session to be on next
 }
 
 func NewSessionUpdateRequestConfig(t *testing.T) *sessionUpdateRequestConfig {
@@ -618,6 +638,7 @@ func NewSessionUpdateRequestConfig(t *testing.T) *sessionUpdateRequestConfig {
 		badRoute:                  false,
 		badNearRelay:              false,
 		desyncedNearRelays:        false,
+		sdkAborted:                false,
 	}
 }
 
@@ -642,26 +663,26 @@ func NewSessionUpdateBackendConfig(t *testing.T) *sessionUpdateBackendConfig {
 }
 
 type sessionUpdateResponseConfig struct {
-	numNearRelays        int32
-	unchangedSessionData bool // The backend should not have altered the session data
-	attemptNearRelays    bool // Should the backend have even attempted to find or update the near relays?
-	attemptFindRoute     bool // Should the backend have even attempted to find a route (run through the core logic)?
-	routeType            int
-	routeNumRelays       int32
-	proMode              bool
-	debug                bool // The backend should have sent down a debug string
+	numNearRelays           int32
+	unchangedSessionData    bool // The backend should not have altered the session data
+	attemptUpdateNearRelays bool // Should the backend have even attempted to update the near relays?
+	attemptFindRoute        bool // Should the backend have even attempted to find a route (run through the core logic)?
+	routeType               int
+	routeNumRelays          int32
+	proMode                 bool
+	debug                   bool // The backend should have sent down a debug string
 }
 
 func NewSessionUpdateResponseConfig(t *testing.T) *sessionUpdateResponseConfig {
 	return &sessionUpdateResponseConfig{
-		numNearRelays:        0,
-		unchangedSessionData: false,
-		attemptNearRelays:    false,
-		attemptFindRoute:     false,
-		routeType:            routing.RouteTypeDirect,
-		routeNumRelays:       0,
-		proMode:              false,
-		debug:                false,
+		numNearRelays:           0,
+		unchangedSessionData:    false,
+		attemptUpdateNearRelays: false,
+		attemptFindRoute:        false,
+		routeType:               routing.RouteTypeDirect,
+		routeNumRelays:          0,
+		proMode:                 false,
+		debug:                   false,
 	}
 }
 
@@ -819,34 +840,44 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	copy(tags[:], request.tags)
 
 	requestPacket := transport.SessionUpdatePacket{
-		Version:              request.sdkVersion,
-		SessionID:            request.sessionID,
-		UserHash:             request.userHash,
-		CustomerID:           request.buyerID,
-		DatacenterID:         request.datacenterID,
-		SliceNumber:          request.sliceNumber,
-		ClientRoutePublicKey: publicKey[:],
-		ServerRoutePublicKey: privateKey[:],
-		ClientAddress:        *clientAddr,
-		ServerAddress:        *serverAddr,
-		ClientPingTimedOut:   request.clientPingTimedOut,
-		NumTags:              int32(len(request.tags)),
-		Tags:                 tags,
-		SessionDataBytes:     int32(len(sessionDataSlice)),
-		SessionData:          requestSessionData,
-		NumNearRelays:        nearRelays.Count,
-		NearRelayIDs:         nearRelays.IDs,
-		NearRelayRTT:         nearRelays.RTTs,
-		NearRelayJitter:      nearRelays.Jitters,
-		NearRelayPacketLoss:  nearRelays.PacketLosses,
-		FallbackToDirect:     request.fallbackToDirect,
-		Next:                 request.prevRouteType != routing.RouteTypeDirect,
-		DirectRTT:            float32(request.directStats.RTT),
-		DirectJitter:         float32(request.directStats.Jitter),
-		DirectPacketLoss:     float32(request.directStats.PacketLoss),
-		NextRTT:              float32(request.nextStats.RTT),
-		NextJitter:           float32(request.nextStats.Jitter),
-		NextPacketLoss:       float32(request.nextStats.PacketLoss),
+		Version:                         request.sdkVersion,
+		SessionID:                       request.sessionID,
+		UserHash:                        request.userHash,
+		CustomerID:                      request.buyerID,
+		DatacenterID:                    request.datacenterID,
+		SliceNumber:                     request.sliceNumber,
+		ClientRoutePublicKey:            publicKey[:],
+		ServerRoutePublicKey:            privateKey[:],
+		ClientAddress:                   *clientAddr,
+		ServerAddress:                   *serverAddr,
+		ClientPingTimedOut:              request.clientPingTimedOut,
+		NumTags:                         int32(len(request.tags)),
+		Tags:                            tags,
+		SessionDataBytes:                int32(len(sessionDataSlice)),
+		SessionData:                     requestSessionData,
+		NumNearRelays:                   nearRelays.Count,
+		NearRelayIDs:                    nearRelays.IDs,
+		NearRelayRTT:                    nearRelays.RTTs,
+		NearRelayJitter:                 nearRelays.Jitters,
+		NearRelayPacketLoss:             nearRelays.PacketLosses,
+		FallbackToDirect:                request.fallbackToDirect,
+		Next:                            request.prevRouteType != routing.RouteTypeDirect,
+		DirectRTT:                       float32(request.directStats.RTT),
+		DirectJitter:                    float32(request.directStats.Jitter),
+		DirectPacketLoss:                float32(request.directStats.PacketLoss),
+		NextRTT:                         float32(request.nextStats.RTT),
+		NextJitter:                      float32(request.nextStats.Jitter),
+		NextPacketLoss:                  float32(request.nextStats.PacketLoss),
+		PacketsSentClientToServer:       uint64(request.sliceNumber) * 600,
+		PacketsSentServerToClient:       uint64(request.sliceNumber) * 600,
+		PacketsLostClientToServer:       0,
+		PacketsLostServerToClient:       0,
+		PacketsOutOfOrderClientToServer: 0,
+		PacketsOutOfOrderServerToClient: 0,
+	}
+
+	if request.sdkAborted {
+		requestPacket.Next = false
 	}
 
 	requestData, err := transport.MarshalPacket(&requestPacket)
@@ -943,8 +974,10 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 			request.badNearRelay,
 			request.prevRouteType != routing.RouteTypeDirect && response.routeType == routing.RouteTypeDirect,
 		)
-	} else {
+	} else if !request.sdkAborted {
 		routeInfo = prevRouteInfo
+	} else {
+		routeInfo.sessionVersion = prevRouteInfo.sessionVersion
 	}
 
 	expireTime := time.Now()
@@ -1003,7 +1036,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	}
 
 	numNearRelays := response.numNearRelays
-	if !response.attemptNearRelays {
+	if response.attemptUpdateNearRelays {
 		numNearRelays = request.numNearRelays
 	}
 
@@ -1023,6 +1056,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		latencyWorse,
 		commitVeto,
 		mispredictVeto,
+		request.sdkAborted,
 		committed,
 		commitCounter,
 		routeShader.Multipath,
@@ -1395,6 +1429,7 @@ func TestSessionUpdateDesyncedNearRelays(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.routeType = routing.RouteTypeDirect
+	response.attemptUpdateNearRelays = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
 	expectedMetrics.DirectSlices.Add(1)
@@ -1424,7 +1459,6 @@ func TestSessionUpdateHandlerFirstSlice(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
-	response.attemptNearRelays = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
 	expectedMetrics.DirectSlices.Add(1)
@@ -1453,7 +1487,7 @@ func TestSessionUpdateHandlerLocalDatacenter(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
-	response.attemptNearRelays = true
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1479,7 +1513,7 @@ func TestSessionUpdateHandlerDirectRoute(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
-	response.attemptNearRelays = true
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1507,6 +1541,7 @@ func TestSessionUpdateHandlerNextRoute(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1539,6 +1574,7 @@ func TestSessionUpdateNextRouteInternalIPs(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1570,6 +1606,7 @@ func TestSessionUpdateHandlerContinueRoute(t *testing.T) {
 	response.routeType = routing.RouteTypeContinue
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1604,6 +1641,7 @@ func TestSessionUpdateHandlerRouteRelayWentAway(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1638,11 +1676,43 @@ func TestSessionUpdateHandlerRouteSwitched(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 3
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
 	expectedMetrics.NextSlices.Add(1)
 	expectedMetrics.RouteSwitched.Add(1)
+
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+}
+
+// The SDK can sometimes "abort" a session by sending up "next = false"
+// in the session update request without falling back to direct.
+// For this case, we should veto the session.
+func TestSessionUpdateHandlerSDKAborted(t *testing.T) {
+	request := NewSessionUpdateRequestConfig(t)
+	request.sliceNumber = 2
+	request.directStats = getStats(badRTT)
+	request.nextStats = getStats(goodRTT)
+	request.numNearRelays = 2
+	request.nearRelayRTTType = goodRTT
+	request.prevRouteType = routing.RouteTypeContinue
+	request.prevRouteNumRelays = 2
+	request.sdkAborted = true
+
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true, RouteShader: core.NewRouteShader(), InternalConfig: core.NewInternalConfig()}
+	backend.datacenters = []routing.Datacenter{{ID: request.datacenterID}, {ID: request.datacenterID + 1}, {ID: request.datacenterID + 2}}
+	backend.datacenterMaps = []routing.DatacenterMap{{BuyerID: request.buyerID, DatacenterID: request.datacenterID}}
+	backend.numRouteMatrixRelays = 3
+
+	response := NewSessionUpdateResponseConfig(t)
+	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
+
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.SDKAborted.Add(1)
 
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
@@ -1669,6 +1739,7 @@ func TestSessionUpdateHandlerVetoNoRoute(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1705,6 +1776,7 @@ func TestSessionUpdateHandlerVetoMultipathOverloaded(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1734,6 +1806,7 @@ func TestSessionUpdateHandlerVetoLatencyWorse(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1763,6 +1836,7 @@ func TestSessionUpdateHandlerVetoMispredict(t *testing.T) {
 
 	response := NewSessionUpdateResponseConfig(t)
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1798,6 +1872,7 @@ func TestSessionUpdateHandlerCommitPending(t *testing.T) {
 	response.routeType = routing.RouteTypeContinue
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1832,6 +1907,7 @@ func TestSessionUpdateHandlerCommitVeto(t *testing.T) {
 	response := NewSessionUpdateResponseConfig(t)
 	response.routeType = routing.RouteTypeDirect
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1862,6 +1938,7 @@ func TestSessionUpdateMultipath(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
@@ -1890,6 +1967,7 @@ func TestSessionUpdateDebugResponse(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 	response.debug = true
 
@@ -1920,6 +1998,7 @@ func TestSessionUpdateESLProMode(t *testing.T) {
 	response.routeType = routing.RouteTypeNew
 	response.routeNumRelays = 2
 	response.numNearRelays = 2
+	response.attemptUpdateNearRelays = true
 	response.attemptFindRoute = true
 	response.proMode = true
 

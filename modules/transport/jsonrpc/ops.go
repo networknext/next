@@ -189,18 +189,20 @@ type buyer struct {
 	CompanyCode string `json:"company_code"`
 	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
+	HexID       string `json:"hexID"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() could not find Customer %s: %v", b.CompanyCode, err)
+			err = fmt.Errorf("Buyers() could not find Customer %s fo %s: %v", b.CompanyCode, b.String(), err)
 			s.Logger.Log("err", err)
 			return err
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
+			HexID:       fmt.Sprintf("%016x", b.ID),
 			CompanyName: c.Name,
 			CompanyCode: b.CompanyCode,
 			ShortName:   b.ShortName,
@@ -852,6 +854,7 @@ type DatacentersReply struct {
 
 type datacenter struct {
 	Name         string  `json:"name"`
+	HexID        string  `json:"hexID"`
 	ID           uint64  `json:"id"`
 	SignedID     int64   `json:"signed_id"`
 	Latitude     float32 `json:"latitude"`
@@ -863,6 +866,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:      d.Name,
+			HexID:     fmt.Sprintf("%016x", d.ID),
 			ID:        d.ID,
 			Latitude:  d.Location.Latitude,
 			Longitude: d.Location.Longitude,

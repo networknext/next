@@ -62,7 +62,7 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	}
 
 	relay := "\nrelay info:\n"
-	relay += "  ID                 : " + fmt.Sprintf("%d", reply.Relay.ID) + "\n"
+	relay += "  ID                 : " + fmt.Sprintf("%016x", reply.Relay.ID) + "\n"
 	relay += "  Name               : " + reply.Relay.Name + "\n"
 	relay += "  Addr               : " + reply.Relay.Addr + "\n"
 	relay += "  InternalAddr       : " + reply.Relay.InternalAddr + "\n"

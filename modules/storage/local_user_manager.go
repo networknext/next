@@ -130,7 +130,25 @@ func (lum *LocalUserManager) Roles(id string, opts ...management.ListOption) (*m
 func (lum *LocalUserManager) Update(id string, u *management.User) error {
 	for i := range lum.localUsers {
 		if *lum.localUsers[i].ID == id {
-			u.ID = lum.localUsers[i].ID
+			if u.ID == nil {
+				u.ID = lum.localUsers[i].ID
+			}
+			if u.Identities == nil {
+				u.Identities = []*management.UserIdentity{
+					{
+						UserID: u.ID,
+					},
+				}
+			}
+			if u.Name == nil {
+				u.Name = lum.localUsers[i].Name
+			}
+			if u.Email == nil {
+				u.Email = lum.localUsers[i].Email
+			}
+			if u.CreatedAt == nil {
+				u.CreatedAt = lum.localUsers[i].CreatedAt
+			}
 			lum.localUsers[i] = u
 			return nil
 		}

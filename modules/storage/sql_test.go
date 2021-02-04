@@ -2,7 +2,6 @@ package storage_test
 
 import (
 	"context"
-	"encoding/binary"
 	"math/rand"
 	"net"
 	"os"
@@ -144,10 +143,10 @@ func TestInsertSQL(t *testing.T) {
 		_, err := rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			// ID:          internalID,
+			ID:          internalID,
 			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
@@ -387,10 +386,10 @@ func TestDeleteSQL(t *testing.T) {
 		_, err := rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			// ID:          internalID,
+			ID:          internalID,
 			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
@@ -599,10 +598,10 @@ func TestUpdateSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			// ID:          internalID,
+			ID:          internalID,
 			ShortName:   customerWithID.Code,
 			CompanyCode: customerWithID.Code,
 			Live:        true,
@@ -968,9 +967,10 @@ func TestInternalConfig(t *testing.T) {
 		_, err := rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
+			ID:          internalID,
 			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
@@ -984,24 +984,23 @@ func TestInternalConfig(t *testing.T) {
 		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
-		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:        2,
-			RouteSwitchThreshold:        5,
-			MaxLatencyTradeOff:          10,
-			RTTVeto_Default:             -10,
-			RTTVeto_PacketLoss:          -20,
-			RTTVeto_Multipath:           -20,
-			MultipathOverloadThreshold:  500,
-			TryBeforeYouBuy:             true,
-			ForceNext:                   true,
-			LargeCustomer:               true,
-			Uncommitted:                 true,
-			HighFrequencyPings:          true,
-			RouteDiversity:              10,
-			MultipathThreshold:          35,
-			MispredictMultipathOverload: true,
-
-			MaxRTT: 300,
+		internalConfig := core.InternalConfig {
+			RouteSelectThreshold:       2,
+			RouteSwitchThreshold:       5,
+			MaxLatencyTradeOff:         10,
+			RTTVeto_Default:            -10,
+			RTTVeto_PacketLoss:         -20,
+			RTTVeto_Multipath:          -20,
+			MultipathOverloadThreshold: 500,
+			TryBeforeYouBuy:            true,
+			ForceNext:                  true,
+			LargeCustomer:              true,
+			Uncommitted:                true,
+			MaxRTT:                     300,
+			HighFrequencyPings:         true,
+			RouteDiversity:             10,
+			MultipathThreshold:         35,
+			EnableVanityMetrics:        true,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
@@ -1022,14 +1021,15 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, true, outerInternalConfig.LargeCustomer)
 		assert.Equal(t, true, outerInternalConfig.Uncommitted)
 		assert.Equal(t, true, outerInternalConfig.HighFrequencyPings)
-		assert.Equal(t, true, outerInternalConfig.MispredictMultipathOverload)
+		assert.Equal(t, true, outerInternalConfig.EnableVanityMetrics)
 		assert.Equal(t, int32(10), outerInternalConfig.RouteDiversity)
 		assert.Equal(t, int32(35), outerInternalConfig.MultipathThreshold)
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
+		assert.Equal(t, true, outerInternalConfig.EnableVanityMetrics)
 	})
 
 	t.Run("UpdateInternalConfig", func(t *testing.T) {
-		t.Skip() // working on it
+		// t.Skip() // working on it
 
 		// RouteSelectThreshold
 		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "RouteSelectThreshold", int32(1))
@@ -1136,13 +1136,19 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(50), checkInternalConfig.MultipathThreshold)
 
-		// MispredictMultipathOverload
-		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MispredictMultipathOverload", false)
+		// EnableVanityMetrics
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "EnableVanityMetrics", false)
 		assert.NoError(t, err)
 		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
 		assert.NoError(t, err)
-		assert.Equal(t, false, checkInternalConfig.MispredictMultipathOverload)
+		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
 
+		// EnableVanityMetrics
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "EnableVanityMetrics", false)
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
 	})
 
 	t.Run("RemoveInternalConfig", func(t *testing.T) {
@@ -1196,9 +1202,10 @@ func TestRouteShaders(t *testing.T) {
 		_, err := rand.Read(publicKey)
 		assert.NoError(t, err)
 
-		internalID := binary.LittleEndian.Uint64(publicKey[:8])
+		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
+			ID:          internalID,
 			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
@@ -1386,6 +1393,7 @@ func TestRouteShaders(t *testing.T) {
 	})
 
 	t.Run("RemoveRouteShader", func(t *testing.T) {
+		// causes flock errors when run with the rest of the tests
 		t.Skip()
 		err := db.RemoveRouteShader(context.Background(), outerBuyer.ID)
 		assert.NoError(t, err)
