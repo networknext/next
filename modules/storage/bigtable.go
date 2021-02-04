@@ -191,7 +191,7 @@ func (bt *BigTable) WriteRowInTable(ctx context.Context, rowKeys []string, dataM
 	timeNow := time.Now()
 	year, month, date := timeNow.Date()
 	location := timeNow.Location()
-	currentDateTime := bigtable.Time(time.Date(year, month, date+6, 0, 0, 0, 0, location)).TruncateToMilliseconds()
+	currentDateTime := bigtable.Time(time.Date(year, month, date, 0, 0, 0, 0, location)).TruncateToMilliseconds()
 
 	// Create the mutation for the rows
 	mut := bigtable.NewMutation()
@@ -332,16 +332,9 @@ func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
 //     Value       []byte
 //     Labels      []string
 // }
-func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, start string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
-	var ranges bigtable.RowSet
-	
-	if start != prefix {
-		// Get a range of all rows starting with a prefix from a specific row key onwards
-		ranges = bigtable.RowRangeList{bigtable.PrefixRange(prefix), bigtable.NewRange(start, "")}
-	} else {
-		// Get a range of all rows starting with a prefix
-		ranges = bigtable.RowRangeList{bigtable.PrefixRange(prefix)}
-	}
+func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
+	// Get a range of all rows starting with a prefix
+	prefixRange := bigtable.PrefixRange(prefix)
 	
 	// Create a slice of all the rows to return
 	values := make([]bigtable.Row, 0)
