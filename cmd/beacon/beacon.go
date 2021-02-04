@@ -94,7 +94,7 @@ func mainReturnWithCode() int {
 	// Create a local beaconer
 	var beaconer beacon.Beaconer = &beacon.LocalBeaconer{
 		Logger:  logger,
-		Metrics: &beaconServiceMetrics.BeaconMetrics,
+		Metrics: beaconServiceMetrics.BeaconMetrics,
 	}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -138,7 +138,7 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, &beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
+			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub beaconer", "err", err)
 				return 1

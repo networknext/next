@@ -3,15 +3,15 @@ package metrics
 import "context"
 
 type BeaconServiceMetrics struct {
-	ServiceMetrics ServiceMetrics
-	HandlerMetrics PacketHandlerMetrics
-	BeaconMetrics  BeaconMetrics
+	ServiceMetrics *ServiceMetrics
+	HandlerMetrics *PacketHandlerMetrics
+	BeaconMetrics  *BeaconMetrics
 }
 
 var EmptyBeaconServiceMetrics BeaconServiceMetrics = BeaconServiceMetrics{
-	ServiceMetrics: EmptyServiceMetrics,
-	HandlerMetrics: EmptyPacketHandlerMetrics,
-	BeaconMetrics:  EmptyBeaconMetrics,
+	ServiceMetrics: &EmptyServiceMetrics,
+	HandlerMetrics: &EmptyPacketHandlerMetrics,
+	BeaconMetrics:  &EmptyBeaconMetrics,
 }
 
 type BeaconMetrics struct {
@@ -20,7 +20,7 @@ type BeaconMetrics struct {
 	EntriesSent              Counter
 	EntriesSubmitted         Counter
 	EntriesFlushed           Counter
-	ErrorMetrics             BeaconErrorMetrics
+	ErrorMetrics             *BeaconErrorMetrics
 }
 
 var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
@@ -29,7 +29,7 @@ var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
 	EntriesSent:              &EmptyCounter{},
 	EntriesSubmitted:         &EmptyCounter{},
 	EntriesFlushed:           &EmptyCounter{},
-	ErrorMetrics:             EmptyBeaconErrorMetrics,
+	ErrorMetrics:             &EmptyBeaconErrorMetrics,
 }
 
 type BeaconErrorMetrics struct {
@@ -49,20 +49,23 @@ var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
 }
 
 func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconServiceMetrics, error) {
-	beaconServiceMetrics := BeaconServiceMetrics{}
+	beaconServiceMetrics := &BeaconServiceMetrics{}
 	var err error
 
-	serviceMetrics, err := NewServiceMetrics(ctx, metricsHandler, "beacon")
+	beaconServiceMetrics.ServiceMetrics, err = NewServiceMetrics(ctx, metricsHandler, "beacon")
 	if err != nil {
 		return nil, err
 	}
-	beaconServiceMetrics.ServiceMetrics = *serviceMetrics
 
-	handlerMetrics, err := NewPacketHandlerMetrics(ctx, metricsHandler, "beacon", "beacon", "Beacon", "beacon packet")
+	beaconServiceMetrics.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, metricsHandler, "beacon", "beacon", "Beacon", "beacon packet")
 	if err != nil {
 		return nil, err
 	}
-	beaconServiceMetrics.HandlerMetrics = *handlerMetrics
+
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics, err = NewBeaconErrorMetrics(ctx, metricsHandler)
+	if err != nil {
+		return nil, err
+	}
 
 	beaconServiceMetrics.BeaconMetrics.NonBeaconPacketsReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Non Beacon Packets Received",
@@ -119,7 +122,16 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	
+
+	return beaconServiceMetrics, nil
+}
+
+func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*BeaconErrorMetrics, error) {
+	beaconErrorMetrics := &BeaconErrorMetrics{}
+	var err error
+
+	beaconErrorMetrics.BeaconReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Read Packet Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.read.packet.failure",
@@ -130,7 +142,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconErrorMetrics.BeaconSerializePacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Serialize Packet Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.serialize.packet.failure",
@@ -141,9 +153,9 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
+	beaconErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Send Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.error.send_failure",
@@ -154,7 +166,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconErrorMetrics.BeaconChannelFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Channel Full",
 		ServiceName: "beacon",
 		ID:          "beacon.error.channel_full",
@@ -165,5 +177,5 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	return &beaconServiceMetrics, nil
+	return beaconErrorMetrics, nil
 }
