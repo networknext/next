@@ -1508,7 +1508,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCode str
 			continue
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCode)) {
+		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
+
+		if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 			meta.Anonymise()
 		}
 
