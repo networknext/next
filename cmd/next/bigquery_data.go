@@ -75,4 +75,5 @@ type BigQueryBillingEntry struct {
 	NextLatencyTooHigh              bigquery.NullBool
 	RouteChanged                    bigquery.NullBool
 	CommitVeto                      bigquery.NullBool
+	MultipathRestricted             bigquery.NullBool
 }

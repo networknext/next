@@ -182,6 +182,17 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					}
 
 					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+					
+					buyer, err := s.Storage.Buyer(session.BuyerID)
+					if err != nil {
+						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						session.Anonymise()
+					}
 
 					reply.Sessions = append(reply.Sessions, session)
 					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
@@ -189,7 +200,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					// Increment counter
 					s.Metrics.NoSlicesFailure.Add(1)
 				}
-			}
 		}
 	}
 
@@ -351,17 +361,17 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		liveIDString := strings.Join(sessionIDs, ",")
 
 		if len(rowsByHash) > 0 {
-			if err = s.GetHistoricalSlices(reply, rowsByHash, liveIDString, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		} else if len(rowsByID) > 0 {
-			if err = s.GetHistoricalSlices(reply, rowsByID, liveIDString, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		} else if len(rowsByHexID) > 0 {
-			if err = s.GetHistoricalSlices(reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
@@ -371,7 +381,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSlices(reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
 	var sessionMeta transport.SessionMeta
 
 	// Sort the sessions by timestamp
@@ -391,7 +401,7 @@ func (s *BuyersService) GetHistoricalSlices(reply *UserSessionsReply, rows []big
 			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
 				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-				err = fmt.Errorf("UserSessions() failed to fetch historic slice information: %v", err)
+				err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
 				return err
 			}
 			s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
@@ -399,6 +409,17 @@ func (s *BuyersService) GetHistoricalSlices(reply *UserSessionsReply, rows []big
 			// If a slice exists, add the session and the timestamp
 			if len(sliceRows) > 0 {
 				sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
+				if err != nil {
+					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					sessionMeta.Anonymise()
+				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
 				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
@@ -698,6 +719,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information from bigtable: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(metaRows) == 0 {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -722,7 +749,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
-
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -760,6 +786,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	} else {
 		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
+			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information from bigtable: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if len(sliceRows) == 0 {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
 			level.Error(s.Logger).Log("err", err)
