@@ -1455,7 +1455,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 
 		buyer, err := s.Storage.BuyerWithCompanyCode(companyCodeFilter)
 		if err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting company with code: %v", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return sessions, err
 		}
