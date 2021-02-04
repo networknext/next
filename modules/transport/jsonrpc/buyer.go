@@ -221,9 +221,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			endDate = time.Date(year, month, day, 0, 0, 0, 0, location)
 		} else {
 			// Parse the given date in short form layout using the local timezone
-			parsedTime, err := time.ParseInLocation(args.EndDate, "2006-Jul-09", location)
+			parsedTime, err := time.ParseInLocation(args.EndDate, "2006-01-09", location)
 			if err != nil {
-				err = fmt.Errorf("UserSessions() Could not parse %v using short form layout: %v", args.EndDate, err)
+				err = fmt.Errorf("UserSessions() Could not parse %v using YYYY-MM-DD layout: %v", args.EndDate, err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
