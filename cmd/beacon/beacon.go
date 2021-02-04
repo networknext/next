@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"os"
 	"os/signal"
@@ -22,79 +24,22 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/beacon"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 	"golang.org/x/sys/unix"
+
+	googlepubsub "cloud.google.com/go/pubsub"
 )
 
-const (
-	NEXT_CONNECTION_TYPE_UNKNOWN  = 0
-	NEXT_CONNECTION_TYPE_WIRED    = 1
-	NEXT_CONNECTION_TYPE_WIFI     = 2
-	NEXT_CONNECTION_TYPE_CELLULAR = 3
-	NEXT_CONNECTION_TYPE_MAX      = 3
+var (
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
-
-const (
-	NEXT_PLATFORM_UNKNOWN       = 0
-	NEXT_PLATFORM_WINDOWS       = 1
-	NEXT_PLATFORM_MAC           = 2
-	NEXT_PLATFORM_UNIX          = 3
-	NEXT_PLATFORM_SWITCH        = 4
-	NEXT_PLATFORM_PS4           = 5
-	NEXT_PLATFORM_IOS           = 6
-	NEXT_PLATFORM_XBOX_ONE      = 7
-	NEXT_PLATFORM_XBOX_SERIES_X = 8
-	NEXT_PLATFORM_PS5           = 9
-	NEXT_PLATFORM_MAX           = 9
-)
-
-type NextBeaconPacket struct {
-	Version          uint32
-	CustomerId       uint64
-	DatacenterId     uint64
-	UserHash         uint64
-	AddressHash      uint64
-	SessionId        uint64
-	PlatformId       int32
-	ConnectionType   int32
-	Enabled          bool
-	Upgraded         bool
-	Next             bool
-	FallbackToDirect bool
-}
-
-func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
-
-	stream.SerializeBits(&packet.Version, 8)
-
-	stream.SerializeBool(&packet.Enabled)
-	stream.SerializeBool(&packet.Upgraded)
-	stream.SerializeBool(&packet.Next)
-	stream.SerializeBool(&packet.FallbackToDirect)
-
-	hasDatacenterId := stream.IsWriting() && packet.DatacenterId != 0
-	stream.SerializeBool(&hasDatacenterId)
-
-	stream.SerializeUint64(&packet.CustomerId)
-
-	if hasDatacenterId {
-		stream.SerializeUint64(&packet.DatacenterId)
-	}
-
-	if packet.Upgraded {
-		stream.SerializeUint64(&packet.UserHash)
-		stream.SerializeUint64(&packet.AddressHash)
-		stream.SerializeUint64(&packet.SessionId)
-	}
-
-	stream.SerializeInteger(&packet.PlatformId, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX)
-
-	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
-
-	return stream.Error()
-}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -103,12 +48,14 @@ func main() {
 }
 
 func mainReturnWithCode() int {
+	fmt.Printf("beacon: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	serviceName := "beacon"
 
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
+	gcpOK := gcpProjectID != ""
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
@@ -122,17 +69,163 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	if gcpProjectID != "" {
+	// Get metrics handler
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Create beacon metrics
+	beaconServiceMetrics, err := metrics.NewBeaconServiceMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
+		return 1
+	}
+
+	if gcpOK {
+		// Stackdriver Profiler
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
 			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
 			return 1
 		}
 	}
 
+	// Create a local beaconer
+	var beaconer beacon.Beaconer = &beacon.LocalBeaconer{
+		Logger:  logger,
+		Metrics: beaconServiceMetrics.BeaconMetrics,
+	}
+
+	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+	if gcpOK || pubsubEmulatorOK {
+
+		pubsubCtx := ctx
+		if pubsubEmulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			clientCount, err := envvar.GetInt("BEACON_CLIENT_COUNT", 1)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			countThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_COUNT", 10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			byteThreshold, err := envvar.GetInt("BEACON_BATCHED_MESSAGE_MIN_BYTES", 512)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			// We do our own batching so don't stack the library's batching on top of ours
+			// Specifically, don't stack the message count thresholds
+			settings := googlepubsub.DefaultPublishSettings
+			settings.CountThreshold = 1
+			settings.ByteThreshold = byteThreshold
+			settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub beaconer", "err", err)
+				return 1
+			}
+
+			beaconer = pubsub
+		}
+	}
+
+	channelBufferSize, err := envvar.GetInt("CHANNEL_BUFFER_SIZE", 100000)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+	numGoroutines, err := envvar.GetInt("NUM_GOROUTINES", 1)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	var wg sync.WaitGroup
+	// Create error channel to error out from any goroutines
+	errChan := make(chan error, 1)
+
+	// Create an internal channel to receive beacon packets and submit them
+	beaconPacketChan := make(chan *transport.NextBeaconPacket, channelBufferSize)
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case beaconPacket := <-beaconPacketChan:
+					err := beaconer.Submit(ctx, beaconPacket)
+					if err != nil {
+						level.Error(logger).Log("msg", "Could not send beacon packet to Google Pubsub", "err", err)
+						beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Add(1)
+						errChan <- err
+						return
+					}
+
+					beaconServiceMetrics.BeaconMetrics.EntriesSent.Add(1)
+				case <-ctx.Done():
+					level.Error(logger).Log("err", ctx.Err())
+					errChan <- ctx.Err()
+					return
+				}
+			}
+		}()
+	}
+
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				beaconServiceMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(beaconServiceMetrics.ServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
+				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d beacon entry send failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Value()))
+				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Value()))
+				fmt.Printf("%d beacon entry publish failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
 
 		go func() {
@@ -141,6 +234,7 @@ func mainReturnWithCode() int {
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
+				errChan <- err
 				return
 			}
 		}()
@@ -166,8 +260,6 @@ func mainReturnWithCode() int {
 
 	udpPort := envvar.Get("UDP_PORT", "30000")
 
-	var wg sync.WaitGroup
-
 	wg.Add(numThreads)
 
 	lc := net.ListenConfig{
@@ -190,7 +282,7 @@ func mainReturnWithCode() int {
 
 	port, _ := strconv.Atoi(udpPort)
 
-	fmt.Printf("\nstarted beacon on port %d\n\n", port)
+	level.Info(logger).Log("msg", "Started beacon on port", "port", port)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -212,13 +304,15 @@ func mainReturnWithCode() int {
 
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 
-			packet := NextBeaconPacket{}
+			var beaconPacket *transport.NextBeaconPacket
 
 			for {
+				beaconPacket = &transport.NextBeaconPacket{}
 				data := dataArray[:]
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure.Add(1)
 					break
 				}
 
@@ -228,34 +322,44 @@ func mainReturnWithCode() int {
 
 				data = data[:size]
 
-				if data[0] != 118 {
+				// Check if we received a non-beacon packet
+				if data[0] != transport.PacketTypeBeacon {
+					level.Error(logger).Log("err", "unknown packet type", "packet_type", data[0])
+					beaconServiceMetrics.BeaconMetrics.NonBeaconPacketsReceived.Add(1)
 					continue
 				}
+
+				// Start timer for packet processing
+				timeStart := time.Now()
 
 				readStream := encoding.CreateReadStream(data[1:])
-				err = packet.Serialize(readStream)
+				err = beaconPacket.Serialize(readStream)
 				if err != nil {
 					fmt.Printf("error reading beacon packet: %v\n", err)
+					level.Error(logger).Log("msg", "failed to serialize beacon packet", "err", err)
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure.Add(1)
 					continue
 				}
 
-				fmt.Printf("beacon packet: %x, %x, %x, %x, %x, %d, %d, %v, %v, %v, %v\n",
-					packet.CustomerId,
-					packet.DatacenterId,
-					packet.UserHash,
-					packet.AddressHash,
-					packet.SessionId,
-					packet.PlatformId,
-					packet.ConnectionType,
-					packet.Enabled,
-					packet.Upgraded,
-					packet.Next,
-					packet.FallbackToDirect,
-				)
+				fmt.Printf("Beacon Packet: %+v\n", beaconPacket)
 
-				// todo
-				_ = fromAddr
+				// Insert packet into internal channel for local or bigquery
+				select {
+				case beaconPacketChan <- beaconPacket:
+					beaconServiceMetrics.BeaconMetrics.EntriesReceived.Add(1)
+				default:
+					level.Error(logger).Log("err", "Beacon channel full")
+					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Add(1)
+					continue
+				}
 
+				// Finish timing packet processing
+				milliseconds := float64(time.Since(timeStart).Milliseconds())
+				beaconServiceMetrics.HandlerMetrics.Duration.Set(milliseconds)
+
+				if milliseconds > 100 {
+					beaconServiceMetrics.HandlerMetrics.LongDuration.Add(1)
+				}
 			}
 
 			wg.Done()
@@ -267,7 +371,15 @@ func mainReturnWithCode() int {
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
-	<-sigint
 
-	return 0
+	select {
+	case <-sigint:
+		return 0
+	case <-ctx.Done():
+		// Let the goroutines finish up
+		wg.Wait()
+		return 1
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		return 1
+	}
 }

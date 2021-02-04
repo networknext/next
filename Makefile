@@ -254,6 +254,10 @@ ifndef FEATURE_VANITY_METRIC
 export FEATURE_VANITY_METRIC = false
 endif
 
+ifndef BEACON_ENTRY_VETO
+export BEACON_ENTRY_VETO = false
+endif
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -361,6 +365,10 @@ dev-server-backend-valve: build-server-backend
 dev-beacon: build-beacon ## runs a local beacon
 	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
 
+.PHONY: dev-beacon-inserter
+dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
+	@PORT=35001 ./dist/beacon_inserter
+
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
@@ -457,6 +465,12 @@ build-relay-backend:
 build-beacon:
 	@printf "Building beacon..."
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon ./cmd/beacon/beacon.go
+	@printf "done\n"
+
+.PHONY: build-beacon-inserter
+build-beacon-inserter:
+	@printf "Building beacon inserter..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
 	@printf "done\n"
 
 .PHONY: build-server-backend
