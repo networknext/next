@@ -111,9 +111,10 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions   []transport.SessionMeta `json:"sessions"`
-	TimeStamps []time.Time             `json:"time_stamps"`
-	EndDate    time.Time               `json:"end_date"`
+	Sessions     []transport.SessionMeta `json:"sessions"`
+	TimeStamps   []time.Time             `json:"time_stamps"`
+	EndDate      time.Time               `json:"end_date"`
+	MoreSessions bool                    `json:"more_sessions"`
 }
 
 type SessionTimestamp struct {
@@ -300,6 +301,9 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 		if len(rows) == 0 {
 			break
 		} else if len(rows)+len(btRows) > MaxHistoricalSessions {
+			// There are more session to show
+			reply.MoreSessions = true
+
 			if endDate != origEndDate {
 				// Set the reply endDate for next request to start from this date
 				reply.EndDate = endDate
