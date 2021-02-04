@@ -102,6 +102,50 @@ func TestUserSessions(t *testing.T) {
 
 	var storer = storage.InMemory{}
 
+	buyer0 := routing.Buyer{
+		ID:          0,
+		CompanyCode: "local0",
+	}
+	buyer7 := routing.Buyer{
+		ID:          777,
+		CompanyCode: "local7",
+	}
+	buyer8 := routing.Buyer{
+		ID:          888,
+		CompanyCode: "local8",
+	}
+	buyer9 := routing.Buyer{
+		ID:          999,
+		CompanyCode: "local9",
+	}
+
+	customer0 := routing.Customer{
+		Code: "local0",
+		Name: "Local0",
+	}
+	customer7 := routing.Customer{
+		Code: "local7",
+		Name: "Local7",
+	}
+	customer8 := routing.Customer{
+		Code: "local8",
+		Name: "Local8",
+	}
+	customer9 := routing.Customer{
+		Code: "local9",
+		Name: "Local9",
+	}
+
+	ctx := context.Background()
+	storer.AddBuyer(ctx, buyer0)
+	storer.AddBuyer(ctx, buyer7)
+	storer.AddBuyer(ctx, buyer8)
+	storer.AddBuyer(ctx, buyer9)
+	storer.AddCustomer(ctx, customer0)
+	storer.AddCustomer(ctx, customer7)
+	storer.AddCustomer(ctx, customer8)
+	storer.AddCustomer(ctx, customer9)
+
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -148,7 +192,6 @@ func TestUserSessions(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
 
-	ctx := context.Background()
 	logger := log.NewNopLogger()
 
 	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
@@ -690,9 +733,9 @@ func TestTopSessions(t *testing.T) {
 	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", buyerID1, minutes), 150, sessionID3)
 	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", buyerID1, minutes), 150, sessionID4)
 
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, DeltaRTT: 50}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, DeltaRTT: 50, BuyerID: 222}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100, BuyerID: 111}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150, BuyerID: 111}.RedisString(), time.Hour)
 
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
