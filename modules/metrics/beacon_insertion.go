@@ -2,52 +2,63 @@ package metrics
 
 import "context"
 
+// BeaconInserterServiceMetrics defines a set of metrics for the beacon insertion service.
 type BeaconInserterServiceMetrics struct {
-	ServiceMetrics        ServiceMetrics
-	BeaconInserterMetrics BeaconInserterMetrics
+	ServiceMetrics        *ServiceMetrics
+	BeaconInserterMetrics *BeaconInserterMetrics
 }
 
+// EmptyBeaconInserterServiceMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBeaconInserterServiceMetrics BeaconInserterServiceMetrics = BeaconInserterServiceMetrics{
-	ServiceMetrics:        EmptyServiceMetrics,
-	BeaconInserterMetrics: EmptyBeaconInserterMetrics,
+	ServiceMetrics:        &EmptyServiceMetrics,
+	BeaconInserterMetrics: &EmptyBeaconInserterMetrics,
 }
 
+// BeaconInserterMetrics defines a set of metrics for monitoring the beacon insertion service.
 type BeaconInserterMetrics struct {
 	EntriesTransfered Counter
 	EntriesSubmitted  Counter
 	EntriesQueued     Gauge
 	EntriesFlushed    Counter
-	ErrorMetrics      BeaconInserterErrorMetrics
+	ErrorMetrics      *BeaconInserterErrorMetrics
 }
 
+// EmptyBeaconInserterMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBeaconInserterMetrics BeaconInserterMetrics = BeaconInserterMetrics{
 	EntriesSubmitted: &EmptyCounter{},
 	EntriesQueued:    &EmptyGauge{},
 	EntriesFlushed:   &EmptyCounter{},
-	ErrorMetrics:     EmptyBeaconInserterErrorMetrics,
+	ErrorMetrics:     &EmptyBeaconInserterErrorMetrics,
 }
 
+// BeaconInserterErrorMetrics defines a set of metrics for recording errors for the beacon insertion service.
 type BeaconInserterErrorMetrics struct {
 	BeaconInserterReadFailure        Counter
 	BeaconInserterBatchedReadFailure Counter
 	BeaconInserterWriteFailure       Counter
 }
 
+// EmptyBeaconInserterErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBeaconInserterErrorMetrics BeaconInserterErrorMetrics = BeaconInserterErrorMetrics{
 	BeaconInserterReadFailure:        &EmptyCounter{},
 	BeaconInserterBatchedReadFailure: &EmptyCounter{},
 	BeaconInserterWriteFailure:       &EmptyCounter{},
 }
 
+// NewBeaconInserterServiceMetrics creates the metrics that the beacon insertion service will use.
 func NewBeaconInserterServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconInserterServiceMetrics, error) {
-	beaconInserterServiceMetrics := BeaconInserterServiceMetrics{}
+	beaconInserterServiceMetrics := &BeaconInserterServiceMetrics{}
 	var err error
 
-	serviceMetrics, err := NewServiceMetrics(ctx, metricsHandler, "beacon_inserter")
+	beaconInserterServiceMetrics.ServiceMetrics, err = NewServiceMetrics(ctx, metricsHandler, "beacon_inserter")
 	if err != nil {
 		return nil, err
 	}
-	beaconInserterServiceMetrics.ServiceMetrics = *serviceMetrics
+
+	beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics, err = NewBeaconInserterErrorMetrics(ctx, metricsHandler)
+	if err != nil {
+		return nil, err
+	}
 
 	beaconInserterServiceMetrics.BeaconInserterMetrics.EntriesTransfered, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Inserter Entries Transfered",
@@ -93,7 +104,15 @@ func NewBeaconInserterServiceMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics.BeaconInserterReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	return &beaconInserterServiceMetrics, nil
+}
+
+// NewBeaconInserterErrorMetrics creates the error metrics that the BeaconInserterServiceMetrics will use.
+func NewBeaconInserterErrorMetrics(ctx context.Context, metricsHandler Handler) (*BeaconInserterErrorMetrics, error) {
+	beaconInserterErrorMetrics := &BeaconInserterErrorMetrics{}
+	var err error
+
+	beaconInserterErrorMetrics.BeaconInserterReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Inserter Read Failure",
 		ServiceName: "beacon_inserter",
 		ID:          "beacon_inserter.error.read_failure",
@@ -104,7 +123,7 @@ func NewBeaconInserterServiceMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics.BeaconInserterBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconInserterErrorMetrics.BeaconInserterBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Inserter Batched Read Failure",
 		ServiceName: "beacon_inserter",
 		ID:          "beacon_inserter.error.batched_read_failure",
@@ -115,7 +134,7 @@ func NewBeaconInserterServiceMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics.BeaconInserterWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconInserterErrorMetrics.BeaconInserterWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Inserter Write Failure",
 		ServiceName: "beacon_inserter",
 		ID:          "beacon_inserter.error.write_failure",
@@ -126,5 +145,5 @@ func NewBeaconInserterServiceMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	return &beaconInserterServiceMetrics, nil
+	return beaconInserterErrorMetrics, nil
 }

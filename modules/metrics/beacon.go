@@ -2,18 +2,21 @@ package metrics
 
 import "context"
 
+// BeaconServiceMetrics defines a set of metrics for the beacon service.
 type BeaconServiceMetrics struct {
 	ServiceMetrics *ServiceMetrics
 	HandlerMetrics *PacketHandlerMetrics
 	BeaconMetrics  *BeaconMetrics
 }
 
+// EmptyBeaconServiceMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBeaconServiceMetrics BeaconServiceMetrics = BeaconServiceMetrics{
 	ServiceMetrics: &EmptyServiceMetrics,
 	HandlerMetrics: &EmptyPacketHandlerMetrics,
 	BeaconMetrics:  &EmptyBeaconMetrics,
 }
 
+// BeconMetrics defines a set of metrics for monitoring beacon packets.
 type BeaconMetrics struct {
 	NonBeaconPacketsReceived Counter
 	EntriesReceived          Counter
@@ -23,6 +26,7 @@ type BeaconMetrics struct {
 	ErrorMetrics             *BeaconErrorMetrics
 }
 
+// EmptyBeaconMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
 	NonBeaconPacketsReceived: &EmptyCounter{},
 	EntriesReceived:          &EmptyCounter{},
@@ -32,6 +36,7 @@ var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
 	ErrorMetrics:             &EmptyBeaconErrorMetrics,
 }
 
+// BeaconErrorMetrics defines a set of metrics for recording errors for the beacon service.
 type BeaconErrorMetrics struct {
 	BeaconReadPacketFailure      Counter
 	BeaconSerializePacketFailure Counter
@@ -40,6 +45,7 @@ type BeaconErrorMetrics struct {
 	BeaconChannelFull            Counter
 }
 
+// EmptyBeaconErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
 	BeaconReadPacketFailure:      &EmptyCounter{},
 	BeaconSerializePacketFailure: &EmptyCounter{},
@@ -48,6 +54,7 @@ var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
 	BeaconChannelFull:            &EmptyCounter{},
 }
 
+// NewBeaconServiceMetrics creates the metrics that the beacon service will use.
 func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconServiceMetrics, error) {
 	beaconServiceMetrics := &BeaconServiceMetrics{}
 	var err error
@@ -122,11 +129,10 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	
-
 	return beaconServiceMetrics, nil
 }
 
+// NewBeaconErrorMetrics creates the error metrics that the BeaconServiceMetrics will use.
 func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*BeaconErrorMetrics, error) {
 	beaconErrorMetrics := &BeaconErrorMetrics{}
 	var err error

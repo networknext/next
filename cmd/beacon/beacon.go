@@ -186,13 +186,10 @@ func mainReturnWithCode() int {
 					level.Error(logger).Log("err", ctx.Err())
 					errChan <- ctx.Err()
 					return
-				default:
 				}
 			}
 		}()
 	}
-
-	// TODO: setup stackdriver metrics
 
 	// Setup the stats print routine
 	{
@@ -204,7 +201,6 @@ func mainReturnWithCode() int {
 
 		go func() {
 			for {
-
 				beaconServiceMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
@@ -286,7 +282,7 @@ func mainReturnWithCode() int {
 
 	port, _ := strconv.Atoi(udpPort)
 
-	fmt.Printf("\nstarted beacon on port %d\n\n", port)
+	level.Info(logger).Log("msg", "Started beacon on port", "port", port)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -346,9 +342,6 @@ func mainReturnWithCode() int {
 				}
 
 				fmt.Printf("Beacon Packet: %+v\n", beaconPacket)
-
-				// Not sure if we need fromAddr for anything else
-				_ = fromAddr
 
 				// Insert packet into internal channel for local or bigquery
 				select {
