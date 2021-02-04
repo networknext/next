@@ -251,14 +251,15 @@ export default class AccountSettings extends Vue {
     }
 
     Promise.all(promises)
-      .then((responses: Array<any>) => {
+      .then(() => {
         // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
         this.$authService.refreshToken()
         this.$refs.responseAlert.setMessage('Account settings updated successfully')
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.$refs.responseAlert.setMessage('')
-          this.$refs.responseAlert.setAlertType(AlertType.DEFAULT)
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {

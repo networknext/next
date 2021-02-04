@@ -44,7 +44,7 @@
               $store.getters.currentPage == 'user-tool' ||
               $store.getters.currentPage == 'user-sessions'
           }"
-          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
+          v-if="!$store.getters.isAnonymous"
         >User Tool</router-link>
       </li>
       <li class="nav-item text-nowrap">

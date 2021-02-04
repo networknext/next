@@ -115,7 +115,7 @@
                     {{ this.meta.location.isp != '' ? this.meta.location.isp : 'Unknown' }}
                   </em>
                 </dd>
-                <div v-if="!$store.getters.isAnonymous">
+                <div v-if="(!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus && getCustomerCode(this.meta.customer_id) === $store.getters.userProfile.companyCode) || $store.getters.isAdmin">
                   <dt>
                     User Hash
                   </dt>
@@ -354,6 +354,17 @@ export default class SessionDetails extends Vue {
       }
     }
     return 'Private'
+  }
+
+  private getCustomerCode (buyerID: string) {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerID) {
+        return allBuyers[i].company_code
+      }
+    }
+    return ''
   }
 
   private getBuyerIsLive (buyerID: string) {

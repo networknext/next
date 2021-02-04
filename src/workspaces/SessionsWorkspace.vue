@@ -23,7 +23,7 @@
                 data-placement="right"
                 title="Unique ID of the session">Session ID</span>
             </th>
-            <th v-if="$store.getters.isAdmin">
+            <th v-if="!$store.getters.isAnonymous">
               <span
                 data-toggle="tooltip"
                 data-placement="right"
@@ -90,7 +90,7 @@
                 v-bind:data-intercom="index"
               >{{ session.id }}</router-link>
             </td>
-            <td v-if="$store.getters.isAdmin">
+            <td v-if="!$store.getters.isAnonymous">
               <router-link
                 v-bind:to="`/user-tool/${session.user_hash}`"
                 class="text-dark fixed-width"
