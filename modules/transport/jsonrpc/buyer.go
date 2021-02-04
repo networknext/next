@@ -230,7 +230,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 		// Fetch historic sessions by user hash if there are any
 		for {
-			rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter), bigtable.LimitRows(5))
+			rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
 			if err != nil {
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 				err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -240,8 +240,20 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 			
 			// Break out if there weren't any rows or if we went over the max historical sessions per request
-			if len(rows) == 0 || len(rows) + len(rowsByHash) > MaxHistoricalSessions {
+			if len(rows) == 0 {
 				break
+			} else if len(rows) + len(rowsByHash) > MaxHistoricalSessions {
+				if endDate != origEndDate {
+					// Set the reply endDate for next request to start from this date
+					reply.EndDate = endDate
+					break
+				} else {
+					// Went over the max historical sessions for the initial request, include as many as can
+					rowsByHash = append(rowsByHash, rows[0:MaxHistoricalSessions])
+					// Set the reply endDate to be the current start date for the next request
+					reply.EndDate = startDate
+					break
+				}
 			}
 			rowsByHash = append(rowsByHash, rows)
 
@@ -250,7 +262,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			startDate = startDate.Add(time.Hour*-24)
 
 			// Update the chain filter
-			chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+			chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
 				bigtable.LatestNFilter(1), // Gets the latest cell from the "meta" column
 				bigtable.TimestampRangeFilter(startDate, endDate), // Gets the rows within the start and end date, inclusive
 			)
@@ -258,7 +270,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 		// Fetch historic sessions by user ID if there are any
 		for {
-			rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(5))
+			rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
 			if err != nil {
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 				err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -272,13 +284,13 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				break
 			} else if len(rows) + len(rowsByID) > MaxHistoricalSessions {
 				if endDate != origEndDate {
-					// Set the reply endDate for next request to start from this date
+					// Set the reply endDate to the current end date for next request
 					reply.EndDate = endDate
 					break
 				} else {
-					// Went over the max historical sessions for the first request, include as many as can
-					rowsByID = rows[0:MaxHistoricalSessions]
-					// Set the reply endDate to start with the start date for the next request
+					// Went over the max historical sessions for the initial request, include as many as can
+					rowsByID = append(rowsByID, rows[0:MaxHistoricalSessions])
+					// Set the reply endDate to be the current start date for the next request
 					reply.EndDate = startDate
 					break
 				}
@@ -290,7 +302,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			startDate = startDate.Add(time.Hour*-24)
 
 			// Update the chain filter
-			chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+			chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
 				bigtable.LatestNFilter(1), // Gets the latest cell from the "meta" column
 				bigtable.TimestampRangeFilter(startDate, endDate), // Gets the rows within the start and end date, inclusive
 			)
@@ -298,7 +310,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 		for {
 			// Fetch historic sessions by hex user ID if there are any
-			rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(5))
+			rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
 			if err != nil {
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 				err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
@@ -308,8 +320,20 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 			// Break out if there weren't any rows or if we went over the max historical sessions per request
-			if len(rows) == 0 || len(rows[0]) + len(rowsByHexID) > MaxHistoricalSessions {
+			if len(rows) == 0 {
 				break
+			} else if len(rows) + len(rowsByHexID) > MaxHistoricalSessions {
+				if endDate != origEndDate {
+					// Set the reply endDate for next request to start from this date
+					reply.EndDate = endDate
+					break
+				} else {
+					// Went over the max historical sessions for the initial request, include as many as can
+					rowsByHexID = append(rowsByHexID, rows[0:MaxHistoricalSessions])
+					// Set the reply endDate to be the current start date for the next request
+					reply.EndDate = startDate
+					break
+				}
 			}
 			rowsByHexID = append(rowsByHexID, rows)
 
@@ -318,7 +342,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			startDate = startDate.Add(time.Hour*-24)
 
 			// Update the chain filter
-			chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+			chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
 				bigtable.LatestNFilter(1), // Gets the latest cell from the "meta" column
 				bigtable.TimestampRangeFilter(startDate, endDate), // Gets the rows within the start and end date, inclusive
 			)
