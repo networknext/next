@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"strings"
 )
 
+// MetricType represents the different types of metrics that the backend uses
 type MetricType int
 
 const (
@@ -15,6 +16,7 @@ const (
 	MetricTypeGauge   MetricType = 2
 )
 
+// MetricTypeText converts the metric type to text
 func MetricTypeText(metricType MetricType) string {
 	switch metricType {
 	case MetricTypeCounter:
@@ -26,6 +28,7 @@ func MetricTypeText(metricType MetricType) string {
 	}
 }
 
+// ParseMetricType parses a string representation to its corresponding metric type
 func ParseMetricType(metricType string) MetricType {
 	switch metricType {
 	case "counter":
@@ -37,78 +40,29 @@ func ParseMetricType(metricType string) MetricType {
 	}
 }
 
+// MetricsDashboard contains all metric data for a single dashboard in StackDriver
 type MetricsDashboard struct {
-	id          string
-	displayName string
-	columns     uint32
-	charts      []MetricsChart
+	ID          string         `json:"id"`          // A unique ID for the dashboard that is found in the URL
+	Etag        string         `json:"etag"`        // A unique tag that changes each time the dashboard is updated
+	DisplayName string         `json:"displayName"` // The display name for the dashboard
+	Columns     string         `json:"columns"`     // The number of charts the dashboard shows per column
+	Charts      []MetricsChart `json:"charts"`      // The list of charts
 }
 
-func (d *MetricsDashboard) UnmarshalJSON(data []byte) error {
-	fields := map[string]interface{}{}
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-
-	var ok bool
-
-	d.displayName, ok = fields["displayName"].(string)
-	if !ok {
-		return errors.New("displayName is not a string type")
-	}
-
-	columnsString, ok := fields["columns"].(string)
-	if !ok {
-		return errors.New("columns is not a string type")
-	}
-
-	columns, err := strconv.ParseUint(columnsString, 10, 32)
-	if err != nil {
-		return err
-	}
-	d.columns = uint32(columns)
-
-	chartsArray, ok := fields["charts"].([]interface{})
-	if !ok {
-		return errors.New("charts is not an array type")
-	}
-
-	for i := 0; i < len(chartsArray); i++ {
-		chartMap, ok := chartsArray[i].(map[string]interface{})
-		if !ok {
-			return errors.New("chart is not an object type")
-		}
-
-		chartJSON, err := json.Marshal(chartMap)
-		if err != nil {
-			return err
-		}
-
-		var chart MetricsChart
-		if err := json.Unmarshal(chartJSON, &chart); err != nil {
-			return err
-		}
-		d.charts = append(d.charts, chart)
-	}
-
-	d.id, ok = fields["id"].(string)
-	if !ok {
-		return errors.New("id is not a string type")
-	}
-
-	return nil
-}
-
-func (d MetricsDashboard) GenerateDashboardJSON(etag string) (string, error) {
+// MarshalCompleteDashboardJSON generates the full JSON representation of the metrics dashboard
+// that the gcloud CLI expects to receive for creating and updating dashboards.
+// Note that this is NOT the same "compact" JSON schema that the next tool uses.
+// The "compact" JSON schema is handled by the default implementation of json.Marshal()
+func (d MetricsDashboard) MarshalCompleteDashboardJSON() (string, error) {
 	charts := []interface{}{}
 
-	for _, chart := range d.charts {
+	for _, chart := range d.Charts {
 		metrics := []interface{}{}
 
-		for _, metric := range chart.metrics {
+		for _, metric := range chart.Metrics {
 			var aggregatorType string
 
-			if metric.metricType == MetricTypeCounter {
+			if metric.MetricType == MetricTypeCounter {
 				aggregatorType = "REDUCE_SUM"
 			} else {
 				aggregatorType = "REDUCE_MAX"
@@ -123,7 +77,7 @@ func (d MetricsDashboard) GenerateDashboardJSON(etag string) (string, error) {
 							"crossSeriesReducer": aggregatorType,
 							"perSeriesAligner":   "ALIGN_MEAN",
 						},
-						"filter": fmt.Sprintf("metric.type=\"custom.googleapis.com/%s\" resource.type=\"gce_instance\"", metric.id),
+						"filter": fmt.Sprintf("metric.type=\"custom.googleapis.com/%s\" resource.type=\"gce_instance\"", metric.ID),
 					},
 				},
 			}
@@ -132,7 +86,7 @@ func (d MetricsDashboard) GenerateDashboardJSON(etag string) (string, error) {
 		}
 
 		c := map[string]interface{}{
-			"title": chart.title,
+			"title": chart.Title,
 			"xyChart": map[string]interface{}{
 				"chartOptions": map[string]interface{}{
 					"mode": "COLOR",
@@ -150,16 +104,16 @@ func (d MetricsDashboard) GenerateDashboardJSON(etag string) (string, error) {
 	}
 
 	fields := map[string]interface{}{
-		"displayName": d.displayName,
+		"displayName": d.DisplayName,
 		"gridLayout": map[string]interface{}{
-			"columns": fmt.Sprintf("%d", d.columns),
+			"columns": d.Columns,
 			"widgets": charts,
 		},
-		"name": "projects/network-next-v3-stackdriver-ws/dashboards/" + d.id,
+		"name": "projects/network-next-v3-stackdriver-ws/dashboards/" + d.ID,
 	}
 
-	if len(etag) > 0 {
-		fields["etag"] = etag
+	if len(d.Etag) > 0 {
+		fields["etag"] = d.Etag
 	}
 
 	result, err := json.Marshal(&fields)
@@ -170,53 +124,105 @@ func (d MetricsDashboard) GenerateDashboardJSON(etag string) (string, error) {
 	return string(result), nil
 }
 
-type MetricsChart struct {
-	title   string
-	metrics []Metric
-}
-
-func (c *MetricsChart) UnmarshalJSON(data []byte) error {
-	fields := map[string]interface{}{}
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
+// UnmarshalCompleteDashboardJSON unmarshals the JSON from the gcloud CLI to a metrics dashboard type.
+// Note that this unmarshals the complete JSON schma, not the "compact" schema the next tool uses.
+// The "compact" JSON schema is handled by the default implementation of json.Unmarshal()
+func (d *MetricsDashboard) UnmarshalCompleteDashboardJSON(fields map[string]interface{}) error {
+	idString := fields["name"].(string)
+	slashIndex := strings.LastIndex(idString, "/")
+	if slashIndex == -1 {
+		return errors.New("dashboard ID has bad form")
 	}
 
-	var ok bool
+	d.ID = idString[slashIndex+1:]
+	d.Etag = fields["etag"].(string)
+	d.DisplayName = fields["displayName"].(string)
+	d.Columns = fields["gridLayout"].(map[string]interface{})["columns"].(string)
 
-	c.title, ok = fields["title"].(string)
-	if !ok {
-		return errors.New("title is not a string type")
-	}
+	var charts []MetricsChart
+	chartsInterfaceArray := fields["gridLayout"].(map[string]interface{})["widgets"].([]interface{})
+	for i := 0; i < len(chartsInterfaceArray); i++ {
+		chartMap := chartsInterfaceArray[i].(map[string]interface{})
 
-	metricsArray, ok := fields["metrics"].([]interface{})
-	if !ok {
-		return errors.New("metrics is not an array type")
-	}
-
-	for i := 0; i < len(metricsArray); i++ {
-		metricMap, ok := metricsArray[i].(map[string]interface{})
-		if !ok {
-			return errors.New("metric is not an object type")
+		chart := MetricsChart{
+			Title: chartMap["title"].(string),
 		}
 
-		metricJSON, err := json.Marshal(metricMap)
-		if err != nil {
-			return err
+		var metrics []Metric
+		metricsInterfaceArray := chartMap["xyChart"].(map[string]interface{})["dataSets"].([]interface{})
+		for j := 0; j < len(metricsInterfaceArray); j++ {
+			metricMap := metricsInterfaceArray[j].(map[string]interface{})["timeSeriesQuery"].(map[string]interface{})["timeSeriesFilter"].(map[string]interface{})
+
+			var metricType MetricType
+			switch metricMap["aggregation"].(map[string]interface{})["crossSeriesReducer"].(string) {
+			case "REDUCE_SUM":
+				metricType = MetricTypeCounter
+
+			case "REDUCE_MAX":
+				metricType = MetricTypeGauge
+			}
+
+			filter := metricMap["filter"].(string)
+			filter = strings.TrimPrefix(filter, "metric.type=\"custom.googleapis.com/")
+			filter = strings.TrimSuffix(filter, "\" resource.type=\"gce_instance\"")
+
+			metric := Metric{
+				MetricType: metricType,
+				ID:         filter,
+			}
+
+			metrics = append(metrics, metric)
 		}
 
-		var metric Metric
-		if err := json.Unmarshal(metricJSON, &metric); err != nil {
-			return err
-		}
-		c.metrics = append(c.metrics, metric)
+		chart.Metrics = metrics
+
+		charts = append(charts, chart)
 	}
 
+	d.Charts = charts
 	return nil
 }
 
+// UnmarshalCompleteDashboardArrayJSON unmarshals the JSON from the gcloud CLI to an array of metrics dashboards.
+// Note that this unmarshals the complete JSON schma, not the "compact" schema the next tool uses.
+func UnmarshalCompleteDashboardArrayJSON(data []byte) ([]MetricsDashboard, error) {
+	dashboardInterfaceArray := []interface{}{}
+	if err := json.Unmarshal(data, &dashboardInterfaceArray); err != nil {
+		return nil, err
+	}
+
+	var dashboards []MetricsDashboard
+	for i := 0; i < len(dashboardInterfaceArray); i++ {
+		var dashboard MetricsDashboard
+		if err := dashboard.UnmarshalCompleteDashboardJSON(dashboardInterfaceArray[i].(map[string]interface{})); err != nil {
+			return nil, err
+		}
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	return dashboards, nil
+}
+
+// MetricsChart represents a single chart on a metrics dashboard
+type MetricsChart struct {
+	Title   string   `json:"title"`   // The name of the chart
+	Metrics []Metric `json:"metrics"` // The metrics within the chart
+}
+
+// Metric represents a single metric within a chart in a dashboard
 type Metric struct {
-	metricType MetricType
-	id         string
+	MetricType MetricType `json:"type"` // The type of metric, this will impact how the data is aggregated
+	ID         string     `json:"id"`   // The metric's unique ID
+}
+
+func (m Metric) MarshalJSON() ([]byte, error) {
+	fields := map[string]interface{}{
+		"type": MetricTypeText(m.MetricType),
+		"id":   m.ID,
+	}
+
+	return json.Marshal(fields)
 }
 
 func (m *Metric) UnmarshalJSON(data []byte) error {
@@ -234,9 +240,9 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	if metricType == MetricTypeUnknown {
 		return fmt.Errorf("unknown metric type %q", metricTypeString)
 	}
-	m.metricType = metricType
+	m.MetricType = metricType
 
-	m.id, ok = fields["id"].(string)
+	m.ID, ok = fields["id"].(string)
 	if !ok {
 		return errors.New("id is not a string type")
 	}
@@ -244,20 +250,35 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func getMetricsDashboards() error {
-	return nil
+func getMetricsDashboards(dashboardFilter string) ([]MetricsDashboard, error) {
+	var success bool
+	var output string
+
+	if len(dashboardFilter) > 0 {
+		success, output = bashQuiet(fmt.Sprintf("gcloud monitoring dashboards list --project=network-next-v3-stackdriver-ws --format=json --filter=\"name:%s\"", dashboardFilter))
+		if !success {
+			return nil, fmt.Errorf("could not list dashboards: %s", output)
+		}
+	} else {
+		success, output = bashQuiet("gcloud monitoring dashboards list --project=network-next-v3-stackdriver-ws --format=json")
+		if !success {
+			return nil, fmt.Errorf("could not list dashboards: %s", output)
+		}
+	}
+
+	return UnmarshalCompleteDashboardArrayJSON([]byte(output))
 }
 
 func setMetricsDashboards(dashboards []MetricsDashboard) error {
 	for _, dashboard := range dashboards {
-		success, output := bashQuiet(fmt.Sprintf("gcloud monitoring dashboards list --project=network-next-v3-stackdriver-ws --format=json --filter=\"name:%s\"", dashboard.id))
+		success, output := bashQuiet(fmt.Sprintf("gcloud monitoring dashboards list --project=network-next-v3-stackdriver-ws --format=json --filter=\"name:%s\"", dashboard.ID))
 		if !success {
 			return fmt.Errorf("could not create dashboard: %s", output)
 		}
 
 		if output == "Listed 0 items.\n" {
 			// Create
-			dashboardJSON, err := dashboard.GenerateDashboardJSON("")
+			dashboardJSON, err := dashboard.MarshalCompleteDashboardJSON()
 			if err != nil {
 				return err
 			}
@@ -266,6 +287,8 @@ func setMetricsDashboards(dashboards []MetricsDashboard) error {
 			if !success {
 				return fmt.Errorf("could not create dashboard: %s", output)
 			}
+
+			fmt.Printf("Created dashboard %s\n", dashboard.ID)
 		} else {
 			// Update - need to use the same etag
 			var responseDashboard []interface{}
@@ -274,15 +297,19 @@ func setMetricsDashboards(dashboards []MetricsDashboard) error {
 				return err
 			}
 
-			dashboardJSON, err := dashboard.GenerateDashboardJSON(responseDashboard[0].(map[string]interface{})["etag"].(string))
+			dashboard.Etag = responseDashboard[0].(map[string]interface{})["etag"].(string)
+
+			dashboardJSON, err := dashboard.MarshalCompleteDashboardJSON()
 			if err != nil {
 				return err
 			}
 
-			success, output := bashQuiet(fmt.Sprintf("gcloud monitoring dashboards update %s --project=network-next-v3-stackdriver-ws --config='''%s'''", dashboard.id, dashboardJSON))
+			success, output := bashQuiet(fmt.Sprintf("gcloud monitoring dashboards update %s --project=network-next-v3-stackdriver-ws --config='''%s'''", dashboard.ID, dashboardJSON))
 			if !success {
-				return fmt.Errorf("could not update dashboard %s: %s", dashboard.id, output)
+				return fmt.Errorf("could not update dashboard %s: %s", dashboard.ID, output)
 			}
+
+			fmt.Printf("Updated dashboard %s\n", dashboard.ID)
 		}
 	}
 

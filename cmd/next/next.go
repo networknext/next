@@ -2084,7 +2084,23 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		ShortUsage: "next metrics [dashboard ID]",
 		ShortHelp:  "Retrieve the StackDriver metrics dashboards in a compact JSON file, with an optional filter to select a single dashboard",
 		Exec: func(ctx context.Context, args []string) error {
-			// TODO: implement
+			var dashboardFilter string
+
+			if len(args) > 0 {
+				dashboardFilter = args[0]
+			}
+
+			dashboards, err := getMetricsDashboards(dashboardFilter)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("could not retrieve dashboard(s): %v", err), 1)
+			}
+
+			dashboardJSON, err := json.MarshalIndent(dashboards, "", "  ")
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("error generating dashboard JSON: %v", err), 1)
+			}
+
+			fmt.Println(string(dashboardJSON))
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -2116,6 +2132,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					if err := setMetricsDashboards(dashboards); err != nil {
 						handleRunTimeError(err.Error(), 1)
 					}
+
 					return nil
 				},
 			},
@@ -2187,6 +2204,7 @@ or provided by a JSON file of the form:
 [
   {
 	"id": "server-backend",
+	"etag": "12fe41072f230877e755ebbb3ddd625a",
     "displayName": "Server Backend",
     "columns": "2",
     "charts": [
