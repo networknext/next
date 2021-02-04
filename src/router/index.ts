@@ -119,7 +119,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (store.getters.isAnonymous && (to.name === 'user-sessions' || to.name === 'account-settings')) {
+  if (store.getters.isAnonymous && (to.name === 'user-sessions' || to.name === 'user-tool' || to.name === 'account-settings')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
