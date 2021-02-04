@@ -2204,7 +2204,6 @@ or provided by a JSON file of the form:
 [
   {
 	"id": "server-backend",
-	"etag": "12fe41072f230877e755ebbb3ddd625a",
     "displayName": "Server Backend",
     "columns": "2",
     "charts": [
