@@ -10,6 +10,7 @@ type BeaconServiceMetrics struct {
 
 var EmptyBeaconServiceMetrics BeaconServiceMetrics = BeaconServiceMetrics{
 	ServiceMetrics: EmptyServiceMetrics,
+	HandlerMetrics: EmptyPacketHandlerMetrics,
 	BeaconMetrics:  EmptyBeaconMetrics,
 }
 
