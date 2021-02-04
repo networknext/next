@@ -339,7 +339,7 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts .
 	// Create a slice of all the rows to return
 	values := make([]bigtable.Row, 0)
 
-	err := bt.SessionTable.ReadRows(ctx, ranges, func(r bigtable.Row) bool {
+	err := bt.SessionTable.ReadRows(ctx, prefixRange, func(r bigtable.Row) bool {
 		// Get the data and put it into a slice to return
 		values = append(values, r)
 
