@@ -104,7 +104,7 @@ func NewBeaconInserterServiceMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	return &beaconInserterServiceMetrics, nil
+	return beaconInserterServiceMetrics, nil
 }
 
 // NewBeaconInserterErrorMetrics creates the error metrics that the BeaconInserterServiceMetrics will use.
