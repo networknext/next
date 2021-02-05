@@ -2375,3 +2375,7 @@ func (fs *Firestore) UpdateSeller(ctx context.Context, sellerID string, field st
 func (fs *Firestore) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
 	return fmt.Errorf("UpdateCustomer not implemented in Firestore storer")
 }
+
+func (fs *Firestore) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateDatacenter not implemented in Firestore storer")
+}
