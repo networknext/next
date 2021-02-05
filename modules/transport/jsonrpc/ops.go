@@ -1389,9 +1389,9 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 }
 
 type UpdateDatacenterArgs struct {
-	DatacenterHexID string
-	Field           string
-	Value           string
+	HexDatacenterID string      `json:"hexDatacenterID"`
+	Field           string      `json:"field"`
+	Value           interface{} `json:"value"`
 }
 
 type UpdateDatacenterReply struct{}
@@ -1401,7 +1401,7 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 		return nil
 	}
 
-	dcID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
 	if err != nil {
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1410,9 +1410,10 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
 	case "Latitude", "Longitude":
-		err := s.Storage.UpdateDatacenter(context.Background(), dcID, args.Field, args.Value)
+		newValue := float32(args.Value.(float64))
+		err := s.Storage.UpdateDatacenter(context.Background(), dcID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.DatacenterHexID, err)
+			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
