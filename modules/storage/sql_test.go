@@ -692,6 +692,21 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
 	})
 
+	t.Run("UpdateDatacenter", func(t *testing.T) {
+		did := crypto.HashID("some.locale.name")
+
+		err = db.UpdateDatacenter(ctx, did, "Latitude", float32(130.3))
+		assert.NoError(t, err)
+
+		err = db.UpdateDatacenter(ctx, did, "Longitude", float32(80.3))
+		assert.NoError(t, err)
+
+		checkDatacenter, err := db.Datacenter(did)
+		assert.NoError(t, err)
+		assert.Equal(t, float32(80.3), checkDatacenter.Location.Longitude)
+		assert.Equal(t, float32(130.3), checkDatacenter.Location.Latitude)
+	})
+
 	t.Run("UpdateCustomer", func(t *testing.T) {
 		err := db.UpdateCustomer(ctx, customerWithID.Code, "Name", "A Brand New Name")
 		assert.NoError(t, err)
@@ -984,7 +999,7 @@ func TestInternalConfig(t *testing.T) {
 		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
-		internalConfig := core.InternalConfig {
+		internalConfig := core.InternalConfig{
 			RouteSelectThreshold:       2,
 			RouteSwitchThreshold:       5,
 			MaxLatencyTradeOff:         10,

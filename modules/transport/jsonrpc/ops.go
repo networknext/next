@@ -1018,6 +1018,46 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	return nil
 }
 
+type JSAddDatacenterArgs struct {
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	SellerID  string  `json:"sellerID"`
+}
+
+type JSAddDatacenterReply struct{}
+
+func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs, reply *JSAddDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	dcID := crypto.HashID(args.Name)
+
+	seller, err := s.Storage.Seller(args.SellerID)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	datacenter := routing.Datacenter{
+		Name: args.Name,
+		ID:   dcID,
+		Location: routing.Location{
+			Latitude:  float32(args.Latitude),
+			Longitude: float32(args.Longitude),
+		},
+		SellerID: seller.DatabaseID,
+	}
+
+	if err := s.Storage.AddDatacenter(ctx, datacenter); err != nil {
+		err = fmt.Errorf("AddDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
 type RemoveDatacenterArgs struct {
 	Name string
 }
@@ -1383,6 +1423,43 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Seller type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateDatacenterArgs struct {
+	HexDatacenterID string      `json:"hexDatacenterID"`
+	Field           string      `json:"field"`
+	Value           interface{} `json:"value"`
+}
+
+type UpdateDatacenterReply struct{}
+
+func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArgs, reply *UpdateDatacenterReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "Latitude", "Longitude":
+		newValue := float32(args.Value.(float64))
+		err := s.Storage.UpdateDatacenter(context.Background(), dcID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Datacenter type", args.Field)
 	}
 
 	return nil
