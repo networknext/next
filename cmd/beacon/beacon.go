@@ -207,7 +207,7 @@ func mainReturnWithCode() int {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(beaconServiceMetrics.ServiceMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d invocations\n", int(beaconServiceMetrics.HandlerMetrics.invocations.Value()))
+				fmt.Printf("%d invocations\n", int(beaconServiceMetrics.HandlerMetrics.Invocations.Value()))
 				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
 				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
