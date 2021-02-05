@@ -207,6 +207,7 @@ func mainReturnWithCode() int {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(beaconServiceMetrics.ServiceMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d invocations\n", int(beaconServiceMetrics.HandlerMetrics.invocations.Value()))
 				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
 				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
@@ -335,13 +336,10 @@ func mainReturnWithCode() int {
 				readStream := encoding.CreateReadStream(data[1:])
 				err = beaconPacket.Serialize(readStream)
 				if err != nil {
-					fmt.Printf("error reading beacon packet: %v\n", err)
 					level.Error(logger).Log("msg", "failed to serialize beacon packet", "err", err)
 					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure.Add(1)
 					continue
 				}
-
-				fmt.Printf("Beacon Packet: %+v\n", beaconPacket)
 
 				// Insert packet into internal channel for local or bigquery
 				select {
