@@ -23,7 +23,7 @@ type BeaconMetrics struct {
 	EntriesSent              Counter
 	EntriesSubmitted         Counter
 	EntriesFlushed           Counter
-	ErrorMetrics             *BeaconErrorMetrics
+	ErrorMetrics             BeaconErrorMetrics
 }
 
 // EmptyBeaconMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -33,7 +33,7 @@ var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
 	EntriesSent:              &EmptyCounter{},
 	EntriesSubmitted:         &EmptyCounter{},
 	EntriesFlushed:           &EmptyCounter{},
-	ErrorMetrics:             &EmptyBeaconErrorMetrics,
+	ErrorMetrics:             EmptyBeaconErrorMetrics,
 }
 
 // BeaconErrorMetrics defines a set of metrics for recording errors for the beacon service.
@@ -56,7 +56,7 @@ var EmptyBeaconErrorMetrics BeaconErrorMetrics = BeaconErrorMetrics{
 
 // NewBeaconServiceMetrics creates the metrics that the beacon service will use.
 func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*BeaconServiceMetrics, error) {
-	beaconServiceMetrics := &BeaconServiceMetrics{}
+	beaconServiceMetrics := BeaconServiceMetrics{}
 	var err error
 
 	beaconServiceMetrics.ServiceMetrics, err = NewServiceMetrics(ctx, metricsHandler, "beacon")
@@ -69,10 +69,8 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics, err = NewBeaconErrorMetrics(ctx, metricsHandler)
-	if err != nil {
-		return nil, err
-	}
+	beaconServiceMetrics.BeaconMetrics = &BeaconMetrics{}
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics = BeaconErrorMetrics{}
 
 	beaconServiceMetrics.BeaconMetrics.NonBeaconPacketsReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Non Beacon Packets Received",
@@ -129,15 +127,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	return beaconServiceMetrics, nil
-}
-
-// NewBeaconErrorMetrics creates the error metrics that the BeaconServiceMetrics will use.
-func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*BeaconErrorMetrics, error) {
-	beaconErrorMetrics := &BeaconErrorMetrics{}
-	var err error
-
-	beaconErrorMetrics.BeaconReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Read Packet Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.read.packet.failure",
@@ -148,7 +138,7 @@ func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*Beacon
 		return nil, err
 	}
 
-	beaconErrorMetrics.BeaconSerializePacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Serialize Packet Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.serialize.packet.failure",
@@ -159,9 +149,9 @@ func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*Beacon
 		return nil, err
 	}
 
-	beaconErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
 
-	beaconErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Send Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.error.send_failure",
@@ -172,7 +162,7 @@ func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*Beacon
 		return nil, err
 	}
 
-	beaconErrorMetrics.BeaconChannelFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Channel Full",
 		ServiceName: "beacon",
 		ID:          "beacon.error.channel_full",
@@ -183,5 +173,5 @@ func NewBeaconErrorMetrics(ctx context.Context, metricsHandler Handler) (*Beacon
 		return nil, err
 	}
 
-	return beaconErrorMetrics, nil
+	return &beaconServiceMetrics, nil
 }

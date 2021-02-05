@@ -109,7 +109,7 @@ func mainReturnWithCode() int {
 				beaconTable := envvar.Get("GOOGLE_BIGQUERY_TABLE_BEACON", "")
 
 				b := beacon.GoogleBigQueryClient{
-					Metrics:       &beaconInserterServiceMetrics.BeaconInserterMetrics,
+					Metrics:       beaconInserterServiceMetrics.BeaconInserterMetrics,
 					Logger:        logger,
 					TableInserter: bqClient.Dataset(beaconDataset).Table(beaconTable).Inserter(),
 					BatchSize:     batchSize,
@@ -140,7 +140,7 @@ func mainReturnWithCode() int {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, &beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				return 1

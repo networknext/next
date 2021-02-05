@@ -309,7 +309,7 @@ func mainReturnWithCode() int {
 			for {
 				beaconPacket = &transport.NextBeaconPacket{}
 				data := dataArray[:]
-				size, fromAddr, err := conn.ReadFromUDP(data)
+				size, _, err := conn.ReadFromUDP(data)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
 					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure.Add(1)
