@@ -1447,7 +1447,6 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 		return err
 	}
 
-	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
 	case "Latitude", "Longitude":
 		newValue := float32(args.Value.(float64))
