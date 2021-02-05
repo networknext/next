@@ -1018,6 +1018,46 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	return nil
 }
 
+type JSAddDatacenterArgs struct {
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	SellerID  string  `json:"sellerID"`
+}
+
+type JSAddDatacenterReply struct{}
+
+func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs, reply *JSAddDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	dcID := crypto.HashID(args.Name)
+
+	seller, err := s.Storage.Seller(args.SellerID)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	datacenter := routing.Datacenter{
+		Name: args.Name,
+		ID:   dcID,
+		Location: routing.Location{
+			Latitude:  float32(args.Latitude),
+			Longitude: float32(args.Longitude),
+		},
+		SellerID: seller.DatabaseID,
+	}
+
+	if err := s.Storage.AddDatacenter(ctx, datacenter); err != nil {
+		err = fmt.Errorf("AddDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
 type RemoveDatacenterArgs struct {
 	Name string
 }
