@@ -173,6 +173,27 @@ func mainReturnWithCode() int {
 			for {
 				select {
 				case beaconPacket := <-beaconPacketChan:
+					// Record beacon packet stats
+					if beaconPacket.Next {
+						beaconServiceMetrics.BeaconMetrics.NextEntries.Add(1)
+					} else {
+						beaconServiceMetrics.BeaconMetrics.DirectEntries.Add(1)
+					}
+					if beaconPacket.Upgraded {
+						beaconServiceMetrics.BeaconMetrics.UpgradedEntries.Add(1)
+					} else {
+						beaconServiceMetrics.BeaconMetrics.NotUpgradedEntries.Add(1)
+					}
+					if beaconPacket.Enabled {
+						beaconServiceMetrics.BeaconMetrics.EnabledEntries.Add(1)
+					} else {
+						beaconServiceMetrics.BeaconMetrics.NotEnabledEntries.Add(1)
+					}
+					if beaconPacket.FallbackToDirect {
+						beaconServiceMetrics.BeaconMetrics.FallbackToDirect.Add(1)
+					}
+
+					// Submit beacon packet
 					err := beaconer.Submit(ctx, beaconPacket)
 					if err != nil {
 						level.Error(logger).Log("msg", "Could not send beacon packet to Google Pubsub", "err", err)
@@ -212,6 +233,13 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
 				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d beacon entries on next\n", int(beaconServiceMetrics.BeaconMetrics.NextEntries.Value()))
+				fmt.Printf("%d beacon entries on direct\n", int(beaconServiceMetrics.BeaconMetrics.DirectEntries.Value()))
+				fmt.Printf("%d beacon entries upgraded\n", int(beaconServiceMetrics.BeaconMetrics.UpgradedEntries.Value()))
+				fmt.Printf("%d beacon entries not upgraded\n", int(beaconServiceMetrics.BeaconMetrics.NotUpgradedEntries.Value()))
+				fmt.Printf("%d beacon entries enabled\n", int(beaconServiceMetrics.BeaconMetrics.EnabledEntries.Value()))
+				fmt.Printf("%d beacon entries not enabled\n", int(beaconServiceMetrics.BeaconMetrics.NotEnabledEntries.Value()))
+				fmt.Printf("%d beacon entries fallen back to direct\n", int(beaconServiceMetrics.BeaconMetrics.FallbackToDirect.Value()))
 				fmt.Printf("%d beacon entry send failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Value()))
 				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Value()))
 				fmt.Printf("%d beacon entry publish failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure.Value()))

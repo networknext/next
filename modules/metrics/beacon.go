@@ -23,6 +23,13 @@ type BeaconMetrics struct {
 	EntriesSent              Counter
 	EntriesSubmitted         Counter
 	EntriesFlushed           Counter
+	NextEntries              Counter
+	DirectEntries            Counter
+	UpgradedEntries          Counter
+	NotUpgradedEntries       Counter
+	EnabledEntries           Counter
+	NotEnabledEntries        Counter
+	FallbackToDirect         Counter
 	ErrorMetrics             BeaconErrorMetrics
 }
 
@@ -33,6 +40,13 @@ var EmptyBeaconMetrics BeaconMetrics = BeaconMetrics{
 	EntriesSent:              &EmptyCounter{},
 	EntriesSubmitted:         &EmptyCounter{},
 	EntriesFlushed:           &EmptyCounter{},
+	NextEntries:              &EmptyCounter{},
+	DirectEntries:            &EmptyCounter{},
+	UpgradedEntries:          &EmptyCounter{},
+	NotUpgradedEntries:       &EmptyCounter{},
+	EnabledEntries:           &EmptyCounter{},
+	NotEnabledEntries:        &EmptyCounter{},
+	FallbackToDirect:         &EmptyCounter{},
 	ErrorMetrics:             EmptyBeaconErrorMetrics,
 }
 
@@ -122,6 +136,83 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		ID:          "beacon.entries.written",
 		Unit:        "entries",
 		Description: "The total number of beacon entries written to Google Pubsub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.NextEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries on Next",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.next",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that are on Next",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.DirectEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries on Direct",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.direct",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that are on Direct",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.UpgradedEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries Upgraded",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.upgraded",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that are Upgraded",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.NotUpgradedEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries Not Upgraded",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.not_upgraded",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that are on not Upgraded",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.EnabledEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries Enabled",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.enabled",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that are Enabled",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.NotEnabledEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries Not Enabled",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.not_enabled",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that are on not Enabled",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	beaconServiceMetrics.BeaconMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Entries Fallback To Direct",
+		ServiceName: "beacon",
+		ID:          "beacon.entries.fallback_to_direct",
+		Unit:        "entries",
+		Description: "The total number of beacon entries received that have fallen back to Direct",
 	})
 	if err != nil {
 		return nil, err
