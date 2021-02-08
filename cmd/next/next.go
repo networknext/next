@@ -1437,25 +1437,24 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", ic.BuyerID, err), 0)
 							}
 
-							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
-								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:            int32(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
+							addInternalConfig(rpcClient, env, buyerID, localjsonrpc.JSInternalConfig{
+								RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:            int64(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
 								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
 								ForceNext:                  ic.ForceNext,
 								LargeCustomer:              ic.LargeCustomer,
 								Uncommitted:                ic.Uncommitted,
 								HighFrequencyPings:         ic.HighFrequencyPings,
-								RouteDiversity:             int32(ic.RouteDiversity),
-								MultipathThreshold:         int32(ic.MultipathThreshold),
+								RouteDiversity:             int64(ic.RouteDiversity),
+								MultipathThreshold:         int64(ic.MultipathThreshold),
 								EnableVanityMetrics:        ic.EnableVanityMetrics,
-								MaxRTT:                     int32(ic.MaxRTT),
+								MaxRTT:                     int64(ic.MaxRTT),
 							})
-
 							return nil
 						},
 					},

@@ -1550,7 +1550,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	return sessions, err
 }
 
-type internalConfig struct {
+type JSInternalConfig struct {
 	RouteSelectThreshold       int64 `json:"routeSelectThreshold"`
 	RouteSwitchThreshold       int64 `json:"routeSwitchThreshold"`
 	MaxLatencyTradeOff         int64 `json:"maxLatencyTradeOff"`
@@ -1574,7 +1574,7 @@ type InternalConfigArg struct {
 }
 
 type InternalConfigReply struct {
-	InternalConfig internalConfig
+	InternalConfig JSInternalConfig
 }
 
 func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
@@ -1590,12 +1590,12 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 
 	ic, err := s.Storage.InternalConfig(buyerID)
 	if err != nil {
-		err = fmt.Errorf("InternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
+		err = fmt.Errorf("InternalConfig() no InternalConfig stored for buyer %s", arg.BuyerID)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	jsonIC := internalConfig{
+	jsonIC := JSInternalConfig{
 		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
 		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
 		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
@@ -1618,27 +1618,74 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 	return nil
 }
 
-type AddInternalConfigArgs struct {
-	BuyerID        uint64
-	InternalConfig core.InternalConfig
+type JSAddInternalConfigArgs struct {
+	BuyerID        string           `json:"BuyerID"`
+	InternalConfig JSInternalConfig `json:"InternalConfig"`
 }
 
-type AddInternalConfigReply struct{}
+type JSAddInternalConfigReply struct{}
 
-func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
+func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalConfigArgs, reply *JSAddInternalConfigReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	ic := core.InternalConfig{
+		RouteSelectThreshold:       int32(arg.InternalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold:       int32(arg.InternalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:         int32(arg.InternalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:            int32(arg.InternalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:          int32(arg.InternalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:         int32(arg.InternalConfig.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold: int32(arg.InternalConfig.MultipathOverloadThreshold),
+		TryBeforeYouBuy:            arg.InternalConfig.TryBeforeYouBuy,
+		ForceNext:                  arg.InternalConfig.ForceNext,
+		LargeCustomer:              arg.InternalConfig.LargeCustomer,
+		Uncommitted:                arg.InternalConfig.Uncommitted,
+		MaxRTT:                     int32(arg.InternalConfig.MaxRTT),
+		HighFrequencyPings:         arg.InternalConfig.HighFrequencyPings,
+		RouteDiversity:             int32(arg.InternalConfig.RouteDiversity),
+		MultipathThreshold:         int32(arg.InternalConfig.MultipathThreshold),
+		EnableVanityMetrics:        arg.InternalConfig.EnableVanityMetrics,
+	}
+
+	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
+	if err != nil {
+		err = fmt.Errorf("JSAddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
 	return nil
 }
+
+// type AddInternalConfigArgs struct {
+// 	BuyerID        uint64
+// 	InternalConfig core.InternalConfig
+// }
+
+// type AddInternalConfigReply struct{}
+
+// func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
+// 	if VerifyAllRoles(r, AnonymousRole) {
+// 		return nil
+// 	}
+
+// 	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
+// 	if err != nil {
+// 		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
+// 		level.Error(s.Logger).Log("err", err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
 
 type UpdateInternalConfigArgs struct {
 	BuyerID uint64

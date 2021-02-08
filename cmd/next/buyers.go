@@ -598,17 +598,17 @@ func addInternalConfig(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerID uint64,
-	ic core.InternalConfig,
+	ic localjsonrpc.JSInternalConfig,
 ) error {
 
-	emptyReply := localjsonrpc.AddInternalConfigReply{}
+	emptyReply := localjsonrpc.JSAddInternalConfigReply{}
 
-	args := localjsonrpc.AddInternalConfigArgs{
-		BuyerID:        buyerID,
+	args := localjsonrpc.JSAddInternalConfigArgs{
+		BuyerID:        fmt.Sprintf("%016x", buyerID),
 		InternalConfig: ic,
 	}
 	// Storer method checks BuyerID validity
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddInternalConfig", args); err != nil {
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.JSAddInternalConfig", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
