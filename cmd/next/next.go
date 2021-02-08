@@ -27,7 +27,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
@@ -1517,20 +1516,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", rs.BuyerID, err), 0)
 							}
 
-							addRouteShader(rpcClient, env, buyerID, core.RouteShader{
+							addRouteShader(rpcClient, env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
-								SelectionPercent:          int(rs.SelectionPercent),
+								SelectionPercent:          int64(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
 								ReduceLatency:             rs.ReduceLatency,
 								ReduceJitter:              rs.ReduceJitter,
 								ReducePacketLoss:          rs.ReducePacketLoss,
 								Multipath:                 rs.Multipath,
-								AcceptableLatency:         int32(rs.AcceptableLatency),
-								LatencyThreshold:          int32(rs.LatencyThreshold),
-								AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
-								BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
-								BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
+								AcceptableLatency:         int64(rs.AcceptableLatency),
+								LatencyThreshold:          int64(rs.LatencyThreshold),
+								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
 							})
 
 							return nil

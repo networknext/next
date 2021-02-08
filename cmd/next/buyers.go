@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -670,16 +669,16 @@ func addRouteShader(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerID uint64,
-	rs core.RouteShader,
+	rs localjsonrpc.JSRouteShader,
 ) error {
 
-	emptyReply := localjsonrpc.AddRouteShaderReply{}
+	emptyReply := localjsonrpc.JSAddRouteShaderReply{}
 
-	args := localjsonrpc.AddRouteShaderArgs{
-		BuyerID:     buyerID,
+	args := localjsonrpc.JSAddRouteShaderArgs{
+		BuyerID:     fmt.Sprintf("%016x", buyerID),
 		RouteShader: rs,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddRouteShader", args); err != nil {
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.JSAddRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}

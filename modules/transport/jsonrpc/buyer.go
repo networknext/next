@@ -1619,8 +1619,8 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 }
 
 type JSAddInternalConfigArgs struct {
-	BuyerID        string           `json:"BuyerID"`
-	InternalConfig JSInternalConfig `json:"InternalConfig"`
+	BuyerID        string           `json:"buyerID"`
+	InternalConfig JSInternalConfig `json:"internalConfig"`
 }
 
 type JSAddInternalConfigReply struct{}
@@ -1664,28 +1664,6 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 
 	return nil
 }
-
-// type AddInternalConfigArgs struct {
-// 	BuyerID        uint64
-// 	InternalConfig core.InternalConfig
-// }
-
-// type AddInternalConfigReply struct{}
-
-// func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
-// 	if VerifyAllRoles(r, AnonymousRole) {
-// 		return nil
-// 	}
-
-// 	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
-// 	if err != nil {
-// 		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
-// 		level.Error(s.Logger).Log("err", err)
-// 		return err
-// 	}
-
-// 	return nil
-// }
 
 type UpdateInternalConfigArgs struct {
 	BuyerID uint64
@@ -1759,7 +1737,7 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 	return nil
 }
 
-type routeShader struct {
+type JSRouteShader struct {
 	DisableNetworkNext        bool            `json:"disableNetworkNext"`
 	SelectionPercent          int64           `json:"selectionPercent"`
 	ABTest                    bool            `json:"abTest"`
@@ -1780,7 +1758,7 @@ type RouteShaderArg struct {
 }
 
 type RouteShaderReply struct {
-	RouteShader routeShader
+	RouteShader JSRouteShader
 }
 
 func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
@@ -1796,12 +1774,12 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 
 	rs, err := s.Storage.RouteShader(buyerID)
 	if err != nil {
-		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
+		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %s: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	jsonRS := routeShader{
+	jsonRS := JSRouteShader{
 		DisableNetworkNext:        rs.DisableNetworkNext,
 		SelectionPercent:          int64(rs.SelectionPercent),
 		ABTest:                    rs.ABTest,
@@ -1821,19 +1799,41 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 	return nil
 }
 
-type AddRouteShaderArgs struct {
-	BuyerID     uint64
-	RouteShader core.RouteShader
+type JSAddRouteShaderArgs struct {
+	BuyerID     string        `json:"buyerID"`
+	RouteShader JSRouteShader `json:"routeShader"`
 }
 
-type AddRouteShaderReply struct{}
+type JSAddRouteShaderReply struct{}
 
-func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs, reply *AddRouteShaderReply) error {
+func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderArgs, reply *JSAddRouteShaderReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.AddRouteShader(context.Background(), arg.RouteShader, arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	rs := core.RouteShader{
+		DisableNetworkNext:        arg.RouteShader.DisableNetworkNext,
+		SelectionPercent:          int(arg.RouteShader.SelectionPercent),
+		ABTest:                    arg.RouteShader.ABTest,
+		ProMode:                   arg.RouteShader.ProMode,
+		ReduceLatency:             arg.RouteShader.ReduceLatency,
+		ReduceJitter:              arg.RouteShader.ReduceJitter,
+		ReducePacketLoss:          arg.RouteShader.ReducePacketLoss,
+		Multipath:                 arg.RouteShader.Multipath,
+		AcceptableLatency:         int32(arg.RouteShader.AcceptableLatency),
+		LatencyThreshold:          int32(arg.RouteShader.LatencyThreshold),
+		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
+	}
+
+	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
 	if err != nil {
 		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
