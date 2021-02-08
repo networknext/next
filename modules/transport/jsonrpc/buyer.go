@@ -1717,7 +1717,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 }
 
 type RemoveInternalConfigArg struct {
-	BuyerID uint64
+	BuyerID string `json:"buyerID"`
 }
 
 type RemoveInternalConfigReply struct{}
@@ -1727,7 +1727,13 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 		return nil
 	}
 
-	err := s.Storage.RemoveInternalConfig(context.Background(), arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	err = s.Storage.RemoveInternalConfig(context.Background(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1844,7 +1850,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 }
 
 type RemoveRouteShaderArg struct {
-	BuyerID uint64
+	BuyerID string `json:"buyerID"`
 }
 
 type RemoveRouteShaderReply struct{}
@@ -1854,7 +1860,13 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 		return nil
 	}
 
-	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	err = s.Storage.RemoveRouteShader(context.Background(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)

@@ -627,7 +627,7 @@ func removeInternalConfig(
 	emptyReply := localjsonrpc.RemoveInternalConfigReply{}
 
 	args := localjsonrpc.RemoveInternalConfigArg{
-		BuyerID: buyerID,
+		BuyerID: fmt.Sprintf("%016x", buyerID),
 	}
 	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveInternalConfig", args); err != nil {
@@ -698,7 +698,7 @@ func removeRouteShader(
 	emptyReply := localjsonrpc.RemoveRouteShaderReply{}
 
 	args := localjsonrpc.RemoveRouteShaderArg{
-		BuyerID: buyerID,
+		BuyerID: fmt.Sprintf("%016x", buyerID),
 	}
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
