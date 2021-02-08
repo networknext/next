@@ -68,6 +68,18 @@ project "sodium"
 	configuration { "gmake" }
   		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable", "-Wno-type-limits" }
 
+project "autodetect"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "examples/autodetect.cpp" }
+	includedirs { "include" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
 project "test"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
