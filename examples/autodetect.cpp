@@ -119,7 +119,7 @@ bool next_autodetect_google( char * output )
 
     // we couldn't work out which zone we are in :(
 
-    if ( zone == NULL )
+    if ( zone[0] != '\0' )
     {
         printf( "autodetect: could not detect google zone\n" );
         return false;
