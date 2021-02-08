@@ -293,7 +293,13 @@ const char * next_autodetect_datacenter()
         "google.sydney.2",
         "google.sydney.3"
     };
+
     const int num_google_zones = sizeof(google_zones) / sizeof(char*);
+
+    for ( int i = 0; i < num_google_zones; ++i )
+    {
+        printf( "%s,%s\n", google_zones[i], google_datacenters[i] );
+    }
 
     printf( "autodetect: %d google zones\n", num_google_zones );
 
