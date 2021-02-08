@@ -20,7 +20,6 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "next.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -195,10 +194,6 @@ bool next_autodetect_datacenter( char * output )
 
 int main()
 {
-    if ( next_init( NULL, NULL ) != NEXT_OK )
-    {        printf( "error: failed to initialize network next\n" );
-    }
-
     char datacenter[1024];
     bool result = next_autodetect_datacenter( datacenter );
     if ( result )
@@ -209,8 +204,6 @@ int main()
     {
         printf( "\ncould not autodetect datacenter\n\n" );
     }
-
-    next_term();
 
     fflush( stdout );
 
