@@ -70,15 +70,10 @@ project "sodium"
 
 project "autodetect"
 	kind "ConsoleApp"
-	links { "next", "sodium" }
 	files { "examples/autodetect.cpp" }
 	includedirs { "include" }
 	filter "system:windows"
 		disablewarnings { "4324" }
-	filter "system:not windows"
-		links { "pthread" }
-	filter "system:macosx"
-		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
 project "test"
 	kind "ConsoleApp"
