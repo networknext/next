@@ -32,12 +32,10 @@ const char * next_autodetect_gcp( int num_zones, const char ** zones, const char
 
     // are we running in google cloud?
 
-    /*
-    file = popen( "/bin/ls /usr/bin | grep google_", "r");
-
+    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r");
     if ( file == NULL ) 
     {
-        printf( "could not run ls\n" );
+        printf( "autodetect: could not run ls\n" );
         return NULL;
     }
 
@@ -47,7 +45,7 @@ const char * next_autodetect_gcp( int num_zones, const char ** zones, const char
         printf( "%s", buffer );
         if ( strcmp( buffer, "google_authorized_keys\n" ) == 0 )
         {
-            printf( "running in google cloud\n" );
+            printf( "autodetect: running in google cloud\n" );
             break;
         }
     }
@@ -55,37 +53,29 @@ const char * next_autodetect_gcp( int num_zones, const char ** zones, const char
 
     if ( !in_gcp )
     {
-        printf( "not in google cloud\n" );
+        printf( "autodetect: not in google cloud\n" );
         return NULL;
     }
-    */
 
     // we are running in google cloud, which zone are we in?
 
     char * zone = NULL;
-    file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs", "r" );
-    //while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
-    while ( true )
+    file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null", "r" );
+    while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
     {
-        // todo: hack
-        const char * line = "projects/<ProjectNumber>/zones/us-central1-a\n";
-        strcpy( buffer, line );
-
-        printf( "%s", buffer );
-
         int length = strlen( buffer );
         if ( length < 10 )
             continue;
 
-        if ( line[0] != 'p' ||
-             line[1] != 'r' || 
-             line[2] != 'o' ||
-             line[3] != 'j' || 
-             line[4] != 'e' ||
-             line[5] != 'c' ||
-             line[6] != 't' ||
-             line[7] != 's' ||
-             line[8] != '/' )
+        if ( buffer[0] != 'p' ||
+             buffer[1] != 'r' || 
+             buffer[2] != 'o' ||
+             buffer[3] != 'j' || 
+             buffer[4] != 'e' ||
+             buffer[5] != 'c' ||
+             buffer[6] != 't' ||
+             buffer[7] != 's' ||
+             buffer[8] != '/' )
         {
             continue;
         }
@@ -94,7 +84,7 @@ const char * next_autodetect_gcp( int num_zones, const char ** zones, const char
         int index = length - 1;
         while ( index > 10 && length  )
         {
-            if ( line[index] == '/' )
+            if ( buffer[index] == '/' )
             {
                 found = true;
                 break;
@@ -105,10 +95,7 @@ const char * next_autodetect_gcp( int num_zones, const char ** zones, const char
         if ( !found )
             continue;
 
-        char working[1024];
-        strcpy( working, &line[index+1] );
-
-        zone = (char*) working;
+        zone = (char*) &buffer[index+1];
 
         int zone_length = strlen(zone);
         index = zone_length - 1;
@@ -118,7 +105,7 @@ const char * next_autodetect_gcp( int num_zones, const char ** zones, const char
             index--;
         }
 
-        printf( "zone = \"%s\"\n", zone );
+        printf( "google zone = \"%s\"\n", zone );
 
         break;
     }
@@ -146,17 +133,17 @@ const char * next_autodetect_datacenter()
 {
     // we need linux + curl to do any autodetect. bail if we don't have it
 
-    printf( "\nLooking for curl\n" );
+    printf( "\nautodetect: looking for curl\n" );
 
-    int result = system( "curl" );
+    int result = system( "curl >/dev/null 2>&1" );
 
     if ( result < 0 )
     {
-        printf( "curl not found\n" );
+        printf( "autodetect: curl not found\n" );
         return NULL;
     }
 
-    printf( "curl exists\n" );
+    printf( "autodetect: curl exists\n" );
 
     // google cloud
 
@@ -214,6 +201,24 @@ const char * next_autodetect_datacenter()
         "asia-northeast1-a",
         "asia-northeast1-b",
         "asia-northeast1-c",
+        "asia-northeast2-a",
+        "asia-northeast2-b",
+        "asia-northeast2-c",
+        "asia-northeast3-a",
+        "asia-northeast3-b",
+        "asia-northeast3-c",
+        "asia-south1-a",
+        "asia-south1-b",
+        "asia-south1-c",
+        "asia-southeast1-a",
+        "asia-southeast1-b",
+        "asia-southeast1-c",
+        "asia-southeast2-a",
+        "asia-southeast2-b",
+        "asia-southeast2-c",
+        "australia-southeast1-a",
+        "australia-southeast1-b",
+        "australia-southeast1-c",
     };
     const char * google_datacenters[] = 
     { 
@@ -271,11 +276,26 @@ const char * next_autodetect_datacenter()
         "google.tokyo.3",
         "google.osaka.1",
         "google.osaka.2",
-        "google.osaka.3"
+        "google.osaka.3",
+        "google.seoul.1",
+        "google.seoul.2",
+        "google.seoul.3",
+        "google.mumbai.1",
+        "google.mumbai.2",
+        "google.mumbai.3",
+        "google.singapore.1",
+        "google.singapore.2",
+        "google.singapore.3",
+        "google.jakarta.1",
+        "google.jakarta.2",
+        "google.jakarta.3",
+        "google.sydney.1",
+        "google.sydney.2",
+        "google.sydney.3"
     };
     const int num_google_zones = sizeof(google_zones) / sizeof(char*);
 
-    printf( "%d google zones\n", num_google_zones );
+    printf( "autodetect: %d google zones\n", num_google_zones );
 
     const char * datacenter_gcp = next_autodetect_gcp( num_google_zones, google_zones, google_datacenters );
 
@@ -290,7 +310,7 @@ const char * next_autodetect_datacenter()
 
     // could not autodetect
 
-    printf( "could not autodetect datacenter\n" );
+    printf( "autodetect: could not autodetect datacenter\n" );
 
     return NULL;
 }
