@@ -60,7 +60,8 @@ bool next_autodetect_google( char * output )
 
     // we are running in google cloud, which zone are we in?
 
-    char * zone = NULL;
+    char zone[256];
+    zone[0] = '\0';
     file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null", "r" );
     while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
     {
@@ -100,7 +101,7 @@ bool next_autodetect_google( char * output )
             continue;
         }
 
-        zone = (char*) &buffer[index+1];
+        strcpy( zone, buffer + index + 1 );
 
         int zone_length = strlen(zone);
         index = zone_length - 1;
@@ -143,7 +144,7 @@ bool next_autodetect_google( char * output )
         {
             continue;
         }
-        
+
         if ( strcmp( zone, google_zone ) == 0 )
         {
             printf( "autodetect: \"%s\" -> \"%s\"\n", zone, google_datacenter );
