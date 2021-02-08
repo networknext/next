@@ -42,7 +42,7 @@ bool next_autodetect_google( char * output )
     while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
     {
         printf( "%s", buffer );
-        if ( strcmp( buffer, "google_authorized_keys\n" ) == 0 )
+        if ( strstr( buffer, "google_authorized_keys" ) != NULL )
         {
             printf( "autodetect: running in google cloud\n" );
             break;
