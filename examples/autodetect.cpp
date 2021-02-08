@@ -41,10 +41,10 @@ bool next_autodetect_google( char * output )
     bool in_gcp = false;
     while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
     {
-        printf( "%s", buffer );
         if ( strstr( buffer, "google_authorized_keys" ) != NULL )
         {
             printf( "autodetect: running in google cloud\n" );
+            in_gcp = true;
             break;
         }
     }
