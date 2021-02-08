@@ -560,7 +560,7 @@ func getRouteShader(
 	env Environment,
 	buyerRegex string,
 ) error {
-	var reply localjsonrpc.GetRouteShaderReply
+	var reply localjsonrpc.RouteShaderReply
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
