@@ -39,7 +39,7 @@ bool next_autodetect_google( char * output )
     }
 
     bool in_gcp = false;
-    while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         if ( strstr( buffer, "google_authorized_keys" ) != NULL )
         {
@@ -63,7 +63,7 @@ bool next_autodetect_google( char * output )
     char zone[256];
     zone[0] = '\0';
     file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null", "r" );
-    while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         int length = strlen( buffer );
         if ( length < 10 )
@@ -119,7 +119,7 @@ bool next_autodetect_google( char * output )
 
     // we couldn't work out which zone we are in :(
 
-    if ( zone[0] != '\0' )
+    if ( zone[0] == '\0' )
     {
         printf( "autodetect: could not detect google zone\n" );
         return false;
@@ -129,7 +129,7 @@ bool next_autodetect_google( char * output )
 
     bool found = false;
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 1 -vs 2>/dev/null", "r" );
-    while ( fgets(buffer, sizeof(buffer), file ) != NULL ) 
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
 
