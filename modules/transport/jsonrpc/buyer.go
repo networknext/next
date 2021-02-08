@@ -1550,28 +1550,71 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	return sessions, err
 }
 
-// InternalConfig CRUD endpoints
-type GetInternalConfigArg struct {
-	BuyerID uint64
+type internalConfig struct {
+	RouteSelectThreshold       int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold       int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff         int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default            int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath          int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss         int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy            bool  `json:"tryBeforeYouBuy"`
+	ForceNext                  bool  `json:"forceNext"`
+	LargeCustomer              bool  `json:"largeCustomer"`
+	Uncommitted                bool  `json:"uncommitted"`
+	MaxRTT                     int64 `json:"maxRTT"`
+	HighFrequencyPings         bool  `json:"highFrequencyPings"`
+	RouteDiversity             int64 `json:"routeDiversity"`
+	MultipathThreshold         int64 `json:"multipathThreshold"`
+	EnableVanityMetrics        bool  `json:"enableVanityMetrics"`
 }
 
-type GetInternalConfigReply struct {
-	InternalConfig core.InternalConfig
+type InternalConfigArg struct {
+	BuyerID string `json:"buyerID"`
 }
 
-func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfigArg, reply *GetInternalConfigReply) error {
+type InternalConfigReply struct {
+	InternalConfig internalConfig
+}
+
+func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	ic, err := s.Storage.InternalConfig(arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("GetInternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	reply.InternalConfig = ic
+	ic, err := s.Storage.InternalConfig(buyerID)
+	if err != nil {
+		err = fmt.Errorf("InternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	jsonIC := internalConfig{
+		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:            int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+		ForceNext:                  ic.ForceNext,
+		LargeCustomer:              ic.LargeCustomer,
+		Uncommitted:                ic.Uncommitted,
+		MaxRTT:                     int64(ic.MaxRTT),
+		HighFrequencyPings:         ic.HighFrequencyPings,
+		RouteDiversity:             int64(ic.RouteDiversity),
+		MultipathThreshold:         int64(ic.MultipathThreshold),
+		EnableVanityMetrics:        ic.EnableVanityMetrics,
+	}
+
+	reply.InternalConfig = jsonIC
 	return nil
 }
 
@@ -1669,28 +1712,65 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 	return nil
 }
 
-// RouteShader CRUD endpoints
-type GetRouteShaderArg struct {
-	BuyerID uint64
+type routeShader struct {
+	DisableNetworkNext        bool            `json:"disableNetworkNext"`
+	SelectionPercent          int64           `json:"selectionPercent"`
+	ABTest                    bool            `json:"abTest"`
+	ProMode                   bool            `json:"proMode"`
+	ReduceLatency             bool            `json:"reduceLatency"`
+	ReduceJitter              bool            `json:"reduceJitter"`
+	ReducePacketLoss          bool            `json:"reducePacketLoss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int64           `json:"acceptableLatency"`
+	LatencyThreshold          int64           `json:"latencyThreshold"`
+	AcceptablePacketLoss      float64         `json:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
+	BannedUsers               map[string]bool `json:"bannedUsers"`
+}
+type RouteShaderArg struct {
+	BuyerID string `json:"buyerID"`
 }
 
-type GetRouteShaderReply struct {
-	RouteShader core.RouteShader
+type RouteShaderReply struct {
+	RouteShader routeShader
 }
 
-func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
+func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	rs, err := s.Storage.RouteShader(arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	reply.RouteShader = rs
+	rs, err := s.Storage.RouteShader(buyerID)
+	if err != nil {
+		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	jsonRS := routeShader{
+		DisableNetworkNext:        rs.DisableNetworkNext,
+		SelectionPercent:          int64(rs.SelectionPercent),
+		ABTest:                    rs.ABTest,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReduceJitter:              rs.ReduceJitter,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		Multipath:                 rs.Multipath,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+	}
+
+	reply.RouteShader = jsonRS
 	return nil
 }
 

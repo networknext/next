@@ -520,14 +520,17 @@ func getInternalConfig(
 	env Environment,
 	buyerRegex string,
 ) error {
-	var reply localjsonrpc.GetInternalConfigReply
+	var reply localjsonrpc.InternalConfigReply
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
-	arg := localjsonrpc.GetInternalConfigArg{
-		BuyerID: buyerID,
+	buyerIDHex := fmt.Sprintf("%016x", buyerID)
+
+	arg := localjsonrpc.InternalConfigArg{
+		BuyerID: buyerIDHex,
 	}
-	if err := rpcClient.CallFor(&reply, "BuyersService.GetInternalConfig", arg); err != nil {
+
+	if err := rpcClient.CallFor(&reply, "BuyersService.InternalConfig", arg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -561,13 +564,17 @@ func getRouteShader(
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
-	arg := localjsonrpc.GetRouteShaderArg{
-		BuyerID: buyerID,
+	buyerIDHex := fmt.Sprintf("%016x", buyerID)
+
+	arg := localjsonrpc.RouteShaderArg{
+		BuyerID: buyerIDHex,
 	}
-	if err := rpcClient.CallFor(&reply, "BuyersService.GetRouteShader", arg); err != nil {
+	if err := rpcClient.CallFor(&reply, "BuyersService.RouteShader", arg); err != nil {
 		fmt.Println("No RouteShader stored for this buyer (they use the defaults).")
 		return nil
 	}
+
+	fmt.Println("New route shader function")
 
 	fmt.Printf("RouteShader for buyer %s:\n", buyerName)
 	fmt.Printf("  DisableNetworkNext       : %t\n", reply.RouteShader.DisableNetworkNext)
