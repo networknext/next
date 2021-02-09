@@ -369,6 +369,14 @@ func mainReturnWithCode() int {
 					continue
 				}
 
+				// Finish timing packet processing
+				milliseconds := float64(time.Since(timeStart).Milliseconds())
+				beaconServiceMetrics.HandlerMetrics.Duration.Set(milliseconds)
+
+				if milliseconds > 100 {
+					beaconServiceMetrics.HandlerMetrics.LongDuration.Add(1)
+				}
+
 				// Insert packet into internal channel for local or bigquery
 				select {
 				case beaconPacketChan <- beaconPacket:
@@ -377,14 +385,6 @@ func mainReturnWithCode() int {
 					level.Error(logger).Log("err", "Beacon channel full")
 					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Add(1)
 					continue
-				}
-
-				// Finish timing packet processing
-				milliseconds := float64(time.Since(timeStart).Milliseconds())
-				beaconServiceMetrics.HandlerMetrics.Duration.Set(milliseconds)
-
-				if milliseconds > 100 {
-					beaconServiceMetrics.HandlerMetrics.LongDuration.Add(1)
 				}
 			}
 
