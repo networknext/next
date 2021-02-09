@@ -1246,6 +1246,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
+					// TODO: this function should use the new JSAddBuyer endpoint
 					// Add the Buyer to storage
 					addBuyer(rpcClient, env, routing.Buyer{
 						CompanyCode: b.CompanyCode,
