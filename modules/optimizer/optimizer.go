@@ -135,16 +135,16 @@ func (o *Optimizer) GetRouteMatrix() (*routing.CostMatrix, *routing.RouteMatrix)
 		return nil, nil
 	}
 
-	o.Metrics.RelayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrix.GetResponseData())))
-	o.Metrics.RelayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(routeMatrix.RelayIDs)))
-	o.Metrics.RelayBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(routeMatrix.RelayDatacenterIDs)))
+	o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.Bytes.Set(float64(len(routeMatrix.GetResponseData())))
+	o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.RelayCount.Set(float64(len(routeMatrix.RelayIDs)))
+	o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.DatacenterCount.Set(float64(len(routeMatrix.RelayDatacenterIDs)))
 
 	// todo: calculate this in optimize and Store in route matrix so we don't have to calc this here
 	numRoutes := int32(0)
 	for i := range routeMatrix.RouteEntries {
 		numRoutes += routeMatrix.RouteEntries[i].NumRoutes
 	}
-	o.Metrics.RelayBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
+	o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
 
 	memoryUsed := func() float64 {
 		var m runtime.MemStats
@@ -331,16 +331,16 @@ func (o *Optimizer) MetricsOutput() {
 	fmt.Printf("-----------------------------\n")
 	fmt.Printf("%.2f mb allocated\n", o.Metrics.RelayBackendMetrics.MemoryAllocated.Value())
 	fmt.Printf("%d goroutines\n", int(o.Metrics.RelayBackendMetrics.Goroutines.Value()))
-	fmt.Printf("%d datacenters\n", int(o.Metrics.RelayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
-	fmt.Printf("%d relays\n", int(o.Metrics.RelayBackendMetrics.RouteMatrix.RelayCount.Value()))
+	fmt.Printf("%d datacenters\n", int(o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.DatacenterCount.Value()))
+	fmt.Printf("%d relays\n", int(o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.RelayCount.Value()))
 	fmt.Printf("%d relays in map\n", o.RelayMap.GetRelayCount())
-	fmt.Printf("%d routes\n", int(o.Metrics.RelayBackendMetrics.RouteMatrix.RouteCount.Value()))
+	fmt.Printf("%d routes\n", int(o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.RouteCount.Value()))
 	fmt.Printf("%d long cost matrix updates\n", int(o.Metrics.CostMatrixMetrics.LongUpdateCount.Value()))
 	fmt.Printf("%d long route matrix updates\n", int(o.Metrics.OptimizeMetrics.LongUpdateCount.Value()))
 	fmt.Printf("cost matrix update: %.2f milliseconds\n", o.Metrics.CostMatrixMetrics.DurationGauge.Value())
 	fmt.Printf("route matrix update: %.2f milliseconds\n", o.Metrics.OptimizeMetrics.DurationGauge.Value())
 	fmt.Printf("cost matrix bytes: %d\n", int(o.Metrics.CostMatrixMetrics.Bytes.Value()))
-	fmt.Printf("route matrix bytes: %d\n", int(o.Metrics.RelayBackendMetrics.RouteMatrix.Bytes.Value()))
+	fmt.Printf("route matrix bytes: %d\n", int(o.Metrics.RelayBackendMetrics.RouteMatrixMetrics.Bytes.Value()))
 	fmt.Printf("%d ping stats entries submitted\n", int(o.Metrics.RelayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
 	fmt.Printf("%d ping stats entries queued\n", int(o.Metrics.RelayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
 	fmt.Printf("%d ping stats entries flushed\n", int(o.Metrics.RelayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))

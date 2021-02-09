@@ -56,6 +56,7 @@ blocks:
           commands:
             - make build-server-backend-artifacts-dev
             - make publish-server-backend-artifacts-dev
+            - ./next metrics update ./modules/metrics/dashboards/server_backend.json
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-dev
