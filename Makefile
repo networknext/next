@@ -559,6 +559,14 @@ build-load-test-client-artifacts: build-load-test-client
 build-billing-artifacts-dev: build-billing
 	./deploy/build-artifacts.sh -e dev -s billing
 
+.PHONY: build-beacon-artifacts-dev
+build-beacon-artifacts-dev: build-beacon
+	./deploy/build-artifacts.sh -e dev -s beacon
+
+.PHONY: build-beacon-inserter-artifacts-dev
+build-beacon-inserter-artifacts-dev: build-beacon-inserter
+	./deploy/build-artifacts.sh -e dev -s beacon-inserter
+
 .PHONY: build-analytics-artifacts-dev
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
@@ -599,6 +607,14 @@ build-server-backend-artifacts-dev: build-server-backend
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
 
+.PHONY: build-beacon-artifacts-staging
+build-beacon-artifacts-staging: build-beacon
+	./deploy/build-artifacts.sh -e staging -s beacon
+
+.PHONY: build-beacon-inserter-artifacts-staging
+build-beacon-inserter-artifacts-staging: build-beacon-inserter
+	./deploy/build-artifacts.sh -e staging -s beacon-inserter
+
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
@@ -635,6 +651,14 @@ build-server-backend-artifacts-staging: build-server-backend
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
 
+.PHONY: build-beacon-artifacts-prod
+build-beacon-artifacts-prod: build-beacon
+	./deploy/build-artifacts.sh -e prod -s beacon
+
+.PHONY: build-beacon-inserter-artifacts-prod
+build-beacon-inserter-artifacts-prod: build-beacon-inserter
+	./deploy/build-artifacts.sh -e prod -s beacon-inserter
+
 .PHONY: build-analytics-artifacts-prod
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
@@ -670,6 +694,14 @@ build-server-backend-artifacts-prod: build-server-backend
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
+
+.PHONY: publish-beacon-artifacts-dev
+publish-beacon-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon
+
+.PHONY: publish-beacon-inserter-artifacts-dev
+publish-beacon-inserter-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon-inserter
 
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
@@ -710,6 +742,14 @@ publish-server-backend-artifacts-dev:
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
+
+.PHONY: publish-beacon-artifacts-staging
+publish-beacon-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon
+
+.PHONY: publish-beacon-inserter-artifacts-staging
+publish-beacon-inserter-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon-inserter
 
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
@@ -758,6 +798,14 @@ publish-load-test-server-list:
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-beacon-artifacts-prod
+publish-beacon-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon
+
+.PHONY: publish-beacon-inserter-artifacts-prod
+publish-beacon-inserter-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon-inserter
 
 .PHONY: publish-api-artifacts-prod
 publish-api-artifacts-prod:
@@ -1089,7 +1137,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
