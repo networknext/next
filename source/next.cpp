@@ -10168,6 +10168,7 @@ struct next_server_internal_t
     uint64_t customer_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
+    char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -10240,6 +10241,167 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
 
+bool next_autodetect_google( char * output )
+{
+    FILE * file;
+    char buffer[1024*10];
+
+    // are we running in google cloud?
+
+    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r");
+    if ( file == NULL ) 
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run ls" );
+        return false;
+    }
+
+    bool in_gcp = false;
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    {
+        if ( strstr( buffer, "google_authorized_keys" ) != NULL )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: running in google cloud" );
+            in_gcp = true;
+            break;
+        }
+    }
+    pclose( file );
+
+    // we are not running in google cloud :(
+
+    if ( !in_gcp )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
+        return false;
+    }
+
+    // we are running in google cloud, which zone are we in?
+
+    char zone[256];
+    zone[0] = '\0';
+    file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null", "r" );
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    {
+        int length = strlen( buffer );
+        if ( length < 10 )
+        {
+            continue;
+        }
+
+        if ( buffer[0] != 'p' ||
+             buffer[1] != 'r' || 
+             buffer[2] != 'o' ||
+             buffer[3] != 'j' || 
+             buffer[4] != 'e' ||
+             buffer[5] != 'c' ||
+             buffer[6] != 't' ||
+             buffer[7] != 's' ||
+             buffer[8] != '/' )
+        {
+            continue;
+        }
+
+        bool found = false;
+        int index = length - 1;
+        while ( index > 10 && length  )
+        {
+            if ( buffer[index] == '/' )
+            {
+                found = true;
+                break;
+            }
+            index--;
+        }
+
+        if ( !found )
+        {
+            continue;
+        }
+
+        strcpy( zone, buffer + index + 1 );
+
+        int zone_length = strlen(zone);
+        index = zone_length - 1;
+        while ( index > 0 && ( zone[index] == '\n' || zone[index] == '\r' ) )
+        {
+            zone[index] = '\0';
+            index--;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: google zone is \"%s\"", zone );
+
+        break;
+    }
+    pclose( file );
+
+    // we couldn't work out which zone we are in :(
+
+    if ( zone[0] == '\0' )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not detect google zone" );
+        return false;
+    }
+
+    // look up google zone -> network next datacenter via mapping in google cloud storage "google.txt" file
+
+    bool found = false;
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 1 -vs 2>/dev/null", "r" );
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    {
+        const char * separators = ",\n\r";
+
+        char * google_zone = strtok( buffer, separators );
+        if ( google_zone == NULL )
+        {
+            continue;
+        }
+
+        char * google_datacenter = strtok( NULL, separators );
+        if ( google_datacenter == NULL )
+        {
+            continue;
+        }
+
+        if ( strcmp( zone, google_zone ) == 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: \"%s\" -> \"%s\"", zone, google_datacenter );
+            strcpy( output, google_datacenter );
+            found = true;
+            break;
+        }
+    }
+    pclose( file );
+
+    return found;
+}
+
+bool next_autodetect_datacenter( char * output )
+{
+    // we need linux + curl to do any autodetect. bail if we don't have it
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for curl" );
+
+    int result = system( "curl >/dev/null 2>&1" );
+
+    if ( result < 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl not found" );
+        return false;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl exists" );
+
+    // google cloud
+
+    bool google_result = next_autodetect_google( output );
+    if ( google_result )
+    {
+        return true;
+    }
+
+    return false;
+}
+
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
     if ( server->state == NEXT_SERVER_STATE_RESOLVING_HOSTNAME )
@@ -10247,6 +10409,9 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         next_printf( NEXT_LOG_LEVEL_ERROR, "server is already resolving hostname" );
         return;
     }
+
+    strncpy( server->autodetect_datacenter, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
 
     server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
     if ( !server->resolve_hostname_thread )
@@ -10338,7 +10503,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         }
         else
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server could not determine datacenter it is running in" );
             server->no_datacenter_specified = true;
         }
     }
@@ -10429,7 +10593,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    if ( !next_global_config.disable_network_next && server->valid_customer_private_key && !server->no_datacenter_specified )
+    if ( !next_global_config.disable_network_next && server->valid_customer_private_key )
     {
         next_server_internal_resolve_hostname( server );
     }
@@ -11944,6 +12108,22 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
+    bool autodetect_result = false;
+    char autodetect_output[1024];
+    if ( server->autodetect_datacenter[0] == '\0' )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
+        autodetect_result = next_autodetect_datacenter( autodetect_output );
+        if ( autodetect_result )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server could not autodetect datacenter" );
+        }
+    }
+
     const char * hostname = next_global_config.hostname;
     const char * port = NEXT_BACKEND_PORT;
     const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
@@ -11993,6 +12173,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+        
+        if ( autodetect_result )
+        {
+            strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+        }
     }
 
     NEXT_PLATFORM_THREAD_RETURN();
@@ -12020,6 +12206,9 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     next_platform_thread_join( server->resolve_hostname_thread );
 
     next_platform_thread_destroy( server->resolve_hostname_thread );
+
+    strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
 
     server->resolve_hostname_thread = NULL;
 
