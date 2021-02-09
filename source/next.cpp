@@ -12120,7 +12120,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
         else
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server could not autodetect datacenter" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server could not autodetect datacenter. all sessions will go direct" );
         }
     }
 
