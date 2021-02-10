@@ -49,6 +49,7 @@ void *alloca (size_t);
 #include "sodium_core.h"
 #include "sodium_randombytes.h"
 #include "sodium_utils.h"
+#include "sodium_private_common.h"
 
 #ifndef ENOSYS
 # define ENOSYS ENXIO

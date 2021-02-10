@@ -29,7 +29,7 @@ FNetworkNextSocketClient::FNetworkNextSocketClient(const FString& InSocketDescri
 {
     UE_LOG(LogNetworkNext, Display, TEXT("Client socket created"));
     NetworkNextClient = NULL;
-    ServerPort = NULL;
+    ServerPort = 0;
     bConnected = false;
 }
 
@@ -67,7 +67,7 @@ bool FNetworkNextSocketClient::Bind(const FInternetAddr& Addr)
     // We must ignore the local bind address and bind to 0.0.0.0 instead. XBoxOne binds to "::0" otherwise and breaks.
     int BindPort = Addr.GetPort();
     char BindAddress[256];
-    sprintf_s(BindAddress, "0.0.0.0:%d", BindPort);
+    TCString<char>::Sprintf(BindAddress, "0.0.0.0:%d", BindPort);
 
     UE_LOG(LogNetworkNext, Display, TEXT("Bind Client Socket (%s)"), ANSI_TO_TCHAR(BindAddress));
 

@@ -493,6 +493,7 @@ randombytes_salsa20_random_buf(void * const buf, const size_t size)
 {
     size_t i;
     int    ret;
+    (void) ret;
 
     randombytes_salsa20_random_stir_if_needed();
     COMPILER_ASSERT(sizeof stream.nonce == crypto_stream_salsa20_NONCEBYTES);
@@ -525,6 +526,7 @@ randombytes_salsa20_random(void)
 {
     uint32_t val;
     int      ret;
+    (void)   ret;
 
     COMPILER_ASSERT(sizeof stream.rnd32 >= (sizeof stream.key) + (sizeof val));
     COMPILER_ASSERT(((sizeof stream.rnd32) - (sizeof stream.key))

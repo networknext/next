@@ -171,10 +171,10 @@ if (bytes > 0) {
         diag1                                  = _mm_shuffle_epi32(diag1, 0x39); \
         diag2                                  = _mm_shuffle_epi32(diag2, 0x39); \
         diag3                                  = _mm_shuffle_epi32(diag3, 0x39); \
-        *(uint32_t *) (partialblock + (A * 4)) = in##A;                          \
-        *(uint32_t *) (partialblock + (B * 4)) = in##B;                          \
-        *(uint32_t *) (partialblock + (C * 4)) = in##C;                          \
-        *(uint32_t *) (partialblock + (D * 4)) = in##D;                          \
+        memcpy( partialblock + (A*4), &in##A, 4 );                               \
+        memcpy( partialblock + (B*4), &in##B, 4 );                               \
+        memcpy( partialblock + (C*4), &in##C, 4 );                               \
+        memcpy( partialblock + (D*4), &in##D, 4 );                               \
     } while (0)
 
 #define ONEQUAD(A, B, C, D) ONEQUAD_SHUFFLE(A, B, C, D)
