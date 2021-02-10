@@ -10345,7 +10345,7 @@ bool next_autodetect_google( char * output )
     // look up google zone -> network next datacenter via mapping in google cloud storage "google.txt" file
 
     bool found = false;
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 1 -vs 2>/dev/null", "r" );
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 5 -vs 2>/dev/null", "r" );
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -10375,6 +10375,84 @@ bool next_autodetect_google( char * output )
     return found;
 }
 
+bool next_autodetect_amazon( char * output )
+{
+    FILE * file;
+    char buffer[1024*10];
+
+    // Get the AZID from instance metadata
+    // This is necessary because only AZ IDs are the same across different customer accounts
+    // See https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html for details
+
+    char azid[256];
+    azid[0] = '\0';
+    file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 1 -vs 2>/dev/null", "r" );
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    {
+        if ( strstr( buffer, "-az" ) == NULL )
+        {
+            continue;
+        }
+
+        strcpy( azid, buffer );
+
+        int azid_length = strlen(azid);
+        int index = azid_length - 1;
+        while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
+        {
+            azid[index] = '\0';
+            index--;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: azid is \"%s\"", azid );
+
+        break;
+    }
+    pclose( file );
+
+    // we are probably not in AWS :(
+
+    if ( azid[0] == '\0' )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in AWS" );
+        return false;
+    }
+
+    // look up AZID -> network next datacenter via mapping in google cloud storage "amazon.txt" file
+
+    bool found = false;
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 5 -vs 2>/dev/null", "r" );
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    {
+        const char * separators = ",\n\r";
+
+        char * amazon_zone = strtok( buffer, separators );
+        if ( amazon_zone == NULL )
+        {
+            continue;
+        }
+
+        char * amazon_datacenter = strtok( NULL, separators );
+        if ( amazon_datacenter == NULL )
+        {
+            continue;
+        }
+
+        if ( strcmp( azid, amazon_zone ) == 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: \"%s\" -> \"%s\"", azid, amazon_datacenter );
+            strcpy( output, amazon_datacenter );
+            found = true;
+            break;
+        }
+    }
+    pclose( file );
+
+    return found;
+
+    return false;
+}
+
 bool next_autodetect_datacenter( char * output )
 {
     // we need linux + curl to do any autodetect. bail if we don't have it
@@ -10395,6 +10473,14 @@ bool next_autodetect_datacenter( char * output )
 
     bool google_result = next_autodetect_google( output );
     if ( google_result )
+    {
+        return true;
+    }
+
+    // amazon
+
+    bool amazon_result = next_autodetect_amazon( output );
+    if ( amazon_result )
     {
         return true;
     }
