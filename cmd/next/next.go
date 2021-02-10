@@ -306,7 +306,7 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 		}
 	default:
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>\n", err), 0)
+			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'staging', 'nrb', 'dev', or 'local' with\nnext select <env>\n", err), 0)
 		} else {
 			handleRunTimeError(fmt.Sprintf("%s\n\n", msg), 1)
 		}
@@ -419,7 +419,7 @@ func main() {
 	env.Read()
 
 	protocol := "https"
-	if env.PortalHostname() == PortalHostnameLocal {
+	if env.PortalHostname() == PortalHostnameLocal || env.PortalHostname() == PortalHostnameNRB {
 		protocol = "http"
 	}
 
@@ -596,8 +596,8 @@ func main() {
 				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
 			}
 
-			if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
-				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|prod)\n", args[0]), 0)
+			if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
+				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
 			}
 
 			env.Name = args[0]
@@ -614,8 +614,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
-					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|prod)\n", args[0]), 0)
+				if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
+					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
 				}
 
 				env.Name = args[0]
