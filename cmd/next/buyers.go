@@ -573,8 +573,6 @@ func getRouteShader(
 		return nil
 	}
 
-	fmt.Println("New route shader function")
-
 	fmt.Printf("RouteShader for buyer %s:\n", buyerName)
 	fmt.Printf("  DisableNetworkNext       : %t\n", reply.RouteShader.DisableNetworkNext)
 	fmt.Printf("  SelectionPercent         : %d\n", reply.RouteShader.SelectionPercent)
