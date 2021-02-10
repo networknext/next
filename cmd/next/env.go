@@ -50,7 +50,7 @@ type Environment struct {
 	Name           string `json:"name"`
 	Hostname       string `json:"hostname"`
 	AuthToken      string `json:"auth_token"`
-	SSHKeyFilePath string `json:"ssh_key_filepath`
+	SSHKeyFilePath string `json:"ssh_key_filepath"`
 }
 
 func (e *Environment) String() string {
