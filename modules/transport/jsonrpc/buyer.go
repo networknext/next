@@ -1666,9 +1666,10 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 }
 
 type UpdateInternalConfigArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"`
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateInternalConfigReply struct{}
@@ -1676,6 +1677,18 @@ type UpdateInternalConfigReply struct{}
 func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
+	}
+
+	var err error
+	var buyerID uint64
+
+	if args.HexBuyerID == "" {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Can not parse HexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1688,7 +1701,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newInt32)
+		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newInt32)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -1702,7 +1715,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
