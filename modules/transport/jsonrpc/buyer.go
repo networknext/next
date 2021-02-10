@@ -1550,46 +1550,114 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	return sessions, err
 }
 
-// InternalConfig CRUD endpoints
-type GetInternalConfigArg struct {
-	BuyerID uint64
+type JSInternalConfig struct {
+	RouteSelectThreshold       int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold       int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff         int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default            int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath          int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss         int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy            bool  `json:"tryBeforeYouBuy"`
+	ForceNext                  bool  `json:"forceNext"`
+	LargeCustomer              bool  `json:"largeCustomer"`
+	Uncommitted                bool  `json:"uncommitted"`
+	MaxRTT                     int64 `json:"maxRTT"`
+	HighFrequencyPings         bool  `json:"highFrequencyPings"`
+	RouteDiversity             int64 `json:"routeDiversity"`
+	MultipathThreshold         int64 `json:"multipathThreshold"`
+	EnableVanityMetrics        bool  `json:"enableVanityMetrics"`
 }
 
-type GetInternalConfigReply struct {
-	InternalConfig core.InternalConfig
+type InternalConfigArg struct {
+	BuyerID string `json:"buyerID"`
 }
 
-func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfigArg, reply *GetInternalConfigReply) error {
+type InternalConfigReply struct {
+	InternalConfig JSInternalConfig
+}
+
+func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	ic, err := s.Storage.InternalConfig(arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("GetInternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	reply.InternalConfig = ic
+	ic, err := s.Storage.InternalConfig(buyerID)
+	if err != nil {
+		err = fmt.Errorf("InternalConfig() no InternalConfig stored for buyer %s", arg.BuyerID)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	jsonIC := JSInternalConfig{
+		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:            int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+		ForceNext:                  ic.ForceNext,
+		LargeCustomer:              ic.LargeCustomer,
+		Uncommitted:                ic.Uncommitted,
+		MaxRTT:                     int64(ic.MaxRTT),
+		HighFrequencyPings:         ic.HighFrequencyPings,
+		RouteDiversity:             int64(ic.RouteDiversity),
+		MultipathThreshold:         int64(ic.MultipathThreshold),
+		EnableVanityMetrics:        ic.EnableVanityMetrics,
+	}
+
+	reply.InternalConfig = jsonIC
 	return nil
 }
 
-type AddInternalConfigArgs struct {
-	BuyerID        uint64
-	InternalConfig core.InternalConfig
+type JSAddInternalConfigArgs struct {
+	BuyerID        string           `json:"buyerID"`
+	InternalConfig JSInternalConfig `json:"internalConfig"`
 }
 
-type AddInternalConfigReply struct{}
+type JSAddInternalConfigReply struct{}
 
-func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
+func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalConfigArgs, reply *JSAddInternalConfigReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	ic := core.InternalConfig{
+		RouteSelectThreshold:       int32(arg.InternalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold:       int32(arg.InternalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:         int32(arg.InternalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:            int32(arg.InternalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:          int32(arg.InternalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:         int32(arg.InternalConfig.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold: int32(arg.InternalConfig.MultipathOverloadThreshold),
+		TryBeforeYouBuy:            arg.InternalConfig.TryBeforeYouBuy,
+		ForceNext:                  arg.InternalConfig.ForceNext,
+		LargeCustomer:              arg.InternalConfig.LargeCustomer,
+		Uncommitted:                arg.InternalConfig.Uncommitted,
+		MaxRTT:                     int32(arg.InternalConfig.MaxRTT),
+		HighFrequencyPings:         arg.InternalConfig.HighFrequencyPings,
+		RouteDiversity:             int32(arg.InternalConfig.RouteDiversity),
+		MultipathThreshold:         int32(arg.InternalConfig.MultipathThreshold),
+		EnableVanityMetrics:        arg.InternalConfig.EnableVanityMetrics,
+	}
+
+	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
+	if err != nil {
+		err = fmt.Errorf("JSAddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
@@ -1598,9 +1666,10 @@ func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfi
 }
 
 type UpdateInternalConfigArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"`
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateInternalConfigReply struct{}
@@ -1608,6 +1677,18 @@ type UpdateInternalConfigReply struct{}
 func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
+	}
+
+	var err error
+	var buyerID uint64
+
+	if args.HexBuyerID == "" {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Can not parse HexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1620,7 +1701,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newInt32)
+		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newInt32)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -1634,7 +1715,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -1649,7 +1730,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 }
 
 type RemoveInternalConfigArg struct {
-	BuyerID uint64
+	BuyerID string `json:"buyerID"`
 }
 
 type RemoveInternalConfigReply struct{}
@@ -1659,7 +1740,13 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 		return nil
 	}
 
-	err := s.Storage.RemoveInternalConfig(context.Background(), arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	err = s.Storage.RemoveInternalConfig(context.Background(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1669,44 +1756,103 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 	return nil
 }
 
-// RouteShader CRUD endpoints
-type GetRouteShaderArg struct {
-	BuyerID uint64
+type JSRouteShader struct {
+	DisableNetworkNext        bool            `json:"disableNetworkNext"`
+	SelectionPercent          int64           `json:"selectionPercent"`
+	ABTest                    bool            `json:"abTest"`
+	ProMode                   bool            `json:"proMode"`
+	ReduceLatency             bool            `json:"reduceLatency"`
+	ReduceJitter              bool            `json:"reduceJitter"`
+	ReducePacketLoss          bool            `json:"reducePacketLoss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int64           `json:"acceptableLatency"`
+	LatencyThreshold          int64           `json:"latencyThreshold"`
+	AcceptablePacketLoss      float64         `json:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
+	BannedUsers               map[string]bool `json:"bannedUsers"`
+}
+type RouteShaderArg struct {
+	BuyerID string `json:"buyerID"`
 }
 
-type GetRouteShaderReply struct {
-	RouteShader core.RouteShader
+type RouteShaderReply struct {
+	RouteShader JSRouteShader
 }
 
-func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
+func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	rs, err := s.Storage.RouteShader(arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	reply.RouteShader = rs
+	rs, err := s.Storage.RouteShader(buyerID)
+	if err != nil {
+		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %s: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	jsonRS := JSRouteShader{
+		DisableNetworkNext:        rs.DisableNetworkNext,
+		SelectionPercent:          int64(rs.SelectionPercent),
+		ABTest:                    rs.ABTest,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReduceJitter:              rs.ReduceJitter,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		Multipath:                 rs.Multipath,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+	}
+
+	reply.RouteShader = jsonRS
 	return nil
 }
 
-type AddRouteShaderArgs struct {
-	BuyerID     uint64
-	RouteShader core.RouteShader
+type JSAddRouteShaderArgs struct {
+	BuyerID     string        `json:"buyerID"`
+	RouteShader JSRouteShader `json:"routeShader"`
 }
 
-type AddRouteShaderReply struct{}
+type JSAddRouteShaderReply struct{}
 
-func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs, reply *AddRouteShaderReply) error {
+func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderArgs, reply *JSAddRouteShaderReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.AddRouteShader(context.Background(), arg.RouteShader, arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	rs := core.RouteShader{
+		DisableNetworkNext:        arg.RouteShader.DisableNetworkNext,
+		SelectionPercent:          int(arg.RouteShader.SelectionPercent),
+		ABTest:                    arg.RouteShader.ABTest,
+		ProMode:                   arg.RouteShader.ProMode,
+		ReduceLatency:             arg.RouteShader.ReduceLatency,
+		ReduceJitter:              arg.RouteShader.ReduceJitter,
+		ReducePacketLoss:          arg.RouteShader.ReducePacketLoss,
+		Multipath:                 arg.RouteShader.Multipath,
+		AcceptableLatency:         int32(arg.RouteShader.AcceptableLatency),
+		LatencyThreshold:          int32(arg.RouteShader.LatencyThreshold),
+		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
+	}
+
+	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
 	if err != nil {
 		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1717,7 +1863,7 @@ func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs,
 }
 
 type RemoveRouteShaderArg struct {
-	BuyerID uint64
+	BuyerID string `json:"buyerID"`
 }
 
 type RemoveRouteShaderReply struct{}
@@ -1727,7 +1873,13 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 		return nil
 	}
 
-	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	err = s.Storage.RemoveRouteShader(context.Background(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1908,9 +2060,10 @@ func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply)
 }
 
 type UpdateBuyerArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"` // needed for external (non-go) clients
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateBuyerReply struct{}
@@ -1918,6 +2071,17 @@ type UpdateBuyerReply struct{}
 func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
+	}
+
+	var buyerID uint64
+	var err error
+	if args.BuyerID != 0 {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer could not parse hexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1928,14 +2092,14 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 	case "ShortName":
-		err := s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, args.Value)
+		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
