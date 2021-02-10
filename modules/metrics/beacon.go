@@ -240,7 +240,16 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = &EmptyCounter{}
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Beacon Publish Failure",
+		ServiceName: "beacon",
+		ID:          "beacon.error.publish_failure",
+		Unit:        "errors",
+		Description: "The total number of batched beacon entries that could not be published to Google Pubsub",
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Send Failure",
