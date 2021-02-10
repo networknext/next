@@ -205,7 +205,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
-			HexID:       fmt.Sprintf("%016x", b.ID),
+			HexID:       b.HexID,
 			CompanyName: c.Name,
 			CompanyCode: b.CompanyCode,
 			ShortName:   b.ShortName,

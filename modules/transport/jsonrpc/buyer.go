@@ -2047,9 +2047,10 @@ func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply)
 }
 
 type UpdateBuyerArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"` // needed for external (non-go) clients
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateBuyerReply struct{}
@@ -2057,6 +2058,17 @@ type UpdateBuyerReply struct{}
 func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
+	}
+
+	var buyerID uint64
+	var err error
+	if args.BuyerID != 0 {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer could not parse hexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -2067,14 +2079,14 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 	case "ShortName":
-		err := s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, args.Value)
+		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
