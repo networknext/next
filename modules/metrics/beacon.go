@@ -240,7 +240,7 @@ func NewBeaconServiceMetrics(ctx context.Context, metricsHandler Handler) (*Beac
 		return nil, err
 	}
 
-	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure = metricsHandler.NewCounter(ctx, &Descriptor{
+	beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Beacon Publish Failure",
 		ServiceName: "beacon",
 		ID:          "beacon.error.publish_failure",
