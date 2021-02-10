@@ -10241,6 +10241,8 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
 
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+
 bool next_autodetect_google( char * output )
 {
     FILE * file;
@@ -10401,6 +10403,8 @@ bool next_autodetect_datacenter( char * output )
 
     return false;
 }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
@@ -12108,6 +12112,10 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+
+    // autodetect datacenter is currently linux only
+
     bool autodetect_result = false;
     char autodetect_output[1024];
     if ( server->autodetect_datacenter[0] == '\0' )
@@ -12123,6 +12131,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
             next_printf( NEXT_LOG_LEVEL_INFO, "server could not autodetect datacenter. all sessions will go direct" );
         }
     }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
     const char * hostname = next_global_config.hostname;
     const char * port = NEXT_BACKEND_PORT;
@@ -12174,11 +12184,13 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
         if ( autodetect_result )
         {
             strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
             server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
         }
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
     }
 
     NEXT_PLATFORM_THREAD_RETURN();
