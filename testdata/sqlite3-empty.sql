@@ -41,8 +41,9 @@ create table sellers (
   id integer primary key autoincrement,
   public_egress_price bigint not null,
   public_ingress_price bigint,
-  short_name varchar unique,
+  short_name varchar not null unique,
   customer_id integer,
+  secret boolean not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
 );
 
@@ -82,6 +83,7 @@ create table rs_internal_configs (
   high_frequency_pings boolean not null,
   route_diversity integer not null,
   multipath_threshold integer not null,
+  mispredict_multipath_overload boolean not null,
   enable_vanity_metrics boolean not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
@@ -126,6 +128,7 @@ create table relays (
   datacenter integer not null,
   machine_type integer not null,
   relay_state integer not null,
+  notes varchar,
   constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id),
   constraint fk_machine_type foreign key (machine_type) references machine_types(id),
@@ -146,7 +149,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/01/20 09:48:15
+-- File generation: 2021/02/11 14:18:42
 
 -- machine_types
 insert into machine_types values (0, 'none');
@@ -169,4 +172,3 @@ insert into relay_states values (5, 'offline');
 
 -- metadata
  insert into metadata (sync_sequence_number) values (-1);
-
