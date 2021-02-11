@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -190,6 +191,8 @@ type buyer struct {
 	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
 	HexID       string `json:"hexID"`
+	Live        bool   `json:"live"`
+	Debug       bool   `json:"debug"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -202,10 +205,12 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
-			HexID:       fmt.Sprintf("%016x", b.ID),
+			HexID:       b.HexID,
 			CompanyName: c.Name,
 			CompanyCode: b.CompanyCode,
 			ShortName:   b.ShortName,
+			Live:        b.Live,
+			Debug:       b.Debug,
 		})
 	}
 
@@ -214,6 +219,43 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	})
 
 	return nil
+}
+
+type JSAddBuyerArgs struct {
+	ShortName string `json:"shortName"`
+	Live      bool   `json:"live"`
+	Debug     bool   `json:"debug"`
+	PublicKey string `json:"publicKey"`
+}
+
+type JSAddBuyerReply struct{}
+
+func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JSAddBuyerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	// Get the ID from the first 8 bytes of the public key
+	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if len(publicKey) != crypto.KeySize+8 {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	buyer := routing.Buyer{
+		CompanyCode: args.ShortName,
+		ShortName:   args.ShortName,
+		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
+		Live:        args.Live,
+		Debug:       args.Debug,
+		PublicKey:   publicKey[8:],
+	}
+
+	return s.Storage.AddBuyer(ctx, buyer)
 }
 
 type AddBuyerArgs struct {
