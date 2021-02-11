@@ -249,10 +249,11 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 	buyer := routing.Buyer{
 		CompanyCode: args.ShortName,
 		ShortName:   args.ShortName,
-		ID:          binary.LittleEndian.Uint64(publicKey[8:]),
+		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
 		Live:        args.Live,
 		Debug:       args.Debug,
-		PublicKey:   publicKey}
+		PublicKey:   publicKey[8:],
+	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
 }
