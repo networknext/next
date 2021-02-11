@@ -276,7 +276,7 @@ func setMetricsDashboards(dashboards []MetricsDashboard) error {
 			return fmt.Errorf("could not create dashboard: %s", output)
 		}
 
-		if output == "Listed 0 items.\n" {
+		if output == "[]\n" {
 			// Create
 			dashboardJSON, err := dashboard.MarshalCompleteDashboardJSON()
 			if err != nil {

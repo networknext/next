@@ -52,11 +52,12 @@ blocks:
           commands:
             - make build-relay-backend-artifacts-dev
             - make publish-relay-backend-artifacts-dev
+            - ./next metrics update ./metrics_dashboards/relay_backend.json
         - name: Server Backend
           commands:
             - make build-server-backend-artifacts-dev
             - make publish-server-backend-artifacts-dev
-            - ./next metrics update ./modules/metrics/dashboards/server_backend.json
+            - ./next metrics update ./metrics_dashboards/server_backend.json
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-dev
