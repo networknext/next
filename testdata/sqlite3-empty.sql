@@ -83,7 +83,6 @@ create table rs_internal_configs (
   high_frequency_pings boolean not null,
   route_diversity integer not null,
   multipath_threshold integer not null,
-  mispredict_multipath_overload boolean not null,
   enable_vanity_metrics boolean not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
@@ -149,7 +148,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/02/11 14:18:42
+-- File generation: 2021/02/11 14:54:23
 
 -- machine_types
 insert into machine_types values (0, 'none');
