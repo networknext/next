@@ -3,6 +3,7 @@ package metrics
 import "context"
 
 // PostSessionMetrics defines the set of metrics for the post session update processing.
+// TODO: Refactor this to use the PublisherMetrics
 type PostSessionMetrics struct {
 	BillingEntriesSent     Counter
 	BillingEntriesFinished Counter

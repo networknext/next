@@ -229,7 +229,7 @@ func TestServerUpdateHandlerSuccess(t *testing.T) {
 		Data: requestData,
 	})
 
-	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerUpdateMetrics)
+	assertAllMetricsEqual(t, expectedMetrics, metrics.ServerUpdateMetrics)
 }
 
 func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
@@ -274,5 +274,5 @@ func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
 		Data: requestData,
 	})
 
-	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerUpdateMetrics)
+	assertAllMetricsEqual(t, expectedMetrics, metrics.ServerUpdateMetrics)
 }

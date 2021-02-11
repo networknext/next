@@ -26,7 +26,7 @@ func checkGooglePubsubEmulator(t *testing.T) {
 
 func TestNewGooglePubSubPublisher(t *testing.T) {
 	checkGooglePubsubEmulator(t)
-	_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+	_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), metrics.EmptyPublisherMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
 	assert.NoError(t, err)
 }
 
@@ -41,7 +41,7 @@ func TestGooglePubSubPublisher(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		publisher, err := analytics.NewGooglePubSubPingStatsPublisher(ctx, &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		publisher, err := analytics.NewGooglePubSubPingStatsPublisher(ctx, metrics.EmptyPublisherMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 		err = publisher.Publish(ctx, []analytics.PingStatsEntry{})
 		assert.NoError(t, err)

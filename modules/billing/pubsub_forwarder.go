@@ -17,12 +17,12 @@ import (
 type PubSubForwarder struct {
 	Biller  Biller
 	Logger  log.Logger
-	Metrics *metrics.BillingMetrics
+	Metrics metrics.SubscriberMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics metrics.SubscriberMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -51,7 +51,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		entries, err := psf.unbatchMessages(m)
 		if err != nil {
 			level.Error(psf.Logger).Log("err", err)
-			psf.Metrics.ErrorMetrics.BillingBatchedReadFailure.Add(1)
+			psf.Metrics.UnmarshalFailure.Add(1)
 		}
 
 		psf.Metrics.EntriesReceived.Add(float64(len(entries)))
@@ -78,7 +78,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 
 				if err != nil {
 					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
-					psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+					psf.Metrics.UnmarshalFailure.Add(1)
 					return
 				}
 
@@ -87,7 +87,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 					return
 				}
 
-				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+				psf.Metrics.UnmarshalFailure.Add(1)
 			}
 		}
 	})

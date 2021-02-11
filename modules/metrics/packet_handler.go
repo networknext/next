@@ -2,34 +2,34 @@ package metrics
 
 import "context"
 
-// PacketHandlerMetrics defines the set of metrics for any incoming packet or endpoint handler.
-type PacketHandlerMetrics struct {
+// RoutineMetrics defines the set of metrics for any routine logic that we want to measure, such as sync routines or endpoint handlers.
+type RoutineMetrics struct {
 	Invocations  Counter
 	Duration     Gauge
 	LongDuration Counter
 }
 
-// EmptyPacketHandlerMetrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptyPacketHandlerMetrics = PacketHandlerMetrics{
+// EmptyRoutineMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyRoutineMetrics = RoutineMetrics{
 	Invocations:  &EmptyCounter{},
 	Duration:     &EmptyGauge{},
 	LongDuration: &EmptyCounter{},
 }
 
-// NewPacketHandlerMetrics creates the metrics a packet handler will use.
-func NewPacketHandlerMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (PacketHandlerMetrics, error) {
+// NewRoutineMetrics creates the metrics any routine logic will use for measuring performance.
+func NewRoutineMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, handlerDescription string) (RoutineMetrics, error) {
 	var err error
-	m := PacketHandlerMetrics{}
+	m := RoutineMetrics{}
 
 	m.Invocations, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Invocations",
 		ServiceName: serviceName,
 		ID:          handlerID + ".invocations",
 		Unit:        "invocations",
-		Description: "The number of times a " + packetDescription + " is received.",
+		Description: "The number of times a " + handlerDescription + " is invoked.",
 	})
 	if err != nil {
-		return EmptyPacketHandlerMetrics, err
+		return EmptyRoutineMetrics, err
 	}
 
 	m.Duration, err = handler.NewGauge(ctx, &Descriptor{
@@ -37,10 +37,10 @@ func NewPacketHandlerMetrics(ctx context.Context, handler Handler, serviceName s
 		ServiceName: serviceName,
 		ID:          handlerID + ".duration",
 		Unit:        "ms",
-		Description: "The amount of time a " + packetDescription + " takes to complete in milliseconds.",
+		Description: "The amount of time a " + handlerDescription + " takes to complete in milliseconds.",
 	})
 	if err != nil {
-		return EmptyPacketHandlerMetrics, err
+		return EmptyRoutineMetrics, err
 	}
 
 	m.LongDuration, err = handler.NewCounter(ctx, &Descriptor{
@@ -48,10 +48,10 @@ func NewPacketHandlerMetrics(ctx context.Context, handler Handler, serviceName s
 		ServiceName: serviceName,
 		ID:          handlerID + ".long_durations",
 		Unit:        "invocations",
-		Description: "The number of times a " + packetDescription + " takes longer than 100 milliseconds to complete.",
+		Description: "The number of times a " + handlerDescription + " takes longer than 100 milliseconds to complete.",
 	})
 	if err != nil {
-		return EmptyPacketHandlerMetrics, err
+		return EmptyRoutineMetrics, err
 	}
 
 	return m, nil

@@ -353,25 +353,25 @@ func TestNewPortalCruncher(t *testing.T) {
 	btMaxAgeDays := 1
 
 	t.Run("top sessions failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, "", redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, "", redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("session map failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), "", redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), "", redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("session meta failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), "", redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), "", redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
 
 	t.Run("session slices failure", func(t *testing.T) {
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), "", useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), "", useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 	})
@@ -382,7 +382,7 @@ func TestNewPortalCruncher(t *testing.T) {
 		err := os.Unsetenv("BIGTABLE_EMULATOR_HOST")
 		assert.NoError(t, err)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), true, "", btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), true, "", btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.Nil(t, portalCruncher)
 		assert.Error(t, err)
 
@@ -393,7 +393,7 @@ func TestNewPortalCruncher(t *testing.T) {
 
 	if useBigtable {
 		t.Run("bigtable table exist failure", func(t *testing.T) {
-			portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+			portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 			assert.Nil(t, portalCruncher)
 			errStr := fmt.Sprintf("SetupBigtable() Could not find table %s in bigtable instance. Create the table before starting the portal cruncher", btTableName)
 			assert.EqualError(t, err, errStr)
@@ -420,7 +420,7 @@ func TestNewPortalCruncher(t *testing.T) {
 			}()
 		}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 	})
@@ -475,7 +475,7 @@ func TestReceiveMessage(t *testing.T) {
 	t.Run("receive error", func(t *testing.T) {
 		subscriber := &BadMockSubscriber{}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -486,7 +486,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{countData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -501,7 +501,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{countData: countDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -516,7 +516,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{countData: countDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -527,7 +527,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{countData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -542,7 +542,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{sessionData: sessionDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -557,7 +557,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{sessionData: sessionDataBytes}
 		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -568,7 +568,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{}
 		subscriber.Subscribe(0)
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NoError(t, err)
 
 		err = portalCruncher.ReceiveMessage(ctx)
@@ -629,7 +629,7 @@ func TestPingRedis(t *testing.T) {
 			}()
 		}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -689,7 +689,7 @@ func TestPingRedis(t *testing.T) {
 			}()
 		}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -749,7 +749,7 @@ func TestPingRedis(t *testing.T) {
 			}()
 		}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -809,7 +809,7 @@ func TestPingRedis(t *testing.T) {
 			}()
 		}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -869,7 +869,7 @@ func TestPingRedis(t *testing.T) {
 			}()
 		}
 
-		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, nil, redisTopSessions.Addr(), redisSessionMap.Addr(), redisSessionMeta.Addr(), redisSessionSlices.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, metrics.EmptyPortalCruncherMetrics)
 		assert.NotNil(t, portalCruncher)
 		assert.NoError(t, err)
 
@@ -936,7 +936,7 @@ func TestDirectSession(t *testing.T) {
 		}()
 	}
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
@@ -1067,7 +1067,7 @@ func TestNextSession(t *testing.T) {
 		}()
 	}
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
@@ -1198,7 +1198,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 		}()
 	}
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
@@ -1325,7 +1325,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		}()
 	}
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
@@ -1486,7 +1486,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		}()
 	}
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 
@@ -1625,7 +1625,7 @@ func TestNoReinsertion(t *testing.T) {
 		}()
 	}
 
-	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 4, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedises[0].db.Addr(), mockRedises[1].db.Addr(), mockRedises[2].db.Addr(), mockRedises[3].db.Addr(), useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 4, logger, metrics.EmptyPortalCruncherMetrics)
 	err = portalCruncher.PingRedis()
 	assert.NoError(t, err)
 

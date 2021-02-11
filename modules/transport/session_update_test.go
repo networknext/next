@@ -372,7 +372,7 @@ func getRouteInfo(
 	return routeInfo
 }
 
-func getBlankSessionUpdateMetrics(t *testing.T) *metrics.SessionUpdateMetrics {
+func getBlankSessionUpdateMetrics(t *testing.T) metrics.SessionUpdateMetrics {
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -686,7 +686,7 @@ func NewSessionUpdateResponseConfig(t *testing.T) *sessionUpdateResponseConfig {
 	}
 }
 
-func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, backend *sessionUpdateBackendConfig, response *sessionUpdateResponseConfig, expectedMetrics *metrics.SessionUpdateMetrics) {
+func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, backend *sessionUpdateBackendConfig, response *sessionUpdateResponseConfig, expectedMetrics metrics.SessionUpdateMetrics) {
 
 	// Set up request packet
 
@@ -957,7 +957,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	sessionUpdateMetrics := getBlankSessionUpdateMetrics(t)
 
 	responseBuffer := &bytes.Buffer{}
-	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, 0, false, nil, logger, metrics.EmptyPostSessionMetrics)
 
 	var routeInfo routeInfo
 	if response.attemptFindRoute {
@@ -1124,7 +1124,7 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 
 	// Compare metrics
 
-	assertAllMetricsEqual(t, *expectedMetrics, *sessionUpdateMetrics)
+	assertAllMetricsEqual(t, expectedMetrics, sessionUpdateMetrics)
 
 	// Check that the tokens sent down to the server have the correct external/internal relay addresses
 	routeAddresses := append([]net.UDPAddr{}, *clientAddr)

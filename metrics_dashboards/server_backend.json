@@ -35,6 +35,19 @@
                 ]
             },
             {
+                "title": "Other Invocations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/route_matrix_update.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.invocations"
+                    }
+                ]
+            },
+            {
                 "title": "Goroutines",
                 "metrics": [
                     {
@@ -66,6 +79,14 @@
                     {
                         "type": "gauge",
                         "id": "server_backend/session_update.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix_update.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/maxmind_sync.duration"
                     }
                 ]
             },
@@ -83,6 +104,14 @@
                     {
                         "type": "counter",
                         "id": "server_backend/session_update.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/route_matrix_update.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.long_durations"
                     }
                 ]
             },
@@ -314,6 +343,19 @@
                 ]
             },
             {
+                "title": "Maxmind Sync Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.failed_to_sync"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.failed_to_sync_isp"
+                    }
+                ]
+            },
+            {
                 "title": "Post Session",
                 "metrics": [
                     {
@@ -388,20 +430,28 @@
                 ]
             },
             {
-                "title": "Route Matrix Update Duration",
+                "title": "Billing",
                 "metrics": [
                     {
+                        "type": "counter",
+                        "id": "server_backend/billing.entries_submitted"
+                    },
+                    {
                         "type": "gauge",
-                        "id": "server_backend/route_matrix_update.duration"
+                        "id": "server_backend/billing.entries_queued"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/billing.entries_flushed"
                     }
                 ]
             },
             {
-                "title": "Route Matrix Update Long Durations",
+                "title": "Billing Publish Errors",
                 "metrics": [
                     {
                         "type": "counter",
-                        "id": "server_backend/route_matrix_update.long_durations"
+                        "id": "server_backend/billing.publish_failure"
                     }
                 ]
             },
@@ -410,7 +460,25 @@
                 "metrics": [
                     {
                         "type": "gauge",
-                        "id": "server_backend/route_matrix_update.num_routes"
+                        "id": "server_backend/route_matrix.routes"
+                    }
+                ]
+            },
+            {
+                "title": "Relays",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix.relays"
+                    }
+                ]
+            },
+            {
+                "title": "Datacenters",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix.datacenters"
                     }
                 ]
             },
@@ -419,7 +487,7 @@
                 "metrics": [
                     {
                         "type": "gauge",
-                        "id": "server_backend/route_matrix_update.bytes"
+                        "id": "server_backend/route_matrix.bytes"
                     }
                 ]
             }

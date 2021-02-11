@@ -103,46 +103,10 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create relay init metrics
-	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay init metrics", "err", err)
-	}
-
-	// Create relay update metrics
-	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
-	}
-
-	costMatrixMetrics, err := metrics.NewCostMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create cost matrix metrics", "err", err)
-	}
-
-	optimizeMetrics, err := metrics.NewOptimizeMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create optimize metrics", "err", err)
-	}
-
-	valveCostMatrixMetrics, err := metrics.NewValveCostMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve cost matrix metrics", "err", err)
-	}
-
-	valveOptimizeMetrics, err := metrics.NewValveOptimizeMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve optimize metrics", "err", err)
-	}
-
-	valveRouteMatrixMetrics, err := metrics.NewValveRouteMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve route matrix metrics", "err", err)
-	}
-
 	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create relay backend metrics", "err", err)
+		return 1
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -213,7 +177,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					return 1
@@ -270,7 +234,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					return 1
@@ -413,7 +377,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
+				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					return 1
@@ -468,6 +432,9 @@ func mainReturnWithCode() int {
 		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
+
+			relayBackendMetrics.OptimizeMetrics.Invocations.Add(1)
+
 			// For now, exclude all valve relays
 			baseRelayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
 
@@ -500,9 +467,6 @@ func mainReturnWithCode() int {
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 			}
 
-			costMatrixMetrics.Invocations.Add(1)
-			costMatrixDurationStart := time.Now()
-
 			costMatrixNew := &routing.CostMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
@@ -513,19 +477,16 @@ func mainReturnWithCode() int {
 				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
 			}
 
-			costMatrixDurationSince := time.Since(costMatrixDurationStart)
-			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-			if costMatrixDurationSince.Seconds() > 1.0 {
-				costMatrixMetrics.LongUpdateCount.Add(1)
-			}
-
 			if err := costMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "cost", "op", "write_response", "msg", "could not write response data", "err", err)
 				continue
 			}
 
 			costMatrixData.SetMatrix(costMatrixNew.GetResponseData())
-			costMatrixMetrics.Bytes.Set(float64(costMatrixData.GetMatrixDataSize()))
+
+			relayBackendMetrics.CostMatrixMetrics.DatacenterCount.Set(float64(len(relayDatacenterIDs)))
+			relayBackendMetrics.CostMatrixMetrics.RelayCount.Set(float64(len(relayIDs)))
+			relayBackendMetrics.CostMatrixMetrics.Bytes.Set(float64(costMatrixData.GetMatrixDataSize()))
 
 			numCPUs := runtime.NumCPU()
 			numSegments := numRelays
@@ -536,7 +497,6 @@ func mainReturnWithCode() int {
 				}
 			}
 
-			optimizeMetrics.Invocations.Add(1)
 			optimizeDurationStart := time.Now()
 
 			costThreshold := int32(1)
@@ -548,10 +508,10 @@ func mainReturnWithCode() int {
 			}
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
-			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
+			relayBackendMetrics.OptimizeMetrics.Duration.Set(float64(optimizeDurationSince.Milliseconds()))
 
 			if optimizeDurationSince.Seconds() > 1.0 {
-				optimizeMetrics.LongUpdateCount.Add(1)
+				relayBackendMetrics.OptimizeMetrics.LongDuration.Add(1)
 			}
 
 			routeMatrixNew := &routing.RouteMatrix{
@@ -577,16 +537,16 @@ func mainReturnWithCode() int {
 
 			routeMatrixData.SetMatrix(routeMatrixNew.GetResponseData())
 
-			relayBackendMetrics.RouteMatrixMetrics.Bytes.Set(float64(routeMatrixData.GetMatrixDataSize()))
-			relayBackendMetrics.RouteMatrixMetrics.RelayCount.Set(float64(len(routeMatrixNew.RelayIDs)))
-			relayBackendMetrics.RouteMatrixMetrics.DatacenterCount.Set(float64(len(routeMatrixNew.RelayDatacenterIDs)))
-
 			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
 			numRoutes := int32(0)
 			for i := range routeMatrixNew.RouteEntries {
 				numRoutes += routeMatrixNew.RouteEntries[i].NumRoutes
 			}
+
 			relayBackendMetrics.RouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
+			relayBackendMetrics.RouteMatrixMetrics.Bytes.Set(float64(routeMatrixData.GetMatrixDataSize()))
+			relayBackendMetrics.RouteMatrixMetrics.RelayCount.Set(float64(len(routeMatrixNew.RelayIDs)))
+			relayBackendMetrics.RouteMatrixMetrics.DatacenterCount.Set(float64(len(routeMatrixNew.RelayDatacenterIDs)))
 
 			memoryUsed := func() float64 {
 				var m runtime.MemStats
@@ -594,21 +554,19 @@ func mainReturnWithCode() int {
 				return float64(m.Alloc) / (1000.0 * 1000.0)
 			}
 
-			relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
+			relayBackendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			relayBackendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 			fmt.Printf("-----------------------------\n")
-			fmt.Printf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
-			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
+			fmt.Printf("%.2f mb allocated\n", relayBackendMetrics.ServiceMetrics.MemoryAllocated.Value())
+			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.ServiceMetrics.Goroutines.Value()))
 			fmt.Printf("%d datacenters\n", int(relayBackendMetrics.RouteMatrixMetrics.DatacenterCount.Value()))
 			fmt.Printf("%d relays\n", int(relayBackendMetrics.RouteMatrixMetrics.RelayCount.Value()))
 			fmt.Printf("%d relays in map\n", relayMap.GetRelayCount())
 			fmt.Printf("%d routes\n", int(relayBackendMetrics.RouteMatrixMetrics.RouteCount.Value()))
-			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
-			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
-			fmt.Printf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
-			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
-			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
+			fmt.Printf("%d long optimize calls\n", int(relayBackendMetrics.OptimizeMetrics.LongDuration.Value()))
+			fmt.Printf("optimize duration: %.2f milliseconds\n", relayBackendMetrics.OptimizeMetrics.Duration.Value())
+			fmt.Printf("cost matrix bytes: %d\n", int(relayBackendMetrics.CostMatrixMetrics.Bytes.Value()))
 			fmt.Printf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrixMetrics.Bytes.Value()))
 			fmt.Printf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
 			fmt.Printf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
@@ -680,6 +638,9 @@ func mainReturnWithCode() int {
 		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
+
+			relayBackendMetrics.ValveOptimizeMetrics.Invocations.Add(1)
+
 			// All relays included
 			baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
 
@@ -712,18 +673,11 @@ func mainReturnWithCode() int {
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 			}
 
-			valveCostMatrixMetrics.Invocations.Add(1)
-			costMatrixDurationStart := time.Now()
-
 			valveCostMatrix := statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
 
-			costMatrixDurationSince := time.Since(costMatrixDurationStart)
-			valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-			if costMatrixDurationSince.Seconds() > 1.0 {
-				valveCostMatrixMetrics.LongUpdateCount.Add(1)
-			}
-
-			valveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix) * 4))
+			relayBackendMetrics.ValveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix) * 4))
+			relayBackendMetrics.ValveCostMatrixMetrics.DatacenterCount.Set(float64(len(relayDatacenterIDs)))
+			relayBackendMetrics.ValveCostMatrixMetrics.RelayCount.Set(float64(len(relayIDs)))
 
 			numCPUs := runtime.NumCPU()
 			numSegments := numRelays
@@ -734,7 +688,6 @@ func mainReturnWithCode() int {
 				}
 			}
 
-			valveOptimizeMetrics.Invocations.Add(1)
 			optimizeDurationStart := time.Now()
 
 			routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
@@ -744,10 +697,10 @@ func mainReturnWithCode() int {
 			}
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
-			valveOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
+			relayBackendMetrics.ValveOptimizeMetrics.Duration.Set(float64(optimizeDurationSince.Milliseconds()))
 
 			if optimizeDurationSince.Seconds() > 1.0 {
-				valveOptimizeMetrics.LongUpdateCount.Add(1)
+				relayBackendMetrics.ValveOptimizeMetrics.LongDuration.Add(1)
 			}
 
 			valveRouteMatrixNew := &routing.RouteMatrix{
@@ -769,30 +722,30 @@ func mainReturnWithCode() int {
 
 			valveMatrixData.SetMatrix(valveRouteMatrixNew.GetResponseData())
 
-			valveRouteMatrixMetrics.Bytes.Set(float64(valveMatrixData.GetMatrixDataSize()))
-			valveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
-			valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
-
 			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
 			numRoutes := int32(0)
 			for i := range valveRouteMatrixNew.RouteEntries {
 				numRoutes += valveRouteMatrixNew.RouteEntries[i].NumRoutes
 			}
-			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
+
+			relayBackendMetrics.ValveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
+			relayBackendMetrics.ValveRouteMatrixMetrics.Bytes.Set(float64(valveMatrixData.GetMatrixDataSize()))
+			relayBackendMetrics.ValveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
+			relayBackendMetrics.ValveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
 		}
 	}()
 
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
 		Storer:           storer,
-		Metrics:          relayInitMetrics,
+		Metrics:          relayBackendMetrics.RelayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
 		RelayMap: relayMap,
 		StatsDB:  statsdb,
-		Metrics:  relayUpdateMetrics,
+		Metrics:  relayBackendMetrics.RelayUpdateMetrics,
 		Storer:   storer,
 	}
 

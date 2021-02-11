@@ -6,7 +6,7 @@ import (
 
 // ServerInitMetrics defines the set of metrics for the server init handler in the server backend.
 type ServerInitMetrics struct {
-	HandlerMetrics PacketHandlerMetrics
+	HandlerMetrics RoutineMetrics
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
@@ -19,7 +19,7 @@ type ServerInitMetrics struct {
 
 // EmptyServerInitMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerInitMetrics = ServerInitMetrics{
-	HandlerMetrics:               EmptyPacketHandlerMetrics,
+	HandlerMetrics:               EmptyRoutineMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
@@ -31,7 +31,7 @@ var EmptyServerInitMetrics = ServerInitMetrics{
 
 // ServerUpdateMetrics defines the set of metrics for the server update handler in the server backend.
 type ServerUpdateMetrics struct {
-	HandlerMetrics PacketHandlerMetrics
+	HandlerMetrics RoutineMetrics
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
@@ -43,7 +43,7 @@ type ServerUpdateMetrics struct {
 
 // EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerUpdateMetrics = ServerUpdateMetrics{
-	HandlerMetrics:               EmptyPacketHandlerMetrics,
+	HandlerMetrics:               EmptyRoutineMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
@@ -54,7 +54,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 
 // SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
 type SessionUpdateMetrics struct {
-	HandlerMetrics PacketHandlerMetrics
+	HandlerMetrics RoutineMetrics
 
 	DirectSlices Counter
 	NextSlices   Counter
@@ -98,7 +98,7 @@ type SessionUpdateMetrics struct {
 
 // EmptySessionUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptySessionUpdateMetrics = SessionUpdateMetrics{
-	HandlerMetrics:                             EmptyPacketHandlerMetrics,
+	HandlerMetrics:                             EmptyRoutineMetrics,
 	DirectSlices:                               &EmptyCounter{},
 	NextSlices:                                 &EmptyCounter{},
 	ReadPacketFailure:                          &EmptyCounter{},
@@ -138,6 +138,22 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	WriteResponseFailure:                       &EmptyCounter{},
 }
 
+// MaxmindSyncMetrics defines the set of metrics syncing the maxmind database in the server backend.
+type MaxmindSyncMetrics struct {
+	SyncMetrics RoutineMetrics
+
+	FailedToSync    Counter
+	FailedToSyncISP Counter
+}
+
+// EmptyMaxmindSyncMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyMaxmindSyncMetrics MaxmindSyncMetrics = MaxmindSyncMetrics{
+	SyncMetrics: EmptyRoutineMetrics,
+
+	FailedToSync:    &EmptyCounter{},
+	FailedToSyncISP: &EmptyCounter{},
+}
+
 // ServerBackendMetrics defines the set of metrics for the server backend.
 type ServerBackendMetrics struct {
 	ServiceMetrics ServiceMetrics
@@ -146,25 +162,29 @@ type ServerBackendMetrics struct {
 	ServerUpdateMetrics  ServerUpdateMetrics
 	SessionUpdateMetrics SessionUpdateMetrics
 
-	PostSessionMetrics PostSessionMetrics
+	MaxmindSyncMetrics MaxmindSyncMetrics
 
-	RouteMatrixUpdateDuration     Gauge
-	RouteMatrixUpdateLongDuration Counter
-	RouteMatrixNumRoutes          Gauge
-	RouteMatrixBytes              Gauge
+	PostSessionMetrics PostSessionMetrics
+	BillingMetrics     PublisherMetrics
+
+	RouteMatrixUpdateMetrics RoutineMetrics
+	RouteMatrixMetrics       RouteMatrixMetrics
 }
 
 // EmptyServerBackendMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerBackendMetrics = ServerBackendMetrics{
-	ServiceMetrics:                EmptyServiceMetrics,
-	ServerInitMetrics:             EmptyServerInitMetrics,
-	ServerUpdateMetrics:           EmptyServerUpdateMetrics,
-	SessionUpdateMetrics:          EmptySessionUpdateMetrics,
-	PostSessionMetrics:            EmptyPostSessionMetrics,
-	RouteMatrixUpdateDuration:     &EmptyGauge{},
-	RouteMatrixUpdateLongDuration: &EmptyCounter{},
-	RouteMatrixNumRoutes:          &EmptyGauge{},
-	RouteMatrixBytes:              &EmptyGauge{},
+	ServiceMetrics: EmptyServiceMetrics,
+
+	ServerInitMetrics:    EmptyServerInitMetrics,
+	ServerUpdateMetrics:  EmptyServerUpdateMetrics,
+	SessionUpdateMetrics: EmptySessionUpdateMetrics,
+
+	MaxmindSyncMetrics: EmptyMaxmindSyncMetrics,
+
+	PostSessionMetrics: EmptyPostSessionMetrics,
+
+	RouteMatrixUpdateMetrics: EmptyRoutineMetrics,
+	RouteMatrixMetrics:       EmptyRouteMatrixMetrics,
 }
 
 // NewServerBackendMetrics creates the metrics that the server backend will use.
@@ -194,51 +214,27 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (ServerBacken
 		return EmptyServerBackendMetrics, err
 	}
 
+	m.MaxmindSyncMetrics, err = newMaxmindSyncMetrics(ctx, handler, serviceName, "maxmind_sync", "Maxmind Sync", "maxmind sync call")
+	if err != nil {
+		return EmptyServerBackendMetrics, err
+	}
+
 	m.PostSessionMetrics, err = NewPostSessionMetrics(ctx, handler, serviceName)
 	if err != nil {
 		return EmptyServerBackendMetrics, err
 	}
 
-	m.RouteMatrixUpdateDuration, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Update Duration",
-		ServiceName: serviceName,
-		ID:          "route_matrix_update.duration",
-		Unit:        "ms",
-		Description: "The amount of time the route matrix update takes to complete in milliseconds.",
-	})
+	m.BillingMetrics, err = NewPublisherMetrics(ctx, handler, serviceName, "billing", "Billing", "billing")
 	if err != nil {
 		return EmptyServerBackendMetrics, err
 	}
 
-	m.RouteMatrixUpdateLongDuration, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Route Matrix Update Long Durations",
-		ServiceName: serviceName,
-		ID:          "route_matrix_update.long_durations",
-		Unit:        "invocations",
-		Description: "The number of times the route matrix update takes longer than 100 milliseconds to complete.",
-	})
+	m.RouteMatrixUpdateMetrics, err = NewRoutineMetrics(ctx, handler, serviceName, "route_matrix_update", "Route Matrix Update", "route matrix update")
 	if err != nil {
 		return EmptyServerBackendMetrics, err
 	}
 
-	m.RouteMatrixNumRoutes, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Number of Routes",
-		ServiceName: serviceName,
-		ID:          "route_matrix_update.num_routes",
-		Unit:        "routes",
-		Description: "The number of routes read from the route matrix.",
-	})
-	if err != nil {
-		return EmptyServerBackendMetrics, err
-	}
-
-	m.RouteMatrixBytes, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Bytes",
-		ServiceName: serviceName,
-		ID:          "route_matrix_update.bytes",
-		Unit:        "bytes",
-		Description: "The number of bytes read from the route matrix.",
-	})
+	m.RouteMatrixMetrics, err = NewRouteMatrixMetrics(ctx, handler, serviceName, "route_matrix", "Route Matrix", "route matrix")
 	if err != nil {
 		return EmptyServerBackendMetrics, err
 	}
@@ -250,7 +246,7 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 	var err error
 	m := ServerInitMetrics{}
 
-	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
+	m.HandlerMetrics, err = NewRoutineMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
 	if err != nil {
 		return EmptyServerInitMetrics, err
 	}
@@ -339,7 +335,7 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 	var err error
 	m := ServerUpdateMetrics{}
 
-	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
+	m.HandlerMetrics, err = NewRoutineMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
 	if err != nil {
 		return EmptyServerUpdateMetrics, err
 	}
@@ -417,7 +413,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	var err error
 	m := SessionUpdateMetrics{}
 
-	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
+	m.HandlerMetrics, err = NewRoutineMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
 	if err != nil {
 		return EmptySessionUpdateMetrics, err
 	}
@@ -827,6 +823,40 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 	})
 	if err != nil {
 		return EmptySessionUpdateMetrics, err
+	}
+
+	return m, nil
+}
+
+func newMaxmindSyncMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, handlerDescription string) (MaxmindSyncMetrics, error) {
+	var err error
+	m := MaxmindSyncMetrics{}
+
+	m.SyncMetrics, err = NewRoutineMetrics(ctx, handler, serviceName, handlerID, handlerName, handlerDescription)
+	if err != nil {
+		return EmptyMaxmindSyncMetrics, err
+	}
+
+	m.FailedToSync, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Failed To Sync",
+		ServiceName: serviceName,
+		ID:          handlerID + ".failed_to_sync",
+		Unit:        "errors",
+		Description: "The number of times a " + handlerDescription + " failed to sync.",
+	})
+	if err != nil {
+		return EmptyMaxmindSyncMetrics, err
+	}
+
+	m.FailedToSyncISP, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Failed To Sync ISP",
+		ServiceName: serviceName,
+		ID:          handlerID + ".failed_to_sync_isp",
+		Unit:        "errors",
+		Description: "The number of times a " + handlerDescription + " failed to sync the ISPs.",
+	})
+	if err != nil {
+		return EmptyMaxmindSyncMetrics, err
 	}
 
 	return m, nil

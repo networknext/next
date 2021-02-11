@@ -50,10 +50,9 @@ type BuyersService struct {
 
 	Env string
 
-	UseBigtable     bool
-	BigTableCfName  string
-	BigTable        *storage.BigTable
-	BigTableMetrics *metrics.BigTableMetrics
+	UseBigtable    bool
+	BigTableCfName string
+	BigTable       *storage.BigTable
 
 	BqClient *bigquery.Client
 
@@ -63,7 +62,7 @@ type BuyersService struct {
 	RedisPoolSessionMap    *redis.Pool
 	RedisPoolUserSessions  *redis.Pool
 
-	Metrics *metrics.BuyerEndpointMetrics
+	Metrics metrics.PortalMetrics
 	Storage storage.Storer
 	Logger  log.Logger
 }
@@ -183,7 +182,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
 			} else {
 				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
+				s.Metrics.BuyerUserSessionsMetrics.NoSlicesRedisFailure.Add(1)
 			}
 		}
 	}
@@ -197,33 +196,33 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		// Fetch historic sessions by user hash if there are any
 		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter))
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			s.Metrics.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+		s.Metrics.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Fetch historic sessions by user ID if there are any
 		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter))
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			s.Metrics.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+		s.Metrics.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Fetch historic sessions by hex user ID if there are any
 		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter))
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			s.Metrics.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+		s.Metrics.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		liveIDString := strings.Join(sessionIDs, ",")
 
@@ -258,11 +257,11 @@ func (s *BuyersService) GetHistoricalSlices(reply *UserSessionsReply, rows []big
 		if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
-				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+				s.Metrics.BigTableMetrics.ReadSliceFailureCount.Add(1)
 				err = fmt.Errorf("UserSessions() failed to fetch historic slice information: %v", err)
 				return err
 			}
-			s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
+			s.Metrics.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 			// If a slice exists, add the session and the timestamp
 			if len(sliceRows) > 0 {
@@ -272,7 +271,7 @@ func (s *BuyersService) GetHistoricalSlices(reply *UserSessionsReply, rows []big
 				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
 			} else {
 				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
+				s.Metrics.BuyerUserSessionsMetrics.NoSlicesBigTableFailure.Add(1)
 			}
 		}
 	}
@@ -565,12 +564,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	if s.UseBigtable && (err != nil || metaString == "") {
 		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			s.Metrics.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+		s.Metrics.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 		// Set historic to true when bigtable should be used
 		historic = true
@@ -628,12 +627,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	} else {
 		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
-			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+			s.Metrics.BigTableMetrics.ReadSliceFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
+		s.Metrics.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 		for _, row := range sliceRows {
 			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
