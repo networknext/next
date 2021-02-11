@@ -78,9 +78,9 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	relayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
+	relayMetrics, err := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", msg, "err", err)
+		level.Error(logger).Log("err", err)
 		return 1
 	}
 

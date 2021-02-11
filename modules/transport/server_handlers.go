@@ -258,7 +258,7 @@ func handleNearAndDestRelays(
 	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
-func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -335,7 +335,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 	}
 }
 
-func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessionHandler *PostSessionHandler, metrics metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)
 
@@ -407,7 +407,7 @@ func SessionUpdateHandlerFunc(
 	maxNearRelays int,
 	routerPrivateKey [crypto.KeySize]byte,
 	postSessionHandler *PostSessionHandler,
-	metrics *metrics.SessionUpdateMetrics,
+	metrics metrics.SessionUpdateMetrics,
 ) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.HandlerMetrics.Invocations.Add(1)

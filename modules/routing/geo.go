@@ -182,21 +182,24 @@ type MaxmindDB struct {
 	ispReader  *geoip2.Reader
 }
 
-func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
-	metrics.Invocations.Add(1)
+func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics metrics.MaxmindSyncMetrics) error {
+	metrics.SyncMetrics.Invocations.Add(1)
 	durationStart := time.Now()
 
 	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI); err != nil {
-		metrics.ErrorMetrics.FailedToSync.Add(1)
+		metrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
 	}
 	if err := mmdb.OpenISP(ctx, mmdb.HTTPClient, mmdb.IspURI); err != nil {
-		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
+		metrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
 
 	duration := time.Since(durationStart)
-	metrics.DurationGauge.Set(float64(duration.Milliseconds()))
+	metrics.SyncMetrics.Duration.Set(float64(duration.Milliseconds()))
+	if duration.Milliseconds() > 100 {
+		metrics.SyncMetrics.LongDuration.Add(1)
+	}
 
 	return nil
 }

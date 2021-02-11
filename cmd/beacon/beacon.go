@@ -77,7 +77,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create beacon metrics
-	beaconServiceMetrics, err := metrics.NewBeaconServiceMetrics(ctx, metricsHandler)
+	beaconServiceMetrics, err := metrics.NewBeaconMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
 		return 1
@@ -94,7 +94,7 @@ func mainReturnWithCode() int {
 	// Create a local beaconer
 	var beaconer beacon.Beaconer = &beacon.LocalBeaconer{
 		Logger:  logger,
-		Metrics: beaconServiceMetrics.BeaconMetrics,
+		Metrics: beaconServiceMetrics.PublishMetrics,
 	}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -138,7 +138,7 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, beaconServiceMetrics.BeaconMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
+			pubsub, err := beacon.NewGooglePubSubBeaconer(pubsubCtx, beaconServiceMetrics.PublishMetrics, logger, gcpProjectID, "beacon", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub beaconer", "err", err)
 				return 1
@@ -175,34 +175,34 @@ func mainReturnWithCode() int {
 				case beaconPacket := <-beaconPacketChan:
 					// Record beacon packet stats
 					if beaconPacket.Next {
-						beaconServiceMetrics.BeaconMetrics.NextEntries.Add(1)
+						beaconServiceMetrics.NextEntries.Add(1)
 					} else {
-						beaconServiceMetrics.BeaconMetrics.DirectEntries.Add(1)
+						beaconServiceMetrics.DirectEntries.Add(1)
 					}
 					if beaconPacket.Upgraded {
-						beaconServiceMetrics.BeaconMetrics.UpgradedEntries.Add(1)
+						beaconServiceMetrics.UpgradedEntries.Add(1)
 					} else {
-						beaconServiceMetrics.BeaconMetrics.NotUpgradedEntries.Add(1)
+						beaconServiceMetrics.NotUpgradedEntries.Add(1)
 					}
 					if beaconPacket.Enabled {
-						beaconServiceMetrics.BeaconMetrics.EnabledEntries.Add(1)
+						beaconServiceMetrics.EnabledEntries.Add(1)
 					} else {
-						beaconServiceMetrics.BeaconMetrics.NotEnabledEntries.Add(1)
+						beaconServiceMetrics.NotEnabledEntries.Add(1)
 					}
 					if beaconPacket.FallbackToDirect {
-						beaconServiceMetrics.BeaconMetrics.FallbackToDirect.Add(1)
+						beaconServiceMetrics.FallbackToDirect.Add(1)
 					}
 
 					// Submit beacon packet
 					err := beaconer.Submit(ctx, beaconPacket)
 					if err != nil {
 						level.Error(logger).Log("msg", "Could not send beacon packet to Google Pubsub", "err", err)
-						beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Add(1)
+						beaconServiceMetrics.BeaconSendFailure.Add(1)
 						errChan <- err
 						return
 					}
 
-					beaconServiceMetrics.BeaconMetrics.EntriesSent.Add(1)
+					beaconServiceMetrics.EntriesSent.Add(1)
 				case <-ctx.Done():
 					level.Error(logger).Log("err", ctx.Err())
 					errChan <- ctx.Err()
@@ -229,20 +229,21 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d goroutines\n", int(beaconServiceMetrics.ServiceMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", beaconServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d invocations\n", int(beaconServiceMetrics.HandlerMetrics.Invocations.Value()))
-				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.BeaconMetrics.EntriesReceived.Value()))
-				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSent.Value()))
-				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.BeaconMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.BeaconMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d beacon entries on next\n", int(beaconServiceMetrics.BeaconMetrics.NextEntries.Value()))
-				fmt.Printf("%d beacon entries on direct\n", int(beaconServiceMetrics.BeaconMetrics.DirectEntries.Value()))
-				fmt.Printf("%d beacon entries upgraded\n", int(beaconServiceMetrics.BeaconMetrics.UpgradedEntries.Value()))
-				fmt.Printf("%d beacon entries not upgraded\n", int(beaconServiceMetrics.BeaconMetrics.NotUpgradedEntries.Value()))
-				fmt.Printf("%d beacon entries enabled\n", int(beaconServiceMetrics.BeaconMetrics.EnabledEntries.Value()))
-				fmt.Printf("%d beacon entries not enabled\n", int(beaconServiceMetrics.BeaconMetrics.NotEnabledEntries.Value()))
-				fmt.Printf("%d beacon entries fallen back to direct\n", int(beaconServiceMetrics.BeaconMetrics.FallbackToDirect.Value()))
-				fmt.Printf("%d beacon entry send failures\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSendFailure.Value()))
-				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Value()))
-				fmt.Printf("%d beacon entry publish failure\n", int(beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconPublishFailure.Value()))
+				fmt.Printf("%d beacon entries received\n", int(beaconServiceMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d beacon entries sent\n", int(beaconServiceMetrics.EntriesSent.Value()))
+				fmt.Printf("%d beacon entries submitted\n", int(beaconServiceMetrics.PublishMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d beacon entries flushed\n", int(beaconServiceMetrics.PublishMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d beacon entries on next\n", int(beaconServiceMetrics.NextEntries.Value()))
+				fmt.Printf("%d beacon entries on direct\n", int(beaconServiceMetrics.DirectEntries.Value()))
+				fmt.Printf("%d beacon entries upgraded\n", int(beaconServiceMetrics.UpgradedEntries.Value()))
+				fmt.Printf("%d beacon entries not upgraded\n", int(beaconServiceMetrics.NotUpgradedEntries.Value()))
+				fmt.Printf("%d beacon entries enabled\n", int(beaconServiceMetrics.EnabledEntries.Value()))
+				fmt.Printf("%d beacon entries not enabled\n", int(beaconServiceMetrics.NotEnabledEntries.Value()))
+				fmt.Printf("%d beacon entries fallen back to direct\n", int(beaconServiceMetrics.FallbackToDirect.Value()))
+				fmt.Printf("%d beacon entry send failures\n", int(beaconServiceMetrics.BeaconSendFailure.Value()))
+				fmt.Printf("%d beacon entry channel full\n", int(beaconServiceMetrics.BeaconChannelFull.Value()))
+				fmt.Printf("%d beacon entry marshal failure\n", int(beaconServiceMetrics.PublishMetrics.MarshalFailure.Value()))
+				fmt.Printf("%d beacon entry publish failure\n", int(beaconServiceMetrics.PublishMetrics.PublishFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -341,7 +342,7 @@ func mainReturnWithCode() int {
 				size, _, err := conn.ReadFromUDP(data)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
-					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconReadPacketFailure.Add(1)
+					beaconServiceMetrics.ReadPacketFailure.Add(1)
 					break
 				}
 
@@ -354,7 +355,7 @@ func mainReturnWithCode() int {
 				// Check if we received a non-beacon packet
 				if data[0] != transport.PacketTypeBeacon {
 					level.Error(logger).Log("err", "unknown packet type", "packet_type", data[0])
-					beaconServiceMetrics.BeaconMetrics.NonBeaconPacketsReceived.Add(1)
+					beaconServiceMetrics.NonBeaconPacketsReceived.Add(1)
 					continue
 				}
 
@@ -365,7 +366,7 @@ func mainReturnWithCode() int {
 				err = beaconPacket.Serialize(readStream)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to serialize beacon packet", "err", err)
-					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure.Add(1)
+					beaconServiceMetrics.UnmarshalFailure.Add(1)
 					continue
 				}
 
@@ -380,10 +381,10 @@ func mainReturnWithCode() int {
 				// Insert packet into internal channel for local or bigquery
 				select {
 				case beaconPacketChan <- beaconPacket:
-					beaconServiceMetrics.BeaconMetrics.EntriesReceived.Add(1)
+					beaconServiceMetrics.EntriesReceived.Add(1)
 				default:
 					level.Error(logger).Log("err", "Beacon channel full")
-					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconChannelFull.Add(1)
+					beaconServiceMetrics.BeaconChannelFull.Add(1)
 					continue
 				}
 			}

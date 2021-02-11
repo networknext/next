@@ -15,7 +15,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/modules/ghost_army"
+	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
@@ -52,8 +52,7 @@ func (e *ErrUnmarshalMessage) Error() string {
 
 type PortalCruncher struct {
 	subscriber pubsub.Subscriber
-	metrics    *metrics.PortalCruncherMetrics
-	btMetrics  *metrics.BigTableMetrics
+	metrics    metrics.PortalCruncherMetrics
 
 	redisCountMessageChan chan *transport.SessionCountData
 	redisDataMessageChan  chan *transport.SessionPortalData
@@ -83,8 +82,7 @@ func NewPortalCruncher(
 	btCfName string,
 	chanBufferSize int,
 	logger log.Logger,
-	metrics *metrics.PortalCruncherMetrics,
-	btMetrics *metrics.BigTableMetrics,
+	metrics metrics.PortalCruncherMetrics,
 ) (*PortalCruncher, error) {
 	topSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
 	if err != nil {
@@ -119,7 +117,6 @@ func NewPortalCruncher(
 	return &PortalCruncher{
 		subscriber:            subscriber,
 		metrics:               metrics,
-		btMetrics:             btMetrics,
 		redisCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
 		redisDataMessageChan:  make(chan *transport.SessionPortalData, chanBufferSize),
 		btDataMessageChan:     make(chan *transport.SessionPortalData, chanBufferSize),
@@ -270,7 +267,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 		return ctx.Err()
 
 	case messageInfo := <-cruncher.subscriber.ReceiveMessage():
-		cruncher.metrics.ReceivedMessageCount.Add(1)
+		cruncher.metrics.ReceiveMetrics.EntriesReceived.Add(1)
 
 		if messageInfo.Err != nil {
 			return &ErrReceiveMessage{err: messageInfo.Err}
@@ -280,6 +277,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 		case pubsub.TopicPortalCruncherSessionCounts:
 			var sessionCountData transport.SessionCountData
 			if err := sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
+				cruncher.metrics.ReceiveMetrics.UnmarshalFailure.Add(1)
 				return &ErrUnmarshalMessage{err: err}
 			}
 
@@ -649,17 +647,17 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 
 		// Insert session meta data into Bigtable
 		if err := cruncher.btClient.InsertSessionMetaData(ctx, cruncher.btCfNames, metaBinary, metaRowKeys); err != nil {
-			cruncher.btMetrics.WriteMetaFailureCount.Add(1)
+			cruncher.metrics.BigTableMetrics.WriteMetaFailureCount.Add(1)
 			return err
 		}
-		cruncher.btMetrics.WriteMetaSuccessCount.Add(1)
+		cruncher.metrics.BigTableMetrics.WriteMetaSuccessCount.Add(1)
 
 		// Insert session slice data into Bigtable
 		if err := cruncher.btClient.InsertSessionSliceData(ctx, cruncher.btCfNames, sliceBinary, sliceRowKeys); err != nil {
-			cruncher.btMetrics.WriteSliceFailureCount.Add(1)
+			cruncher.metrics.BigTableMetrics.WriteSliceFailureCount.Add(1)
 			return err
 		}
-		cruncher.btMetrics.WriteSliceSuccessCount.Add(1)
+		cruncher.metrics.BigTableMetrics.WriteSliceSuccessCount.Add(1)
 	}
 
 	return nil
