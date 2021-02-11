@@ -36,14 +36,14 @@ var (
 type RelayInitHandlerConfig struct {
 	RelayMap         *routing.RelayMap
 	Storer           storage.Storer
-	Metrics          *metrics.RelayInitMetrics
+	Metrics          metrics.RelayInitMetrics
 	RouterPrivateKey []byte
 }
 
 type RelayUpdateHandlerConfig struct {
 	RelayMap *routing.RelayMap
 	StatsDB  *routing.StatsDatabase
-	Metrics  *metrics.RelayUpdateMetrics
+	Metrics  metrics.RelayUpdateMetrics
 	Storer   storage.Storer
 }
 
@@ -55,8 +55,13 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-			params.Metrics.Invocations.Add(1)
+			params.Metrics.HandlerMetrics.Invocations.Add(1)
+
+			milliseconds := durationSince.Milliseconds()
+			params.Metrics.HandlerMetrics.Duration.Set(float64(milliseconds))
+			if milliseconds > 100 {
+				params.Metrics.HandlerMetrics.LongDuration.Add(1)
+			}
 		}()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
@@ -78,7 +83,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			params.Metrics.UnmarshalFailure.Add(1)
 			return
 		}
 
@@ -102,14 +107,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if relayInitRequest.Magic != InitRequestMagic {
 			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
 			http.Error(writer, "magic number mismatch", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.InvalidMagic.Add(1)
+			params.Metrics.InvalidMagic.Add(1)
 			return
 		}
 
 		if relayInitRequest.Version > VersionNumberInitRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
+			params.Metrics.InvalidVersion.Add(1)
 			return
 		}
 
@@ -119,14 +124,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if err != nil {
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
 			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			params.Metrics.RelayNotFound.Add(1)
 			return
 		}
 
 		// Don't allow quarantined relays back in
 		if relay.State == routing.RelayStateQuarantine {
 			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
-			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			params.Metrics.RelayQuarantined.Add(1)
 			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 			return
 		}
@@ -137,7 +142,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			level.Error(locallogger).Log("msg", "relay already initialized")
 			fmt.Printf("relay %v %v tried to reinitialized", relayData.ID, relayData.Name)
 			http.Error(writer, "relay already initialized", http.StatusConflict)
-			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
+			params.Metrics.RelayAlreadyExists.Add(1)
 			params.RelayMap.Unlock()
 			return
 		}
@@ -146,7 +151,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
-			params.Metrics.ErrorMetrics.DecryptionFailure.Add(1)
+			params.Metrics.DecryptionFailure.Add(1)
 			return
 		}
 
@@ -211,8 +216,13 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-			params.Metrics.Invocations.Add(1)
+			params.Metrics.HandlerMetrics.Invocations.Add(1)
+
+			milliseconds := durationSince.Milliseconds()
+			params.Metrics.HandlerMetrics.Duration.Set(float64(milliseconds))
+			if milliseconds > 100 {
+				params.Metrics.HandlerMetrics.LongDuration.Add(1)
+			}
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)
@@ -235,7 +245,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		if err != nil {
 			level.Error(locallogger).Log("msg", "error unmarshaling relay update request", "err", err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			params.Metrics.UnmarshalFailure.Add(1)
 			return
 		}
 
@@ -256,14 +266,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		if relayUpdateRequest.Version > VersionNumberUpdateRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
+			params.Metrics.InvalidVersion.Add(1)
 			return
 		}
 
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
 			level.Error(locallogger).Log("msg", "max relays exceeded", "relay count", len(relayUpdateRequest.PingStats))
 			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
+			params.Metrics.ExceedMaxRelays.Add(1)
 			return
 		}
 
@@ -274,7 +284,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		if relayDataReadOnly == nil {
 			level.Warn(locallogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			params.Metrics.RelayNotFound.Add(1)
 			return
 		}
 
@@ -283,7 +293,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		if err != nil {
 			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
 			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			params.Metrics.RelayNotFound.Add(1)
 			return
 		}
 
@@ -317,7 +327,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		if !bytes.Equal(relayUpdateRequest.Token, relayDataReadOnly.PublicKey) {
 			level.Error(locallogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.InvalidToken.Add(1)
+			params.Metrics.InvalidToken.Add(1)
 			return
 		}
 
@@ -325,7 +335,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		if relay.State != routing.RelayStateEnabled {
 			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr.String(), "relay_state", relay.State)
 			http.Error(writer, "cannot allow non-enabled relay to update", http.StatusUnauthorized)
-			params.Metrics.ErrorMetrics.RelayNotEnabled.Add(1)
+			params.Metrics.RelayNotEnabled.Add(1)
 			return
 		}
 

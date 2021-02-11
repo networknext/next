@@ -13,7 +13,7 @@ import (
 
 type LocalBiller struct {
 	Logger  log.Logger
-	Metrics *metrics.BillingMetrics
+	Metrics metrics.PublisherMetrics
 }
 
 func (local *LocalBiller) Bill(ctx context.Context, entry *BillingEntry) error {

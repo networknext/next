@@ -1,0 +1,318 @@
+[
+    {
+        "id": "relay-backend",
+        "displayName": "Relay Backend",
+        "columns": "2",
+        "charts": [
+            {
+                "title": "Invocations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/optimize.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/valve_optimize.invocations"
+                    }
+                ]
+            },
+            {
+                "title": "Goroutines",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/goroutines"
+                    }
+                ]
+            },
+            {
+                "title": "Memory Allocated (MB)",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/memory_allocated"
+                    }
+                ]
+            },
+            {
+                "title": "Durations",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/relay_init.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/relay_update.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/optimize.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_optimize.duration"
+                    }
+                ]
+            },
+            {
+                "title": "Long Durations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/optimize.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/valve_optimize.long_durations"
+                    }
+                ]
+            },
+            {
+                "title": "Relay Init Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.unmarshal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.invalid_magic"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.invalid_version"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.relay_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.relay_quarantined"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.relay_already_exists"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_init.decryption_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Relay Update Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.unmarshal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.invalid_version"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.exceeded_max_relays"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.relay_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.invalid_token"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_update.relay_not_enabled"
+                    }
+                ]
+            },
+            {
+                "title": "Routes",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/route_matrix.routes"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_route_matrix.routes"
+                    }
+                ]
+            },
+            {
+                "title": "Relays",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/cost_matrix.relays"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/route_matrix.relays"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_cost_matrix.relays"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_route_matrix.relays"
+                    }
+                ]
+            },
+            {
+                "title": "Datacenters",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/cost_matrix.datacenters"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/route_matrix.datacenters"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_cost_matrix.datacenters"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_route_matrix.datacenters"
+                    }
+                ]
+            },
+            {
+                "title": "Route Matrix Bytes",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/cost_matrix.bytes"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/route_matrix.bytes"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_cost_matrix.bytes"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/valve_route_matrix.bytes"
+                    }
+                ]
+            },
+            {
+                "title": "Relay Ping Stats",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/ping_stats.entries_submitted"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/ping_stats.entries_queued"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/ping_stats.entries_flushed"
+                    }
+                ]
+            },
+            {
+                "title": "Relay Ping Stats Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/ping_stats.marshal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/ping_stats.publish_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Relay Stats",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_stats.entries_submitted"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/relay_stats.entries_queued"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_stats.entries_flushed"
+                    }
+                ]
+            },
+            {
+                "title": "Relay Stats Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_stats.marshal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/relay_stats.publish_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Route Matrix Stats",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/route_matrix_stats.entries_submitted"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "relay_backend/route_matrix_stats.entries_queued"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/route_matrix_stats.entries_flushed"
+                    }
+                ]
+            },
+            {
+                "title": "Route Matrix Stats Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/route_matrix_stats.marshal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "relay_backend/route_matrix_stats.publish_failure"
+                    }
+                ]
+            }
+        ]
+    }
+]
