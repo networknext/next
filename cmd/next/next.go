@@ -1777,8 +1777,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code                   string
 						Name                   string
 						AutomaticSignInDomains string
-						Active                 bool
-						Debug                  bool
 					}
 
 					if err := json.Unmarshal(jsonData, &customer); err != nil {
@@ -2367,9 +2365,7 @@ Example JSON schema required to add a new customer:
 {
         "Code": "amazon",
         "Name": "Amazon.com, Inc.",
-        "AutomaticSignInDomains": "amazon.networknext.com", // comma separated list
-        "Active": true,
-        "Debug": false
+        "AutomaticSignInDomains": "amazon.networknext.com" // comma separated list
 }
 
 All fields are required. The Code field must be unique
