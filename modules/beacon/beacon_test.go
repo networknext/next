@@ -24,12 +24,12 @@ func TestNewGooglePubSubBeaconer(t *testing.T) {
 	checkGooglePubsubEmulator(t)
 
 	t.Run("no publish settings", func(t *testing.T) {
-		_, err := beacon.NewGooglePubSubBeaconer(context.Background(), &metrics.EmptyBeaconMetrics, log.NewNopLogger(), "", "", 0, 0, 0, nil)
+		_, err := beacon.NewGooglePubSubBeaconer(context.Background(), metrics.EmptyPublisherMetrics, log.NewNopLogger(), "", "", 0, 0, 0, nil)
 		assert.EqualError(t, err, "nil google pubsub publish settings")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		_, err := beacon.NewGooglePubSubBeaconer(context.Background(), &metrics.EmptyBeaconMetrics, log.NewNopLogger(), "default", "beacon", 1, 0, 0, &pubsub.DefaultPublishSettings)
+		_, err := beacon.NewGooglePubSubBeaconer(context.Background(), metrics.EmptyPublisherMetrics, log.NewNopLogger(), "default", "beacon", 1, 0, 0, &pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 	})
 }
@@ -45,7 +45,7 @@ func TestGooglePubSubSubmit(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		beaconer, err := beacon.NewGooglePubSubBeaconer(context.Background(), &metrics.EmptyBeaconMetrics, log.NewNopLogger(), "default", "beacon", 1, 0, 0, &pubsub.DefaultPublishSettings)
+		beaconer, err := beacon.NewGooglePubSubBeaconer(context.Background(), metrics.EmptyPublisherMetrics, log.NewNopLogger(), "default", "beacon", 1, 0, 0, &pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		err = beaconer.Submit(ctx, &transport.NextBeaconPacket{})
@@ -56,7 +56,7 @@ func TestGooglePubSubSubmit(t *testing.T) {
 func TestLocalSubmit(t *testing.T) {
 	t.Run("no logger", func(t *testing.T) {
 		beaconer := beacon.LocalBeaconer{
-			Metrics: &metrics.EmptyBeaconMetrics,
+			Metrics: metrics.EmptyPublisherMetrics,
 		}
 		err := beaconer.Submit(context.Background(), &transport.NextBeaconPacket{})
 		assert.EqualError(t, err, "no logger for local beaconer, can't display entry")
@@ -65,7 +65,7 @@ func TestLocalSubmit(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		beaconer := beacon.LocalBeaconer{
 			Logger:  log.NewNopLogger(),
-			Metrics: &metrics.EmptyBeaconMetrics,
+			Metrics: metrics.EmptyPublisherMetrics,
 		}
 
 		err := beaconer.Submit(context.Background(), &transport.NextBeaconPacket{})

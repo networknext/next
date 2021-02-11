@@ -14,7 +14,7 @@ import (
 
 type LocalBeaconer struct {
 	Logger  log.Logger
-	Metrics *metrics.BeaconMetrics
+	Metrics metrics.PublisherMetrics
 }
 
 func (local *LocalBeaconer) Submit(ctx context.Context, entry *transport.NextBeaconPacket) error {

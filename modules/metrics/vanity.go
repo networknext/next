@@ -91,7 +91,7 @@ func NewVanityMetrics(ctx context.Context, handler Handler, buyerID string) (*Va
 type VanityServiceMetrics struct {
 	ServiceMetrics ServiceMetrics
 
-	ReceiveMetrics SubscriberMetrics
+	ReceiveMetrics ReceiverMetrics
 
 	VanityUpdateSuccessCount Counter
 	VanityUpdateFailureCount Counter
@@ -101,7 +101,7 @@ type VanityServiceMetrics struct {
 var EmptyVanityServiceMetrics = VanityServiceMetrics{
 	ServiceMetrics: EmptyServiceMetrics,
 
-	ReceiveMetrics: EmptySubscriberMetrics,
+	ReceiveMetrics: EmptyReceiverMetrics,
 
 	VanityUpdateSuccessCount: &EmptyCounter{},
 	VanityUpdateFailureCount: &EmptyCounter{},
@@ -119,7 +119,7 @@ func NewVanityServiceMetrics(ctx context.Context, handler Handler) (VanityServic
 		return EmptyVanityServiceMetrics, err
 	}
 
-	m.ReceiveMetrics, err = NewSubscriberMetrics(ctx, handler, serviceName, "vanity", "Vanity", "vanity metrics")
+	m.ReceiveMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "vanity", "Vanity", "vanity metrics")
 	if err != nil {
 		return EmptyVanityServiceMetrics, err
 	}

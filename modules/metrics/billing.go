@@ -6,15 +6,15 @@ import "context"
 type BillingMetrics struct {
 	ServiceMetrics ServiceMetrics
 
-	BillingSubscriberMetrics SubscriberMetrics
-	BillingPublisherMetrics  PublisherMetrics
+	BillingReceiverMetrics  ReceiverMetrics
+	BillingPublisherMetrics PublisherMetrics
 }
 
 // EmptyBillingMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
-	ServiceMetrics:           EmptyServiceMetrics,
-	BillingSubscriberMetrics: EmptySubscriberMetrics,
-	BillingPublisherMetrics:  EmptyPublisherMetrics,
+	ServiceMetrics:          EmptyServiceMetrics,
+	BillingReceiverMetrics:  EmptyReceiverMetrics,
+	BillingPublisherMetrics: EmptyPublisherMetrics,
 }
 
 // NewBillingMetrics creates the metrics that the billing service will use.
@@ -34,7 +34,7 @@ func NewBillingMetrics(ctx context.Context, handler Handler) (BillingMetrics, er
 		return EmptyBillingMetrics, err
 	}
 
-	m.BillingSubscriberMetrics, err = NewSubscriberMetrics(ctx, handler, serviceName, "billing", "Billing", "billing")
+	m.BillingReceiverMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "billing", "Billing", "billing")
 	if err != nil {
 		return EmptyBillingMetrics, err
 	}

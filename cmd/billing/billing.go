@@ -246,7 +246,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, billingMetrics.BillingSubscriberMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, billingMetrics.BillingReceiverMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -273,7 +273,7 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(billingMetrics.ServiceMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", billingMetrics.ServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d billing entries received\n", int(billingMetrics.BillingSubscriberMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d billing entries received\n", int(billingMetrics.BillingReceiverMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d billing entries submitted\n", int(billingMetrics.BillingPublisherMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d billing entries queued\n", int(billingMetrics.BillingPublisherMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d billing entries flushed\n", int(billingMetrics.BillingPublisherMetrics.EntriesFlushed.Value()))

@@ -6,9 +6,9 @@ import "context"
 type AnalyticsMetrics struct {
 	ServiceMetrics ServiceMetrics
 
-	PingStatsSubscriberMetrics        SubscriberMetrics
-	RelayStatsSubscriberMetrics       SubscriberMetrics
-	RouteMatrixStatsSubscriberMetrics SubscriberMetrics
+	PingStatsReceiverMetrics        ReceiverMetrics
+	RelayStatsReceiverMetrics       ReceiverMetrics
+	RouteMatrixStatsReceiverMetrics ReceiverMetrics
 
 	PingStatsPublisherMetrics        PublisherMetrics
 	RelayStatsPublisherMetrics       PublisherMetrics
@@ -19,9 +19,9 @@ type AnalyticsMetrics struct {
 var EmptyAnalyticsMetrics = AnalyticsMetrics{
 	ServiceMetrics: EmptyServiceMetrics,
 
-	PingStatsSubscriberMetrics:        EmptySubscriberMetrics,
-	RelayStatsSubscriberMetrics:       EmptySubscriberMetrics,
-	RouteMatrixStatsSubscriberMetrics: EmptySubscriberMetrics,
+	PingStatsReceiverMetrics:        EmptyReceiverMetrics,
+	RelayStatsReceiverMetrics:       EmptyReceiverMetrics,
+	RouteMatrixStatsReceiverMetrics: EmptyReceiverMetrics,
 
 	PingStatsPublisherMetrics:        EmptyPublisherMetrics,
 	RelayStatsPublisherMetrics:       EmptyPublisherMetrics,
@@ -55,17 +55,17 @@ func NewAnalyticsMetrics(ctx context.Context, handler Handler) (AnalyticsMetrics
 		return EmptyAnalyticsMetrics, err
 	}
 
-	m.PingStatsSubscriberMetrics, err = NewSubscriberMetrics(ctx, handler, serviceName, "ping_stats", "Ping Stats", "ping stats")
+	m.PingStatsReceiverMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "ping_stats", "Ping Stats", "ping stats")
 	if err != nil {
 		return EmptyAnalyticsMetrics, err
 	}
 
-	m.RelayStatsSubscriberMetrics, err = NewSubscriberMetrics(ctx, handler, serviceName, "relay_stats", "Relay Stats", "relay stats")
+	m.RelayStatsReceiverMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "relay_stats", "Relay Stats", "relay stats")
 	if err != nil {
 		return EmptyAnalyticsMetrics, err
 	}
 
-	m.RouteMatrixStatsSubscriberMetrics, err = NewSubscriberMetrics(ctx, handler, serviceName, "route_matrix_stats", "Route Matrix Stats", "route matrix stats")
+	m.RouteMatrixStatsReceiverMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "route_matrix_stats", "Route Matrix Stats", "route matrix stats")
 	if err != nil {
 		return EmptyAnalyticsMetrics, err
 	}

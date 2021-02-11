@@ -202,7 +202,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, analyticsMetrics.PingStatsSubscriberMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, analyticsMetrics.PingStatsReceiverMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -248,7 +248,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, analyticsMetrics.RelayStatsSubscriberMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, analyticsMetrics.RelayStatsReceiverMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -299,7 +299,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, analyticsMetrics.RouteMatrixStatsSubscriberMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, analyticsMetrics.RouteMatrixStatsReceiverMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -325,15 +325,15 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(analyticsMetrics.ServiceMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", analyticsMetrics.ServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d ping stats entries received\n", int(analyticsMetrics.PingStatsSubscriberMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d ping stats entries received\n", int(analyticsMetrics.PingStatsReceiverMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d ping stats entries submitted\n", int(analyticsMetrics.PingStatsPublisherMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d ping stats entries queued\n", int(analyticsMetrics.PingStatsPublisherMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d ping stats entries flushed\n", int(analyticsMetrics.PingStatsPublisherMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d relay stats entries received\n", int(analyticsMetrics.RelayStatsSubscriberMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d relay stats entries received\n", int(analyticsMetrics.RelayStatsReceiverMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsPublisherMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsPublisherMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsPublisherMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d route matrix stats entries received\n", int(analyticsMetrics.RouteMatrixStatsSubscriberMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d route matrix stats entries received\n", int(analyticsMetrics.RouteMatrixStatsReceiverMetrics.EntriesReceived.Value()))
 				fmt.Printf("%d route matrix entries submitted\n", int(analyticsMetrics.RouteMatrixStatsPublisherMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d route matrix entries queued\n", int(analyticsMetrics.RouteMatrixStatsPublisherMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d route matrix entries flushed\n", int(analyticsMetrics.RouteMatrixStatsPublisherMetrics.EntriesFlushed.Value()))

@@ -6,7 +6,7 @@ import "context"
 type PortalCruncherMetrics struct {
 	ServiceMetrics ServiceMetrics
 
-	ReceiveMetrics SubscriberMetrics
+	ReceiveMetrics ReceiverMetrics
 
 	BigTableMetrics BigTableWriteMetrics
 }
@@ -15,7 +15,7 @@ type PortalCruncherMetrics struct {
 var EmptyPortalCruncherMetrics = PortalCruncherMetrics{
 	ServiceMetrics: EmptyServiceMetrics,
 
-	ReceiveMetrics: EmptySubscriberMetrics,
+	ReceiveMetrics: EmptyReceiverMetrics,
 
 	BigTableMetrics: EmptyBigTableWriteMetrics,
 }
@@ -32,7 +32,7 @@ func NewPortalCruncherMetrics(ctx context.Context, handler Handler) (PortalCrunc
 		return EmptyPortalCruncherMetrics, err
 	}
 
-	m.ReceiveMetrics, err = NewSubscriberMetrics(ctx, handler, serviceName, "portal_cruncher", "Portal Cruncher", "portal data")
+	m.ReceiveMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "portal_cruncher", "Portal Cruncher", "portal data")
 	if err != nil {
 		return EmptyPortalCruncherMetrics, err
 	}

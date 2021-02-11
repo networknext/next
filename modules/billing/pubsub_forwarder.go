@@ -17,12 +17,12 @@ import (
 type PubSubForwarder struct {
 	Biller  Biller
 	Logger  log.Logger
-	Metrics metrics.SubscriberMetrics
+	Metrics metrics.ReceiverMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics metrics.SubscriberMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics metrics.ReceiverMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)

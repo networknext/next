@@ -2,24 +2,24 @@ package metrics
 
 import "context"
 
-// SubscriberMetrics defines the metrics that track receiving subscribed data.
-type SubscriberMetrics struct {
+// ReceiverMetrics defines the metrics that track receiving data.
+type ReceiverMetrics struct {
 	EntriesReceived Counter
 
 	UnmarshalFailure Counter
 }
 
-// EmptySubscriberMetrics is used for testing when we want to pass in metrics but don't care about their value.
-var EmptySubscriberMetrics SubscriberMetrics = SubscriberMetrics{
+// EmptyReceiverMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyReceiverMetrics ReceiverMetrics = ReceiverMetrics{
 	EntriesReceived: &EmptyCounter{},
 
 	UnmarshalFailure: &EmptyCounter{},
 }
 
-// NewSubscriberMetrics creates the metrics that track receiving subscribed data.
-func NewSubscriberMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, handlerDescription string) (SubscriberMetrics, error) {
+// NewReceiverMetrics creates the metrics that track receiving data.
+func NewReceiverMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, handlerDescription string) (ReceiverMetrics, error) {
 	var err error
-	m := SubscriberMetrics{}
+	m := ReceiverMetrics{}
 
 	m.EntriesReceived, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Entries Received",
@@ -29,7 +29,7 @@ func NewSubscriberMetrics(ctx context.Context, handler Handler, serviceName stri
 		Description: "The number of " + handlerDescription + " entries that have been received.",
 	})
 	if err != nil {
-		return EmptySubscriberMetrics, err
+		return EmptyReceiverMetrics, err
 	}
 
 	m.UnmarshalFailure, err = handler.NewCounter(ctx, &Descriptor{
@@ -40,7 +40,7 @@ func NewSubscriberMetrics(ctx context.Context, handler Handler, serviceName stri
 		Description: "The number of " + handlerDescription + " entries that failed to be unmarshaled.",
 	})
 	if err != nil {
-		return EmptySubscriberMetrics, err
+		return EmptyReceiverMetrics, err
 	}
 
 	return m, nil
