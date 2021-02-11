@@ -2882,3 +2882,65 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 
 	return nil
 }
+
+func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	datacenter, err := db.Datacenter(datacenterID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", datacenterID)}
+	}
+
+	switch field {
+	case "Latitude":
+		latitude, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float32 value", value)
+		}
+		updateSQL.Write([]byte("update datacenters set latitude=$1 where id=$2"))
+		args = append(args, latitude, datacenter.DatabaseID)
+		datacenter.Location.Latitude = latitude
+	case "Longitude":
+		longitude, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float32 value", value)
+		}
+		updateSQL.Write([]byte("update datacenters set longitude=$1 where id=$2"))
+		args = append(args, longitude, datacenter.DatabaseID)
+		datacenter.Location.Longitude = longitude
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Datacenter type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenter SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying datacenter record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.datacenterMutex.Lock()
+	db.datacenters[datacenterID] = datacenter
+	db.datacenterMutex.Unlock()
+
+	return nil
+}
