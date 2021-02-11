@@ -394,6 +394,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	newBuyer := db.buyers[buyer.ID]
 	db.buyerMutex.RUnlock()
 
+	newBuyer.HexID = fmt.Sprintf("%016x", buyer.ID)
 	newBuyer.RouteShader = core.NewRouteShader()
 	newBuyer.InternalConfig = core.NewInternalConfig()
 
