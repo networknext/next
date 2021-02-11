@@ -14,6 +14,7 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
@@ -314,6 +315,7 @@ func TestUserSessions(t *testing.T) {
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolUserSessions:  redisPool,
 		Logger:                 logger,
+		Metrics:                metrics.EmptyPortalMetrics,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -927,6 +929,7 @@ func TestSessionDetails(t *testing.T) {
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &inMemory,
 		Logger:                 logger,
+		Metrics:                metrics.EmptyPortalMetrics,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
