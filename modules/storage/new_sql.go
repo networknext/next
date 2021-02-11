@@ -541,6 +541,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		b := routing.Buyer{
 			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
 			ShortName:      buyer.ShortName,
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,

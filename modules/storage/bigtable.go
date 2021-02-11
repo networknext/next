@@ -129,6 +129,11 @@ func (bt *BigTableAdmin) SetMaxAgePolicy(ctx context.Context, btTableName string
 	return nil
 }
 
+// Drops all rows from a table that start with the given prefix
+func (bt *BigTableAdmin) DropRowsByPrefix(ctx context.Context, btTableName string, prefix string) error {
+	return bt.Client.DropRowRange(ctx, btTableName, prefix)
+}
+
 // Closes the bigtable admin
 func (bt *BigTableAdmin) Close() error {
 	if err := bt.Client.Close(); err != nil {
