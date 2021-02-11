@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/go-kit/kit/metrics/generic"
 
 	metadataapi "cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3"
@@ -32,23 +32,13 @@ type StackDriverHandler struct {
 	OverwriteFrequency time.Duration // The frequency at which to attempt to overwrite metrics.
 	OverwriteTimeout   time.Duration // The max amount of time to spend attempting to overwrite a metric before returning an error.
 
-	// Optional kubernetes container data. If these are set, the client will know that the monitored resource is running in a kubernetes container.
-	// If they are not set, the client will check to see if the monitored resource is running in a GCE instance. If it's not, it will default to global.
-	ClusterLocation string
-	ClusterName     string
-	PodName         string
-	ContainerName   string
-	NamespaceName   string // If this is not set, it will default to "default"
-
 	Client *monitoring.MetricClient
 
-	counters   map[string]counterMapData
-	gauges     map[string]gaugeMapData
-	histograms map[string]histogramMapData
+	counters map[string]counterMapData
+	gauges   map[string]gaugeMapData
 
-	counterMapMutex   sync.Mutex
-	gaugeMapMutex     sync.Mutex
-	histogramMapMutex sync.Mutex
+	counterMapMutex sync.Mutex
+	gaugeMapMutex   sync.Mutex
 }
 
 type counterMapData struct {
@@ -61,17 +51,10 @@ type gaugeMapData struct {
 	gauge      Gauge
 }
 
-type histogramMapData struct {
-	descriptor *Descriptor
-	histogram  Histogram
-	buckets    int
-}
-
 // Open opens the client connection to StackDriver. This must be done before any metrics are created, deleted, or fetched.
 func (handler *StackDriverHandler) Open(ctx context.Context) error {
 	handler.counters = make(map[string]counterMapData)
 	handler.gauges = make(map[string]gaugeMapData)
-	handler.histograms = make(map[string]histogramMapData)
 
 	// Create a Stackdriver metrics client
 	var err error
@@ -84,6 +67,11 @@ func (handler *StackDriverHandler) Open(ctx context.Context) error {
 // If the duration is less than or equal to 0, a default of 1 minute is used.
 // maxMetricsIncrement is the maximum number of metrics to send in one push to StackDriver. 200 is the maximum number of time series allowed in a single request.
 func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
+	monitoredResource, err := handler.getMonitoredResource()
+	if err != nil {
+		level.Error(logger).Log("msg", "error when detecting monitored resource, defaulting to global", "err", err)
+	}
+
 	if duration <= 0 {
 		duration = time.Minute
 	}
@@ -98,20 +86,17 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 
 			handler.counterMapMutex.Lock()
 			handler.gaugeMapMutex.Lock()
-			handler.histogramMapMutex.Lock()
 
-			metricsCount := len(handler.counters) + len(handler.gauges) + len(handler.histograms)
+			metricsCount := len(handler.counters) + len(handler.gauges)
 			timeSeries := make([]*monitoringpb.TimeSeries, metricsCount)
 
 			for _, mapData := range handler.counters {
-				labels := convertLabelValues(mapData.counter.LabelValues())
-
 				timeSeries[index] = &monitoringpb.TimeSeries{
 					Metric: &metricpb.Metric{
 						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
-						Labels: labels,
+						Labels: mapData.counter.Labels(),
 					},
-					Resource: handler.getMonitoredResource(),
+					Resource: monitoredResource,
 					Points: []*monitoringpb.Point{
 						{
 							Interval: &monitoringpb.TimeInterval{
@@ -128,18 +113,17 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 					},
 				}
 
+				mapData.counter.ClearLabels()
 				index++
 			}
 
 			for _, mapData := range handler.gauges {
-				labels := convertLabelValues(mapData.gauge.LabelValues())
-
 				timeSeries[index] = &monitoringpb.TimeSeries{
 					Metric: &metricpb.Metric{
 						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
-						Labels: labels,
+						Labels: mapData.gauge.Labels(),
 					},
-					Resource: handler.getMonitoredResource(),
+					Resource: monitoredResource,
 					Points: []*monitoringpb.Point{
 						{
 							Interval: &monitoringpb.TimeInterval{
@@ -149,53 +133,19 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 							},
 							Value: &monitoringpb.TypedValue{
 								Value: &monitoringpb.TypedValue_DoubleValue{
-									DoubleValue: mapData.gauge.Value(),
+									DoubleValue: mapData.gauge.ValueReset(),
 								},
 							},
 						},
 					},
 				}
 
-				mapData.gauge.Set(0)
-				index++
-			}
-
-			for _, mapData := range handler.histograms {
-				labels := convertLabelValues(mapData.histogram.LabelValues())
-				labels["p50"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.5))
-				labels["p90"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.9))
-				labels["p95"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.95))
-				labels["p99"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.99))
-
-				timeSeries[index] = &monitoringpb.TimeSeries{
-					Metric: &metricpb.Metric{
-						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
-						Labels: labels,
-					},
-					Resource: handler.getMonitoredResource(),
-					Points: []*monitoringpb.Point{
-						{
-							Interval: &monitoringpb.TimeInterval{
-								EndTime: &googlepb.Timestamp{
-									Seconds: time.Now().Unix(),
-								},
-							},
-							Value: &monitoringpb.TypedValue{
-								Value: &monitoringpb.TypedValue_DoubleValue{
-									DoubleValue: mapData.histogram.Quantile(0.5),
-								},
-							},
-						},
-					},
-				}
-
-				// Don't reset the histogram
+				mapData.gauge.ClearLabels()
 				index++
 			}
 
 			handler.counterMapMutex.Unlock()
 			handler.gaugeMapMutex.Unlock()
-			handler.histogramMapMutex.Unlock()
 
 			// Send the time series objects to StackDriver with a maximum send size to avoid overloading
 			for i := 0; i < metricsCount; i += maxMetricsIncrement {
@@ -229,17 +179,19 @@ func (handler *StackDriverHandler) NewCounter(ctx context.Context, descriptor *D
 	}
 
 	// Create the counter for updating the metric
-	counter := generic.NewCounter(descriptor.ID)
+	counter := StackDriverCounter{
+		labels: make(map[string]string),
+	}
 
 	// Add the metric to the map data
 	handler.counterMapMutex.Lock()
 	handler.counters[descriptor.ID] = counterMapData{
 		descriptor: descriptor,
-		counter:    counter,
+		counter:    &counter,
 	}
 	handler.counterMapMutex.Unlock()
 
-	return counter, nil
+	return &counter, nil
 }
 
 // NewGauge creates a metric and returns a new gauge to update it.
@@ -251,40 +203,19 @@ func (handler *StackDriverHandler) NewGauge(ctx context.Context, descriptor *Des
 	}
 
 	// Create the gauge for updating the metric
-	gauge := generic.NewGauge(descriptor.ID)
+	gauge := StackDriverGauge{
+		labels: make(map[string]string),
+	}
 
 	// Add the metric to the map data
 	handler.gaugeMapMutex.Lock()
 	handler.gauges[descriptor.ID] = gaugeMapData{
 		descriptor: descriptor,
-		gauge:      gauge,
+		gauge:      &gauge,
 	}
 	handler.gaugeMapMutex.Unlock()
 
-	return gauge, nil
-}
-
-// NewHistogram creates a metric and returns a new histogram to observe it.
-// If the metric already exists, then the returned new histogram observes the metric instead of any other existing histogram.
-func (handler *StackDriverHandler) NewHistogram(ctx context.Context, descriptor *Descriptor, buckets int) (Histogram, error) {
-	// Create the metric in StackDriver
-	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_DOUBLE, metricpb.MetricDescriptor_GAUGE); err != nil {
-		return nil, err
-	}
-
-	// Create the histogram for updating the metric
-	histogram := generic.NewHistogram(descriptor.ID, buckets)
-
-	// Add the metric to the map data
-	handler.histogramMapMutex.Lock()
-	handler.histograms[descriptor.ID] = histogramMapData{
-		descriptor: descriptor,
-		histogram:  histogram,
-		buckets:    buckets,
-	}
-	handler.histogramMapMutex.Unlock()
-
-	return histogram, nil
+	return &gauge, nil
 }
 
 // createMetric creates the metric on StackDriver using the given metric descriptor.
@@ -296,10 +227,6 @@ func (handler *StackDriverHandler) createMetric(ctx context.Context, descriptor 
 	}
 
 	if _, contains := handler.gauges[descriptor.ID]; contains {
-		return errors.New("Metric " + descriptor.ID + " already created")
-	}
-
-	if _, contains := handler.histograms[descriptor.ID]; contains {
 		return errors.New("Metric " + descriptor.ID + " already created")
 	}
 
@@ -415,74 +342,201 @@ func (handler *StackDriverHandler) Close() error {
 		handler.counterMapMutex.Lock()
 		handler.counters = make(map[string]counterMapData)
 		handler.gauges = make(map[string]gaugeMapData)
-		handler.histograms = make(map[string]histogramMapData)
 		handler.counterMapMutex.Unlock()
 	}
 
 	return err
 }
 
-func (handler *StackDriverHandler) getMonitoredResource() *monitoredrespb.MonitoredResource {
-	var monitoredResource *monitoredrespb.MonitoredResource
-
-	if handler.ClusterLocation != "" && handler.ClusterName != "" && handler.PodName != "" && handler.ContainerName != "" {
-		if handler.NamespaceName == "" {
-			handler.NamespaceName = "default"
-		}
-
-		monitoredResource = &monitoredrespb.MonitoredResource{
-			Type: "k8s_container",
-			Labels: map[string]string{
-				"project_id":     handler.ProjectID,
-				"location":       handler.ClusterLocation,
-				"cluster_name":   handler.ClusterName,
-				"namespace_name": handler.NamespaceName,
-				"pod_name":       handler.PodName,
-				"container_name": handler.ContainerName,
-			},
-		}
-	} else if metadataapi.OnGCE() {
-		projectIDFromMetadata, err1 := metadataapi.ProjectID()
-		instanceID, err2 := metadataapi.InstanceID()
-		zone, err3 := metadataapi.Zone()
-		if err1 == nil && err2 == nil && err3 == nil {
-			monitoredResource = &monitoredrespb.MonitoredResource{
-				Type: "gce_instance",
-				Labels: map[string]string{
-					"project_id":  projectIDFromMetadata,
-					"instance_id": instanceID,
-					"zone":        zone,
-				},
-			}
-		} else {
-			monitoredResource = &monitoredrespb.MonitoredResource{
-				Type: "global",
-				Labels: map[string]string{
-					"project_id": handler.ProjectID,
-				},
-			}
-		}
-	} else {
-		monitoredResource = &monitoredrespb.MonitoredResource{
-			Type: "global",
-			Labels: map[string]string{
-				"project_id": handler.ProjectID,
-			},
-		}
+func (handler *StackDriverHandler) getMonitoredResource() (*monitoredrespb.MonitoredResource, error) {
+	monitoredResource := &monitoredrespb.MonitoredResource{
+		Type: "global",
+		Labels: map[string]string{
+			"project_id": handler.ProjectID,
+		},
 	}
 
-	return monitoredResource
+	if metadataapi.OnGCE() {
+		projectIDFromMetadata, err := metadataapi.ProjectID()
+		if err != nil {
+			return monitoredResource, err
+		}
+
+		instanceID, err := metadataapi.InstanceID()
+		if err != nil {
+			return monitoredResource, err
+		}
+
+		zone, err := metadataapi.Zone()
+		if err != nil {
+			return monitoredResource, err
+		}
+
+		monitoredResource = &monitoredrespb.MonitoredResource{
+			Type: "gce_instance",
+			Labels: map[string]string{
+				"project_id":  projectIDFromMetadata,
+				"instance_id": instanceID,
+				"zone":        zone,
+			},
+		}
+
+		return monitoredResource, nil
+	}
+
+	monitoredResource = &monitoredrespb.MonitoredResource{
+		Type: "global",
+		Labels: map[string]string{
+			"project_id": handler.ProjectID,
+		},
+	}
+
+	return monitoredResource, nil
 }
 
-// Converts string slice to map
-func convertLabelValues(labelValues []string) map[string]string {
-	labels := make(map[string]string)
+// StackDriverCounter is an atomic implementation of a counter based on go-kit's generic counter to fit our Counter interface
+type StackDriverCounter struct {
+	bits        uint64
+	labels      map[string]string
+	labelsMutex sync.RWMutex
+}
 
-	// Convert the labels from a 1D string slice to a map
-	// Label values are guaranteed to be even
-	for i := 0; i < len(labelValues); i += 2 {
-		labels[labelValues[i]] = labelValues[i+1]
+// Add adds the delta to the counter's value.
+func (c *StackDriverCounter) Add(delta float64) {
+	for {
+		var (
+			old  = atomic.LoadUint64(&c.bits)
+			newf = math.Float64frombits(old) + delta
+			new  = math.Float64bits(newf)
+		)
+		if atomic.CompareAndSwapUint64(&c.bits, old, new) {
+			break
+		}
+	}
+}
+
+// Value returns the counter's current value.
+func (c *StackDriverCounter) Value() float64 {
+	return math.Float64frombits(atomic.LoadUint64(&c.bits))
+}
+
+// ValueReset returns the counter's current value and resets the counter.
+func (c *StackDriverCounter) ValueReset() float64 {
+	for {
+		var (
+			old  = atomic.LoadUint64(&c.bits)
+			newf = 0.0
+			new  = math.Float64bits(newf)
+		)
+		if atomic.CompareAndSwapUint64(&c.bits, old, new) {
+			return math.Float64frombits(old)
+		}
+	}
+}
+
+// AddLabels adds more labels to the counter. If a label being added already exists, the value is overwritten.
+func (c *StackDriverCounter) AddLabels(labels map[string]string) {
+	c.labelsMutex.Lock()
+	defer c.labelsMutex.Unlock()
+
+	for k, v := range labels {
+		c.labels[k] = v
+	}
+}
+
+// Labels is a returns the a copy of current list of labels attached to the counter.
+func (c *StackDriverCounter) Labels() map[string]string {
+	labelsCopy := make(map[string]string)
+	c.labelsMutex.RLock()
+	defer c.labelsMutex.RUnlock()
+
+	for k, v := range c.labels {
+		labelsCopy[k] = v
 	}
 
-	return labels
+	return labelsCopy
+}
+
+// ClearLabels removes all existing labels attached to the counter
+func (c *StackDriverCounter) ClearLabels() {
+	c.labelsMutex.Lock()
+	defer c.labelsMutex.Unlock()
+
+	c.labels = make(map[string]string)
+}
+
+// StackDriverGauge is an atomic implementation of a gauge based on go-kit's generic gauge to fit our Gauge interface
+type StackDriverGauge struct {
+	bits        uint64
+	labels      map[string]string
+	labelsMutex sync.RWMutex
+}
+
+// Set sets the gauge's value.
+func (g *StackDriverGauge) Set(value float64) {
+	atomic.StoreUint64(&g.bits, math.Float64bits(value))
+}
+
+// Add adds the delta to the counter's value.
+func (g *StackDriverGauge) Add(delta float64) {
+	for {
+		var (
+			old  = atomic.LoadUint64(&g.bits)
+			newf = math.Float64frombits(old) + delta
+			new  = math.Float64bits(newf)
+		)
+		if atomic.CompareAndSwapUint64(&g.bits, old, new) {
+			break
+		}
+	}
+}
+
+// Value returns the counter's current value.
+func (g *StackDriverGauge) Value() float64 {
+	return math.Float64frombits(atomic.LoadUint64(&g.bits))
+}
+
+// ValueReset returns the counter's current value and resets the counter.
+func (g *StackDriverGauge) ValueReset() float64 {
+	for {
+		var (
+			old  = atomic.LoadUint64(&g.bits)
+			newf = 0.0
+			new  = math.Float64bits(newf)
+		)
+		if atomic.CompareAndSwapUint64(&g.bits, old, new) {
+			return math.Float64frombits(old)
+		}
+	}
+}
+
+// AddLabels adds more labels to the counter. If a label being added already exists, the value is overwritten.
+func (g *StackDriverGauge) AddLabels(labels map[string]string) {
+	g.labelsMutex.Lock()
+	defer g.labelsMutex.Unlock()
+
+	for k, v := range labels {
+		g.labels[k] = v
+	}
+}
+
+// Labels is a returns the a copy of current list of labels attached to the counter.
+func (g *StackDriverGauge) Labels() map[string]string {
+	labelsCopy := make(map[string]string)
+	g.labelsMutex.RLock()
+	defer g.labelsMutex.RUnlock()
+
+	for k, v := range g.labels {
+		labelsCopy[k] = v
+	}
+
+	return labelsCopy
+}
+
+// ClearLabels removes all existing labels attached to the counter
+func (g *StackDriverGauge) ClearLabels() {
+	g.labelsMutex.Lock()
+	defer g.labelsMutex.Unlock()
+
+	g.labels = make(map[string]string)
 }
