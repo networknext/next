@@ -1252,7 +1252,7 @@ func main() {
 						CompanyCode: b.CompanyCode,
 						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
 						Live:        b.Live,
-						PublicKey:   publicKey,
+						PublicKey:   publicKey[8:],
 					})
 					return nil
 				},
