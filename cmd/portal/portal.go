@@ -236,7 +236,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
+	portalMetrics, err := metrics.NewPortalMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
 		os.Exit(1)
@@ -329,18 +329,11 @@ func main() {
 	// 	}
 	// }
 
-	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create service metrics", "err", err)
-		os.Exit(1)
-	}
-
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
-		BigTableMetrics:        btMetrics,
 		Logger:                 logger,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
@@ -348,7 +341,7 @@ func main() {
 		RedisPoolSessionMap:    redisPoolSessionMap,
 		Storage:                db,
 		Env:                    env,
-		Metrics:                serviceMetrics,
+		Metrics:                portalMetrics,
 	}
 
 	configService := jsonrpc.ConfigService{

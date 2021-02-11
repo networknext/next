@@ -25,7 +25,7 @@ type GooglePubSubClient struct {
 	Topic                *pubsub.Topic
 	ResultChan           chan *pubsub.PublishResult
 	Logger               log.Logger
-	Metrics              *metrics.BillingMetrics
+	Metrics              metrics.PublisherMetrics
 	BufferCountThreshold int
 	MinBufferBytes       int
 	CancelContextFunc    context.CancelFunc
@@ -37,7 +37,7 @@ type GooglePubSubClient struct {
 
 // NewBiller creates a new GooglePubSubBiller, sets up the pubsub clients, and starts goroutines to listen for publish results.
 // To clean up the results goroutine, use ctx.Done().
-func NewGooglePubSubBiller(ctx context.Context, billingMetrics *metrics.BillingMetrics, resultLogger log.Logger, projectID string, billingTopicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (Biller, error) {
+func NewGooglePubSubBiller(ctx context.Context, metrics metrics.PublisherMetrics, resultLogger log.Logger, projectID string, billingTopicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (Biller, error) {
 	if settings == nil {
 		return nil, errors.New("nil google pubsub publish settings")
 	}
@@ -49,7 +49,7 @@ func NewGooglePubSubBiller(ctx context.Context, billingMetrics *metrics.BillingM
 		var err error
 		client = &GooglePubSubClient{}
 		client.PubsubClient, err = pubsub.NewClient(ctx, projectID)
-		client.Metrics = billingMetrics
+		client.Metrics = metrics
 		client.Logger = resultLogger
 		if err != nil {
 			return nil, fmt.Errorf("could not create pubsub client %v: %v", i, err)
@@ -142,7 +142,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context) {
 			_, err := result.Get(ctx)
 			if err != nil {
 				level.Error(client.Logger).Log("billing", "failed to publish to pub/sub", "err", err)
-				client.Metrics.ErrorMetrics.BillingPublishFailure.Add(1)
+				client.Metrics.PublishFailure.Add(1)
 			} else {
 				level.Debug(client.Logger).Log("billing", "successfully published billing data")
 			}

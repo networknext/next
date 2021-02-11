@@ -23,6 +23,7 @@ import (
 	"github.com/networknext/backend/modules/backend" // todo: bad name for module
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/optimizer"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -85,9 +86,9 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	metrics, err, msg := optimizer.NewMetrics(ctx, metricsHandler)
+	optimizerMetrics, err := metrics.NewOptimizerMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", msg, "err", err)
+		level.Error(logger).Log("err", err)
 	}
 
 	statsDB := routing.NewStatsDatabase()
@@ -121,7 +122,7 @@ func mainReturnWithCode() int {
 	}
 
 	svc := optimizer.NewBaseOptimizer(cfg)
-	svc.Metrics = metrics
+	svc.Metrics = optimizerMetrics
 	svc.MatrixStore = matrixStore
 	svc.RelayMap = relayMap
 	svc.RelayStore = relayStore
@@ -246,7 +247,7 @@ func mainReturnWithCode() int {
 				Timeout:        time.Minute,
 			}
 
-			pingStatsPublisher, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &svc.Metrics.RelayBackendMetrics.PingStatsMetrics, svc.Logger, gcpProjectID, "ping_stats", settings)
+			pingStatsPublisher, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, svc.Metrics.PingStatsMetrics, svc.Logger, gcpProjectID, "ping_stats", settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 				return 1
@@ -266,7 +267,7 @@ func mainReturnWithCode() int {
 				}
 			}()
 
-			relayStatsPublisher, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &svc.Metrics.RelayBackendMetrics.RelayStatsMetrics, svc.Logger, gcpProjectID, "relay_stats", settings)
+			relayStatsPublisher, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, svc.Metrics.RelayStatsMetrics, svc.Logger, gcpProjectID, "relay_stats", settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 				return 1

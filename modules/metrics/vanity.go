@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// VanityMetric defines the set of metrics for each vanity metric to be recorded.
-type VanityMetric struct {
+// VanityMetrics defines the set of vanity metrics to be displayed for customers.
+type VanityMetrics struct {
 	SlicesAccelerated       Counter
 	SlicesLatencyReduced    Counter
 	SlicesPacketLossReduced Counter
@@ -14,8 +14,8 @@ type VanityMetric struct {
 	SessionsAccelerated     Counter
 }
 
-// EmptyVanityMetric is used for testing when we want to pass in metrics but don't care about their value,
-var EmptyVanityMetric = VanityMetric{
+// EmptyVanityMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyVanityMetrics = VanityMetrics{
 	SlicesAccelerated:       &EmptyCounter{},
 	SlicesLatencyReduced:    &EmptyCounter{},
 	SlicesPacketLossReduced: &EmptyCounter{},
@@ -23,11 +23,11 @@ var EmptyVanityMetric = VanityMetric{
 	SessionsAccelerated:     &EmptyCounter{},
 }
 
-// NewVanityMetric creates the metrics the vanity metrics service will use.
+// NewVanityMetrics creates the metrics the vanity metrics service will use.
 // Uses the buyerID as the service name
-func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*VanityMetric, error) {
+func NewVanityMetrics(ctx context.Context, handler Handler, buyerID string) (*VanityMetrics, error) {
 	var err error
-	m := &VanityMetric{}
+	m := &VanityMetrics{}
 
 	m.SlicesAccelerated, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Slices Accelerated",
@@ -83,6 +83,68 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	if err != nil {
 		return nil, err
 	}
-	
+
+	return m, nil
+}
+
+// VanityServiceMetrics defines the set of metrics for monitoring the vanity service.
+type VanityServiceMetrics struct {
+	ServiceMetrics ServiceMetrics
+
+	ReceiveMetrics ReceiverMetrics
+
+	VanityUpdateSuccessCount Counter
+	VanityUpdateFailureCount Counter
+}
+
+// EmptyVanityServiceMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyVanityServiceMetrics = VanityServiceMetrics{
+	ServiceMetrics: EmptyServiceMetrics,
+
+	ReceiveMetrics: EmptyReceiverMetrics,
+
+	VanityUpdateSuccessCount: &EmptyCounter{},
+	VanityUpdateFailureCount: &EmptyCounter{},
+}
+
+// NewVanityServiceMetrics creates the metrics that the vanity service will use.
+func NewVanityServiceMetrics(ctx context.Context, handler Handler) (VanityServiceMetrics, error) {
+	serviceName := "vanity"
+
+	var err error
+	m := VanityServiceMetrics{}
+
+	m.ServiceMetrics, err = NewServiceMetrics(ctx, handler, serviceName)
+	if err != nil {
+		return EmptyVanityServiceMetrics, err
+	}
+
+	m.ReceiveMetrics, err = NewReceiverMetrics(ctx, handler, serviceName, "vanity", "Vanity", "vanity metrics")
+	if err != nil {
+		return EmptyVanityServiceMetrics, err
+	}
+
+	m.VanityUpdateSuccessCount, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Update Success Count",
+		ServiceName: serviceName,
+		ID:          "vanity_metrics_update_success_count",
+		Unit:        "updates",
+		Description: "The number of successful vanity metrics updates to the metrics handler.",
+	})
+	if err != nil {
+		return EmptyVanityServiceMetrics, err
+	}
+
+	m.VanityUpdateFailureCount, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Vanity Metrics Update Failure Count",
+		ServiceName: serviceName,
+		ID:          "vanity_metrics_update_failure_count",
+		Unit:        "updates",
+		Description: "The number of failed vanity metrics updates to the metrics handler.",
+	})
+	if err != nil {
+		return EmptyVanityServiceMetrics, err
+	}
+
 	return m, nil
 }

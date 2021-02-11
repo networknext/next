@@ -15,9 +15,9 @@ var EmptyServiceMetrics = ServiceMetrics{
 }
 
 // NewServiceMetrics creates the metrics a service will use.
-func NewServiceMetrics(ctx context.Context, handler Handler, serviceName string) (*ServiceMetrics, error) {
+func NewServiceMetrics(ctx context.Context, handler Handler, serviceName string) (ServiceMetrics, error) {
 	var err error
-	m := &ServiceMetrics{}
+	m := ServiceMetrics{}
 
 	m.Goroutines, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Goroutines",
@@ -27,7 +27,7 @@ func NewServiceMetrics(ctx context.Context, handler Handler, serviceName string)
 		Description: "The number of goroutines that the service is running.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyServiceMetrics, err
 	}
 
 	m.MemoryAllocated, err = handler.NewGauge(ctx, &Descriptor{
@@ -38,7 +38,7 @@ func NewServiceMetrics(ctx context.Context, handler Handler, serviceName string)
 		Description: "The amount of memory the service has allocated in megabytes.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyServiceMetrics, err
 	}
 
 	return m, nil

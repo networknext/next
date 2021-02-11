@@ -3,6 +3,7 @@ package metrics
 import "context"
 
 // PostSessionMetrics defines the set of metrics for the post session update processing.
+// TODO: Refactor this to use the PublisherMetrics
 type PostSessionMetrics struct {
 	BillingEntriesSent     Counter
 	BillingEntriesFinished Counter
@@ -44,9 +45,9 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 }
 
 // NewPostSessionMetrics creates the metrics the post session processor will use.
-func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName string) (*PostSessionMetrics, error) {
+func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName string) (PostSessionMetrics, error) {
 	var err error
-	m := &PostSessionMetrics{}
+	m := PostSessionMetrics{}
 
 	m.BillingEntriesSent, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Post Session Update Billing Entries Sent",
@@ -56,7 +57,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries sent to the post session billing channel.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.BillingEntriesFinished, err = handler.NewCounter(ctx, &Descriptor{
@@ -67,7 +68,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries finished sending to Google Pub/Sub.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.BillingBufferLength, err = handler.NewGauge(ctx, &Descriptor{
@@ -78,7 +79,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries in queue waiting to be sent.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.BillingBufferFull, err = handler.NewCounter(ctx, &Descriptor{
@@ -89,7 +90,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries dropped because the billing queue was full.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.BillingFailure, err = handler.NewCounter(ctx, &Descriptor{
@@ -100,7 +101,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries that failed to be sent to Google Pub/Sub.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.PortalEntriesSent, err = handler.NewCounter(ctx, &Descriptor{
@@ -111,7 +112,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of portal entries sent to the post session portal channel.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.PortalEntriesFinished, err = handler.NewCounter(ctx, &Descriptor{
@@ -122,7 +123,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries finished sending to the portal_cruncher service.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.PortalBufferLength, err = handler.NewGauge(ctx, &Descriptor{
@@ -133,7 +134,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of portal entries in queue waiting to be sent.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.PortalBufferFull, err = handler.NewCounter(ctx, &Descriptor{
@@ -144,7 +145,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of portal entries dropped because the portal queue was full.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.PortalFailure, err = handler.NewCounter(ctx, &Descriptor{
@@ -155,7 +156,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of portal entries that failed to be sent to the portal_cruncher service.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.VanityMetricsSent, err = handler.NewCounter(ctx, &Descriptor{
@@ -166,7 +167,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries sent to the post session vanity metrics channel.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.VanityMetricsFinished, err = handler.NewCounter(ctx, &Descriptor{
@@ -177,7 +178,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of vanity metric structs finished pushing onto ZeroMQ.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.VanityBufferLength, err = handler.NewGauge(ctx, &Descriptor{
@@ -188,7 +189,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries for vanity metrics in queue waiting to be sent.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.VanityBufferFull, err = handler.NewCounter(ctx, &Descriptor{
@@ -199,7 +200,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of billing entries dropped because the vanity queue was full.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.VanityMarshalFailure, err = handler.NewCounter(ctx, &Descriptor{
@@ -210,7 +211,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of entries for vanity metrics that failed to be marshaled.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	m.VanityTransmitFailure, err = handler.NewCounter(ctx, &Descriptor{
@@ -221,7 +222,7 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		Description: "The number of marshaled vanity metrics that failed to be pushed onto ZeroMQ.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyPostSessionMetrics, err
 	}
 
 	return m, nil

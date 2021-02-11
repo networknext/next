@@ -234,7 +234,7 @@ func TestPostSessionHandlerTransmitVanityMetricsFailure(t *testing.T) {
 		calledChan: make(chan bool, 1),
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -246,7 +246,7 @@ func TestPostSessionHandlerTransmitVanityMetricsMaxRetries(t *testing.T) {
 		retryCount: 11,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -258,7 +258,7 @@ func TestPostSessionHandlerTransmitVanityMetricsRetriesSuccess(t *testing.T) {
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -268,7 +268,7 @@ func TestPostSessionHandlerTransmitVanityMetricsRetriesSuccess(t *testing.T) {
 func TestPostSessionHandlerTransmitVanityMetricsSuccess(t *testing.T) {
 	publisher := &retryPublisher{}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -284,7 +284,7 @@ func TestPostSessionHandlerTransmitVanityMetricsMultiplePublishersSuccess(t *tes
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher1, publisher2}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher1, publisher2}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -344,7 +344,7 @@ func TestPostSessionHandlerTransmitPortalDataFailure(t *testing.T) {
 		calledChan: make(chan bool, 1),
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -356,7 +356,7 @@ func TestPostSessionHandlerTransmitPortalDataMaxRetries(t *testing.T) {
 		retryCount: 11,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -368,7 +368,7 @@ func TestPostSessionHandlerTransmitPortalDataRetriesSuccess(t *testing.T) {
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -378,7 +378,7 @@ func TestPostSessionHandlerTransmitPortalDataRetriesSuccess(t *testing.T) {
 func TestPostSessionHandlerTransmitPortalDataSuccess(t *testing.T) {
 	publisher := &retryPublisher{}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -394,7 +394,7 @@ func TestPostSessionHandlerTransmitPortalDataMultiplePublishersSuccess(t *testin
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher1, publisher2}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher1, publisher2}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)

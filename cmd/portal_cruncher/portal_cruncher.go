@@ -83,12 +83,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
-		return 1
-	}
-
 	// Setup feature config for bigtable
 	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
@@ -111,17 +105,17 @@ func mainReturnWithCode() int {
 
 		go func() {
 			for {
-				portalCruncherMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				portalCruncherMetrics.MemoryAllocated.Set(memoryUsed())
+				portalCruncherMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				portalCruncherMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceivedMessageCount.Value()))
-				fmt.Printf("%d bigtable success meta writes\n", int(btMetrics.WriteMetaSuccessCount.Value()))
-				fmt.Printf("%d bigtable success slice writes\n", int(btMetrics.WriteSliceSuccessCount.Value()))
-				fmt.Printf("%d bigtable failed meta writes\n", int(btMetrics.WriteMetaFailureCount.Value()))
-				fmt.Printf("%d bigtable failed slice writes\n", int(btMetrics.WriteSliceFailureCount.Value()))
+				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.ServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.ServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceiveMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d bigtable success meta writes\n", int(portalCruncherMetrics.BigTableMetrics.WriteMetaSuccessCount.Value()))
+				fmt.Printf("%d bigtable success slice writes\n", int(portalCruncherMetrics.BigTableMetrics.WriteSliceSuccessCount.Value()))
+				fmt.Printf("%d bigtable failed meta writes\n", int(portalCruncherMetrics.BigTableMetrics.WriteMetaFailureCount.Value()))
+				fmt.Printf("%d bigtable failed slice writes\n", int(portalCruncherMetrics.BigTableMetrics.WriteSliceFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -228,7 +222,7 @@ func mainReturnWithCode() int {
 		messageChanSize,
 		logger,
 		portalCruncherMetrics,
-		btMetrics)
+	)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

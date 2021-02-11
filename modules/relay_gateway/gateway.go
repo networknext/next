@@ -19,7 +19,7 @@ type Gateway struct {
 	Cfg         *Config
 	Logger      log.Logger
 	RelayLogger log.Logger
-	Metrics     *metrics.RelayGatewayMetrics
+	Metrics     metrics.RelayGatewayMetrics
 	Publishers  []pubsub.Publisher
 	Store       *storage.Storer
 	RelayStore  storage.RelayStore

@@ -54,9 +54,9 @@ func (e *ErrUnmarshalMessage) Error() string {
 
 type VanityMetricHandler struct {
 	handler              metrics.Handler
-	metrics              *metrics.VanityServiceMetrics
+	metrics              metrics.VanityServiceMetrics
 	vanityMetricDataChan chan *VanityMetrics
-	buyerMetricMap       map[string]*metrics.VanityMetric
+	buyerMetricMap       map[string]*metrics.VanityMetrics
 	mapMutex             sync.RWMutex
 	redisSessionsMap     *redis.Pool
 	redisSetName         string
@@ -64,7 +64,7 @@ type VanityMetricHandler struct {
 	subscriber           pubsub.Subscriber
 	hourMetricsMap       map[string]bool
 	displayMap           map[string]string
-	globalMetrics        *metrics.VanityMetric
+	globalMetrics        *metrics.VanityMetrics
 	logger               log.Logger
 }
 
@@ -84,7 +84,7 @@ type VanityMetrics struct {
 	SessionsAccelerated     uint64
 }
 
-func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
+func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics metrics.VanityServiceMetrics, chanBufferSize int,
 	vanitySubscriber pubsub.Subscriber, redisSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int,
 	vanityMaxUserIdleTime time.Duration, vanitySetName string, env string, logger log.Logger) (*VanityMetricHandler, error) {
 
@@ -109,7 +109,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 
 	// Get the global vanity metrics
 	globalID := fmt.Sprintf("global_%s", env)
-	globalMetrics, err := metrics.NewVanityMetric(context.Background(), vanityHandler, globalID)
+	globalMetrics, err := metrics.NewVanityMetrics(context.Background(), vanityHandler, globalID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return nil, err
@@ -119,7 +119,7 @@ func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics 
 		handler:              vanityHandler,
 		metrics:              vanityServiceMetrics,
 		vanityMetricDataChan: make(chan *VanityMetrics, chanBufferSize),
-		buyerMetricMap:       make(map[string]*metrics.VanityMetric),
+		buyerMetricMap:       make(map[string]*metrics.VanityMetrics),
 		mapMutex:             sync.RWMutex{},
 		redisSessionsMap:     vanitySessionsMap,
 		redisSetName:         vanitySetName,
@@ -249,7 +249,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
 
 					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {
-						vm.metrics.UpdateVanityFailureCount.Add(1)
+						vm.metrics.VanityUpdateFailureCount.Add(1)
 						errChan <- err
 						return
 					}
@@ -279,7 +279,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 		return ctx.Err()
 
 	case messageInfo := <-vm.subscriber.ReceiveMessage():
-		vm.metrics.ReceivedVanityCount.Add(1)
+		vm.metrics.ReceiveMetrics.EntriesReceived.Add(1)
 
 		if messageInfo.Err != nil {
 			level.Error(vm.logger).Log("err", messageInfo.Err)
@@ -291,6 +291,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 			var vanityData VanityMetrics
 			if err := vanityData.UnmarshalBinary(messageInfo.Message); err != nil {
 				level.Error(vm.logger).Log("msg", "Could not unmarshal binary", "err", err)
+				vm.metrics.ReceiveMetrics.UnmarshalFailure.Add(1)
 				return &ErrUnmarshalMessage{err: err}
 			}
 
@@ -330,7 +331,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 	if !exists {
 		// Creates counters / gauges / histograms per vanity metric for this buyer ID,
 		// or provides existing ones from a previous run
-		vanityMetricPerBuyer, err := metrics.NewVanityMetric(ctx, vm.handler, buyerID)
+		vanityMetricPerBuyer, err := metrics.NewVanityMetrics(ctx, vm.handler, buyerID)
 		if err != nil {
 			level.Error(vm.logger).Log("err", err)
 			return true, err
@@ -448,7 +449,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 			"SessionsAccelerated", vm.globalMetrics.SessionsAccelerated.Value(),
 		)
 
-		vm.metrics.UpdateVanitySuccessCount.Add(1)
+		vm.metrics.VanityUpdateSuccessCount.Add(1)
 	}
 
 	return nil
