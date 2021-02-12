@@ -14,4 +14,5 @@
    complex_server_example
    hosting_in_google_cloud
    hosting_in_aws
+   hosting_in_bare_metal
    reference
