@@ -81,4 +81,6 @@ afs1-az2                   amazon.capetown.2
 afs1-az3                   amazon.capetown.3
 ========================== =========================================
 
+You can always get the most up to date version of this mapping from this URL:
+
 https://storage.googleapis.com/network-next-sdk/amazon.txt
