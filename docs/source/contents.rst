@@ -12,4 +12,6 @@
    upgraded_server_example
    complex_client_example
    complex_server_example
+   hosting_in_google_cloud
+   hosting_in_aws
    reference
