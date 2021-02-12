@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
-#ifndef __ORBIS__
+#if !defined(__ORBIS__) && !defined(__PROSPERO__)
 #include <signal.h>
 #endif
 #include <stddef.h>

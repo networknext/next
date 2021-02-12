@@ -107,7 +107,7 @@ randombytes_sysrandom_close(void)
     return 0;
 }
 
-#elif defined(__ORBIS__)
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
 
 static uint32_t
 randombytes_sysrandom(void)
