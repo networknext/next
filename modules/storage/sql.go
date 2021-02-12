@@ -2868,7 +2868,7 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 	case "Secret":
 		secret, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("%v is not a valid bollean type", value)
+			return fmt.Errorf("%v is not a valid boolean type", value)
 		}
 		updateSQL.Write([]byte("update sellers set secret=$1 where id=$2"))
 		args = append(args, secret, seller.DatabaseID)

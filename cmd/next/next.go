@@ -2160,7 +2160,7 @@ provided by a JSON file of the form:
   "CustomerCode": "microzon",
   "IngressPriceUSD": "0.01",
   "EgressPriceUSD": "0.1",
-	"Secret": false
+  "Secret": false
 }
 
 All fields are required. A valid Customer code is required to add a buyer.
@@ -2291,12 +2291,12 @@ must be one of the following and is case-sensitive:
 
   Name                 string
   Addr                 string (1.2.3.4:40000) - the port is required
-  InternalAddr         string (1.2.3.4:40000) - the port is required
+  InternalAddr         string (1.2.3.4:40000) - optional, though the port is required if provided
   PublicKey            string
   NICSpeedMbps         integer
   IncludedBandwidthGB  integer
   State                any valid relay state (see below)
-  ManagementAddr       string (1.2.3.4:40000) - (optional)
+  ManagementAddr       string (1.2.3.4) - required, do not provide a port number
   SSHUser              string
   SSHPort              integer
   MaxSessions          integer
