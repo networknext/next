@@ -494,6 +494,40 @@ func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply)
 
 }
 
+type JSAddSellerArgs struct {
+	ShortName    string `json:"shortName"`
+	Secret       bool   `json:"secret"`
+	IngressPrice int64  `json:"ingressPrice"` // nibblins
+	EgressPrice  int64  `json:"egressPrice"`  // nibblins
+}
+
+type JSAddSellerReply struct{}
+
+func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *JSAddSellerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	fmt.Println("JSAddSeller")
+	fmt.Printf("\tShortName  : %s\n", args.ShortName)
+
+	seller := routing.Seller{
+		ID:                        args.ShortName,
+		ShortName:                 args.ShortName,
+		CompanyCode:               args.ShortName,
+		Secret:                    args.Secret,
+		IngressPriceNibblinsPerGB: routing.Nibblin(args.IngressPrice),
+		EgressPriceNibblinsPerGB:  routing.Nibblin(args.EgressPrice),
+	}
+
+	if err := s.Storage.AddSeller(ctx, seller); err != nil {
+		err = fmt.Errorf("AddSeller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
 type AddSellerArgs struct {
 	Seller routing.Seller
 }
@@ -1454,9 +1488,9 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 }
 
 type UpdateSellerArgs struct {
-	SellerID string
-	Field    string
-	Value    string
+	SellerID string `json:"shortName"`
+	Field    string `json:"field"`
+	Value    string `json:"value"`
 }
 
 type UpdateSellerReply struct{}
