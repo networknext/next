@@ -25,7 +25,7 @@
 #ifndef NEXT_PS5_H
 #define NEXT_PS5_H
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_PS4
+#if NEXT_PLATFORM == NEXT_PLATFORM_PS5
 
 #include <kernel.h>
 #include <net.h>

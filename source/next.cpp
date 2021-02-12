@@ -344,13 +344,17 @@ uint16_t next_htons( uint16_t in )
 #include "next_switch.h"
 #elif NEXT_PLATFORM == NEXT_PLATFORM_PS4
 #include "next_ps4.h"
+#elif NEXT_PLATFORM == NEXT_PLATFORM_PS5
+#include "next_ps5.h"
 #elif NEXT_PLATFORM == NEXT_PLATFORM_IOS 
 #include "next_ios.h"
 #elif NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
 #include "next_xboxone.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_XBOX_SERIES_X
-#include "next_xbox_gdk.h"
 #endif
+
+#ifdef _GAMING_XBOX
+#include "next_gdk.h"
+#endif // #ifdef _GAMING_XBOX
 
 extern int next_platform_init();
 

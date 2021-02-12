@@ -20,14 +20,14 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "next_ps4.h"
+#include "next_ps5.h"
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_PS5
 
 #include <kernel.h>
 #include <net.h>
 #include <libnetctl.h>
-#include <libsecure.h>
+//#include <libsecure.h>
 #include <string.h>
 #include "sodium.h"
 
@@ -52,10 +52,13 @@ static void next_randombytes_stir()
 
 static void next_randombytes_buf( void * const buf, const size_t size )
 {
+    // todo: need crypto on ps5
+    /*
     SceLibSecureBlock mem_block = { buf, size };
     SceLibSecureErrorType error = sceLibSecureRandom( &mem_block );
     (void)error;
     next_assert( error == SCE_LIBSECURE_OK );
+    */
 }
 
 static uint32_t next_randombytes_random()
@@ -434,7 +437,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         if ( result < 0 )
         {
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_string );
+            next_address_to_string( to, address_stri);
             next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( sce_net_errno ) );
         }
     }
