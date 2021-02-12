@@ -606,7 +606,6 @@ type relay struct {
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
-	Notes               string                `json:"notes"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
