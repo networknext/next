@@ -330,6 +330,7 @@ type seller struct {
 	Name                 string          `json:"name"`
 	IngressPriceNibblins routing.Nibblin `json:"ingressPriceNibblins"`
 	EgressPriceNibblins  routing.Nibblin `json:"egressPriceNibblins"`
+	Secret               bool            `json:"secret"`
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
@@ -346,6 +347,7 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 			Name:                 localSeller.Name,
 			IngressPriceNibblins: localSeller.IngressPriceNibblinsPerGB,
 			EgressPriceNibblins:  localSeller.EgressPriceNibblinsPerGB,
+			Secret:               localSeller.Secret,
 		})
 	}
 
@@ -363,10 +365,11 @@ type CustomersReply struct {
 }
 
 type customer struct {
-	Name     string `json:"name"`
-	Code     string `json:"code"`
-	BuyerID  string `json:"buyer_id"`
-	SellerID string `json:"seller_id"`
+	Name                   string `json:"name"`
+	Code                   string `json:"code"`
+	AutomaticSignInDomains string `json:"automaticSigninDomains"`
+	BuyerID                string `json:"buyer_id"`
+	SellerID               string `json:"seller_id"`
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
@@ -387,16 +390,43 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 		}
 
 		reply.Customers = append(reply.Customers, customer{
-			Name:     c.Name,
-			Code:     c.Code,
-			BuyerID:  buyerID,
-			SellerID: seller.ID,
+			Name:                   c.Name,
+			Code:                   c.Code,
+			AutomaticSignInDomains: c.AutomaticSignInDomains,
+			BuyerID:                buyerID,
+			SellerID:               seller.ID,
 		})
 	}
 
 	sort.Slice(reply.Customers, func(i int, j int) bool {
 		return reply.Customers[i].Name < reply.Customers[j].Name
 	})
+	return nil
+}
+
+type JSAddCustomerArgs struct {
+	Code                   string `json:"code"`
+	Name                   string `json:"name"`
+	AutomaticSignInDomains string `json:"automaticSignInDomains"`
+}
+
+type JSAddCustomerReply struct{}
+
+func (s *OpsService) JSAddCustomer(r *http.Request, args *JSAddCustomerArgs, reply *JSAddCustomerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	customer := routing.Customer{
+		Name:                   args.Name,
+		Code:                   args.Code,
+		AutomaticSignInDomains: args.AutomaticSignInDomains,
+	}
+
+	if err := s.Storage.AddCustomer(ctx, customer); err != nil {
+		err = fmt.Errorf("AddCustomer() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 	return nil
 }
 
@@ -606,6 +636,7 @@ type relay struct {
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
+	Notes               string                `json:"notes"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
@@ -639,6 +670,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
 			Type:                r.Type,
+			Notes:               r.Notes,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -1392,9 +1424,9 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 }
 
 type UpdateCustomerArgs struct {
-	CustomerID string
-	Field      string
-	Value      string
+	CustomerID string `json:"customerCode"`
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateCustomerReply struct{}
