@@ -363,6 +363,7 @@ type seller struct {
 	CustomerCode         string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
+	Secret               bool
 }
 
 type relay struct {
@@ -386,6 +387,7 @@ type relay struct {
 	StartDate           string
 	EndDate             string
 	Type                string
+	Notes               string
 }
 
 type datacenter struct {
@@ -1672,6 +1674,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode    string
 						IngressPriceUSD string
 						EgressPriceUSD  string
+						Secret          bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
@@ -1695,6 +1698,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode:         sellerUSD.CustomerCode,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
+						Secret:               sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
@@ -1777,8 +1781,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code                   string
 						Name                   string
 						AutomaticSignInDomains string
-						Active                 bool
-						Debug                  bool
 					}
 
 					if err := json.Unmarshal(jsonData, &customer); err != nil {
@@ -2155,10 +2157,11 @@ provided by a JSON file of the form:
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
   "IngressPriceUSD": "0.01",
-  "EgressPriceUSD": "0.1"
+  "EgressPriceUSD": "0.1",
+	"Secret": false
 }
 
-A valid Customer code is required to add a buyer.
+All fields are required. A valid Customer code is required to add a buyer.
 `
 var nextDatacenterAddJSONLongHelp = `
 Add a datacenter entry (and a map) for the provided customer. 
@@ -2291,7 +2294,7 @@ must be one of the following and is case-sensitive:
   NICSpeedMbps         integer
   IncludedBandwidthGB  integer
   State                any valid relay state (see below)
-  ManagementAddr       string (1.2.3.4:40000) - the port is optional
+  ManagementAddr       string (1.2.3.4:40000) - (optional)
   SSHUser              string
   SSHPort              integer
   MaxSessions          integer
@@ -2302,6 +2305,7 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  Notes                any string up to 500 characters (optional)
 
 Valid relay states:
    enabled
@@ -2345,10 +2349,11 @@ must be of the form:
   "StartDate": "December 15, 2020", // exactly this format (optional)
   "EndDate": "December 15, 2020",   // exactly this format (optional)
   "Type": "virtualmachine",         // any valid machine type (see below)
-  "Seller": "colocrossing"
+  "Seller": "colocrossing",
+  "Notes": "any notes up to 500 characters" // optional
 }
 
-All fields are required except as noted (InternalAddr).
+All fields are required except as noted (InternalAddr, Notes).
 
 Valid bandwidth rules:
    flat
@@ -2367,9 +2372,7 @@ Example JSON schema required to add a new customer:
 {
         "Code": "amazon",
         "Name": "Amazon.com, Inc.",
-        "AutomaticSignInDomains": "amazon.networknext.com", // comma separated list
-        "Active": true,
-        "Debug": false
+        "AutomaticSignInDomains": "amazon.networknext.com" // comma separated list
 }
 
 All fields are required. The Code field must be unique
@@ -2402,9 +2405,10 @@ var nextSellerUpdateLongHelp = `
 Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
-  EgressPrice US Dollars
+  EgressPrice  US Dollars
   IngressPrice US Dollars
   ShortName    string
+  Secret       boolean
 
 The value should be whatever type is appropriate for the field
 as defined above.
