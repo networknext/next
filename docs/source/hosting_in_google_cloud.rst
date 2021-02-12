@@ -4,7 +4,7 @@ Hosting in Google Cloud
 
 Network Next can automatically detect which google datacenter your server is running in.
 
-To use this autodetection, simply pass in a datacenter of "" to *next_server_create* when you run on AWS, while making sure that NEXT_DATACENTER environment variable is also not set, as it overrides whatever datacenter string you pass in.
+To use this autodetection, simply pass in a datacenter of "" to *next_server_create* when you run on google cloud, while making sure that NEXT_DATACENTER environment variable is also not set, as it overrides whatever datacenter string you pass in.
 
 The mapping from google cloud zone to datacenter string is as follows:
 
