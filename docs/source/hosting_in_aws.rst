@@ -2,9 +2,9 @@
 Hosting in AWS
 ==============
 
-Network Next can now autodetect the datacenter when you are hosting in AWS.
+Network Next can autodetect which AWS datacenter your server is running in when you host in AWS.
 
-To use this autodetection, simply pass in a datacenter of "" to _next_server_create_ when you run on AWS, while making sure that NEXT_DATACENTER environment variable is also not set, as it overrides whatever datacenter string you pass in.
+To use this autodetection, simply pass in a datacenter of "" to *next_server_create* when you run on AWS, while making sure that NEXT_DATACENTER environment variable is also not set, as it overrides whatever datacenter string you pass in.
 
 Important note. On AWS, it's not possible to look up the network next datacenter directly from the availability zone, because it's potentially different on different customer accounts. Instead, we use the account independent AZID, which is guaranteed to be the same across all accounts.
 
