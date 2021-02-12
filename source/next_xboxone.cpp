@@ -153,7 +153,7 @@ static LARGE_INTEGER timer_start;
 
 static const char * next_randombytes_implementation_name()
 {
-    return "switch";
+    return "xboxone";
 }
 
 static uint32_t next_randombytes_random()

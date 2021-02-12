@@ -327,6 +327,10 @@ void print_server_stats( next_server_t * server, ServerContext * context )
                 platform = "ps4";
                 break;
 
+            case NEXT_PLATFORM_PS5:
+                platform = "ps5";
+                break;
+
             case NEXT_PLATFORM_IOS:
                 platform = "ios";
                 break;
@@ -337,10 +341,6 @@ void print_server_stats( next_server_t * server, ServerContext * context )
 
             case NEXT_PLATFORM_XBOX_SERIES_X:
                 platform = "xbox series x";
-                break;
-
-            case NEXT_PLATFORM_PS5:
-                platform = "ps5";
                 break;
 
             default:

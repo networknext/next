@@ -154,7 +154,7 @@ static LARGE_INTEGER timer_start;
 
 static const char * next_randombytes_implementation_name()
 {
-    return "switch";
+    return "gdk";
 }
 
 static uint32_t next_randombytes_random()
@@ -639,6 +639,6 @@ int next_platform_id()
 
 #else // #ifdef _GAMING_XBOX
 
-int next_xbox_gdk_dummy_symbol = 0;
+int next_gdk_dummy_symbol = 0;
 
 #endif // #ifdef _GAMING_XBOX

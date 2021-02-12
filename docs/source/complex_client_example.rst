@@ -347,12 +347,20 @@ Finally, the client has been extended to print out all the useful stats you can 
 	            platform = "ps4";
 	            break;
 
+	        case NEXT_PLATFORM_PS5:
+	            platform = "ps5";
+	            break;
+
 	        case NEXT_PLATFORM_IOS:
 	            platform = "ios";
 	            break;
 
 	        case NEXT_PLATFORM_XBOX_ONE:
 	            platform = "xbox one";
+	            break;
+
+	        case NEXT_PLATFORM_XBOX_SERIES_X:
+	            platform = "xbox series x";
 	            break;
 
 	        default:

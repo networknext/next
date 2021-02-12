@@ -14,7 +14,9 @@ Supported platforms:
 
 * Windows
 * XBox One
+* XBox Series X
 * PS4
+* PS5
 * Switch
 * Linux
 * MacOS
