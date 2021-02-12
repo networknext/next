@@ -88,7 +88,7 @@
 #endif
 
 #if defined( NEXT_SHARED )
-    #if defined( _WIN32 ) || defined( __ORBIS__ )
+    #if defined( _WIN32 ) || defined( __ORBIS__ ) || defined( __PROSPERO__ )
         #ifdef NEXT_EXPORT
             #define NEXT_EXPORT_FUNC extern "C" __declspec(dllexport)
         #else
@@ -105,6 +105,8 @@
     #define NEXT_PLATFORM NEXT_PLATFORM_SWITCH
 #elif defined(__ORBIS__)
     #define NEXT_PLATFORM NEXT_PLATFORM_PS4
+#elif defined(__PROSPERO__)
+    #define NEXT_PLATFORM NEXT_PLATFORM_PS5
 #elif defined(_XBOX_ONE)
     #define NEXT_PLATFORM NEXT_PLATFORM_XBOX_ONE
 #elif defined(_GAMING_XBOX_SCARLETT)

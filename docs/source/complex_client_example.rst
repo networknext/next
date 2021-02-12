@@ -214,6 +214,8 @@ Next we define a custom assert handler:
 	        __debugbreak();
 	    #elif defined(__ORBIS__)
 	        __builtin_trap();
+	    #elif defined(__PROSPERO__)
+	        __builtin_trap();
 	    #elif defined(__clang__)
 	        __builtin_debugtrap();
 	    #elif defined(__GNUC__)

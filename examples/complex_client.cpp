@@ -161,6 +161,8 @@ void assert_function( const char * condition, const char * function, const char 
         __debugbreak();
     #elif defined(__ORBIS__)
         __builtin_trap();
+    #elif defined(__PROSPERO__)
+        __builtin_trap();
     #elif defined(__clang__)
         __builtin_debugtrap();
     #elif defined(__GNUC__)
