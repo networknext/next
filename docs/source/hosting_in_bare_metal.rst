@@ -8,4 +8,4 @@ Please contact us and let us know all the locations where you are hosting your g
 
 We'll get back to you with the corresponding datacenter string for you to set for each location you host servers.
 
-You can do this via the environmnt variable NEXT_DATACENTER (recommened), or by passing it directly to *next_server_create*.
+You can do this via the environmnt variable NEXT_DATACENTER (recommended), or by passing it directly to *next_server_create*.
