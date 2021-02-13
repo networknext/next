@@ -1509,10 +1509,23 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
+	case "Secret":
+		secret, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateSeller() value '%s' is not a valid Secret/boolean: %v", args.Value, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, secret)
+		if err != nil {
+			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	case "EgressPrice", "IngressPrice":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
-			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
+			err = fmt.Errorf("value '%s' is not a valid price: %v", args.Value, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
