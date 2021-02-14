@@ -498,6 +498,7 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		ContractTerm:        r.ContractTerm,
 		Type:                machineType,
 		Seller:              sellerReply.Seller,
+		Notes:               r.Notes,
 	}
 
 	var internalAddr *net.UDPAddr
