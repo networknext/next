@@ -507,9 +507,6 @@ func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	fmt.Println("JSAddSeller")
-	fmt.Printf("\tShortName  : %s\n", args.ShortName)
-
 	seller := routing.Seller{
 		ID:                        args.ShortName,
 		ShortName:                 args.ShortName,
