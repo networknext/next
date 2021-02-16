@@ -565,7 +565,7 @@ build-beacon-artifacts-dev: build-beacon
 
 .PHONY: build-beacon-inserter-artifacts-dev
 build-beacon-inserter-artifacts-dev: build-beacon-inserter
-	./deploy/build-artifacts.sh -e dev -s beacon-inserter
+	./deploy/build-artifacts.sh -e dev -s beacon_inserter
 
 .PHONY: build-analytics-artifacts-dev
 build-analytics-artifacts-dev: build-analytics
@@ -613,7 +613,7 @@ build-beacon-artifacts-staging: build-beacon
 
 .PHONY: build-beacon-inserter-artifacts-staging
 build-beacon-inserter-artifacts-staging: build-beacon-inserter
-	./deploy/build-artifacts.sh -e staging -s beacon-inserter
+	./deploy/build-artifacts.sh -e staging -s beacon_inserter
 
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
@@ -657,7 +657,7 @@ build-beacon-artifacts-prod: build-beacon
 
 .PHONY: build-beacon-inserter-artifacts-prod
 build-beacon-inserter-artifacts-prod: build-beacon-inserter
-	./deploy/build-artifacts.sh -e prod -s beacon-inserter
+	./deploy/build-artifacts.sh -e prod -s beacon_inserter
 
 .PHONY: build-analytics-artifacts-prod
 build-analytics-artifacts-prod: build-analytics
@@ -701,7 +701,7 @@ publish-beacon-artifacts-dev:
 
 .PHONY: publish-beacon-inserter-artifacts-dev
 publish-beacon-inserter-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon-inserter
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon_inserter
 
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
@@ -749,7 +749,7 @@ publish-beacon-artifacts-staging:
 
 .PHONY: publish-beacon-inserter-artifacts-staging
 publish-beacon-inserter-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon-inserter
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon_inserter
 
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
@@ -805,7 +805,7 @@ publish-beacon-artifacts-prod:
 
 .PHONY: publish-beacon-inserter-artifacts-prod
 publish-beacon-inserter-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon-inserter
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon_inserter
 
 .PHONY: publish-api-artifacts-prod
 publish-api-artifacts-prod:
