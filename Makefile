@@ -418,6 +418,10 @@ dev-api: build-api ## runs a local api endpoint service
 dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
 	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
+.PHONY: dev-fake-server
+dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
+	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
+
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
@@ -495,6 +499,12 @@ build-api: dist
 build-vanity: dist
 	@printf "Building vanity metrics ..."
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
+	@printf "done\n"
+
+.PHONY: build-fake-server
+build-fake-server: dist
+	@printf "Building fake server..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend-dev
