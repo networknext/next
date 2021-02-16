@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(24)
+	BillingEntryVersion = uint8(25)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -85,7 +85,9 @@ const (
 		4 + // RouteDiversity
 		1 + // LackOfDiversity
 		1 + // Pro
-		1 // MultipathRestricted
+		1 + // MultipathRestricted
+		8 + // ClientToServerPacketsSent
+		8 // ServerToClientPacketsSent
 )
 
 type BillingEntry struct {
@@ -160,6 +162,8 @@ type BillingEntry struct {
 	LackOfDiversity                 bool
 	Pro                             bool
 	MultipathRestricted             bool
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -282,6 +286,9 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.Pro)
 
 	encoding.WriteBool(data, &index, entry.MultipathRestricted)
+
+	encoding.WriteUint64(data, &index, entry.ClientToServerPacketsSent)
+	encoding.WriteUint64(data, &index, entry.ServerToClientPacketsSent)
 
 	return data[:index]
 }
@@ -657,6 +664,16 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 24 {
 		if !encoding.ReadBool(data, &index, &entry.MultipathRestricted) {
+			return false
+		}
+	}
+
+	if entry.Version >= 25 {
+		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsSent) {
+			return false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsSent) {
 			return false
 		}
 	}
