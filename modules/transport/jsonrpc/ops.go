@@ -234,7 +234,6 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	// Get the ID from the first 8 bytes of the public key
 	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
 	if err != nil {
 		s.Logger.Log("err", err)
@@ -246,6 +245,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
+	// slice the public key here instead of in the clients
 	buyer := routing.Buyer{
 		CompanyCode: args.ShortName,
 		ShortName:   args.ShortName,
@@ -256,19 +256,6 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
-}
-
-type AddBuyerArgs struct {
-	Buyer routing.Buyer
-}
-
-type AddBuyerReply struct{}
-
-func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuyerReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelFunc()
-
-	return s.Storage.AddBuyer(ctx, args.Buyer)
 }
 
 type RemoveBuyerArgs struct {
