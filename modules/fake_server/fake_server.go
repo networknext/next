@@ -124,7 +124,7 @@ func (server *FakeServer) update() error {
 			return err
 		}
 
-		server.sessions[i].Progress(responsePacket)
+		server.sessions[i].Advance(responsePacket)
 	}
 
 	return nil

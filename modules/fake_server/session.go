@@ -166,9 +166,9 @@ func NewSession() (Session, error) {
 	return session, nil
 }
 
-// Progress moves the session forward by one slice, based on the
+// Advance moves the session forward by one slice, based on the
 // session response received from the server backend.
-func (session *Session) Progress(response transport.SessionResponsePacket) {
+func (session *Session) Advance(response transport.SessionResponsePacket) {
 	session.sliceNumber++
 	session.sessionDataBytes = response.SessionDataBytes
 	session.sessionData = response.SessionData
