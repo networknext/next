@@ -971,7 +971,6 @@ func TestInternalConfig(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	// db, err := storage.NewSQLStorage(ctx, logger)
 	env, err := backend.GetEnv()
 	assert.NoError(t, err)
 	db, err := backend.GetStorer(ctx, logger, "local", env)
