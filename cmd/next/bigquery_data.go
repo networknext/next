@@ -76,4 +76,6 @@ type BigQueryBillingEntry struct {
 	RouteChanged                    bigquery.NullBool
 	CommitVeto                      bigquery.NullBool
 	MultipathRestricted             bigquery.NullBool
+	ClientToServerPacketsSent       bigquery.NullInt64
+	ServerToClientPacketsSent       bigquery.NullInt64
 }
