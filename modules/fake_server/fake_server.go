@@ -1,6 +1,7 @@
 package fake_server
 
 import (
+	"context"
 	"crypto/ed25519"
 	"errors"
 	"fmt"
@@ -22,8 +23,6 @@ type FakeServer struct {
 	customerID           uint64
 	customerPrivateKey   []byte
 	publicAddress        *net.UDPAddr
-	bindAddress          *net.UDPAddr
-	serverBackendAddress *net.UDPAddr
 	logger               log.Logger
 	serverRoutePublicKey []byte
 
@@ -32,7 +31,7 @@ type FakeServer struct {
 }
 
 // NewFakeServer returns a fake server with the given parameters.
-func NewFakeServer(clientCount int, sdkVersion transport.SDKVersion, bindAddress *net.UDPAddr, serverBackendAddress *net.UDPAddr, logger log.Logger, customerID uint64, customerPrivateKey []byte) (*FakeServer, error) {
+func NewFakeServer(conn net.Conn, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte) (*FakeServer, error) {
 	// We need to use a random address for the server so that
 	// each server instance is uniquely identifiable, so that
 	// the total session count is accurate.
@@ -58,13 +57,12 @@ func NewFakeServer(clientCount int, sdkVersion transport.SDKVersion, bindAddress
 	server := &FakeServer{
 		sdkVersion:           sdkVersion,
 		publicAddress:        &randomAddress,
-		bindAddress:          bindAddress,
-		serverBackendAddress: serverBackendAddress,
 		customerID:           customerID,
 		customerPrivateKey:   customerPrivateKey,
 		logger:               logger,
 		serverRoutePublicKey: routePublicKey,
 		sessions:             make([]Session, clientCount),
+		conn:                 conn,
 	}
 
 	return server, nil
@@ -72,13 +70,7 @@ func NewFakeServer(clientCount int, sdkVersion transport.SDKVersion, bindAddress
 
 // StartLoop starts sending and receiving packets to and from the server backend.
 // This function blocks, so call it in a separate goroutine.
-func (server *FakeServer) StartLoop(readBufferSize int, writeBufferSize int) error {
-	if err := server.connect(readBufferSize, writeBufferSize); err != nil {
-		return err
-	}
-
-	defer server.close()
-
+func (server *FakeServer) StartLoop(ctx context.Context, updateRate time.Duration, readBufferSize int, writeBufferSize int) error {
 	for i := 0; i < len(server.sessions); i++ {
 		session, err := NewSession()
 		if err != nil {
@@ -92,60 +84,47 @@ func (server *FakeServer) StartLoop(readBufferSize int, writeBufferSize int) err
 		return err
 	}
 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(updateRate)
 	defer ticker.Stop()
 
-	for ; true; <-ticker.C { // This runs the code immediately on startup, instead of waiting for the ticker
-		if err := server.sendServerUpdatePacket(); err != nil {
-			return err
-		}
-
-		for i := range server.sessions {
-			if time.Since(server.sessions[i].startTime) > server.sessions[i].duration {
-				level.Debug(server.logger).Log("session", fmt.Sprintf("%016x", server.sessions[i].sessionID), "msg", "session expired")
-
-				var err error
-				server.sessions[i], err = NewSession()
-				if err != nil {
-					return err
-				}
-			}
-
-			responsePacket, err := server.sendSessionUpdatePacket(server.sessions[i])
-			if err != nil {
-				return err
-			}
-
-			server.sessions[i].Progress(responsePacket)
-		}
-	}
-
-	return nil
-}
-
-// Connect estiablishes the UDP connection with the server backend.
-func (server *FakeServer) connect(readBufferSize int, writeBufferSize int) error {
-	conn, err := net.DialUDP("udp", server.bindAddress, server.serverBackendAddress)
-	if err != nil {
+	if err := server.update(); err != nil {
 		return err
 	}
 
-	if err := conn.SetReadBuffer(readBufferSize); err != nil {
-		return fmt.Errorf("could not set connection read buffer size: %v", err)
+	for {
+		select {
+		case <-ticker.C:
+			if err := server.update(); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
 	}
-
-	if err := conn.SetWriteBuffer(writeBufferSize); err != nil {
-		return fmt.Errorf("could not set connection write buffer size: %v", err)
-	}
-
-	server.conn = conn
-	return nil
 }
 
-// Close closes the connection with the server backend.
-func (server *FakeServer) close() error {
-	if server.conn != nil {
-		return server.conn.Close()
+func (server *FakeServer) update() error {
+	if err := server.sendServerUpdatePacket(); err != nil {
+		return err
+	}
+
+	for i := range server.sessions {
+		if time.Since(server.sessions[i].startTime) > server.sessions[i].duration {
+			level.Debug(server.logger).Log("session", fmt.Sprintf("%016x", server.sessions[i].sessionID), "msg", "session expired")
+
+			var err error
+			server.sessions[i], err = NewSession()
+			if err != nil {
+				return err
+			}
+		}
+
+		responsePacket, err := server.sendSessionUpdatePacket(server.sessions[i])
+		if err != nil {
+			return err
+		}
+
+		server.sessions[i].Progress(responsePacket)
 	}
 
 	return nil

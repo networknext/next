@@ -144,7 +144,7 @@ func NewSession() (Session, error) {
 		return Session{}, err
 	}
 
-	randPlatformType := int32(rand.Intn(transport.PlatformTypeMax_New))
+	randPlatformType := int32(rand.Intn(transport.PlatformTypeMax_Old))
 	randConnectionType := int32(rand.Intn(transport.ConnectionTypeMax))
 
 	session := Session{

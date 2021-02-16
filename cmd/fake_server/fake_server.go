@@ -167,14 +167,33 @@ func mainReturnWithCode() int {
 			}
 			numClientsMutex.Unlock()
 
-			server, err := fake_server.NewFakeServer(clients, transport.SDKVersion{4, 0, 6}, bindAddress, serverBackendAddress, logger, customerID, customerPrivateKey)
+			conn, err := net.DialUDP("udp", bindAddress, serverBackendAddress)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
 				return
 			}
 
-			if err := server.StartLoop(readBuffer, writeBuffer); err != nil {
+			if err := conn.SetReadBuffer(readBuffer); err != nil {
+				level.Error(logger).Log("msg", "could not set connection read buffer size", "err", err)
+				errChan <- err
+				return
+			}
+
+			if err := conn.SetWriteBuffer(writeBuffer); err != nil {
+				level.Error(logger).Log("msg", "could not set connection write buffer size", "err", err)
+				errChan <- err
+				return
+			}
+
+			server, err := fake_server.NewFakeServer(conn, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				errChan <- err
+				return
+			}
+
+			if err := server.StartLoop(ctx, time.Second*10, readBuffer, writeBuffer); err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
 				return
