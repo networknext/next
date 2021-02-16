@@ -29,11 +29,6 @@ var (
 	tag           string
 )
 
-const (
-	// MaxClientsPerServer is the maximum number of clients (sessions) that a server can hold
-	MaxClientsPerServer = 200
-)
-
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func main() {
@@ -137,7 +132,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	numServers := int(math.Ceil(float64(numClients) / float64(MaxClientsPerServer)))
+	maxClientsPerServer, err := envvar.GetInt("MAX_CLIENTS_PER_SERVER", 200)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	numServers := int(math.Ceil(float64(numClients) / float64(maxClientsPerServer)))
 
 	level.Info(logger).Log("server_count", numServers, "client_count", numClients, "msg", "starting fake server")
 
@@ -159,9 +160,9 @@ func mainReturnWithCode() int {
 			numClientsMutex.Lock()
 			clients := numClients
 
-			if numClients > MaxClientsPerServer {
-				numClients -= MaxClientsPerServer
-				clients = MaxClientsPerServer
+			if numClients > maxClientsPerServer {
+				numClients -= maxClientsPerServer
+				clients = maxClientsPerServer
 			} else {
 				numClients = 0
 			}
