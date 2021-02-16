@@ -92,7 +92,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
 		go func() {
-			httpPort := envvar.Get("HTTP_PORT", "50001")
+			httpPort := envvar.Get("PORT", "50001")
 
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {

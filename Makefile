@@ -557,6 +557,10 @@ deploy-vanity-prod:
 	./deploy/deploy.sh -e prod -c prod-3 -t vanity -n vanity -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t vanity -n vanity -b gs://prod_artifacts
 
+.PHONY: build-fake-server-artifacts-staging
+build-fake-server-artifacts-staging: build-fake-server
+	./deploy/build-artifacts.sh -e staging -s fake_server
+
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
 	./deploy/build-load-test-artifacts.sh -s load_test_server
@@ -792,6 +796,10 @@ publish-relay-backend-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-fake-server-artifacts-staging
+publish-fake-server-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_server
 
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts:
