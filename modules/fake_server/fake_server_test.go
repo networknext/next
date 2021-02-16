@@ -13,14 +13,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createExpectedFakeServer(t *testing.T) (*FakeServer, net.Conn) {
+const (
+	testSendNormalResponse        = 0
+	testSendInvalidResponse       = 1
+	testSendMismatchedResponse    = 2
+	testSendUnmarshalableResponse = 3
+	testSendInitErrorResponse     = 4
+)
+
+func createExpectedFakeServer(t *testing.T) *FakeServer {
 	_, privateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
 
 	customerID := binary.LittleEndian.Uint64(privateKey[:8])
 	privateKey = privateKey[8:]
-
-	serverConn, backendConn := net.Pipe()
 
 	expectedServer := FakeServer{
 		sdkVersion:         transport.SDKVersionMin,
@@ -28,59 +34,115 @@ func createExpectedFakeServer(t *testing.T) (*FakeServer, net.Conn) {
 		customerPrivateKey: privateKey,
 		logger:             log.NewNopLogger(),
 		sessions:           make([]Session, 100),
-		conn:               serverConn,
+		conn:               nil,
 	}
 
-	return &expectedServer, backendConn
+	return &expectedServer
 }
 
-func runTestServerBackend(t *testing.T, backendConn net.Conn) {
+func testInitResponse(t *testing.T, responseType uint32) []byte {
+	responsePacket := transport.ServerInitResponsePacket{
+		RequestID: 0,
+		Response:  responseType,
+	}
+
+	response, err := transport.MarshalPacket(&responsePacket)
+	assert.NoError(t, err)
+
+	responseHeader := make([]byte, 1+crypto.PacketHashSize)
+	responseHeader[0] = transport.PacketTypeServerInitResponse
+	response = append(responseHeader, response...)
+
+	backendPrivateKey := [32]byte{}
+	response = crypto.SignPacket(backendPrivateKey[:], response)
+	crypto.HashPacket(crypto.PacketHashKey, response)
+
+	return response
+}
+
+func testSessionResponse(t *testing.T) []byte {
+	responsePacket := transport.SessionResponsePacket{}
+
+	response, err := transport.MarshalPacket(&responsePacket)
+	assert.NoError(t, err)
+
+	responseHeader := make([]byte, 1+crypto.PacketHashSize)
+	responseHeader[0] = transport.PacketTypeSessionResponse
+	response = append(responseHeader, response...)
+
+	backendPrivateKey := [32]byte{}
+	response = crypto.SignPacket(backendPrivateKey[:], response)
+	crypto.HashPacket(crypto.PacketHashKey, response)
+
+	return response
+}
+
+func runTestServerBackend(t *testing.T, backendConn net.Conn, sendResponse int) {
 	buffer := make([]byte, transport.DefaultMaxPacketSize)
 
 	for {
 		_, err := backendConn.Read(buffer)
 
-		switch buffer[0] {
-		case transport.PacketTypeServerInitRequest:
-			responsePacket := transport.ServerInitResponsePacket{
-				RequestID: 0,
-				Response:  transport.InitResponseOK,
-			}
+		var response []byte
 
-			response, err := transport.MarshalPacket(&responsePacket)
-			assert.NoError(t, err)
-
-			response = append([]byte{transport.PacketTypeServerInitResponse, 0, 0, 0, 0, 0, 0, 0, 0}, response...)
-
-			backendPrivateKey := [32]byte{}
-			response = crypto.SignPacket(backendPrivateKey[:], response)
-			crypto.HashPacket(crypto.PacketHashKey, response)
+		switch sendResponse {
+		case testSendInvalidResponse:
+			response = []byte("bad data")
 
 			_, err = backendConn.Write(response)
 			assert.NoError(t, err)
+			return
 
-		case transport.PacketTypeSessionUpdate:
-			responsePacket := transport.SessionResponsePacket{}
+		case testSendMismatchedResponse:
+			switch buffer[0] {
+			case transport.PacketTypeServerInitRequest:
+				response = testSessionResponse(t)
 
-			response, err := transport.MarshalPacket(&responsePacket)
-			assert.NoError(t, err)
+			case transport.PacketTypeSessionUpdate:
+				response = testInitResponse(t, transport.InitResponseOK)
+			}
 
-			response = append([]byte{transport.PacketTypeSessionResponse, 0, 0, 0, 0, 0, 0, 0, 0}, response...)
+		case testSendUnmarshalableResponse:
+			switch buffer[0] {
+			case transport.PacketTypeServerInitRequest:
+				response = make([]byte, 2+crypto.PacketHashSize) // We need to have at least 1 byte in the message, otherwise crypto.HashPacket will panic
+				response[0] = transport.PacketTypeServerInitResponse
+				crypto.HashPacket(crypto.PacketHashKey, response)
 
-			backendPrivateKey := [32]byte{}
-			response = crypto.SignPacket(backendPrivateKey[:], response)
-			crypto.HashPacket(crypto.PacketHashKey, response)
+			case transport.PacketTypeSessionUpdate:
+				response = make([]byte, 2+crypto.PacketHashSize) // We need to have at least 1 byte in the message, otherwise crypto.HashPacket will panic
+				response[0] = transport.PacketTypeSessionResponse
+				crypto.HashPacket(crypto.PacketHashKey, response)
+			}
 
+		case testSendInitErrorResponse:
+			switch buffer[0] {
+			case transport.PacketTypeServerInitRequest:
+				response = testInitResponse(t, transport.InitResponseUnknownCustomer)
+
+			case transport.PacketTypeSessionUpdate:
+				response = testSessionResponse(t)
+			}
+
+		default:
+			switch buffer[0] {
+			case transport.PacketTypeServerInitRequest:
+				response = testInitResponse(t, transport.InitResponseOK)
+
+			case transport.PacketTypeSessionUpdate:
+				response = testSessionResponse(t)
+			}
+		}
+
+		if response != nil {
 			_, err = backendConn.Write(response)
 			assert.NoError(t, err)
 		}
-
-		assert.NoError(t, err)
 	}
 }
 
 func TestNewFakeServer(t *testing.T) {
-	expectedServer, _ := createExpectedFakeServer(t)
+	expectedServer := createExpectedFakeServer(t)
 
 	actualServer, err := NewFakeServer(expectedServer.conn, len(expectedServer.sessions), expectedServer.sdkVersion, expectedServer.logger, expectedServer.customerID, expectedServer.customerPrivateKey)
 	assert.NoError(t, err)
@@ -95,12 +157,15 @@ func TestNewFakeServer(t *testing.T) {
 }
 
 func TestStartLoop(t *testing.T) {
-	server, backendConn := createExpectedFakeServer(t)
+	server := createExpectedFakeServer(t)
 
 	server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
 	assert.NoError(t, err)
 
-	go runTestServerBackend(t, backendConn)
+	serverConn, backendConn := net.Pipe()
+	server.conn = serverConn
+
+	go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*15))
 	defer cancelFunc()
@@ -110,51 +175,416 @@ func TestStartLoop(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	server, backendConn := createExpectedFakeServer(t)
+	server := createExpectedFakeServer(t)
 
 	server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
 	assert.NoError(t, err)
 
-	go runTestServerBackend(t, backendConn)
+	serverConn, backendConn := net.Pipe()
+	server.conn = serverConn
+	go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
 	err = server.update()
 	assert.NoError(t, err)
 }
 
 func TestSendServerInitPacket(t *testing.T) {
-	server, backendConn := createExpectedFakeServer(t)
-
-	server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
-	assert.NoError(t, err)
-
 	t.Run("failed to marshal request", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
 
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		// Bad version which would fail to marshal
+		server.sdkVersion = transport.SDKVersion{256, 256, 256}
+
+		err = server.sendServerInitPacket()
+		assert.Error(t, err)
 	})
 
 	t.Run("failed to send request", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
 
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		// Simulate a bad connection
+		server.conn = &net.UDPConn{}
+
+		err = server.sendServerInitPacket()
+		assert.Error(t, err)
 	})
 
 	t.Run("failed to read response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
 
+		// Simulate a bad response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendInvalidResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		err = server.sendServerInitPacket()
+		assert.Error(t, err)
 	})
 
-	t.Run("wrong response", func(t *testing.T) {
+	t.Run("mismatched response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
 
+		// Simulate a mismatched response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendMismatchedResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		err = server.sendServerInitPacket()
+		assert.Error(t, err)
 	})
 
 	t.Run("failed to unmarshal response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
 
+		// Simulate an unmarshalable response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendUnmarshalableResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		err = server.sendServerInitPacket()
+		assert.Error(t, err)
 	})
 
 	t.Run("error response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
 
+		// Simulate an unmarshalable response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendInitErrorResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		err = server.sendServerInitPacket()
+		assert.Error(t, err)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		go runTestServerBackend(t, backendConn)
+		server := createExpectedFakeServer(t)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendNormalResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
 
 		err = server.sendServerInitPacket()
+		assert.NoError(t, err)
+	})
+}
+
+func TestSendServerUpdatePacket(t *testing.T) {
+	t.Run("failed to marshal request", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		// Bad version which would fail to marshal
+		server.sdkVersion = transport.SDKVersion{256, 256, 256}
+
+		err = server.sendServerUpdatePacket()
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to send request", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		// Simulate a bad connection
+		server.conn = &net.UDPConn{}
+
+		err = server.sendServerUpdatePacket()
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendNormalResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		assert.NoError(t, err)
+		err = server.sendServerUpdatePacket()
+	})
+}
+
+func TestSendSessionUpdatePacket(t *testing.T) {
+	t.Run("failed to marshal request", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		// Bad version which would fail to marshal
+		server.sdkVersion = transport.SDKVersion{256, 256, 256}
+
+		session, err := NewSession()
+		assert.NoError(t, err)
+
+		_, err = server.sendSessionUpdatePacket(session)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to send request", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		// Simulate a bad connection
+		server.conn = &net.UDPConn{}
+
+		session, err := NewSession()
+		assert.NoError(t, err)
+
+		_, err = server.sendSessionUpdatePacket(session)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to read response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		// Simulate a bad response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendInvalidResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		session, err := NewSession()
+		assert.NoError(t, err)
+
+		_, err = server.sendSessionUpdatePacket(session)
+		assert.Error(t, err)
+	})
+
+	t.Run("mismatched response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		// Simulate a mismatched response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendMismatchedResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		session, err := NewSession()
+		assert.NoError(t, err)
+
+		_, err = server.sendSessionUpdatePacket(session)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to unmarshal response", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		// Simulate an unmarshalable response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendUnmarshalableResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		session, err := NewSession()
+		assert.NoError(t, err)
+
+		_, err = server.sendSessionUpdatePacket(session)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		// Simulate an unmarshalable response
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go runTestServerBackend(t, backendConn, testSendNormalResponse)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		session, err := NewSession()
+		assert.NoError(t, err)
+
+		responsePacket, err := server.sendSessionUpdatePacket(session)
+		assert.NoError(t, err)
+		assert.NotZero(t, responsePacket)
+	})
+}
+
+func TestSendPacket(t *testing.T) {
+	t.Run("fail to set write deadline", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		server.conn = &net.UDPConn{}
+
+		err = server.sendPacket(transport.PacketTypeServerInitRequest, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("fail to write", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+
+		go func() {
+			time.Sleep(time.Millisecond * 10)
+			backendConn.Close()
+		}()
+
+		err = server.sendPacket(transport.PacketTypeServerInitRequest, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+		go func() {
+			buffer := make([]byte, transport.DefaultMaxPacketSize)
+			_, err := backendConn.Read(buffer)
+			assert.NoError(t, err)
+		}()
+
+		err = server.sendPacket(transport.PacketTypeServerInitRequest, nil)
+		assert.NoError(t, err)
+	})
+}
+
+func TestReadPacket(t *testing.T) {
+	t.Run("fail to set read deadline", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		server.conn = &net.UDPConn{}
+
+		packetType, packetData, err := server.readPacket()
+		assert.Zero(t, packetType)
+		assert.Nil(t, packetData)
+		assert.Error(t, err)
+	})
+
+	t.Run("fail to read", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+
+		go func() {
+			time.Sleep(time.Millisecond * 10)
+			backendConn.Close()
+		}()
+
+		packetType, packetData, err := server.readPacket()
+		assert.Zero(t, packetType)
+		assert.Nil(t, packetData)
+		assert.Error(t, err)
+	})
+
+	t.Run("read empty packet", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+
+		go func() {
+			_, err := backendConn.Write([]byte{})
+			assert.NoError(t, err)
+		}()
+
+		packetType, packetData, err := server.readPacket()
+		assert.Zero(t, packetType)
+		assert.Nil(t, packetData)
+		assert.Error(t, err)
+	})
+
+	t.Run("read non network next packet", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+
+		go func() {
+			_, err := backendConn.Write([]byte("bad packet data"))
+			assert.NoError(t, err)
+		}()
+
+		packetType, packetData, err := server.readPacket()
+		assert.Zero(t, packetType)
+		assert.Nil(t, packetData)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		server := createExpectedFakeServer(t)
+
+		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		assert.NoError(t, err)
+
+		serverConn, backendConn := net.Pipe()
+		server.conn = serverConn
+
+		go func() {
+			responseData := make([]byte, 2+crypto.PacketHashSize) // We need to have at least 1 byte in the message, otherwise crypto.HashPacket will panic
+			responseData[0] = transport.PacketTypeServerInitResponse
+			crypto.HashPacket(crypto.PacketHashKey, responseData)
+
+			_, err = backendConn.Write(responseData)
+			assert.NoError(t, err)
+		}()
+
+		packetType, packetData, err := server.readPacket()
+		assert.NotZero(t, packetType)
+		assert.Len(t, packetData, 1)
 		assert.NoError(t, err)
 	})
 }

@@ -292,7 +292,9 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 
 // sendPacket sends a given packet type to the server backend.
 func (server *FakeServer) sendPacket(packetType byte, packetData []byte) error {
-	packetData = append([]byte{packetType, 0, 0, 0, 0, 0, 0, 0, 0}, packetData...)
+	packetDataHeader := make([]byte, 1+crypto.PacketHashSize)
+	packetDataHeader[0] = packetType
+	packetData = append(packetDataHeader, packetData...)
 
 	packetData = crypto.SignPacket(server.customerPrivateKey, packetData)
 	crypto.HashPacket(crypto.PacketHashKey, packetData)
