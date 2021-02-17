@@ -52,8 +52,18 @@ static void next_randombytes_stir()
 
 static void next_randombytes_buf( void * const buf, const size_t size )
 {
-    int error = sceRandomGetRandomNumber( buf, size );
-    next_assert( error == SCE_OK );
+    // IMPORTANT: sceRandomGetRandomNumber can only do SCE_RANDOM_MAX_SIZE bytes at a time. why god why.
+    uint8_t * start = (uint8_t*) buf;
+    uint8_t * finish = start + size;
+    uint8_t * p = start;
+    while ( p < finish )
+    {
+        size_t remaining = size_t( finish - p );
+        size_t size = ( remaining >= SCE_RANDOM_MAX_SIZE ) ? SCE_RANDOM_MAX_BYTES : remaining;
+        int error = sceRandomGetRandomNumber( buf, size );
+        next_assert( error == SCE_OK );
+        p += size;
+    }
 }
 
 static uint32_t next_randombytes_random()
