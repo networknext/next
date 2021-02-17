@@ -105,10 +105,7 @@ export default class UserSessions extends Vue {
   private mounted () {
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
-      this.fetchUserSessions()
-      this.sessionLoop = setInterval(() => {
-        this.fetchUserSessions()
-      }, 10000)
+      this.restartLoop()
     }
   }
 
@@ -151,6 +148,16 @@ export default class UserSessions extends Vue {
           console.log(error)
         }
       })
+  }
+
+  private restartLoop () {
+    if (this.sessionLoop) {
+      clearInterval(this.sessionLoop)
+    }
+    this.fetchUserSessions()
+    this.sessionLoop = setInterval(() => {
+      this.fetchUserSessions()
+    }, 10000)
   }
 
   private convertUTCDateToLocalDate (date: Date) {

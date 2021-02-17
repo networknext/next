@@ -325,10 +325,7 @@ export default class SessionDetails extends Vue {
   private mounted () {
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
-      this.fetchSessionDetails()
-      this.detailsLoop = setInterval(() => {
-        this.fetchSessionDetails()
-      }, 10000)
+      this.restartLoop()
     }
   }
 
@@ -469,6 +466,16 @@ export default class SessionDetails extends Vue {
           this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
+  }
+
+  private restartLoop () {
+    if (this.detailsLoop) {
+      clearInterval(this.detailsLoop)
+    }
+    this.fetchSessionDetails()
+    this.detailsLoop = setInterval(() => {
+      this.fetchSessionDetails()
+    }, 10000)
   }
 
   private generateCharts () {
