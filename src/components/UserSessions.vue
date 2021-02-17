@@ -127,6 +127,10 @@ export default class UserSessions extends Vue {
     next()
   }
 
+  private beforeDestroy () {
+    clearInterval(this.sessionLoop)
+  }
+
   private fetchUserSessions () {
     if (this.searchID === '') {
       return
