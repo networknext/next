@@ -541,6 +541,7 @@ func (db *SQL) Sellers() []routing.Seller {
 type sqlSeller struct {
 	ID                        string
 	ShortName                 string
+	Secret                    bool
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
 	CustomerID                int64
@@ -570,6 +571,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	newSellerData := sqlSeller{
 		ID:                        s.ID,
 		ShortName:                 s.ShortName,
+		Secret:                    s.Secret,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 		CustomerID:                c.DatabaseID,
@@ -577,8 +579,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	// Add the seller in remote storage
 	sql.Write([]byte("insert into sellers ("))
-	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, secret, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -586,8 +588,11 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	result, err := stmt.Exec(newSellerData.ShortName, newSellerData.EgressPriceNibblinsPerGB,
+	result, err := stmt.Exec(
+		newSellerData.ShortName,
+		newSellerData.EgressPriceNibblinsPerGB,
 		newSellerData.IngressPriceNibblinsPerGB,
+		newSellerData.Secret,
 		newSellerData.CustomerID,
 	)
 
@@ -1011,6 +1016,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		// already checked int validity above
 		relay.Type, _ = routing.GetMachineTypeSQL(int64(machineType))
 
+	case "Notes":
+		notes, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update relays set notes=$1 where id=$2"))
+		args = append(args, notes, relay.DatabaseID)
+		relay.Notes = notes
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the routing.Relay type", field)
 
@@ -1065,6 +1079,7 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
+	Notes              string
 	// StartDate          time.Time
 	// EndDate            time.Time
 	StartDate   sql.NullTime
@@ -1133,15 +1148,16 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		StartDate:          startDate,
 		EndDate:            endDate,
 		MachineType:        int64(r.Type),
+		Notes:              r.Notes,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
 	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, notes "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1171,6 +1187,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.State,
 		relay.InternalIP,
 		relay.InternalIPPort,
+		relay.Notes,
 	)
 
 	if err != nil {
@@ -2848,6 +2865,14 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		updateSQL.Write([]byte("update sellers set public_ingress_price=$1 where id=$2"))
 		args = append(args, int64(ingress), seller.DatabaseID)
 		seller.IngressPriceNibblinsPerGB = ingress
+	case "Secret":
+		secret, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update sellers set secret=$1 where id=$2"))
+		args = append(args, secret, seller.DatabaseID)
+		seller.Secret = secret
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field)

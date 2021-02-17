@@ -268,5 +268,13 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["multipathRestricted"] = entry.MultipathRestricted
 	}
 
+	if entry.ClientToServerPacketsSent > 0 {
+		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
+	}
+
+	if entry.ServerToClientPacketsSent > 0 {
+		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
+	}
+
 	return e, "", nil
 }
