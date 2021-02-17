@@ -27,7 +27,7 @@
 #include <kernel.h>
 #include <net.h>
 #include <libnetctl.h>
-//#include <libsecure.h>
+#include <sce_random.h>
 #include <string.h>
 #include "sodium.h"
 
@@ -52,13 +52,8 @@ static void next_randombytes_stir()
 
 static void next_randombytes_buf( void * const buf, const size_t size )
 {
-    // todo: need crypto on ps5
-    /*
-    SceLibSecureBlock mem_block = { buf, size };
-    SceLibSecureErrorType error = sceLibSecureRandom( &mem_block );
-    (void)error;
-    next_assert( error == SCE_LIBSECURE_OK );
-    */
+    int error = sceRandomGetRandomNumber( buf, size );
+    next_assert( error == SCE_OK );
 }
 
 static uint32_t next_randombytes_random()
@@ -102,11 +97,23 @@ static randombytes_implementation next_random_implementation =
 
 int next_platform_init()
 {
-    if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    if ( sceSysmoduleLoadModule( SCE_SYSMODULE_RANDOM ) != SCE_OK ) 
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to load random sysmodule" );
         return NEXT_ERROR;
+    }
 
-    if ( ( handle_net = sceNetPoolCreate("net", HEAP_SIZE_NET, 0 ) ) < 0 )
+    if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to setup random bytes implementation" );
         return NEXT_ERROR;
+    }
+
+    if ( ( handle_net = sceNetPoolCreate( "net", HEAP_SIZE_NET, 0 ) ) < 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init network pool" );
+        return NEXT_ERROR;
+    }
 
     connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
     if ( sceNetCtlInit() != SCE_OK )
