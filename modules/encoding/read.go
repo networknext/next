@@ -6,6 +6,8 @@ import (
 	"net"
 )
 
+const uint32Mid = math.MaxInt32 + 1
+
 func ReadBool(data []byte, index *int, value *bool) bool {
 	if *index+1 > len(data) {
 		return false
@@ -116,4 +118,15 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
 		return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
 	}
 	return nil
+}
+
+func ReadInt32(data []byte, index *int, value *int32) bool {
+	if *index+4 > len(data) {
+		return false
+	}
+
+	baseVal := binary.LittleEndian.Uint32(data[*index:])
+	*value = int32(baseVal - uint32Mid)
+	*index += 4
+	return true
 }
