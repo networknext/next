@@ -287,7 +287,7 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyServerInitMetrics, err
 	}
 
 	m.SDKTooOld, err = handler.NewCounter(ctx, &Descriptor{
@@ -387,7 +387,7 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptyServerUpdateMetrics, err
 	}
 
 	m.SDKTooOld, err = handler.NewCounter(ctx, &Descriptor{
@@ -641,7 +641,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
 	})
 	if err != nil {
-		return nil, err
+		return EmptySessionUpdateMetrics, err
 	}
 
 	m.ClientLocateFailure, err = handler.NewCounter(ctx, &Descriptor{
