@@ -186,6 +186,9 @@ var _ Storer = &StorerMock{}
 //             UpdateCustomerFunc: func(ctx context.Context, customerID string, field string, value interface{}) error {
 // 	               panic("mock out the UpdateCustomer method")
 //             },
+//             UpdateDatacenterFunc: func(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+// 	               panic("mock out the UpdateDatacenter method")
+//             },
 //             UpdateInternalConfigFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateInternalConfig method")
 //             },
@@ -369,6 +372,9 @@ type StorerMock struct {
 
 	// UpdateCustomerFunc mocks the UpdateCustomer method.
 	UpdateCustomerFunc func(ctx context.Context, customerID string, field string, value interface{}) error
+
+	// UpdateDatacenterFunc mocks the UpdateDatacenter method.
+	UpdateDatacenterFunc func(ctx context.Context, datacenterID uint64, field string, value interface{}) error
 
 	// UpdateInternalConfigFunc mocks the UpdateInternalConfig method.
 	UpdateInternalConfigFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
@@ -735,6 +741,17 @@ type StorerMock struct {
 			// Value is the value argument value.
 			Value interface{}
 		}
+		// UpdateDatacenter holds details about calls to the UpdateDatacenter method.
+		UpdateDatacenter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DatacenterID is the datacenterID argument value.
+			DatacenterID uint64
+			// Field is the field argument value.
+			Field string
+			// Value is the value argument value.
+			Value interface{}
+		}
 		// UpdateInternalConfig holds details about calls to the UpdateInternalConfig method.
 		UpdateInternalConfig []struct {
 			// Ctx is the ctx argument value.
@@ -835,6 +852,7 @@ type StorerMock struct {
 	lockSyncLoop                  sync.RWMutex
 	lockUpdateBuyer               sync.RWMutex
 	lockUpdateCustomer            sync.RWMutex
+	lockUpdateDatacenter          sync.RWMutex
 	lockUpdateInternalConfig      sync.RWMutex
 	lockUpdateRelay               sync.RWMutex
 	lockUpdateRouteShader         sync.RWMutex
@@ -2689,6 +2707,49 @@ func (mock *StorerMock) UpdateCustomerCalls() []struct {
 	mock.lockUpdateCustomer.RLock()
 	calls = mock.calls.UpdateCustomer
 	mock.lockUpdateCustomer.RUnlock()
+	return calls
+}
+
+// UpdateDatacenter calls UpdateDatacenterFunc.
+func (mock *StorerMock) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+	if mock.UpdateDatacenterFunc == nil {
+		panic("StorerMock.UpdateDatacenterFunc: method is nil but Storer.UpdateDatacenter was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		DatacenterID uint64
+		Field        string
+		Value        interface{}
+	}{
+		Ctx:          ctx,
+		DatacenterID: datacenterID,
+		Field:        field,
+		Value:        value,
+	}
+	mock.lockUpdateDatacenter.Lock()
+	mock.calls.UpdateDatacenter = append(mock.calls.UpdateDatacenter, callInfo)
+	mock.lockUpdateDatacenter.Unlock()
+	return mock.UpdateDatacenterFunc(ctx, datacenterID, field, value)
+}
+
+// UpdateDatacenterCalls gets all the calls that were made to UpdateDatacenter.
+// Check the length with:
+//     len(mockedStorer.UpdateDatacenterCalls())
+func (mock *StorerMock) UpdateDatacenterCalls() []struct {
+	Ctx          context.Context
+	DatacenterID uint64
+	Field        string
+	Value        interface{}
+} {
+	var calls []struct {
+		Ctx          context.Context
+		DatacenterID uint64
+		Field        string
+		Value        interface{}
+	}
+	mock.lockUpdateDatacenter.RLock()
+	calls = mock.calls.UpdateDatacenter
+	mock.lockUpdateDatacenter.RUnlock()
 	return calls
 }
 
