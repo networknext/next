@@ -236,10 +236,10 @@
                           {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.rtt).toFixed(2) }}
                         </td>
                         <td>
-                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.jitter).toFixed(2) }}
                         </td>
                         <td>
-                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.packet_loss).toFixed(2) + '%' }}
                         </td>
                       </tr>
                   </tbody>
@@ -325,10 +325,7 @@ export default class SessionDetails extends Vue {
   private mounted () {
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
-      this.fetchSessionDetails()
-      this.detailsLoop = setInterval(() => {
-        this.fetchSessionDetails()
-      }, 10000)
+      this.restartLoop()
     }
   }
 
@@ -469,6 +466,16 @@ export default class SessionDetails extends Vue {
           this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
+  }
+
+  private restartLoop () {
+    if (this.detailsLoop) {
+      clearInterval(this.detailsLoop)
+    }
+    this.fetchSessionDetails()
+    this.detailsLoop = setInterval(() => {
+      this.fetchSessionDetails()
+    }, 10000)
   }
 
   private generateCharts () {
