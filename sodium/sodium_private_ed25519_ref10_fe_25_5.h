@@ -63,6 +63,11 @@ fe25519_add(fe25519 h, const fe25519 f, const fe25519 g)
     h[9] = h9;
 }
 
+#ifdef __PROSPERO__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif // #ifdef __PROSPERO__
+
 /*
  h = f - g
  Can overlap h with f or g.
@@ -1048,3 +1053,7 @@ fe25519_scalar_product(fe25519 h, const fe25519 f, uint32_t n)
     h[8] = (int32_t) h8;
     h[9] = (int32_t) h9;
 }
+
+#ifdef __PROSPERO__
+#pragma clang diagnostic pop
+#endif // #ifdef __PROSPERO__

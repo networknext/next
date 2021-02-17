@@ -22,7 +22,9 @@
 #include "sodium_private_mutex.h"
 
 static volatile int initialized;
+#ifdef _WIN32
 static volatile int locked;
+#endif // #ifdef _WIN32
 
 int
 sodium_init(void)

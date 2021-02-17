@@ -27,6 +27,7 @@
 #include <kernel.h>
 #include <net.h>
 #include <libnetctl.h>
+#include <libsysmodule.h>
 #include <sce_random.h>
 #include <string.h>
 #include "sodium.h"
@@ -52,16 +53,15 @@ static void next_randombytes_stir()
 
 static void next_randombytes_buf( void * const buf, const size_t size )
 {
-    // IMPORTANT: sceRandomGetRandomNumber can only do SCE_RANDOM_MAX_SIZE bytes at a time. why god why.
+    // IMPORTANT: sceRandomGetRandomNumber can only do max of SCE_RANDOM_MAX_SIZE bytes at a time. why god why.
     uint8_t * start = (uint8_t*) buf;
     uint8_t * finish = start + size;
     uint8_t * p = start;
     while ( p < finish )
     {
         size_t remaining = size_t( finish - p );
-        size_t size = ( remaining >= SCE_RANDOM_MAX_SIZE ) ? SCE_RANDOM_MAX_BYTES : remaining;
-        int error = sceRandomGetRandomNumber( buf, size );
-        next_assert( error == SCE_OK );
+        size_t size = ( remaining >= SCE_RANDOM_MAX_SIZE ) ? SCE_RANDOM_MAX_SIZE : remaining;
+        sceRandomGetRandomNumber( buf, size );
         p += size;
     }
 }
@@ -454,7 +454,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         if ( result < 0 )
         {
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_stri);
+            next_address_to_string( to, address_string );
             next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( sce_net_errno ) );
         }
     }

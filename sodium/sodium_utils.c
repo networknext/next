@@ -86,7 +86,9 @@ void *alloca (size_t);
 # define MADV_DONTDUMP MADV_NOCORE
 #endif
 
+#ifdef HAVE_ALIGNED_MALLOC
 static size_t        page_size;
+#endif // #if HAVE_ALIGNED_MALLOC
 static unsigned char canary[CANARY_SIZE];
 
 /* LCOV_EXCL_START */
