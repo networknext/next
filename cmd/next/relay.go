@@ -844,7 +844,7 @@ type pingData struct {
 	routable   bool
 }
 
-func relayHeatmap(rpcClient jsonrpc.RPCClient, env Environment, relayName string, filepath string) {
+func relayHeatmap(rpcClient jsonrpc.RPCClient, env Environment, relayName string) {
 	// Get all enabled relays
 	args := localjsonrpc.RelaysArgs{
 		Regex: "",
@@ -901,23 +901,18 @@ func relayHeatmap(rpcClient jsonrpc.RPCClient, env Environment, relayName string
 	// Generate the heatmap image
 	img := generateHeatmapImage(xAxis, yAxis, relayPingData)
 
-	// Make sure the given filepath is a directory and name the file the same as the relay name
-	if len(filepath) > 0 && filepath[len(filepath)-1] != '/' || filepath[len(filepath)-1] != '\\' {
-		filepath += "/"
-	}
-
-	filepath += relay.Name + ".png"
+	fileName := relay.Name + ".png"
 
 	// Create and write the image to file
-	file, err := os.Create(filepath)
+	file, err := os.Create(fileName)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not open image file for writing at %q: %v", filepath, err), 1)
+		handleRunTimeError(fmt.Sprintf("could not open image file %q for writing: %v", fileName, err), 1)
 	}
 	defer file.Close()
 
 	if err := png.Encode(file, img); err != nil {
 		file.Close()
-		handleRunTimeError(fmt.Sprintf("could not write to image file at %q: %v", filepath, err), 1)
+		handleRunTimeError(fmt.Sprintf("could not write to image file %q: %v", fileName, err), 1)
 	}
 }
 

@@ -1045,11 +1045,11 @@ func main() {
 				ShortHelp:  "Generate a heatmap of the given relay's connectivity to other relays",
 				LongHelp:   nextRelayUpdateJSONLongHelp,
 				Exec: func(ctx context.Context, args []string) error {
-					if len(args) != 2 {
-						handleRunTimeError(fmt.Sprintln("Must provide a relay name and a filepath for the generated heatmap."), 0)
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Must provide a relay name for the generated heatmap."), 0)
 					}
 
-					relayHeatmap(rpcClient, env, args[0], args[1])
+					relayHeatmap(rpcClient, env, args[0])
 					return nil
 				},
 			},
