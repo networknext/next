@@ -18,7 +18,7 @@ const (
 )
 
 type GoogleBigQueryClient struct {
-	Metrics       *metrics.BillingMetrics
+	Metrics       metrics.PublisherMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 	BatchSize     int
@@ -70,7 +70,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 				bq.bufferMutex.Unlock()
 
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
+				bq.Metrics.PublishFailure.Add(float64(bufferLength))
 				continue
 			}
 

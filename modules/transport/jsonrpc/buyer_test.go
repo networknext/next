@@ -309,13 +309,13 @@ func TestUserSessions(t *testing.T) {
 		UseBigtable:            true,
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
-		BigTableMetrics:        &metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolUserSessions:  redisPool,
 		Logger:                 logger,
+		Metrics:                metrics.EmptyPortalMetrics,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -924,12 +924,12 @@ func TestSessionDetails(t *testing.T) {
 		UseBigtable:            true,
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
-		BigTableMetrics:        &metrics.EmptyBigTableMetrics,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &inMemory,
 		Logger:                 logger,
+		Metrics:                metrics.EmptyPortalMetrics,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

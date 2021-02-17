@@ -29,11 +29,11 @@ type PostSessionHandler struct {
 	useVanityMetrics           bool
 	biller                     billing.Biller
 	logger                     log.Logger
-	metrics                    *metrics.PostSessionMetrics
+	metrics                    metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics metrics.PostSessionMetrics) *PostSessionHandler {
 
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,

@@ -30,14 +30,14 @@ func (bq *NoOpPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEn
 }
 
 type GoogleBigQueryPingStatsWriter struct {
-	Metrics       *metrics.AnalyticsMetrics
+	Metrics       metrics.PublisherMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
 	entries chan []*PingStatsEntry
 }
 
-func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
+func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger, metrics metrics.PublisherMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
 	return GoogleBigQueryPingStatsWriter{
 		Metrics:       metrics,
 		Logger:        logger,
@@ -58,14 +58,14 @@ func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(ctx context.Context) {
 		for i := 0; i < fullBatches; i++ {
 			if err := bq.TableInserter.Put(ctx, entries[i*PingStatsToPublishAtOnce:(i+1)*PingStatsToPublishAtOnce]); err != nil {
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+				bq.Metrics.PublishFailure.Add(1)
 			}
 		}
 
 		if len(entries[fullBatches*PingStatsToPublishAtOnce:]) > 0 {
 			if err := bq.TableInserter.Put(ctx, entries[fullBatches*PingStatsToPublishAtOnce:]); err != nil {
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+				bq.Metrics.PublishFailure.Add(1)
 			}
 		}
 
@@ -87,14 +87,14 @@ func (bq *NoOpRelayStatsWriter) Write(ctx context.Context, entries []*RelayStats
 }
 
 type GoogleBigQueryRelayStatsWriter struct {
-	Metrics       *metrics.AnalyticsMetrics
+	Metrics       metrics.PublisherMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
 	entries chan []*RelayStatsEntry
 }
 
-func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
+func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logger, metrics metrics.PublisherMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
 	return GoogleBigQueryRelayStatsWriter{
 		Metrics:       metrics,
 		Logger:        logger,
@@ -113,7 +113,7 @@ func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
 	for entries := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entries); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+			bq.Metrics.PublishFailure.Add(1)
 		}
 		bq.Metrics.EntriesFlushed.Add(float64(len(entries)))
 	}
@@ -133,14 +133,14 @@ func (bq *NoOpRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMat
 }
 
 type GoogleBigQueryRouteMatrixStatsWriter struct {
-	Metrics       *metrics.AnalyticsMetrics
+	Metrics       metrics.PublisherMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
 	entries chan *RouteMatrixStatsEntry
 }
 
-func NewGoogleBigQueryRouteMatrixStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) (GoogleBigQueryRouteMatrixStatsWriter, error) {
+func NewGoogleBigQueryRouteMatrixStatsWriter(client *bigquery.Client, logger log.Logger, metrics metrics.PublisherMetrics, dataset, table string) (GoogleBigQueryRouteMatrixStatsWriter, error) {
 
 	return GoogleBigQueryRouteMatrixStatsWriter{
 		Metrics:       metrics,
@@ -160,7 +160,7 @@ func (bq *GoogleBigQueryRouteMatrixStatsWriter) WriteLoop(ctx context.Context) {
 	for entries := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entries); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+			bq.Metrics.PublishFailure.Add(1)
 		}
 		bq.Metrics.EntriesFlushed.Add(1)
 	}

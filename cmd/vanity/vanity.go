@@ -183,15 +183,15 @@ func mainReturnWithCode() int {
 
 		go func() {
 			for {
-				vanityServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				vanityServiceMetrics.MemoryAllocated.Set(memoryUsed())
+				vanityServiceMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				vanityServiceMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(vanityServiceMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", vanityServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d messages received\n", int(vanityServiceMetrics.ReceivedVanityCount.Value()))
-				fmt.Printf("%d successful updates\n", int(vanityServiceMetrics.UpdateVanitySuccessCount.Value()))
-				fmt.Printf("%d failed updates\n", int(vanityServiceMetrics.UpdateVanityFailureCount.Value()))
+				fmt.Printf("%d goroutines\n", int(vanityServiceMetrics.ServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", vanityServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d messages received\n", int(vanityServiceMetrics.ReceiveMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d successful updates\n", int(vanityServiceMetrics.VanityUpdateSuccessCount.Value()))
+				fmt.Printf("%d failed updates\n", int(vanityServiceMetrics.VanityUpdateFailureCount.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

@@ -384,7 +384,7 @@ func TestServerInitHandlerSuccess(t *testing.T) {
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
 	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
 
-	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerInitMetrics)
+	assertAllMetricsEqual(t, expectedMetrics, metrics.ServerInitMetrics)
 }
 
 func TestServerInitHandlerSuccessDatacenterAliasFound(t *testing.T) {
@@ -452,5 +452,5 @@ func TestServerInitHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
 	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
 
-	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerInitMetrics)
+	assertAllMetricsEqual(t, expectedMetrics, metrics.ServerInitMetrics)
 }

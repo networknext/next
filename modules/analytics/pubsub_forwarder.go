@@ -15,12 +15,12 @@ import (
 type PingStatsPubSubForwarder struct {
 	Writer  PingStatsWriter
 	Logger  log.Logger
-	Metrics *metrics.AnalyticsMetrics
+	Metrics metrics.ReceiverMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPingStatsPubSubForwarder(ctx context.Context, writer PingStatsWriter, logger log.Logger, metrics *metrics.AnalyticsMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PingStatsPubSubForwarder, error) {
+func NewPingStatsPubSubForwarder(ctx context.Context, writer PingStatsWriter, logger log.Logger, metrics metrics.ReceiverMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PingStatsPubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -54,7 +54,7 @@ func (psf *PingStatsPubSubForwarder) Forward(ctx context.Context) {
 			}
 			psf.Writer.Write(context.Background(), entries)
 		} else {
-			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
+			psf.Metrics.UnmarshalFailure.Add(1)
 		}
 	})
 
@@ -67,12 +67,12 @@ func (psf *PingStatsPubSubForwarder) Forward(ctx context.Context) {
 type RelayStatsPubSubForwarder struct {
 	Writer  RelayStatsWriter
 	Logger  log.Logger
-	Metrics *metrics.AnalyticsMetrics
+	Metrics metrics.ReceiverMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewRelayStatsPubSubForwarder(ctx context.Context, writer RelayStatsWriter, logger log.Logger, metrics *metrics.AnalyticsMetrics, gcpProjectID string, topicName string, subscriptionName string) (*RelayStatsPubSubForwarder, error) {
+func NewRelayStatsPubSubForwarder(ctx context.Context, writer RelayStatsWriter, logger log.Logger, metrics metrics.ReceiverMetrics, gcpProjectID string, topicName string, subscriptionName string) (*RelayStatsPubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -106,7 +106,7 @@ func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context) {
 			}
 			psf.Writer.Write(context.Background(), entries)
 		} else {
-			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
+			psf.Metrics.UnmarshalFailure.Add(1)
 		}
 	})
 
@@ -119,12 +119,12 @@ func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context) {
 type RouteMatrixStatsPubSubForwarder struct {
 	Writer  RouteMatrixStatsWriter
 	Logger  log.Logger
-	Metrics *metrics.AnalyticsMetrics
+	Metrics metrics.ReceiverMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewRouteMatrixStatsPubSubForwarder(ctx context.Context, writer RouteMatrixStatsWriter, logger log.Logger, metrics *metrics.AnalyticsMetrics,
+func NewRouteMatrixStatsPubSubForwarder(ctx context.Context, writer RouteMatrixStatsWriter, logger log.Logger, metrics metrics.ReceiverMetrics,
 	gcpProjectID string, topicName string, subscriptionName string) (*RouteMatrixStatsPubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
@@ -156,7 +156,7 @@ func (psf *RouteMatrixStatsPubSubForwarder) Forward(ctx context.Context) {
 
 			psf.Writer.Write(context.Background(), entry)
 		} else {
-			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
+			psf.Metrics.UnmarshalFailure.Add(1)
 		}
 	})
 

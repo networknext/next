@@ -341,7 +341,7 @@ func TestUpdateMetrics(t *testing.T) {
 		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
 		errStr := fmt.Sprintf("Could not find buyerID %016x in map", buyerID)
 		assert.EqualError(t, err, errStr)
-		assert.Equal(t, float64(0), vanityServiceMetrics.UpdateVanitySuccessCount.Value())
+		assert.Equal(t, float64(0), vanityServiceMetrics.VanityUpdateSuccessCount.Value())
 	})
 
 	t.Run("vanity data update metric success", func(t *testing.T) {
@@ -358,7 +358,7 @@ func TestUpdateMetrics(t *testing.T) {
 
 		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
 		assert.NoError(t, err)
-		assert.Equal(t, 1.0, vanityServiceMetrics.UpdateVanitySuccessCount.Value())
+		assert.Equal(t, 1.0, vanityServiceMetrics.VanityUpdateSuccessCount.Value())
 	})
 }
 

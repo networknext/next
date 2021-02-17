@@ -131,13 +131,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create maxmindb sync metrics
-	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
-		return 1
-	}
-
 	// Create a goroutine to update metrics
 	go func() {
 		memoryUsed := func() float64 {
@@ -202,7 +195,7 @@ func mainReturnWithCode() int {
 			return mmdbRet
 		}
 
-		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+		if err := mmdb.Sync(ctx, backendMetrics.MaxmindSyncMetrics); err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
@@ -311,6 +304,8 @@ func mainReturnWithCode() int {
 					var buffer []byte
 					start := time.Now()
 
+					backendMetrics.RouteMatrixUpdateMetrics.Invocations.Add(1)
+
 					newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
 					if err != nil {
 						level.Error(logger).Log("err", err)
@@ -379,18 +374,21 @@ func mainReturnWithCode() int {
 					routeEntriesTime := time.Since(start)
 
 					duration := float64(routeEntriesTime.Milliseconds())
-					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+					backendMetrics.RouteMatrixUpdateMetrics.Duration.Set(duration)
 
 					if duration > 100 {
-						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+						backendMetrics.RouteMatrixUpdateMetrics.LongDuration.Add(1)
 					}
 
 					numRoutes := int32(0)
 					for i := range newRouteMatrix.RouteEntries {
 						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
 					}
-					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
-					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+
+					backendMetrics.RouteMatrixMetrics.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
+					backendMetrics.RouteMatrixMetrics.DatacenterCount.Set(float64(len(newRouteMatrix.RelayDatacenterIDs)))
+					backendMetrics.RouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
+					backendMetrics.RouteMatrixMetrics.Bytes.Set(float64(len(buffer)))
 
 					routeMatrixMutex.Lock()
 					routeMatrix = &newRouteMatrix

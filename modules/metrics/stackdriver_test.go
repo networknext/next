@@ -52,31 +52,10 @@ func TestStackDriverMetrics(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	histogram, err := handler.NewHistogram(ctx, &metrics.Descriptor{
-		DisplayName: "Test Metric Histogram",
-		ServiceName: "service",
-		ID:          "test-metric-histogram",
-		Unit:        "{units}",
-		Description: "A dummy metric to test the metrics package.",
-	}, 50)
-
-	assert.NoError(t, err)
-
-	// Test duplicate metric
-	_, err = handler.NewHistogram(ctx, &metrics.Descriptor{
-		DisplayName: "Test Metric Histogram Duplicate",
-		ServiceName: "service",
-		ID:          "test-metric-histogram",
-		Unit:        "{units}",
-		Description: "A dummy metric to test the metrics package.",
-	}, 50)
-
-	assert.EqualError(t, err, "Metric test-metric-histogram already created")
-
 	// Test counter functions
-	labels := []string{"label1", "value1", "label2", "value2"}
-	counter = counter.With(labels...).(metrics.Counter)
-	labelsResult := counter.LabelValues()
+	labels := map[string]string{"label1": "value1", "label2": "value2"}
+	counter.AddLabels(labels)
+	labelsResult := counter.Labels()
 	assert.Equal(t, labels, labelsResult)
 
 	assert.Equal(t, 0.0, counter.Value())
@@ -86,9 +65,9 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.Equal(t, 6.112, counter.Value())
 
 	// Test gauge functions
-	labels = []string{"label1", "value1", "label2", "value2"}
-	gauge = gauge.With(labels...).(metrics.Gauge)
-	labelsResult = gauge.LabelValues()
+	labels = map[string]string{"label1": "value1", "label2": "value2"}
+	gauge.AddLabels(labels)
+	labelsResult = gauge.Labels()
 	assert.Equal(t, labels, labelsResult)
 
 	assert.Equal(t, 0.0, gauge.Value())
@@ -98,20 +77,6 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.Equal(t, 6.112, gauge.Value())
 	gauge.Set(4)
 	assert.Equal(t, 4.0, gauge.Value())
-
-	// Test histogram functions
-	labels = []string{"label1", "value1", "label2", "value2"}
-	histogram = histogram.With(labels...).(metrics.Histogram)
-	labelsResult = histogram.LabelValues()
-	assert.Equal(t, labels, labelsResult)
-
-	assert.Equal(t, -1.0, histogram.Quantile(0.5))
-	histogram.Observe(5)
-	assert.Equal(t, 5.0, histogram.Quantile(0.5))
-	histogram.Observe(1.112)
-	assert.Equal(t, 1.112, histogram.Quantile(0.5))
-	histogram.Observe(5)
-	assert.Equal(t, 5.0, histogram.Quantile(0.5))
 
 	// Start the submit routine
 	go handler.WriteLoop(ctx, log.NewNopLogger(), time.Second, 200)
