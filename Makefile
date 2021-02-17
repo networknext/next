@@ -254,6 +254,10 @@ ifndef FEATURE_VANITY_METRIC
 export FEATURE_VANITY_METRIC = false
 endif
 
+ifndef BEACON_ENTRY_VETO
+export BEACON_ENTRY_VETO = false
+endif
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -361,6 +365,10 @@ dev-server-backend-valve: build-server-backend
 dev-beacon: build-beacon ## runs a local beacon
 	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
 
+.PHONY: dev-beacon-inserter
+dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
+	@PORT=35001 ./dist/beacon_inserter
+
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
@@ -459,6 +467,12 @@ build-beacon:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon ./cmd/beacon/beacon.go
 	@printf "done\n"
 
+.PHONY: build-beacon-inserter
+build-beacon-inserter:
+	@printf "Building beacon inserter..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
+	@printf "done\n"
+
 .PHONY: build-server-backend
 build-server-backend:
 	@printf "Building server backend... "
@@ -512,6 +526,8 @@ deploy-portal-crunchers-staging:
 deploy-vanity-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t vanity -n vanity -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-2 -t vanity -n vanity -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-3 -t vanity -n vanity -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-4 -t vanity -n vanity -b gs://staging_artifacts
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod:
@@ -528,6 +544,8 @@ deploy-portal-crunchers-prod:
 deploy-vanity-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t vanity -n vanity -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-2 -t vanity -n vanity -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-3 -t vanity -n vanity -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-4 -t vanity -n vanity -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
@@ -540,6 +558,14 @@ build-load-test-client-artifacts: build-load-test-client
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing
 	./deploy/build-artifacts.sh -e dev -s billing
+
+.PHONY: build-beacon-artifacts-dev
+build-beacon-artifacts-dev: build-beacon
+	./deploy/build-artifacts.sh -e dev -s beacon
+
+.PHONY: build-beacon-inserter-artifacts-dev
+build-beacon-inserter-artifacts-dev: build-beacon-inserter
+	./deploy/build-artifacts.sh -e dev -s beacon_inserter
 
 .PHONY: build-analytics-artifacts-dev
 build-analytics-artifacts-dev: build-analytics
@@ -581,6 +607,14 @@ build-server-backend-artifacts-dev: build-server-backend
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
 
+.PHONY: build-beacon-artifacts-staging
+build-beacon-artifacts-staging: build-beacon
+	./deploy/build-artifacts.sh -e staging -s beacon
+
+.PHONY: build-beacon-inserter-artifacts-staging
+build-beacon-inserter-artifacts-staging: build-beacon-inserter
+	./deploy/build-artifacts.sh -e staging -s beacon_inserter
+
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
@@ -617,6 +651,14 @@ build-server-backend-artifacts-staging: build-server-backend
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
 
+.PHONY: build-beacon-artifacts-prod
+build-beacon-artifacts-prod: build-beacon
+	./deploy/build-artifacts.sh -e prod -s beacon
+
+.PHONY: build-beacon-inserter-artifacts-prod
+build-beacon-inserter-artifacts-prod: build-beacon-inserter
+	./deploy/build-artifacts.sh -e prod -s beacon_inserter
+
 .PHONY: build-analytics-artifacts-prod
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
@@ -652,6 +694,14 @@ build-server-backend-artifacts-prod: build-server-backend
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
+
+.PHONY: publish-beacon-artifacts-dev
+publish-beacon-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon
+
+.PHONY: publish-beacon-inserter-artifacts-dev
+publish-beacon-inserter-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon_inserter
 
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
@@ -692,6 +742,14 @@ publish-server-backend-artifacts-dev:
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
+
+.PHONY: publish-beacon-artifacts-staging
+publish-beacon-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon
+
+.PHONY: publish-beacon-inserter-artifacts-staging
+publish-beacon-inserter-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon_inserter
 
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
@@ -740,6 +798,14 @@ publish-load-test-server-list:
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-beacon-artifacts-prod
+publish-beacon-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon
+
+.PHONY: publish-beacon-inserter-artifacts-prod
+publish-beacon-inserter-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon_inserter
 
 .PHONY: publish-api-artifacts-prod
 publish-api-artifacts-prod:
@@ -1071,7 +1137,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

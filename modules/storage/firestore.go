@@ -62,6 +62,7 @@ type seller struct {
 	ID                        string `firestore:"id"`
 	Name                      string `firestore:"name"`
 	CompanyCode               string `firestore:"companyCode"`
+	Secret                    bool   `firestore:"secret"`
 	IngressPriceNibblinsPerGB int64  `firestore:"pricePublicIngressNibblins"`
 	EgressPriceNibblinsPerGB  int64  `firestore:"pricePublicEgressNibblins"`
 }
@@ -89,6 +90,7 @@ type relay struct {
 	StartDate          time.Time              `firestore:"startDate"`
 	EndDate            time.Time              `firestore:"endDate"`
 	Type               string                 `firestore:"machineType"`
+	Notes              string                 `firestore:"notes"`
 }
 
 type datacenter struct {
@@ -122,23 +124,22 @@ type routeShader struct {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold        int32 `firestore:"routeSelectThreshold"`
-	RouteSwitchThreshold        int32 `firestore:"routeSwitchThreshold"`
-	MaxLatencyTradeOff          int32 `firestore:"maxLatencyTradeOff"`
-	RTTVeto_Default             int32 `firestore:"rttVeto_default"`
-	RTTVeto_PacketLoss          int32 `firestore:"rttVeto_packetLoss"`
-	RTTVeto_Multipath           int32 `firestore:"rttVeto_multipath"`
-	MultipathOverloadThreshold  int32 `firestore:"multipathOverloadThreshold"`
-	TryBeforeYouBuy             bool  `firestore:"tryBeforeYouBuy"`
-	ForceNext                   bool  `firestore:"forceNext"`
-	LargeCustomer               bool  `firestore:"largeCustomer"`
-	Uncommitted                 bool  `firestore:"uncommitted"`
-	MaxRTT                      int32 `firestore:"maxRTT"`
-	HighFrequencyPings          bool  `firestore:"highFrequencyPings"`
-	RouteDiversity              int32 `firestore:"routeDiversity"`
-	MultipathThreshold          int32 `firestore:"multipathThreshold"`
-	MispredictMultipathOverload bool  `firestore:"mispredictMultipathOverload"`
-	EnableVanityMetrics         bool  `firestore:"enableVanityMetrics"`
+	RouteSelectThreshold       int32 `firestore:"routeSelectThreshold"`
+	RouteSwitchThreshold       int32 `firestore:"routeSwitchThreshold"`
+	MaxLatencyTradeOff         int32 `firestore:"maxLatencyTradeOff"`
+	RTTVeto_Default            int32 `firestore:"rttVeto_default"`
+	RTTVeto_PacketLoss         int32 `firestore:"rttVeto_packetLoss"`
+	RTTVeto_Multipath          int32 `firestore:"rttVeto_multipath"`
+	MultipathOverloadThreshold int32 `firestore:"multipathOverloadThreshold"`
+	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
+	ForceNext                  bool  `firestore:"forceNext"`
+	LargeCustomer              bool  `firestore:"largeCustomer"`
+	Uncommitted                bool  `firestore:"uncommitted"`
+	MaxRTT                     int32 `firestore:"maxRTT"`
+	HighFrequencyPings         bool  `firestore:"highFrequencyPings"`
+	RouteDiversity             int32 `firestore:"routeDiversity"`
+	MultipathThreshold         int32 `firestore:"multipathThreshold"`
+	EnableVanityMetrics        bool  `firestore:"enableVanityMetrics"`
 }
 
 type FirestoreError struct {
@@ -765,6 +766,7 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 		CompanyCode:               s.CompanyCode,
 		ID:                        s.ID,
 		Name:                      s.Name,
+		Secret:                    s.Secret,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 	}
@@ -1175,6 +1177,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		EndDate:            r.EndDate.UTC(),
 		Type:               serverType,
 		MaxSessions:        int32(r.MaxSessions),
+		Notes:              r.Notes,
 	}
 
 	// Add the relay in remote storage
@@ -1881,6 +1884,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			StartDate:           r.StartDate.UTC(),
 			EndDate:             r.EndDate.UTC(),
 			Type:                serverType,
+			Notes:               r.Notes,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore
@@ -2031,6 +2035,7 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 			ID:                        sellerDoc.Ref.ID,
 			CompanyCode:               s.CompanyCode,
 			Name:                      s.Name,
+			Secret:                    s.Secret,
 			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
 			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
@@ -2269,7 +2274,6 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.HighFrequencyPings = tempIC.HighFrequencyPings
 	ic.RouteDiversity = tempIC.RouteDiversity
 	ic.MultipathThreshold = tempIC.MultipathThreshold
-	ic.MispredictMultipathOverload = tempIC.MispredictMultipathOverload
 	ic.EnableVanityMetrics = tempIC.EnableVanityMetrics
 
 	return ic, nil
@@ -2279,24 +2283,23 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	internalConfigID := firestoreID + "_0"
 
 	icFirestore := map[string]interface{}{
-		"displayName":                 name,
-		"routeSelectThreshold":        internalConfig.RouteSelectThreshold,
-		"routeSwitchThreshold":        internalConfig.RouteSwitchThreshold,
-		"maxLatencyTradeOff":          internalConfig.MaxLatencyTradeOff,
-		"rttVeto_default":             internalConfig.RTTVeto_Default,
-		"rttVeto_packetLoss":          internalConfig.RTTVeto_PacketLoss,
-		"rttVeto_multipath":           internalConfig.RTTVeto_Multipath,
-		"multipathOverloadThreshold":  internalConfig.MultipathOverloadThreshold,
-		"tryBeforeYouBuy":             internalConfig.TryBeforeYouBuy,
-		"forceNext":                   internalConfig.ForceNext,
-		"largeCustomer":               internalConfig.LargeCustomer,
-		"uncommitted":                 internalConfig.Uncommitted,
-		"maxRTT":                      internalConfig.MaxRTT,
-		"highFrequencyPings":          internalConfig.HighFrequencyPings,
-		"routeDiversity":              internalConfig.RouteDiversity,
-		"multipathThreshold":          internalConfig.MultipathThreshold,
-		"mispredictMultipathOverload": internalConfig.MispredictMultipathOverload,
-		"enableVanityMetrics":         internalConfig.EnableVanityMetrics,
+		"displayName":                name,
+		"routeSelectThreshold":       internalConfig.RouteSelectThreshold,
+		"routeSwitchThreshold":       internalConfig.RouteSwitchThreshold,
+		"maxLatencyTradeOff":         internalConfig.MaxLatencyTradeOff,
+		"rttVeto_default":            internalConfig.RTTVeto_Default,
+		"rttVeto_packetLoss":         internalConfig.RTTVeto_PacketLoss,
+		"rttVeto_multipath":          internalConfig.RTTVeto_Multipath,
+		"multipathOverloadThreshold": internalConfig.MultipathOverloadThreshold,
+		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
+		"forceNext":                  internalConfig.ForceNext,
+		"largeCustomer":              internalConfig.LargeCustomer,
+		"uncommitted":                internalConfig.Uncommitted,
+		"maxRTT":                     internalConfig.MaxRTT,
+		"highFrequencyPings":         internalConfig.HighFrequencyPings,
+		"routeDiversity":             internalConfig.RouteDiversity,
+		"multipathThreshold":         internalConfig.MultipathThreshold,
+		"enableVanityMetrics":        internalConfig.EnableVanityMetrics,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
@@ -2377,4 +2380,8 @@ func (fs *Firestore) UpdateSeller(ctx context.Context, sellerID string, field st
 
 func (fs *Firestore) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
 	return fmt.Errorf("UpdateCustomer not implemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateDatacenter not implemented in Firestore storer")
 }

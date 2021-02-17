@@ -254,6 +254,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 				return nil, err
 			}
 			customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
+			customerPublicKey = customerPublicKey[8:]
 
 			if !envvar.Exists("RELAY_PUBLIC_KEY") {
 				return nil, errors.New("RELAY_PUBLIC_KEY not set")
@@ -320,6 +321,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			return storer, err
 		}
 		customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
+		customerPublicKey = customerPublicKey[8:]
 
 		if !envvar.Exists("RELAY_PUBLIC_KEY") {
 			return storer, errors.New("RELAY_PUBLIC_KEY not set")
