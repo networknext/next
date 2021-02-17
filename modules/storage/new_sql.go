@@ -351,7 +351,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port from relays "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -388,6 +388,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.State,
 			&relay.InternalIP,
 			&relay.InternalIPPort,
+			&relay.Notes,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
@@ -447,6 +448,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			BWRule:              bwRule,
 			ContractTerm:        int32(relay.ContractTerm),
 			Type:                machineType,
+			Notes:               relay.Notes,
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 		}
@@ -541,6 +543,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		b := routing.Buyer{
 			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
 			ShortName:      buyer.ShortName,
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
@@ -574,7 +577,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	sellers := make(map[string]routing.Seller)
 	sellerIDs := make(map[int64]string)
 
-	sql.Write([]byte("select id, short_name, public_egress_price, public_ingress_price, "))
+	sql.Write([]byte("select id, short_name, public_egress_price, public_ingress_price, secret, "))
 	sql.Write([]byte("customer_id from sellers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -589,6 +592,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 			&seller.ShortName,
 			&seller.EgressPriceNibblinsPerGB,
 			&seller.IngressPriceNibblinsPerGB,
+			&seller.Secret,
 			&seller.CustomerID,
 		)
 		if err != nil {
@@ -602,6 +606,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
 			ID:                        db.customerIDs[seller.CustomerID],
 			ShortName:                 seller.ShortName,
+			Secret:                    seller.Secret,
 			CompanyCode:               db.customers[db.customerIDs[seller.CustomerID]].Code,
 			Name:                      db.customers[db.customerIDs[seller.CustomerID]].Name,
 			IngressPriceNibblinsPerGB: routing.Nibblin(seller.IngressPriceNibblinsPerGB),

@@ -62,6 +62,7 @@ type seller struct {
 	ID                        string `firestore:"id"`
 	Name                      string `firestore:"name"`
 	CompanyCode               string `firestore:"companyCode"`
+	Secret                    bool   `firestore:"secret"`
 	IngressPriceNibblinsPerGB int64  `firestore:"pricePublicIngressNibblins"`
 	EgressPriceNibblinsPerGB  int64  `firestore:"pricePublicEgressNibblins"`
 }
@@ -89,6 +90,7 @@ type relay struct {
 	StartDate          time.Time              `firestore:"startDate"`
 	EndDate            time.Time              `firestore:"endDate"`
 	Type               string                 `firestore:"machineType"`
+	Notes              string                 `firestore:"notes"`
 }
 
 type datacenter struct {
@@ -764,6 +766,7 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 		CompanyCode:               s.CompanyCode,
 		ID:                        s.ID,
 		Name:                      s.Name,
+		Secret:                    s.Secret,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 	}
@@ -1174,6 +1177,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		EndDate:            r.EndDate.UTC(),
 		Type:               serverType,
 		MaxSessions:        int32(r.MaxSessions),
+		Notes:              r.Notes,
 	}
 
 	// Add the relay in remote storage
@@ -1880,6 +1884,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			StartDate:           r.StartDate.UTC(),
 			EndDate:             r.EndDate.UTC(),
 			Type:                serverType,
+			Notes:               r.Notes,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore
@@ -2030,6 +2035,7 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 			ID:                        sellerDoc.Ref.ID,
 			CompanyCode:               s.CompanyCode,
 			Name:                      s.Name,
+			Secret:                    s.Secret,
 			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
 			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
@@ -2374,4 +2380,8 @@ func (fs *Firestore) UpdateSeller(ctx context.Context, sellerID string, field st
 
 func (fs *Firestore) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
 	return fmt.Errorf("UpdateCustomer not implemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateDatacenter not implemented in Firestore storer")
 }

@@ -96,6 +96,7 @@ func TestInsertSQL(t *testing.T) {
 			ID:                        customerShortname,
 			ShortName:                 customerShortname,
 			CompanyCode:               customerShortname,
+			Secret:                    true,
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                outerCustomer.DatabaseID,
@@ -107,6 +108,7 @@ func TestInsertSQL(t *testing.T) {
 		outerSeller, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 		assert.Equal(t, seller.ID, outerSeller.ID)
+		assert.Equal(t, true, outerSeller.Secret)
 		assert.Equal(t, seller.ShortName, outerSeller.ShortName)
 		assert.Equal(t, seller.IngressPriceNibblinsPerGB, outerSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, seller.EgressPriceNibblinsPerGB, outerSeller.EgressPriceNibblinsPerGB)
@@ -206,6 +208,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			Notes:               "the original notes",
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -247,6 +250,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
+		assert.Equal(t, relay.Notes, checkRelay.Notes)
 	})
 
 	t.Run("AddRelayWithNullables", func(t *testing.T) {
@@ -282,6 +286,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			// Notes: "the original notes"
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -408,6 +413,7 @@ func TestDeleteSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
+			Secret:                    true,
 			CustomerID:                outerCustomer.DatabaseID,
 			CompanyCode:               outerCustomer.Code,
 		}
@@ -478,6 +484,7 @@ func TestDeleteSQL(t *testing.T) {
 			EndDate:        time.Now(),
 			Type:           routing.BareMetal,
 			State:          routing.RelayStateMaintenance,
+			Notes:          "the original notes",
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -636,6 +643,7 @@ func TestUpdateSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
+			Secret:                    true,
 			CustomerID:                customerWithID.DatabaseID,
 			CompanyCode:               customerWithID.Code,
 		}
@@ -654,6 +662,7 @@ func TestUpdateSQL(t *testing.T) {
 
 		checkSeller, err := db.Seller("Compcode")
 		assert.NoError(t, err)
+		assert.Equal(t, true, sellerWithID.Secret)
 		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
 	})
@@ -690,6 +699,21 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
 		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
+	})
+
+	t.Run("UpdateDatacenter", func(t *testing.T) {
+		did := crypto.HashID("some.locale.name")
+
+		err = db.UpdateDatacenter(ctx, did, "Latitude", float32(130.3))
+		assert.NoError(t, err)
+
+		err = db.UpdateDatacenter(ctx, did, "Longitude", float32(80.3))
+		assert.NoError(t, err)
+
+		checkDatacenter, err := db.Datacenter(did)
+		assert.NoError(t, err)
+		assert.Equal(t, float32(80.3), checkDatacenter.Location.Longitude)
+		assert.Equal(t, float32(130.3), checkDatacenter.Location.Latitude)
 	})
 
 	t.Run("UpdateCustomer", func(t *testing.T) {
@@ -734,12 +758,16 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "Secret", false)
+		assert.NoError(t, err)
+
 		checkSeller, err := db.Seller(sellerWithID.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(14433000000000), checkSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, "newname", checkSeller.ShortName)
+		assert.Equal(t, false, checkSeller.Secret)
 	})
 
 	t.Run("UpdateRelay", func(t *testing.T) {
@@ -777,6 +805,7 @@ func TestUpdateSQL(t *testing.T) {
 			EndDate:             time.Now(),
 			Type:                routing.BareMetal,
 			State:               routing.RelayStateMaintenance,
+			Notes:               "the original notes",
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -925,6 +954,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(25000), checkRelay.IncludedBandwidthGB)
 
+		// relay.Notes
+		err = db.UpdateRelay(ctx, rid, "Notes", "not the original notes")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "not the original notes", checkRelay.Notes)
+
 	})
 }
 
@@ -935,7 +971,6 @@ func TestInternalConfig(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	// db, err := storage.NewSQLStorage(ctx, logger)
 	env, err := backend.GetEnv()
 	assert.NoError(t, err)
 	db, err := backend.GetStorer(ctx, logger, "local", env)
@@ -984,7 +1019,7 @@ func TestInternalConfig(t *testing.T) {
 		outerBuyer, err = db.Buyer(internalID)
 		assert.NoError(t, err)
 
-		internalConfig := core.InternalConfig {
+		internalConfig := core.InternalConfig{
 			RouteSelectThreshold:       2,
 			RouteSwitchThreshold:       5,
 			MaxLatencyTradeOff:         10,
