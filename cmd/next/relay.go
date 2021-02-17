@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"os"
@@ -13,11 +19,13 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 	"golang.org/x/crypto/nacl/box"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -817,4 +825,244 @@ func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 	}
 
 	table.Output(statsList)
+}
+
+func relayHeatmap(rpcClient jsonrpc.RPCClient, env Environment, regex string, filepath string) {
+	// Get the relay that we want to generate the connectivity image for
+	relayInfo := getRelayInfo(rpcClient, env, regex)
+
+	if len(relayInfo) == 0 {
+		handleRunTimeError(fmt.Sprintf("no relay found with regex %q", regex), 0)
+	}
+
+	if len(relayInfo) > 1 {
+		handleRunTimeError(fmt.Sprintf("more than one relay matching regex %q - please be more specific", regex), 0)
+	}
+
+	relay := relayInfo[0]
+
+	relayPingData, err := getRelayPingBigQueryRows(relay.id, env)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to get relay ping data from BigQuery for relay %q: %v", relay.name, err), 1)
+	}
+
+	if len(relayPingData) == 0 {
+		handleRunTimeError(fmt.Sprintf("no relay ping data for relay %q", regex), 1)
+	}
+
+	imageData := convertBigQueryRows(relayPingData)
+	if err := generateHeatmapImage(imageData, filepath); err != nil {
+		handleRunTimeError(fmt.Sprintf("could not write image to file at %q: %v", filepath, err), 1)
+	}
+}
+
+func getRelayPingBigQueryRows(relayID uint64, env Environment) ([]BigQueryRelayPingsEntry, error) {
+
+	ctx := context.Background()
+
+	var rows []BigQueryRelayPingsEntry
+
+	var dbName string
+	var sql bytes.Buffer
+
+	sql.Write([]byte(`select * from `))
+
+	switch env.Name {
+	case "prod":
+		dbName = "network-next-v3-prod"
+		sql.Write([]byte(fmt.Sprintf("%s.prod.relay_pings", dbName)))
+
+	case "staging":
+		dbName = "network-next-v3-staging"
+		sql.Write([]byte(fmt.Sprintf("%s.staging.relay_pings", dbName)))
+
+	case "dev":
+		dbName = "network-next-v3-dev"
+		sql.Write([]byte(fmt.Sprintf("%s.dev.relay_pings", dbName)))
+
+	case "local":
+		return nil, errors.New("local env not implemented")
+
+	default:
+		return nil, errors.New("unknown or unimplemented env")
+	}
+
+	sql.Write([]byte(fmt.Sprintf(" where relay_a = %d", relayID)))
+	sql.Write([]byte(" and timestamp > timestamp_sub(current_timestamp, INTERVAL 24 HOUR)"))
+	sql.Write([]byte(" order by timestamp"))
+
+	bqClient, err := bigquery.NewClient(ctx, dbName)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() failed to create BigQuery client: %v", err), 1)
+		return nil, err
+	}
+	defer bqClient.Close()
+
+	q := bqClient.Query(string(sql.String()))
+
+	job, err := q.Run(ctx)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() failed to query BigQuery: %v", err), 1)
+		return nil, err
+	}
+
+	status, err := job.Wait(ctx)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() error waiting for job to complete: %v", err), 1)
+		return nil, err
+	}
+	if err := status.Err(); err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() job returned an error: %v", err), 1)
+		return nil, err
+	}
+
+	it, err := job.Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// process result set and load rows
+	for {
+		var rec BigQueryRelayPingsEntry
+		err := it.Next(&rec)
+
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		rows = append(rows, rec)
+	}
+
+	return rows, nil
+}
+
+type pingData struct {
+	relayID    uint64
+	rtt        float64
+	jitter     float64
+	packetLoss float64
+	routable   bool
+}
+
+func convertBigQueryRows(relayPingData []BigQueryRelayPingsEntry) [][]pingData {
+	// We know the the relay ping data from BigQuery will be stored based on timestamp,
+	// since that's how we query the data. Based on this, we can construct a data structure
+	// by iterating through each timestamp of the slice in order, then sorting each subslice
+	// by relay ID
+
+	var partitionedPingData [][]pingData
+
+	// We need to keep track of the timestamp for this iteration so that if it changes,
+	// we know we are done with that timestamp
+	currTimestamp := relayPingData[0].Timestamp
+
+	var bqRowsIndex int
+	var stop bool
+
+	// This is the outer loop that will loop through the entire slice of BigQuery results
+	for {
+		if stop {
+			break
+		}
+
+		// Add a new entry for this timestamp
+		partitionedPingData = append(partitionedPingData, []pingData{})
+
+		// Add an entry to this subslice for each relay ID (BigQuery row with this timestamp)
+		for ; true; bqRowsIndex++ {
+			if bqRowsIndex >= len(relayPingData) {
+				stop = true
+				break
+			}
+
+			timestamp := relayPingData[bqRowsIndex].Timestamp
+
+			// The timestamp has changed, so we've looped through all relay IDs for this timestamp
+			// We need to sort the subslice, and break from the loop
+			if timestamp != currTimestamp {
+				currTimestamp = timestamp
+
+				sort.SliceStable(partitionedPingData[len(partitionedPingData)-1], func(i, j int) bool {
+					return partitionedPingData[len(partitionedPingData)-1][i].relayID < partitionedPingData[len(partitionedPingData)-1][j].relayID
+				})
+
+				break
+			}
+
+			// We still have more relay IDs to go, so add this one and continue
+			partitionedPingData[len(partitionedPingData)-1] = append(partitionedPingData[len(partitionedPingData)-1], pingData{
+				relayID:    uint64(relayPingData[bqRowsIndex].RelayB),
+				rtt:        relayPingData[bqRowsIndex].RTT,
+				jitter:     relayPingData[bqRowsIndex].Jitter,
+				packetLoss: relayPingData[bqRowsIndex].PacketLoss,
+				routable:   relayPingData[bqRowsIndex].Routable,
+			})
+		}
+	}
+
+	return partitionedPingData
+}
+
+func generateHeatmapImage(partitionedPingData [][]pingData, filepath string) error {
+	// Now that we have each list of sorted relays in order indexed by timestamp, we can generate the image
+
+	// width is simply the length of timestamps
+	width := len(partitionedPingData)
+
+	// height will be the maximum number of relays we see in any timestamp
+	var height int
+	for _, relays := range partitionedPingData {
+		if len(relays) > height {
+			height = len(relays)
+		}
+	}
+
+	img := image.NewNRGBA(image.Rect(0, 0, width, height))
+	for x := 0; x < width; x++ {
+		numRelays := len(partitionedPingData[x])
+		for y := 0; y < numRelays; y++ {
+			var c color.NRGBA
+
+			// Red dots have high packet loss
+			if partitionedPingData[x][y].packetLoss > 0.1 {
+				c = color.NRGBA{255, 0, 0, 255}
+				img.SetNRGBA(x, y, c)
+				continue
+			}
+
+			// Blue dots have high packet jitter
+			if partitionedPingData[x][y].jitter > 10 {
+				c = color.NRGBA{0, 0, 255, 255}
+				img.SetNRGBA(x, y, c)
+				continue
+			}
+
+			// Black dots are otherwise unroutable
+			if !partitionedPingData[x][y].routable {
+				c = color.NRGBA{0, 0, 0, 255}
+				img.SetNRGBA(x, y, c)
+				continue
+			}
+
+			// White dots are good
+			c = color.NRGBA{255, 255, 255, 255}
+			img.SetNRGBA(x, y, c)
+			continue
+		}
+	}
+
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if err := png.Encode(file, img); err != nil {
+		return err
+	}
+
+	return nil
 }
