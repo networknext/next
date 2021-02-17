@@ -334,8 +334,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
-	// This check only pertains to the next tool. Stateful clients would already
-	// have the customer id.
 	c, err := db.Customer(b.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
@@ -817,7 +815,9 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 
 		uriTuple := strings.Split(addrString, ":")
-		if uriTuple[0] == "" || uriTuple[1] == "" {
+		if len(uriTuple) < 2 {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+		} else if uriTuple[0] == "" || uriTuple[1] == "" {
 			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
 		}
 		updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
@@ -837,8 +837,10 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 
 		uriTuple := strings.Split(addrString, ":")
-		if uriTuple[0] == "" || uriTuple[1] == "" {
-			return fmt.Errorf("Unable to parse URI fo InternalAddr field: %v", value)
+		if len(uriTuple) < 2 {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+		} else if uriTuple[0] == "" || uriTuple[1] == "" {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
 		}
 		updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
 		updateSQL.Write([]byte("where id=$3"))
