@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -499,6 +500,14 @@ func main() {
 		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS, strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
 
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 

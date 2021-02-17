@@ -10,13 +10,12 @@ import (
 	"expvar"
 	"fmt"
 	"io/ioutil"
-	"runtime"
-
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
-
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -24,6 +23,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
@@ -291,6 +291,14 @@ func main() {
 			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 			router.Handle("/debug/vars", expvar.Handler())
+
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
