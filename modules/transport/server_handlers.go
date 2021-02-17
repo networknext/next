@@ -292,6 +292,18 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 			return
 		}
 
+		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			metrics.SignatureCheckFailed.Add(1)
+
+			if err := writeServerInitResponse(w, &packet, InitResponseSignatureCheckFailed); err != nil {
+				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
+			}
+
+			return
+		}
+
 		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
 			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
@@ -360,6 +372,12 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessi
 		if err != nil {
 			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
 			metrics.BuyerNotFound.Add(1)
+			return
+		}
+
+		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			metrics.SignatureCheckFailed.Add(1)
 			return
 		}
 
@@ -540,6 +558,12 @@ func SessionUpdateHandlerFunc(
 		if err != nil {
 			level.Error(logger).Log("msg", "buyer not found", "err", err)
 			metrics.BuyerNotFound.Add(1)
+			return
+		}
+
+		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			metrics.SignatureCheckFailed.Add(1)
 			return
 		}
 
