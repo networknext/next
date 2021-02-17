@@ -692,6 +692,10 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			DatabaseID:          r.DatabaseID,
 		}
 
+		if addrStr := r.InternalAddr.String(); addrStr != ":0" {
+			relay.InternalAddr = addrStr
+		}
+
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
@@ -1521,7 +1525,7 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 		}
 		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateRelay() error updating field for seller %s: %v", args.SellerID, err)
+			err = fmt.Errorf("UpdateSeller() error updating field for seller %s: %v", args.SellerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
