@@ -63,10 +63,10 @@ fe25519_add(fe25519 h, const fe25519 f, const fe25519 g)
     h[9] = h9;
 }
 
-#ifdef __PROSPERO__
+#if defined(__ORBIS__) || defined(__PROSPERO__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
-#endif // #ifdef __PROSPERO__
+#endif // #if defined(__ORBIS__) || defined(__PROSPERO__)
 
 /*
  h = f - g
@@ -1054,6 +1054,7 @@ fe25519_scalar_product(fe25519 h, const fe25519 f, uint32_t n)
     h[9] = (int32_t) h9;
 }
 
-#ifdef __PROSPERO__
+#if defined(__ORBIS__) || defined(__PROSPERO__)
 #pragma clang diagnostic pop
-#endif // #ifdef __PROSPERO__
+#endif // #if defined(__ORBIS__) || defined(__PROSPERO__)
+
