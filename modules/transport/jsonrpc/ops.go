@@ -805,7 +805,6 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		return err
 	}
 
-	fmt.Printf("relay        DatacenterID: %s\n", args.DatacenterID)
 	dcID, err := strconv.ParseUint(args.DatacenterID, 16, 64)
 	if err != nil {
 		s.Logger.Log("err", err)

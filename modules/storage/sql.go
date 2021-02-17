@@ -1100,7 +1100,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	db.relayMutex.RUnlock()
 
 	if ok {
-		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.ID}
+		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.Name}
 	}
 
 	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
