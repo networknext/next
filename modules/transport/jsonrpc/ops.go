@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -190,6 +191,8 @@ type buyer struct {
 	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
 	HexID       string `json:"hexID"`
+	Live        bool   `json:"live"`
+	Debug       bool   `json:"debug"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -202,10 +205,12 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
-			HexID:       fmt.Sprintf("%016x", b.ID),
+			HexID:       b.HexID,
 			CompanyName: c.Name,
 			CompanyCode: b.CompanyCode,
 			ShortName:   b.ShortName,
+			Live:        b.Live,
+			Debug:       b.Debug,
 		})
 	}
 
@@ -214,6 +219,43 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	})
 
 	return nil
+}
+
+type JSAddBuyerArgs struct {
+	ShortName string `json:"shortName"`
+	Live      bool   `json:"live"`
+	Debug     bool   `json:"debug"`
+	PublicKey string `json:"publicKey"`
+}
+
+type JSAddBuyerReply struct{}
+
+func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JSAddBuyerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	// Get the ID from the first 8 bytes of the public key
+	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if len(publicKey) != crypto.KeySize+8 {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	buyer := routing.Buyer{
+		CompanyCode: args.ShortName,
+		ShortName:   args.ShortName,
+		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
+		Live:        args.Live,
+		Debug:       args.Debug,
+		PublicKey:   publicKey[8:],
+	}
+
+	return s.Storage.AddBuyer(ctx, buyer)
 }
 
 type AddBuyerArgs struct {
@@ -564,6 +606,7 @@ type relay struct {
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
+	Notes               string                `json:"notes"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
@@ -597,6 +640,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
 			Type:                r.Type,
+			Notes:               r.Notes,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -1018,6 +1062,46 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	return nil
 }
 
+type JSAddDatacenterArgs struct {
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	SellerID  string  `json:"sellerID"`
+}
+
+type JSAddDatacenterReply struct{}
+
+func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs, reply *JSAddDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	dcID := crypto.HashID(args.Name)
+
+	seller, err := s.Storage.Seller(args.SellerID)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	datacenter := routing.Datacenter{
+		Name: args.Name,
+		ID:   dcID,
+		Location: routing.Location{
+			Latitude:  float32(args.Latitude),
+			Longitude: float32(args.Longitude),
+		},
+		SellerID: seller.DatabaseID,
+	}
+
+	if err := s.Storage.AddDatacenter(ctx, datacenter); err != nil {
+		err = fmt.Errorf("AddDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
 type RemoveDatacenterArgs struct {
 	Name string
 }
@@ -1192,6 +1276,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		StartDate:           routingRelay.StartDate,
 		EndDate:             routingRelay.EndDate,
 		Type:                routingRelay.Type,
+		Notes:               routingRelay.Notes,
 		DatabaseID:          routingRelay.DatabaseID,
 		DatacenterID:        routingRelay.Datacenter.ID,
 	}
@@ -1383,6 +1468,42 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Seller type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateDatacenterArgs struct {
+	HexDatacenterID string      `json:"hexDatacenterID"`
+	Field           string      `json:"field"`
+	Value           interface{} `json:"value"`
+}
+
+type UpdateDatacenterReply struct{}
+
+func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArgs, reply *UpdateDatacenterReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	switch args.Field {
+	case "Latitude", "Longitude":
+		newValue := float32(args.Value.(float64))
+		err := s.Storage.UpdateDatacenter(context.Background(), dcID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Datacenter type", args.Field)
 	}
 
 	return nil

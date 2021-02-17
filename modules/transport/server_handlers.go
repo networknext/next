@@ -1148,6 +1148,8 @@ func PostSessionUpdate(
 		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
 		Pro:                             buyer.RouteShader.ProMode && !sessionData.RouteState.MultipathRestricted,
 		MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
+		ClientToServerPacketsSent:       packet.PacketsSentClientToServer,
+		ServerToClientPacketsSent:       packet.PacketsSentServerToClient,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)

@@ -27,7 +27,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
@@ -364,6 +363,7 @@ type seller struct {
 	CustomerCode         string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
+	Secret               bool
 }
 
 type relay struct {
@@ -387,6 +387,7 @@ type relay struct {
 	StartDate           string
 	EndDate             string
 	Type                string
+	Notes               string
 }
 
 type datacenter struct {
@@ -1247,12 +1248,13 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
+					// TODO: this function should use the new JSAddBuyer endpoint
 					// Add the Buyer to storage
 					addBuyer(rpcClient, env, routing.Buyer{
 						CompanyCode: b.CompanyCode,
 						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
 						Live:        b.Live,
-						PublicKey:   publicKey,
+						PublicKey:   publicKey[8:],
 					})
 					return nil
 				},
@@ -1437,25 +1439,24 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", ic.BuyerID, err), 0)
 							}
 
-							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
-								RouteSelectThreshold:       int32(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:       int32(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:         int32(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:            int32(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:         int32(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:          int32(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold: int32(ic.MultipathOverloadThreshold),
+							addInternalConfig(rpcClient, env, buyerID, localjsonrpc.JSInternalConfig{
+								RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:            int64(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
 								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
 								ForceNext:                  ic.ForceNext,
 								LargeCustomer:              ic.LargeCustomer,
 								Uncommitted:                ic.Uncommitted,
 								HighFrequencyPings:         ic.HighFrequencyPings,
-								RouteDiversity:             int32(ic.RouteDiversity),
-								MultipathThreshold:         int32(ic.MultipathThreshold),
+								RouteDiversity:             int64(ic.RouteDiversity),
+								MultipathThreshold:         int64(ic.MultipathThreshold),
 								EnableVanityMetrics:        ic.EnableVanityMetrics,
-								MaxRTT:                     int32(ic.MaxRTT),
+								MaxRTT:                     int64(ic.MaxRTT),
 							})
-
 							return nil
 						},
 					},
@@ -1518,20 +1519,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", rs.BuyerID, err), 0)
 							}
 
-							addRouteShader(rpcClient, env, buyerID, core.RouteShader{
+							addRouteShader(rpcClient, env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
-								SelectionPercent:          int(rs.SelectionPercent),
+								SelectionPercent:          int64(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
 								ReduceLatency:             rs.ReduceLatency,
 								ReduceJitter:              rs.ReduceJitter,
 								ReducePacketLoss:          rs.ReducePacketLoss,
 								Multipath:                 rs.Multipath,
-								AcceptableLatency:         int32(rs.AcceptableLatency),
-								LatencyThreshold:          int32(rs.LatencyThreshold),
-								AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
-								BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
-								BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
+								AcceptableLatency:         int64(rs.AcceptableLatency),
+								LatencyThreshold:          int64(rs.LatencyThreshold),
+								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
 							})
 
 							return nil
@@ -1673,6 +1674,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode    string
 						IngressPriceUSD string
 						EgressPriceUSD  string
+						Secret          bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
@@ -1696,6 +1698,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode:         sellerUSD.CustomerCode,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
+						Secret:               sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
@@ -2156,10 +2159,11 @@ provided by a JSON file of the form:
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
   "IngressPriceUSD": "0.01",
-  "EgressPriceUSD": "0.1"
+  "EgressPriceUSD": "0.1",
+  "Secret": false
 }
 
-A valid Customer code is required to add a buyer.
+All fields are required. A valid Customer code is required to add a buyer.
 `
 var nextDatacenterAddJSONLongHelp = `
 Add a datacenter entry (and a map) for the provided customer. 
@@ -2287,12 +2291,12 @@ must be one of the following and is case-sensitive:
 
   Name                 string
   Addr                 string (1.2.3.4:40000) - the port is required
-  InternalAddr         string (1.2.3.4:40000) - the port is required
+  InternalAddr         string (1.2.3.4:40000) - optional, though the port is required if provided
   PublicKey            string
   NICSpeedMbps         integer
   IncludedBandwidthGB  integer
   State                any valid relay state (see below)
-  ManagementAddr       string (1.2.3.4:40000) - the port is optional
+  ManagementAddr       string (1.2.3.4) - required, do not provide a port number
   SSHUser              string
   SSHPort              integer
   MaxSessions          integer
@@ -2303,6 +2307,7 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  Notes                any string up to 500 characters (optional)
 
 Valid relay states:
    enabled
@@ -2346,10 +2351,11 @@ must be of the form:
   "StartDate": "December 15, 2020", // exactly this format (optional)
   "EndDate": "December 15, 2020",   // exactly this format (optional)
   "Type": "virtualmachine",         // any valid machine type (see below)
-  "Seller": "colocrossing"
+  "Seller": "colocrossing",
+  "Notes": "any notes up to 500 characters" // optional
 }
 
-All fields are required except as noted (InternalAddr).
+All fields are required except as noted (InternalAddr, Notes).
 
 Valid bandwidth rules:
    flat
@@ -2403,9 +2409,10 @@ var nextSellerUpdateLongHelp = `
 Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
-  EgressPrice US Dollars
+  EgressPrice  US Dollars
   IngressPrice US Dollars
   ShortName    string
+  Secret       boolean
 
 The value should be whatever type is appropriate for the field
 as defined above.
