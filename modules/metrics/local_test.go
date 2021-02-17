@@ -2,9 +2,10 @@ package metrics_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLocalMetrics(t *testing.T) {
@@ -19,9 +20,5 @@ func TestLocalMetrics(t *testing.T) {
 		gauge, err := localHandler.NewGauge(context.Background(), &metrics.Descriptor{ID: "test-metric"})
 		assert.NoError(t, err)
 		assert.NotNil(t, gauge)
-
-		histogram, err := localHandler.NewHistogram(context.Background(), &metrics.Descriptor{ID: "test-metric"}, 50)
-		assert.NoError(t, err)
-		assert.NotNil(t, histogram)
 	}
 }

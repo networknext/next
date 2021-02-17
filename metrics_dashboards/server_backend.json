@@ -1,0 +1,508 @@
+[
+    {
+        "id": "server-backend",
+        "displayName": "Server Backend",
+        "columns": "2",
+        "charts": [
+            {
+                "title": "Server Invocations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.invocations"
+                    }
+                ]
+            },
+            {
+                "title": "Session Invocations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.direct_slices"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.next_slices"
+                    }
+                ]
+            },
+            {
+                "title": "Other Invocations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/route_matrix_update.invocations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.invocations"
+                    }
+                ]
+            },
+            {
+                "title": "Goroutines",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/goroutines"
+                    }
+                ]
+            },
+            {
+                "title": "Memory Allocated (MB)",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/memory_allocated"
+                    }
+                ]
+            },
+            {
+                "title": "Durations",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/server_init.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/server_update.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/session_update.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix_update.duration"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/maxmind_sync.duration"
+                    }
+                ]
+            },
+            {
+                "title": "Long Durations",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/route_matrix_update.long_durations"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.long_durations"
+                    }
+                ]
+            },
+            {
+                "title": "Server Init Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.read_packet_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.buyer_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.signature_check_failed"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.sdk_too_old"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.datacenter_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.misconfigured_datacenter_alias"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.datacenter_not_allowed"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_init.write_response_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Server Update Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.read_packet_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.buyer_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.signature_check_failed"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.sdk_too_old"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.datacenter_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.misconfigured_datacenter_alias"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/server_update.datacenter_not_allowed"
+                    }
+                ]
+            },
+            {
+                "title": "Session Update Errors 1",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.read_packet_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.buyer_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.signature_check_failed"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.client_locate_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.read_session_data_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.bad_session_id"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.bad_slice_number"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.datacenter_not_found"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.misconfigured_datacenter_alias"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.datacenter_not_allowed"
+                    }
+                ]
+            },
+            {
+                "title": "Session Update Errors 2",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.buyer_not_live"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.client_ping_timed_out"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.near_relays_locate_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.near_relays_changed"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.no_relays_in_datacenter"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.route_does_not_exist"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.route_switched"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.sdk_aborted"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.no_route"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.multipath_overload"
+                    }
+                ]
+            },
+            {
+                "title": "Session Update Errors 3",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.latency_worse"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.mispredict_veto"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.write_response_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Fallback To Direct 1",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.fallback_to_direct"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.bad_route_token"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.no_next_route_to_continue"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.previous_update_still_pending"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.bad_continue_token"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.route_expired"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.route_request_timed_out"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.continue_request_timed_out"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.client_timed_out"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.upgrade_response_timed_out"
+                    }
+                ]
+            },
+            {
+                "title": "Fallback To Direct 2",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.route_update_timed_out"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.direct_pong_timed_out"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.next_pong_timed_out"
+                    }
+                ]
+            },
+            {
+                "title": "Maxmind Sync Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.failed_to_sync"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/maxmind_sync.failed_to_sync_isp"
+                    }
+                ]
+            },
+            {
+                "title": "Post Session",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.billing_entries_sent"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.billing_entries_finished"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/post_session_update.billing_entries_length"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.portal_entries_sent"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.portal_entries_finished"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/post_session_update.portal_entries_length"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.vanity_metrics_sent"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.vanity_metrics_finished"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/post_session_update.vanity_metrics_length"
+                    }
+                ]
+            },
+            {
+                "title": "Post Session Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.billing_buffer_full"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.billing_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.portal_buffer_full"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.portal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.vanity_buffer_full"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.vanity_marshal_failure"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/post_session_update.vanity_transmit_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Billing",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/billing.entries_submitted"
+                    },
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/billing.entries_queued"
+                    },
+                    {
+                        "type": "counter",
+                        "id": "server_backend/billing.entries_flushed"
+                    }
+                ]
+            },
+            {
+                "title": "Billing Publish Errors",
+                "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/billing.publish_failure"
+                    }
+                ]
+            },
+            {
+                "title": "Routes",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix.routes"
+                    }
+                ]
+            },
+            {
+                "title": "Relays",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix.relays"
+                    }
+                ]
+            },
+            {
+                "title": "Datacenters",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix.datacenters"
+                    }
+                ]
+            },
+            {
+                "title": "Route Matrix Bytes",
+                "metrics": [
+                    {
+                        "type": "gauge",
+                        "id": "server_backend/route_matrix.bytes"
+                    }
+                ]
+            }
+        ]
+    }
+]

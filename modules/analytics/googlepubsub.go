@@ -29,10 +29,10 @@ type googlePubSubClient struct {
 	PubsubClient *pubsub.Client
 	Topic        *pubsub.Topic
 	ResultChan   chan *pubsub.PublishResult
-	Metrics      *metrics.AnalyticsMetrics
+	Metrics      metrics.PublisherMetrics
 }
 
-func newGooglePubSubClient(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, projectID string, topicID string, settings pubsub.PublishSettings) (*googlePubSubClient, error) {
+func newGooglePubSubClient(ctx context.Context, statsMetrics metrics.PublisherMetrics, projectID string, topicID string, settings pubsub.PublishSettings) (*googlePubSubClient, error) {
 	var err error
 
 	client := &googlePubSubClient{}
@@ -65,10 +65,9 @@ func (client *googlePubSubClient) pubsubResults(ctx context.Context, logger log.
 			_, err := result.Get(ctx)
 			if err != nil {
 				level.Error(logger).Log("analytics", "failed to publish to pubsub", "err", err)
-				client.Metrics.ErrorMetrics.PublishFailure.Add(1)
+				client.Metrics.PublishFailure.Add(1)
 			} else {
 				level.Debug(logger).Log("analytics", "successfully published analytics data")
-				client.Metrics.EntriesFlushed.Add(1)
 			}
 		case <-ctx.Done():
 			return
@@ -80,7 +79,7 @@ type GooglePubSubPingStatsPublisher struct {
 	client *googlePubSubClient
 }
 
-func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubPingStatsPublisher, error) {
+func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics metrics.PublisherMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubPingStatsPublisher, error) {
 	publisher := &GooglePubSubPingStatsPublisher{}
 
 	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)
@@ -128,7 +127,7 @@ type GooglePubSubRelayStatsPublisher struct {
 	client *googlePubSubClient
 }
 
-func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayStatsPublisher, error) {
+func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics metrics.PublisherMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayStatsPublisher, error) {
 	publisher := &GooglePubSubRelayStatsPublisher{}
 
 	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)
@@ -176,7 +175,7 @@ func (publisher *NoOpRouteMatrixStatsPublisher) Publish(ctx context.Context, ent
 	return nil
 }
 
-func NewGooglePubSubRouteMatrixStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRouteMatrixStatsPublisher, error) {
+func NewGooglePubSubRouteMatrixStatsPublisher(ctx context.Context, statsMetrics metrics.PublisherMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRouteMatrixStatsPublisher, error) {
 	publisher := &GooglePubSubRouteMatrixStatsPublisher{}
 
 	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)

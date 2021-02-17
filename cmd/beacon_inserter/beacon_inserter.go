@@ -71,7 +71,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create beacon inserter metrics
-	beaconInserterServiceMetrics, err := metrics.NewBeaconInserterServiceMetrics(ctx, metricsHandler)
+	beaconInserterMetrics, err := metrics.NewBeaconInserterMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
 		return 1
@@ -109,7 +109,7 @@ func mainReturnWithCode() int {
 				beaconTable := envvar.Get("GOOGLE_BIGQUERY_TABLE_BEACON", "")
 
 				b := beacon.GoogleBigQueryClient{
-					Metrics:       beaconInserterServiceMetrics.BeaconInserterMetrics,
+					Metrics:       beaconInserterMetrics.PublishMetrics,
 					Logger:        logger,
 					TableInserter: bqClient.Dataset(beaconDataset).Table(beaconTable).Inserter(),
 					BatchSize:     batchSize,
@@ -140,7 +140,7 @@ func mainReturnWithCode() int {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterMetrics.ReceiveMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				return 1
@@ -164,19 +164,18 @@ func mainReturnWithCode() int {
 		go func() {
 			for {
 
-				beaconInserterServiceMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				beaconInserterServiceMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+				beaconInserterMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				beaconInserterMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(beaconInserterServiceMetrics.ServiceMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", beaconInserterServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d beacon entries transfered\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.EntriesTransfered.Value()))
-				fmt.Printf("%d beacon entries submitted\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d beacon entries queued\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d beacon entries flushed\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d beacon entry read failures\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics.BeaconInserterReadFailure.Value()))
-				fmt.Printf("%d beacon entry batched read failures\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics.BeaconInserterBatchedReadFailure.Value()))
-				fmt.Printf("%d beacon entry write failures\n", int(beaconInserterServiceMetrics.BeaconInserterMetrics.ErrorMetrics.BeaconInserterWriteFailure.Value()))
+				fmt.Printf("%d goroutines\n", int(beaconInserterMetrics.ServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", beaconInserterMetrics.ServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d beacon entries received\n", int(beaconInserterMetrics.ReceiveMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d beacon entries submitted\n", int(beaconInserterMetrics.PublishMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d beacon entries queued\n", int(beaconInserterMetrics.PublishMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d beacon entries flushed\n", int(beaconInserterMetrics.PublishMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d beacon entry read failures\n", int(beaconInserterMetrics.ReceiveMetrics.UnmarshalFailure.Value()))
+				fmt.Printf("%d beacon entry write failures\n", int(beaconInserterMetrics.PublishMetrics.PublishFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
