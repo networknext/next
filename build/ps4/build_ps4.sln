@@ -8,19 +8,13 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ORBIS = Debug|ORBIS
-		Debug|Playstation4 = Debug|Playstation4
 		Release|ORBIS = Release|ORBIS
-		Release|Playstation4 = Release|Playstation4
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|ORBIS.ActiveCfg = Debug|ORBIS
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|ORBIS.Build.0 = Debug|ORBIS
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|Playstation4.ActiveCfg = Debug|ORBIS
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|Playstation4.Build.0 = Debug|ORBIS
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|ORBIS.ActiveCfg = Release|ORBIS
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|ORBIS.Build.0 = Release|ORBIS
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|Playstation4.ActiveCfg = Release|ORBIS
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|Playstation4.Build.0 = Release|ORBIS
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
