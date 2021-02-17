@@ -236,10 +236,10 @@
                           {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.rtt).toFixed(2) }}
                         </td>
                         <td>
-                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.jitter).toFixed(2) }}
                         </td>
                         <td>
-                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.packet_loss).toFixed(2) + '%' }}
                         </td>
                       </tr>
                   </tbody>
