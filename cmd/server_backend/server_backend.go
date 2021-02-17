@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -286,8 +287,15 @@ func mainReturnWithCode() int {
 
 	// Sync route matrix
 	{
+
+		featureBinaryMatrix, err := envvar.GetBool("FEATURE_BINARY_MATRIX", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+
 		if envvar.Exists("ROUTE_MATRIX_URI") {
 			uri := envvar.Get("ROUTE_MATRIX_URI", "")
+
 			syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -364,16 +372,31 @@ func mainReturnWithCode() int {
 					}
 					var newRouteMatrix routing.RouteMatrix
 					if len(buffer) > 0 {
-						rs := encoding.CreateReadStream(buffer)
-						if err := newRouteMatrix.Serialize(rs); err != nil {
-							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 
-							routeMatrixMutex.Lock()
-							routeMatrix = &routing.RouteMatrix{}
-							routeMatrixMutex.Unlock()
+						if featureBinaryMatrix && strings.Contains(uri, "binary") {
+							err := newRouteMatrix.ReadFromBinary(buffer)
+							if err != nil {
+								level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 
-							continue
+								routeMatrixMutex.Lock()
+								routeMatrix = &routing.RouteMatrix{}
+								routeMatrixMutex.Unlock()
+
+								continue
+							}
+						} else {
+							rs := encoding.CreateReadStream(buffer)
+							if err := newRouteMatrix.Serialize(rs); err != nil {
+								level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+
+								routeMatrixMutex.Lock()
+								routeMatrix = &routing.RouteMatrix{}
+								routeMatrixMutex.Unlock()
+
+								continue
+							}
 						}
+
 					}
 
 					routeEntriesTime := time.Since(start)

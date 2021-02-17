@@ -463,6 +463,11 @@ func mainReturnWithCode() int {
 		return &rm
 	}
 
+	featureBinaryMatrix, err := envvar.GetBool("FEATURE_BINARY_MATRIX", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+
 	// Generate the route matrix
 	go func() {
 		syncTimer := helpers.NewSyncTimer(syncInterval)
@@ -525,6 +530,12 @@ func mainReturnWithCode() int {
 			}
 
 			costMatrixData.SetMatrix(costMatrixNew.GetResponseData())
+			if featureBinaryMatrix {
+				costMatrixNew.Version = routing.CostMatrixV1
+				costMatrixNew.CreatedAt = uint64(time.Now().Unix())
+				costMatrixNew.WriteResponseDataBinary(matrixBufferSize)
+				costMatrixData.SetMatrixBinary(costMatrixNew.GetResponseDataBinary())
+			}
 			costMatrixMetrics.Bytes.Set(float64(costMatrixData.GetMatrixDataSize()))
 
 			numCPUs := runtime.NumCPU()
@@ -576,6 +587,16 @@ func mainReturnWithCode() int {
 			routeMatrixMutex.Unlock()
 
 			routeMatrixData.SetMatrix(routeMatrixNew.GetResponseData())
+
+			if featureBinaryMatrix {
+				routeMatrixNew.Version = routing.RouteMatrixV1
+				routeMatrixNew.CreatedAt = uint64(time.Now().Unix())
+				if err := routeMatrixNew.WriteResponseDataBinary(matrixBufferSize); err != nil {
+					level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data binary", "err", err)
+					continue
+				}
+				routeMatrixData.SetMatrixBinary(routeMatrixNew.GetResponseDataBinary())
+			}
 
 			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(routeMatrixData.GetMatrixDataSize()))
 			relayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(routeMatrixNew.RelayIDs)))
@@ -806,6 +827,16 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	serveRouteMatrixBinaryFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		buffer := bytes.NewBuffer(routeMatrixData.GetMatrixBinary())
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	serveValveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
@@ -826,6 +857,16 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	serveCostMatrixBinaryFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		buffer := bytes.NewBuffer(costMatrixData.GetMatrixBinary())
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
@@ -834,7 +875,9 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
+	router.HandleFunc("/cost_matrix_binary", serveCostMatrixBinaryFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
+	router.HandleFunc("/route_matrix_binary", serveRouteMatrixBinaryFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
