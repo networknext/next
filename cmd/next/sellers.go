@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -39,6 +40,10 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 			EgressPriceUSD:  fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
 		})
 	}
+
+	sort.Slice(sellers, func(i int, j int) bool {
+		return sellers[i].ID < sellers[j].ID
+	})
 
 	table.Output(sellers)
 }
@@ -88,6 +93,7 @@ func getSellerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	sellerInfo += "  ShortName    : " + reply.Seller.ShortName + "\n"
 	sellerInfo += "  Egress Price : " + fmt.Sprintf("%4.2f", reply.Seller.EgressPriceNibblinsPerGB.ToDollars()) + "\n"
 	sellerInfo += "  Ingress Price: " + fmt.Sprintf("%4.2f", reply.Seller.IngressPriceNibblinsPerGB.ToDollars()) + "\n"
+	sellerInfo += "         Secret: " + fmt.Sprintf("%t", reply.Seller.Secret) + "\n"
 
 	fmt.Println(sellerInfo)
 	os.Exit(0)

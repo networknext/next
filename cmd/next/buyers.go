@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -520,14 +519,17 @@ func getInternalConfig(
 	env Environment,
 	buyerRegex string,
 ) error {
-	var reply localjsonrpc.GetInternalConfigReply
+	var reply localjsonrpc.InternalConfigReply
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
-	arg := localjsonrpc.GetInternalConfigArg{
-		BuyerID: buyerID,
+	buyerIDHex := fmt.Sprintf("%016x", buyerID)
+
+	arg := localjsonrpc.InternalConfigArg{
+		BuyerID: buyerIDHex,
 	}
-	if err := rpcClient.CallFor(&reply, "BuyersService.GetInternalConfig", arg); err != nil {
+
+	if err := rpcClient.CallFor(&reply, "BuyersService.InternalConfig", arg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -547,7 +549,7 @@ func getInternalConfig(
 	fmt.Printf("  HighFrequencyPings         : %t\n", reply.InternalConfig.HighFrequencyPings)
 	fmt.Printf("  RouteDiversity             : %d\n", reply.InternalConfig.RouteDiversity)
 	fmt.Printf("  MultipathThreshold         : %d\n", reply.InternalConfig.MultipathThreshold)
-	fmt.Printf("  MispredictMultipathOverload: %t\n", reply.InternalConfig.MispredictMultipathOverload)
+	fmt.Printf("  EnableVanityMetrics        : %t\n", reply.InternalConfig.EnableVanityMetrics)
 
 	return nil
 }
@@ -557,14 +559,16 @@ func getRouteShader(
 	env Environment,
 	buyerRegex string,
 ) error {
-	var reply localjsonrpc.GetRouteShaderReply
+	var reply localjsonrpc.RouteShaderReply
 
 	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
 
-	arg := localjsonrpc.GetRouteShaderArg{
-		BuyerID: buyerID,
+	buyerIDHex := fmt.Sprintf("%016x", buyerID)
+
+	arg := localjsonrpc.RouteShaderArg{
+		BuyerID: buyerIDHex,
 	}
-	if err := rpcClient.CallFor(&reply, "BuyersService.GetRouteShader", arg); err != nil {
+	if err := rpcClient.CallFor(&reply, "BuyersService.RouteShader", arg); err != nil {
 		fmt.Println("No RouteShader stored for this buyer (they use the defaults).")
 		return nil
 	}
@@ -591,17 +595,17 @@ func addInternalConfig(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerID uint64,
-	ic core.InternalConfig,
+	ic localjsonrpc.JSInternalConfig,
 ) error {
 
-	emptyReply := localjsonrpc.AddInternalConfigReply{}
+	emptyReply := localjsonrpc.JSAddInternalConfigReply{}
 
-	args := localjsonrpc.AddInternalConfigArgs{
-		BuyerID:        buyerID,
+	args := localjsonrpc.JSAddInternalConfigArgs{
+		BuyerID:        fmt.Sprintf("%016x", buyerID),
 		InternalConfig: ic,
 	}
 	// Storer method checks BuyerID validity
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddInternalConfig", args); err != nil {
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.JSAddInternalConfig", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -621,7 +625,7 @@ func removeInternalConfig(
 	emptyReply := localjsonrpc.RemoveInternalConfigReply{}
 
 	args := localjsonrpc.RemoveInternalConfigArg{
-		BuyerID: buyerID,
+		BuyerID: fmt.Sprintf("%016x", buyerID),
 	}
 	// Storer method checks BuyerID validity
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveInternalConfig", args); err != nil {
@@ -663,16 +667,16 @@ func addRouteShader(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerID uint64,
-	rs core.RouteShader,
+	rs localjsonrpc.JSRouteShader,
 ) error {
 
-	emptyReply := localjsonrpc.AddRouteShaderReply{}
+	emptyReply := localjsonrpc.JSAddRouteShaderReply{}
 
-	args := localjsonrpc.AddRouteShaderArgs{
-		BuyerID:     buyerID,
+	args := localjsonrpc.JSAddRouteShaderArgs{
+		BuyerID:     fmt.Sprintf("%016x", buyerID),
 		RouteShader: rs,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddRouteShader", args); err != nil {
+	if err := rpcClient.CallFor(&emptyReply, "BuyersService.JSAddRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -692,7 +696,7 @@ func removeRouteShader(
 	emptyReply := localjsonrpc.RemoveRouteShaderReply{}
 
 	args := localjsonrpc.RemoveRouteShaderArg{
-		BuyerID: buyerID,
+		BuyerID: fmt.Sprintf("%016x", buyerID),
 	}
 	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)

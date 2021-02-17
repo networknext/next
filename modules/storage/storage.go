@@ -9,7 +9,6 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
-//go:generate moq -out storer_test_mocks.go . Storer
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
@@ -114,6 +113,9 @@ type Storer interface {
 
 	// AddDatacenter adds the provided datacenter to storage and returns an error if the datacenter could not be added.
 	AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error
+
+	// UpdateDatacenter modifies the givien field for the specified datacenter
+	UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error
 
 	// RemoveDatacenter removes a datacenter with the provided datacenter ID from storage and returns an error if the datacenter could not be removed.
 	RemoveDatacenter(ctx context.Context, id uint64) error
