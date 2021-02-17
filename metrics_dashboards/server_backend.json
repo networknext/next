@@ -128,6 +128,10 @@
                     },
                     {
                         "type": "counter",
+                        "id": "server_backend/server_init.signature_check_failed"
+                    },
+                    {
+                        "type": "counter",
                         "id": "server_backend/server_init.sdk_too_old"
                     },
                     {
@@ -161,6 +165,10 @@
                     },
                     {
                         "type": "counter",
+                        "id": "server_backend/server_update.signature_check_failed"
+                    },
+                    {
+                        "type": "counter",
                         "id": "server_backend/server_update.sdk_too_old"
                     },
                     {
@@ -190,6 +198,10 @@
                     },
                     {
                         "type": "counter",
+                        "id": "server_backend/session_update.signature_check_failed"
+                    },
+                    {
+                        "type": "counter",
                         "id": "server_backend/session_update.client_locate_failure"
                     },
                     {
@@ -203,10 +215,6 @@
                     {
                         "type": "counter",
                         "id": "server_backend/session_update.bad_slice_number"
-                    },
-                    {
-                        "type": "counter",
-                        "id": "server_backend/session_update.buyer_not_live"
                     },
                     {
                         "type": "counter",
@@ -225,6 +233,10 @@
             {
                 "title": "Session Update Errors 2",
                 "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.buyer_not_live"
+                    },
                     {
                         "type": "counter",
                         "id": "server_backend/session_update.client_ping_timed_out"
@@ -260,16 +272,16 @@
                     {
                         "type": "counter",
                         "id": "server_backend/session_update.multipath_overload"
-                    },
-                    {
-                        "type": "counter",
-                        "id": "server_backend/session_update.latency_worse"
                     }
                 ]
             },
             {
                 "title": "Session Update Errors 3",
                 "metrics": [
+                    {
+                        "type": "counter",
+                        "id": "server_backend/session_update.latency_worse"
+                    },
                     {
                         "type": "counter",
                         "id": "server_backend/session_update.mispredict_veto"
