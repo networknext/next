@@ -119,6 +119,7 @@ func SeedSQLStorage(
 			ID:                        localCust.Code,
 			ShortName:                 "local",
 			CompanyCode:               "local",
+			Secret:                    false,
 			Name:                      localCust.Name,
 			IngressPriceNibblinsPerGB: 0.1 * 1e11,
 			EgressPriceNibblinsPerGB:  0.2 * 1e11,
@@ -129,6 +130,7 @@ func SeedSQLStorage(
 			ID:                        ghostCust.Code,
 			ShortName:                 "ghost",
 			CompanyCode:               "ghost-army",
+			Secret:                    false,
 			Name:                      ghostCust.Name,
 			IngressPriceNibblinsPerGB: 0.3 * 1e11,
 			EgressPriceNibblinsPerGB:  0.4 * 1e11,
@@ -275,6 +277,7 @@ func SeedSQLStorage(
 				State:               routing.RelayStateEnabled,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
+				Notes:               "I am relay local.locale." + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
@@ -324,6 +327,7 @@ func SeedSQLStorage(
 				State:               ghostRelayState,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
+				Notes:               "I am relay ghost-army.locale.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding ghost relay: %w", err)
 			}
@@ -339,22 +343,22 @@ func SeedSQLStorage(
 		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:        2,
-			RouteSwitchThreshold:        5,
-			MaxLatencyTradeOff:          10,
-			RTTVeto_Default:             -10,
-			RTTVeto_PacketLoss:          -20,
-			RTTVeto_Multipath:           -20,
-			MultipathOverloadThreshold:  500,
-			TryBeforeYouBuy:             false,
-			ForceNext:                   true,
-			LargeCustomer:               false,
-			Uncommitted:                 false,
-			MaxRTT:                      300,
-			HighFrequencyPings:          true,
-			RouteDiversity:              20,
-			MultipathThreshold:          35,
-			MispredictMultipathOverload: true,
+			RouteSelectThreshold:       2,
+			RouteSwitchThreshold:       5,
+			MaxLatencyTradeOff:         10,
+			RTTVeto_Default:            -10,
+			RTTVeto_PacketLoss:         -20,
+			RTTVeto_Multipath:          -20,
+			MultipathOverloadThreshold: 500,
+			TryBeforeYouBuy:            false,
+			ForceNext:                  true,
+			LargeCustomer:              false,
+			Uncommitted:                false,
+			MaxRTT:                     300,
+			HighFrequencyPings:         true,
+			RouteDiversity:             20,
+			MultipathThreshold:         35,
+			EnableVanityMetrics:        true,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)

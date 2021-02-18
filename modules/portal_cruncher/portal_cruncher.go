@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
@@ -132,7 +133,7 @@ func NewPortalCruncher(
 	}, nil
 }
 
-func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, numBigtableInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int) error {
+func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, numBigtableInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int, env string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
@@ -222,6 +223,9 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 	}
 
 	if cruncher.useBigtable {
+		// Get the Ghost Army buyerID
+		ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(env)
+
 		// Start the bigtable goroutines
 		for i := 0; i < numBigtableInsertGoroutines; i++ {
 			wg.Add(1)
@@ -235,7 +239,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 					case portalData := <-cruncher.btDataMessageChan:
 						btPortalDataBuffer = append(btPortalDataBuffer, portalData)
 
-						if err := cruncher.InsertIntoBigtable(ctx, btPortalDataBuffer); err != nil {
+						if err := cruncher.InsertIntoBigtable(ctx, btPortalDataBuffer, env, ghostArmyBuyerID); err != nil {
 							errChan <- err
 							return
 						}
@@ -608,23 +612,25 @@ func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []s
 	return nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData, env string, ghostArmyBuyerID uint64) error {
 	for j := range btPortalDataBuffer {
 		meta := &btPortalDataBuffer[j].Meta
 		slice := &btPortalDataBuffer[j].Slice
+
+		// Do not insert ghost army in prod
+		if env == "prod" && meta.BuyerID == ghostArmyBuyerID {
+			continue
+		}
 
 		// This seems redundant, try to figure out a better prefix to limit the number of keys
 		// Key for session ID
 		sessionRowKey := fmt.Sprintf("%016x", meta.ID)
 		sliceRowKey := fmt.Sprintf("%016x#%v", meta.ID, slice.Timestamp)
 
-		// Key for all buyer specific sessions
-		buyerRowKey := fmt.Sprintf("%016x#%016x", meta.BuyerID, meta.ID)
-
 		// Key for all user specific
 		userRowKey := fmt.Sprintf("%016x#%016x", meta.UserHash, meta.ID)
 
-		metaRowKeys := []string{sessionRowKey, buyerRowKey, userRowKey}
+		metaRowKeys := []string{sessionRowKey, userRowKey}
 		sliceRowKeys := []string{sliceRowKey}
 
 		// Have 2 columns under 1 column family
