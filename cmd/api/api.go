@@ -167,7 +167,7 @@ func mainReturnWithCode() int {
 			serviceName := ""
 			level.Info(logger).Log("addr", serviceName+":"+port)
 
-			err := http.ListenAndServe(serviceName+":"+port, router)
+			err = http.ListenAndServe(serviceName+":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err

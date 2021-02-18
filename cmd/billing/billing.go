@@ -308,7 +308,7 @@ func main() {
 
 			level.Info(logger).Log("addr", ":"+port)
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)

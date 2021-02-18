@@ -236,7 +236,7 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err

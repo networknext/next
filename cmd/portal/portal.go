@@ -537,7 +537,7 @@ func main() {
 		}
 
 		// Fall through to running on any other port defined with TLS disabled
-		err := http.ListenAndServe(":"+port, r)
+		err = http.ListenAndServe(":"+port, r)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
