@@ -79,7 +79,8 @@
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
-#define NEXT_PLATFORM_MAX                                         9
+#define NEXT_PLATFORM_GDK                                         10
+#define NEXT_PLATFORM_MAX                                         10
 
 #define NEXT_MAX_TAGS                                             8
 
@@ -109,8 +110,8 @@
     #define NEXT_PLATFORM NEXT_PLATFORM_PS5
 #elif defined(_XBOX_ONE)
     #define NEXT_PLATFORM NEXT_PLATFORM_XBOX_ONE
-#elif defined(_GAMING_XBOX_SCARLETT)
-    #define NEXT_PLATFORM NEXT_PLATFORM_XBOX_SERIES_X
+#elif defined(_GAMING_XBOX)
+    #define NEXT_PLATFORM NEXT_PLATFORM_GDK
 #elif defined(_WIN32)
     #define NEXT_PLATFORM NEXT_PLATFORM_WINDOWS
 #elif defined(__APPLE__)
