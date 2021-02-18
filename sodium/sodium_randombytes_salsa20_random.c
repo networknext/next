@@ -368,7 +368,7 @@ randombytes_salsa20_random_stir(void)
 # endif
 
 #else /* _WIN32 */
-#ifndef _XBOX_ONE && !_GAMING_XBOX
+#if !defined(_XBOX_ONE) && !defined(_GAMING_XBOX)
     if (! RtlGenRandom((PVOID) stream.key, (ULONG) sizeof stream.key)) {
         sodium_misuse(); /* LCOV_EXCL_LINE */
     }

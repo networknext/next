@@ -249,6 +249,8 @@ int next_platform_init()
     return NEXT_OK;
 }
 
+#pragma warning(disable:4723)
+
 double next_platform_time()
 {
     LARGE_INTEGER now;
@@ -371,6 +373,8 @@ void next_platform_socket_destroy( next_platform_socket_t * );
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
+    (void) enable_packet_tagging;
+
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
 

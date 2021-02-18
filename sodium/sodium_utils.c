@@ -139,6 +139,7 @@ sodium_memzero(void *const pnt, const size_t len)
 void
 sodium_stackzero(const size_t len)
 {
+    (void) len;
 #ifdef HAVE_C_VARARRAYS
     unsigned char fodder[len];
     sodium_memzero(fodder, len);
@@ -170,10 +171,10 @@ sodium_memcmp(const void *const b1_, const void *const b2_, size_t len)
     const unsigned char *b1 = (const unsigned char *) b1_;
     const unsigned char *b2 = (const unsigned char *) b2_;
 #else
-    const volatile unsigned char *volatile b1 =
-        (const volatile unsigned char *volatile) b1_;
+    const volatile unsigned char * b1 =
+        (const volatile unsigned char *) b1_;
     const volatile unsigned char *volatile b2 =
-        (const volatile unsigned char *volatile) b2_;
+        (const volatile unsigned char *) b2_;
 #endif
     size_t                 i;
     volatile unsigned char d = 0U;
@@ -210,10 +211,10 @@ sodium_compare(const unsigned char *b1_, const unsigned char *b2_, size_t len)
     const unsigned char *b1 = b1_;
     const unsigned char *b2 = b2_;
 #else
-    const volatile unsigned char *volatile b1 =
-        (const volatile unsigned char *volatile) b1_;
-    const volatile unsigned char *volatile b2 =
-        (const volatile unsigned char *volatile) b2_;
+    const volatile unsigned char * b1 =
+        (const volatile unsigned char *) b1_;
+    const volatile unsigned char * b2 =
+        (const volatile unsigned char *) b2_;
 #endif
     size_t                 i;
     volatile unsigned char gt = 0U;
@@ -411,6 +412,8 @@ _sodium_alloc_init(void)
 int
 sodium_mlock(void *const addr, const size_t len)
 {
+    (void) len;
+    (void) addr;
 #if defined(MADV_DONTDUMP) && defined(HAVE_MADVISE)
     (void) madvise(addr, len, MADV_DONTDUMP);
 #endif
@@ -444,6 +447,8 @@ sodium_munlock(void *const addr, const size_t len)
 static int
 _mprotect_noaccess(void *ptr, size_t size)
 {
+    (void) ptr;
+    (void) size;
 #ifdef HAVE_MPROTECT
     return mprotect(ptr, size, PROT_NONE);
 #elif defined(WINAPI_DESKTOP)
@@ -458,6 +463,8 @@ _mprotect_noaccess(void *ptr, size_t size)
 static int
 _mprotect_readonly(void *ptr, size_t size)
 {
+    (void) ptr;
+    (void) size;
 #ifdef HAVE_MPROTECT
     return mprotect(ptr, size, PROT_READ);
 #elif defined(WINAPI_DESKTOP)
@@ -472,6 +479,8 @@ _mprotect_readonly(void *ptr, size_t size)
 static int
 _mprotect_readwrite(void *ptr, size_t size)
 {
+    (void) ptr;
+    (void) size;
 #ifdef HAVE_MPROTECT
     return mprotect(ptr, size, PROT_READ | PROT_WRITE);
 #elif defined(WINAPI_DESKTOP)

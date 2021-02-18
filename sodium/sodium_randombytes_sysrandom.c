@@ -360,6 +360,7 @@ randombytes_sysrandom_close(void)
 static void
 randombytes_sysrandom_buf(void * const buf, const size_t size)
 {
+    (void) buf;
     randombytes_sysrandom_stir_if_needed();
 # if defined(ULLONG_MAX) && defined(SIZE_MAX)
 #  if SIZE_MAX > ULLONG_MAX
