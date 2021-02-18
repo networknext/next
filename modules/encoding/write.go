@@ -92,3 +92,9 @@ func WriteAddress(buffer []byte, address *net.UDPAddr) {
 		buffer[18] = (byte)(port >> 8)
 	}
 }
+
+func WriteInt32(data []byte, index *int, value int32) {
+	writeValue := uint32(value) + uint32Mid
+	binary.LittleEndian.PutUint32(data[*index:], writeValue)
+	*index += 4
+}

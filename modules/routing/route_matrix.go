@@ -14,7 +14,11 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
+const RouteMatrixV1 = 1
+
 type RouteMatrix struct {
+	Version            uint32
+	CreatedAt          uint64
 	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
 	RelayAddresses     []net.UDPAddr // external IPs only
@@ -24,8 +28,9 @@ type RouteMatrix struct {
 	RelayDatacenterIDs []uint64
 	RouteEntries       []core.RouteEntry
 
-	cachedResponse      []byte
-	cachedResponseMutex sync.RWMutex
+	cachedResponse       []byte
+	cachedResponseBinary []byte
+	cachedResponseMutex  sync.RWMutex
 
 	cachedAnalysis      []byte
 	cachedAnalysisMutex sync.RWMutex
@@ -83,6 +88,167 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	return stream.Error()
+}
+
+func (m *RouteMatrix) decodeBinaryV1(index int, data []byte) error {
+	if !encoding.ReadUint64(data, &index, &m.CreatedAt) {
+		return fmt.Errorf("unable to decode created at")
+	}
+
+	var numRelays uint32
+	if !encoding.ReadUint32(data, &index, &numRelays) {
+		return fmt.Errorf("unable to decode number of relays")
+	}
+
+	m.RelayIDsToIndices = make(map[uint64]int32)
+	m.RelayIDs = make([]uint64, numRelays)
+	m.RelayAddresses = make([]net.UDPAddr, numRelays)
+	m.RelayNames = make([]string, numRelays)
+	m.RelayLatitudes = make([]float32, numRelays)
+	m.RelayLongitudes = make([]float32, numRelays)
+	m.RelayDatacenterIDs = make([]uint64, numRelays)
+
+	fmt.Println(numRelays)
+	for i := uint32(0); i < numRelays; i++ {
+		if !encoding.ReadUint64(data, &index, &m.RelayIDs[i]) {
+			return fmt.Errorf("unable to decode relay ID")
+		}
+
+		var addrSize uint8
+		if !encoding.ReadUint8(data, &index, &addrSize) {
+			return fmt.Errorf("unable to decode relay address size")
+		}
+		addrBytes := make([]byte, addrSize)
+		if !encoding.ReadBytes(data, &index, &addrBytes, uint32(addrSize)) {
+			return fmt.Errorf("unable to retrieve relay address bytes from data")
+		}
+		m.RelayAddresses[i] = *encoding.ReadAddress(addrBytes)
+
+		if !encoding.ReadString(data, &index, &m.RelayNames[i], MaxRelayNameLength) {
+			return fmt.Errorf("unable to decode relay name")
+		}
+
+		if !encoding.ReadFloat32(data, &index, &m.RelayLatitudes[i]) {
+			return fmt.Errorf("unable to decode relay latitude")
+		}
+
+		if !encoding.ReadFloat32(data, &index, &m.RelayLongitudes[i]) {
+			return fmt.Errorf("unable to decode relay longitude")
+		}
+
+		if !encoding.ReadUint64(data, &index, &m.RelayDatacenterIDs[i]) {
+			return fmt.Errorf("unable to decode relay datacenter ID")
+		}
+		m.RelayIDsToIndices[m.RelayIDs[i]] = int32(i)
+	}
+
+	var numEntries uint32
+	if !encoding.ReadUint32(data, &index, &numEntries) {
+		return fmt.Errorf("unable to decode number of route entries")
+	}
+	m.RouteEntries = make([]core.RouteEntry, numEntries)
+
+	for i := uint32(0); i < numEntries; i++ {
+		entry := &m.RouteEntries[i]
+
+		if !encoding.ReadInt32(data, &index, &entry.DirectCost) {
+			return fmt.Errorf("unable to decode route direct cost")
+		}
+		if entry.DirectCost < -1 || entry.DirectCost > InvalidRouteValue {
+			return fmt.Errorf("entry direct cost is invalid")
+		}
+
+		if !encoding.ReadInt32(data, &index, &entry.NumRoutes) {
+			return fmt.Errorf("unable to decode route direct cost")
+		}
+
+		if entry.NumRoutes < 0 {
+			return fmt.Errorf("entry numRoutes is invalid")
+		}
+
+		for i := 0; i < core.MaxRoutesPerEntry; i++ {
+			if !encoding.ReadInt32(data, &index, &entry.RouteCost[i]) {
+				return fmt.Errorf("unable to decode route cost")
+			}
+			if entry.RouteCost[i] < -1 || entry.RouteCost[i] > InvalidRouteValue {
+				return fmt.Errorf("entry route cost is invalid")
+			}
+
+			if !encoding.ReadInt32(data, &index, &entry.RouteNumRelays[i]) {
+				return fmt.Errorf("unable to decode ")
+			}
+			if entry.RouteNumRelays[i] < 0 || entry.RouteNumRelays[i] > int32(core.MaxRelaysPerRoute) {
+				return fmt.Errorf("entry routeNumRoutes is invalid")
+			}
+
+			if !encoding.ReadUint32(data, &index, &entry.RouteHash[i]) {
+				return fmt.Errorf("unable to decode route direct cost")
+			}
+
+			for j := int32(0); j < entry.RouteNumRelays[i]; j++ {
+				encoding.ReadInt32(data, &index, &entry.RouteRelays[i][j])
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *RouteMatrix) encodeBinaryV1(data []byte) error {
+	index := 0
+	encoding.WriteUint32(data, &index, RouteMatrixV1)
+	encoding.WriteUint64(data, &index, m.CreatedAt)
+
+	numRelays := uint32(len(m.RelayIDs))
+	encoding.WriteUint32(data, &index, numRelays)
+
+	for i := uint32(0); i < numRelays; i++ {
+		encoding.WriteUint64(data, &index, m.RelayIDs[i])
+		addrBytes := make([]byte, 50)
+		encoding.WriteAddress(addrBytes, &m.RelayAddresses[i])
+		encoding.WriteUint8(data, &index, uint8(len(addrBytes)))
+		encoding.WriteBytes(data, &index, addrBytes, len(addrBytes))
+		encoding.WriteString(data, &index, m.RelayNames[i], MaxRelayNameLength)
+		encoding.WriteFloat32(data, &index, m.RelayLatitudes[i])
+		encoding.WriteFloat32(data, &index, m.RelayLongitudes[i])
+		encoding.WriteUint64(data, &index, m.RelayDatacenterIDs[i])
+	}
+
+	numEntries := uint32(len(m.RouteEntries))
+	encoding.WriteUint32(data, &index, numEntries)
+
+	for i := uint32(0); i < numEntries; i++ {
+		entry := m.RouteEntries[i]
+
+		if entry.DirectCost < -1 || entry.DirectCost > InvalidRouteValue {
+			return fmt.Errorf("entry direct cost is invalid")
+		}
+		encoding.WriteInt32(data, &index, entry.DirectCost)
+
+		if entry.NumRoutes < 0 {
+			return fmt.Errorf("entry numRoutes is invalid")
+		}
+		encoding.WriteInt32(data, &index, entry.NumRoutes)
+
+		for i := 0; i < core.MaxRoutesPerEntry; i++ {
+			if entry.RouteCost[i] < -1 || entry.RouteCost[i] > InvalidRouteValue {
+				return fmt.Errorf("entry route cost is invalid")
+			}
+			encoding.WriteInt32(data, &index, entry.RouteCost[i])
+
+			if entry.RouteNumRelays[i] < 0 || entry.RouteNumRelays[i] > int32(core.MaxRelaysPerRoute) {
+				return fmt.Errorf("entry routeNumRoutes is invalid")
+			}
+			encoding.WriteInt32(data, &index, entry.RouteNumRelays[i])
+			encoding.WriteUint32(data, &index, entry.RouteHash[i])
+
+			for j := int32(0); j < entry.RouteNumRelays[i]; j++ {
+				encoding.WriteInt32(data, &index, entry.RouteRelays[i][j])
+			}
+		}
+	}
+
+	return nil
 }
 
 func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) []uint64 {
@@ -215,6 +381,18 @@ func (m *RouteMatrix) ReadFrom(reader io.Reader) (int64, error) {
 	return int64(readStream.GetBytesProcessed()), err
 }
 
+func (m *RouteMatrix) ReadFromBinary(data []byte) error {
+	index := 0
+	encoding.ReadUint32(data, &index, &m.Version)
+
+	switch m.Version {
+	case RouteMatrixV1:
+		return m.decodeBinaryV1(index, data)
+	default:
+		return fmt.Errorf("unsuported Route Matrix version: %v", m.Version)
+	}
+}
+
 func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 	writeStream, err := encoding.CreateWriteStream(bufferSize)
 	if err != nil {
@@ -227,6 +405,15 @@ func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 
 	n, err := writer.Write(writeStream.GetData()[:writeStream.GetBytesProcessed()])
 	return int64(n), err
+}
+
+func (m *RouteMatrix) WriteToBinary(data []byte) error {
+	switch m.Version {
+	case RouteMatrixV1:
+		return m.encodeBinaryV1(data)
+	default:
+		return fmt.Errorf("unsuported Route Matrix version: %v", m.Version)
+	}
 }
 
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
@@ -341,6 +528,13 @@ func (m *RouteMatrix) GetResponseData() []byte {
 	return response
 }
 
+func (m *RouteMatrix) GetResponseDataBinary() []byte {
+	m.cachedResponseMutex.RLock()
+	response := m.cachedResponseBinary
+	m.cachedResponseMutex.RUnlock()
+	return response
+}
+
 func (m *RouteMatrix) WriteResponseData(bufferSize int) error {
 	ws, err := encoding.CreateWriteStream(bufferSize)
 	if err != nil {
@@ -355,6 +549,18 @@ func (m *RouteMatrix) WriteResponseData(bufferSize int) error {
 
 	m.cachedResponseMutex.Lock()
 	m.cachedResponse = ws.GetData()[:ws.GetBytesProcessed()]
+	m.cachedResponseMutex.Unlock()
+	return nil
+}
+
+func (m *RouteMatrix) WriteResponseDataBinary(bufferSize int) error {
+	data := make([]byte, bufferSize)
+	if err := m.WriteToBinary(data); err != nil {
+		return fmt.Errorf("failed to encode route matrix in WriteResponseData(): %v", err)
+	}
+
+	m.cachedResponseMutex.Lock()
+	m.cachedResponseBinary = data
 	m.cachedResponseMutex.Unlock()
 	return nil
 }

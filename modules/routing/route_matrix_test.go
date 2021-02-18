@@ -65,6 +65,21 @@ func TestRouteMatrixSerialize(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestRouteMatrixWriteReadBinary(t *testing.T) {
+	expected := getRouteMatrix(t)
+	expected.Version = routing.RouteMatrixV1
+	data := make([]byte, 10000)
+
+	err := expected.WriteToBinary(data)
+	assert.NoError(t, err)
+
+	var actual routing.RouteMatrix
+	err = actual.ReadFromBinary(data)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, actual)
+}
+
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
