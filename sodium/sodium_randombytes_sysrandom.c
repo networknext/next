@@ -68,7 +68,7 @@
 # if defined(__cplusplus)
 extern "C"
 # endif
-# ifndef _XBOX_ONE
+# if !defined(_XBOX_ONE) && !defined(_GAMING_XBOX)
 BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 # pragma comment(lib, "advapi32.lib")
 # endif
@@ -385,7 +385,7 @@ randombytes_sysrandom_buf(void * const buf, const size_t size)
     if (size > (size_t) 0xffffffffUL) {
         sodium_misuse(); /* LCOV_EXCL_LINE */
     }
-#  ifndef _XBOX_ONE
+#  if !defined(_XBOX_ONE) && !defined(_GAMING_XBOX)
     if (! RtlGenRandom((PVOID) buf, (ULONG) size)) {
         sodium_misuse(); /* LCOV_EXCL_LINE */
     }

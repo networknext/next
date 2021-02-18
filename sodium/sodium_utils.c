@@ -18,7 +18,7 @@
 
 #ifdef _WIN32
 # include <windows.h>
-# ifndef _XBOX_ONE
+# if !defined(_XBOX_ONE) && !defined(_GAMING_XBOX)
 #  include <wincrypt.h>
 # endif
 #else

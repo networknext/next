@@ -62,7 +62,7 @@
 # if defined(__cplusplus)
 extern "C"
 # endif
-#ifndef _XBOX_ONE
+#if !defined(_XBOX_ONE) && !defined(_GAMING_XBOX)
 BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 # pragma comment(lib, "advapi32.lib")
 #endif
@@ -368,7 +368,7 @@ randombytes_salsa20_random_stir(void)
 # endif
 
 #else /* _WIN32 */
-#ifndef _XBOX_ONE
+#ifndef _XBOX_ONE && !_GAMING_XBOX
     if (! RtlGenRandom((PVOID) stream.key, (ULONG) sizeof stream.key)) {
         sodium_misuse(); /* LCOV_EXCL_LINE */
     }
