@@ -329,6 +329,12 @@ func main() {
 	// 	}
 	// }
 
+	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create service metrics", "err", err)
+		os.Exit(1)
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -342,6 +348,7 @@ func main() {
 		RedisPoolSessionMap:    redisPoolSessionMap,
 		Storage:                db,
 		Env:                    env,
+		Metrics:                serviceMetrics,
 	}
 
 	configService := jsonrpc.ConfigService{
