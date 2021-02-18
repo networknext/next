@@ -14,8 +14,8 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Debug|Gaming.Xbox.Scarlett.x64.ActiveCfg = Debug|Gaming.Xbox.Scarlett.x64
 		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Debug|Gaming.Xbox.Scarlett.x64.Build.0 = Debug|Gaming.Xbox.Scarlett.x64
-		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Profile|Gaming.Xbox.Scarlett.x64.ActiveCfg = Profile|Gaming.Xbox.Scarlett.x64
-		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Profile|Gaming.Xbox.Scarlett.x64.Build.0 = Profile|Gaming.Xbox.Scarlett.x64
+		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Profile|Gaming.Xbox.Scarlett.x64.ActiveCfg = Release|Gaming.Xbox.Scarlett.x64
+		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Profile|Gaming.Xbox.Scarlett.x64.Build.0 = Release|Gaming.Xbox.Scarlett.x64
 		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Release|Gaming.Xbox.Scarlett.x64.ActiveCfg = Release|Gaming.Xbox.Scarlett.x64
 		{E0D3A344-ABA5-4FFC-80F2-88D4384A605D}.Release|Gaming.Xbox.Scarlett.x64.Build.0 = Release|Gaming.Xbox.Scarlett.x64
 	EndGlobalSection
