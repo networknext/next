@@ -20,9 +20,14 @@ deploy-backend() {
     bootstrap='ghost_army_bootstrap.sh'
   fi
 
+  full_env_name='network-next-v3-'${ENV}
+  if [ "$ENV" = 'nrb' ]; then
+    full_env_name='network-next-new-relay-backend'
+  fi
+
   COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/$bootstrap ./bootstrap.sh && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${ARTIFACT_NAME}.${ENV}.tar.gz"
   printf "Deploying ${CUSTOMER} ${TYPE}... \n"
-  gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-${CUSTOMER} -- ${COMMAND}
+  gcloud compute --project ${full_env_name} ssh ${TYPE}-${CUSTOMER} -- ${COMMAND}
   printf "done\n"
 }
 

@@ -44,3 +44,7 @@ promotions:
     pipeline_file: production-deploy.yml
     auto_promote:
       when: branch = 'prod' AND result = 'passed'
+  - name: NRB Deployment
+      pipeline_file: nrb-deploy.yml
+      auto_promote:
+        when: branch = 'nrb' AND result = 'passed'

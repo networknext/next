@@ -52,7 +52,7 @@ func main() {
 		_ = level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
-	svc, err := rm.New(store, cfg.MatrixSvcTimeVariance, cfg.OptimizerTimeVariance)
+	svc, err := rm.New(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		os.Exit(1)
@@ -98,11 +98,28 @@ func main() {
 			}
 
 			if svc.AmMaster() {
-				err = svc.UpdateLiveRouteMatrixOptimizer()
-				if err != nil {
-					_ = level.Error(logger).Log("error", err)
+				if cfg.RB15Enabled {
+					err := svc.UpdateRelayBackendMaster()
+					if err != nil {
+						_ = level.Error(logger).Log("error", err)
+					}
+					currentMBAddr := svc.GetRelayBackendMasterAddress()
+					err = svc.UpdateLiveRouteMatrixBackend(fmt.Sprintf("http://%s/route_matrix", currentMBAddr), storage.MatrixTypeNormal)
+					if err != nil {
+						_ = level.Error(logger).Log("error", err)
+					}
+					err = svc.UpdateLiveRouteMatrixBackend(fmt.Sprintf("http://%s/route_matrix_valve", currentMBAddr), storage.MatrixTypeValve)
+					if err != nil {
+						_ = level.Error(logger).Log("error", err)
+					}
 				}
 
+				if cfg.RB20Enabled {
+					err = svc.UpdateLiveRouteMatrixOptimizer()
+					if err != nil {
+						_ = level.Error(logger).Log("error", err)
+					}
+				}
 				err = svc.CleanUpDB()
 				if err != nil {
 					_ = level.Error(logger).Log("error", err)

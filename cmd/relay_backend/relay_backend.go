@@ -172,45 +172,60 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	backend15, err := envvar.GetBool("FEATURE_RELAY_BACKEND_1.5", false)
+	backend15, err := envvar.GetBool("FEATURE_RB15_ENABLED", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	backend15NoInit, err := envvar.GetBool("FEATURE_RELAY_BACKEND_1.5_NO_INIT", false)
+	backend15NoInit, err := envvar.GetBool("FEATURE_RB15_NO_INIT", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	var matrixStore storage.MatrixStore
+	backendMaster := false
 
 	//update redis so relay frontend knows this backend is live
 	if backend15 {
-		if !envvar.Exists("FEATURE_RELAY_BACKEND_1.5_ADDRESSES") {
-			level.Error(logger).Log("MATRIX_STORE_ADDRESS not set")
-			return 1
-		}
-		backendAddresses := envvar.GetList("FEATURE_RELAY_BACKEND_1.5_ADDRESSES", []string{})
+
 		var backendAddr string
-		addrFound := false
-		host, _ := os.Hostname()
-		addrs, _ := net.LookupIP(host)
-		for _, addr := range addrs {
-			if ipv4 := addr.To4(); ipv4 != nil {
-				for _, addr := range backendAddresses {
-					if ipv4.String() == addr {
-						backendAddr = addr
-						addrFound = true
-						break
+		if env == "local" {
+			backendAddr = "127.0.0.1:30002"
+		} else {
+
+			if !envvar.Exists("FEATURE_RB15_ADDRESSES") {
+				level.Error(logger).Log("FEATURE_RB15_ENABLED_ADDRESSES not set")
+				return 1
+			}
+			backendAddresses := envvar.GetList("FEATURE_RB15_ADDRESSES", []string{})
+
+			addrFound := false
+			host, _ := os.Hostname()
+			addrs, _ := net.LookupIP(host)
+			for _, addr := range addrs {
+				if ipv4 := addr.To4(); ipv4 != nil {
+					for _, addr := range backendAddresses {
+						if ipv4.String() == addr {
+							if addr == "127.0.0.1" {
+								fmt.Sprintf("%s:30002", addr)
+							} else {
+								backendAddr = addr
+							}
+							addrFound = true
+							break
+						}
 					}
 				}
+				if addrFound {
+					break
+				}
 			}
-			if addrFound {
-				break
+
+			if !addrFound {
+				level.Error(logger).Log("relay backend address not found")
 			}
-		}
-		if !addrFound {
-			level.Error(logger).Log("relay backend address not found")
 		}
 
 		if !envvar.Exists("MATRIX_STORE_ADDRESS") {
@@ -230,7 +245,8 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log(err.Error())
 			return 1
 		}
-		matrixStore, err := storage.NewRedisMatrixStore(matrixStoreAddress, matrixStoreReadTimeout, matrixStoreWriteTimeout, 0)
+
+		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, matrixStoreReadTimeout, matrixStoreWriteTimeout, 5*time.Second)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
@@ -246,9 +262,30 @@ func mainReturnWithCode() int {
 				syncTimer.Run()
 				ld.UpdatedAt = time.Now()
 				err := matrixStore.SetRelayBackendLiveData(ld)
-				level.Error(logger).Log(err)
+				if err != nil {
+					fmt.Println("errored at push")
+					level.Error(logger).Log(err)
+				}
 			}
 		}()
+
+		go func() {
+			syncTimer := helpers.NewSyncTimer(time.Second)
+			for {
+				syncTimer.Run()
+				rbMasterData, err := matrixStore.GetRelayBackendMaster()
+				if err != nil {
+					level.Error(logger).Log(err)
+					continue
+				}
+				if rbMasterData.Id == gcpProjectID && rbMasterData.Address == backendAddr {
+					backendMaster = true
+				} else {
+					backendMaster = false
+				}
+			}
+		}()
+
 	}
 
 	// Create the relay map
@@ -314,6 +351,13 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
+
+				if backend15 {
+					if !backendMaster {
+						continue
+					}
+				}
+
 				cpy := statsdb.MakeCopy()
 				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss))
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
@@ -371,6 +415,12 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
+
+				if backend15 {
+					if !backendMaster {
+						continue
+					}
+				}
 
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
@@ -697,6 +747,11 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
+			if backend15 {
+				if !backendMaster {
+					continue
+				}
+			}
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -911,8 +966,6 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
-	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
-	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
@@ -920,8 +973,18 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
+	if backend15 {
+		//new backend handlers
+		router.HandleFunc("/relay_init", transport.NewRelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
+		router.HandleFunc("/relay_update", transport.NewRelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	} else {
+		//old backend handlers
+		router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
+		router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	}
+
 	go func() {
-		port := envvar.Get("PORT", "30000")
+		port := envvar.Get("PORT", "30002")
 
 		level.Info(logger).Log("addr", ":"+port)
 

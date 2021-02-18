@@ -15,6 +15,8 @@ import (
 )
 
 type RouteMatrix struct {
+	CreatedAt          uint64
+	CreatedBy          uint64
 	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
 	RelayAddresses     []net.UDPAddr // external IPs only
@@ -82,6 +84,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	stream.SerializeUint64(&m.CreatedAt)
 	return stream.Error()
 }
 

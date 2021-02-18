@@ -16,15 +16,13 @@ import (
 )
 
 type RelayFrontendSvc struct {
+	cfg                         *Config
 	id                          uint64
 	store                       storage.MatrixStore
 	createdAt                   time.Time
 	currentlyMaster             bool
 	currentMasterOptimizer      uint64
 	currentMasterBackendAddress string
-	matrixSvcTimeVariance       time.Duration
-	optimizerTimeVariance       time.Duration
-	relayAddresses              []string
 
 	// cached matrix
 	routeMatrix      []byte
@@ -32,16 +30,15 @@ type RelayFrontendSvc struct {
 	matrixMux        sync.RWMutex
 }
 
-func New(store storage.MatrixStore, matrixSvcTimeVariance, optimizerTimeVariance time.Duration) (*RelayFrontendSvc, error) {
+func New(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
 	rand.Seed(time.Now().UnixNano())
 
 	r := new(RelayFrontendSvc)
+	r.cfg = cfg
 	r.id = rand.Uint64()
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.currentlyMaster = false
-	r.matrixSvcTimeVariance = matrixSvcTimeVariance
-	r.optimizerTimeVariance = optimizerTimeVariance
 
 	return r, nil
 }
@@ -79,8 +76,8 @@ func (r *RelayFrontendSvc) DetermineMaster() error {
 		return svcError(err)
 	}
 
-	if !isMasterMatrixSvcValid(matrixSvcs, masterId, r.matrixSvcTimeVariance) {
-		masterId = chooseMatrixSvcMaster(matrixSvcs, r.matrixSvcTimeVariance)
+	if !isMasterMatrixSvcValid(matrixSvcs, masterId, r.cfg.MatrixSvcTimeVariance) {
+		masterId = chooseMatrixSvcMaster(matrixSvcs, r.cfg.MatrixSvcTimeVariance)
 	}
 
 	if r.id != masterId {
@@ -109,8 +106,8 @@ func (r *RelayFrontendSvc) UpdateLiveRouteMatrixOptimizer() error {
 		return svcError(err)
 	}
 
-	if !isMasterOptimizerValid(routeMatrices, masterOptimizerID, r.optimizerTimeVariance) {
-		masterOptimizerID = chooseOptimizerMaster(routeMatrices, r.optimizerTimeVariance)
+	if !isMasterOptimizerValid(routeMatrices, masterOptimizerID, r.cfg.OptimizerTimeVariance) {
+		masterOptimizerID = chooseOptimizerMaster(routeMatrices, r.cfg.OptimizerTimeVariance)
 	}
 
 	if r.currentMasterOptimizer != masterOptimizerID {
@@ -130,7 +127,7 @@ func (r *RelayFrontendSvc) UpdateLiveRouteMatrixOptimizer() error {
 }
 
 func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
-	rbArr, err := r.store.GetRelayBackendLiveData(r.relayAddresses)
+	rbArr, err := r.store.GetRelayBackendLiveData(r.cfg.RelayBackendAddresses)
 	if err != nil {
 		return err
 	}
@@ -156,6 +153,10 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 		}
 	}
 	return nil
+}
+
+func (r *RelayFrontendSvc) GetRelayBackendMasterAddress() string {
+	return r.currentMasterBackendAddress
 }
 
 func (r *RelayFrontendSvc) UpdateLiveRouteMatrixBackend(address, matrixType string) error {
@@ -198,7 +199,7 @@ func (r *RelayFrontendSvc) CleanUpDB() error {
 	}
 
 	for _, m := range matrixSvcs {
-		if currentTime.Sub(m.UpdatedAt) > r.matrixSvcTimeVariance {
+		if currentTime.Sub(m.UpdatedAt) > r.cfg.MatrixSvcTimeVariance {
 			err := r.store.DeleteMatrixSvc(m.ID)
 			if err != nil {
 				return err
@@ -212,7 +213,7 @@ func (r *RelayFrontendSvc) CleanUpDB() error {
 	}
 
 	for _, m := range opMatrices {
-		if currentTime.Sub(m.CreatedAt) > r.optimizerTimeVariance {
+		if currentTime.Sub(m.CreatedAt) > r.cfg.OptimizerTimeVariance {
 			err := r.store.DeleteOptimizerMatrix(m.OptimizerID, m.Type)
 			if err != nil {
 				return err

@@ -300,7 +300,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	go func() {
-		port := envvar.Get("PORT", "30005")
+		port := envvar.Get("PORT", "30003")
 
 		level.Info(logger).Log("addr", ":"+port)
 

@@ -204,7 +204,7 @@ func (r *RedisMatrixStore) SetRelayBackendLiveData(data RelayBackendLiveData) er
 
 	conn := r.pool.Get()
 	key := fmt.Sprintf("%s-%s", relayBackendLiveData, data.Address)
-	_, err = conn.Do("SET", key, bin, "EX", r.matrixTimeout.Milliseconds())
+	_, err = conn.Do("SET", key, bin, "PX", r.matrixTimeout.Milliseconds())
 	return err
 }
 

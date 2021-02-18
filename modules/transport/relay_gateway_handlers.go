@@ -253,7 +253,6 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
 		if relay.State != routing.RelayStateEnabled {
 			if params.RB15NoInit {
-				fmt.Println("noinit")
 				err, errCode := initRelayOnGateway(&relay, relayUpdateRequest.RelayVersion, localLogger, params)
 				if err != nil {
 					http.Error(writer, err.Error(), errCode)

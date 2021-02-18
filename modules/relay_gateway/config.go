@@ -17,6 +17,9 @@ type Config struct {
 	RelayStoreWriteTimeout time.Duration
 	RelayStoreRelayTimeout time.Duration
 	RelayBackendAddresses  []string
+	RB15Enabled            bool
+	RB15NoInit             bool
+	RB2Enabled             bool
 }
 
 func NewConfig() (*Config, error) {
@@ -64,8 +67,32 @@ func NewConfig() (*Config, error) {
 	}
 	cfg.PublisherSendBuffer = publisherSendBuffer
 
-	relayBackendAddresses := envvar.GetList("RELAY_BACKEND_ADDRESSES", []string{"127.0.0.1:5555"})
-	cfg.RelayBackendAddresses = relayBackendAddresses
+	rb15Enabled, err := envvar.GetBool("FEATURE_RB15_ENABLED", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.RB15Enabled = rb15Enabled
+
+	if rb15Enabled {
+		if exists := envvar.Exists("FEATURE_RELAY_BACKEND_15_ADDRESSES"); !exists {
+
+			return nil, fmt.Errorf("FEATURE_RELAY_BACKEND_15_ADDRESSES not set")
+		}
+		relayBackendAddresses := envvar.GetList("FEATURE_RELAY_BACKEND_15_ADDRESSES", []string{})
+		cfg.RelayBackendAddresses = relayBackendAddresses
+	}
+
+	rb15NoInit, err := envvar.GetBool("FEATURE_RB15_NO_INIT", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.RB15Enabled = rb15NoInit
+
+	rb2Enabled, err := envvar.GetBool("FEATURE_RB20_ENABLED", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.RB2Enabled = rb2Enabled
 
 	return cfg, nil
 }

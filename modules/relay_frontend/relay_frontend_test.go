@@ -41,11 +41,12 @@ func testOptimizerMatrices() []storage.Matrix {
 func TestNew(t *testing.T) {
 	t.Parallel()
 	store := storage.MatrixStoreMock{}
-	svc, err := New(&store, timeVariance(10), timeVariance(15))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(10), OptimizerTimeVariance: timeVariance(15)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
-	assert.Equal(t, timeVariance(10), svc.matrixSvcTimeVariance)
-	assert.Equal(t, timeVariance(15), svc.optimizerTimeVariance)
+	assert.Equal(t, timeVariance(10), cfg.MatrixSvcTimeVariance)
+	assert.Equal(t, timeVariance(15), cfg.OptimizerTimeVariance)
 	assert.Equal(t, &store, svc.store)
 	assert.False(t, svc.currentlyMaster)
 	assert.NotEqual(t, 0, svc.id)
@@ -63,7 +64,8 @@ func TestRouteMatrixSvc_UpdateSvcDB(t *testing.T) {
 		}
 		return nil
 	}}
-	svc, err := New(&store, 5, 5)
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(10), OptimizerTimeVariance: timeVariance(15)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	svc.id = 5
 	svc.createdAt = createdTime
@@ -75,7 +77,8 @@ func TestRouteMatrixSvc_UpdateSvcDB(t *testing.T) {
 func TestRouteMatrixSvc_AmMaster(t *testing.T) {
 	t.Parallel()
 	store := storage.MatrixStoreMock{}
-	svc, _ := New(&store, timeVariance(10), timeVariance(15))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(10), OptimizerTimeVariance: timeVariance(15)}
+	svc, _ := New(&store, cfg)
 	assert.False(t, svc.AmMaster())
 	svc.currentlyMaster = true
 	assert.True(t, svc.AmMaster())
@@ -94,7 +97,8 @@ func TestRouteMatrixSvc_DetermineMaster_NotMaster(t *testing.T) {
 			return fmt.Errorf("should not be called")
 		},
 	}
-	svc, err := New(&store, timeVariance(4000), timeVariance(15))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(40000), OptimizerTimeVariance: timeVariance(15)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	svc.id = 1
 
@@ -116,7 +120,8 @@ func TestRouteMatrixSvc_DetermineMaster_ChosenMasterNotCurrent(t *testing.T) {
 			return nil
 		},
 	}
-	svc, err := New(&store, timeVariance(2000), timeVariance(15))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(2000), OptimizerTimeVariance: timeVariance(15)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	svc.id = 2
 	assert.False(t, svc.currentlyMaster)
@@ -138,7 +143,8 @@ func TestRouteMatrixSvc_DetermineMaster_IsCurrentMaster(t *testing.T) {
 			return fmt.Errorf("should not be called")
 		},
 	}
-	svc, err := New(&store, timeVariance(4000), timeVariance(15))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(4000), OptimizerTimeVariance: timeVariance(15)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	svc.id = 3
 	svc.currentlyMaster = true
@@ -167,7 +173,8 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_OptimizerMasterCurrent(t *testing.
 		},
 	}
 
-	svc, err := New(&store, timeVariance(10), timeVariance(4000))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(10), OptimizerTimeVariance: timeVariance(4000)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	svc.currentMasterOptimizer = 3
 
@@ -198,7 +205,8 @@ func TestRouteMatrixSvc_UpdateLiveRouteMatrix_ChooseOptimizerMaster(t *testing.T
 		},
 	}
 
-	svc, err := New(&store, timeVariance(10), timeVariance(2000))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(10), OptimizerTimeVariance: timeVariance(2000)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	svc.currentMasterOptimizer = 3
 
@@ -271,7 +279,8 @@ func TestRouteMatrixSvc_CleanUpDB(t *testing.T) {
 		},
 	}
 
-	svc, err := New(&store, timeVariance(4000), timeVariance(2000))
+	cfg := &Config{MatrixSvcTimeVariance: timeVariance(4000), OptimizerTimeVariance: timeVariance(2000)}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 
 	err = svc.CleanUpDB()
@@ -318,7 +327,8 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 		},
 	}
 
-	svc, err := New(&store, time.Second, time.Second)
+	cfg := &Config{MatrixSvcTimeVariance: time.Second, OptimizerTimeVariance: time.Second}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 
 	//rb2 should be master
@@ -364,7 +374,8 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 		},
 	}
 
-	svc, err := New(&store, time.Second, time.Second)
+	cfg := &Config{MatrixSvcTimeVariance: time.Second, OptimizerTimeVariance: time.Second}
+	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 
 	svc.currentMasterBackendAddress = rb2.Address
