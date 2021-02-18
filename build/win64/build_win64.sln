@@ -1,29 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.852
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29503.13
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next-win64-3.4.4", "next\next.vcxproj", "{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}"
-	ProjectSection(ProjectDependencies) = postProject
-		{7EFBF022-3F30-4987-B559-CD3157277029} = {7EFBF022-3F30-4987-B559-CD3157277029}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sodium", "sodium\sodium.vcxproj", "{7EFBF022-3F30-4987-B559-CD3157277029}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next-win64-4.0.9", "next.vcxproj", "{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Win64 = Debug|Win64
-		Release|Win64 = Release|Win64
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|Win64.ActiveCfg = Debug|x64
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|Win64.Build.0 = Debug|x64
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|Win64.ActiveCfg = Release|x64
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|Win64.Build.0 = Release|x64
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Debug|Win64.ActiveCfg = Debug|x64
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Debug|Win64.Build.0 = Debug|x64
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Release|Win64.ActiveCfg = Release|x64
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Release|Win64.Build.0 = Release|x64
+		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|x64.ActiveCfg = Debug|x64
+		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|x64.Build.0 = Debug|x64
+		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|x64.ActiveCfg = Release|x64
+		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
