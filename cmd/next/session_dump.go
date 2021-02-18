@@ -140,6 +140,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"RelayWentAway",
 		"RouteLost",
 		"Debug String",
+		"ClientToServerPacketsSent",
+		"ServerToClientPacketsSent",
 	})
 
 	for _, billingEntry := range newRows {
@@ -440,6 +442,16 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		if billingEntry.MultipathRestricted.Bool {
 			multipathRestricted = "true"
 		}
+		// ClientToServerPacketsSent
+		clientToServerPacketsSent := ""
+		if billingEntry.ClientToServerPacketsSent.Valid {
+			clientToServerPacketsSent = fmt.Sprintf("%d", billingEntry.ClientToServerPacketsSent.Int64)
+		}
+		// ServerToClientPacketsSent
+		serverToClientPacketsSent := ""
+		if billingEntry.ServerToClientPacketsSent.Valid {
+			serverToClientPacketsSent = fmt.Sprintf("%d", billingEntry.ServerToClientPacketsSent.Int64)
+		}
 
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
@@ -502,6 +514,8 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			relayWentAway,
 			routeLost,
 			debug,
+			clientToServerPacketsSent,
+			serverToClientPacketsSent,
 		})
 	}
 
@@ -587,6 +601,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	nearRelayRTTs,
 	nearRelayJitters,
 	nearRelayPacketLosses,
+	tags,
 	relayWentAway,
 	routeLost,
 	mispredicted,
@@ -596,7 +611,8 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	nextLatencyTooHigh,
 	routeChanged,
 	commitVeto,
-	tags
+	clientToServerPacketsSent,
+	serverToClientPacketsSent
     from `))
 
 	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {

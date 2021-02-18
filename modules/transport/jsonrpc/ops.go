@@ -606,6 +606,7 @@ type relay struct {
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
+	Notes               string                `json:"notes"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
@@ -639,6 +640,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
 			Type:                r.Type,
+			Notes:               r.Notes,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -1274,6 +1276,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		StartDate:           routingRelay.StartDate,
 		EndDate:             routingRelay.EndDate,
 		Type:                routingRelay.Type,
+		Notes:               routingRelay.Notes,
 		DatabaseID:          routingRelay.DatabaseID,
 		DatacenterID:        routingRelay.Datacenter.ID,
 	}
