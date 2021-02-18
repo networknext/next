@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/networknext/backend/modules/envvar"
 
 	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
@@ -351,6 +354,14 @@ func main() {
 			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
+
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var PORT must be set")
@@ -359,7 +370,7 @@ func main() {
 
 			level.Info(logger).Log("addr", ":"+port)
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
