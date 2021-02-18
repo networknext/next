@@ -63,10 +63,10 @@ fe25519_add(fe25519 h, const fe25519 f, const fe25519 g)
     h[9] = h9;
 }
 
-#if defined(__ORBIS__) || defined(__PROSPERO__)
+#if defined(__ORBIS__) || defined(__PROSPERO__) || defined(NN_NINTENDO_SDK)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
-#endif // #if defined(__ORBIS__) || defined(__PROSPERO__)
+#endif // #if defined(__ORBIS__) || defined(__PROSPERO__) || defined(NN_NINTENDO_SDK)
 
 /*
  h = f - g
