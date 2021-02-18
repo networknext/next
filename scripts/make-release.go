@@ -115,6 +115,38 @@ func main() {
 	bash("cp %s/next-xboxone-%s.dll %s/%s/next-xboxone-%s.dll", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-xboxone-%s.exp %s/%s/next-xboxone-%s.exp", libdir, version, basedir, libdir, version)
 
+	// copy across the debug gdk x1 libraries
+	libdir = "lib/GDK-XBoxOne/Debug"
+	bash("mkdir -p %s/%s", basedir, libdir)
+	bash("cp %s/next-gdk-xboxone-%s.lib %s/%s/next-gdk-xboxone-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-xboxone-%s.pdb %s/%s/next-gdk-xboxone-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-xboxone-%s.dll %s/%s/next-gdk-xboxone-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-xboxone-%s.exp %s/%s/next-gdk-xboxone-%s.exp", libdir, version, basedir, libdir, version)
+
+	// copy across the release gdk x1 libraries
+	libdir = "lib/GDK-XBoxOne/Release"
+	bash("mkdir -p %s/%s", basedir, libdir)
+	bash("cp %s/next-gdk-xboxone-%s.lib %s/%s/next-gdk-xboxone-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-xboxone-%s.pdb %s/%s/next-gdk-xboxone-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-xboxone-%s.dll %s/%s/next-gdk-xboxone-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-xboxone-%s.exp %s/%s/next-gdk-xboxone-%s.exp", libdir, version, basedir, libdir, version)
+
+	// copy across the debug gdk seriesx libraries
+	libdir = "lib/GDK-SeriesX/Debug"
+	bash("mkdir -p %s/%s", basedir, libdir)
+	bash("cp %s/next-gdk-seriesx-%s.lib %s/%s/next-gdk-seriesx-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-seriesx-%s.pdb %s/%s/next-gdk-seriesx-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-seriesx-%s.dll %s/%s/next-gdk-seriesx-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-seriesx-%s.exp %s/%s/next-gdk-seriesx-%s.exp", libdir, version, basedir, libdir, version)
+
+	// copy across the release gdk seriesx libraries
+	libdir = "lib/GDK-SeriesX/Release"
+	bash("mkdir -p %s/%s", basedir, libdir)
+	bash("cp %s/next-gdk-seriesx-%s.lib %s/%s/next-gdk-seriesx-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-seriesx-%s.pdb %s/%s/next-gdk-seriesx-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-seriesx-%s.dll %s/%s/next-gdk-seriesx-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-gdk-seriesx-%s.exp %s/%s/next-gdk-seriesx-%s.exp", libdir, version, basedir, libdir, version)
+
 	// copy across the debug ps4 libraries
 	libdir = "lib/Playstation4/Debug"
 	bash("mkdir -p %s/%s", basedir, libdir)
@@ -128,6 +160,20 @@ func main() {
 	bash("cp %s/next-ps4-%s_stub_weak.a %s/%s/next-ps4-%s_stub_weak.a", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-ps4-%s_stub.a %s/%s/next-ps4-%s_stub.a", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-ps4-%s.prx %s/%s/next-ps4-%s.prx", libdir, version, basedir, libdir, version)
+
+	// copy across the debug ps5 libraries
+	libdir = "lib/Playstation5/Debug"
+	bash("mkdir -p %s/%s", basedir, libdir)
+	bash("cp %s/next-ps5-%s_stub_weak.a %s/%s/next-ps5-%s_stub_weak.a", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-ps5-%s_stub.a %s/%s/next-ps5-%s_stub.a", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-ps5-%s.prx %s/%s/next-ps5-%s.prx", libdir, version, basedir, libdir, version)
+
+	// copy across the release ps5 libraries
+	libdir = "lib/Playstation5/Release"
+	bash("mkdir -p %s/%s", basedir, libdir)
+	bash("cp %s/next-ps5-%s_stub_weak.a %s/%s/next-ps5-%s_stub_weak.a", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-ps5-%s_stub.a %s/%s/next-ps5-%s_stub.a", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-ps5-%s.prx %s/%s/next-ps5-%s.prx", libdir, version, basedir, libdir, version)
 
 	// copy across the debug nx64 libraries
 	libdir = "lib/NintendoSwitch-NX64/Debug"
@@ -175,11 +221,13 @@ func main() {
 
 	// copy across the ps4 build solution
 	bash("mkdir -p %s/build/ps4", basedir)
-	bash("mkdir -p %s/build/ps4/next", basedir)
-	bash("mkdir -p %s/build/ps4/sodium", basedir)
 	bash("cp build/ps4/build_ps4.sln %s/build/ps4", basedir)
-	bash("cp build/ps4/next/next.vcxproj %s/build/ps4/next", basedir)
-	bash("cp build/ps4/sodium/sodium.vcxproj %s/build/ps4/sodium", basedir)
+	bash("cp build/ps4/next.vcxproj %s/build/ps4", basedir)
+
+	// copy across the ps5 build solution
+	bash("mkdir -p %s/build/ps5", basedir)
+	bash("cp build/ps5/build_ps5.sln %s/build/ps5", basedir)
+	bash("cp build/ps5/next.vcxproj %s/build/ps5", basedir)
 
 	// copy across the xboxone build solution
 	bash("mkdir -p %s/build/xboxone", basedir)
@@ -254,8 +302,12 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_ios.cpp", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_ps4.h", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_ps4.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_ps5.h", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_ps5.cpp", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_xboxone.h", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_xboxone.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_gdk.h", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_gdk.cpp", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_switch.h", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_switch.cpp", basedir))
 
@@ -297,6 +349,14 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation4/Release/next-ps4-%s_stub.a", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation4/Release/next-ps4-%s.prx", basedir, version))
 
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation5/Debug/next-ps5-%s_stub_weak.a", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation5/Debug/next-ps5-%s_stub.a", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation5/Debug/next-ps5-%s.prx", basedir, version))
+
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation5/Release/next-ps5-%s_stub_weak.a", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation5/Release/next-ps5-%s_stub.a", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation5/Release/next-ps5-%s.prx", basedir, version))
+
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX64/Debug/next-nx64-%s.nro", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX64/Debug/next-nx64-%s.nrr", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX64/Debug/next-nx64-%s.nrs", basedir, version))
@@ -322,8 +382,10 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/build/win32/sodium/sodium.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/build_ps4.sln", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/next/next.vcxproj", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/sodium/sodium.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/next.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/build/ps5/build_ps5.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/ps5/next.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/xboxone/build_xboxone.sln", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/build/xboxone/next/next.vcxproj", basedir))
@@ -365,16 +427,26 @@ func main() {
 	// make version without consoles
 
 	bash("rm %s/source/*ps4*", basedir)
+	bash("rm %s/source/*ps5*", basedir)
 	bash("rm %s/source/*switch*", basedir)
 	bash("rm %s/source/*xboxone*", basedir)
+	bash("rm %s/source/*gdk*", basedir)
+
 	bash("rm -rf %s/lib/NintendoSwitch-NX32", basedir)
 	bash("rm -rf %s/lib/NintendoSwitch-NX64", basedir)
 	bash("rm -rf %s/lib/Playstation4", basedir)
+	bash("rm -rf %s/lib/Playstation5", basedir)
 	bash("rm -rf %s/lib/XBoxOne", basedir)
+	bash("rm -rf %s/lib/GDK-XBoxOne", basedir)
+	bash("rm -rf %s/lib/GDK-SeriesX", basedir)
+
 	bash("rm -rf %s/build/nx32", basedir)
 	bash("rm -rf %s/build/nx64", basedir)
 	bash("rm -rf %s/build/ps4", basedir)
+	bash("rm -rf %s/build/ps5", basedir)
 	bash("rm -rf %s/build/xboxone", basedir)
+	bash("rm -rf %s/build/gdk-xboxone", basedir)
+	bash("rm -rf %s/build/gdk-seriesx", basedir)
 
 	bash("zip -r -9 next-%s.zip %s", version, basedir)
 
