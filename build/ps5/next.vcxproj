@@ -250,6 +250,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>..\..\lib\Playstation5\Debug\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'">
@@ -261,6 +262,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a</AdditionalDependencies>
+      <OutputFile>..\..\lib\Playstation5\Release\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <Import Condition="'$(ConfigurationType)' == 'Makefile' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets')" Project="$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets" />
