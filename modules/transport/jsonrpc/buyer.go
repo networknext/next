@@ -1298,7 +1298,8 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 }
 
 type DatacenterMapsArgs struct {
-	ID uint64 `json:"buyer_id"`
+	ID    uint64 `json:"buyer_id"`
+	HexID string `json:"hexBuyerID"`
 }
 
 type DatacenterMapsFull struct {
@@ -1319,9 +1320,23 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		return nil
 	}
 
+	var buyerID uint64
+	var err error
+
+	if args.HexID != "" {
+		buyerID, err = strconv.ParseUint(args.HexID, 16, 64)
+		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse hex buyer ID: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	} else {
+		buyerID = args.ID
+	}
+
 	var dcm map[uint64]routing.DatacenterMap
 
-	dcm = s.Storage.GetDatacenterMapsForBuyer(args.ID)
+	dcm = s.Storage.GetDatacenterMapsForBuyer(buyerID)
 
 	var replySlice []DatacenterMapsFull
 	for _, dcMap := range dcm {
