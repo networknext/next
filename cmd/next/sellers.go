@@ -93,6 +93,7 @@ func getSellerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	sellerInfo += "  ShortName    : " + reply.Seller.ShortName + "\n"
 	sellerInfo += "  Egress Price : " + fmt.Sprintf("%4.2f", reply.Seller.EgressPriceNibblinsPerGB.ToDollars()) + "\n"
 	sellerInfo += "  Ingress Price: " + fmt.Sprintf("%4.2f", reply.Seller.IngressPriceNibblinsPerGB.ToDollars()) + "\n"
+	sellerInfo += "         Secret: " + fmt.Sprintf("%t", reply.Seller.Secret) + "\n"
 
 	fmt.Println(sellerInfo)
 	os.Exit(0)
