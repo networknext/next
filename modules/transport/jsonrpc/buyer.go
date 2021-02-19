@@ -1390,6 +1390,41 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 
 }
 
+type JSAddDatacenterMapArgs struct {
+	HexBuyerID      string `json:"hexBuyerID"`
+	HexDatacenterID string `json:"hexDatacenterID"`
+	Alias           string `json:"alias"`
+}
+
+type JSAddDatacenterMapReply struct{}
+
+func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacenterMapArgs, reply *JSAddDatacenterMapReply) error {
+
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	dcMap := routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+		Alias:        args.Alias,
+	}
+
+	return s.Storage.AddDatacenterMap(ctx, dcMap)
+
+}
+
 type AddDatacenterMapArgs struct {
 	DatacenterMap routing.DatacenterMap
 }
