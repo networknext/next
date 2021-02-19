@@ -595,3 +595,7 @@ func (m *InMemory) UpdateCustomer(ctx context.Context, customerID string, field 
 func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenter not impemented in InMemory storer")
 }
+
+func (fs *InMemory) UpdateDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error {
+	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
+}
