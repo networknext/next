@@ -66,11 +66,12 @@ type SQL struct {
 	buyerIDs      map[int64]uint64
 	sellerIDs     map[int64]string
 
-	datacenterIDsMutex sync.RWMutex
-	relayIDsMutex      sync.RWMutex
-	customerIDsMutex   sync.RWMutex
-	buyerIDsMutex      sync.RWMutex
-	sellerIDsMutex     sync.RWMutex
+	datacenterIDsMutex  sync.RWMutex
+	relayIDsMutex       sync.RWMutex
+	customerIDsMutex    sync.RWMutex
+	buyerIDsMutex       sync.RWMutex
+	sellerIDsMutex      sync.RWMutex
+	datacenterMapsMutex sync.RWMutex
 
 	SyncSequenceNumber int64
 }
@@ -1528,13 +1529,14 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	return nil
 }
 
-// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
-// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
+// GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
+// (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
+// an empty map if there are no aliases for that buyerID.
 func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
 	db.datacenterMapMutex.RLock()
 	defer db.datacenterMapMutex.RUnlock()
 
-	// buyer can have multiple dc aliases
+	// buyer can have multiple dc maps but only one alias per datacenter
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.BuyerID == buyerID {
@@ -1601,6 +1603,91 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	return nil
 }
 
+func (db *SQL) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+	var err error
+
+	dcmID := crypto.HashID(fmt.Sprintf("%x", buyerID) + fmt.Sprintf("%x", datacenterID))
+	workingDatacenterMap, ok := db.datacenterMaps[dcmID]
+	if !ok {
+		return fmt.Errorf("Datacenter map for buyerID %016x, datacenterID %016x does not exist", buyerID, datacenterID)
+	}
+
+	// if the dcMap exists then the buyer and datacenter IDs are legit
+	originalDatacenter := db.datacenters[datacenterID]
+	originalBuyer := db.buyers[buyerID]
+
+	switch field {
+	case "HexDatacenterID":
+		hexDatacenterID, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		newDatacenterID, err := strconv.ParseUint(hexDatacenterID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Could not parse hexDatacenterID: %v", value)
+		}
+
+		newDatacenter := db.datacenters[newDatacenterID]
+
+		updateSQL.Write([]byte("update datacenter_maps set datacenter_id=$1 where datacenter_id=$2 and buyer_id=$3"))
+		args = append(args, newDatacenter.DatabaseID, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
+		workingDatacenterMap.DatacenterID = newDatacenterID
+
+		// changing the datacenter ID in the alias changes the datacenter map ID so
+		// delete the old one and add the new one
+		db.datacenterMapsMutex.Lock()
+		delete(db.datacenterMaps, dcmID)
+		dcmID = crypto.HashID(fmt.Sprintf("%x", buyerID) + fmt.Sprintf("%x", newDatacenterID))
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
+	case "Alias":
+		alias, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update datacenter_maps set alias=$1 where datacenter_id=$2 and buyer_id=$3"))
+		args = append(args, alias, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
+		workingDatacenterMap.Alias = alias
+
+		db.datacenterMapsMutex.Lock()
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenterMap SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying datacenter map record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
@@ -1622,7 +1709,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 
 	db.datacenterMapMutex.RLock()
 	dcMap, ok := db.datacenterMaps[id]

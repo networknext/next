@@ -663,7 +663,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
 		}
 
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+		id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 

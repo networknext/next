@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -714,6 +715,69 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, float32(80.3), checkDatacenter.Location.Longitude)
 		assert.Equal(t, float32(130.3), checkDatacenter.Location.Latitude)
+	})
+
+	t.Run("UpdateDatacenterMap", func(t *testing.T) {
+		did1 := crypto.HashID("some.locale.name.1")
+		datacenter1 := routing.Datacenter{
+			ID:   did1,
+			Name: "some.locale.name.1",
+			Location: routing.Location{
+				Latitude:  73.5,
+				Longitude: 10.5,
+			},
+			SellerID: sellerWithID.DatabaseID,
+		}
+
+		err = db.AddDatacenter(ctx, datacenter1)
+		assert.NoError(t, err)
+
+		_, err := db.Datacenter(did1)
+		assert.NoError(t, err)
+
+		did2 := crypto.HashID("some.locale.name.2")
+		datacenter2 := routing.Datacenter{
+			ID:   did2,
+			Name: "some.locale.name.2",
+			Location: routing.Location{
+				Latitude:  73.5,
+				Longitude: 10.5,
+			},
+			SellerID: sellerWithID.DatabaseID,
+		}
+
+		err = db.AddDatacenter(ctx, datacenter2)
+		assert.NoError(t, err)
+
+		_, err = db.Datacenter(did2)
+		assert.NoError(t, err)
+
+		dcMap := routing.DatacenterMap{
+			Alias:        "local.map",
+			BuyerID:      buyerWithID.ID,
+			DatacenterID: datacenter1.ID,
+		}
+
+		err = db.AddDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		hexDcID := fmt.Sprintf("%016x", did2)
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter1.ID, "HexDatacenterID", hexDcID)
+		assert.NoError(t, err)
+
+		// changing the datacenter ID in the alias changes the datacenter map ID which is a
+		// combination of the buyer ID and the datacenter ID, so we have to use the new
+		// datacenter ID now to update.
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.local.map")
+		assert.NoError(t, err)
+
+		checkDcMaps := db.GetDatacenterMapsForBuyer(buyerWithID.ID)
+		assert.Equal(t, 1, len(checkDcMaps))
+
+		assert.Equal(t, "not.local.map", checkDcMaps[did2].Alias)
+		assert.Equal(t, did2, checkDcMaps[did2].DatacenterID)
+		assert.Equal(t, buyerWithID.ID, checkDcMaps[did2].BuyerID)
+
 	})
 
 	t.Run("UpdateCustomer", func(t *testing.T) {
