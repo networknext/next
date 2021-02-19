@@ -74,8 +74,8 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
 				fmt.Printf("Failed to write to BigQuery using Put(): %v. Buffer not cleared (size of buffer length is %d)\n", err, bufferLength)
-				fmt.Printf("Bad Entry: %+v\n", err)
-				fmt.Printf("Bad Entry: %#v\n", err)
+				fmt.Printf("Bad Entry: %+v\n", entry)
+				fmt.Printf("Bad Entry: %#v\n", entry)
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
 				os.Exit(1)
