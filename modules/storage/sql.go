@@ -1609,7 +1609,7 @@ func (db *SQL) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacent
 	var stmt *sql.Stmt
 	var err error
 
-	dcmID := crypto.HashID(fmt.Sprintf("%x", buyerID) + fmt.Sprintf("%x", datacenterID))
+	dcmID := crypto.HashID(fmt.Sprintf("%016x", buyerID) + fmt.Sprintf("%016x", datacenterID))
 	workingDatacenterMap, ok := db.datacenterMaps[dcmID]
 	if !ok {
 		return fmt.Errorf("Datacenter map for buyerID %016x, datacenterID %016x does not exist", buyerID, datacenterID)
@@ -1709,7 +1709,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
 
 	db.datacenterMapMutex.RLock()
 	dcMap, ok := db.datacenterMaps[id]
