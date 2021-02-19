@@ -189,7 +189,7 @@ var _ Storer = &StorerMock{}
 //             UpdateDatacenterFunc: func(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateDatacenter method")
 //             },
-//             UpdateDatacenterMapFunc: func(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error {
+//             UpdateDatacenterMapFunc: func(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateDatacenterMap method")
 //             },
 //             UpdateInternalConfigFunc: func(ctx context.Context, buyerID uint64, field string, value interface{}) error {
@@ -380,7 +380,7 @@ type StorerMock struct {
 	UpdateDatacenterFunc func(ctx context.Context, datacenterID uint64, field string, value interface{}) error
 
 	// UpdateDatacenterMapFunc mocks the UpdateDatacenterMap method.
-	UpdateDatacenterMapFunc func(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error
+	UpdateDatacenterMapFunc func(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error
 
 	// UpdateInternalConfigFunc mocks the UpdateInternalConfig method.
 	UpdateInternalConfigFunc func(ctx context.Context, buyerID uint64, field string, value interface{}) error
@@ -762,8 +762,10 @@ type StorerMock struct {
 		UpdateDatacenterMap []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// DcMap is the dcMap argument value.
-			DcMap routing.DatacenterMap
+			// BuyerID is the buyerID argument value.
+			BuyerID uint64
+			// DatacenterID is the datacenterID argument value.
+			DatacenterID uint64
 			// Field is the field argument value.
 			Field string
 			// Value is the value argument value.
@@ -2772,41 +2774,45 @@ func (mock *StorerMock) UpdateDatacenterCalls() []struct {
 }
 
 // UpdateDatacenterMap calls UpdateDatacenterMapFunc.
-func (mock *StorerMock) UpdateDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error {
+func (mock *StorerMock) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	if mock.UpdateDatacenterMapFunc == nil {
 		panic("StorerMock.UpdateDatacenterMapFunc: method is nil but Storer.UpdateDatacenterMap was just called")
 	}
 	callInfo := struct {
-		Ctx   context.Context
-		DcMap routing.DatacenterMap
-		Field string
-		Value interface{}
+		Ctx          context.Context
+		BuyerID      uint64
+		DatacenterID uint64
+		Field        string
+		Value        interface{}
 	}{
-		Ctx:   ctx,
-		DcMap: dcMap,
-		Field: field,
-		Value: value,
+		Ctx:          ctx,
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+		Field:        field,
+		Value:        value,
 	}
 	mock.lockUpdateDatacenterMap.Lock()
 	mock.calls.UpdateDatacenterMap = append(mock.calls.UpdateDatacenterMap, callInfo)
 	mock.lockUpdateDatacenterMap.Unlock()
-	return mock.UpdateDatacenterMapFunc(ctx, dcMap, field, value)
+	return mock.UpdateDatacenterMapFunc(ctx, buyerID, datacenterID, field, value)
 }
 
 // UpdateDatacenterMapCalls gets all the calls that were made to UpdateDatacenterMap.
 // Check the length with:
 //     len(mockedStorer.UpdateDatacenterMapCalls())
 func (mock *StorerMock) UpdateDatacenterMapCalls() []struct {
-	Ctx   context.Context
-	DcMap routing.DatacenterMap
-	Field string
-	Value interface{}
+	Ctx          context.Context
+	BuyerID      uint64
+	DatacenterID uint64
+	Field        string
+	Value        interface{}
 } {
 	var calls []struct {
-		Ctx   context.Context
-		DcMap routing.DatacenterMap
-		Field string
-		Value interface{}
+		Ctx          context.Context
+		BuyerID      uint64
+		DatacenterID uint64
+		Field        string
+		Value        interface{}
 	}
 	mock.lockUpdateDatacenterMap.RLock()
 	calls = mock.calls.UpdateDatacenterMap

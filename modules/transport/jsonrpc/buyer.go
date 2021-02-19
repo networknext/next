@@ -1390,6 +1390,25 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 
 }
 
+// UpdateDatacenterMapArgs: HexBuyerID and HexDatacenterID are the combined primary
+// key needed to look up the existing datacenter map
+type UpdateDatacenterMapArgs struct {
+	HexBuyerID      string      `json:"hexBuyerID"`
+	HexDatacenterID string      `json:"hexDatacenterID"`
+	Field           string      `json:"field"`
+	Value           interface{} `json:"value"`
+}
+
+type UpdateDatacenterMapReply struct{}
+
+func (s *BuyersService) UpdateDatacenterMap(r *http.Request, args *UpdateDatacenterMapArgs, reply *UpdateDatacenterMapReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	return nil
+}
+
 type JSAddDatacenterMapArgs struct {
 	HexBuyerID      string `json:"hexBuyerID"`
 	HexDatacenterID string `json:"hexDatacenterID"`

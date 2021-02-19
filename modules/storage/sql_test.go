@@ -762,10 +762,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		hexDcID := fmt.Sprintf("%016x", did2)
-		err = db.UpdateDatacenterMap(ctx, dcMap, "HexDatacenterID", hexDcID)
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter1.ID, "HexDatacenterID", hexDcID)
 		assert.NoError(t, err)
 
-		err = db.UpdateDatacenterMap(ctx, dcMap, "Alias", "not.local.map")
+		// changing the datacenter ID in the alias changes the datacenter map ID which is a
+		// combination of the buyer ID and the datacenter ID, so we have to use the new
+		// datacenter ID now to update.
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.local.map")
 		assert.NoError(t, err)
 
 		checkDcMaps := db.GetDatacenterMapsForBuyer(buyerWithID.ID)

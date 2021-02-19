@@ -133,7 +133,7 @@ type Storer interface {
 
 	// UpdateDatacenterMap modifies the given map in storage. The full map is required as the
 	// primary key is the buyer ID and the datacenter ID, combined.
-	UpdateDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error
+	UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error
 
 	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 	// empty dcID returns a list of all maps.

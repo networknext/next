@@ -1603,16 +1603,21 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	return nil
 }
 
-func (db *SQL) UpdateDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error {
+func (db *SQL) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
 	var err error
 
-	dcmID := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
-	workingDatacenterMap := db.datacenterMaps[dcmID]
-	originalDatacenter := db.datacenters[workingDatacenterMap.DatacenterID]
-	buyerID := db.buyers[workingDatacenterMap.BuyerID]
+	dcmID := crypto.HashID(fmt.Sprintf("%x", buyerID) + fmt.Sprintf("%x", datacenterID))
+	workingDatacenterMap, ok := db.datacenterMaps[dcmID]
+	if !ok {
+		return fmt.Errorf("Datacenter map for buyerID %016x, datacenterID %016x does not exist", buyerID, datacenterID)
+	}
+
+	// if the dcMap exists then the buyer and datacenter IDs are legit
+	originalDatacenter := db.datacenters[datacenterID]
+	originalBuyer := db.buyers[buyerID]
 
 	switch field {
 	case "HexDatacenterID":
@@ -1629,16 +1634,29 @@ func (db *SQL) UpdateDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		newDatacenter := db.datacenters[newDatacenterID]
 
 		updateSQL.Write([]byte("update datacenter_maps set datacenter_id=$1 where datacenter_id=$2 and buyer_id=$3"))
-		args = append(args, newDatacenter.DatabaseID, originalDatacenter.DatabaseID, buyerID.DatabaseID)
+		args = append(args, newDatacenter.DatabaseID, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
 		workingDatacenterMap.DatacenterID = newDatacenterID
+
+		// changing the datacenter ID in the alias changes the datacenter map ID so
+		// delete the old one and add the new one
+		db.datacenterMapsMutex.Lock()
+		delete(db.datacenterMaps, dcmID)
+		dcmID = crypto.HashID(fmt.Sprintf("%x", buyerID) + fmt.Sprintf("%x", newDatacenterID))
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
 	case "Alias":
 		alias, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 		updateSQL.Write([]byte("update datacenter_maps set alias=$1 where datacenter_id=$2 and buyer_id=$3"))
-		args = append(args, alias, originalDatacenter.DatabaseID, buyerID.DatabaseID)
+		args = append(args, alias, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
 		workingDatacenterMap.Alias = alias
+
+		db.datacenterMapsMutex.Lock()
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
@@ -1667,10 +1685,6 @@ func (db *SQL) UpdateDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return err
 	}
 
-	db.datacenterMapsMutex.Lock()
-	db.datacenterMaps[dcmID] = workingDatacenterMap
-	db.datacenterMapsMutex.Unlock()
-
 	return nil
 }
 
@@ -1695,7 +1709,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 
 	db.datacenterMapMutex.RLock()
 	dcMap, ok := db.datacenterMaps[id]

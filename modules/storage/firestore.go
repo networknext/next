@@ -2386,6 +2386,6 @@ func (fs *Firestore) UpdateDatacenter(ctx context.Context, datacenterID uint64, 
 	return fmt.Errorf("UpdateDatacenter not implemented in Firestore storer")
 }
 
-func (fs *Firestore) UpdateDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap, field string, value interface{}) error {
+func (fs *Firestore) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in Firestore storer")
 }
