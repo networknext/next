@@ -43,15 +43,15 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	bq.bufferMutex.RUnlock()
 
 	if bufferLength >= bq.BatchSize {
-		fmt.Printf("Error: entries buffer full. bufferLength %d, BQ Batch Size: %d\n", bufferLength, bq.BatchSize)
+		fmt.Printf("Error: entries buffer full. bufferLength size %d, BQ Batch Size %d\n", bufferLength, bq.BatchSize)
 		return errors.New("entries buffer full")
 	}
 
 	select {
 	case bq.entries <- entry:
-		fmt.Printf("Inserted entry into internal golang channel. Len of channel is %d\n", len(bq.entries))
 		return nil
 	default:
+		fmt.Printf("Error: entries channel full. bq.entries size %d, bufferLength size %d\n", bq.entries, bufferLength)
 		return errors.New("entries channel full")
 	}
 }
@@ -65,7 +65,6 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	}
 	for entry := range bq.entries {
 		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
-		fmt.Printf("entry: %#v\n", entry)
 		bq.bufferMutex.Lock()
 		bq.buffer = append(bq.buffer, entry)
 		bufferLength := len(bq.buffer)
