@@ -57,7 +57,8 @@ export class AuthService {
   public async processAuthentication (): Promise<any> {
     const query = window.location.search
 
-    if (query.replaceAll('%20', ' ').includes('Your email was verified. You can continue using the application.')) {
+    // Current version of chrome doesn't like replace all apparently
+    if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
       return this.refreshToken()
     }
 
