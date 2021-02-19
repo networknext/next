@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"fmt"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -55,6 +56,7 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
 // Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
 // only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
+
 func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	if bq.entries == nil {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
@@ -85,8 +87,152 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	return nil
 }
 
-// Save implements the bigquery.ValueSaver interface for an Entry
-// so it can be used in Put()
+// Validate a billing entry. Returns true if the billing entry is valid, false if invalid.
+
+func (entry *BillingEntry) Validate() bool {
+
+	if entry.Timestamp < 0 {
+		fmt.Printf("invalid timestamp\n")
+		return false
+	}
+
+	if entry.BuyerID == 0 {
+		fmt.Printf("invalid buyer id\n")
+		return false
+	}
+
+	if entry.SessionID == 0 {
+		fmt.Printf("invalid session id\n")
+		return false
+	}
+
+	if entry.DatacenterID == 0 {
+		fmt.Printf("invalid datacenter id\n")
+		return false
+	}
+
+	// IMPORTANT: Logic inverted because comparing a NaN float value always returns false
+	if !(entry.Latitude >= -90.0 && entry.Latitude <= +90.0) {
+		fmt.Printf("invalid latitude\n")
+		return false
+	}	
+
+	if !(entry.Longitude >= -180.0 && entry.Longitude <= +180.0) {
+		fmt.Printf("invalid longitude\n")
+		return false
+	}	
+
+	// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
+	if entry.ConnectionType < 0 || entry.ConnectionType > 3 {
+		fmt.Printf("invalid connection type\n")
+		return false
+	}
+
+	// IMPORTANT: You must update this check when you add new platforms to the SDK
+	if entry.PlatformType < 0 || entry.ConnectionType > 10 {
+		fmt.Printf("invalid connection type\n")
+		return false
+	}
+
+	if entry.RouteDiversity < 0 || entry.RouteDiversity > 32 {
+		fmt.Printf("invalid route diversity\n")
+		return false
+	}
+
+	if !(entry.DirectRTT >= 0.0 && entry.DirectRTT <= 10000.0) {
+		fmt.Printf("invalid direct rtt\n")
+		return false
+	}
+
+	if !(entry.DirectJitter >= 0.0 && entry.DirectJitter <= 10000.0) {
+		fmt.Printf("invalid direct jitter\n")
+		return false
+	}
+
+	if !(entry.DirectPacketLoss >= 0.0 && entry.DirectPacketLoss <= 100.0) {
+		fmt.Printf("invalid direct packet loss\n")
+		return false
+	}
+
+	if !(entry.PacketLoss >= 0.0 && entry.PacketLoss <= 100.0) {
+		fmt.Printf("invalid packet loss\n")
+		return false
+	}
+
+	if !(entry.JitterClientToServer >= 0.0 && entry.JitterClientToServer <= 10000.0) {
+		fmt.Printf("invalid jitter client to server\n")
+		return false
+	}
+
+	if !(entry.JitterServerToClient >= 0.0 && entry.JitterServerToClient <= 10000.0) {
+		fmt.Printf("invalid jitter server to client\n")
+		return false
+	}
+
+	if entry.NumTags < 0 || entry.NumTags > 8 {
+		fmt.Printf("invalid route diversity\n")
+		return false
+	}
+
+	if entry.Next {
+
+		if !(entry.NextRTT >= 0.0 && entry.NextRTT <= 10000.0) {
+			fmt.Printf("invalid next rtt\n")
+			return false
+		}
+
+		if !(entry.NextJitter >= 0.0 && entry.NextJitter <= 10000.0) {
+			fmt.Printf("invalid next jitter\n")
+			return false
+		}
+
+		if !(entry.NextPacketLoss >= 0.0 && entry.NextPacketLoss <= 100.0) {
+			fmt.Printf("invalid next packet loss\n")
+			return false
+		}
+
+		if !(entry.PredictedNextRTT >= 0.0 && entry.PredictedNextRTT <= 10000.0) {
+			fmt.Printf("invalid predicted next rtt\n")
+			return false
+		}
+
+		if entry.NumNearRelays < 0 || entry.NumNearRelays > 32 {
+			fmt.Printf("invalid num near relays\n")
+			return false
+		}
+
+		if entry.NumNearRelays > 0 {
+
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+
+				if entry.NearRelayIDs[i] == 0 {
+					fmt.Printf("invalid near relay id\n")
+					return false
+				}
+
+				if !(entry.NearRelayRTTs[i] >= 0.0 && entry.NearRelayRTTs[i] <= 255.0) {
+					fmt.Printf("invalid near relay rtt\n")
+					return false
+				}
+
+				if !(entry.NearRelayJitters[i] >= 0.0 && entry.NearRelayJitters[i] <= 255.0) {
+					fmt.Printf("invalid near relay jitter\n")
+					return false
+				}
+
+				if !(entry.NearRelayPacketLosses[i] >= 0.0 && entry.NearRelayPacketLosses[i] <= 100.0) {
+					fmt.Printf("invalid near relay packet loss\n")
+					return false
+				}
+			}
+		}
+	}
+
+	return true
+}
+
+// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
+
 func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e := make(map[string]bigquery.Value)
@@ -224,7 +370,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 			e["nearRelayRTT"] = entry.NearRelayRTT
 		}
 
-		if entry.NumNextRelays > 0 {
+		if entry.NumNearRelays > 0 {
 
 			nextRelays := make([]bigquery.Value, entry.NumNextRelays)
 			nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
