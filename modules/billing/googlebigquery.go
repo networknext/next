@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"fmt"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -33,6 +34,7 @@ type GoogleBigQueryClient struct {
 func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) error {
 	bq.Metrics.EntriesSubmitted.Add(1)
 	if bq.entries == nil {
+		fmt.Printf("Making internal golang channel for BigQuery of size %d\n", DefaultBigQueryChannelSize)
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
 
@@ -41,6 +43,7 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	bq.bufferMutex.RUnlock()
 
 	if bufferLength >= bq.BatchSize {
+		fmt.Printf("Error: entries buffer full. bufferLength size %d, BQ Batch Size %d\n", bufferLength, bq.BatchSize)
 		return errors.New("entries buffer full")
 	}
 
@@ -48,6 +51,7 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	case bq.entries <- entry:
 		return nil
 	default:
+		fmt.Printf("Error: entries channel full. bq.entries size %d, bufferLength size %d\n", bq.entries, bufferLength)
 		return errors.New("entries channel full")
 	}
 }
@@ -61,24 +65,25 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	}
 	for entry := range bq.entries {
 		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
-
 		bq.bufferMutex.Lock()
 		bq.buffer = append(bq.buffer, entry)
 		bufferLength := len(bq.buffer)
+		fmt.Printf("Log before insert. Size of buffer length is %d\n", bufferLength)
 		if bufferLength >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
-
+				fmt.Printf("Failed to write to BigQuery using Put(): %v. Buffer not cleared (size of buffer length is %d)\n", err, bufferLength)
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
 				continue
 			}
 
 			bq.buffer = bq.buffer[:0]
-
+			fmt.Printf("Successfully flushed entries to BigQuery, size: %d, total: %d\n", bq.BatchSize, bufferLength)
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
 			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
 		}
+		fmt.Printf("Log after insert. Size of buffer length is %d\n", bufferLength)
 
 		bq.bufferMutex.Unlock()
 	}
