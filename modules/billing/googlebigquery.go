@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"fmt"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -33,6 +34,7 @@ type GoogleBigQueryClient struct {
 func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) error {
 	bq.Metrics.EntriesSubmitted.Add(1)
 	if bq.entries == nil {
+		fmt.Printf("Making internal golang channel for BigQuery of size %d\n", DefaultBigQueryChannelSize)
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
 
@@ -41,11 +43,13 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	bq.bufferMutex.RUnlock()
 
 	if bufferLength >= bq.BatchSize {
+		fmt.Printf("Error: entries buffer full. bufferLength %d, BQ Batch Size: %d\n", bufferLength, bq.BatchSize)
 		return errors.New("entries buffer full")
 	}
 
 	select {
 	case bq.entries <- entry:
+		fmt.Printf("Inserted entry into internal golang channel. Len of channel is %d\n", len(bq.entries))
 		return nil
 	default:
 		return errors.New("entries channel full")
@@ -61,21 +65,21 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	}
 	for entry := range bq.entries {
 		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
-
+		fmt.Printf("entry: %#v\n", entry)
 		bq.bufferMutex.Lock()
 		bq.buffer = append(bq.buffer, entry)
 		bufferLength := len(bq.buffer)
 		if bufferLength >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
-
+				fmt.Printf("Failed to write to BigQuery using Put(): %v\n", err)
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
 				continue
 			}
 
 			bq.buffer = bq.buffer[:0]
-
+			fmt.Printf("Successfully flushed entries to BigQuery, size: %d, total: %d\n", bq.BatchSize, bufferLength)
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
 			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
 		}
