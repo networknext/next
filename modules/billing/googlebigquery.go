@@ -72,7 +72,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		if bufferLength >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
-				fmt.Printf("Failed to write to BigQuery using Put(): %v. Buffer not cleared (size of buffer length is %d)\n", err, bufferLength)
+				fmt.Printf("Failed to write to BigQuery using Put(): %v. Buffer not cleared (size of buffer length is %d)\nEntry:\t%#v\n", err, bufferLength, entry)
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
 				continue
