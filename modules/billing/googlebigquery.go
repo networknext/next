@@ -48,6 +48,12 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 		return errors.New("entries buffer full")
 	}
 
+	// PacketLoss is potentially NaN
+	if entry.PacketLoss != entry.PacketLoss {
+		// Set PacketLoss to 0
+		entry.PacketLoss = float32(0)
+	}
+
 	if !entry.Validate() {
 		fmt.Printf("Error: billing entry not valid.\n%+v\n", entry)
 		return errors.New("invalid billing entry")
