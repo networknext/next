@@ -84,7 +84,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
-				continue
+				os.Exit(1)
 			}
 
 			bq.buffer = bq.buffer[:0]
