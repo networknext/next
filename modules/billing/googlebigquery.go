@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"fmt"
+	"os"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
