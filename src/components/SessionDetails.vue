@@ -379,13 +379,7 @@ export default class SessionDetails extends Vue {
     this.$apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.meta
-        this.slices = response.slices || []
-
-        if (!this.meta) {
-          this.$refs.inputAlert.setMessage('Failed to fetch session details')
-          this.$refs.inputAlert.setAlertType(AlertType.ERROR)
-          return
-        }
+        this.slices = response.slices
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
