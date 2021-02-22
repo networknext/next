@@ -195,6 +195,7 @@ export default class SessionsWorkspace extends Vue {
         this.sessions = response.sessions
       })
       .catch((error: any) => {
+        this.sessions = []
         console.log('Something went wrong fetching top sessions')
         console.log(error)
       })
