@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"runtime"
 	"strconv"
 	"sync"
@@ -256,6 +257,14 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
 
 		go func() {
 			httpPort := envvar.Get("HTTP_PORT", "40001")

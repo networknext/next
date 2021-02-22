@@ -13,6 +13,7 @@ import (
 	"hash/fnv"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -21,7 +22,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
-
 	"github.com/networknext/backend/modules/common/helpers"
 
 	"cloud.google.com/go/pubsub"
@@ -846,6 +846,14 @@ func mainReturnWithCode() int {
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
+
+	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+	if enablePProf {
+		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	}
 
 	go func() {
 		port := envvar.Get("PORT", "30000")
