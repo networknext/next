@@ -55,6 +55,7 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	}
 
 	if !entry.Validate() {
+		bq.Metrics.ErrorMetrics.BillingInvalidEntries.Add(1)
 		fmt.Printf("Error: billing entry not valid.\n%+v\n", entry)
 		return errors.New("invalid billing entry")
 	}
