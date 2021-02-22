@@ -4,12 +4,12 @@
       class="spinner-border"
       role="status"
       id="sessions-spinner"
-      v-show="!$store.getters.showTable"
+      v-show="!showTable"
     >
       <span class="sr-only">Loading...</span>
     </div>
-    <div class="table-responsive table-no-top-line" v-show="$store.getters.showTable">
-      <table class="table table-sm table-striped table-hover">
+    <div class="table-responsive table-no-top-line" v-show="showTable">
+      <table class="table table-sm" :class="{'table-striped': sessions.length > 0, 'table-hover': sessions.length > 0}">
         <thead>
           <tr>
             <th>
@@ -71,6 +71,13 @@
             </th>
           </tr>
         </thead>
+        <tbody v-if="sessions.length === 0">
+          <tr>
+            <td colspan="7" class="text-muted">
+                There are no top sessions at this time.
+            </td>
+          </tr>
+        </tbody>
         <tbody>
           <tr v-for="(session, index) in sessions" v-bind:key="index">
             <td>
@@ -175,8 +182,6 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private beforeDestroy (): void {
-    // TODO: This really shouldn't be in a store
-    this.$store.commit('TOGGLE_SESSION_TABLE', false)
     clearInterval(this.sessionsLoop)
     this.unwatch()
   }
@@ -188,10 +193,15 @@ export default class SessionsWorkspace extends Vue {
       })
       .then((response: any) => {
         this.sessions = response.sessions
-        this.$store.commit('TOGGLE_SESSION_TABLE', true)
       })
       .catch((error: any) => {
+        console.log('Something went wrong fetching top sessions')
         console.log(error)
+      })
+      .finally(() => {
+        if (!this.showTable) {
+          this.showTable = true
+        }
       })
   }
 

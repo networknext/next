@@ -115,12 +115,17 @@ export default class SessionCounts extends Vue {
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next
+      })
+      .catch((error: Error) => {
+        this.totalSessionsReply.direct = 0
+        this.totalSessionsReply.onNN = 0
+        console.log('Something went wrong fetching session counts')
+        console.log(error)
+      })
+      .finally(() => {
         if (!this.showCount) {
           this.showCount = true
         }
-      })
-      .catch((error: Error) => {
-        console.log(error)
       })
   }
 
