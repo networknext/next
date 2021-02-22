@@ -224,6 +224,9 @@ type Relay struct {
 
 	// SQL id (PK)
 	DatabaseID int64
+
+	// Simple text field for Ops to save data unique to each relay
+	Notes string `json:"notes"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -735,7 +738,6 @@ func (r *Relay) String() string {
 	relay += "\tManagementAddr     : " + r.ManagementAddr + "\n"
 	relay += "\tSSHUser            : " + r.SSHUser + "\n"
 	relay += "\tSSHPort            : " + fmt.Sprintf("%d", r.SSHPort) + "\n"
-	// TrafficStats TrafficStats `json:"traffic_stats"`
 	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
 	relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
 	relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
@@ -747,6 +749,7 @@ func (r *Relay) String() string {
 	relay += "\tEndDate            : " + r.EndDate.String() + "\n"
 	relay += "\tType               : " + fmt.Sprintf("%v", r.Type) + "\n"
 	relay += "\tDatabaseID         : " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
+	relay += "\tNotes:\n" + fmt.Sprintf("%v", r.Notes) + "\n"
 
 	return relay
 }

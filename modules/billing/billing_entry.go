@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(23)
+	BillingEntryVersion = uint8(25)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -84,7 +84,10 @@ const (
 		1 + // CommitVeto
 		4 + // RouteDiversity
 		1 + // LackOfDiversity
-		1 // Pro
+		1 + // Pro
+		1 + // MultipathRestricted
+		8 + // ClientToServerPacketsSent
+		8 // ServerToClientPacketsSent
 )
 
 type BillingEntry struct {
@@ -158,6 +161,9 @@ type BillingEntry struct {
 	RouteDiversity                  uint32
 	LackOfDiversity                 bool
 	Pro                             bool
+	MultipathRestricted             bool
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -279,133 +285,166 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 
 	encoding.WriteBool(data, &index, entry.Pro)
 
+	encoding.WriteBool(data, &index, entry.MultipathRestricted)
+
+	encoding.WriteUint64(data, &index, entry.ClientToServerPacketsSent)
+	encoding.WriteUint64(data, &index, entry.ServerToClientPacketsSent)
+
 	return data[:index]
 }
 
 func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	index := 0
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
+		fmt.Printf("ReadBillingEntry() Could not read version\n")
 		return false
 	}
 
 	if entry.Version > BillingEntryVersion {
+		fmt.Printf("ReadBillingEntry() entry version %d was greater than billing entry version %d\n", entry.Version, BillingEntryVersion)
 		return false
 	}
 
 	if entry.Version >= 13 {
 		if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
+			fmt.Printf("ReadBillingEntry() Could not read timestamp\n")
 			return false
 		}
 	}
 
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
+		fmt.Printf("ReadBillingEntry() Could not read buyerID\n")
 		return false
 	}
 
 	if entry.Version >= 6 {
 		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
+			fmt.Printf("ReadBillingEntry() Could not read UserHash\n")
 			return false
 		}
 	}
 
 	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
+		fmt.Printf("ReadBillingEntry() Could not read sessionID\n")
 		return false
 	}
 
 	if !encoding.ReadUint32(data, &index, &entry.SliceNumber) {
+		fmt.Printf("ReadBillingEntry() Could not read SliceNumber\n")
 		return false
 	}
 
 	if !encoding.ReadFloat32(data, &index, &entry.DirectRTT) {
+		fmt.Printf("ReadBillingEntry() Could not read directRTT\n")
 		return false
 	}
 
 	if !encoding.ReadFloat32(data, &index, &entry.DirectJitter) {
+		fmt.Printf("ReadBillingEntry() Could not read DirectJitter\n")
 		return false
 	}
 
 	if !encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss) {
+		fmt.Printf("ReadBillingEntry() Could not read DirectPacketLoss\n")
 		return false
 	}
 
 	if !encoding.ReadBool(data, &index, &entry.Next) {
+		fmt.Printf("ReadBillingEntry() Could not read next\n")
 		return false
 	}
 
 	if entry.Next {
 		if !encoding.ReadFloat32(data, &index, &entry.NextRTT) {
+			fmt.Printf("ReadBillingEntry() Could not read next rtt\n")
 			return false
 		}
 
 		if !encoding.ReadFloat32(data, &index, &entry.NextJitter) {
+			fmt.Printf("ReadBillingEntry() Could not read next jitter\n")
 			return false
 		}
 
 		if !encoding.ReadFloat32(data, &index, &entry.NextPacketLoss) {
+			fmt.Printf("ReadBillingEntry() Could not read next packet loss\n")
 			return false
 		}
 
 		if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
+			fmt.Printf("ReadBillingEntry() Could not read num next relays\n")
 			return false
 		}
 
 		if entry.NumNextRelays > BillingEntryMaxRelays {
+			fmt.Printf("ReadBillingEntry() NumNextRelays %d > BillingEntryMaxRelays %d\n", entry.NumNextRelays, BillingEntryMaxRelays)
 			return false
 		}
 
 		for i := 0; i < int(entry.NumNextRelays); i++ {
 			if !encoding.ReadUint64(data, &index, &entry.NextRelays[i]) {
+				fmt.Printf("ReadBillingEntry() Could not read next relays[i] (i = %d)\n", i)
 				return false
 			}
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
+			fmt.Printf("ReadBillingEntry() Could not read TotalPrice\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 2 {
 		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
+			fmt.Printf("ReadBillingEntry() Could not read ClientToServerPacketsLost\n")
 			return false
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsLost) {
+			fmt.Printf("ReadBillingEntry() Could not read ServerToClientPacketsLost\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 3 {
 		if !encoding.ReadBool(data, &index, &entry.Committed) {
+			fmt.Printf("ReadBillingEntry() Could not read Committed\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.Flagged) {
+			fmt.Printf("ReadBillingEntry() Could not read flagged\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.Multipath) {
+			fmt.Printf("ReadBillingEntry() Could not read Multipath\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.Initial) {
+			fmt.Printf("ReadBillingEntry() Could not read Initial\n")
 			return false
 		}
 
 		if entry.Next {
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesUp) {
+				fmt.Printf("ReadBillingEntry() Could not read NextBytesUp\n")
 				return false
 			}
 
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
+				fmt.Printf("ReadBillingEntry() Could not read next NextBytesDown\n")
 				return false
 			}
 
 			if entry.Version >= 10 {
 				if !encoding.ReadUint64(data, &index, &entry.EnvelopeBytesUp) {
+					fmt.Printf("ReadBillingEntry() Could not read EnvelopeBytesUp\n")
 					return false
 				}
 
 				if !encoding.ReadUint64(data, &index, &entry.EnvelopeBytesDown) {
+					fmt.Printf("ReadBillingEntry() Could not read EnvelopeBytesDown\n")
 					return false
 				}
 			}
@@ -414,15 +453,18 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 4 {
 		if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
+			fmt.Printf("ReadBillingEntry() Could not read DatacenterID\n")
 			return false
 		}
 
 		if entry.Next {
 			if !encoding.ReadBool(data, &index, &entry.RTTReduction) {
+				fmt.Printf("ReadBillingEntry() Could not read RTTReduction\n")
 				return false
 			}
 
 			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
+				fmt.Printf("ReadBillingEntry() Could not read PacketLossReduction\n")
 				return false
 			}
 		}
@@ -431,15 +473,18 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if entry.Version >= 5 {
 		if entry.Next {
 			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
+				fmt.Printf("ReadBillingEntry() Could not read NumNextRelays\n")
 				return false
 			}
 
 			if entry.NumNextRelays > BillingEntryMaxRelays {
+				fmt.Printf("ReadBillingEntry() NumNextRelays %d > BillingEntryMaxRelays %d\n", entry.NumNextRelays, BillingEntryMaxRelays)
 				return false
 			}
 
 			for i := 0; i < int(entry.NumNextRelays); i++ {
 				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
+					fmt.Printf("ReadBillingEntry() Could not read NextRelaysPrice[i] (i = %d)\n", i)
 					return false
 				}
 			}
@@ -448,23 +493,28 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 7 {
 		if !encoding.ReadFloat32(data, &index, &entry.Latitude) {
+			fmt.Printf("ReadBillingEntry() Could not read Latitude\n")
 			return false
 		}
 
 		if !encoding.ReadFloat32(data, &index, &entry.Longitude) {
+			fmt.Printf("ReadBillingEntry() Could not read Longitude\n")
 			return false
 		}
 
 		if !encoding.ReadString(data, &index, &entry.ISP, BillingEntryMaxISPLength) {
+			fmt.Printf("ReadBillingEntry() Could not read BillingEntryMaxISPLength\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.ABTest) {
+			fmt.Printf("ReadBillingEntry() Could not read ABTest\n")
 			return false
 		}
 
 		if entry.Version < 14 {
 			if !encoding.ReadUint64(data, &index, &entry.RouteDecision) {
+				fmt.Printf("ReadBillingEntry() Could not read RouteDecision\n")
 				return false
 			}
 		}
@@ -472,32 +522,38 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 8 {
 		if !encoding.ReadUint8(data, &index, &entry.ConnectionType) {
+			fmt.Printf("ReadBillingEntry() Could not read ConnectionType\n")
 			return false
 		}
 
 		if !encoding.ReadUint8(data, &index, &entry.PlatformType) {
+			fmt.Printf("ReadBillingEntry() Could not read PlatformType\n")
 			return false
 		}
 
 		if !encoding.ReadString(data, &index, &entry.SDKVersion, BillingEntryMaxSDKVersionLength) {
+			fmt.Printf("ReadBillingEntry() Could not read BillingEntryMaxSDKVersionLength\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 9 {
 		if !encoding.ReadFloat32(data, &index, &entry.PacketLoss) {
+			fmt.Printf("ReadBillingEntry() Could not read PacketLoss\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 11 {
 		if !encoding.ReadFloat32(data, &index, &entry.PredictedNextRTT) {
+			fmt.Printf("ReadBillingEntry() Could not read PredictedNextRTT\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 12 {
 		if !encoding.ReadBool(data, &index, &entry.MultipathVetoed) {
+			fmt.Printf("ReadBillingEntry() Could not read MultipathVetoed\n")
 			return false
 		}
 	}
@@ -505,53 +561,64 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if entry.Version >= 14 {
 		if entry.Version >= 17 {
 			if !encoding.ReadBool(data, &index, &entry.UseDebug) {
+				fmt.Printf("ReadBillingEntry() Could not read UseDebug\n")
 				return false
 			}
 		}
 
 		if !encoding.ReadString(data, &index, &entry.Debug, BillingEntryMaxDebugLength) {
+			fmt.Printf("ReadBillingEntry() Could not read BillingEntryMaxDebugLength\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 15 {
 		if !encoding.ReadBool(data, &index, &entry.FallbackToDirect) {
+			fmt.Printf("ReadBillingEntry() Could not read FallbackToDirect\n")
 			return false
 		}
 
 		if !encoding.ReadUint32(data, &index, &entry.ClientFlags) {
+			fmt.Printf("ReadBillingEntry() Could not read ClientFlags\n")
 			return false
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.UserFlags) {
+			fmt.Printf("ReadBillingEntry() Could not read UserFlags\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 16 {
 		if !encoding.ReadFloat32(data, &index, &entry.NearRelayRTT) {
+			fmt.Printf("ReadBillingEntry() Could not read NearRelayRTT\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 17 {
 		if !encoding.ReadUint64(data, &index, &entry.PacketsOutOfOrderClientToServer) {
+			fmt.Printf("ReadBillingEntry() Could not read PacketsOutOfOrderClientToServer\n")
 			return false
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.PacketsOutOfOrderServerToClient) {
+			fmt.Printf("ReadBillingEntry() Could not read PacketsOutOfOrderServerToClient\n")
 			return false
 		}
 
 		if !encoding.ReadFloat32(data, &index, &entry.JitterClientToServer) {
+			fmt.Printf("ReadBillingEntry() Could not read JitterClientToServer\n")
 			return false
 		}
 
 		if !encoding.ReadFloat32(data, &index, &entry.JitterServerToClient) {
+			fmt.Printf("ReadBillingEntry() Could not read JitterServerToClient\n")
 			return false
 		}
 
 		if !encoding.ReadUint8(data, &index, &entry.NumNearRelays) {
+			fmt.Printf("ReadBillingEntry() Could not read numNearRelays\n")
 			return false
 		}
 
@@ -564,18 +631,22 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 		for i := 0; i < numNearRelays; i++ {
 			if !encoding.ReadUint64(data, &index, &entry.NearRelayIDs[i]) {
+				fmt.Printf("ReadBillingEntry() Could not read NearRelayIDs[i] (i=%d)\n", i)
 				return false
 			}
 
 			if !encoding.ReadFloat32(data, &index, &entry.NearRelayRTTs[i]) {
+				fmt.Printf("ReadBillingEntry() Could not read NearRelayRTTs[i] (i=%d)\n", i)
 				return false
 			}
 
 			if !encoding.ReadFloat32(data, &index, &entry.NearRelayJitters[i]) {
+				fmt.Printf("ReadBillingEntry() Could not read NearRelayJitters[i] (i=%d)\n", i)
 				return false
 			}
 
 			if !encoding.ReadFloat32(data, &index, &entry.NearRelayPacketLosses[i]) {
+				fmt.Printf("ReadBillingEntry() Could not read NearRelayPacketLosses[i] (i=%d)\n", i)
 				return false
 			}
 		}
@@ -583,19 +654,23 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 18 {
 		if !encoding.ReadBool(data, &index, &entry.RelayWentAway) {
+			fmt.Printf("ReadBillingEntry() Could not read RelayWentAway\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.RouteLost) {
+			fmt.Printf("ReadBillingEntry() Could not read RouteLost\n")
 			return false
 		}
 
 		if !encoding.ReadUint8(data, &index, &entry.NumTags) {
+			fmt.Printf("ReadBillingEntry() Could not read NumTags\n")
 			return false
 		}
 
 		for i := uint8(0); i < entry.NumTags; i++ {
 			if !encoding.ReadUint64(data, &index, &entry.Tags[i]) {
+				fmt.Printf("ReadBillingEntry() Could not read tags[i] (i=%d)\n", i)
 				return false
 			}
 		}
@@ -603,53 +678,82 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 19 {
 		if !encoding.ReadBool(data, &index, &entry.Mispredicted) {
+			fmt.Printf("ReadBillingEntry() Could not read Mispredicted\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.Vetoed) {
+			fmt.Printf("ReadBillingEntry() Could not read Vetoed\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 20 {
 		if !encoding.ReadBool(data, &index, &entry.LatencyWorse) {
+			fmt.Printf("ReadBillingEntry() Could not read LatencyWorse\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.NoRoute) {
+			fmt.Printf("ReadBillingEntry() Could not read NoRoute\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.NextLatencyTooHigh) {
+			fmt.Printf("ReadBillingEntry() Could not read NextLatencyTooHigh\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.RouteChanged) {
+			fmt.Printf("ReadBillingEntry() Could not read RouteChanged\n")
 			return false
 		}
 
 		if !encoding.ReadBool(data, &index, &entry.CommitVeto) {
+			fmt.Printf("ReadBillingEntry() Could not read CommitVeto\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 21 {
 		if !encoding.ReadUint32(data, &index, &entry.RouteDiversity) {
+			fmt.Printf("ReadBillingEntry() Could not read RouteDiversity\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 22 {
 		if !encoding.ReadBool(data, &index, &entry.LackOfDiversity) {
+			fmt.Printf("ReadBillingEntry() Could not read LackOfDiversity\n")
 			return false
 		}
 	}
 
 	if entry.Version >= 23 {
 		if !encoding.ReadBool(data, &index, &entry.Pro) {
+			fmt.Printf("ReadBillingEntry() Could not read pro\n")
 			return false
 		}
 	}
 
+	if entry.Version >= 24 {
+		if !encoding.ReadBool(data, &index, &entry.MultipathRestricted) {
+			fmt.Printf("ReadBillingEntry() Could not read MultipathRestrictedi\n")
+			return false
+		}
+	}
+
+	if entry.Version >= 25 {
+		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsSent) {
+			fmt.Printf("ReadBillingEntry() Could not read ClientToServerPacketsSent\n")
+			return false
+		}
+
+		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsSent) {
+			fmt.Printf("ReadBillingEntry() Could not read ServerToClientPacketsSent\n")
+			return false
+		}
+	}
+	fmt.Println("Successfully read all billing entry fields")
 	return true
 }

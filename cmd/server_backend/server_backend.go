@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"runtime"
 	"sync"
 	"syscall"
@@ -297,15 +298,6 @@ func mainReturnWithCode() int {
 				Timeout: time.Second * 2,
 			}
 
-			valveBackend, err := envvar.GetBool("VALVE_SERVER_BACKEND", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-			}
-
-			if valveBackend {
-				uri = fmt.Sprintf("%s_%s", uri, "valve")
-			}
-
 			syncTimer := helpers.NewSyncTimer(syncInterval)
 			for {
 				syncTimer.Run()
@@ -326,18 +318,24 @@ func mainReturnWithCode() int {
 				}
 
 				if routeEntriesReader == nil {
+					routeMatrixMutex.Lock()
+					routeMatrix = &routing.RouteMatrix{}
+					routeMatrixMutex.Unlock()
+
 					continue
 				}
 
 				buffer, err = ioutil.ReadAll(routeEntriesReader)
-
-				if routeEntriesReader != nil {
-					routeEntriesReader.Close()
-				}
+				routeEntriesReader.Close()
 
 				if err != nil {
 					level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
-					continue // Don't swap route matrix if we fail to read
+
+					routeMatrixMutex.Lock()
+					routeMatrix = &routing.RouteMatrix{}
+					routeMatrixMutex.Unlock()
+
+					continue
 				}
 
 				var newRouteMatrix routing.RouteMatrix
@@ -345,7 +343,12 @@ func mainReturnWithCode() int {
 					rs := encoding.CreateReadStream(buffer)
 					if err := newRouteMatrix.Serialize(rs); err != nil {
 						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
-						continue // Don't swap route matrix if we fail to serialize
+
+						routeMatrixMutex.Lock()
+						routeMatrix = &routing.RouteMatrix{}
+						routeMatrixMutex.Unlock()
+
+						continue
 					}
 				}
 
@@ -571,6 +574,14 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
 
 		go func() {
 			httpPort := envvar.Get("HTTP_PORT", "40001")

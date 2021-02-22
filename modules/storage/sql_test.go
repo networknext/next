@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -96,6 +97,7 @@ func TestInsertSQL(t *testing.T) {
 			ID:                        customerShortname,
 			ShortName:                 customerShortname,
 			CompanyCode:               customerShortname,
+			Secret:                    true,
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
 			CustomerID:                outerCustomer.DatabaseID,
@@ -107,6 +109,7 @@ func TestInsertSQL(t *testing.T) {
 		outerSeller, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 		assert.Equal(t, seller.ID, outerSeller.ID)
+		assert.Equal(t, true, outerSeller.Secret)
 		assert.Equal(t, seller.ShortName, outerSeller.ShortName)
 		assert.Equal(t, seller.IngressPriceNibblinsPerGB, outerSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, seller.EgressPriceNibblinsPerGB, outerSeller.EgressPriceNibblinsPerGB)
@@ -206,6 +209,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			Notes:               "the original notes",
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -247,6 +251,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
+		assert.Equal(t, relay.Notes, checkRelay.Notes)
 	})
 
 	t.Run("AddRelayWithNullables", func(t *testing.T) {
@@ -282,6 +287,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			// Notes: "the original notes"
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -408,6 +414,7 @@ func TestDeleteSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
+			Secret:                    true,
 			CustomerID:                outerCustomer.DatabaseID,
 			CompanyCode:               outerCustomer.Code,
 		}
@@ -478,6 +485,7 @@ func TestDeleteSQL(t *testing.T) {
 			EndDate:        time.Now(),
 			Type:           routing.BareMetal,
 			State:          routing.RelayStateMaintenance,
+			Notes:          "the original notes",
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -636,6 +644,7 @@ func TestUpdateSQL(t *testing.T) {
 			ID:                        "Compcode",
 			IngressPriceNibblinsPerGB: 10,
 			EgressPriceNibblinsPerGB:  20,
+			Secret:                    true,
 			CustomerID:                customerWithID.DatabaseID,
 			CompanyCode:               customerWithID.Code,
 		}
@@ -654,6 +663,7 @@ func TestUpdateSQL(t *testing.T) {
 
 		checkSeller, err := db.Seller("Compcode")
 		assert.NoError(t, err)
+		assert.Equal(t, true, sellerWithID.Secret)
 		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
 	})
@@ -690,6 +700,84 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
 		assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
 		assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
+	})
+
+	t.Run("UpdateDatacenter", func(t *testing.T) {
+		did := crypto.HashID("some.locale.name")
+
+		err = db.UpdateDatacenter(ctx, did, "Latitude", float32(130.3))
+		assert.NoError(t, err)
+
+		err = db.UpdateDatacenter(ctx, did, "Longitude", float32(80.3))
+		assert.NoError(t, err)
+
+		checkDatacenter, err := db.Datacenter(did)
+		assert.NoError(t, err)
+		assert.Equal(t, float32(80.3), checkDatacenter.Location.Longitude)
+		assert.Equal(t, float32(130.3), checkDatacenter.Location.Latitude)
+	})
+
+	t.Run("UpdateDatacenterMap", func(t *testing.T) {
+		did1 := crypto.HashID("some.locale.name.1")
+		datacenter1 := routing.Datacenter{
+			ID:   did1,
+			Name: "some.locale.name.1",
+			Location: routing.Location{
+				Latitude:  73.5,
+				Longitude: 10.5,
+			},
+			SellerID: sellerWithID.DatabaseID,
+		}
+
+		err = db.AddDatacenter(ctx, datacenter1)
+		assert.NoError(t, err)
+
+		_, err := db.Datacenter(did1)
+		assert.NoError(t, err)
+
+		did2 := crypto.HashID("some.locale.name.2")
+		datacenter2 := routing.Datacenter{
+			ID:   did2,
+			Name: "some.locale.name.2",
+			Location: routing.Location{
+				Latitude:  73.5,
+				Longitude: 10.5,
+			},
+			SellerID: sellerWithID.DatabaseID,
+		}
+
+		err = db.AddDatacenter(ctx, datacenter2)
+		assert.NoError(t, err)
+
+		_, err = db.Datacenter(did2)
+		assert.NoError(t, err)
+
+		dcMap := routing.DatacenterMap{
+			Alias:        "local.map",
+			BuyerID:      buyerWithID.ID,
+			DatacenterID: datacenter1.ID,
+		}
+
+		err = db.AddDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		hexDcID := fmt.Sprintf("%016x", did2)
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter1.ID, "HexDatacenterID", hexDcID)
+		assert.NoError(t, err)
+
+		// changing the datacenter ID in the alias changes the datacenter map ID which is a
+		// combination of the buyer ID and the datacenter ID, so we have to use the new
+		// datacenter ID now to update.
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.local.map")
+		assert.NoError(t, err)
+
+		checkDcMaps := db.GetDatacenterMapsForBuyer(buyerWithID.ID)
+		assert.Equal(t, 1, len(checkDcMaps))
+
+		assert.Equal(t, "not.local.map", checkDcMaps[did2].Alias)
+		assert.Equal(t, did2, checkDcMaps[did2].DatacenterID)
+		assert.Equal(t, buyerWithID.ID, checkDcMaps[did2].BuyerID)
+
 	})
 
 	t.Run("UpdateCustomer", func(t *testing.T) {
@@ -734,12 +822,16 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
+		err = db.UpdateSeller(ctx, sellerWithID.ID, "Secret", false)
+		assert.NoError(t, err)
+
 		checkSeller, err := db.Seller(sellerWithID.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(14433000000000), checkSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, "newname", checkSeller.ShortName)
+		assert.Equal(t, false, checkSeller.Secret)
 	})
 
 	t.Run("UpdateRelay", func(t *testing.T) {
@@ -777,6 +869,7 @@ func TestUpdateSQL(t *testing.T) {
 			EndDate:             time.Now(),
 			Type:                routing.BareMetal,
 			State:               routing.RelayStateMaintenance,
+			Notes:               "the original notes",
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -925,6 +1018,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(25000), checkRelay.IncludedBandwidthGB)
 
+		// relay.Notes
+		err = db.UpdateRelay(ctx, rid, "Notes", "not the original notes")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "not the original notes", checkRelay.Notes)
+
 	})
 }
 
@@ -935,7 +1035,6 @@ func TestInternalConfig(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	// db, err := storage.NewSQLStorage(ctx, logger)
 	env, err := backend.GetEnv()
 	assert.NoError(t, err)
 	db, err := backend.GetStorer(ctx, logger, "local", env)
@@ -985,23 +1084,22 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:        2,
-			RouteSwitchThreshold:        5,
-			MaxLatencyTradeOff:          10,
-			RTTVeto_Default:             -10,
-			RTTVeto_PacketLoss:          -20,
-			RTTVeto_Multipath:           -20,
-			MultipathOverloadThreshold:  500,
-			TryBeforeYouBuy:             true,
-			ForceNext:                   true,
-			LargeCustomer:               true,
-			Uncommitted:                 true,
-			HighFrequencyPings:          true,
-			RouteDiversity:              10,
-			MultipathThreshold:          35,
-			MispredictMultipathOverload: true,
-			EnableVanityMetrics:         true,
-			MaxRTT:                      300,
+			RouteSelectThreshold:       2,
+			RouteSwitchThreshold:       5,
+			MaxLatencyTradeOff:         10,
+			RTTVeto_Default:            -10,
+			RTTVeto_PacketLoss:         -20,
+			RTTVeto_Multipath:          -20,
+			MultipathOverloadThreshold: 500,
+			TryBeforeYouBuy:            true,
+			ForceNext:                  true,
+			LargeCustomer:              true,
+			Uncommitted:                true,
+			MaxRTT:                     300,
+			HighFrequencyPings:         true,
+			RouteDiversity:             10,
+			MultipathThreshold:         35,
+			EnableVanityMetrics:        true,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
@@ -1022,7 +1120,7 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, true, outerInternalConfig.LargeCustomer)
 		assert.Equal(t, true, outerInternalConfig.Uncommitted)
 		assert.Equal(t, true, outerInternalConfig.HighFrequencyPings)
-		assert.Equal(t, true, outerInternalConfig.MispredictMultipathOverload)
+		assert.Equal(t, true, outerInternalConfig.EnableVanityMetrics)
 		assert.Equal(t, int32(10), outerInternalConfig.RouteDiversity)
 		assert.Equal(t, int32(35), outerInternalConfig.MultipathThreshold)
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
@@ -1137,12 +1235,12 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(50), checkInternalConfig.MultipathThreshold)
 
-		// MispredictMultipathOverload
-		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "MispredictMultipathOverload", false)
+		// EnableVanityMetrics
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "EnableVanityMetrics", false)
 		assert.NoError(t, err)
 		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
 		assert.NoError(t, err)
-		assert.Equal(t, false, checkInternalConfig.MispredictMultipathOverload)
+		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
 
 		// EnableVanityMetrics
 		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "EnableVanityMetrics", false)

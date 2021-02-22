@@ -11,6 +11,7 @@ import (
 	"runtime"
 
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 
@@ -241,7 +242,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount); err != nil {
+		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount, env); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return
@@ -255,6 +256,14 @@ func mainReturnWithCode() int {
 			router.HandleFunc("/health", transport.HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
+
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
@@ -262,7 +271,7 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err

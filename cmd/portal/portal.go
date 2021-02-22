@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -329,6 +330,12 @@ func main() {
 	// 	}
 	// }
 
+	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create service metrics", "err", err)
+		os.Exit(1)
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -342,6 +349,7 @@ func main() {
 		RedisPoolSessionMap:    redisPoolSessionMap,
 		Storage:                db,
 		Env:                    env,
+		Metrics:                serviceMetrics,
 	}
 
 	configService := jsonrpc.ConfigService{
@@ -493,6 +501,14 @@ func main() {
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
 
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 
 		r.PathPrefix("/").Handler(middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), handlers.CompressHandler(spa)))
@@ -521,7 +537,7 @@ func main() {
 		}
 
 		// Fall through to running on any other port defined with TLS disabled
-		err := http.ListenAndServe(":"+port, r)
+		err = http.ListenAndServe(":"+port, r)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)

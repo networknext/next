@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -27,7 +26,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
@@ -306,7 +304,7 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 		}
 	default:
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>\n", err), 0)
+			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'staging', 'nrb', 'dev', or 'local' with\nnext select <env>\n", err), 0)
 		} else {
 			handleRunTimeError(fmt.Sprintf("%s\n\n", msg), 1)
 		}
@@ -316,23 +314,23 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold        int32
-	RouteSwitchThreshold        int32
-	MaxLatencyTradeOff          int32
-	RTTVeto_Default             int32
-	RTTVeto_PacketLoss          int32
-	RTTVeto_Multipath           int32
-	MultipathOverloadThreshold  int32
-	TryBeforeYouBuy             bool
-	ForceNext                   bool
-	LargeCustomer               bool
-	Uncommitted                 bool
-	MaxRTT                      int32
-	HighFrequencyPings          bool
-	RouteDiversity              int32
-	MultipathThreshold          int32
-	MispredictMultipathOverload bool
-	BuyerID                     string
+	RouteSelectThreshold       int32
+	RouteSwitchThreshold       int32
+	MaxLatencyTradeOff         int32
+	RTTVeto_Default            int32
+	RTTVeto_PacketLoss         int32
+	RTTVeto_Multipath          int32
+	MultipathOverloadThreshold int32
+	TryBeforeYouBuy            bool
+	ForceNext                  bool
+	LargeCustomer              bool
+	Uncommitted                bool
+	MaxRTT                     int32
+	HighFrequencyPings         bool
+	RouteDiversity             int32
+	MultipathThreshold         int32
+	EnableVanityMetrics        bool
+	BuyerID                    string
 }
 
 type routeShader struct {
@@ -353,9 +351,10 @@ type routeShader struct {
 }
 
 type buyer struct {
-	CompanyCode string
-	Live        bool
-	PublicKey   string
+	CustomerCode string
+	Live         bool
+	Debug        bool
+	PublicKey    string
 }
 
 type seller struct {
@@ -364,6 +363,7 @@ type seller struct {
 	CustomerCode         string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
+	Secret               bool
 }
 
 type relay struct {
@@ -387,6 +387,7 @@ type relay struct {
 	StartDate           string
 	EndDate             string
 	Type                string
+	Notes               string
 }
 
 type datacenter struct {
@@ -419,7 +420,7 @@ func main() {
 	env.Read()
 
 	protocol := "https"
-	if env.PortalHostname() == PortalHostnameLocal {
+	if env.PortalHostname() == PortalHostnameLocal || env.PortalHostname() == PortalHostnameNRB {
 		protocol = "http"
 	}
 
@@ -596,8 +597,8 @@ func main() {
 				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
 			}
 
-			if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
-				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|prod)\n", args[0]), 0)
+			if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
+				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
 			}
 
 			env.Name = args[0]
@@ -614,8 +615,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
-					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|prod)\n", args[0]), 0)
+				if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
+					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
 				}
 
 				env.Name = args[0]
@@ -635,6 +636,59 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var signedCommand = &ffcli.Command{
+		Name:       "signed",
+		ShortUsage: "next signed (uint64 in hex)",
+		ShortHelp:  "Provide the signed int64 representation of the provided hex uint64 value",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided an unsigned uint64 in hexadecimal format"), 0)
+			}
+
+			hexString := args[0]
+
+			unsigned, err := strconv.ParseUint(hexString, 16, 64)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("Error: %v\n", err), 1)
+			}
+			signed := int64(unsigned)
+
+			fmt.Printf("Hex   : %s\nuint64: %d\nint64 : %d\n", hexString, unsigned, signed)
+
+			return nil
+		},
+	}
+
+	var unsignedCommand = &ffcli.Command{
+		Name:       "unsigned",
+		ShortUsage: "next unsigned (int64) // omit negative sign",
+		ShortHelp:  "Provide the signed int64 representation of the provided hex uint64 value (omit negative sign)",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a signed int64 (omit negative sign)"), 0)
+			}
+
+			signedString := os.Args[2]
+
+			signed, err := strconv.ParseInt(signedString, 10, 64)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("Error: %v\n", err), 1)
+			}
+			unsigned := uint64(signed)
+
+			fmt.Println("Positive value:")
+			fmt.Printf("\tint64 : %d\n\tHex   : %016x\n\tuint64: %d\n\n", signed, unsigned, unsigned)
+
+			signed *= -1
+			unsigned = uint64(signed)
+
+			fmt.Println("Negative value:")
+			fmt.Printf("\tint64 : %d\n\tHex   : %016x\n\tuint64: %d\n\n", signed, unsigned, unsigned)
+
 			return nil
 		},
 	}
@@ -717,7 +771,9 @@ func main() {
 		ShortHelp:  "List relays",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
-			if relaysfs.NFlag() == 0 {
+			if relaysfs.NFlag() == 0 ||
+				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
+				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
 				// If no flags are given, set the default set of flags
 				relaysStateShowFlags[routing.RelayStateEnabled] = true
 				relaysStateHideFlags[routing.RelayStateEnabled] = false
@@ -1245,13 +1301,19 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
-					// Add the Buyer to storage
-					addBuyer(rpcClient, env, routing.Buyer{
-						CompanyCode: b.CompanyCode,
-						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
-						Live:        b.Live,
-						PublicKey:   publicKey,
-					})
+					buyerArgs := localjsonrpc.JSAddBuyerArgs{
+						ShortName: b.CustomerCode,
+						Live:      b.Live,
+						Debug:     b.Debug,
+						PublicKey: b.PublicKey,
+					}
+
+					var reply localjsonrpc.JSAddBuyerReply
+					if err := rpcClient.CallFor(&reply, "OpsService.JSAddBuyer", buyerArgs); err != nil {
+						handleJSONRPCError(env, err)
+					}
+
+					fmt.Printf("Buyer \"%s\" added to storage.\n", b.CustomerCode)
 					return nil
 				},
 			},
@@ -1435,25 +1497,24 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", ic.BuyerID, err), 0)
 							}
 
-							addInternalConfig(rpcClient, env, buyerID, core.InternalConfig{
-								RouteSelectThreshold:        int32(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:        int32(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:          int32(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:             int32(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:          int32(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:           int32(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold:  int32(ic.MultipathOverloadThreshold),
-								TryBeforeYouBuy:             ic.TryBeforeYouBuy,
-								ForceNext:                   ic.ForceNext,
-								LargeCustomer:               ic.LargeCustomer,
-								Uncommitted:                 ic.Uncommitted,
-								HighFrequencyPings:          ic.HighFrequencyPings,
-								RouteDiversity:              int32(ic.RouteDiversity),
-								MultipathThreshold:          int32(ic.MultipathThreshold),
-								MispredictMultipathOverload: ic.MispredictMultipathOverload,
-								MaxRTT:                      int32(ic.MaxRTT),
+							addInternalConfig(rpcClient, env, buyerID, localjsonrpc.JSInternalConfig{
+								RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:            int64(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
+								ForceNext:                  ic.ForceNext,
+								LargeCustomer:              ic.LargeCustomer,
+								Uncommitted:                ic.Uncommitted,
+								HighFrequencyPings:         ic.HighFrequencyPings,
+								RouteDiversity:             int64(ic.RouteDiversity),
+								MultipathThreshold:         int64(ic.MultipathThreshold),
+								EnableVanityMetrics:        ic.EnableVanityMetrics,
+								MaxRTT:                     int64(ic.MaxRTT),
 							})
-
 							return nil
 						},
 					},
@@ -1516,20 +1577,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", rs.BuyerID, err), 0)
 							}
 
-							addRouteShader(rpcClient, env, buyerID, core.RouteShader{
+							addRouteShader(rpcClient, env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
-								SelectionPercent:          int(rs.SelectionPercent),
+								SelectionPercent:          int64(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
 								ReduceLatency:             rs.ReduceLatency,
 								ReduceJitter:              rs.ReduceJitter,
 								ReducePacketLoss:          rs.ReducePacketLoss,
 								Multipath:                 rs.Multipath,
-								AcceptableLatency:         int32(rs.AcceptableLatency),
-								LatencyThreshold:          int32(rs.LatencyThreshold),
-								AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
-								BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
-								BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
+								AcceptableLatency:         int64(rs.AcceptableLatency),
+								LatencyThreshold:          int64(rs.LatencyThreshold),
+								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
 							})
 
 							return nil
@@ -1671,6 +1732,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode    string
 						IngressPriceUSD string
 						EgressPriceUSD  string
+						Secret          bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
@@ -1694,6 +1756,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode:         sellerUSD.CustomerCode,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
+						Secret:               sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
@@ -1776,8 +1839,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code                   string
 						Name                   string
 						AutomaticSignInDomains string
-						Active                 bool
-						Debug                  bool
 					}
 
 					if err := json.Unmarshal(jsonData, &customer); err != nil {
@@ -2102,6 +2163,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		debugCommand,
 		viewCommand,
 		stagingCommand,
+		signedCommand,
+		unsignedCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2154,10 +2217,11 @@ provided by a JSON file of the form:
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
   "IngressPriceUSD": "0.01",
-  "EgressPriceUSD": "0.1"
+  "EgressPriceUSD": "0.1",
+  "Secret": false
 }
 
-A valid Customer code is required to add a buyer.
+All fields are required. A valid Customer code is required to add a buyer.
 `
 var nextDatacenterAddJSONLongHelp = `
 Add a datacenter entry (and a map) for the provided customer. 
@@ -2196,7 +2260,7 @@ must be in a json file of the form:
   "HighFrequencyPings": true,
   "RouteDiversity": 0,
   "MultipathThreshold": 25,
-  "MispredictMultipathOverload": true,
+  "EnableVanityMetrics": true,
   "BuyerID": "205cca7361c2ae96"
 }
 
@@ -2246,11 +2310,11 @@ must be one of the following and is case-sensitive:
   ForceNext                   boolean
   LargeCustomer               boolean
   Uncommitted                 boolean
+  MaxRTT                      integer
   HighFrequencyPings          boolean 
   RouteDiversity              integer
   MultipathThreshold          integer
-  MispredictMultipathOverload boolean
-  MaxRTT                      integer
+  EnableVanityMetrics         boolean
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
@@ -2285,12 +2349,12 @@ must be one of the following and is case-sensitive:
 
   Name                 string
   Addr                 string (1.2.3.4:40000) - the port is required
-  InternalAddr         string (1.2.3.4:40000) - the port is required
+  InternalAddr         string (1.2.3.4:40000) - optional, though the port is required if provided
   PublicKey            string
   NICSpeedMbps         integer
   IncludedBandwidthGB  integer
   State                any valid relay state (see below)
-  ManagementAddr       string (1.2.3.4:40000) - the port is optional
+  ManagementAddr       string (1.2.3.4) - required, do not provide a port number
   SSHUser              string
   SSHPort              integer
   MaxSessions          integer
@@ -2301,6 +2365,7 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  Notes                any string up to 500 characters (optional)
 
 Valid relay states:
    enabled
@@ -2344,10 +2409,11 @@ must be of the form:
   "StartDate": "December 15, 2020", // exactly this format (optional)
   "EndDate": "December 15, 2020",   // exactly this format (optional)
   "Type": "virtualmachine",         // any valid machine type (see below)
-  "Seller": "colocrossing"
+  "Seller": "colocrossing",
+  "Notes": "any notes up to 500 characters" // optional
 }
 
-All fields are required except as noted (InternalAddr).
+All fields are required except as noted (InternalAddr, Notes).
 
 Valid bandwidth rules:
    flat
@@ -2366,9 +2432,7 @@ Example JSON schema required to add a new customer:
 {
         "Code": "amazon",
         "Name": "Amazon.com, Inc.",
-        "AutomaticSignInDomains": "amazon.networknext.com", // comma separated list
-        "Active": true,
-        "Debug": false
+        "AutomaticSignInDomains": "amazon.networknext.com" // comma separated list
 }
 
 All fields are required. The Code field must be unique
@@ -2401,9 +2465,10 @@ var nextSellerUpdateLongHelp = `
 Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
-  EgressPrice US Dollars
+  EgressPrice  US Dollars
   IngressPrice US Dollars
   ShortName    string
+  Secret       boolean
 
 The value should be whatever type is appropriate for the field
 as defined above.
