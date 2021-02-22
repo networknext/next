@@ -48,6 +48,7 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 
 	hasNan, nanFields := entry.CheckNaN()
 	if hasNan {
+		bq.Metrics.ErrorMetrics.BillingEntriesWithNaN.Add(1)
 		fieldStr := strings.Join(nanFields, " ")
 		fmt.Printf("Warn: billing entry had NaN values for %v.\n%+v\n", nanFields, entry)
 		level.Warn(bq.Logger).Log("msg", "Billing entry had NaN values", "fields", fieldStr)
