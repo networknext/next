@@ -883,12 +883,14 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 
 	directMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	directMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	for k, v := range directMapB {
@@ -897,12 +899,14 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 
 	nextMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	nextMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	for k, v := range nextMapB {
