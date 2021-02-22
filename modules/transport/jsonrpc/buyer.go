@@ -355,6 +355,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
 			firstNextCount += firstCount
@@ -363,6 +364,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
 			secondNextCount += secondCount
@@ -468,6 +470,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting total session next counts")
 			return err
 		}
 
@@ -475,6 +478,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting total session next counts")
 			return err
 		}
 
@@ -490,6 +494,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
 			return err
 		}
 
@@ -508,6 +513,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
 			return err
 		}
 
@@ -551,12 +557,12 @@ type TopSessionsReply struct {
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	sessions, err := s.FetchCurrentTopSessions(r, args.CompanyCode)
+	reply.Sessions = sessions
 	if err != nil {
 		err = fmt.Errorf("TopSessions() failed to fetch top sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-	reply.Sessions = sessions
 	return nil
 }
 
@@ -1442,12 +1448,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A")
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B")
 			return sessions, err
 		}
 	default:
@@ -1469,12 +1477,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 	}
