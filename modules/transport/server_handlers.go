@@ -656,8 +656,17 @@ func SessionUpdateHandlerFunc(
 			slicePacketsLostClientToServer := packet.PacketsLostClientToServer - sessionData.PrevPacketsLostClientToServer
 			slicePacketsLostServerToClient := packet.PacketsLostServerToClient - sessionData.PrevPacketsLostServerToClient
 
-			slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer))
-			slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient))
+			if slicePacketsSentClientToServer == float64(0) {
+				slicePacketLossClientToServer = float32(0)
+			} else {
+				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer))
+			}
+
+			if slicePacketsSentServerToClient == float64(0) {
+				slicePacketLossServerToClient = float32(0)
+			} else {
+				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient))
+			}
 
 			slicePacketLoss = slicePacketLossClientToServer
 			if slicePacketLossServerToClient > slicePacketLossClientToServer {
