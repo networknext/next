@@ -558,7 +558,7 @@ type TopSessionsReply struct {
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	sessions, err := s.FetchCurrentTopSessions(r, args.CompanyCode)
 	reply.Sessions = sessions
-	if err != nil {
+	if err != nil && len(sessions) == 0 {
 		err = fmt.Errorf("TopSessions() failed to fetch top sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
