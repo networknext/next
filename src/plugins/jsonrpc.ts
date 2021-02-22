@@ -33,16 +33,14 @@ export class JSONRPCService {
           id
         })
       }).then((response: Response) => {
-        if (response.ok) {
-          response.json().then((json: any) => {
-            if (json.error) {
-              reject(json.error)
-            }
-            resolve(json.result)
-          })
-        } else {
-          reject(new Error(response.statusText))
-        }
+        response.json().then((json: any) => {
+          if (json.error) {
+            reject(json.error)
+          }
+          resolve(json.result)
+        }).catch((error: Error) => {
+          reject(error)
+        })
       })
     })
   }
