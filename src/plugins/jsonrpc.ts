@@ -39,6 +39,7 @@ export class JSONRPCService {
       }).then((json: any) => {
         if (json.error) {
           reject(json.error)
+          return
         }
         resolve(json.result)
       }).catch((error: Error) => {
