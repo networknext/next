@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"cloud.google.com/go/bigquery"
@@ -45,6 +46,13 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 		return errors.New("entries buffer full")
 	}
 
+	hasNan, nanFields := entry.CheckNaN()
+	if hasNan {
+		fieldStr := strings.Join(nanFields, " ")
+		fmt.Printf("Warn: billing entry had NaN values for %v.\n%+v\n", nanFields, entry)
+		level.Warn(bq.Logger).Log("msg", "Billing entry had NaN values", "fields", fieldStr)
+	}
+
 	if !entry.Validate() {
 		bq.Metrics.ErrorMetrics.BillingInvalidEntries.Add(1)
 		fmt.Printf("Error: billing entry not valid.\n%+v\n", entry)
@@ -62,7 +70,6 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
 // Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
 // only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
-
 func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	if bq.entries == nil {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
@@ -92,7 +99,6 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 }
 
 // Validate a billing entry. Returns true if the billing entry is valid, false if invalid.
-
 func (entry *BillingEntry) Validate() bool {
 
 	if entry.Timestamp < 0 {
@@ -235,8 +241,97 @@ func (entry *BillingEntry) Validate() bool {
 	return true
 }
 
-// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
+// Checks all floating point numbers for NaN and forces them to 0
+func (entry *BillingEntry) CheckNaN() (bool, []string) {
+	var nanExists bool
+	var nanFields []string
 
+	if entry.NextRTT != entry.NextRTT {
+		nanFields = append(nanFields, "NextRTT")
+		nanExists = true
+		entry.NextRTT = float32(0)
+	}
+
+	if entry.NextJitter != entry.NextJitter {
+		nanFields = append(nanFields, "NextJitter")
+		nanExists = true
+		entry.NextJitter = float32(0)
+	}
+
+	if entry.NextPacketLoss != entry.NextPacketLoss {
+		nanFields = append(nanFields, "NextPacketLoss")
+		nanExists = true
+		entry.NextPacketLoss = float32(0)
+	}
+
+	if entry.Latitude != entry.Latitude {
+		nanFields = append(nanFields, "Latitude")
+		nanExists = true
+		entry.Latitude = float32(0)
+	}
+
+	if entry.Longitude != entry.Longitude {
+		nanFields = append(nanFields, "Longitude")
+		nanExists = true
+		entry.Longitude = float32(0)
+	}
+
+	if entry.PacketLoss != entry.PacketLoss {
+		nanFields = append(nanFields, "PacketLoss")
+		nanExists = true
+		entry.PacketLoss = float32(0)
+	}
+
+	if entry.PredictedNextRTT != entry.PredictedNextRTT {
+		nanFields = append(nanFields, "PredictedNextRTT")
+		nanExists = true
+		entry.PredictedNextRTT = float32(0)
+	}
+
+	if entry.NearRelayRTT != entry.NearRelayRTT {
+		nanFields = append(nanFields, "NearRelayRTT")
+		nanExists = true
+		entry.NearRelayRTT = float32(0)
+	}
+
+	if entry.JitterClientToServer != entry.JitterClientToServer {
+		nanFields = append(nanFields, "JitterClientToServer")
+		nanExists = true
+		entry.JitterClientToServer = float32(0)
+	}
+
+	if entry.JitterServerToClient != entry.JitterServerToClient {
+		nanFields = append(nanFields, "JitterServerToClient")
+		nanExists = true
+		entry.JitterServerToClient = float32(0)
+	}
+
+	if entry.NumNearRelays > 0 {
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			if entry.NearRelayRTTs[i] != entry.NearRelayRTTs[i] {
+				nanFields = append(nanFields, fmt.Sprintf("NearRelayRTTs[%d]", i))
+				nanExists = true
+				entry.NearRelayRTTs[i] = float32(0)
+			}
+
+			if entry.NearRelayJitters[i] != entry.NearRelayJitters[i] {
+				nanFields = append(nanFields, fmt.Sprintf("NearRelayJitters[%d]", i))
+				nanExists = true
+				entry.NearRelayJitters[i] = float32(0)
+			}
+
+			if entry.NearRelayPacketLosses[i] != entry.NearRelayPacketLosses[i] {
+				nanFields = append(nanFields, fmt.Sprintf("NearRelayPacketLosses[%d]", i))
+				nanExists = true
+				entry.NearRelayPacketLosses[i] = float32(0)
+			}
+		}
+	}
+
+	return nanExists, nanFields
+}
+
+// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
 func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e := make(map[string]bigquery.Value)
