@@ -2,8 +2,8 @@
 // Network Next PS4 Testbed
 
 #include "next.h"
+#include <stdio.h>
 #include <stdlib.h>
-#include <libsecure.h>
 #include <string.h>
 #include <kernel.h>
 
@@ -21,24 +21,19 @@ void packet_received( next_client_t * client, void * context, const uint8_t * pa
     (void) context;
     (void) packet_data;
     (void) packet_bytes;
+
     // ...
 }
 
-static uint8_t random_seed[4160];
-
 int32_t main( int argc, const char * const argv[] )
 {
-    SceKernelModule next_library = sceKernelLoadStartModule("/app0/next-ps4-3.4.5.prx", 0, NULL, 0, NULL, NULL);
+    SceKernelModule next_library = sceKernelLoadStartModule("/app0/next-ps4-4.0.9.prx", 0, NULL, 0, NULL, NULL);
     if ( next_library < 0 )
     {
         printf( "Failed to load next PRX library\n" );
     }
 
-    SceLibSecureBlock random_seed_block = { random_seed, sizeof( random_seed ) };
-    if ( sceLibSecureInit( SCE_LIBSECURE_FLAGS_RANDOM_GENERATOR, &random_seed_block ) != SCE_LIBSECURE_OK )
-        exit( 1 );
-
-	next_log_level(NEXT_LOG_LEVEL_NONE);
+	next_log_level( NEXT_LOG_LEVEL_NONE );
 
 	next_config_t config;
 	next_default_config( &config );
@@ -63,7 +58,7 @@ int32_t main( int argc, const char * const argv[] )
         exit( 1 );
     }
 
-	next_client_open_session( client, "173.255.241.176:32202" );
+	next_client_open_session( client, "173.255.241.176:50000" );
 
     while ( !quit )
     {
@@ -83,8 +78,6 @@ int32_t main( int argc, const char * const argv[] )
     next_term();
 
     sceKernelStopUnloadModule( next_library, 0, NULL, 0, NULL, NULL );
-
-    sceLibSecureDestroy();
 
     printf( "\n" );
 

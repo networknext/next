@@ -58,7 +58,7 @@ int32_t main( int argc, const char * const argv[] )
         exit( 1 );
     }
 
-	next_client_open_session( client, "173.255.241.176:32202" );
+	next_client_open_session( client, "173.255.241.176:50000" );
 
     while ( !quit )
     {
