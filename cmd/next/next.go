@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -352,9 +351,10 @@ type routeShader struct {
 }
 
 type buyer struct {
-	CompanyCode string
-	Live        bool
-	PublicKey   string
+	CustomerCode string
+	Live         bool
+	Debug        bool
+	PublicKey    string
 }
 
 type seller struct {
@@ -1301,14 +1301,19 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
-					// TODO: this function should use the new JSAddBuyer endpoint
-					// Add the Buyer to storage
-					addBuyer(rpcClient, env, routing.Buyer{
-						CompanyCode: b.CompanyCode,
-						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
-						Live:        b.Live,
-						PublicKey:   publicKey[8:],
-					})
+					buyerArgs := localjsonrpc.JSAddBuyerArgs{
+						ShortName: b.CustomerCode,
+						Live:      b.Live,
+						Debug:     b.Debug,
+						PublicKey: b.PublicKey,
+					}
+
+					var reply localjsonrpc.JSAddBuyerReply
+					if err := rpcClient.CallFor(&reply, "OpsService.JSAddBuyer", buyerArgs); err != nil {
+						handleJSONRPCError(env, err)
+					}
+
+					fmt.Printf("Buyer \"%s\" added to storage.\n", b.CustomerCode)
 					return nil
 				},
 			},
@@ -1834,8 +1839,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code                   string
 						Name                   string
 						AutomaticSignInDomains string
-						Active                 bool
-						Debug                  bool
 					}
 
 					if err := json.Unmarshal(jsonData, &customer); err != nil {
@@ -2429,9 +2432,7 @@ Example JSON schema required to add a new customer:
 {
         "Code": "amazon",
         "Name": "Amazon.com, Inc.",
-        "AutomaticSignInDomains": "amazon.networknext.com", // comma separated list
-        "Active": true,
-        "Debug": false
+        "AutomaticSignInDomains": "amazon.networknext.com" // comma separated list
 }
 
 All fields are required. The Code field must be unique
