@@ -3,6 +3,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 DIST_DIR="${DIR}/../dist"
+NGINX_DIR="${DIR}/../nginx"
 
 ENV=
 ARTIFACT_BUCKET=
@@ -27,7 +28,7 @@ build-artifacts() {
   else
     env=$ENV
   fi
-  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR}
+  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR} ${NGINX_DIR}
   gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${env}.tar.gz
   printf "Done building and artifact was published\n"
 }

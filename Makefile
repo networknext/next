@@ -4,16 +4,16 @@ ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 
 .PHONY: build-portal-artifacts-local
 build-portal-artifacts-local:
-	./deploy/build-artifact.sh -e local -b $(ARTIFACT_BUCKET_PROD) -s portal
+	./deploy/build-artifacts.sh -e local -b $(ARTIFACT_BUCKET_PROD) -s portal
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev:
-	./deploy/build-artifact.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
+	./deploy/build-artifacts.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
 
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging:
-	./deploy/build-artifact.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
+	./deploy/build-artifacts.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
 
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod:
-	./deploy/build-artifact.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
+	./deploy/build-artifacts.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
