@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -46,12 +47,12 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 		return errors.New("entries buffer full")
 	}
 
-	hasNan, nanFields := entry.CheckNaN()
-	if hasNan {
+	hasNanOrInf, nanOrInfFields := entry.CheckNaNOrInf()
+	if hasNanOrInf {
 		bq.Metrics.ErrorMetrics.BillingEntriesWithNaN.Add(1)
-		fieldStr := strings.Join(nanFields, " ")
-		fmt.Printf("Warn: billing entry had NaN values for %v.\n%+v\n", nanFields, entry)
-		level.Warn(bq.Logger).Log("msg", "Billing entry had NaN values", "fields", fieldStr)
+		fieldStr := strings.Join(nanOrInfFields, " ")
+		fmt.Printf("Warn: billing entry had NaN or Inf values for %v.\n%+v\n", nanOrInfFields, entry)
+		level.Warn(bq.Logger).Log("msg", "Billing entry had NaN or Inf values", "fields", fieldStr)
 	}
 
 	if !entry.Validate() {
@@ -243,93 +244,93 @@ func (entry *BillingEntry) Validate() bool {
 }
 
 // Checks all floating point numbers for NaN and forces them to 0
-func (entry *BillingEntry) CheckNaN() (bool, []string) {
-	var nanExists bool
-	var nanFields []string
+func (entry *BillingEntry) CheckNaNOrInf() (bool, []string) {
+	var nanOrInfExists bool
+	var nanOrInfFields []string
 
-	if entry.NextRTT != entry.NextRTT {
-		nanFields = append(nanFields, "NextRTT")
-		nanExists = true
+	if math.IsNaN(float64(entry.NextRTT)) || math.IsInf(float64(entry.NextRTT), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NextRTT")
+		nanOrInfExists = true
 		entry.NextRTT = float32(0)
 	}
 
-	if entry.NextJitter != entry.NextJitter {
-		nanFields = append(nanFields, "NextJitter")
-		nanExists = true
+	if math.IsNaN(float64(entry.NextJitter)) || math.IsInf(float64(entry.NextJitter), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NextJitter")
+		nanOrInfExists = true
 		entry.NextJitter = float32(0)
 	}
 
-	if entry.NextPacketLoss != entry.NextPacketLoss {
-		nanFields = append(nanFields, "NextPacketLoss")
-		nanExists = true
+	if math.IsNaN(float64(entry.NextPacketLoss)) || math.IsInf(float64(entry.NextPacketLoss), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NextPacketLoss")
+		nanOrInfExists = true
 		entry.NextPacketLoss = float32(0)
 	}
 
-	if entry.Latitude != entry.Latitude {
-		nanFields = append(nanFields, "Latitude")
-		nanExists = true
+	if math.IsNaN(float64(entry.Latitude)) || math.IsInf(float64(entry.Latitude), 0) {
+		nanOrInfFields = append(nanOrInfFields, "Latitude")
+		nanOrInfExists = true
 		entry.Latitude = float32(0)
 	}
 
-	if entry.Longitude != entry.Longitude {
-		nanFields = append(nanFields, "Longitude")
-		nanExists = true
+	if math.IsNaN(float64(entry.Longitude)) || math.IsInf(float64(entry.Longitude), 0) {
+		nanOrInfFields = append(nanOrInfFields, "Longitude")
+		nanOrInfExists = true
 		entry.Longitude = float32(0)
 	}
 
-	if entry.PacketLoss != entry.PacketLoss {
-		nanFields = append(nanFields, "PacketLoss")
-		nanExists = true
+	if math.IsNaN(float64(entry.PacketLoss)) || math.IsInf(float64(entry.PacketLoss), 0) {
+		nanOrInfFields = append(nanOrInfFields, "PacketLoss")
+		nanOrInfExists = true
 		entry.PacketLoss = float32(0)
 	}
 
-	if entry.PredictedNextRTT != entry.PredictedNextRTT {
-		nanFields = append(nanFields, "PredictedNextRTT")
-		nanExists = true
+	if math.IsNaN(float64(entry.PredictedNextRTT)) || math.IsInf(float64(entry.PredictedNextRTT), 0) {
+		nanOrInfFields = append(nanOrInfFields, "PredictedNextRTT")
+		nanOrInfExists = true
 		entry.PredictedNextRTT = float32(0)
 	}
 
-	if entry.NearRelayRTT != entry.NearRelayRTT {
-		nanFields = append(nanFields, "NearRelayRTT")
-		nanExists = true
+	if math.IsNaN(float64(entry.NearRelayRTT)) || math.IsInf(float64(entry.NearRelayRTT), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NearRelayRTT")
+		nanOrInfExists = true
 		entry.NearRelayRTT = float32(0)
 	}
 
-	if entry.JitterClientToServer != entry.JitterClientToServer {
-		nanFields = append(nanFields, "JitterClientToServer")
-		nanExists = true
+	if math.IsNaN(float64(entry.JitterClientToServer)) || math.IsInf(float64(entry.JitterClientToServer), 0) {
+		nanOrInfFields = append(nanOrInfFields, "JitterClientToServer")
+		nanOrInfExists = true
 		entry.JitterClientToServer = float32(0)
 	}
 
-	if entry.JitterServerToClient != entry.JitterServerToClient {
-		nanFields = append(nanFields, "JitterServerToClient")
-		nanExists = true
+	if math.IsNaN(float64(entry.JitterServerToClient)) || math.IsInf(float64(entry.JitterServerToClient), 0) {
+		nanOrInfFields = append(nanOrInfFields, "JitterServerToClient")
+		nanOrInfExists = true
 		entry.JitterServerToClient = float32(0)
 	}
 
 	if entry.NumNearRelays > 0 {
 		for i := 0; i < int(entry.NumNearRelays); i++ {
-			if entry.NearRelayRTTs[i] != entry.NearRelayRTTs[i] {
-				nanFields = append(nanFields, fmt.Sprintf("NearRelayRTTs[%d]", i))
-				nanExists = true
+			if math.IsNaN(float64(entry.NearRelayRTTs[i])) || math.IsInf(float64(entry.NearRelayRTTs[i]), 0) {
+				nanOrInfFields = append(nanOrInfFields, fmt.Sprintf("NearRelayRTTs[%d]", i))
+				nanOrInfExists = true
 				entry.NearRelayRTTs[i] = float32(0)
 			}
 
-			if entry.NearRelayJitters[i] != entry.NearRelayJitters[i] {
-				nanFields = append(nanFields, fmt.Sprintf("NearRelayJitters[%d]", i))
-				nanExists = true
+			if math.IsNaN(float64(entry.NearRelayJitters[i])) || math.IsInf(float64(entry.NearRelayJitters[i]), 0) {
+				nanOrInfFields = append(nanOrInfFields, fmt.Sprintf("NearRelayJitters[%d]", i))
+				nanOrInfExists = true
 				entry.NearRelayJitters[i] = float32(0)
 			}
 
-			if entry.NearRelayPacketLosses[i] != entry.NearRelayPacketLosses[i] {
-				nanFields = append(nanFields, fmt.Sprintf("NearRelayPacketLosses[%d]", i))
-				nanExists = true
+			if math.IsNaN(float64(entry.NearRelayPacketLosses[i])) || math.IsInf(float64(entry.NearRelayPacketLosses[i]), 0) {
+				nanOrInfFields = append(nanOrInfFields, fmt.Sprintf("NearRelayPacketLosses[%d]", i))
+				nanOrInfExists = true
 				entry.NearRelayPacketLosses[i] = float32(0)
 			}
 		}
 	}
 
-	return nanExists, nanFields
+	return nanOrInfExists, nanOrInfFields
 }
 
 // Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
