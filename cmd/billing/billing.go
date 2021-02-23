@@ -277,6 +277,9 @@ func main() {
 				fmt.Printf("%d billing entries submitted\n", int(billingServiceMetrics.BillingMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d billing entries queued\n", int(billingServiceMetrics.BillingMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d billing entries flushed\n", int(billingServiceMetrics.BillingMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d billing entries with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingEntriesWithNaN.Value()))
+				fmt.Printf("%d invalid billing entries\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingInvalidEntries.Value()))
+				fmt.Printf("%d billing entry write failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -289,7 +292,7 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 			router.Handle("/debug/vars", expvar.Handler())
 
 			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
