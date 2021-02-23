@@ -57,6 +57,11 @@ const flags: Array<Flag> = [
     name: FeatureEnum.FEATURE_ANALYTICS,
     description: 'Google analytics and tag manager hooks',
     value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_NGINX,
+    description: 'Break the portal free from the backend with NGINX',
+    value: false
   }
 ]
 
