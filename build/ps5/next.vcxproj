@@ -205,7 +205,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{07557A06-FB1F-400F-879E-FBA6BA863732}</ProjectGuid>
-    <ProjectName>next-ps5-4.0.9</ProjectName>
+    <ProjectName>next-ps5-4.0.10</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'" Label="Configuration">

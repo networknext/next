@@ -98,7 +98,7 @@ The server output should look like this:
 	0.000317: info: customer private key override
 	0.000342: info: found valid customer private key
 	0.000347: info: override next hostname: 'prod.spacecats.net'
-	0.000368: info: server sdk version is 4.0.9
+	0.000368: info: server sdk version is 4.0.10
 	0.000377: info: server address override: '173.255.241.176:50000'
 	0.000387: info: server datacenter is 'linode.fremont'
 	0.000419: info: server bound to 0.0.0.0:50000
@@ -126,7 +126,7 @@ The client should connect to your server and exchange packets:
 
 	glenn@macbook sdk % ./bin/upgraded_client
 	0.010058: info: found valid customer public key
-	0.010086: info: client sdk version is 4.0.9
+	0.010086: info: client sdk version is 4.0.10
 	0.010204: info: client bound to 0.0.0.0:59617
 	0.010396: info: client increased thread priority
 	0.106846: info: client opened session to 173.255.241.176:50000

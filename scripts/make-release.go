@@ -30,7 +30,7 @@ func bash(format string, args ...interface{}) bool {
 
 func main() {
 
-	version := "4.0.9"
+	version := "4.0.10"
 
 	basedir := fmt.Sprintf("next-%s", version)
 
@@ -207,19 +207,13 @@ func main() {
 
 	// copy across the win64 build solution
 	bash("mkdir -p %s/build/win64", basedir)
-	bash("mkdir -p %s/build/win64/next", basedir)
-	bash("mkdir -p %s/build/win64/sodium", basedir)
 	bash("cp build/win64/build_win64.sln %s/build/win64", basedir)
-	bash("cp build/win64/next/next.vcxproj %s/build/win64/next", basedir)
-	bash("cp build/win64/sodium/sodium.vcxproj %s/build/win64/sodium", basedir)
+	bash("cp build/win64/next.vcxproj %s/build/win64", basedir)
 
 	// copy across the win32 build solution
 	bash("mkdir -p %s/build/win32", basedir)
-	bash("mkdir -p %s/build/win32/next", basedir)
-	bash("mkdir -p %s/build/win32/sodium", basedir)
 	bash("cp build/win32/build_win32.sln %s/build/win32", basedir)
-	bash("cp build/win32/next/next.vcxproj %s/build/win32/next", basedir)
-	bash("cp build/win32/sodium/sodium.vcxproj %s/build/win32/sodium", basedir)
+	bash("cp build/win32/next.vcxproj %s/build/win32", basedir)
 
 	// copy across the ps4 build solution
 	bash("mkdir -p %s/build/ps4", basedir)
@@ -241,21 +235,15 @@ func main() {
 
 	// copy across the nx64 build solution
 	bash("mkdir -p %s/build/nx64", basedir)
-	bash("mkdir -p %s/build/nx64/next", basedir)
-	bash("mkdir -p %s/build/nx64/sodium", basedir)
 	bash("cp build/nx64/build_nx64.sln %s/build/nx64", basedir)
+	bash("cp build/nx64/next.vcxproj %s/build/nx64", basedir)
 	bash("cp build/nx64/ImportNintendoSdk.props %s/build/nx64", basedir)
-	bash("cp build/nx64/next/next.vcxproj %s/build/nx64/next", basedir)
-	bash("cp build/nx64/sodium/sodium.vcxproj %s/build/nx64/sodium", basedir)
 
 	// copy across the nx32 build solution
 	bash("mkdir -p %s/build/nx32", basedir)
-	bash("mkdir -p %s/build/nx32/next", basedir)
-	bash("mkdir -p %s/build/nx32/sodium", basedir)
 	bash("cp build/nx32/build_nx32.sln %s/build/nx32", basedir)
+	bash("cp build/nx32/next.vcxproj %s/build/nx32", basedir)
 	bash("cp build/nx32/ImportNintendoSdk.props %s/build/nx32", basedir)
-	bash("cp build/nx32/next/next.vcxproj %s/build/nx32/next", basedir)
-	bash("cp build/nx32/sodium/sodium.vcxproj %s/build/nx32/sodium", basedir)
 
 	// copy across keygen directory
 	bash("mkdir -p %s/keygen", basedir)
@@ -376,12 +364,10 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-%s.nrs", basedir, version))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/win64/build_win64.sln", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/win64/next/next.vcxproj", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/win64/sodium/sodium.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/win64/next.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/win32/build_win32.sln", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/win32/next/next.vcxproj", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/win32/sodium/sodium.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/win32/next.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/build_ps4.sln", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/next.vcxproj", basedir))
@@ -394,14 +380,12 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/build/xboxone/sodium/sodium.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/build_nx64.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/next.vcxproj", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/ImportNintendoSdk.props", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/next/next.vcxproj", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/sodium/sodium.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/build_nx32.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/next.vcxproj", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/ImportNintendoSdk.props", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/next/next.vcxproj", basedir))
-	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/sodium/sodium.vcxproj", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen.exe", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_mac", basedir))
