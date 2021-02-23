@@ -338,10 +338,10 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e := make(map[string]bigquery.Value)
 
-	e["timestamp"] = int(entry.Timestamp)
+	e["timestamp"] = int(entry.Timestamp) // Required
 
-	e["buyerId"] = int(entry.BuyerID)
-	e["sessionId"] = int(entry.SessionID)
+	e["buyerId"] = int(entry.BuyerID)     // Required
+	e["sessionId"] = int(entry.SessionID) // Required
 	e["datacenterID"] = int(entry.DatacenterID)
 	e["userHash"] = int(entry.UserHash)
 	e["latitude"] = entry.Latitude
@@ -351,7 +351,8 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["platformType"] = int(entry.PlatformType)
 	e["sdkVersion"] = entry.SDKVersion
 
-	e["sliceNumber"] = int(entry.SliceNumber)
+	e["sliceNumber"] = int(entry.SliceNumber) // Required
+	e["totalPrice"] = int(entry.TotalPrice)   // Required
 
 	e["flagged"] = entry.Flagged
 	e["fallbackToDirect"] = entry.FallbackToDirect
@@ -387,9 +388,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["multipathRestricted"] = entry.MultipathRestricted
 	}
 
-	e["directRTT"] = entry.DirectRTT
-	e["directJitter"] = entry.DirectJitter
-	e["directPacketLoss"] = entry.DirectPacketLoss
+	e["directRTT"] = entry.DirectRTT               // Required
+	e["directJitter"] = entry.DirectJitter         // Required
+	e["directPacketLoss"] = entry.DirectPacketLoss // Required
 
 	if entry.ClientToServerPacketsSent > 0 {
 		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
@@ -455,8 +456,6 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["nextRTT"] = entry.NextRTT
 		e["nextJitter"] = entry.NextJitter
 		e["nextPacketLoss"] = entry.NextPacketLoss
-
-		e["totalPrice"] = int(entry.TotalPrice)
 
 		e["nextBytesUp"] = int(entry.NextBytesUp)
 		e["nextBytesDown"] = int(entry.NextBytesDown)
