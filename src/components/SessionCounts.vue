@@ -7,11 +7,11 @@
       <span
         class="badge badge-dark"
         data-test="totalSessions"
-      >{{ this.totalSessions.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} Total Sessions</span>&nbsp;
+      >{{ totalSessions.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} Total Sessions</span>&nbsp;
       <span
         class="badge badge-success"
         data-test="nnSessions"
-      >{{ this.totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
+      >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
     <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
       <Alert ref="verifyAlert">
