@@ -487,19 +487,13 @@ func main() {
 			Storage:     db,
 		}, "")
 
-		allowCORSStr := os.Getenv("CORS")
-		allowCORS := true
-		if ok, err := strconv.ParseBool(allowCORSStr); err == nil {
-			allowCORS = ok
-		}
-
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS, strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {

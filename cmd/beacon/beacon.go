@@ -255,7 +255,7 @@ func mainReturnWithCode() int {
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)

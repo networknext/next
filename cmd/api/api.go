@@ -147,7 +147,7 @@ func mainReturnWithCode() int {
 			router := mux.NewRouter()
 			router.HandleFunc("/vanity", VanityMetricHandlerFunc())
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 
 			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 			if err != nil {
