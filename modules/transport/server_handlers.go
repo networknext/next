@@ -131,6 +131,7 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 			datacenter, err := storer.Datacenter(datacenterID)
 			if err != nil {
 				// The datacenter map is misconfigured in our database
+				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
 				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
 			}
 
@@ -142,6 +143,7 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 			datacenter, err := storer.Datacenter(dcMap.DatacenterID)
 			if err != nil {
 				// The datacenter map is misconfigured in our database
+				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
 				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
 			}
 
