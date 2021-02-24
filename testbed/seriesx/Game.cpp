@@ -46,7 +46,7 @@ void Game::Initialize(HWND window)
     m_deviceResources->CreateWindowSizeDependentResources();
     CreateWindowSizeDependentResources();
 
-    next_log_level(NEXT_LOG_LEVEL_DEBUG);// INFO);
+    next_log_level(NEXT_LOG_LEVEL_INFO);
 
     OutputDebugStringA("\nStarting client...\n\n");
 
