@@ -31,7 +31,7 @@
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              SDK v4.0.9
+              SDK v4.0.10
             </a>
             <a
               href="#"
@@ -75,7 +75,7 @@ export default class DownloadsWorkspace extends Vue {
         event_category: 'Important Clicks'
       })
     }
-    window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.9.zip')
+    window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.10.zip')
   }
 
   private downloadDocs () {
