@@ -7,7 +7,7 @@
 #include <string.h>
 #include <kernel.h>
 
-const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFoffKSVE0zotg==";
+const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
 unsigned int sceLibcHeapExtendedAlloc = 1;
 

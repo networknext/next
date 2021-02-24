@@ -38,7 +38,7 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
-const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFoffKSVE0zotg==";
+const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
 int main()
 {
