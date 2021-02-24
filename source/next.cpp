@@ -12316,6 +12316,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
         server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
         next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", server->datacenter_name );
+        server->datacenter_id = next_datacenter_id( server->datacenter_name );
     }
 
     server->resolve_hostname_thread = NULL;
