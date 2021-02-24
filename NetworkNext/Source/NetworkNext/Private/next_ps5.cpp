@@ -20,14 +20,15 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "next_ps4.h"
+#include "next_ps5.h"
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_PS4
+#if NEXT_PLATFORM == NEXT_PLATFORM_PS5
 
 #include <kernel.h>
 #include <net.h>
 #include <libnetctl.h>
-#include <libsecure.h>
+#include <libsysmodule.h>
+#include <sce_random.h>
 #include <string.h>
 #include "sodium.h"
 
@@ -43,7 +44,7 @@ static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
 
 static const char * next_randombytes_implementation_name()
 {
-    return "ps4";
+    return "ps5";
 }
 
 static void next_randombytes_stir()
@@ -52,10 +53,17 @@ static void next_randombytes_stir()
 
 static void next_randombytes_buf( void * const buf, const size_t size )
 {
-    SceLibSecureBlock mem_block = { buf, size };
-    SceLibSecureErrorType error = sceLibSecureRandom( &mem_block );
-    (void)error;
-    next_assert( error == SCE_LIBSECURE_OK );
+    // IMPORTANT: sceRandomGetRandomNumber can only do max of SCE_RANDOM_MAX_SIZE bytes at a time. why god why.
+    uint8_t * start = (uint8_t*) buf;
+    uint8_t * finish = start + size;
+    uint8_t * p = start;
+    while ( p < finish )
+    {
+        size_t remaining = size_t( finish - p );
+        size_t size = ( remaining >= SCE_RANDOM_MAX_SIZE ) ? SCE_RANDOM_MAX_SIZE : remaining;
+        sceRandomGetRandomNumber( buf, size );
+        p += size;
+    }
 }
 
 static uint32_t next_randombytes_random()
@@ -99,11 +107,23 @@ static randombytes_implementation next_random_implementation =
 
 int next_platform_init()
 {
-    if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    if ( sceSysmoduleLoadModule( SCE_SYSMODULE_RANDOM ) != SCE_OK ) 
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to load random sysmodule" );
         return NEXT_ERROR;
+    }
 
-    if ( ( handle_net = sceNetPoolCreate("net", HEAP_SIZE_NET, 0 ) ) < 0 )
+    if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to setup random bytes implementation" );
         return NEXT_ERROR;
+    }
+
+    if ( ( handle_net = sceNetPoolCreate( "net", HEAP_SIZE_NET, 0 ) ) < 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init network pool" );
+        return NEXT_ERROR;
+    }
 
     connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
     if ( sceNetCtlInit() != SCE_OK )
@@ -495,11 +515,11 @@ int next_platform_connection_type()
 
 int next_platform_id()
 {
-    return NEXT_PLATFORM_PS4;
+    return NEXT_PLATFORM_PS5;
 }
 
-#else // #if NEXT_PLATFORM == NEXT_PLATFORM_PS4
+#else // #if NEXT_PLATFORM == NEXT_PLATFORM_PS5
 
-int next_ps4_dummy_symbol = 0;
+int next_ps5_dummy_symbol = 0;
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_PS4
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_PS5

@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "4.0.8"
+#define NEXT_VERSION_FULL                                  "4.0.10"
 #define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                    8
+#define NEXT_VERSION_PATCH_INT                                   10
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                  255
@@ -79,7 +79,8 @@
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
-#define NEXT_PLATFORM_MAX                                         9
+#define NEXT_PLATFORM_GDK                                         10
+#define NEXT_PLATFORM_MAX                                         10
 
 #define NEXT_MAX_TAGS                                             8
 
@@ -88,7 +89,7 @@
 #endif
 
 #if defined( NEXT_SHARED )
-    #if defined( _WIN32 ) || defined( __ORBIS__ )
+    #if defined( _WIN32 ) || defined( __ORBIS__ ) || defined( __PROSPERO__ )
         #ifdef NEXT_EXPORT
             #define NEXT_EXPORT_FUNC extern "C" __declspec(dllexport)
         #else
@@ -105,8 +106,12 @@
     #define NEXT_PLATFORM NEXT_PLATFORM_SWITCH
 #elif defined(__ORBIS__)
     #define NEXT_PLATFORM NEXT_PLATFORM_PS4
+#elif defined(__PROSPERO__)
+    #define NEXT_PLATFORM NEXT_PLATFORM_PS5
 #elif defined(_XBOX_ONE)
     #define NEXT_PLATFORM NEXT_PLATFORM_XBOX_ONE
+#elif defined(_GAMING_XBOX)
+    #define NEXT_PLATFORM NEXT_PLATFORM_GDK
 #elif defined(_WIN32)
     #define NEXT_PLATFORM NEXT_PLATFORM_WINDOWS
 #elif defined(__APPLE__)
@@ -120,9 +125,9 @@
     #define NEXT_PLATFORM NEXT_PLATFORM_LINUX
 #endif
 
-#if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
+#if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_PS5 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
 #define NEXT_PLATFORM_HAS_IPV6 1
-#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_PS5 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
 
 // -----------------------------------------
 

@@ -38,7 +38,7 @@ static const uint64_t blake2b_IV[8] = {
 static inline int
 blake2b_set_lastnode(blake2b_state *S)
 {
-    S->f[1] = -1;
+    S->f[1] = (uint64_t) -1;
     return 0;
 }
 /* LCOV_EXCL_STOP */
@@ -55,7 +55,7 @@ blake2b_set_lastblock(blake2b_state *S)
     if (S->last_node) {
         blake2b_set_lastnode(S);
     }
-    S->f[0] = -1;
+    S->f[0] = (uint64_t) -1;
     return 0;
 }
 

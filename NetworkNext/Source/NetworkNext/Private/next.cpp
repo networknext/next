@@ -280,6 +280,8 @@ static void default_assert_function( const char * condition, const char * functi
         __debugbreak();
     #elif defined(__ORBIS__)
         __builtin_trap();
+    #elif defined(__PROSPERO__)
+        __builtin_trap();
     #elif defined(__clang__)
         __builtin_debugtrap();
     #elif defined(__GNUC__)
@@ -342,11 +344,17 @@ uint16_t next_htons( uint16_t in )
 #include "next_switch.h"
 #elif NEXT_PLATFORM == NEXT_PLATFORM_PS4
 #include "next_ps4.h"
+#elif NEXT_PLATFORM == NEXT_PLATFORM_PS5
+#include "next_ps5.h"
 #elif NEXT_PLATFORM == NEXT_PLATFORM_IOS 
 #include "next_ios.h"
 #elif NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
 #include "next_xboxone.h"
 #endif
+
+#ifdef _GAMING_XBOX
+#include "next_gdk.h"
+#endif // #ifdef _GAMING_XBOX
 
 extern int next_platform_init();
 
@@ -10169,6 +10177,7 @@ struct next_server_internal_t
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
+    bool autodetected_datacenter;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -12207,10 +12216,15 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     if ( server->autodetect_datacenter[0] == '\0' )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
+
         autodetect_result = next_autodetect_datacenter( autodetect_output );
+        
         if ( autodetect_result )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
+            strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+            server->autodetected_datacenter = true;
         }
         else
         {
@@ -12269,14 +12283,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-        
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
-        if ( autodetect_result )
-        {
-            strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
-            server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-        }
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
     }
 
     NEXT_PLATFORM_THREAD_RETURN();
@@ -12305,8 +12311,13 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     next_platform_thread_destroy( server->resolve_hostname_thread );
 
-    strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
-    server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+    if ( server->autodetected_datacenter )
+    {
+        strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", server->datacenter_name );
+        server->datacenter_id = next_datacenter_id( server->datacenter_name );
+    }
 
     server->resolve_hostname_thread = NULL;
 

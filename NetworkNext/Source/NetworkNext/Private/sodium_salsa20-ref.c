@@ -42,7 +42,7 @@ stream_ref(unsigned char *c, unsigned long long clen, const unsigned char *n,
         u = 1;
         for (i = 8; i < 16; i++) {
             u += (unsigned int) in[i];
-            in[i] = u;
+            in[i] = (unsigned char) u;
             u >>= 8;
         }
         clen -= 64;
@@ -92,7 +92,7 @@ stream_ref_xor_ic(unsigned char *c, const unsigned char *m,
         u = 1;
         for (i = 8; i < 16; i++) {
             u += (unsigned int) in[i];
-            in[i] = u;
+            in[i] = (unsigned char) u;
             u >>= 8;
         }
         mlen -= 64;

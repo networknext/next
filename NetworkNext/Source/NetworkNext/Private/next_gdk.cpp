@@ -1,30 +1,30 @@
 /*
     Network Next SDK. Copyright © 2017 - 2021 Network Next, Inc.
 
-    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
+    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
 
     1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 
-    2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+    2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
        and the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-    3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote 
+    3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote
        products derived from this software without specific prior written permission.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
-    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-    IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
-    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+    IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 // IMPORTANT: you must compile this file with /ZW to get windows runtime components
 
-#include "next_xboxone.h"
+#include "next_gdk.h"
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
+#ifdef _GAMING_XBOX
 
 #include <sodium.h>
 
@@ -36,12 +36,13 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <ws2ipdef.h>
+#include <iphlpapi.h>
+#include <iptypes.h>
 #include <malloc.h>
 #include <time.h>
 #include <bcrypt.h> // random
+#include <XNetworking.h>
 #pragma pack(pop)
-
-#pragma comment( lib, "WS2_32.lib" )
 
 #ifdef SetPort
 #undef SetPort
@@ -60,7 +61,7 @@ static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
 next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * fn, void * arg )
 {
     next_platform_thread_t * thread = (next_platform_thread_t *) next_malloc( context, sizeof( next_platform_thread_t ) );
-    
+
     next_assert( thread );
 
     thread->context = context;
@@ -68,11 +69,11 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     thread->handle = CreateThread
     (
         NULL, // default security attributes
-        0, // use default stack size  
+        0, // use default stack size
         fn, // thread function name
-        arg, // argument to thread function 
-        0, // use default creation flags 
-        NULL // returns the thread identifier 
+        arg, // argument to thread function
+        0, // use default creation flags
+        NULL // returns the thread identifier
     );
 
     if ( thread->handle == NULL )
@@ -153,7 +154,7 @@ static LARGE_INTEGER timer_start;
 
 static const char * next_randombytes_implementation_name()
 {
-    return "xboxone";
+    return "gdk";
 }
 
 static uint32_t next_randombytes_random()
@@ -227,33 +228,28 @@ int next_platform_init()
         return NEXT_ERROR;
     }
 
-    connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
-	try
-	{
-		auto profile = Windows::Networking::Connectivity::NetworkInformation::GetInternetConnectionProfile();
-		if ( profile )
-		{
-			switch ( profile->NetworkAdapter->IanaInterfaceType )
-			{
-				case 6:
-					connection_type = NEXT_CONNECTION_TYPE_WIRED;
-					break;
-				case 71:
-					connection_type = NEXT_CONNECTION_TYPE_WIFI;
-					break;
-				case 237:
-				case 243:
-				case 244:
-					connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-					break;
-			}
-		}
-	}
-	catch ( Platform::Exception^ )
-	{
-	}
+    XNetworkingConnectivityHint connectivityHint;
+    if ( SUCCEEDED( XNetworkingGetConnectivityHint( &connectivityHint ) ) )
+    {
+        switch ( connectivityHint.ianaInterfaceType )
+        {
+            case IF_TYPE_ETHERNET_CSMACD:
+                connection_type = NEXT_CONNECTION_TYPE_WIRED;
+                break;
+            case IF_TYPE_IEEE80211:
+                connection_type = NEXT_CONNECTION_TYPE_WIFI;
+                break;
+            case IF_TYPE_WWANPP:
+            case IF_TYPE_WWANPP2:
+                connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
+                break;
+        }
+    }
+
     return NEXT_OK;
 }
+
+#pragma warning(disable:4723)
 
 double next_platform_time()
 {
@@ -377,6 +373,8 @@ void next_platform_socket_destroy( next_platform_socket_t * );
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
+    (void) enable_packet_tagging;
+
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
 
@@ -451,9 +449,9 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      | 
-                                         ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  | 
-                                         ( ( (uint32_t) address->data.ipv4[2] ) << 16 ) | 
+        socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      |
+                                         ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  |
+                                         ( ( (uint32_t) address->data.ipv4[2] ) << 16 ) |
                                          ( ( (uint32_t) address->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_platform_htons( address->port );
 
@@ -561,9 +559,9 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        | 
-                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   | 
-                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  | 
+        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        |
+                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   |
+                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  |
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_platform_htons( to->port );
         sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in ) );
@@ -578,7 +576,7 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     next_assert( max_packet_size > 0 );
 
     typedef int socklen_t;
-    
+
     sockaddr_storage sockaddr_from;
     socklen_t from_length = sizeof( sockaddr_from );
 
@@ -621,7 +619,7 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
         next_assert( 0 );
         return 0;
     }
-  
+
     next_assert( result >= 0 );
 
     return result;
@@ -634,11 +632,17 @@ int next_platform_connection_type()
 
 int next_platform_id()
 {
+    #if defined(_GAMING_XBOX_SCARLETT)
+    return NEXT_PLATFORM_XBOX_SERIES_X;
+    #elif defined(_GAMING_XBOX_XBOXONE)
     return NEXT_PLATFORM_XBOX_ONE;
+    #else
+    return NEXT_PLATFORM_WINDOWS;
+    #endif
 }
 
-#else // #if NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
+#else // #ifdef _GAMING_XBOX
 
-int next_xbox_one_dummy_symbol = 0;
+int next_gdk_dummy_symbol = 0;
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
+#endif // #ifdef _GAMING_XBOX
