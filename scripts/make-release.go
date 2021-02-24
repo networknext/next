@@ -115,37 +115,21 @@ func main() {
 	bash("cp %s/next-xboxone-%s.dll %s/%s/next-xboxone-%s.dll", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-xboxone-%s.exp %s/%s/next-xboxone-%s.exp", libdir, version, basedir, libdir, version)
 
-	// copy across the debug gdk x1 libraries
-	libdir = "lib/GDK-XBoxOne/Debug"
+	// copy across the debug seriesx libraries
+	libdir = "lib/SeriesX/Debug"
 	bash("mkdir -p %s/%s", basedir, libdir)
-	bash("cp %s/next-gdk-xboxone-%s.lib %s/%s/next-gdk-xboxone-%s.lib", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-xboxone-%s.pdb %s/%s/next-gdk-xboxone-%s.pdb", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-xboxone-%s.dll %s/%s/next-gdk-xboxone-%s.dll", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-xboxone-%s.exp %s/%s/next-gdk-xboxone-%s.exp", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.lib %s/%s/next-seriesx-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.pdb %s/%s/next-seriesx-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.dll %s/%s/next-seriesx-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.exp %s/%s/next-seriesx-%s.exp", libdir, version, basedir, libdir, version)
 
-	// copy across the release gdk x1 libraries
-	libdir = "lib/GDK-XBoxOne/Release"
+	// copy across the release seriesx libraries
+	libdir = "lib/SeriesX/Release"
 	bash("mkdir -p %s/%s", basedir, libdir)
-	bash("cp %s/next-gdk-xboxone-%s.lib %s/%s/next-gdk-xboxone-%s.lib", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-xboxone-%s.pdb %s/%s/next-gdk-xboxone-%s.pdb", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-xboxone-%s.dll %s/%s/next-gdk-xboxone-%s.dll", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-xboxone-%s.exp %s/%s/next-gdk-xboxone-%s.exp", libdir, version, basedir, libdir, version)
-
-	// copy across the debug gdk seriesx libraries
-	libdir = "lib/GDK-SeriesX/Debug"
-	bash("mkdir -p %s/%s", basedir, libdir)
-	bash("cp %s/next-gdk-seriesx-%s.lib %s/%s/next-gdk-seriesx-%s.lib", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-seriesx-%s.pdb %s/%s/next-gdk-seriesx-%s.pdb", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-seriesx-%s.dll %s/%s/next-gdk-seriesx-%s.dll", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-seriesx-%s.exp %s/%s/next-gdk-seriesx-%s.exp", libdir, version, basedir, libdir, version)
-
-	// copy across the release gdk seriesx libraries
-	libdir = "lib/GDK-SeriesX/Release"
-	bash("mkdir -p %s/%s", basedir, libdir)
-	bash("cp %s/next-gdk-seriesx-%s.lib %s/%s/next-gdk-seriesx-%s.lib", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-seriesx-%s.pdb %s/%s/next-gdk-seriesx-%s.pdb", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-seriesx-%s.dll %s/%s/next-gdk-seriesx-%s.dll", libdir, version, basedir, libdir, version)
-	bash("cp %s/next-gdk-seriesx-%s.exp %s/%s/next-gdk-seriesx-%s.exp", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.lib %s/%s/next-seriesx-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.pdb %s/%s/next-seriesx-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.dll %s/%s/next-seriesx-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-seriesx-%s.exp %s/%s/next-seriesx-%s.exp", libdir, version, basedir, libdir, version)
 
 	// copy across the debug ps4 libraries
 	libdir = "lib/Playstation4/Debug"
@@ -419,16 +403,14 @@ func main() {
 	bash("rm -rf %s/lib/Playstation4", basedir)
 	bash("rm -rf %s/lib/Playstation5", basedir)
 	bash("rm -rf %s/lib/XBoxOne", basedir)
-	bash("rm -rf %s/lib/GDK-XBoxOne", basedir)
-	bash("rm -rf %s/lib/GDK-SeriesX", basedir)
+	bash("rm -rf %s/lib/SeriesX", basedir)
 
 	bash("rm -rf %s/build/nx32", basedir)
 	bash("rm -rf %s/build/nx64", basedir)
 	bash("rm -rf %s/build/ps4", basedir)
 	bash("rm -rf %s/build/ps5", basedir)
 	bash("rm -rf %s/build/xboxone", basedir)
-	bash("rm -rf %s/build/gdk-xboxone", basedir)
-	bash("rm -rf %s/build/gdk-seriesx", basedir)
+	bash("rm -rf %s/build/seriesx", basedir)
 
 	bash("zip -r -9 next-%s.zip %s", version, basedir)
 
