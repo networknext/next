@@ -279,6 +279,11 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 	}
 
+	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -380,7 +385,7 @@ func mainReturnWithCode() int {
 								continue
 							}
 
-							if newRouteMatrix.CreatedAt+20 < uint64(time.Now().Unix()) {
+							if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
 								routeMatrixMutex.Lock()
 								routeMatrix = &routing.RouteMatrix{}
 								routeMatrixMutex.Unlock()
