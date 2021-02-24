@@ -12216,7 +12216,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     if ( server->autodetect_datacenter[0] == '\0' )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
-        autodetect_result = next_autodetect_datacenter( autodetect_output );
+
+        // todo: hack test
+        //autodetect_result = next_autodetect_datacenter( autodetect_output );
+        autodetect_result = true;
+        strcpy( server->autodetect_datacenter, "anus" );
+
         if ( autodetect_result )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
