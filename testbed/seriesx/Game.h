@@ -15,7 +15,7 @@ class Game
 public:
 
     Game() noexcept(false);
-    ~Game() = default;
+    ~Game();
 
     Game(Game&&) = default;
     Game& operator= (Game&&) = default;
@@ -49,4 +49,6 @@ private:
     // Rendering loop timer.
     uint64_t                                    m_frame;
     DX::StepTimer                               m_timer;
+
+    struct next_client_t*                       m_client;
 };

@@ -4,6 +4,17 @@
 
 #include "pch.h"
 #include "Game.h"
+#include "next.h"
+
+void packet_received(next_client_t* client, void* context, const uint8_t* packet_data, int packet_bytes)
+{
+    (void)client;
+    (void)context;
+    (void)packet_data;
+    (void)packet_bytes;
+
+    // ...
+}
 
 extern void ExitGame() noexcept;
 
@@ -15,6 +26,13 @@ Game::Game() noexcept(false) :
     m_frame(0)
 {
     m_deviceResources = std::make_unique<DX::DeviceResources>();
+    m_client = NULL;
+}
+
+Game::~Game()
+{
+    OutputDebugStringA("\nStopping client...\n\n");
+    next_client_destroy(m_client);
 }
 
 // Initialize the Direct3D resources required to run.
@@ -27,6 +45,16 @@ void Game::Initialize(HWND window)
 
     m_deviceResources->CreateWindowSizeDependentResources();
     CreateWindowSizeDependentResources();
+
+    next_log_level(NEXT_LOG_LEVEL_DEBUG);// INFO);
+
+    OutputDebugStringA("\nStarting client...\n\n");
+
+    m_client = next_client_create(NULL, "0.0.0.0:0", packet_received, NULL);
+    if (!m_client)
+        return;
+
+    next_client_open_session(m_client, "173.255.241.176:50000");
 }
 
 #pragma region Frame Update
@@ -38,6 +66,12 @@ void Game::Tick()
     m_timer.Tick([&]()
     {
         Update(m_timer);
+
+        next_client_update(m_client);
+
+        uint8_t packet_data[32];
+        memset(packet_data, 0, sizeof(packet_data));
+        next_client_send_packet(m_client, packet_data, sizeof(packet_data));
     });
 
     Render();
