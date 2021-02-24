@@ -274,6 +274,16 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	featureMatrixVersion, err := envvar.GetBool("FEATURE_MATRIX_VERSION", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+
+	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -365,14 +375,33 @@ func mainReturnWithCode() int {
 					var newRouteMatrix routing.RouteMatrix
 					if len(buffer) > 0 {
 						rs := encoding.CreateReadStream(buffer)
-						if err := newRouteMatrix.Serialize(rs); err != nil {
-							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+						if featureMatrixVersion {
+							if err := newRouteMatrix.SerializeWithVersion(rs); err != nil {
+								level.Error(logger).Log("msg", "could not serialize versioned route matrix", "err", err)
 
-							routeMatrixMutex.Lock()
-							routeMatrix = &routing.RouteMatrix{}
-							routeMatrixMutex.Unlock()
+								routeMatrixMutex.Lock()
+								routeMatrix = &routing.RouteMatrix{}
+								routeMatrixMutex.Unlock()
+								continue
+							}
 
-							continue
+							if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+								routeMatrixMutex.Lock()
+								routeMatrix = &routing.RouteMatrix{}
+								routeMatrixMutex.Unlock()
+								backendMetrics.StaleRouteMatrix.Add(1)
+								continue
+							}
+
+						} else {
+							if err := newRouteMatrix.Serialize(rs); err != nil {
+								level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+
+								routeMatrixMutex.Lock()
+								routeMatrix = &routing.RouteMatrix{}
+								routeMatrixMutex.Unlock()
+								continue
+							}
 						}
 					}
 
