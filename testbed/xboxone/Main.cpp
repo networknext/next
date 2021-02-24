@@ -127,7 +127,7 @@ public:
 		if ( !client)
 			return;
 
-        next_client_open_session( client, "173.255.241.176:32202" );
+        next_client_open_session( client, "173.255.241.176:50000" );
 
         while ( !exit )
         {

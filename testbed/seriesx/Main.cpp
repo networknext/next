@@ -12,6 +12,40 @@ using namespace DirectX;
 
 const char* customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
+extern const char* next_log_level_str(int level)
+{
+    if (level == NEXT_LOG_LEVEL_DEBUG)
+        return "debug";
+    else if (level == NEXT_LOG_LEVEL_INFO)
+        return "info";
+    else if (level == NEXT_LOG_LEVEL_ERROR)
+        return "error";
+    else if (level == NEXT_LOG_LEVEL_WARN)
+        return "warning";
+    else
+        return "???";
+}
+
+void xbox_printf(int level, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    const char* level_str = next_log_level_str(level);
+    char buffer2[1024];
+    if (level != NEXT_LOG_LEVEL_NONE)
+    {
+        snprintf(buffer2, sizeof(buffer2), "%0.2f %s: %s\n", next_time(), level_str, buffer);
+    }
+    else
+    {
+        snprintf(buffer2, sizeof(buffer2), "%s\n", buffer);
+    }
+    OutputDebugStringA(buffer2);
+    va_end(args);
+}
+
 namespace
 {
     std::unique_ptr<Game> g_game;
@@ -43,21 +77,21 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
     // Microsoft Game Core on Xbox supports UTF-8 everywhere
     assert(GetACP() == CP_UTF8);
 
+    OutputDebugStringA("\nRunning tests...\n\n");
+
     next_log_level(NEXT_LOG_LEVEL_NONE);
 
     next_config_t config;
     next_default_config(&config);
     strncpy_s(config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1);
 
-    next_init(NULL, &config);
+    next_log_function( xbox_printf );
 
-    printf("\nRunning tests...\n\n");
+    next_init(NULL, &config);
 
     next_test();
 
-    printf("\nAll tests passed successfully!\n\n");
-
-    next_term();
+    OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
     g_game = std::make_unique<Game>();
 
@@ -137,6 +171,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
     CloseHandle(g_plmSignalResume);
 
     XGameRuntimeUninitialize();
+
+    next_term();
 
     return static_cast<int>(msg.wParam);
 }
