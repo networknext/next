@@ -10587,7 +10587,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     if ( server->valid_customer_private_key )
     {
-        const char * datacenter = datacenter_string;
+         const char * datacenter = datacenter_string;
         const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
         if ( datacenter_env )
         {
@@ -10595,10 +10595,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         }
         if ( datacenter != NULL && datacenter[0] != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", datacenter );
             server->datacenter_id = next_datacenter_id( datacenter );
             strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
             server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
         }
         else
         {
@@ -12315,8 +12315,8 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     {
         strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
         server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", server->datacenter_name );
         server->datacenter_id = next_datacenter_id( server->datacenter_name );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
     }
 
     server->resolve_hostname_thread = NULL;
