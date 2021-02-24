@@ -1219,8 +1219,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
+	oldBuyerID := buyer.ID
 
-	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+	// Remove all dc Maps
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	for _, dcMap := range dcMaps {
+		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1232,11 +1243,20 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Live:        live,
 		PublicKey:   byteKey[8:],
 	})
-
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
+	}
+
+	// Add back dc maps with new buyer ID
+	for _, dcMap := range dcMaps {
+		dcMap.BuyerID = buyerID
+		if err := s.Storage.AddDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new datacenter map: %v, datacenter ID: %016x, buyer ID: %016x", err, dcMap.DatacenterID, buyerID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	// Check if buyer is associated with the ID and everything worked
