@@ -160,6 +160,7 @@ type ServerBackendMetrics struct {
 	RouteMatrixUpdateLongDuration Counter
 	RouteMatrixNumRoutes          Gauge
 	RouteMatrixBytes              Gauge
+	StaleRouteMatrix              Counter
 }
 
 // EmptyServerBackendMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -174,6 +175,7 @@ var EmptyServerBackendMetrics = ServerBackendMetrics{
 	RouteMatrixUpdateLongDuration: &EmptyCounter{},
 	RouteMatrixNumRoutes:          &EmptyGauge{},
 	RouteMatrixBytes:              &EmptyGauge{},
+	StaleRouteMatrix:              &EmptyCounter{},
 }
 
 // NewServerBackendMetrics creates the metrics that the server backend will use.
@@ -298,6 +300,17 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		ID:          "route_matrix_update.bytes",
 		Unit:        "bytes",
 		Description: "The number of bytes read from the route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.StaleRouteMatrix, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stale",
+		ServiceName: serviceName,
+		ID:          "route_matrix_update.stale",
+		Unit:        "count",
+		Description: "The number of times the route matrix has gone stale from updates.",
 	})
 	if err != nil {
 		return nil, err

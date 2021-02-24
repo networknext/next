@@ -564,6 +564,15 @@ func mainReturnWithCode() int {
 				RouteEntries:       routeEntries,
 			}
 
+			featureMatrixVersion, err := envvar.GetBool("FEATURE_MATRIX_VERSION", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if featureMatrixVersion {
+				routeMatrixNew.Version = routing.RouteMatrixSerializeVersion
+				routeMatrixNew.CreatedAt = uint64(time.Now().Unix())
+			}
+
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
 				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
 				continue
