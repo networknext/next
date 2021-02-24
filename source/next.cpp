@@ -3843,7 +3843,7 @@ int next_init( void * context, next_config_t * config_in )
             const uint8_t * p = decode_buffer;
             config.customer_id = next_read_uint64( &p );
             memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
-            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: \"%s\"", customer_public_key );
         }
         else
         {
@@ -5943,6 +5943,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.customer_id );
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
@@ -10533,6 +10535,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
 
     next_assert( server_address_string );
     next_assert( bind_address_string );
