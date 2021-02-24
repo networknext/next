@@ -12220,6 +12220,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         if ( autodetect_result )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
+            strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+            server->autodetected_datacenter = true;
         }
         else
         {
@@ -12278,15 +12281,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-        
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
-        if ( autodetect_result )
-        {
-            strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
-            server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-            server->autodetected_datacenter = true;
-        }
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
     }
 
     NEXT_PLATFORM_THREAD_RETURN();
@@ -12315,11 +12309,10 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     next_platform_thread_destroy( server->resolve_hostname_thread );
 
-    strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
-    server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-
     if ( server->autodetected_datacenter )
     {
+        strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
         next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", server->datacenter_name );
     }
 

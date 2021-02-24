@@ -27,9 +27,10 @@
 #include <string.h>
 #include <inttypes.h>
 
+// todo: don't check this in
 const char * bind_address = "0.0.0.0:0";
-const char * server_address = "127.0.0.1:50000";
-const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+const char * server_address = "173.255.241.176:50000"; //"127.0.0.1:50000";
+const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w=="; // "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
 static volatile int quit = 0;
 
