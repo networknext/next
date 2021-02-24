@@ -12220,7 +12220,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         // todo: hack test
         //autodetect_result = next_autodetect_datacenter( autodetect_output );
         autodetect_result = true;
-        strcpy( server->autodetect_datacenter, "anus" );
+        strcpy( autodetect_output, "anus" );
 
         if ( autodetect_result )
         {
