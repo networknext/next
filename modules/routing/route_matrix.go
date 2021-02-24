@@ -14,7 +14,11 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
+const RouteMatrixSerializeVersion = 1
+
 type RouteMatrix struct {
+	Version            uint32
+	CreatedAt          uint64
 	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
 	RelayAddresses     []net.UDPAddr // external IPs only
@@ -34,7 +38,6 @@ type RouteMatrix struct {
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	numRelays := uint32(len(m.RelayIDs))
 	stream.SerializeUint32(&numRelays)
-
 	if stream.IsReading() {
 		m.RelayIDsToIndices = make(map[uint64]int32)
 		m.RelayIDs = make([]uint64, numRelays)
@@ -81,6 +84,62 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			}
 		}
 	}
+
+	return stream.Error()
+}
+func (m *RouteMatrix) SerializeWithVersion(stream encoding.Stream) error {
+	numRelays := uint32(len(m.RelayIDs))
+	stream.SerializeUint32(&numRelays)
+	if stream.IsReading() {
+		m.RelayIDsToIndices = make(map[uint64]int32)
+		m.RelayIDs = make([]uint64, numRelays)
+		m.RelayAddresses = make([]net.UDPAddr, numRelays)
+		m.RelayNames = make([]string, numRelays)
+		m.RelayLatitudes = make([]float32, numRelays)
+		m.RelayLongitudes = make([]float32, numRelays)
+		m.RelayDatacenterIDs = make([]uint64, numRelays)
+	}
+
+	for i := uint32(0); i < numRelays; i++ {
+		stream.SerializeUint64(&m.RelayIDs[i])
+		stream.SerializeAddress(&m.RelayAddresses[i])
+		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
+		stream.SerializeFloat32(&m.RelayLatitudes[i])
+		stream.SerializeFloat32(&m.RelayLongitudes[i])
+		stream.SerializeUint64(&m.RelayDatacenterIDs[i])
+
+		if stream.IsReading() {
+			m.RelayIDsToIndices[m.RelayIDs[i]] = int32(i)
+		}
+	}
+
+	numEntries := uint32(len(m.RouteEntries))
+	stream.SerializeUint32(&numEntries)
+
+	if stream.IsReading() {
+		m.RouteEntries = make([]core.RouteEntry, numEntries)
+	}
+
+	for i := uint32(0); i < numEntries; i++ {
+		entry := &m.RouteEntries[i]
+
+		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
+		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
+
+		for i := 0; i < core.MaxRoutesPerEntry; i++ {
+			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
+			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
+			stream.SerializeUint32(&entry.RouteHash[i])
+
+			for j := 0; j < core.MaxRelaysPerRoute; j++ {
+				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
+			}
+		}
+	}
+
+	//by putting version here the original serialize function can still read the matrix
+	stream.SerializeUint32(&m.Version)
+	stream.SerializeUint64(&m.CreatedAt)
 
 	return stream.Error()
 }
@@ -347,10 +406,15 @@ func (m *RouteMatrix) WriteResponseData(bufferSize int) error {
 		return fmt.Errorf("failed to create write stream in route matrix WriteResponseData(): %v", err)
 	}
 
-	if err := m.Serialize(ws); err != nil {
-		return fmt.Errorf("failed to serialize route matrix in WriteResponseData(): %v", err)
+	if m.Version != 0 {
+		if err := m.SerializeWithVersion(ws); err != nil {
+			return fmt.Errorf("failed to serialize route matrix in WriteResponseData(): %v", err)
+		}
+	} else {
+		if err := m.Serialize(ws); err != nil {
+			return fmt.Errorf("failed to serialize route matrix in WriteResponseData(): %v", err)
+		}
 	}
-
 	ws.Flush()
 
 	m.cachedResponseMutex.Lock()

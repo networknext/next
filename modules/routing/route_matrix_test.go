@@ -65,6 +65,49 @@ func TestRouteMatrixSerialize(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestRouteMatrixSerializeWithVersion(t *testing.T) {
+	expected := getRouteMatrix(t)
+	expected.Version = 1
+	expected.CreatedAt = 19803
+
+	ws, err := encoding.CreateWriteStream(10000)
+	assert.NoError(t, err)
+	err = expected.SerializeWithVersion(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.SerializeWithVersion(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrixSerializeWithVersionBackwardsComp(t *testing.T) {
+	original := getRouteMatrix(t)
+	expected := original
+	original.Version = 1
+	original.CreatedAt = 19803
+
+	ws, err := encoding.CreateWriteStream(10000)
+	assert.NoError(t, err)
+	err = original.SerializeWithVersion(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, actual)
+}
+
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
