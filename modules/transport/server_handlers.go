@@ -659,13 +659,13 @@ func SessionUpdateHandlerFunc(
 			if slicePacketsSentClientToServer == uint64(0) {
 				slicePacketLossClientToServer = float32(0)
 			} else {
-				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer))
+				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer)) * 100.0
 			}
 
 			if slicePacketsSentServerToClient == uint64(0) {
 				slicePacketLossServerToClient = float32(0)
 			} else {
-				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient))
+				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient)) * 100.0
 			}
 
 			slicePacketLoss = slicePacketLossClientToServer
