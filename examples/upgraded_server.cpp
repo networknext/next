@@ -46,7 +46,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
+    // next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
 
     if ( !next_server_session_upgraded( server, from ) )
     {

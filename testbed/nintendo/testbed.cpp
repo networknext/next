@@ -11,7 +11,7 @@
 #include <cstdio>
 #include "next.h"
 
-const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFoffKSVE0zotg==";
+const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
 void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {

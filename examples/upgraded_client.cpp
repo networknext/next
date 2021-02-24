@@ -28,7 +28,7 @@
 #include <inttypes.h>
 
 const char * bind_address = "0.0.0.0:0";
-const char * server_address = "173.255.241.176:50000"; //127.0.0.1:50000";
+const char * server_address = "127.0.0.1:50000";
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
 static volatile int quit = 0;
@@ -41,7 +41,7 @@ void interrupt_handler( int signal )
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
-    next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
+    // next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
 }
 
 #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
