@@ -191,9 +191,8 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    // todo
-    (void)thread;
-    return false;
+    scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_HIGHEST );
+    return true;
 }
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )
