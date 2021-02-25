@@ -39,7 +39,7 @@ type SQL struct {
 	datacenters    map[uint64]routing.Datacenter
 	relays         map[uint64]routing.Relay
 	customers      map[string]routing.Customer
-	buyers         map[uint64]routing.Buyer
+	buyers         map[uint64]routing.Buyer // this index is in fact the database ID cast to uint64
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
@@ -63,7 +63,7 @@ type SQL struct {
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
 	customerIDs   map[int64]string
-	buyerIDs      map[int64]uint64
+	buyerIDs      map[uint64]int64 // buyerIDs map is inverted
 	sellerIDs     map[int64]string
 
 	datacenterIDsMutex  sync.RWMutex
@@ -284,8 +284,10 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 // Buyer gets a copy of a buyer with the specified buyer ID,
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 func (db *SQL) Buyer(id uint64) (routing.Buyer, error) {
+
+	dbBuyerID := db.buyerIDs[id]
 	db.buyerMutex.RLock()
-	b, found := db.buyers[id]
+	b, found := db.buyers[uint64(dbBuyerID)]
 	db.buyerMutex.RUnlock()
 
 	if !found {
@@ -328,7 +330,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	var sql bytes.Buffer
 
 	db.buyerMutex.RLock()
-	_, ok := db.buyers[b.ID]
+	_, ok := db.buyers[uint64(b.DatabaseID)]
 	db.buyerMutex.RUnlock()
 
 	if ok {
@@ -386,11 +388,17 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
+	newDatabaseID, err := result.LastInsertId()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Exec result does not contain new database ID", "err", err)
+		return err
+	}
+
 	// get the DatabaseID loaded
 	db.syncBuyers(ctx)
 
 	db.buyerMutex.RLock()
-	newBuyer := db.buyers[buyer.ID]
+	newBuyer := db.buyers[uint64(newDatabaseID)]
 	db.buyerMutex.RUnlock()
 
 	newBuyer.HexID = fmt.Sprintf("%016x", buyer.ID)
@@ -399,7 +407,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// update local fields
 	db.buyerMutex.Lock()
-	db.buyers[buyer.ID] = newBuyer
+	db.buyers[uint64(newDatabaseID)] = newBuyer
 	db.buyerMutex.Unlock()
 
 	db.customerMutex.Lock()
@@ -416,15 +424,17 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 //  1. The buyer ID does not exist
 //  2. Removing the buyer would break the foreigh key relationship (datacenter_maps)
 //  3. Any other error returned from the database
-func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
+func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
+	buyerID := db.buyerIDs[ephemeralBuyerID]
+
 	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[id]
+	buyer, ok := db.buyers[uint64(buyerID)]
 	db.buyerMutex.RUnlock()
 
 	if !ok {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", id)}
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	}
 
 	sql.Write([]byte("delete from buyers where id = $1"))
@@ -452,7 +462,7 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 	}
 
 	db.buyerMutex.Lock()
-	delete(db.buyers, buyer.ID)
+	delete(db.buyers, uint64(buyerID))
 	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
@@ -469,8 +479,11 @@ func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 	var sql bytes.Buffer
 
+	ephemeralBuyerID := b.ID
+	buyerID := db.buyerIDs[ephemeralBuyerID]
+
 	db.buyerMutex.RLock()
-	_, ok := db.buyers[b.ID]
+	_, ok := db.buyers[uint64(buyerID)]
 	db.buyerMutex.RUnlock()
 
 	if !ok {
@@ -501,7 +514,7 @@ func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	db.buyerMutex.Lock()
-	db.buyers[b.ID] = b
+	db.buyers[uint64(b.DatabaseID)] = b
 	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
@@ -1554,12 +1567,14 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	var sql bytes.Buffer
 
-	bID := dcMap.BuyerID
+	ephemeralBuyerID := dcMap.BuyerID
+	buyerID := db.buyerIDs[ephemeralBuyerID]
 
 	dcID := dcMap.DatacenterID
 
-	buyer, ok := db.buyers[bID]
+	buyer, ok := db.buyers[uint64(buyerID)]
 	if !ok {
+		fmt.Printf("buyer does not exist: %016x\n", dcMap.BuyerID)
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
 
@@ -1721,7 +1736,8 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return &DoesNotExistError{resourceType: "datacenter map", resourceRef: fmt.Sprintf("%016x", id)}
 	}
 
-	buyer := db.buyers[dcMap.BuyerID]
+	buyerID := db.buyerIDs[dcMap.BuyerID]
+	buyer := db.buyers[uint64(buyerID)]
 	datacenter := db.datacenters[dcMap.DatacenterID]
 
 	sql.Write([]byte("delete from datacenter_maps where buyer_id = $1 and datacenter_id = $2"))
@@ -1961,9 +1977,11 @@ func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
-func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, error) {
 	db.internalConfigMutex.RLock()
 	defer db.internalConfigMutex.RUnlock()
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	internalConfig, found := db.internalConfigs[buyerID]
 	if !found {
@@ -1975,9 +1993,11 @@ func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
 }
 
 // AddInternalConfig adds an InternalConfig for the specified buyer
-func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, buyerID uint64) error {
+func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ephemeralBuyerID uint64) error {
 
 	var sql bytes.Buffer
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	db.internalConfigMutex.RLock()
 	_, ok := db.internalConfigs[buyerID]
@@ -1988,10 +2008,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	}
 
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2066,7 +2086,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 
 	buyer.InternalConfig = ic
 	db.buyerMutex.Lock()
-	db.buyers[buyer.ID] = buyer
+	db.buyers[buyerID] = buyer
 	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
@@ -2074,8 +2094,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	return nil
 }
 
-func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	db.internalConfigMutex.RLock()
 	_, ok := db.internalConfigs[buyerID]
@@ -2085,8 +2107,8 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
+	buyer, ok := db.buyers[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2123,22 +2145,24 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 	return nil
 }
 
-func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
+	var err error
 
-	ic, err := db.InternalConfig(buyerID)
-	if err != nil {
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	ic, ok := db.internalConfigs[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2782,14 +2806,21 @@ func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) err
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
 }
 
-func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
+	var err error
 
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
+	// for key, buyer := range db.buyers {
+	// 	fmt.Printf("key: %016x\nbuyer:%s\n", key, buyer.String())
+	// }
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+
+	buyer, ok := db.buyers[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
