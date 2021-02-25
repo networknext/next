@@ -118,11 +118,6 @@ func (entry *BillingEntry) Validate() bool {
 		return false
 	}
 
-	if entry.DatacenterID == 0 {
-		fmt.Printf("invalid datacenter id\n")
-		return false
-	}
-
 	// IMPORTANT: Logic inverted because comparing a NaN float value always returns false
 	if !(entry.Latitude >= -90.0 && entry.Latitude <= +90.0) {
 		fmt.Printf("invalid latitude\n")
