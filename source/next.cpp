@@ -10591,7 +10591,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     if ( server->valid_customer_private_key )
     {
-         const char * datacenter = datacenter_string;
+        const char * datacenter = datacenter_string;
         const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
         if ( datacenter_env )
         {
