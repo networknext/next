@@ -659,13 +659,13 @@ func SessionUpdateHandlerFunc(
 			if slicePacketsSentClientToServer == uint64(0) {
 				slicePacketLossClientToServer = float32(0)
 			} else {
-				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer)) * 100.0
+				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
 			}
 
 			if slicePacketsSentServerToClient == uint64(0) {
 				slicePacketLossServerToClient = float32(0)
 			} else {
-				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient)) * 100.0
+				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
 			}
 
 			slicePacketLoss = slicePacketLossClientToServer
@@ -755,7 +755,7 @@ func SessionUpdateHandlerFunc(
 			maxNearRelays,
 			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),
-			int32(slicePacketLoss),
+			int32(math.Floor(float64(slicePacketLoss)+0.5)),
 			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
 			sessionData.RouteRelayIDs[0],
 			destRelayIDs,
