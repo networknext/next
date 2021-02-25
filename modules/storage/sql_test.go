@@ -1493,7 +1493,7 @@ func TestRouteShaders(t *testing.T) {
 
 	t.Run("RemoveRouteShader", func(t *testing.T) {
 		// causes flock errors when run with the rest of the tests
-		t.Skip()
+		// t.Skip()
 		err := db.RemoveRouteShader(context.Background(), outerBuyer.ID)
 		assert.NoError(t, err)
 
