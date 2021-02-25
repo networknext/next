@@ -67,14 +67,12 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				}
 
 				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
-					fmt.Printf("Could not sumbit billing entry using Bill(): %v\n", err)
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 					return
 				}
 
 				m.Ack()
 			} else {
-				fmt.Printf("Failed to read billing entry")
 				entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
 				entryVeto, err := strconv.ParseBool(entryVetoStr)
 
