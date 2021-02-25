@@ -10252,7 +10252,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 bool next_autodetect_google( char * output )
 {
@@ -10501,7 +10501,7 @@ bool next_autodetect_datacenter( char * output )
     return false;
 }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
@@ -10597,7 +10597,14 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         {
             datacenter = datacenter_env;
         }
-        if ( datacenter != NULL && datacenter[0] != 0 )
+        if ( datacenter != NULL && 
+             datacenter[0] != 0 && 
+             datacenter[0] != 'c' &&
+             datacenter[1] != 'l' &&
+             datacenter[2] != 'o' &&
+             datacenter[3] != 'u' &&
+             datacenter[4] != 'd' &&
+             datacenter[5] != '\n' )
         {
             server->datacenter_id = next_datacenter_id( datacenter );
             strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
@@ -12211,13 +12218,20 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     // autodetect datacenter is currently linux only
 
     bool autodetect_result = false;
     char autodetect_output[1024];
-    if ( server->autodetect_datacenter[0] == '\0' )
+    
+    if ( server->autodetect_datacenter[0] == '\0' ||
+         ( server->autodetect_datacenter[0] == 'c' &&
+           server->autodetect_datacenter[1] == 'l' &&
+           server->autodetect_datacenter[2] == 'o' &&
+           server->autodetect_datacenter[3] == 'u' &&
+           server->autodetect_datacenter[4] == 'd' &&
+           server->autodetect_datacenter[5] == '\0' ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
@@ -12236,7 +12250,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
     }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     const char * hostname = next_global_config.hostname;
     const char * port = NEXT_BACKEND_PORT;
