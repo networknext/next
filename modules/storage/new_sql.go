@@ -165,7 +165,7 @@ func NewPostgreSQL(
 		datacenterIDs:      make(map[int64]uint64),
 		relayIDs:           make(map[int64]uint64),
 		customerIDs:        make(map[int64]string),
-		buyerIDs:           make(map[int64]uint64),
+		buyerIDs:           make(map[uint64]int64),
 		sellerIDs:          make(map[int64]string),
 		routeShaders:       make(map[uint64]core.RouteShader),
 		internalConfigs:    make(map[uint64]core.InternalConfig),
@@ -505,7 +505,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	var buyer sqlBuyer
 
 	buyers := make(map[uint64]routing.Buyer)
-	buyerIDs := make(map[int64]uint64)
+	buyerIDs := make(map[uint64]int64)
 
 	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
@@ -534,7 +534,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyer.ID = uint64(buyer.SdkID)
 
-		buyerIDs[buyer.DatabaseID] = buyer.ID
+		buyerIDs[buyer.ID] = buyer.DatabaseID
 
 		// apply default values - custom values will be attached in
 		// syncInternalConfigs() and syncRouteShaders() if they exist
@@ -657,9 +657,12 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 			return err
 		}
 
+		buyer := db.buyers[uint64(sqlMap.BuyerID)]
+		ephemeralBuyerID := buyer.ID
+
 		dcMap := routing.DatacenterMap{
 			Alias:        sqlMap.Alias,
-			BuyerID:      db.buyerIDs[sqlMap.BuyerID],
+			BuyerID:      ephemeralBuyerID,
 			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
 		}
 
@@ -815,16 +818,14 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			EnableVanityMetrics:        sqlIC.EnableVanityMetrics,
 		}
 
-		id := db.buyerIDs[buyerID]
-
-		buyer := db.buyers[id]
+		buyer := db.buyers[uint64(buyerID)]
 		buyer.InternalConfig = internalConfig
 
 		db.buyerMutex.Lock()
-		db.buyers[id] = buyer
+		db.buyers[uint64(buyerID)] = buyer
 		db.buyerMutex.Unlock()
 
-		internalConfigs[id] = internalConfig
+		internalConfigs[uint64(buyerID)] = internalConfig
 	}
 
 	db.internalConfigMutex.Lock()
@@ -906,18 +907,17 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
 		}
 
-		id := db.buyerIDs[buyerID]
-		buyer := db.buyers[id]
+		buyer := db.buyers[uint64(buyerID)]
 		buyer.RouteShader = routeShader
 
 		db.buyerMutex.Lock()
-		db.buyers[id] = buyer
+		db.buyers[uint64(buyerID)] = buyer
 		db.buyerMutex.Unlock()
 
-		if bannedUsers, ok := db.bannedUsers[id]; ok {
+		if bannedUsers, ok := db.bannedUsers[uint64(buyerID)]; ok {
 			routeShader.BannedUsers = bannedUsers
 		}
-		routeShaders[id] = routeShader
+		routeShaders[uint64(buyerID)] = routeShader
 	}
 
 	for buyerID, rs := range routeShaders {
@@ -955,7 +955,7 @@ func (db *SQL) syncBannedUsers(ctx context.Context) error {
 			return err
 		}
 
-		buyerID := db.buyerIDs[dbBuyerID]
+		buyerID := db.buyerIDs[uint64(dbBuyerID)]
 
 		bannedUser := make(map[uint64]bool)
 		bannedUser[uint64(userID)] = true
