@@ -822,7 +822,7 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, "newname", checkBuyer.ShortName)
 		assert.Equal(t, newBuyerID, checkBuyer.ID)
 		assert.Equal(t, newPublicKeyEncoded[8:], checkBuyer.PublicKey)
-		assert.Equal(t, "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g==", checkBuyer.EncodedPublicKey())
+		assert.Equal(t, newPublicKeyStr, checkBuyer.EncodedPublicKey())
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {
