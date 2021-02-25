@@ -2290,7 +2290,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-	case "ShortName":
+	case "ShortName", "PublicKey":
 		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)

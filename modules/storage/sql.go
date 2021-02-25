@@ -285,15 +285,15 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 
 // Buyer gets a copy of a buyer with the specified buyer ID,
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
-func (db *SQL) Buyer(id uint64) (routing.Buyer, error) {
+func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 
-	dbBuyerID := db.buyerIDs[id]
+	dbBuyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 	db.buyerMutex.RLock()
-	b, found := db.buyers[uint64(dbBuyerID)]
+	b, found := db.buyers[dbBuyerID]
 	db.buyerMutex.RUnlock()
 
 	if !found {
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", id)}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", ephemeralBuyerID)}
 	}
 
 	return b, nil
@@ -2885,6 +2885,11 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 
 		buyer.ID = newBuyerID
 		buyer.PublicKey = newPublicKey[8:]
+
+		db.buyerIDsMutex.Lock()
+		delete(db.buyerIDs, ephemeralBuyerID)
+		db.buyerIDs[newBuyerID] = buyer.DatabaseID
+		db.buyerIDsMutex.Unlock()
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
