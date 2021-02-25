@@ -2,6 +2,8 @@ package storage_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net"
@@ -804,7 +806,12 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
-		err = db.UpdateBuyer(ctx, buyerWithID.ID, "PublicKey", "Bg0kevQfxX0DQjGRTzKV7RoI0IpQ2rb2sHOWDpmZwj1q6UI3h4xNQg==")
+		newPublicKeyStr := "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="
+		newPublicKeyEncoded, err := base64.StdEncoding.DecodeString(newPublicKeyStr)
+		assert.NoError(t, err)
+		newBuyerID := binary.LittleEndian.Uint64(newPublicKeyEncoded[:8])
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "PublicKey", newPublicKeyStr)
 		assert.NoError(t, err)
 
 		checkBuyer, err := db.Buyer(buyerWithID.ID)
@@ -813,7 +820,8 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, false, checkBuyer.Live)
 		assert.Equal(t, false, checkBuyer.Debug)
 		assert.Equal(t, "newname", checkBuyer.ShortName)
-		assert.Equal(t, "Bg0kevQfxX0DQjGRTzKV7RoI0IpQ2rb2sHOWDpmZwj1q6UI3h4xNQg==", checkBuyer.EncodedPublicKey())
+		assert.Equal(t, newBuyerID, checkBuyer.ID)
+		assert.Equal(t, newPublicKeyEncoded[8:], checkBuyer.PublicKey)
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {

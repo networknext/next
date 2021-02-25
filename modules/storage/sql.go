@@ -2864,22 +2864,27 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("update buyers set short_name=$1 where id=$2"))
 		args = append(args, shortName, buyer.DatabaseID)
 		buyer.ShortName = shortName
+
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("PublicKey: %v is not a valid string type (%T)", value, value)
 		}
-
-		updateSQL.Write([]byte("update buyers set public_key=$1 where id=$2"))
-		args = append(args, pubKey, buyer.DatabaseID)
-
-		byteKey, err := base64.StdEncoding.DecodeString(pubKey)
+		newPublicKey, err := base64.StdEncoding.DecodeString(pubKey)
 		if err != nil {
-			return fmt.Errorf("PublicKey: failed to parse string into byte key: %v", err)
+			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
 		}
 
-		buyer.PublicKey = byteKey
-		buyer.ID = binary.LittleEndian.Uint64(byteKey[0:8])
+		if len(newPublicKey) != crypto.KeySize+8 {
+			return fmt.Errorf("PublicKey: public key is not the correct length: %d", len(newPublicKey))
+		}
+
+		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
+		updateSQL.Write([]byte("update buyers set public_key=$1, sdk_generated_id=$2 where id=$3"))
+		args = append(args, newPublicKey[8:], int64(newBuyerID), buyer.DatabaseID)
+
+		buyer.ID = newBuyerID
+		buyer.PublicKey = newPublicKey[8:]
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
@@ -2904,7 +2909,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1")
 		return err
 	}
 
