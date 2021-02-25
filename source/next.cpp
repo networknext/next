@@ -119,6 +119,8 @@
 #define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER                    2
 #define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
+#define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
+#define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
 
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
@@ -11276,6 +11278,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
                         return;
 
+                    case NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. customer not active" );
+                        return;
+
+                    case NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. datacenter not enabled" );
+                        return;
+
                     default:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend" );
                         return;
@@ -12224,7 +12234,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool autodetect_result = false;
     char autodetect_output[1024];
-    
+
     if ( server->autodetect_datacenter[0] == '\0' ||
          ( server->autodetect_datacenter[0] == 'c' &&
            server->autodetect_datacenter[1] == 'l' &&
