@@ -2834,6 +2834,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, va
 			return fmt.Errorf("PublicKey: failed to parse string into byte key: %v", err)
 		}
 
+		buyer.PublicKey = byteKey
 		buyer.ID = binary.LittleEndian.Uint64(byteKey[0:8])
 
 	default:
