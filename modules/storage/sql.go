@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"sort"
@@ -2818,6 +2820,21 @@ func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, va
 		updateSQL.Write([]byte("update buyers set short_name=$1 where id=$2"))
 		args = append(args, shortName, buyer.DatabaseID)
 		buyer.ShortName = shortName
+	case "PublicKey":
+		pubKey, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("PublicKey: %v is not a valid string type (%T)", value, value)
+		}
+
+		updateSQL.Write([]byte("update buyers set public_key=$1 where id=$2"))
+		args = append(args, pubKey, buyer.DatabaseID)
+
+		byteKey, err := base64.StdEncoding.DecodeString(pubKey)
+		if err != nil {
+			return fmt.Errorf("PublicKey: failed to parse string into byte key: %v", err)
+		}
+
+		buyer.ID = binary.LittleEndian.Uint64(byteKey[0:8])
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)

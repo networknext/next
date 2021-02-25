@@ -804,12 +804,16 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "PublicKey", "Bg0kevQfxX0DQjGRTzKV7RoI0IpQ2rb2sHOWDpmZwj1q6UI3h4xNQg==")
+		assert.NoError(t, err)
+
 		checkBuyer, err := db.Buyer(buyerWithID.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, checkBuyer.Live)
 		assert.Equal(t, false, checkBuyer.Debug)
 		assert.Equal(t, "newname", checkBuyer.ShortName)
+		assert.Equal(t, "Bg0kevQfxX0DQjGRTzKV7RoI0IpQ2rb2sHOWDpmZwj1q6UI3h4xNQg==", checkBuyer.EncodedPublicKey())
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {
