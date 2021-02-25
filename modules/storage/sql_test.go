@@ -814,7 +814,8 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "PublicKey", newPublicKeyStr)
 		assert.NoError(t, err)
 
-		checkBuyer, err := db.Buyer(buyerWithID.ID)
+		// the changed public key also changes the buyer ID
+		checkBuyer, err := db.Buyer(newBuyerID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, checkBuyer.Live)
