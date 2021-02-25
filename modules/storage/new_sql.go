@@ -555,7 +555,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			DatabaseID:     buyer.DatabaseID,
 		}
 
-		buyers[buyer.ID] = b
+		buyers[uint64(buyer.DatabaseID)] = b
 
 	}
 
