@@ -824,6 +824,11 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, newBuyerID, checkBuyer.ID)
 		assert.Equal(t, newPublicKeyEncoded[8:], checkBuyer.PublicKey)
 		assert.Equal(t, newPublicKeyStr, checkBuyer.EncodedPublicKey())
+
+		// a datacenter map for this buyer were added above and the UpdateBuyer method
+		// must modify it for the new ID
+		dcMaps := db.GetDatacenterMapsForBuyer(newBuyerID)
+		assert.Equal(t, 1, len(dcMaps))
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {
