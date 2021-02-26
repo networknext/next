@@ -20,15 +20,15 @@ Next, initialize a configuration struct to defaults, then copy the hostname and 
 
 .. code-block:: c++
 
-    next_config_t config;
-    next_default_config( &config );
-    strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
-    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+	next_config_t config;
+	next_default_config( &config );
+	strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
+	strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
 
 	if ( next_init( NULL, &config ) != NEXT_OK )
 	{
-	    printf( "error: could not initialize network next\n" );
-	    return 1;
+		printf( "error: could not initialize network next\n" );
+		return 1;
 	}
 
 IMPORTANT: Generally speaking it's bad form to include a private key in your codebase like this, it's done here only to make this example easy to use. In production environments, we strongly recommend passing in "" for your customer private key, and setting it via the environment variable: *NEXT_CUSTOMER_PRIVATE_KEY* which overrides the value specified in code.
@@ -55,8 +55,8 @@ Here is one that reflects the packet back to the client that sent it, and upgrad
 
 	if ( !next_server_session_upgraded( server, from ) )
 	{
-	    const char * user_id_string = "12345";
-	    next_server_upgrade_session( server, from, user_id_string );
+		const char * user_id_string = "12345";
+		next_server_upgrade_session( server, from, user_id_string );
 	}
 
 Generally you would *not* want to upgrade every client session you receive a packet from. This is just done to make this example easy to implement.
