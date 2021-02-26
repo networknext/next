@@ -2870,6 +2870,9 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		if !ok {
 			return fmt.Errorf("PublicKey: %v is not a valid string type (%T)", value, value)
 		}
+
+		// Changing the public key also requires changing the ID field and fixing any
+		// extant datacenter maps for this buyer
 		newPublicKey, err := base64.StdEncoding.DecodeString(pubKey)
 		if err != nil {
 			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
@@ -2890,6 +2893,20 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		delete(db.buyerIDs, ephemeralBuyerID)
 		db.buyerIDs[newBuyerID] = buyer.DatabaseID
 		db.buyerIDsMutex.Unlock()
+
+		// Fix existing datacenter maps
+		dcMaps := db.GetDatacenterMapsForBuyer(ephemeralBuyerID)
+		if len(dcMaps) > 0 {
+			for key, dcMap := range dcMaps {
+				dcMap.BuyerID = newBuyerID
+				dcmID := crypto.HashID(fmt.Sprintf("%x", newBuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+
+				db.datacenterMapsMutex.Lock()
+				delete(db.datacenterMaps, key)
+				db.datacenterMaps[dcmID] = dcMap
+				db.datacenterMapsMutex.Unlock()
+			}
+		}
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
