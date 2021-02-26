@@ -55,8 +55,8 @@ Here is one that reflects the packet back to the client that sent it, and upgrad
 
 	if ( !next_server_session_upgraded( server, from ) )
 	{
-		const char * user_id_string = "12345";
-		next_server_upgrade_session( server, from, user_id_string );
+	    const char * user_id_string = "12345";
+	    next_server_upgrade_session( server, from, user_id_string );
 	}
 
 Generally you would *not* want to upgrade every client session you receive a packet from. This is just done to make this example easy to implement.
