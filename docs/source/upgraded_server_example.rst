@@ -27,8 +27,8 @@ Next, initialize a configuration struct to defaults, then copy the hostname and 
 
 	if ( next_init( NULL, &config ) != NEXT_OK )
 	{
-		printf( "error: could not initialize network next\n" );
-		return 1;
+	    printf( "error: could not initialize network next\n" );
+	    return 1;
 	}
 
 IMPORTANT: Generally speaking it's bad form to include a private key in your codebase like this, it's done here only to make this example easy to use. In production environments, we strongly recommend passing in "" for your customer private key, and setting it via the environment variable: *NEXT_CUSTOMER_PRIVATE_KEY* which overrides the value specified in code.
