@@ -125,7 +125,7 @@ export class JSONRPCService {
   }
 
   public updateGameConfiguration (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateGameConfiguration', args)
+    return this.call('BuyersService.UpdateBuyerInformation', args)
   }
 
   public resendVerificationEmail (args: any): Promise<any> {
