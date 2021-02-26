@@ -30,8 +30,8 @@ Create the client.
     next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
     if ( client == NULL )
     {
-	    printf( "error: failed to create client\n" );
-	    return 1;
+        printf( "error: failed to create client\n" );
+        return 1;
     }
 
 In this case we bind the client to any IPv4 address and port zero, so the system selects a port to use.
