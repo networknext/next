@@ -172,8 +172,8 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 func (relayMap *RelayMap) ClearRelayData(relayAddress string) {
 	//entry is being writen to so a write lock is used before checking it
 	//if a read lock was used furst it could be changed in between the read and write locks.
-	relayMap.mutex.Lock()
-	defer relayMap.mutex.Unlock()
+	relayMap.Lock()
+	defer relayMap.Unlock()
 
 	entry, ok := relayMap.relays[relayAddress]
 	if ok {
