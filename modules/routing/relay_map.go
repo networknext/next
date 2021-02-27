@@ -170,12 +170,19 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 }
 
 func (relayMap *RelayMap) ClearRelayData(relayAddress string) {
-	entry := relayMap.relays[relayAddress]
-	entry.LastStatsPublishTime = time.Now()
-	entry.PeakTrafficStats.SessionCount = 0
-	entry.PeakTrafficStats.EnvelopeUpKbps = 0
-	entry.PeakTrafficStats.EnvelopeDownKbps = 0
-	entry.TrafficStatsBuff = entry.TrafficStatsBuff[:0]
+	//entry is being writen to so a write lock is used before checking it
+	//if a read lock was used furst it could be changed in between the read and write locks.
+	relayMap.mutex.Lock()
+	defer relayMap.mutex.Unlock()
+
+	entry, ok := relayMap.relays[relayAddress]
+	if ok {
+		entry.LastStatsPublishTime = time.Now()
+		entry.PeakTrafficStats.SessionCount = 0
+		entry.PeakTrafficStats.EnvelopeUpKbps = 0
+		entry.PeakTrafficStats.EnvelopeDownKbps = 0
+		entry.TrafficStatsBuff = entry.TrafficStatsBuff[:0]
+	}
 }
 
 func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
