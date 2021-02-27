@@ -2828,10 +2828,6 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 	var stmt *sql.Stmt
 	var err error
 
-	// for key, buyer := range db.buyers {
-	// 	fmt.Printf("key: %016x\nbuyer:%s\n", key, buyer.String())
-	// }
-
 	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	buyer, ok := db.buyers[buyerID]
