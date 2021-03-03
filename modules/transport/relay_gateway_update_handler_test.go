@@ -22,20 +22,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testGatewayHandlerConfig(relayStore storage.RelayStore, relayCache storage.RelayCache, storer storage.Storer) *GatewayHandlerConfig {
+func testGatewayHandlerConfig(storer storage.Storer) *GatewayHandlerConfig {
 
 	return &GatewayHandlerConfig{
-		RelayStore:            relayStore,
-		RelayCache:            relayCache,
 		InitMetrics:           &metrics.EmptyRelayInitMetrics,
 		UpdateMetrics:         &metrics.EmptyRelayUpdateMetrics,
 		Storer:                storer,
 		RouterPrivateKey:      []byte{},
 		Publishers:            []pubsub.Publisher{},
 		RelayBackendAddresses: []string{},
-		RB15Enabled:           false,
-		RB15NoInit:            false,
-		RB2Enabled:            false,
+		NRBNoInit:             false,
+		NRBHTTP:               false,
 	}
 }
 
@@ -136,7 +133,7 @@ func relayGatewayUpdateSuccessAssertions(t *testing.T, recorder *httptest.Respon
 }
 
 func TestRelayGatewayUpdateUnmarshalFailure(t *testing.T) {
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, &storage.StorerMock{})
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.UnmarshalFailure = metric
 
@@ -153,7 +150,7 @@ func TestRelayGatewayUpdateInvalidAddress(t *testing.T) {
 		Token:   make([]byte, crypto.KeySize),
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, &storage.StorerMock{})
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.UnmarshalFailure = metric
 
@@ -177,7 +174,7 @@ func TestRelayGatewayUpdateExceedMaxRelays(t *testing.T) {
 		PingStats: make([]routing.RelayStatsPing, 1025),
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, &storage.StorerMock{})
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.ExceedMaxRelays = metric
 
@@ -199,7 +196,7 @@ func TestRelayGatewayUpdateGhostRelayIgnore(t *testing.T) {
 		PingStats: make([]routing.RelayStatsPing, 0),
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, &storage.InMemory{})
+	handlerConfig := testGatewayHandlerConfig(&storage.InMemory{})
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.RelayNotFound = metric
 
@@ -217,19 +214,6 @@ func TestRelayGatewayShuttingDown(t *testing.T) {
 		Address:      *udp,
 		Token:        make([]byte, crypto.KeySize),
 		ShuttingDown: true,
-	}
-
-	relayRemovedFromRelayStore := false
-	rStore := &storage.RelayStoreMock{
-		GetFunc: func(id uint64) (*storage.RelayStoreData, error) {
-			return &storage.RelayStoreData{
-				ID:      crypto.HashID(addr),
-				Address: *udp}, nil
-		},
-		DeleteFunc: func(id uint64) error {
-			relayRemovedFromRelayStore = true
-			return nil
-		},
 	}
 
 	relay := routing.Relay{
@@ -262,13 +246,12 @@ func TestRelayGatewayShuttingDown(t *testing.T) {
 		}
 	}
 
-	handlerConfig := testGatewayHandlerConfig(rStore, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	handlerConfig.UpdateMetrics = &updateMetrics
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 	recorder := pingRelayGatewayUpdate(t, "application/octet-stream", buff, handlerConfig)
 	relayGatewayUpdateShutdownAssertions(t, recorder, handlerConfig, addr)
-	assert.True(t, relayRemovedFromRelayStore)
 }
 
 func TestRelayGatewayUpdateRelayUnmarshalFailure(t *testing.T) {
@@ -310,7 +293,7 @@ func TestRelayGatewayUpdateRelayUnmarshalFailure(t *testing.T) {
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.UnmarshalFailure = metric
 	buff, err := packet.MarshalBinary()
@@ -336,14 +319,6 @@ func TestRelayGatewayUpdateInvalidToken(t *testing.T) {
 		PingStats: make([]routing.RelayStatsPing, 0),
 	}
 
-	rStore := &storage.RelayStoreMock{
-		GetFunc: func(id uint64) (*storage.RelayStoreData, error) {
-			return &storage.RelayStoreData{
-				ID:      crypto.HashID(addr),
-				Address: *udp}, nil
-		},
-	}
-
 	// add a relay to storage to pass the ghost checks in RelayUpdateHandlerFunc
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
@@ -363,7 +338,7 @@ func TestRelayGatewayUpdateInvalidToken(t *testing.T) {
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
 
-	handlerConfig := testGatewayHandlerConfig(rStore, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.InvalidToken = metric
 
@@ -381,14 +356,6 @@ func TestRelayGatewayUpdateInvalidState(t *testing.T) {
 	packet := RelayUpdateRequest{
 		Address: *udp,
 		Token:   make([]byte, crypto.KeySize),
-	}
-
-	rStore := &storage.RelayStoreMock{
-		GetFunc: func(id uint64) (*storage.RelayStoreData, error) {
-			return &storage.RelayStoreData{
-				ID:      crypto.HashID(addr),
-				Address: *udp}, nil
-		},
 	}
 
 	// add a relay to storage to pass the ghost checks in RelayUpdateHandlerFunc
@@ -410,7 +377,7 @@ func TestRelayGatewayUpdateInvalidState(t *testing.T) {
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
 
-	handlerConfig := testGatewayHandlerConfig(rStore, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	metric := testMetric(t)
 	handlerConfig.UpdateMetrics.ErrorMetrics.RelayNotEnabled = metric
 	buff, err := packet.MarshalBinary()
@@ -438,34 +405,6 @@ func TestRelayGatewayUpdateSuccess(t *testing.T) {
 		stats.Jitter = rand.Float32()
 		stats.PacketLoss = rand.Float32()
 	}
-
-	expireResetCalled := false
-	rStore := &storage.RelayStoreMock{
-		GetFunc: func(id uint64) (*storage.RelayStoreData, error) {
-			return &storage.RelayStoreData{
-				ID:      crypto.HashID(addr),
-				Address: *udp}, nil
-		},
-		ExpireResetFunc: func(id uint64) error {
-			expireResetCalled = true
-			return nil
-		},
-	}
-
-	rCache := storage.NewRelayCache()
-	rDataForStats := make([]*storage.RelayStoreData, len(statIps))
-	for i, address := range statIps {
-		udp, err := net.ResolveUDPAddr("udp", address)
-		assert.NoError(t, err)
-
-		rData := &storage.RelayStoreData{
-			ID:      crypto.HashID(address),
-			Address: *udp,
-		}
-		rDataForStats[i] = rData
-	}
-	err = rCache.SetAll(rDataForStats)
-	assert.NoError(t, err)
 
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
@@ -501,13 +440,12 @@ func TestRelayGatewayUpdateSuccess(t *testing.T) {
 		}
 	}
 
-	handlerConfig := testGatewayHandlerConfig(rStore, *rCache, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 	recorder := pingRelayGatewayUpdate(t, "application/octet-stream", buff, handlerConfig)
 	relayGatewayUpdateSuccessAssertions(t, recorder, "application/octet-stream", handlerConfig, statIps, addr)
-	assert.True(t, expireResetCalled)
 }
 
 func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []string) {
