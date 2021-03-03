@@ -4,14 +4,16 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"time"
+
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
-	"net/http"
-	"os"
-	"os/signal"
-	"time"
 
 	rm "github.com/networknext/backend/modules/route_matrix_selector"
 	"github.com/networknext/backend/modules/storage"
@@ -117,8 +119,16 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
+
+	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+	if enablePProf {
+		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	}
 
 	go func() {
 		port := envvar.Get("PORT", "30005")

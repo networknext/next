@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
+
+	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -144,7 +147,15 @@ func mainReturnWithCode() int {
 			router := mux.NewRouter()
 			router.HandleFunc("/vanity", VanityMetricHandlerFunc())
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
@@ -156,7 +167,7 @@ func mainReturnWithCode() int {
 			serviceName := ""
 			level.Info(logger).Log("addr", serviceName+":"+port)
 
-			err := http.ListenAndServe(serviceName+":"+port, router)
+			err = http.ListenAndServe(serviceName+":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err

@@ -7,15 +7,13 @@ package main
 
 import (
 	"context"
-
 	"fmt"
-
 	"net/http"
-	"runtime"
-	"time"
-
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
+	"time"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
@@ -221,7 +219,15 @@ func mainReturnWithCode() int {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", transport.HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
 
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
@@ -230,7 +236,7 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
