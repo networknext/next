@@ -213,8 +213,9 @@ func (entry *BillingEntry) Validate() bool {
 			for i := 0; i < int(entry.NumNearRelays); i++ {
 
 				if entry.NearRelayIDs[i] == 0 {
-					fmt.Printf("invalid near relay id\n")
-					return false
+					// Log this but do not return false
+					// TODO: investigate why nearRelayID is 0
+					fmt.Printf("NearRelayIDs[%d] is 0.\n%+v\n", i, entry)
 				}
 
 				if !(entry.NearRelayRTTs[i] >= 0.0 && entry.NearRelayRTTs[i] <= 255.0) {
