@@ -20,18 +20,41 @@
 	NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+#include "NetworkNextBlueprint.h"
+#include "NetworkNextNetDriver.h"
+#include "NetworkNextSocketServer.h"
+#include "Runtime/Engine/Classes/GameFramework/PlayerController.h"
+#include "Runtime/Engine/Classes/Engine/NetConnection.h"
+#include "Engine/Classes/Engine/World.h"
+#include "IPAddress.h"
 
-#include "CoreMinimal.h"
-#include "IpConnection.h"
-#include "NetworkNextConnection.generated.h"
+void UNetworkNextBlueprint::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId)
+{
+    if (PlayerController == nullptr)
+		return;
 
-UCLASS(transient, config = Engine)
-class NETWORKNEXT_API UNetworkNextConnection : public UIpConnection
-{                           
-	GENERATED_BODY()
-	
-    virtual void InitRemoteConnection(class UNetDriver* InDriver, class FSocket* InSocket, const FURL& InURL, const class FInternetAddr& InRemoteAddr, EConnectionState InState, int32 InMaxPacket = 0, int32 InPacketOverhead = 0) override;
+	if (WorldContextObject == nullptr)
+		return;
 
-    virtual void InitLocalConnection(class UNetDriver* InDriver, class FSocket* InSocket, const FURL& InURL, EConnectionState InState, int32 InMaxPacket = 0, int32 InPacketOverhead = 0) override;
-};
+	UWorld* World = WorldContextObject->GetWorld();
+
+	if (World == nullptr)
+		return;
+
+	UNetworkNextNetDriver* NetDriver = Cast<UNetworkNextNetDriver>(World->GetNetDriver());
+
+	if (NetDriver == nullptr)
+		return;
+
+	FNetworkNextSocketServer* ServerSocket = NetDriver->ServerSocket;
+
+	if (ServerSocket == nullptr)
+		return;
+
+	UNetConnection* Connection = PlayerController->GetNetConnection();
+
+	if (Connection == nullptr)
+		return;
+
+	ServerSocket->UpgradeClient(Connection->GetRemoteAddr(), UserId);
+}

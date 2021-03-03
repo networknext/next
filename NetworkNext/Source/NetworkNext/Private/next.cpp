@@ -472,7 +472,7 @@ void next_quiet( bool flag )
     log_quiet = flag;
 }
 
-static int log_level = NEXT_LOG_LEVEL_INFO;
+static int log_level = NEXT_LOG_LEVEL_DEBUG;// todo: turn this back INFO;
 
 void next_log_level( int level )
 {
@@ -3843,7 +3843,7 @@ int next_init( void * context, next_config_t * config_in )
             const uint8_t * p = decode_buffer;
             config.customer_id = next_read_uint64( &p );
             memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
-            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: \"%s\"", customer_public_key );
         }
         else
         {
@@ -5943,6 +5943,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.customer_id );
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
@@ -10534,6 +10536,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
+
     next_assert( server_address_string );
     next_assert( bind_address_string );
 
@@ -10587,7 +10591,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     if ( server->valid_customer_private_key )
     {
-        const char * datacenter = datacenter_string;
+         const char * datacenter = datacenter_string;
         const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
         if ( datacenter_env )
         {
@@ -10595,10 +10599,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         }
         if ( datacenter != NULL && datacenter[0] != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", datacenter );
             server->datacenter_id = next_datacenter_id( datacenter );
             strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
             server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
         }
         else
         {
@@ -12315,8 +12319,8 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     {
         strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
         server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", server->datacenter_name );
         server->datacenter_id = next_datacenter_id( server->datacenter_name );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
     }
 
     server->resolve_hostname_thread = NULL;
@@ -12657,6 +12661,7 @@ struct next_server_t
     void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes );
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
+    next_address_t server_address;
     uint16_t bound_port;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -12708,6 +12713,7 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
+    server->server_address = server->internal->server_address;
     server->bound_port = server->internal->server_address.port;
 
     server->thread = next_platform_thread_create( server->context, next_server_internal_thread_function, server->internal );
@@ -13249,6 +13255,12 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
     return true;
+}
+
+const next_address_t * next_server_address( next_server_t * server )
+{
+    next_assert( server );
+    return &server->server_address;
 }
 
 // ---------------------------------------------------------------

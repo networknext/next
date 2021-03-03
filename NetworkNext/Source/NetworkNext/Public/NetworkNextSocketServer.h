@@ -22,8 +22,6 @@
 
 #pragma once
 
-#if !NEXT_PASSTHROUGH
-
 #include "NetworkNextSocket.h"
 #include "next.h"
 
@@ -105,6 +103,11 @@ public:
     // Callback for packets received from the network next server
 
     static void OnPacketReceived(next_server_t* server, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes);
-};
 
-#endif // #if !NEXT_PASSTHROUGH
+    /**
+     * Call this to enabling monitoring and (potentially) acceleration for a client address connected to this server.
+     * Typically, this is called via blueprint on the GameMode object after a player joins, via the Network Next blueprint function "UpgradePlayer".
+     */
+
+    void UpgradeClient(TSharedPtr<const FInternetAddr> RemoteAddr, const FString& UserId);
+};

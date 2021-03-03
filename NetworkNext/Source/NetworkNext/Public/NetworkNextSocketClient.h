@@ -22,8 +22,6 @@
 
 #pragma once
 
-#if !NEXT_PASSTHROUGH
-
 #include "NetworkNextSocket.h"
 #include "next.h"
 
@@ -107,5 +105,3 @@ public:
 
     static void OnPacketReceived(next_client_t* client, void* context, const uint8_t* packet_data, int packet_bytes);
 };
-
-#endif // #if !NEXT_PASSTHROUGH

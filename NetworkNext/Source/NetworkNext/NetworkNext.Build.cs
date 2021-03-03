@@ -30,35 +30,6 @@ public class NetworkNext : ModuleRules
 
         PublicDefinitions.Add("NEXT_UNREAL_ENGINE=1");
 
-//        PublicDefinitions.Add("NEXT_PASSTHROUGH=1");
-
-        /*
-        if (Target.Platform == UnrealTargetPlatform.Win64)
-        {
-            PublicDefinitions.Add("NETWORK_NEXT_AVAILABLE=1");
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Win32)
-        {
-            PublicDefinitions.Add("NETWORK_NEXT_AVAILABLE=1");
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Linux)
-        {
-            PublicDefinitions.Add("NETWORK_NEXT_AVAILABLE=1");
-        }
-        else if (Target.Platform == UnrealTargetPlatform.XboxOne)
-        {
-            PublicDefinitions.Add("NETWORK_NEXT_AVAILABLE=1");
-        }
-        else if (Target.Platform == UnrealTargetPlatform.PS4)
-        {
-            PublicDefinitions.Add("NETWORK_NEXT_AVAILABLE=1");
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Switch)
-        {
-            PublicDefinitions.Add("NETWORK_NEXT_AVAILABLE=1");
-        }
-        */
-
         PublicDependencyModuleNames.AddRange(
             new string[] {
                 "OnlineSubsystemUtils",

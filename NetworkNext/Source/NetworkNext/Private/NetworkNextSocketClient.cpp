@@ -22,8 +22,6 @@
 
 #include "NetworkNextSocketClient.h"
 
-#if !NEXT_PASSTHROUGH
-
 FNetworkNextSocketClient::FNetworkNextSocketClient(const FString& InSocketDescription, const FName& InSocketProtocol)
     : FNetworkNextSocket(ENetworkNextSocketType::TYPE_Client, InSocketDescription, InSocketProtocol)
 {
@@ -207,5 +205,3 @@ int32 FNetworkNextSocketClient::GetPortNo()
     // Return the actual port number the socket is bound to. This may be a system assigned port if the bind port was 0.
     return NetworkNextClient ? next_client_port(NetworkNextClient) : 0;
 }
-
-#endif // #if !NEXT_PASSTHROUGH

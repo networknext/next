@@ -103,8 +103,6 @@ void FNetworkNextSocketSubsystem::Shutdown()
 
 FSocket* FNetworkNextSocketSubsystem::CreateSocket(const FName& SocketType, const FString& SocketDescription, const FName& ProtocolName)
 {
-#if !NEXT_PASSTHROUGH
-
     if (SocketType == FName("NetworkNextSocketServer"))
     {
         // server socket
@@ -132,28 +130,6 @@ FSocket* FNetworkNextSocketSubsystem::CreateSocket(const FName& SocketType, cons
         ISocketSubsystem* PlatformSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
         return PlatformSubsystem->CreateSocket(SocketType, SocketDescription, ProtocolName);
     }
-
-#else // #if !NEXT_PASSTHROUGH
-
-    if (SocketType == FName("NetworkNextSocketServer") || SocketType == FName("NetworkNextSocketClient"))
-    {
-        // passthrough socket
-        UE_LOG(LogNetworkNext, Display, TEXT("Create passthrough socket"));
-        FString ModifiedSocketDescription = SocketDescription;
-        ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_PASSTHROUGH_"));
-        FNetworkNextSocketPassthrough* Socket = new FNetworkNextSocketPassthrough(ModifiedSocketDescription, ProtocolName);
-        NetworkNextSockets.Add(Socket);
-        return Socket;
-    }
-    else
-    {
-        // platform socket
-        UE_LOG(LogNetworkNext, Display, TEXT("Create platform socket"));
-        ISocketSubsystem* PlatformSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
-        return PlatformSubsystem->CreateSocket(SocketType, SocketDescription, ProtocolName);
-    }
-
-#endif // #if !NEXT_PASSTHROUGH
 }
 
 void FNetworkNextSocketSubsystem::DestroySocket(FSocket* Socket)

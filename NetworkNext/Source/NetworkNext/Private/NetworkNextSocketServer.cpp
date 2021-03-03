@@ -22,8 +22,6 @@
 
 #include "NetworkNextSocketServer.h"
 
-#if !NEXT_PASSTHROUGH
-
 FNetworkNextSocketServer::FNetworkNextSocketServer(const FString& InSocketDescription, const FName& InSocketProtocol)
     : FNetworkNextSocket(ENetworkNextSocketType::TYPE_Server, InSocketDescription, InSocketProtocol)
 {
@@ -106,7 +104,11 @@ bool FNetworkNextSocketServer::Bind(const FInternetAddr& Addr)
 
     UE_LOG(LogNetworkNext, Display, TEXT("Created network next server"));
 
-    ServerAddress = ServerAddressOnly;
+    next_address_t server_address = *next_server_address( NetworkNextServer );
+    server_address.port = 0;
+    char server_address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_address_to_string(&server_address, server_address_string);
+    ServerAddress = FString(server_address_string);
 
     UE_LOG(LogNetworkNext, Display, TEXT("Server address is %s"), *ServerAddress);
 
@@ -220,4 +222,33 @@ int32 FNetworkNextSocketServer::GetPortNo()
     return NetworkNextServer ? next_server_port(NetworkNextServer) : 0;
 }
 
-#endif // #if !NEXT_PASSTHROUGH
+
+void FNetworkNextSocketServer::UpgradeClient(TSharedPtr<const FInternetAddr> RemoteAddr, const FString& UserId)
+{
+    if (!NetworkNextServer)
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("UpgradeClient called before the server socket was bound."));
+        return;
+    }
+
+    if (!RemoteAddr.IsValid())
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("UpgradeClient called on an invalid RemoteAddr."));
+        return;
+    }
+
+    FString ClientAddress = RemoteAddr.Get()->ToString(true);
+
+    next_address_t from;
+    if (next_address_parse(&from, TCHAR_TO_ANSI(*ClientAddress)) != NEXT_OK)
+    {
+        UE_LOG(LogNetworkNext, Warning, TEXT("UpgradeClient called with unparsable IP address: %s"), *ClientAddress);
+        return;
+    }
+
+    next_server_upgrade_session(
+        NetworkNextServer,
+        &from,
+        TCHAR_TO_ANSI(*UserId)
+    );
+}

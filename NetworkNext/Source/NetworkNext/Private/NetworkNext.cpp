@@ -42,9 +42,6 @@ void FNetworkNextModule::StartupModule()
 	// Setup logging to go to the "NetworkNext" log category
 	next_log_function(&FNetworkNextModule::Log);
 
-	// Set the log level. If you need to debug something, increase the log level to NEXT_LOG_LEVEL_DEBUG and send us a log and we're happy to help you out
-	next_log_level(NEXT_LOG_LEVEL_INFO);
-
 	// Setup default config values for the Network Next SDK
 	next_config_t config;
 	next_default_config(&config);
@@ -82,7 +79,7 @@ void FNetworkNextModule::StartupModule()
 		}
 	}
 
-	// Copy across the customer private key from the net driver. This is only required for the server.
+	// Copy across the customer private key from the net driver if provided. We recommend you pass it in by setting NEXT_CUSTOMER_PRIVATE_KEY env var instead!
 	// IMPORTANT: Do not set the private key on the client. You must not let your players know your customer private key!
 	if (NetDriver->CustomerPrivateKey.Len() > 0)
 	{
@@ -155,7 +152,7 @@ void FNetworkNextModule::Log(int level, const char* format, ...)
 		break;
 	case NEXT_LOG_LEVEL_DEBUG:
 	default:
-		UE_LOG(LogNetworkNext, VeryVerbose, TEXT("%s"), *Message);
+		UE_LOG(LogNetworkNext, Display, TEXT("%s"), *Message);
 		break;
 	}
 }

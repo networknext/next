@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                  "4.0.10"
+#define NEXT_VERSION_FULL                                  "4.0.11"
 #define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                   10
+#define NEXT_VERSION_PATCH_INT                                   11
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                  255
@@ -335,6 +335,8 @@ NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const nex
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats );
+
+NEXT_EXPORT_FUNC const next_address_t * next_server_address( next_server_t * server );
 
 // -----------------------------------------
 

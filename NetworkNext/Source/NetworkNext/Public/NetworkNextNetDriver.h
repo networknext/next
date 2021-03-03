@@ -42,12 +42,12 @@ class UNetworkNextNetDriver : public UIpNetDriver
 	virtual void Shutdown() override;
 	virtual bool IsNetResourceValid() override;
 
-	class FNetworkNextSocketClient* ClientSocket;
-	class FNetworkNextSocketServer* ServerSocket;
-
 public:
 
-	UPROPERTY(Config)
+    class FNetworkNextSocketClient* ClientSocket;
+    class FNetworkNextSocketServer* ServerSocket;
+    
+    UPROPERTY(Config)
 	FString NextHostname;
 
 	UPROPERTY(Config)
