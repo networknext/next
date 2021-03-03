@@ -131,7 +131,6 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 			datacenter, err := storer.Datacenter(datacenterID)
 			if err != nil {
 				// The datacenter map is misconfigured in our database
-				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
 				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
 			}
 
@@ -143,7 +142,6 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 			datacenter, err := storer.Datacenter(dcMap.DatacenterID)
 			if err != nil {
 				// The datacenter map is misconfigured in our database
-				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
 				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
 			}
 
@@ -157,12 +155,10 @@ func getDatacenter(storer storage.Storer, buyerID uint64, datacenterID uint64, d
 	if err != nil {
 		// This isn't a datacenter we know about. It's either brand new and not configured yet
 		// or there is a typo in the server's integration of the SDK
-		fmt.Printf("Datacenter not found: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
 		return routing.UnknownDatacenter, ErrDatacenterNotFound{buyerID, datacenterID, datacenterName}
 	}
 
 	// This is a datacenter we know about, but the buyer isn't configured to use it
-	fmt.Printf("Datacenter use not allowed: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
 	return routing.UnknownDatacenter, ErrDatacenterNotAllowed{buyerID, datacenterID, datacenterName}
 }
 
@@ -674,8 +670,17 @@ func SessionUpdateHandlerFunc(
 			slicePacketsLostClientToServer := packet.PacketsLostClientToServer - sessionData.PrevPacketsLostClientToServer
 			slicePacketsLostServerToClient := packet.PacketsLostServerToClient - sessionData.PrevPacketsLostServerToClient
 
-			slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer))
-			slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient))
+			if slicePacketsSentClientToServer == uint64(0) {
+				slicePacketLossClientToServer = float32(0)
+			} else {
+				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer))
+			}
+
+			if slicePacketsSentServerToClient == uint64(0) {
+				slicePacketLossServerToClient = float32(0)
+			} else {
+				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient))
+			}
 
 			slicePacketLoss = slicePacketLossClientToServer
 			if slicePacketLossServerToClient > slicePacketLossClientToServer {
