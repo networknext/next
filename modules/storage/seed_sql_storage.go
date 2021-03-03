@@ -39,8 +39,8 @@ func SeedSQLStorage(
 		// Add customers
 		// fmt.Println("Adding customers")
 		if err := db.AddCustomer(ctx, routing.Customer{
-			Name:                   "Network Next",
-			Code:                   "next",
+			Name:                   "Happy Path",
+			Code:                   "happypath",
 			AutomaticSignInDomains: "networknext.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
@@ -66,6 +66,11 @@ func SeedSQLStorage(
 		localCust, err := db.Customer("local")
 		if err != nil {
 			return fmt.Errorf("Error getting local customer: %v", err)
+		}
+
+		hpCust, err := db.Customer("happypath")
+		if err != nil {
+			return fmt.Errorf("Error getting happypath customer: %v", err)
 		}
 
 		ghostCust, err := db.Customer("ghost-army")
@@ -137,12 +142,27 @@ func SeedSQLStorage(
 			CustomerID:                ghostCust.DatabaseID,
 		}
 
+		hpSeller := routing.Seller{
+			ID:                        hpCust.Code,
+			ShortName:                 hpCust.Code,
+			CompanyCode:               hpCust.Code,
+			Secret:                    false,
+			Name:                      hpCust.Name,
+			IngressPriceNibblinsPerGB: 0.3 * 1e11,
+			EgressPriceNibblinsPerGB:  0.4 * 1e11,
+			CustomerID:                hpCust.DatabaseID,
+		}
+
 		if err := db.AddSeller(ctx, localSeller); err != nil {
 			return fmt.Errorf("AddSeller() err adding localSeller: %w", err)
 		}
 
 		if err := db.AddSeller(ctx, ghostSeller); err != nil {
 			return fmt.Errorf("AddSeller() err adding ghostSeller: %w", err)
+		}
+
+		if err := db.AddSeller(ctx, hpSeller); err != nil {
+			return fmt.Errorf("AddSeller() err adding hpSeller: %w", err)
 		}
 
 		localSeller, err = db.Seller("local")
@@ -153,6 +173,11 @@ func SeedSQLStorage(
 		ghostSeller, err = db.Seller("ghost-army")
 		if err != nil {
 			return fmt.Errorf("Error getting ghost seller: %v", err)
+		}
+
+		hpSeller, err = db.Seller("happypath")
+		if err != nil {
+			return fmt.Errorf("Error getting happypath seller: %v", err)
 		}
 
 		// fmt.Println("Adding datacenters")
@@ -171,18 +196,21 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
 
-		localDCID = crypto.HashID("local.locale.name")
-		localDatacenter2 := routing.Datacenter{
-			ID:   localDCID,
-			Name: "local.locale.name",
-			Location: routing.Location{
-				Latitude:  70.5,
-				Longitude: 120.5,
-			},
-			SellerID: localSeller.DatabaseID,
-		}
-		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
-			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
+		for i := uint64(0); i < 10; i++ {
+			dcName := "happypath.name." + fmt.Sprintf("%d", i)
+			localDCID = crypto.HashID(dcName)
+			localDatacenter2 := routing.Datacenter{
+				ID:   localDCID,
+				Name: dcName,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+				SellerID: hpSeller.DatabaseID,
+			}
+			if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
+				return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
+			}
 		}
 
 		ghostDCID := crypto.HashID("ghost-army.locale.name")
@@ -258,7 +286,7 @@ func SeedSQLStorage(
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
-				Name:                "local.locale." + fmt.Sprintf("%d", i),
+				Name:                "locale." + fmt.Sprintf("%d", i),
 				Addr:                addr,
 				InternalAddr:        internalAddr,
 				ManagementAddr:      "1.2.3.4" + fmt.Sprintf("%d", i),
@@ -277,7 +305,7 @@ func SeedSQLStorage(
 				State:               routing.RelayStateEnabled,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
-				Notes:               "I am relay local.locale." + fmt.Sprintf("%d", i) + " - hear me roar!",
+				Notes:               "I am relay locale." + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
