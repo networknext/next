@@ -292,6 +292,15 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 			return
 		}
 
+		if !buyer.Live {
+			level.Error(logger).Log("err", "customer not active", "customerID", packet.CustomerID)
+			metrics.BuyerNotActive.Add(1)
+			if err := writeServerInitResponse(w, &packet, InitResponseCustomerNotActive); err != nil {
+				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.WriteResponseFailure.Add(1)
+			}
+		}
+
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
 			metrics.SignatureCheckFailed.Add(1)
@@ -328,6 +337,11 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 			case ErrDatacenterNotAllowed:
 				metrics.DatacenterNotAllowed.Add(1)
+				if err := writeServerInitResponse(w, &packet, InitResponseDataCenterNotEnabled); err != nil {
+					level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+					metrics.WriteResponseFailure.Add(1)
+				}
+				return
 			}
 
 			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
