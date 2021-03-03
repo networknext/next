@@ -39,9 +39,17 @@ func SeedSQLStorage(
 		// Add customers
 		// fmt.Println("Adding customers")
 		if err := db.AddCustomer(ctx, routing.Customer{
+			Name:                   "Network Next",
+			Code:                   "next",
+			AutomaticSignInDomains: "networknext.com",
+		}); err != nil {
+			return fmt.Errorf("AddCustomer() err: %w", err)
+		}
+
+		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Happy Path",
 			Code:                   "happypath",
-			AutomaticSignInDomains: "networknext.com",
+			AutomaticSignInDomains: "happypath.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
@@ -239,16 +247,16 @@ func SeedSQLStorage(
 
 		// add datacenter maps
 		// fmt.Println("Adding datacenter_maps")
-		localDcMap := routing.DatacenterMap{
-			Alias:        "local aliased",
-			BuyerID:      localBuyer.ID,
-			DatacenterID: localDatacenter.ID,
-		}
+		// localDcMap := routing.DatacenterMap{
+		// 	Alias:        "local aliased",
+		// 	BuyerID:      localBuyer.ID,
+		// 	DatacenterID: localDatacenter.ID,
+		// }
 
-		err = db.AddDatacenterMap(ctx, localDcMap)
-		if err != nil {
-			return fmt.Errorf("Error creating local datacenter map: %v", err)
-		}
+		// err = db.AddDatacenterMap(ctx, localDcMap)
+		// if err != nil {
+		// 	return fmt.Errorf("Error creating local datacenter map: %v", err)
+		// }
 
 		ghostDcMap := routing.DatacenterMap{
 			Alias:        "ghost-army.map",
