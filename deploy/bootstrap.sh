@@ -60,7 +60,7 @@ cp app.service /etc/systemd/system/app.service
 curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
 bash add-monitoring-agent-repo.sh
 apt-get update
-apt-get install stackdriver-agent
+apt-get install --yes stackdriver-agent
 service stackdriver-agent start
 
 # Bump up the max socket read and write buffer sizes
