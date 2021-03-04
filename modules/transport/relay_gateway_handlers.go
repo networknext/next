@@ -120,19 +120,6 @@ func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig
 			}
 		}
 
-		//send relay init to relay backend feature_relay_backend_1.5
-		//this is after all the checks to ensure that the relay backend will pass all the checks. double the work but stops from waiting.
-		if !params.NRBNoInit {
-			for _, address := range params.RelayBackendAddresses {
-				go func(address string) {
-					resp, err := http.Post(fmt.Sprintf("http://%s/relay_init", address), "application/octet-stream", request.Body)
-					if err != nil || resp.StatusCode != http.StatusOK {
-						_ = level.Error(localLogger).Log("msg", "unable to send update to relay backend", "err", err)
-					}
-				}(address)
-			}
-		}
-
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
 	}
@@ -151,7 +138,7 @@ func initRelayOnGateway(relay *routing.Relay, relayVersion string, logger log.Lo
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	//todo change to update relay when sql is working
+	// todo change to update relay when sql is working
 	if err := params.Storer.SetRelay(ctx, *relay); err != nil {
 		level.Error(logger).Log("msg", "failed to set relay state in storage", "err", err)
 		return fmt.Errorf("failed to set relay state in storer"), http.StatusInternalServerError
@@ -242,7 +229,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 			if err != nil {
 				level.Error(localLogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
 				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
-				//todo error metric??
+				// todo error metric??
 				return
 			}
 
@@ -252,11 +239,11 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			//todo update instead of set when ready
+			// todo update instead of set when ready
 			if err := params.Storer.SetRelay(ctx, relay); err != nil {
 				level.Error(localLogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
 				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				//todo error metric??
+				// todo error metric??
 				return
 			}
 			return

@@ -170,13 +170,13 @@ func newConfig() (*config, error) {
 	}
 	cfg.RouterPrivateKey = routerPrivateKey
 
-	nrbNoInit, err := envvar.GetBool("FEATURE_NRB_NO_INIT", false)
+	nrbNoInit, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_NO_INIT", false)
 	if err != nil {
 		return nil, err
 	}
 	cfg.NRBNoInit = nrbNoInit
 
-	nrbHTTP, err := envvar.GetBool("FEATURE_NRB_HTTP", false)
+	nrbHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", false)
 	if err != nil {
 		return nil, err
 	}
