@@ -62,6 +62,11 @@ const flags: Array<Flag> = [
     name: FeatureEnum.FEATURE_ANALYTICS,
     description: 'Google analytics and tag manager hooks',
     value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_TOUR,
+    description: 'NEw product tour to replace intercom',
+    value: false
   }
 ]
 
@@ -97,13 +102,15 @@ if (window.location.pathname === '/get-access') {
       router.push('/map')
     }
 
+    // TODO: Set this back up before deploying
     // const isReturning = localStorage.returningUser || 'false'
-    const isReturning = 'false'
-    if (!(isReturning === 'true')) {
-      store.commit('TOGGLE_IS_TOUR', true)
-      localStorage.returningUser = true
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
+      const isReturning = 'false'
+      if (!(isReturning === 'true')) {
+        store.commit('TOGGLE_IS_TOUR', true)
+        localStorage.returningUser = true
+      }
     }
-
     const app = new Vue({
       router,
       store,
