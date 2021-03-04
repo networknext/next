@@ -8,9 +8,9 @@ This repository contains the UE4 plugin for Network Next.
 
 # Usage
 
-1. Drop the "NetworkNext" folder under your engine "Plugins" directory.
+Drop the "NetworkNext" folder under your engine "Plugins" directory.
 
-2. Add the following to Config/DefaultEngine.ini
+Add the following to Config/DefaultEngine.ini
 
     [/Script/Engine.Engine]
     !NetDriverDefinitions=ClearArray
