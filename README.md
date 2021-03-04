@@ -28,6 +28,4 @@ It's tested working with Unreal Engine 4.25.
 
 4. Edit the blueprint on your game mode to call "UpgradePlayer" in response to the OnPostLogin event
 
-        <img src="https://storage.googleapis.com/network-next-ue4/blueprint.jpg" alt="Network Next" width="600"/>
-
-*Welcome to Network Next!*
+<img src="https://storage.googleapis.com/network-next-ue4/blueprint.jpg" alt="Network Next" width="600"/>
