@@ -16,7 +16,7 @@ It's tested working with Unreal Engine 4.25.
 
         [/Script/Engine.Engine]
         !NetDriverDefinitions=ClearArray
-        +NetDriverDefinitions=   (DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
+        +NetDriverDefinitions=  (DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
 
         [/Script/NetworkNext.NetworkNextNetDriver]
         NextHostname=prod.spacecats.net
@@ -35,4 +35,4 @@ It's tested working with Unreal Engine 4.25.
 6. Set environment variables on the server, so Network Next knows where your server is running.
 
         export NEXT_SERVER_ADDRESS="10.2.100.23:40000"       # change to the real public IP:port of your server
-        export NEXT_DATACENTER=""                            # autodetects datacenter in GCP or AWS. Talk to us otherwise!
+        export NEXT_DATACENTER=""                            # autodetects datacenter in GCP or AWS
