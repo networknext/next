@@ -247,16 +247,16 @@ func SeedSQLStorage(
 
 		// add datacenter maps
 		// fmt.Println("Adding datacenter_maps")
-		// localDcMap := routing.DatacenterMap{
-		// 	Alias:        "local aliased",
-		// 	BuyerID:      localBuyer.ID,
-		// 	DatacenterID: localDatacenter.ID,
-		// }
+		localDcMap := routing.DatacenterMap{
+			Alias:        "local.aliased",
+			BuyerID:      localBuyer.ID,
+			DatacenterID: localDatacenter.ID,
+		}
 
-		// err = db.AddDatacenterMap(ctx, localDcMap)
-		// if err != nil {
-		// 	return fmt.Errorf("Error creating local datacenter map: %v", err)
-		// }
+		err = db.AddDatacenterMap(ctx, localDcMap)
+		if err != nil {
+			return fmt.Errorf("Error creating local datacenter map: %v", err)
+		}
 
 		ghostDcMap := routing.DatacenterMap{
 			Alias:        "ghost-army.map",
