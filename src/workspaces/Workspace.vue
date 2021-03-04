@@ -73,21 +73,21 @@ export default class Workspace extends Vue {
         content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).'
       },
       {
-        target: '#latency-chart-1',
+        target: '[data-tour="latencyGraph"]',
         header: {
-          title: 'Top Sessions'
+          title: 'Session Details'
         },
-        content: 'Stats about a specific session can be viewed in this <strong>Session Tool</strong>. These are real-time improvements to latency, jitter, and packet loss.'
+        content: 'Stats about a specific session can be viewed in this <strong>Session Tool</strong>. These are real-time improvements to latency, jitter, and packet loss.',
+        params: {
+          placement: 'right'
+        }
       },
       {
         target: '[data-tour="signUpButton"]',
         header: {
           title: 'Get Access'
         },
-        content: '<strong>Try it for your game for FREE!</strong> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.',
-        params: {
-          enableScrolling: true
-        }
+        content: '<strong>Try it for your game for FREE!</strong> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.'
       }
     ]
 
@@ -129,5 +129,50 @@ export default class Workspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
-<style scoped lang="scss">
+<style lang="scss">
+  .v-step {
+    background-color: white !important;
+    color: black;
+  }
+  .v-step__header {
+    padding: 1rem !important;
+    background-color: white !important;
+    color: black;
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 0 !important;
+  }
+  .v-step__content {
+    background-color: white !important;
+    color: black;
+    text-align: left;
+  }
+  .v-step__button {
+    border-color: black !important;
+    color: black !important;
+    font-weight: lighter;
+    min-width: 80px;
+  }
+  .v-step__button.v-step__button-next {
+    background-color: rgb(0, 159, 223) !important;
+    border-color: rgb(0, 159, 223) !important;
+    color: white !important;
+  }
+  .v-step__button.v-step__button-stop {
+    background-color: rgb(0, 159, 223) !important;
+    border-color: rgb(0, 159, 223) !important;
+    color: white !important;
+  }
+  .v-step[x-placement^="top"] .v-step__arrow.v-step__arrow--dark{
+    border-top-color: white !important;
+  }
+  .v-step[x-placement^="bottom"] .v-step__arrow.v-step__arrow--dark{
+    border-bottom-color: white !important;
+  }
+  .v-step[x-placement^="right"] .v-step__arrow.v-step__arrow--dark{
+    border-right-color: white !important;
+  }
+  .v-step[x-placement^="left"] .v-step__arrow.v-step__arrow--dark{
+    border-left-color: white !important;
+  }
 </style>

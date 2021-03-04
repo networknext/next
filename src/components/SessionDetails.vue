@@ -21,7 +21,7 @@
               <span></span>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body" data-tour="latencyGraph">
             <div id="latency-chart-1"></div>
           </div>
         </div>
