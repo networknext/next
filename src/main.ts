@@ -11,6 +11,7 @@ import { AuthPlugin } from './plugins/auth'
 import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
 import { FeatureEnum, Flag } from './components/types/FeatureTypes'
+import VueTour from 'vue-tour'
 
 /**
  * Main file responsible for mounting the App component,
@@ -21,6 +22,10 @@ import { FeatureEnum, Flag } from './components/types/FeatureTypes'
  */
 
 Vue.config.productionTip = false
+
+require('vue-tour/dist/vue-tour.css')
+
+Vue.use(VueTour)
 
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
@@ -91,6 +96,14 @@ if (window.location.pathname === '/get-access') {
     if (query.includes('code=') && query.includes('state=')) {
       router.push('/map')
     }
+
+    // const isReturning = localStorage.returningUser || 'false'
+    const isReturning = 'false'
+    if (!(isReturning === 'true')) {
+      store.commit('TOGGLE_IS_TOUR', true)
+      localStorage.returningUser = true
+    }
+
     const app = new Vue({
       router,
       store,

@@ -21,6 +21,7 @@
           data-intercom="sessions"
           v-bind:class="{ active: $store.getters.currentPage == 'sessions' }"
           data-test="sessionsLink"
+          data-tour="sessionsLink"
         >Sessions</router-link>
       </li>
       <li class="nav-item text-nowrap">
@@ -103,7 +104,7 @@
       </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
-      <li class="nav-item text-nowrap">
+      <li class="nav-item text-nowrap" data-tour="signUpButton">
         <a
           data-test="signUpButton"
           data-intercom="signUpButton"

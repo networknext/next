@@ -88,6 +88,7 @@
                 v-bind:to="`/session-tool/${session.id}`"
                 class="text-dark fixed-width"
                 v-bind:data-intercom="index"
+                v-bind:data-tour="index"
               >{{ session.id }}</router-link>
             </td>
             <td v-if="!$store.getters.isAnonymous">
