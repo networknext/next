@@ -12,7 +12,7 @@ It's tested working with Unreal Engine 4.25.
 
 First, copy the entire **NetworkNext** folder into your **Plugins** directory.
 
-Second, add the following to the bottom of **Config/DefaultEngine.ini**
+Second, add the following to *Config/DefaultEngine.ini*
 
     [/Script/Engine.Engine]
     !NetDriverDefinitions=ClearArray
