@@ -32,13 +32,7 @@ It's tested working with Unreal Engine 4.25.
 
 <img src="https://storage.googleapis.com/network-next-ue4/blueprint.jpg" alt="Network Next" width="600"/>
 
-6. Set environment variables on the server
+6. Set environment variables on the server, so Network Next knows where your server is running.
 
-Set the server address and datacenter variables, so Network Next knows where your server is running.
-
-        export NEXT_SERVER_ADDRESS="10.2.100.23:40000"
-        export NEXT_DATACENTER=""
-
-If you are running in Google cloud or AWS, you can set the datacenter to "" and we will autodetect the datacenter for you. 
-
-If you are hosting elsewhere, talk to us and we'll give you a list of datacenter names to set for each location you host servers.
+        export NEXT_SERVER_ADDRESS="10.2.100.23:40000"       # change to the real public IP:port of your server
+        export NEXT_DATACENTER=""                            # autodetects datacenter in GCP or AWS. Talk to us otherwise!
