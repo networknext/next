@@ -12,14 +12,14 @@ This repository contains the UE4 plugin for Network Next.
 
 2. Add the following to Config/DefaultEngine.ini
 
+`
   [/Script/Engine.Engine]
   !NetDriverDefinitions=ClearArray
   +NetDriverDefinitions=    (DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
 
   [/Script/NetworkNext.NetworkNextNetDriver]
-  NextHostname=dev.spacecats.net
+  NextHostname=prod.spacecats.net
   CustomerPublicKey="M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w=="
   CustomerPrivateKey="M/NxwbhSaPiXITC+B4jYjdo1ahjj5NEmLaBZPPCIKL4b7c1KeQ8hq9QcRL6R49NYP1MUDRuBrWS5sb7e+DStPH/exCgWAwHX"
   NetConnectionClassName="/Script/NetworkNext.NetworkNextConnection"
-
-
+`
