@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"fmt"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -23,27 +22,6 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/stretchr/testify/assert"
 )
-
-//import (
-//"bytes"
-//
-//"math"
-//mrand "math/rand"
-//"net"
-//"net/http"
-//"net/http/httptest"
-//"reflect"
-//"testing"
-//"time"
-//
-//"golang.org/x/crypto/nacl/box"
-//
-//"github.com/go-kit/kit/log"
-
-//"github.com/networknext/backend/modules/routing"
-//"github.com/networknext/backend/modules/storage"
-//"github.com/stretchr/testify/assert"
-//)
 
 func pingRelayGatewayInit(t *testing.T, contentType string, body []byte, handlerConfig *GatewayHandlerConfig) *httptest.ResponseRecorder {
 	customerPublicKey := make([]byte, crypto.KeySize)
@@ -74,10 +52,10 @@ func testRelayErrorAssertions(t *testing.T, recorder *httptest.ResponseRecorder,
 	assert.Equal(t, 1.0, errMetric.ValueReset())
 }
 
-func relayGatewayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, handlerConfig *GatewayHandlerConfig, before uint64, expected, actual storage.RelayStoreData) {
+func relayGatewayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, handlerConfig *GatewayHandlerConfig, before uint64, relayID uint64) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	relay, err := handlerConfig.Storer.Relay(actual.ID)
+	relay, err := handlerConfig.Storer.Relay(relayID)
 	assert.NoError(t, err)
 
 	header := recorder.Header()
@@ -99,8 +77,6 @@ func relayGatewayInitSuccessAssertions(t *testing.T, recorder *httptest.Response
 	assert.LessOrEqual(t, before, response.Timestamp)
 	assert.GreaterOrEqual(t, uint64(time.Now().Unix()*1000), response.Timestamp)
 
-	assert.Equal(t, expected.ID, actual.ID)
-	assert.Equal(t, expected.Address, actual.Address)
 	assert.Equal(t, routing.RelayStateEnabled, relay.State)
 
 	errMetricsStruct := reflect.ValueOf(handlerConfig.InitMetrics.ErrorMetrics)
@@ -112,7 +88,7 @@ func relayGatewayInitSuccessAssertions(t *testing.T, recorder *httptest.Response
 }
 
 func TestRelayGatewayInitUnmarshalFailure(t *testing.T) {
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, &storage.StorerMock{})
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.UnmarshalFailure = metric
 	buff := []byte("bad packet")
@@ -128,7 +104,7 @@ func TestRelayGatewayInitInvalidMagic(t *testing.T) {
 		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, &storage.StorerMock{})
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.InvalidMagic = metric
 
@@ -171,7 +147,7 @@ func TestRelayGatewayInitInvalidAddress(t *testing.T) {
 		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.UnmarshalFailure = metric
@@ -200,7 +176,7 @@ func TestRelayGatewayInitRelayNotFound(t *testing.T) {
 		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.RelayNotFound = metric
 
@@ -210,7 +186,7 @@ func TestRelayGatewayInitRelayNotFound(t *testing.T) {
 	testRelayErrorAssertions(t, recorder, http.StatusNotFound, metric)
 }
 
-////todo still not working
+////todo still not working, fix when quarantine reimplemented
 //func TestRelayInitQuarantinedRelay(t *testing.T) {
 //
 //	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
@@ -315,7 +291,7 @@ func TestRelayGatewayInitInvalidToken(t *testing.T) {
 		EncryptedToken: token,
 	}
 
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.DecryptionFailure = metric
@@ -368,7 +344,7 @@ func TestRelayGatewayInitInvalidNonce(t *testing.T) {
 
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
-	handlerConfig := testGatewayHandlerConfig(&storage.RelayStoreMock{}, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.DecryptionFailure = metric
@@ -400,17 +376,6 @@ func TestRelayGatewayInitRelayExists(t *testing.T) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
-	rStore := storage.RelayStoreMock{
-		GetFunc: func(relayID uint64) (*storage.RelayStoreData, error) {
-			return &storage.RelayStoreData{
-				ID:           crypto.HashID(addr),
-				Address:      *udpAddr,
-				RelayVersion: "0",
-			}, nil
-
-		},
-	}
-
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
 		Datacenter: routing.Datacenter{
@@ -429,7 +394,7 @@ func TestRelayGatewayInitRelayExists(t *testing.T) {
 
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
-	handlerConfig := testGatewayHandlerConfig(&rStore, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
 	handlerConfig.InitMetrics.ErrorMetrics.RelayAlreadyExists = metric
@@ -489,23 +454,6 @@ func TestRelayGatewayInitSuccess(t *testing.T) {
 		RelayVersion:   "1",
 	}
 
-	var actual storage.RelayStoreData
-	rStore := &storage.RelayStoreMock{
-		GetFunc: func(id uint64) (*storage.RelayStoreData, error) {
-			return nil, fmt.Errorf("unable to find relay data")
-		},
-		SetFunc: func(relayData storage.RelayStoreData) error {
-			actual = relayData
-			return nil
-		},
-	}
-
-	expected := storage.RelayStoreData{
-		ID:           crypto.HashID(addr),
-		Address:      *udpAddr,
-		RelayVersion: "1",
-	}
-
 	inMemory := &storage.InMemory{}
 	customerPublicKey := make([]byte, crypto.KeySize)
 	rand.Read(customerPublicKey)
@@ -514,7 +462,7 @@ func TestRelayGatewayInitSuccess(t *testing.T) {
 		PublicKey: customerPublicKey,
 	})
 	testAddRelayToStore(t, inMemory, relay)
-	handlerConfig := testGatewayHandlerConfig(rStore, storage.RelayCache{}, inMemory)
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
 
@@ -535,5 +483,5 @@ func TestRelayGatewayInitSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
-	relayGatewayInitSuccessAssertions(t, recorder, "application/octet-stream", handlerConfig, before, expected, actual)
+	relayGatewayInitSuccessAssertions(t, recorder, "application/octet-stream", handlerConfig, before, relay.ID)
 }
