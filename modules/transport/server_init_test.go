@@ -59,12 +59,49 @@ func TestServerInitHandlerBuyerNotFound(t *testing.T) {
 	assert.Equal(t, metrics.ServerInitMetrics.BuyerNotFound.Value(), 1.0)
 }
 
+func TestServerInitHandlerBuyerNotLive(t *testing.T) {
+	logger := log.NewNopLogger()
+	storer := &storage.InMemory{}
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{
+		ID:   123,
+		Live: false,
+	})
+	assert.NoError(t, err)
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerInitRequestPacket{
+		CustomerID: 123,
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	handler := transport.ServerInitHandlerFunc(logger, storer, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
+	assert.Equal(t, uint32(transport.InitResponseCustomerNotActive), responsePacket.Response)
+
+	assert.Equal(t, metrics.ServerInitMetrics.SignatureCheckFailed.Value(), 1.0)
+}
+
 func TestServerInitHandlerSignatureCheckFailed(t *testing.T) {
 	logger := log.NewNopLogger()
 	storer := &storage.InMemory{}
 
 	err := storer.AddBuyer(context.Background(), routing.Buyer{
-		ID: 123,
+		ID:   123,
+		Live: true,
 	})
 	assert.NoError(t, err)
 
@@ -108,6 +145,7 @@ func TestServerInitHandlerSDKTooOld(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:        customerID,
 		PublicKey: publicKey,
+		Live:      true,
 	})
 	assert.NoError(t, err)
 
@@ -160,6 +198,7 @@ func TestServerInitHandlerMisconfiguredDatacenterAlias(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:        customerID,
 		PublicKey: publicKey,
+		Live:      true,
 	})
 	assert.NoError(t, err)
 
@@ -221,6 +260,7 @@ func TestServerInitHandlerDatacenterNotFound(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:        customerID,
 		PublicKey: publicKey,
+		Live:      true,
 	})
 	assert.NoError(t, err)
 
@@ -275,6 +315,7 @@ func TestServerInitHandlerDatacenterNotAllowed(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:        customerID,
 		PublicKey: publicKey,
+		Live:      true,
 	})
 	assert.NoError(t, err)
 
@@ -315,7 +356,7 @@ func TestServerInitHandlerDatacenterNotAllowed(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseUnknownDatacenter), responsePacket.Response)
+	assert.Equal(t, uint32(transport.InitResponseDataCenterNotEnabled), responsePacket.Response)
 
 	assert.Equal(t, metrics.ServerInitMetrics.DatacenterNotAllowed.Value(), 1.0)
 }
@@ -334,6 +375,7 @@ func TestServerInitHandlerSuccess(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:        customerID,
 		PublicKey: publicKey,
+		Live:      true,
 	})
 	assert.NoError(t, err)
 
@@ -401,6 +443,7 @@ func TestServerInitHandlerSuccessDatacenterAliasFound(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:        customerID,
 		PublicKey: publicKey,
+		Live:      true,
 	})
 	assert.NoError(t, err)
 

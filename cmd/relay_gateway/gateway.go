@@ -10,6 +10,7 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 
@@ -131,10 +132,18 @@ func mainReturnWithCode() int {
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/relay_init", gateway.RelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", gateway.RelayUpdateHandlerFunc()).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
+
+	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+	if enablePProf {
+		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	}
 
 	fmt.Println("starting Http")
 	go func() {
