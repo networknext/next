@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -352,9 +351,10 @@ type routeShader struct {
 }
 
 type buyer struct {
-	CompanyCode string
-	Live        bool
-	PublicKey   string
+	CustomerCode string
+	Live         bool
+	Debug        bool
+	PublicKey    string
 }
 
 type seller struct {
@@ -636,6 +636,59 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var signedCommand = &ffcli.Command{
+		Name:       "signed",
+		ShortUsage: "next signed (uint64 in hex)",
+		ShortHelp:  "Provide the signed int64 representation of the provided hex uint64 value",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided an unsigned uint64 in hexadecimal format"), 0)
+			}
+
+			hexString := args[0]
+
+			unsigned, err := strconv.ParseUint(hexString, 16, 64)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("Error: %v\n", err), 1)
+			}
+			signed := int64(unsigned)
+
+			fmt.Printf("Hex   : %s\nuint64: %d\nint64 : %d\n", hexString, unsigned, signed)
+
+			return nil
+		},
+	}
+
+	var unsignedCommand = &ffcli.Command{
+		Name:       "unsigned",
+		ShortUsage: "next unsigned (int64) // omit negative sign",
+		ShortHelp:  "Provide the signed int64 representation of the provided hex uint64 value (omit negative sign)",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a signed int64 (omit negative sign)"), 0)
+			}
+
+			signedString := os.Args[2]
+
+			signed, err := strconv.ParseInt(signedString, 10, 64)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("Error: %v\n", err), 1)
+			}
+			unsigned := uint64(signed)
+
+			fmt.Println("Positive value:")
+			fmt.Printf("\tint64 : %d\n\tHex   : %016x\n\tuint64: %d\n\n", signed, unsigned, unsigned)
+
+			signed *= -1
+			unsigned = uint64(signed)
+
+			fmt.Println("Negative value:")
+			fmt.Printf("\tint64 : %d\n\tHex   : %016x\n\tuint64: %d\n\n", signed, unsigned, unsigned)
+
 			return nil
 		},
 	}
@@ -1248,14 +1301,19 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
-					// TODO: this function should use the new JSAddBuyer endpoint
-					// Add the Buyer to storage
-					addBuyer(rpcClient, env, routing.Buyer{
-						CompanyCode: b.CompanyCode,
-						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
-						Live:        b.Live,
-						PublicKey:   publicKey[8:],
-					})
+					buyerArgs := localjsonrpc.JSAddBuyerArgs{
+						ShortName: b.CustomerCode,
+						Live:      b.Live,
+						Debug:     b.Debug,
+						PublicKey: b.PublicKey,
+					}
+
+					var reply localjsonrpc.JSAddBuyerReply
+					if err := rpcClient.CallFor(&reply, "OpsService.JSAddBuyer", buyerArgs); err != nil {
+						handleJSONRPCError(env, err)
+					}
+
+					fmt.Printf("Buyer \"%s\" added to storage.\n", b.CustomerCode)
 					return nil
 				},
 			},
@@ -1781,8 +1839,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code                   string
 						Name                   string
 						AutomaticSignInDomains string
-						Active                 bool
-						Debug                  bool
 					}
 
 					if err := json.Unmarshal(jsonData, &customer); err != nil {
@@ -2107,6 +2163,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		debugCommand,
 		viewCommand,
 		stagingCommand,
+		signedCommand,
+		unsignedCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2374,9 +2432,7 @@ Example JSON schema required to add a new customer:
 {
         "Code": "amazon",
         "Name": "Amazon.com, Inc.",
-        "AutomaticSignInDomains": "amazon.networknext.com", // comma separated list
-        "Active": true,
-        "Debug": false
+        "AutomaticSignInDomains": "amazon.networknext.com" // comma separated list
 }
 
 All fields are required. The Code field must be unique

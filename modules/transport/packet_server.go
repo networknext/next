@@ -34,6 +34,8 @@ const (
 	InitResponseUnknownDatacenter    = 2
 	InitResponseOldSDKVersion        = 3
 	InitResponseSignatureCheckFailed = 4
+	InitResponseCustomerNotActive    = 5
+	InitResponseDataCenterNotEnabled = 6
 
 	ConnectionTypeUnknown  = 0
 	ConnectionTypeWired    = 1

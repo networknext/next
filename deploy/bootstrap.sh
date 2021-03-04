@@ -56,6 +56,13 @@ chmod +x app
 # Copy the Systemd service definition to the right location
 cp app.service /etc/systemd/system/app.service
 
+# add gcloud memory agent
+curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
+bash add-monitoring-agent-repo.sh
+apt-get update
+apt-get install --yes stackdriver-agent
+service stackdriver-agent start
+
 # Bump up the max socket read and write buffer sizes
 sudo sysctl -w net.core.rmem_max=1000000000
 sudo sysctl -w net.core.wmem_max=1000000000

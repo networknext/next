@@ -13,6 +13,7 @@ import (
 	"hash/fnv"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -21,7 +22,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
-
 	"github.com/networknext/backend/modules/common/helpers"
 
 	"cloud.google.com/go/pubsub"
@@ -675,112 +675,119 @@ func mainReturnWithCode() int {
 	// Separate route matrix specifically for Valve
 	valveMatrixData := new(helpers.MatrixData)
 
-	// Generate the route matrix specifically for valve
-	go func() {
-		syncTimer := helpers.NewSyncTimer(syncInterval)
-		for {
-			syncTimer.Run()
-			// All relays included
-			baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
+	featureValveMatrix, err := envvar.GetBool("FEATURE_VALVE_MATRIX", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
 
-			namesMap := make(map[string]routing.Relay)
-			numRelays := len(baseRelayIDs)
-			relayAddresses := make([]net.UDPAddr, numRelays)
-			relayNames := make([]string, numRelays)
-			relayLatitudes := make([]float32, numRelays)
-			relayLongitudes := make([]float32, numRelays)
-			relayDatacenterIDs := make([]uint64, numRelays)
-			relayIDs := make([]uint64, numRelays)
+	if featureValveMatrix {
+		// Generate the route matrix specifically for valve
+		go func() {
+			syncTimer := helpers.NewSyncTimer(syncInterval)
+			for {
+				syncTimer.Run()
+				// All relays included
+				baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
 
-			for i, relayID := range baseRelayIDs {
-				relay, err := storer.Relay(relayID)
-				if err != nil {
+				namesMap := make(map[string]routing.Relay)
+				numRelays := len(baseRelayIDs)
+				relayAddresses := make([]net.UDPAddr, numRelays)
+				relayNames := make([]string, numRelays)
+				relayLatitudes := make([]float32, numRelays)
+				relayLongitudes := make([]float32, numRelays)
+				relayDatacenterIDs := make([]uint64, numRelays)
+				relayIDs := make([]uint64, numRelays)
+
+				for i, relayID := range baseRelayIDs {
+					relay, err := storer.Relay(relayID)
+					if err != nil {
+						continue
+					}
+
+					relayNames[i] = relay.Name
+					namesMap[relay.Name] = relay
+				}
+				//sort relay names then populate other arrays
+				sort.Strings(relayNames)
+				for i, relayName := range relayNames {
+					relay := namesMap[relayName]
+					relayIDs[i] = relay.ID
+					relayAddresses[i] = relay.Addr
+					relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
+					relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
+					relayDatacenterIDs[i] = relay.Datacenter.ID
+				}
+
+				valveCostMatrixMetrics.Invocations.Add(1)
+				costMatrixDurationStart := time.Now()
+
+				valveCostMatrix := statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+
+				costMatrixDurationSince := time.Since(costMatrixDurationStart)
+				valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
+				if costMatrixDurationSince.Seconds() > 1.0 {
+					valveCostMatrixMetrics.LongUpdateCount.Add(1)
+				}
+
+				valveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix) * 4))
+
+				numCPUs := runtime.NumCPU()
+				numSegments := numRelays
+				if numCPUs < numRelays {
+					numSegments = numRelays / 5
+					if numSegments == 0 {
+						numSegments = 1
+					}
+				}
+
+				valveOptimizeMetrics.Invocations.Add(1)
+				optimizeDurationStart := time.Now()
+
+				routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
+				if len(routeEntries) == 0 {
+					level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 					continue
 				}
 
-				relayNames[i] = relay.Name
-				namesMap[relay.Name] = relay
-			}
-			//sort relay names then populate other arrays
-			sort.Strings(relayNames)
-			for i, relayName := range relayNames {
-				relay := namesMap[relayName]
-				relayIDs[i] = relay.ID
-				relayAddresses[i] = relay.Addr
-				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
-				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
-				relayDatacenterIDs[i] = relay.Datacenter.ID
-			}
+				optimizeDurationSince := time.Since(optimizeDurationStart)
+				valveOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
 
-			valveCostMatrixMetrics.Invocations.Add(1)
-			costMatrixDurationStart := time.Now()
-
-			valveCostMatrix := statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
-
-			costMatrixDurationSince := time.Since(costMatrixDurationStart)
-			valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-			if costMatrixDurationSince.Seconds() > 1.0 {
-				valveCostMatrixMetrics.LongUpdateCount.Add(1)
-			}
-
-			valveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix) * 4))
-
-			numCPUs := runtime.NumCPU()
-			numSegments := numRelays
-			if numCPUs < numRelays {
-				numSegments = numRelays / 5
-				if numSegments == 0 {
-					numSegments = 1
+				if optimizeDurationSince.Seconds() > 1.0 {
+					valveOptimizeMetrics.LongUpdateCount.Add(1)
 				}
+
+				valveRouteMatrixNew := &routing.RouteMatrix{
+					RelayIDs:           relayIDs,
+					RelayAddresses:     relayAddresses,
+					RelayNames:         relayNames,
+					RelayLatitudes:     relayLatitudes,
+					RelayLongitudes:    relayLongitudes,
+					RelayDatacenterIDs: relayDatacenterIDs,
+					RouteEntries:       routeEntries,
+				}
+
+				if err := valveRouteMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
+					level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
+					continue
+				}
+
+				valveRouteMatrixNew.WriteAnalysisData()
+
+				valveMatrixData.SetMatrix(valveRouteMatrixNew.GetResponseData())
+
+				valveRouteMatrixMetrics.Bytes.Set(float64(valveMatrixData.GetMatrixDataSize()))
+				valveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
+				valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
+
+				// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+				numRoutes := int32(0)
+				for i := range valveRouteMatrixNew.RouteEntries {
+					numRoutes += valveRouteMatrixNew.RouteEntries[i].NumRoutes
+				}
+				valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
 			}
-
-			valveOptimizeMetrics.Invocations.Add(1)
-			optimizeDurationStart := time.Now()
-
-			routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
-			if len(routeEntries) == 0 {
-				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
-				continue
-			}
-
-			optimizeDurationSince := time.Since(optimizeDurationStart)
-			valveOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
-
-			if optimizeDurationSince.Seconds() > 1.0 {
-				valveOptimizeMetrics.LongUpdateCount.Add(1)
-			}
-
-			valveRouteMatrixNew := &routing.RouteMatrix{
-				RelayIDs:           relayIDs,
-				RelayAddresses:     relayAddresses,
-				RelayNames:         relayNames,
-				RelayLatitudes:     relayLatitudes,
-				RelayLongitudes:    relayLongitudes,
-				RelayDatacenterIDs: relayDatacenterIDs,
-				RouteEntries:       routeEntries,
-			}
-
-			if err := valveRouteMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
-				level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
-				continue
-			}
-
-			valveRouteMatrixNew.WriteAnalysisData()
-
-			valveMatrixData.SetMatrix(valveRouteMatrixNew.GetResponseData())
-
-			valveRouteMatrixMetrics.Bytes.Set(float64(valveMatrixData.GetMatrixDataSize()))
-			valveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
-			valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
-
-			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
-			numRoutes := int32(0)
-			for i := range valveRouteMatrixNew.RouteEntries {
-				numRoutes += valveRouteMatrixNew.RouteEntries[i].NumRoutes
-			}
-			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
-		}
-	}()
+		}()
+	}
 
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
@@ -830,7 +837,7 @@ func mainReturnWithCode() int {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
@@ -839,6 +846,14 @@ func mainReturnWithCode() int {
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
+
+	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+	if enablePProf {
+		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	}
 
 	go func() {
 		port := envvar.Get("PORT", "30000")
