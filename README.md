@@ -16,7 +16,7 @@ Second, add the following to the bottom of **Config/DefaultEngine.ini**
 
     [/Script/Engine.Engine]
     !NetDriverDefinitions=ClearArray
-    +NetDriverDefinitions=    (DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
+    +NetDriverDefinitions=   (DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
 
     [/Script/NetworkNext.NetworkNextNetDriver]
     NextHostname=prod.spacecats.net
