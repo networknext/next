@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -486,19 +487,21 @@ func main() {
 			Storage:     db,
 		}, "")
 
-		allowCORSStr := os.Getenv("CORS")
-		allowCORS := true
-		if ok, err := strconv.ParseBool(allowCORSStr); err == nil {
-			allowCORS = ok
-		}
-
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS, strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
 
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 
@@ -528,7 +531,7 @@ func main() {
 		}
 
 		// Fall through to running on any other port defined with TLS disabled
-		err := http.ListenAndServe(":"+port, r)
+		err = http.ListenAndServe(":"+port, r)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)

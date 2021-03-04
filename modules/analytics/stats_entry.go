@@ -1,7 +1,7 @@
 package analytics
 
 import (
-	"time"
+	"strconv"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
@@ -433,9 +433,14 @@ func ReadRouteMatrixStatsEntry(data []byte) (*RouteMatrixStatsEntry, bool) {
 func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
-	bqEntry["timestamp"] = time.Unix(int64(e.Timestamp), 0)
+	bqEntry["timestamp"] = int(e.Timestamp)
 	bqEntry["down_relay_hash"] = int64(e.Hash)
-	bqEntry["down_relay_IDs"] = e.IDs
 
+	idStrings := make([]string, len(e.IDs))
+	for i, id := range e.IDs {
+		idStrings[i] = strconv.FormatUint(id, 10)
+	}
+
+	bqEntry["down_relay_IDs"] = idStrings
 	return bqEntry, "", nil
 }
