@@ -1,125 +1,128 @@
 <template>
-  <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-    <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
-      <div class="logo-container">
-        <img class="logo-fit" src="../assets/logo.png" />
-      </div>
-    </a>
-    <ul class="navbar-nav px-3 w-100 mr-auto">
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/map"
-          class="nav-link"
-          v-bind:class="{ active: $store.getters.currentPage == 'map' }"
-          data-test="mapLink"
-        >Map</router-link>
-      </li>
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/sessions"
-          class="nav-link"
-          data-intercom="sessions"
-          v-bind:class="{ active: $store.getters.currentPage == 'sessions' }"
-          data-test="sessionsLink"
-          data-tour="sessionsLink"
-        >Sessions</router-link>
-      </li>
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/session-tool"
-          class="nav-link"
-          v-bind:class="{
-            active:
-              $store.getters.currentPage == 'session-tool' ||
-              $store.getters.currentPage == 'session-details'
-          }"
-          data-test="sessionToolLink"
-        >Session Tool</router-link>
-      </li>
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/user-tool"
-          class="nav-link"
-          v-bind:class="{
-            active:
-              $store.getters.currentPage == 'user-tool' ||
-              $store.getters.currentPage == 'user-sessions'
-          }"
-          v-if="!$store.getters.isAnonymous"
-        >User Tool</router-link>
-      </li>
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/downloads"
-          class="nav-link"
-          data-intercom="downloads"
-          v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
-          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
-        >Downloads</router-link>
-      </li>
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/explore"
-          class="nav-link"
-          v-bind:class="{
-            active: $store.getters.currentPage == 'explore'
-          }"
-          v-if="$flagService.isEnabled(featureEnums.EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
-        >Explore</router-link>
-      </li>
-      <li class="nav-item text-nowrap">
-        <router-link
-          to="/settings"
-          class="nav-link"
-          v-bind:class="{
-            active:
-              $store.getters.currentPage == 'account-settings' ||
-              $store.getters.currentPage == 'config' ||
-              $store.getters.currentPage == 'users' ||
-              $store.getters.currentPage == 'route-shader'
-          }"
-          v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
-        >Settings</router-link>
-      </li>
-    </ul>
-    <ul class="navbar-nav px-3 w-100">
-      <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
-      <li class="nav-item text-nowrap">
-        <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
-      </li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(featureEnums.IMPERSONATION) && $store.getters.isAdmin">
-      <li class="nav-item text-nowrap">
-        <select v-on:change="impersonate($event.target.value)">
-          <option :value="''">Impersonate</option>
-          <option
-            :value="buyer.company_code"
-            v-for="buyer in allBuyers"
-            v-bind:key="buyer.company_code"
-            :selected="buyer.company_code === companyCode"
-          >{{ buyer.company_name }}</option>
-        </select>
-      </li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
-      <li class="nav-item text-nowrap" data-tour="signUpButton">
-        <a
-          data-test="signUpButton"
-          data-intercom="signUpButton"
-          class="signup btn-sm btn-primary"
-          href="#"
-          @click="signUp()"
-        >Get Access</a>
-      </li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
-      <li class="nav-item text-nowrap">
-        <a class="logout btn-sm btn-primary" href="#" @click="logout()">Logout</a>
-      </li>
-    </ul>
-  </nav>
+  <div>
+    <v-tour name="getAccessTour" :steps="getAccessTourSteps" :options="getAccessTourOptions" :callbacks="getAccessTourCallbacks"></v-tour>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
+      <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
+        <div class="logo-container">
+          <img class="logo-fit" src="../assets/logo.png" />
+        </div>
+      </a>
+      <ul class="navbar-nav px-3 w-100 mr-auto">
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/map"
+            class="nav-link"
+            v-bind:class="{ active: $store.getters.currentPage == 'map' }"
+            data-test="mapLink"
+          >Map</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/sessions"
+            class="nav-link"
+            data-intercom="sessions"
+            v-bind:class="{ active: $store.getters.currentPage == 'sessions' }"
+            data-test="sessionsLink"
+            data-tour="sessionsLink"
+          >Sessions</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/session-tool"
+            class="nav-link"
+            v-bind:class="{
+              active:
+                $store.getters.currentPage == 'session-tool' ||
+                $store.getters.currentPage == 'session-details'
+            }"
+            data-test="sessionToolLink"
+          >Session Tool</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/user-tool"
+            class="nav-link"
+            v-bind:class="{
+              active:
+                $store.getters.currentPage == 'user-tool' ||
+                $store.getters.currentPage == 'user-sessions'
+            }"
+            v-if="!$store.getters.isAnonymous"
+          >User Tool</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/downloads"
+            class="nav-link"
+            data-intercom="downloads"
+            v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
+            v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
+          >Downloads</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/explore"
+            class="nav-link"
+            v-bind:class="{
+              active: $store.getters.currentPage == 'explore'
+            }"
+            v-if="$flagService.isEnabled(featureEnums.EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
+          >Explore</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/settings"
+            class="nav-link"
+            v-bind:class="{
+              active:
+                $store.getters.currentPage == 'account-settings' ||
+                $store.getters.currentPage == 'config' ||
+                $store.getters.currentPage == 'users' ||
+                $store.getters.currentPage == 'route-shader'
+            }"
+            v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
+          >Settings</router-link>
+        </li>
+      </ul>
+      <ul class="navbar-nav px-3 w-100">
+        <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
+      </ul>
+      <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
+        <li class="nav-item text-nowrap">
+          <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
+        </li>
+      </ul>
+      <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(featureEnums.IMPERSONATION) && $store.getters.isAdmin">
+        <li class="nav-item text-nowrap">
+          <select v-on:change="impersonate($event.target.value)">
+            <option :value="''">Impersonate</option>
+            <option
+              :value="buyer.company_code"
+              v-for="buyer in allBuyers"
+              v-bind:key="buyer.company_code"
+              :selected="buyer.company_code === companyCode"
+            >{{ buyer.company_name }}</option>
+          </select>
+        </li>
+      </ul>
+      <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
+        <li class="nav-item text-nowrap" data-tour="signUpButton">
+          <a
+            data-test="signUpButton"
+            data-intercom="signUpButton"
+            class="signup btn-sm btn-primary"
+            href="#"
+            @click="signUp()"
+          >Get Access</a>
+        </li>
+      </ul>
+      <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
+        <li class="nav-item text-nowrap">
+          <a class="logout btn-sm btn-primary" href="#" @click="logout()">Logout</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
 </template>
 
 <script lang="ts">
@@ -149,12 +152,51 @@ export default class NavBar extends Vue {
   private portalVersion: string
   private featureEnums: any
 
+  private unwatch: any
+  private getAccessTourSteps: Array<any>
+  private getAccessTourOptions: any
+  private getAccessTourCallbacks: any
+
   constructor () {
     super()
     this.portalVersion = ''
     this.companyCode = ''
     // TODO: This probably shouldn't be necessary?
     this.featureEnums = FeatureEnum
+
+    this.getAccessTourSteps = [
+      {
+        target: '[data-tour="signUpButton"]',
+        header: {
+          title: 'Get Access'
+        },
+        content: '<strong>Try it for your game for FREE!</strong> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.'
+      }
+    ]
+
+    this.getAccessTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'DONE'
+      }
+    }
+
+    this.getAccessTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
+        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning) {
+          this.$tours.getAccessTour.start()
+        }
+      },
+      onSkip: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
+        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning) {
+          this.$tours.getAccessTour.start()
+        }
+      }
+    }
   }
 
   private created () {
@@ -166,6 +208,16 @@ export default class NavBar extends Vue {
       const userProfile = cloneDeep(this.$store.getters.userProfile)
       this.companyCode = userProfile.companyCode || ''
     }
+    this.unwatch = this.$store.watch(
+      (_, getters: any) => {
+        return getters.finishedTours
+      },
+      (finishedTours: Array<string>) => {
+        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning && !finishedTours.includes('get-access')) {
+          this.$tours.getAccessTour.start()
+        }
+      }
+    )
   }
 
   private login (): void {

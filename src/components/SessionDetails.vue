@@ -1,5 +1,6 @@
 <template>
   <div>
+    <v-tour name="sessionDetailsTour" :steps="sessionDetailsTourSteps" :options="sessionDetailsTourOptions" :callbacks="sessionDetailsTourCallbacks"></v-tour>
     <Alert ref="inputAlert"/>
     <div class="row" v-if="showDetails">
       <div class="col-12 col-lg-8">
@@ -323,11 +324,47 @@ export default class SessionDetails extends Vue {
     minZoom: 0
   }
 
+  private sessionDetailsTourSteps: Array<any>
+  private sessionDetailsTourOptions: any
+  private sessionDetailsTourCallbacks: any
+
   constructor () {
     super()
     this.searchID = ''
     // this.slices = (data1 as any).result.slices
     // this.meta = (data1 as any).result.meta
+
+    this.sessionDetailsTourSteps = [
+      {
+        target: '[data-tour="latencyGraph"]',
+        header: {
+          title: 'Session Details'
+        },
+        content: 'Stats about a specific session can be viewed in this <strong>Session Tool</strong>. These are real-time improvements to latency, jitter, and packet loss.',
+        params: {
+          placement: 'right',
+          enableScrolling: false
+        }
+      }
+    ]
+
+    this.sessionDetailsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'DONE'
+      }
+    }
+
+    this.sessionDetailsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')
+      },
+      onSkip: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')
+      }
+    }
   }
 
   private mounted () {
@@ -460,6 +497,9 @@ export default class SessionDetails extends Vue {
           } else {
             this.deckGlInstance.setProps({ layers: [] })
             this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
+          }
+          if (this.$store.getters.isTour && this.$tours.sessionDetailsTour && !this.$tours.sessionDetailsTour.isRunning && !this.$store.getters.finishedTours.includes('session-details')) {
+            this.$tours.sessionDetailsTour.start()
           }
         })
       })

@@ -1,5 +1,6 @@
 <template>
   <div>
+    <v-tour name="sessionsTour" :steps="sessionsTourSteps" :options="sessionsTourOptions" :callbacks="sessionsTourCallbacks"></v-tour>
     <div
       class="spinner-border"
       role="status"
@@ -156,10 +157,42 @@ export default class SessionsWorkspace extends Vue {
   private showTable: boolean
   private unwatch: any
 
+  private sessionsTourSteps: Array<any>
+  private sessionsTourOptions: any
+  private sessionsTourCallbacks: any
+
   constructor () {
     super()
     this.sessions = []
     this.showTable = false
+
+    this.sessionsTourSteps = [
+      {
+        target: '[data-tour="0"]',
+        header: {
+          title: 'Top Sessions'
+        },
+        content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).'
+      }
+    ]
+
+    this.sessionsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'DONE'
+      }
+    }
+
+    this.sessionsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')
+      },
+      onSkip: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')
+      }
+    }
   }
 
   private mounted () {
@@ -189,9 +222,15 @@ export default class SessionsWorkspace extends Vue {
       })
       .then((response: any) => {
         this.sessions = response.sessions
-        this.$store.commit('TOGGLE_SESSION_TABLE', true)
+        if (!this.$store.getters.showTable) {
+          this.$store.commit('TOGGLE_SESSION_TABLE', true)
+        }
+        if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
+          this.$tours.sessionsTour.start()
+        }
       })
       .catch((error: any) => {
+        console.log('Something went wrong fetching the top sessions list')
         console.log(error)
       })
   }

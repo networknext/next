@@ -7,7 +7,7 @@
         />
         <router-view />
       </main>
-      <v-tour name="introTour" :steps="tourSteps" :options="customOptions"></v-tour>
+      <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
     </div>
   </div>
 </template>
@@ -36,19 +36,19 @@ import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
   }
 })
 export default class Workspace extends Vue {
-  private tourSteps: Array<any>
-  private customOptions: any
-  private callbacks: any
+  private mapTourSteps: Array<any>
+  private mapTourOptions: any
+  private mapTourCallbacks: any
 
   constructor () {
     super()
-    this.tourSteps = [
+    this.mapTourSteps = [
       {
         target: '#map',
         header: {
           title: 'Welcome to Network Next!'
         },
-        content: 'Each green dot on the <strong>Map</strong> is a player being accelerated by Network Next',
+        content: 'Each green dot on the <strong>Map </strong>is a player being accelerated by Network Next',
         params: {
           enabledButtons: {
             buttonSkip: true,
@@ -64,34 +64,10 @@ export default class Workspace extends Vue {
           title: 'Sessions Link'
         },
         content: 'Click <strong>Sessions</strong> to learn more about what Network Next does!'
-      },
-      {
-        target: '[data-tour="0"]',
-        header: {
-          title: 'Top Sessions'
-        },
-        content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).'
-      },
-      {
-        target: '[data-tour="latencyGraph"]',
-        header: {
-          title: 'Session Details'
-        },
-        content: 'Stats about a specific session can be viewed in this <strong>Session Tool</strong>. These are real-time improvements to latency, jitter, and packet loss.',
-        params: {
-          placement: 'right'
-        }
-      },
-      {
-        target: '[data-tour="signUpButton"]',
-        header: {
-          title: 'Get Access'
-        },
-        content: '<strong>Try it for your game for FREE!</strong> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.'
       }
     ]
 
-    this.customOptions = {
+    this.mapTourOptions = {
       labels: {
         buttonSkip: 'OK',
         buttonPrevious: 'BACK',
@@ -100,28 +76,19 @@ export default class Workspace extends Vue {
       }
     }
 
-    this.callbacks = {
+    this.mapTourCallbacks = {
       onFinish: () => {
-        this.$store.commit('TOGGLE_IS_TOUR', false)
-        this.$store.commit('UPDATE_CURRENT_TOUR_STEP', -1)
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'map')
       },
       onSkip: () => {
-        this.$store.commit('TOGGLE_IS_TOUR', false)
-        this.$store.commit('UPDATE_CURRENT_TOUR_STEP', -1)
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'map')
       }
     }
   }
 
   private mounted () {
-    console.log(this.$tours)
-    if (this.$store.getters.isTour) {
-      this.$tours.introTour.start()
-    }
-  }
-
-  private beforeDestroy () {
-    if (this.$store.getters.isTour) {
-      this.$tours.introTour.stop()
+    if (this.$store.getters.isTour && this.$route.name === 'map' && this.$tours.mapTour && !this.$tours.mapTour.isRunning) {
+      this.$tours.mapTour.start()
     }
   }
 }
