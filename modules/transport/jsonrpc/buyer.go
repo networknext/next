@@ -1463,6 +1463,40 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 
 }
 
+type JSRemoveDatacenterMapArgs struct {
+	DatacenterHexID string `json:"hexDatacenterID"`
+	BuyerHexID      string `json:"hexBuyerID"`
+	Alias           string `json:"alias"`
+}
+
+type JSRemoveDatacenterMapReply struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDatacenterMapArgs, reply *JSRemoveDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse BuyerID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse DatacenterID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		Alias:        args.Alias,
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.RemoveDatacenterMap(ctx, dcMap)
+
+}
+
 type RemoveDatacenterMapArgs struct {
 	DatacenterMap routing.DatacenterMap
 }
