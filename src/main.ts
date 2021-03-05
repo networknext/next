@@ -103,10 +103,9 @@ if (window.location.pathname === '/get-access') {
     }
 
     // TODO: Set this back up before deploying
-    // const isReturning = localStorage.returningUser || 'false'
+    const isReturning = localStorage.returningUser || 'false'
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
-      const isReturning = 'false'
-      if (!(isReturning === 'true')) {
+      if (!(isReturning === 'true') && store.getters.isAnonymous) {
         store.commit('TOGGLE_IS_TOUR', true)
         localStorage.returningUser = true
       }

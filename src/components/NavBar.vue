@@ -1,6 +1,7 @@
 <template>
   <div>
     <v-tour name="getAccessTour" :steps="getAccessTourSteps" :options="getAccessTourOptions" :callbacks="getAccessTourCallbacks"></v-tour>
+    <v-tour v-show="$store.getters.currentPage !== 'downloads'" name="downloadLinkTour" :steps="downloadLinkTourSteps" :options="downloadLinkTourOptions" :callbacks="downloadLinkTourCallbacks"></v-tour>
     <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
       <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
         <div class="logo-container">
@@ -55,6 +56,7 @@
             to="/downloads"
             class="nav-link"
             data-intercom="downloads"
+            data-tour="downloadsLink"
             v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
             v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
           >Downloads</router-link>
@@ -157,6 +159,10 @@ export default class NavBar extends Vue {
   private getAccessTourOptions: any
   private getAccessTourCallbacks: any
 
+  private downloadLinkTourSteps: Array<any>
+  private downloadLinkTourOptions: any
+  private downloadLinkTourCallbacks: any
+
   constructor () {
     super()
     this.portalVersion = ''
@@ -197,6 +203,30 @@ export default class NavBar extends Vue {
         }
       }
     }
+
+    this.downloadLinkTourSteps = [
+      {
+        target: '[data-tour="downloadsLink"]',
+        header: {
+          title: 'Downloads'
+        },
+        content: 'You\'re now logged in! You can now integrate the Network Next SDK into your game to start accelerating your traffic. \nThe SDK is in the Downloads section.',
+        params: {
+          placement: 'bottom',
+          enableScrolling: false
+        }
+      }
+    ]
+
+    this.downloadLinkTourOptions = this.getAccessTourOptions
+    this.downloadLinkTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
+      },
+      onSkip: () => {
+        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
+      }
+    }
   }
 
   private created () {
@@ -208,12 +238,18 @@ export default class NavBar extends Vue {
       const userProfile = cloneDeep(this.$store.getters.userProfile)
       this.companyCode = userProfile.companyCode || ''
     }
+
+    if (this.$store.getters.isSignUpTour && this.$tours.downloadLinkTour && !this.$tours.downloadLinkTour.isRunning && !this.$store.getters.finishedSignUpTours.includes('downloadLink') && this.$route.name !== 'downloads') {
+      setTimeout(() => {
+        this.$tours.downloadLinkTour.start()
+      }, 3000)
+    }
     this.unwatch = this.$store.watch(
       (_, getters: any) => {
         return getters.finishedTours
       },
       (finishedTours: Array<string>) => {
-        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning && !finishedTours.includes('get-access')) {
+        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning && !finishedTours.includes('get-access') && finishedTours.length > 0) {
           this.$tours.getAccessTour.start()
         }
       }

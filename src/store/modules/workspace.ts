@@ -9,8 +9,9 @@
 export default {
   state: {
     isTour: false,
-    currentTourStep: -1,
+    isSignUpTour: false,
     finishedTours: [],
+    finishedSignUpTours: [],
     currentPage: 'map',
     filter: {
       companyCode: ''
@@ -20,8 +21,9 @@ export default {
     currentPage: (state: any) => state.currentPage,
     currentFilter: (state: any) => state.filter,
     isTour: (state: any) => state.isTour,
-    currentStep: (state: any) => state.currentTourStep,
-    finishedTours: (state: any) => state.finishedTours
+    isSignUpTour: (state: any) => state.isSignUpTour,
+    finishedTours: (state: any) => state.finishedTours,
+    finishedSignUpTours: (state: any) => state.finishedSignUpTours
   },
   actions: {
     updateCurrentPage ({ commit }: any, currentPage: string) {
@@ -33,11 +35,14 @@ export default {
     toggleIsTour ({ commit }: any, isTour: boolean) {
       commit('TOGGLE_IS_TOUR', isTour)
     },
-    updateCurrentTourStep ({ commit }: any, currentTourStep: number) {
-      commit('UPDATE_CURRENT_TOUR_STEP', currentTourStep)
-    },
     updateFinishedTours ({ commit }: any, finishedTour: string) {
       commit('UPDATE_FINISHED_TOURS', finishedTour)
+    },
+    toggleIsSignUpTour ({ commit }: any, isSignUpTour: boolean) {
+      commit('TOGGLE_IS_SIGN_UP_TOUR', isSignUpTour)
+    },
+    updateFinishedSignUpTours ({ commit }: any, finishedSignUpTour: string) {
+      commit('UPDATE_FINISHED_SIGN_UP_TOURS', finishedSignUpTour)
     }
   },
   mutations: {
@@ -50,12 +55,17 @@ export default {
     TOGGLE_IS_TOUR (state: any, isTour: boolean) {
       state.isTour = isTour
     },
-    UPDATE_CURRENT_TOUR_STEP (state: any, currentTourStep: number) {
-      state.currentTourStep = currentTourStep
+    TOGGLE_IS_SIGN_UP_TOUR (state: any, isSignUpTour: boolean) {
+      state.isSignUpTour = isSignUpTour
     },
     UPDATE_FINISHED_TOURS (state: any, finishedTour: string) {
       if (!state.finishedTours.includes(finishedTour)) {
         state.finishedTours.push(finishedTour)
+      }
+    },
+    UPDATE_FINISHED_SIGN_UP_TOURS (state: any, finishedSignUpTours: string) {
+      if (!state.finishedSignUpTours.includes(finishedSignUpTours)) {
+        state.finishedSignUpTours.push(finishedSignUpTours)
       }
     }
   }

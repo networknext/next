@@ -59,6 +59,7 @@ export class AuthService {
 
     // Current version of chrome doesn't like replace all apparently
     if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
+      store.commit('TOGGLE_IS_SIGN_UP_TOUR', true)
       return this.refreshToken()
     }
 
