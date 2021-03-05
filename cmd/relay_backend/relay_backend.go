@@ -37,6 +37,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
+	zq "github.com/networknext/backend/modules/transport/pubsub"
 
 	gcStorage "cloud.google.com/go/storage"
 )
@@ -261,7 +262,6 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
-
 	}
 
 	// Create the relay map
@@ -927,6 +927,44 @@ func mainReturnWithCode() int {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+	}
+
+	if featureNRB {
+		level.Debug(logger).Log("msg", "subscriber starting")
+
+		subscriberPort := envvar.Get("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_PORT", "5555")
+
+		subscriberRecieveBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_RECEIVE_BUFFER_SIZE", 100000)
+		if err != nil {
+			return 1
+		}
+
+		sub, err := zq.NewGenericSubscriber(subscriberPort, subscriberRecieveBufferSize)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+		defer sub.Close()
+
+		err = sub.Subscribe(zq.RelayUpdateTopic)
+		if err != nil {
+			return 1
+		}
+
+		for {
+			msgChan := sub.ReceiveMessage(context.Background())
+			msg := <-msgChan
+			_ = level.Debug(logger).Log("msg", "message received")
+			if msg.Err != nil {
+				_ = level.Error(logger).Log("err", err)
+			}
+			if msg.Topic != zq.RelayUpdateTopic {
+				_ = level.Error(logger).Log("err", "received the wrong topic")
+			}
+
+			transport.RelayUpdatePubSubFunc(msg.Message, logger, commonUpdateParams)
+		}
+
 	}
 
 	fmt.Printf("starting http server\n")

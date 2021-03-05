@@ -379,7 +379,48 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 	}
 }
 
-func initRelayOnBackend(relay *routing.Relay, logger log.Logger, relayVersion string, errorMetrics *metrics.RelayInitErrorMetrics, mapStore *RelayMapAndStorer) (*routing.RelayData, error, int) {
+func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params RelayUpdateHandlerConfig) {
+	var relayUpdateRequest RelayUpdateRequest
+	err := relayUpdateRequest.UnmarshalBinary(requestBody)
+	if err != nil {
+		_ = level.Error(logger).Log("msg", "error unmarshaling relay update request", "err", err)
+		params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+		return
+	}
+
+	// If the relay does not exist in Firestore it's a ghost, ignore it
+	id := crypto.HashID(relayUpdateRequest.Address.String())
+	relay, err := params.Storer.Relay(id)
+	if err != nil {
+		params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+		return
+	}
+
+	if relayUpdateRequest.ShuttingDown {
+		params.RelayMap.Lock()
+		params.RelayMap.RemoveRelayData(relayUpdateRequest.Address.String())
+		params.RelayMap.Unlock()
+		return
+	}
+
+	relayData := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+	if relayData == nil {
+		relayData = initRelayOnBackend(&relay, logger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, params.RelayMap)
+		return
+	}
+
+	statsUpdate := &routing.RelayStatsUpdate{}
+	statsUpdate.ID = id
+	statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
+	params.StatsDB.ProcessStats(statsUpdate)
+
+	// Update the relay data
+	params.RelayMap.Lock()
+	params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
+	params.RelayMap.Unlock()
+}
+
+func initRelayOnBackend(relay *routing.Relay, logger log.Logger, relayVersion string, errorMetrics *metrics.RelayInitErrorMetrics, relayMap *routing.RelayMap) *routing.RelayData {
 	relayData := routing.NewRelayData()
 	// Don't allow quarantined relays back in
 
@@ -393,13 +434,13 @@ func initRelayOnBackend(relay *routing.Relay, logger log.Logger, relayVersion st
 	relayData.MaxSessions = relay.MaxSessions
 	relayData.Version = relayVersion
 
-	mapStore.RelayMap.Lock()
-	mapStore.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
-	mapStore.RelayMap.Unlock()
+	relayMap.Lock()
+	relayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
+	relayMap.Unlock()
 
 	level.Debug(logger).Log("msg", "relay initialized")
 
-	return relayData, nil, 0
+	return relayData
 }
 
 // NewRelayUpdateHandlerFunc returns the function for the new relay backend update endpoint
@@ -434,7 +475,6 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 		if err != nil {
 			level.Error(locallogger).Log("msg", "error unmarshaling relay update request", "err", err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
-
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
 		}
@@ -469,12 +509,7 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 		params.RelayMap.RUnlock()
 
 		if relayDataReadOnly == nil {
-			relayData, err, errCode := initRelayOnBackend(&relay, locallogger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, &RelayMapAndStorer{params.RelayMap, params.Storer})
-			if err != nil {
-				http.Error(writer, err.Error(), errCode)
-				return
-			}
-			relayDataReadOnly = relayData
+			relayDataReadOnly = initRelayOnBackend(&relay, locallogger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, params.RelayMap)
 		}
 
 		statsUpdate := &routing.RelayStatsUpdate{}
