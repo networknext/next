@@ -36,9 +36,9 @@ blocks:
           commands:
             - make publish-bootstrap-script-nrb
         - name: Relay Forwarder
-            commands:
-              - make build-relay-forwarder-artifacts-nrb
-              - make publish-relay-forwarder-artifacts-nrb
+          commands:
+            - make build-relay-forwarder-artifacts-nrb
+            - make publish-relay-forwarder-artifacts-nrb
         - name: Relay Gateway
           commands:
             - make build-relay-gateway-artifacts-nrb
@@ -52,12 +52,12 @@ blocks:
             - make build-relay-frontend-artifacts-nrb
             - make publish-relay-frontend-artifacts-nrb
         - name: Fake Relays
-            commands:
-              - make build-fake-relays-artifacts-nrb
-              - make publish-fake-relays-artifacts-nrb
+          commands:
+            - make build-fake-relays-artifacts-nrb
+            - make publish-fake-relays-artifacts-nrb
         - name: Fake Server Backend
-            commands:
-              - make build-fake-server-backend-artifacts-nrb
-              - make publish-fake-server-backend-artifacts-nrb
+          commands:
+            - make build-fake-server-backend-artifacts-nrb
+            - make publish-fake-server-backend-artifacts-nrb
       secrets:
         - name: google-cloud-platform
