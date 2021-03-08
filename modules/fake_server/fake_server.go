@@ -296,7 +296,7 @@ func (server *FakeServer) sendPacket(packetType byte, packetData []byte) error {
 	packetDataHeader[0] = packetType
 	packetData = append(packetDataHeader, packetData...)
 
-	packetData = crypto.SignPacket(server.customerPrivateKey, packetData)
+	packetData = crypto.SignPacket(server.customerPrivateKey[8:], packetData)
 	crypto.HashPacket(crypto.PacketHashKey, packetData)
 
 	if err := server.conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); err != nil {
