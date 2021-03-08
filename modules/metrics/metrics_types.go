@@ -58,6 +58,8 @@ type BillingErrorMetrics struct {
 	BillingReadFailure        Counter
 	BillingBatchedReadFailure Counter
 	BillingWriteFailure       Counter
+	BillingInvalidEntries     Counter
+	BillingEntriesWithNaN     Counter
 }
 
 var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
@@ -65,6 +67,8 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	BillingReadFailure:        &EmptyCounter{},
 	BillingBatchedReadFailure: &EmptyCounter{},
 	BillingWriteFailure:       &EmptyCounter{},
+	BillingInvalidEntries:     &EmptyCounter{},
+	BillingEntriesWithNaN:     &EmptyCounter{},
 }
 
 type AnalyticsMetrics struct {
@@ -535,6 +539,26 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		DisplayName: "Billing Write Failure",
 		ServiceName: "billing",
 		ID:          "billing.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingInvalidEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Invalid Entries",
+		ServiceName: "billing",
+		ID:          "billing.error.invalid_entries",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingEntriesWithNaN, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries with NaN",
+		ServiceName: "billing",
+		ID:          "billing.error.billing_entries_with_nan",
 		Unit:        "errors",
 	})
 	if err != nil {

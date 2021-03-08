@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"runtime"
 	"sync"
 	"syscall"
@@ -253,27 +254,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	var matrixStore storage.MatrixStore
-	matrixStoreAddr := envvar.Get("MATRIX_STORE_ADDRESS", "")
-	if matrixStoreAddr != "" {
-		mSReadTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-		mSWriteTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddr, mSReadTimeout, mSWriteTimeout, 0*time.Second)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-	}
-
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -299,11 +279,6 @@ func mainReturnWithCode() int {
 					Timeout: time.Second * 2,
 				}
 
-				valveBackend, err := envvar.GetBool("VALVE_SERVER_BACKEND", false)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-				}
-
 				syncTimer := helpers.NewSyncTimer(syncInterval)
 				for {
 					syncTimer.Run()
@@ -311,57 +286,39 @@ func mainReturnWithCode() int {
 					var buffer []byte
 					start := time.Now()
 
-					newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
+					var routeEntriesReader io.ReadCloser
+
+					// Default to reading route matrix from file
+					if f, err := os.Open(uri); err == nil {
+						routeEntriesReader = f
+					}
+
+					// Prefer to get it remotely if possible
+					if r, err := httpClient.Get(uri); err == nil {
+						routeEntriesReader = r.Body
+					}
+
+					if routeEntriesReader == nil {
+						routeMatrixMutex.Lock()
+						routeMatrix = &routing.RouteMatrix{}
+						routeMatrixMutex.Unlock()
+
+						continue
+					}
+
+					buffer, err = ioutil.ReadAll(routeEntriesReader)
+					routeEntriesReader.Close()
+
 					if err != nil {
-						level.Error(logger).Log("err", err)
+						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+
+						routeMatrixMutex.Lock()
+						routeMatrix = &routing.RouteMatrix{}
+						routeMatrixMutex.Unlock()
+
+						continue
 					}
-					if newRelayBackend && matrixStore != nil {
-						if valveBackend {
-							buffer, err = matrixStore.GetLiveMatrix(storage.MatrixTypeValve)
-							if err != nil {
-								level.Error(logger).Log("err", err)
-							}
-						} else {
-							buffer, err = matrixStore.GetLiveMatrix(storage.MatrixTypeNormal)
-							if err != nil {
-								level.Error(logger).Log("err", err)
-							}
-						}
 
-					} else {
-						var routeEntriesReader io.ReadCloser
-
-						// Default to reading route matrix from file
-						if f, err := os.Open(uri); err == nil {
-							routeEntriesReader = f
-						}
-
-						// Prefer to get it remotely if possible
-						if r, err := httpClient.Get(uri); err == nil {
-							routeEntriesReader = r.Body
-						}
-
-						if routeEntriesReader == nil {
-							routeMatrixMutex.Lock()
-							routeMatrix = &routing.RouteMatrix{}
-							routeMatrixMutex.Unlock()
-
-							continue
-						}
-
-						buffer, err = ioutil.ReadAll(routeEntriesReader)
-						routeEntriesReader.Close()
-
-						if err != nil {
-							level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
-
-							routeMatrixMutex.Lock()
-							routeMatrix = &routing.RouteMatrix{}
-							routeMatrixMutex.Unlock()
-
-							continue
-						}
-					}
 					var newRouteMatrix routing.RouteMatrix
 					if len(buffer) > 0 {
 						rs := encoding.CreateReadStream(buffer)
@@ -596,8 +553,16 @@ func mainReturnWithCode() int {
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
 
 		go func() {
 			httpPort := envvar.Get("HTTP_PORT", "40001")
