@@ -135,7 +135,7 @@ func (server *FakeServer) sendServerInitPacket() error {
 	requestPacket := transport.ServerInitRequestPacket{
 		Version:        server.sdkVersion,
 		CustomerID:     server.customerID,
-		DatacenterID:   crypto.HashID("local aliased"),
+		DatacenterID:   crypto.HashID("local"),
 		RequestID:      rand.Uint64(),
 		DatacenterName: "local aliased",
 	}
