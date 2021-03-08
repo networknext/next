@@ -1067,6 +1067,33 @@ type sqlRelay struct {
 	Name               string
 	PublicIP           string
 	PublicIPPort       int64
+	InternalIP         string
+	InternalIPPort     int64
+	PublicKey          []byte
+	NICSpeedMbps       int64
+	IncludedBandwithGB int64
+	DatacenterID       int64
+	ManagementIP       string
+	SSHUser            string
+	SSHPort            int64
+	State              int64
+	MaxSessions        int64
+	MRC                int64
+	Overage            int64
+	BWRule             int64
+	ContractTerm       int64
+	Notes              string
+	StartDate          time.Time
+	EndDate            time.Time
+	MachineType        int64
+	DatabaseID         int64
+}
+
+type sqlRelaySync struct {
+	ID                 uint64
+	Name               string
+	PublicIP           string
+	PublicIPPort       int64
 	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
 	PublicKey          []byte
@@ -1083,12 +1110,10 @@ type sqlRelay struct {
 	BWRule             int64
 	ContractTerm       int64
 	Notes              string
-	// StartDate          time.Time
-	// EndDate            time.Time
-	StartDate   sql.NullTime
-	EndDate     sql.NullTime
-	MachineType int64
-	DatabaseID  int64
+	StartDate          sql.NullTime
+	EndDate            sql.NullTime
+	MachineType        int64
+	DatabaseID         int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -1109,24 +1134,24 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
-	var internalIP sql.NullString
-	var internalIPPort sql.NullInt64
+	var internalIP string
+	var internalIPPort int64
 	if r.InternalAddr.String() != "" {
-		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
-		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
 	}
 
-	var startDate sql.NullTime
+	var startDate time.Time
 	if !r.StartDate.IsZero() {
-		startDate.Time = r.StartDate
+		startDate = r.StartDate
 	}
 
-	var endDate sql.NullTime
+	var endDate time.Time
 	if !r.EndDate.IsZero() {
-		endDate.Time = r.EndDate
+		endDate = r.EndDate
 	}
 
 	relay := sqlRelay{
@@ -1171,7 +1196,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate.Time,
+		relay.EndDate,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1183,7 +1208,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate.Time,
+		relay.StartDate,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1282,24 +1307,24 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 
-	var internalIP sql.NullString
-	var internalIPPort sql.NullInt64
+	var internalIP string
+	var internalIPPort int64
 	if r.InternalAddr.String() != "" {
-		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
-		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIP = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIPPort, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
 	}
 
-	var startDate sql.NullTime
+	var startDate time.Time
 	if !r.StartDate.IsZero() {
-		startDate.Time = r.StartDate
+		startDate = r.StartDate
 	}
 
-	var endDate sql.NullTime
+	var endDate time.Time
 	if !r.EndDate.IsZero() {
-		endDate.Time = r.EndDate
+		endDate = r.EndDate
 	}
 
 	relay := sqlRelay{
@@ -1343,7 +1368,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate.Time,
+		relay.EndDate,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1355,7 +1380,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate.Time,
+		relay.StartDate,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
