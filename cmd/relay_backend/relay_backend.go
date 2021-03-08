@@ -957,9 +957,11 @@ func mainReturnWithCode() int {
 			_ = level.Debug(logger).Log("msg", "message received")
 			if msg.Err != nil {
 				_ = level.Error(logger).Log("err", err)
+				continue
 			}
 			if msg.Topic != zq.RelayUpdateTopic {
 				_ = level.Error(logger).Log("err", "received the wrong topic")
+				continue
 			}
 
 			transport.RelayUpdatePubSubFunc(msg.Message, logger, commonUpdateParams)

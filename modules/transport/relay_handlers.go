@@ -422,8 +422,6 @@ func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params RelayUp
 
 func initRelayOnBackend(relay *routing.Relay, logger log.Logger, relayVersion string, errorMetrics *metrics.RelayInitErrorMetrics, relayMap *routing.RelayMap) *routing.RelayData {
 	relayData := routing.NewRelayData()
-	// Don't allow quarantined relays back in
-
 	relayData.ID = relay.ID
 	relayData.Name = relay.Name
 	relayData.Addr = relay.Addr
