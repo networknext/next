@@ -8981,6 +8981,7 @@ struct NextBackendServerUpdatePacket
     uint64_t datacenter_id;
     uint32_t num_sessions;
     next_address_t server_address;
+    next_address_t server_internal_address;
 
     NextBackendServerUpdatePacket()
     {
@@ -8991,6 +8992,7 @@ struct NextBackendServerUpdatePacket
         datacenter_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
+        memset( &server_internal_address, 0, sizeof(next_address_t) );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -9002,6 +9004,12 @@ struct NextBackendServerUpdatePacket
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
+        bool has_internal_address = Stream::IsWriting && !next_address_equal( &server_address, &server_internal_address );
+        serialize_bool( stream, has_internal_address );
+        if ( has_internal_address )
+        {
+            serialize_address( stream, server_internal_address );
+        }
         return true;
     }
 };
