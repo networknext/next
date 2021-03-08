@@ -20,17 +20,14 @@ import (
 )
 
 type GatewayHandlerConfig struct {
-	RelayStore            storage.RelayStore
-	RelayCache            storage.RelayCache
 	Storer                storage.Storer
 	InitMetrics           *metrics.RelayInitMetrics
 	UpdateMetrics         *metrics.RelayUpdateMetrics
 	RouterPrivateKey      []byte
 	Publishers            []pubsub.Publisher
 	RelayBackendAddresses []string
-	RB15Enabled           bool
-	RB15NoInit            bool
-	RB2Enabled            bool
+	NRBNoInit             bool
+	NRBHTTP               bool
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -93,17 +90,13 @@ func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig
 			return
 		}
 
-		relayData, err := params.RelayStore.Get(id)
-		if err == nil && relayData.ID == id {
+		if relay.State == routing.RelayStateEnabled {
 			level.Error(localLogger).Log("msg", "relay already exist", "relay address", relay.Addr.String())
-			http.Error(writer, "relay already exists", http.StatusConflict)
 			params.InitMetrics.ErrorMetrics.RelayAlreadyExists.Add(1)
-			return
-		}
-		if err != nil && err.Error() != "unable to find relay data" {
-			level.Error(localLogger).Log("msg", "relay already exist", "relay address", relay.Addr.String())
-			http.Error(writer, "issue storing relay", http.StatusInternalServerError)
-			return
+			if !params.NRBNoInit {
+				http.Error(writer, "relay already active", http.StatusConflict)
+				return
+			}
 		}
 
 		err, errCode := initRelayOnGateway(&relay, relayInitRequest.RelayVersion, localLogger, params)
@@ -127,19 +120,6 @@ func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig
 			}
 		}
 
-		//send relay init to relay backend feature_relay_backend_1.5
-		//this is after all the checks to ensure that the relay backend will pass all the checks. double the work but stops from waiting.
-		if params.RB15Enabled && !params.RB15NoInit {
-			for _, address := range params.RelayBackendAddresses {
-				go func(address string) {
-					resp, err := http.Post(fmt.Sprintf("http://%s/relay_init", address), "application/octet-stream", request.Body)
-					if err != nil || resp.StatusCode != http.StatusOK {
-						_ = level.Error(localLogger).Log("msg", "unable to send update to relay backend", "err", err)
-					}
-				}(address)
-			}
-		}
-
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
 	}
@@ -158,21 +138,14 @@ func initRelayOnGateway(relay *routing.Relay, relayVersion string, logger log.Lo
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+	// todo change to update relay when sql is working
 	if err := params.Storer.SetRelay(ctx, *relay); err != nil {
 		level.Error(logger).Log("msg", "failed to set relay state in storage", "err", err)
 		return fmt.Errorf("failed to set relay state in storer"), http.StatusInternalServerError
 	}
 
-	relayData := storage.NewRelayStoreData(relay.ID, relayVersion, relay.Addr)
-	err := params.RelayStore.Set(*relayData)
-	if err != nil {
-		level.Error(logger).Log("redis error %s \n", err.Error())
-		return fmt.Errorf("failed to set relay state in relay store"), http.StatusInternalServerError
-	}
-
 	level.Debug(logger).Log("msg", "relay initialized")
 	return nil, 0
-
 }
 
 // GatewayRelayUpdateHandlerFunc returns the function for the relay update endpoint
@@ -228,21 +201,6 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 			return
 		}
 
-		relayData, err := params.RelayStore.Get(id)
-		if relayData == nil || err != nil {
-			if params.RB15NoInit {
-				err, errCode := initRelayOnGateway(&relay, relayUpdateRequest.RelayVersion, localLogger, params)
-				if err != nil {
-					http.Error(writer, err.Error(), errCode)
-				}
-			} else {
-				level.Warn(localLogger).Log("msg", "relay not initialized")
-				http.Error(writer, "relay not initialized", http.StatusNotFound)
-				params.UpdateMetrics.ErrorMetrics.RelayNotFound.Add(1)
-				return
-			}
-		}
-
 		if !bytes.Equal(relayUpdateRequest.Token, relay.PublicKey) {
 			level.Error(localLogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
@@ -250,9 +208,8 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 			return
 		}
 
-		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
 		if relay.State != routing.RelayStateEnabled {
-			if params.RB15NoInit {
+			if params.NRBNoInit {
 				err, errCode := initRelayOnGateway(&relay, relayUpdateRequest.RelayVersion, localLogger, params)
 				if err != nil {
 					http.Error(writer, err.Error(), errCode)
@@ -268,11 +225,11 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
 		if relayUpdateRequest.ShuttingDown {
-			relay, err := params.Storer.Relay(relayData.ID)
+			relay, err := params.Storer.Relay(id)
 			if err != nil {
 				level.Error(localLogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
 				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
-				//todo error metric??
+				// todo error metric??
 				return
 			}
 
@@ -282,25 +239,17 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
+			// todo update instead of set when ready
 			if err := params.Storer.SetRelay(ctx, relay); err != nil {
 				level.Error(localLogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
 				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				//todo error metric??
+				// todo error metric??
 				return
-			}
-
-			// no need to http error as the relay store item has a expire
-			err = params.RelayStore.Delete(id)
-			if err != nil {
-				level.Error(localLogger).Log("msg", "failed to remove relay from redis store", "err", err)
-				//todo error metric??
 			}
 			return
 		}
 
-		//send to relay backend feature_relay_backend_1.5
-		//this is after all the checks to ensure that the relay backend pass all the checks. double the work but stops from waiting.
-		if params.RB15Enabled {
+		if params.NRBHTTP {
 			for _, address := range params.RelayBackendAddresses {
 				go func(address string) {
 					resp, err := http.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", request.Body)
@@ -309,10 +258,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 					}
 				}(address)
 			}
-		}
-
-		//send to optimizer
-		if params.RB2Enabled {
+		} else {
 			for _, pub := range params.Publishers {
 				go func() {
 					_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, body)
@@ -324,7 +270,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		}
 
 		relaysToPing := make([]routing.RelayPingData, 0)
-		allRelayData, err := params.RelayCache.GetAll()
+		allRelayData := params.Storer.Relays()
 
 		enableInternalIPs, err := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
 		if err != nil {
@@ -351,17 +297,10 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 			}
 		}
 
-		// Update the relay data
-		err = params.RelayStore.ExpireReset(id)
-		if err != nil {
-			level.Error(localLogger).Log("msg", "failed to update relay", "err", err)
-			http.Error(writer, "failed to update relay", http.StatusInternalServerError)
-		}
-
 		level.Debug(relayslogger).Log(
-			"id", relayData.ID,
+			"id", relay.ID,
 			"name", relay.Name,
-			"addr", relayData.Address.String(),
+			"addr", relay.Addr.String(),
 			"datacenter", relay.Datacenter.Name,
 			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
 			"bytes_received", relayUpdateRequest.TrafficStats.AllRx(),

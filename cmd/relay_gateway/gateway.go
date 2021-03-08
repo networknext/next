@@ -18,8 +18,6 @@ import (
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/relay_gateway"
-	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
 
@@ -54,7 +52,7 @@ func mainReturnWithCode() int {
 	}
 
 	//todo why 2 loggers
-	relaysLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
+	relayLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -91,50 +89,39 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	cfg, err := relay_gateway.NewConfig()
+	cfg, err := newConfig()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	relayStore, err := storage.NewRedisRelayStore(cfg.RelayStoreAddress, cfg.RelayStoreReadTimeout, cfg.RelayStoreWriteTimeout, cfg.RelayStoreRelayTimeout)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-	fmt.Printf("num publishers %v", len(publishers))
-
-	gateway := &relay_gateway.Gateway{
-		Cfg:         cfg,
-		Logger:      logger,
-		RelayLogger: relaysLogger,
-		Metrics:     relayMetrics,
-		Publishers:  publishers,
-		Store:       &storer,
-		RelayStore:  relayStore,
-		RelayCache:  storage.NewRelayCache(),
-		ShutdownSvc: false,
-	}
-
-	go func() {
-		err = gateway.RelayCacheRunner()
+	var publishers []pubsub.Publisher
+	if !cfg.NRBHTTP {
+		publishers, err = pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1)
 		}
-	}()
+	}
+
+	getParams := func() *transport.GatewayHandlerConfig {
+		return &transport.GatewayHandlerConfig{
+			Storer:                storer,
+			InitMetrics:           relayMetrics.RelayInitMetrics,
+			UpdateMetrics:         relayMetrics.RelayUpdateMetrics,
+			RouterPrivateKey:      cfg.RouterPrivateKey,
+			Publishers:            publishers,
+			NRBNoInit:             cfg.NRBNoInit,
+			NRBHTTP:               cfg.NRBHTTP,
+			RelayBackendAddresses: cfg.RelayBackendAddresses,
+		}
+	}
 
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
-	router.HandleFunc("/relay_init", gateway.RelayInitHandlerFunc()).Methods("POST")
-	router.HandleFunc("/relay_update", gateway.RelayUpdateHandlerFunc()).Methods("POST")
+	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc(logger, getParams())).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams())).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -163,4 +150,57 @@ func mainReturnWithCode() int {
 	<-sigint
 
 	return 0
+}
+
+type config struct {
+	PublisherSendBuffer   int
+	PublishToHosts        []string
+	RouterPrivateKey      []byte
+	NRBNoInit             bool
+	NRBHTTP               bool
+	RelayBackendAddresses []string
+}
+
+func newConfig() (*config, error) {
+	cfg := new(config)
+
+	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+	if err != nil {
+		return nil, fmt.Errorf("RELAY_ROUTER_PRIVATE_KEY not set")
+	}
+	cfg.RouterPrivateKey = routerPrivateKey
+
+	nrbNoInit, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_NO_INIT", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.NRBNoInit = nrbNoInit
+
+	nrbHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.NRBHTTP = nrbHTTP
+
+	if nrbHTTP {
+		if exists := envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES"); !exists {
+			return nil, fmt.Errorf("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+		}
+		relayBackendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+		cfg.RelayBackendAddresses = relayBackendAddresses
+	} else {
+		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
+			return nil, fmt.Errorf("PUBLISH_TO_HOSTS not set")
+		}
+		publishToHosts := envvar.GetList("PUBLISH_TO_HOSTS", []string{"tcp://127.0.0.1:5555"})
+		cfg.PublishToHosts = publishToHosts
+
+		publisherSendBuffer, err := envvar.GetInt("PUBLISHER_SEND_BUFFER", 100000)
+		if err != nil {
+			return nil, err
+		}
+		cfg.PublisherSendBuffer = publisherSendBuffer
+	}
+
+	return cfg, nil
 }
