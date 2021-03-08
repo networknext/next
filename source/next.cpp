@@ -10204,6 +10204,7 @@ struct next_server_internal_t
     next_address_t resolve_hostname_result;
     next_address_t backend_address;
     next_address_t server_address;
+    next_address_t server_internal_address;
     next_address_t bind_address;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
@@ -10538,10 +10539,17 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
-
     next_assert( server_address_string );
     next_assert( bind_address_string );
+    next_assert( datacenter_string );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
+
+    char server_internal_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    strncpy( server_internal_address_buffer, server_address_string, NEXT_MAX_ADDRESS_STRING_LENGTH );
+    server_internal_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH-1] = '\0';
+
+    const char * server_internal_address_string = server_internal_address_buffer;
 
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
@@ -10550,10 +10558,24 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         server_address_string = server_address_override;
     }
 
+    const char * server_internal_address_override = next_platform_getenv( "NEXT_SERVER_INTERNAL_ADDRESS" );
+    if ( server_internal_address_override )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server internal address override: '%s'", server_internal_address_override );
+        server_internal_address_string = server_internal_address_override;
+    }
+
     next_address_t server_address;
     if ( next_address_parse( &server_address, server_address_string ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse server address: '%s'", server_address_string );
+        return NULL;
+    }
+
+    next_address_t server_internal_address;
+    if ( next_address_parse( &server_internal_address, server_internal_address_string ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse server internal address: '%s'", server_internal_address_string );
         return NULL;
     }
 
@@ -10653,6 +10675,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->bind_address = bind_address;
     server->server_address = server_address;
+    server->server_internal_address = server_internal_address;
 
     int result = next_platform_mutex_create( &server->session_mutex );
     if ( result != NEXT_OK )
@@ -10711,6 +10734,11 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
+
+    if ( !next_address_equal( &server_address, &server_internal_address ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server internal address is %s", next_address_to_string( &server_internal_address, address_string ) );        
+    }
 
     next_crypto_kx_keypair( server->server_kx_public_key, server->server_kx_private_key );
 
