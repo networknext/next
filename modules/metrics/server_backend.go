@@ -10,6 +10,7 @@ type ServerInitMetrics struct {
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
+	BuyerNotActive               Counter
 	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
 	DatacenterNotFound           Counter
@@ -23,6 +24,7 @@ var EmptyServerInitMetrics = ServerInitMetrics{
 	HandlerMetrics:               &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
+	BuyerNotActive:               &EmptyCounter{},
 	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
@@ -332,6 +334,17 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		ID:          handlerID + ".buyer_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown customer ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BuyerNotActive, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Active",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_active",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained an inactive customer account.",
 	})
 	if err != nil {
 		return nil, err
