@@ -339,7 +339,7 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 func (db *SQL) syncRelays(ctx context.Context) error {
 
 	var sqlQuery bytes.Buffer
-	var relay sqlRelay
+	var relay sqlRelaySync
 
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
