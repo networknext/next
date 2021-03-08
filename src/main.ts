@@ -11,6 +11,7 @@ import { AuthPlugin } from './plugins/auth'
 import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
 import { FeatureEnum, Flag } from './components/types/FeatureTypes'
+import VueTour from 'vue-tour'
 
 /**
  * Main file responsible for mounting the App component,
@@ -21,6 +22,10 @@ import { FeatureEnum, Flag } from './components/types/FeatureTypes'
  */
 
 Vue.config.productionTip = false
+
+require('vue-tour/dist/vue-tour.css')
+
+Vue.use(VueTour)
 
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
@@ -57,6 +62,11 @@ const flags: Array<Flag> = [
     name: FeatureEnum.FEATURE_ANALYTICS,
     description: 'Google analytics and tag manager hooks',
     value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_TOUR,
+    description: 'NEw product tour to replace intercom',
+    value: false
   }
 ]
 
@@ -90,6 +100,15 @@ if (window.location.pathname === '/get-access') {
     const query = window.location.search
     if (query.includes('code=') && query.includes('state=')) {
       router.push('/map')
+    }
+
+    // TODO: Set this back up before deploying
+    const isReturning = localStorage.returningUser || 'false'
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
+      if (!(isReturning === 'true') && store.getters.isAnonymous) {
+        store.commit('TOGGLE_IS_TOUR', true)
+        localStorage.returningUser = true
+      }
     }
     const app = new Vue({
       router,
