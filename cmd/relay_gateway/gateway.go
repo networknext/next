@@ -51,7 +51,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	//todo why 2 loggers
+	// todo why 2 loggers
 	relayLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
 	if err != nil {
 		level.Error(logger).Log("err", err)
