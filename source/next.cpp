@@ -9030,6 +9030,7 @@ struct NextBackendSessionUpdatePacket
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     next_address_t client_address;
     next_address_t server_address;
+    next_address_t server_internal_address;
     uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint64_t user_hash;
@@ -9107,7 +9108,15 @@ struct NextBackendSessionUpdatePacket
         }
 
         serialize_address( stream, client_address );
+
         serialize_address( stream, server_address );
+
+        bool has_internal_address = Stream::IsWriting && !next_address_equal( &server_address, &server_internal_address );
+        serialize_bool( stream, has_internal_address );
+        if ( has_internal_address )
+        {
+            serialize_address( stream, server_internal_address );
+        }
 
         serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         serialize_bytes( stream, server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
