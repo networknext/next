@@ -36,7 +36,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "server_backend"
+	serviceName := "fake_server"
 	fmt.Printf("fake_server: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
