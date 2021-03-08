@@ -58,20 +58,6 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment, signed bool) {
 	table.Output(buyers)
 }
 
-func addBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer routing.Buyer) {
-	args := localjsonrpc.AddBuyerArgs{
-		Buyer: buyer,
-	}
-
-	var reply localjsonrpc.AddBuyerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.AddBuyer", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.CompanyCode)
-}
-
 func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	args := localjsonrpc.RemoveBuyerArgs{
 		ID: id,

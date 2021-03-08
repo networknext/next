@@ -66,11 +66,12 @@ type SQL struct {
 	buyerIDs      map[int64]uint64
 	sellerIDs     map[int64]string
 
-	datacenterIDsMutex sync.RWMutex
-	relayIDsMutex      sync.RWMutex
-	customerIDsMutex   sync.RWMutex
-	buyerIDsMutex      sync.RWMutex
-	sellerIDsMutex     sync.RWMutex
+	datacenterIDsMutex  sync.RWMutex
+	relayIDsMutex       sync.RWMutex
+	customerIDsMutex    sync.RWMutex
+	buyerIDsMutex       sync.RWMutex
+	sellerIDsMutex      sync.RWMutex
+	datacenterMapsMutex sync.RWMutex
 
 	SyncSequenceNumber int64
 }
@@ -334,8 +335,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
-	// This check only pertains to the next tool. Stateful clients would already
-	// have the customer id.
 	c, err := db.Customer(b.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
@@ -541,6 +540,7 @@ func (db *SQL) Sellers() []routing.Seller {
 type sqlSeller struct {
 	ID                        string
 	ShortName                 string
+	Secret                    bool
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
 	CustomerID                int64
@@ -570,6 +570,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	newSellerData := sqlSeller{
 		ID:                        s.ID,
 		ShortName:                 s.ShortName,
+		Secret:                    s.Secret,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 		CustomerID:                c.DatabaseID,
@@ -577,8 +578,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	// Add the seller in remote storage
 	sql.Write([]byte("insert into sellers ("))
-	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, secret, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -586,8 +587,11 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	result, err := stmt.Exec(newSellerData.ShortName, newSellerData.EgressPriceNibblinsPerGB,
+	result, err := stmt.Exec(
+		newSellerData.ShortName,
+		newSellerData.EgressPriceNibblinsPerGB,
 		newSellerData.IngressPriceNibblinsPerGB,
+		newSellerData.Secret,
 		newSellerData.CustomerID,
 	)
 
@@ -812,7 +816,9 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 
 		uriTuple := strings.Split(addrString, ":")
-		if uriTuple[0] == "" || uriTuple[1] == "" {
+		if len(uriTuple) < 2 {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+		} else if uriTuple[0] == "" || uriTuple[1] == "" {
 			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
 		}
 		updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
@@ -832,8 +838,10 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 
 		uriTuple := strings.Split(addrString, ":")
-		if uriTuple[0] == "" || uriTuple[1] == "" {
-			return fmt.Errorf("Unable to parse URI fo InternalAddr field: %v", value)
+		if len(uriTuple) < 2 {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+		} else if uriTuple[0] == "" || uriTuple[1] == "" {
+			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
 		}
 		updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
 		updateSQL.Write([]byte("where id=$3"))
@@ -1011,6 +1019,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		// already checked int validity above
 		relay.Type, _ = routing.GetMachineTypeSQL(int64(machineType))
 
+	case "Notes":
+		notes, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update relays set notes=$1 where id=$2"))
+		args = append(args, notes, relay.DatabaseID)
+		relay.Notes = notes
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the routing.Relay type", field)
 
@@ -1065,6 +1082,7 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
+	Notes              string
 	// StartDate          time.Time
 	// EndDate            time.Time
 	StartDate   sql.NullTime
@@ -1083,7 +1101,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	db.relayMutex.RUnlock()
 
 	if ok {
-		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.ID}
+		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.Name}
 	}
 
 	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
@@ -1133,15 +1151,16 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		StartDate:          startDate,
 		EndDate:            endDate,
 		MachineType:        int64(r.Type),
+		Notes:              r.Notes,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
 	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, notes "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1171,6 +1190,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.State,
 		relay.InternalIP,
 		relay.InternalIPPort,
+		relay.Notes,
 	)
 
 	if err != nil {
@@ -1511,13 +1531,14 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	return nil
 }
 
-// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
-// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
+// GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
+// (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
+// an empty map if there are no aliases for that buyerID.
 func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
 	db.datacenterMapMutex.RLock()
 	defer db.datacenterMapMutex.RUnlock()
 
-	// buyer can have multiple dc aliases
+	// buyer can have multiple dc maps but only one alias per datacenter
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.BuyerID == buyerID {
@@ -1584,6 +1605,91 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	return nil
 }
 
+func (db *SQL) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+	var err error
+
+	dcmID := crypto.HashID(fmt.Sprintf("%016x", buyerID) + fmt.Sprintf("%016x", datacenterID))
+	workingDatacenterMap, ok := db.datacenterMaps[dcmID]
+	if !ok {
+		return fmt.Errorf("Datacenter map for buyerID %016x, datacenterID %016x does not exist", buyerID, datacenterID)
+	}
+
+	// if the dcMap exists then the buyer and datacenter IDs are legit
+	originalDatacenter := db.datacenters[datacenterID]
+	originalBuyer := db.buyers[buyerID]
+
+	switch field {
+	case "HexDatacenterID":
+		hexDatacenterID, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		newDatacenterID, err := strconv.ParseUint(hexDatacenterID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Could not parse hexDatacenterID: %v", value)
+		}
+
+		newDatacenter := db.datacenters[newDatacenterID]
+
+		updateSQL.Write([]byte("update datacenter_maps set datacenter_id=$1 where datacenter_id=$2 and buyer_id=$3"))
+		args = append(args, newDatacenter.DatabaseID, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
+		workingDatacenterMap.DatacenterID = newDatacenterID
+
+		// changing the datacenter ID in the alias changes the datacenter map ID so
+		// delete the old one and add the new one
+		db.datacenterMapsMutex.Lock()
+		delete(db.datacenterMaps, dcmID)
+		dcmID = crypto.HashID(fmt.Sprintf("%x", buyerID) + fmt.Sprintf("%x", newDatacenterID))
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
+	case "Alias":
+		alias, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update datacenter_maps set alias=$1 where datacenter_id=$2 and buyer_id=$3"))
+		args = append(args, alias, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
+		workingDatacenterMap.Alias = alias
+
+		db.datacenterMapsMutex.Lock()
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenterMap SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying datacenter map record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
@@ -1605,7 +1711,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
 
 	db.datacenterMapMutex.RLock()
 	dcMap, ok := db.datacenterMaps[id]
@@ -2848,6 +2954,14 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		updateSQL.Write([]byte("update sellers set public_ingress_price=$1 where id=$2"))
 		args = append(args, int64(ingress), seller.DatabaseID)
 		seller.IngressPriceNibblinsPerGB = ingress
+	case "Secret":
+		secret, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update sellers set secret=$1 where id=$2"))
+		args = append(args, secret, seller.DatabaseID)
+		seller.Secret = secret
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field)

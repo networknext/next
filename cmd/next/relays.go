@@ -62,13 +62,14 @@ func opsRelays(
 		NICSpeedMbps        string
 		State               string
 		IPAddress           string
+		Notes               string
 	}{}
 
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
 		"Name", "MRC", "Overage", "BW Rule",
-		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address"})
+		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address", "Notes"})
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
@@ -181,6 +182,7 @@ func opsRelays(
 					nicSpeed,
 					relay.State,
 					strings.Split(relay.Addr, ":")[0],
+					relay.Notes,
 				})
 			} else {
 				relays = append(relays, struct {
@@ -196,6 +198,7 @@ func opsRelays(
 					NICSpeedMbps        string
 					State               string
 					IPAddress           string
+					Notes               string
 				}{
 					relay.Name,
 					mrc,
@@ -209,6 +212,7 @@ func opsRelays(
 					nicSpeed,
 					relay.State,
 					strings.Split(relay.Addr, ":")[0],
+					relay.Notes,
 				})
 			}
 		}
@@ -498,6 +502,7 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		ContractTerm:        r.ContractTerm,
 		Type:                machineType,
 		Seller:              sellerReply.Seller,
+		Notes:               r.Notes,
 	}
 
 	var internalAddr *net.UDPAddr

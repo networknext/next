@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -352,9 +351,10 @@ type routeShader struct {
 }
 
 type buyer struct {
-	CompanyCode string
-	Live        bool
-	PublicKey   string
+	CustomerCode string
+	Live         bool
+	Debug        bool
+	PublicKey    string
 }
 
 type seller struct {
@@ -363,6 +363,7 @@ type seller struct {
 	CustomerCode         string
 	IngressPriceNibblins routing.Nibblin
 	EgressPriceNibblins  routing.Nibblin
+	Secret               bool
 }
 
 type relay struct {
@@ -386,6 +387,7 @@ type relay struct {
 	StartDate           string
 	EndDate             string
 	Type                string
+	Notes               string
 }
 
 type datacenter struct {
@@ -634,6 +636,59 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var signedCommand = &ffcli.Command{
+		Name:       "signed",
+		ShortUsage: "next signed (uint64 in hex)",
+		ShortHelp:  "Provide the signed int64 representation of the provided hex uint64 value",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided an unsigned uint64 in hexadecimal format"), 0)
+			}
+
+			hexString := args[0]
+
+			unsigned, err := strconv.ParseUint(hexString, 16, 64)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("Error: %v\n", err), 1)
+			}
+			signed := int64(unsigned)
+
+			fmt.Printf("Hex   : %s\nuint64: %d\nint64 : %d\n", hexString, unsigned, signed)
+
+			return nil
+		},
+	}
+
+	var unsignedCommand = &ffcli.Command{
+		Name:       "unsigned",
+		ShortUsage: "next unsigned (int64) // omit negative sign",
+		ShortHelp:  "Provide the signed int64 representation of the provided hex uint64 value (omit negative sign)",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a signed int64 (omit negative sign)"), 0)
+			}
+
+			signedString := os.Args[2]
+
+			signed, err := strconv.ParseInt(signedString, 10, 64)
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("Error: %v\n", err), 1)
+			}
+			unsigned := uint64(signed)
+
+			fmt.Println("Positive value:")
+			fmt.Printf("\tint64 : %d\n\tHex   : %016x\n\tuint64: %d\n\n", signed, unsigned, unsigned)
+
+			signed *= -1
+			unsigned = uint64(signed)
+
+			fmt.Println("Negative value:")
+			fmt.Printf("\tint64 : %d\n\tHex   : %016x\n\tuint64: %d\n\n", signed, unsigned, unsigned)
+
 			return nil
 		},
 	}
@@ -1246,14 +1301,19 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
-					// TODO: this function should use the new JSAddBuyer endpoint
-					// Add the Buyer to storage
-					addBuyer(rpcClient, env, routing.Buyer{
-						CompanyCode: b.CompanyCode,
-						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
-						Live:        b.Live,
-						PublicKey:   publicKey[8:],
-					})
+					buyerArgs := localjsonrpc.JSAddBuyerArgs{
+						ShortName: b.CustomerCode,
+						Live:      b.Live,
+						Debug:     b.Debug,
+						PublicKey: b.PublicKey,
+					}
+
+					var reply localjsonrpc.JSAddBuyerReply
+					if err := rpcClient.CallFor(&reply, "OpsService.JSAddBuyer", buyerArgs); err != nil {
+						handleJSONRPCError(env, err)
+					}
+
+					fmt.Printf("Buyer \"%s\" added to storage.\n", b.CustomerCode)
 					return nil
 				},
 			},
@@ -1672,6 +1732,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode    string
 						IngressPriceUSD string
 						EgressPriceUSD  string
+						Secret          bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
@@ -1695,6 +1756,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						CustomerCode:         sellerUSD.CustomerCode,
 						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
 						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
+						Secret:               sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
@@ -1777,8 +1839,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Code                   string
 						Name                   string
 						AutomaticSignInDomains string
-						Active                 bool
-						Debug                  bool
 					}
 
 					if err := json.Unmarshal(jsonData, &customer); err != nil {
@@ -2103,6 +2163,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		debugCommand,
 		viewCommand,
 		stagingCommand,
+		signedCommand,
+		unsignedCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2155,10 +2217,11 @@ provided by a JSON file of the form:
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
   "IngressPriceUSD": "0.01",
-  "EgressPriceUSD": "0.1"
+  "EgressPriceUSD": "0.1",
+  "Secret": false
 }
 
-A valid Customer code is required to add a buyer.
+All fields are required. A valid Customer code is required to add a buyer.
 `
 var nextDatacenterAddJSONLongHelp = `
 Add a datacenter entry (and a map) for the provided customer. 
@@ -2286,12 +2349,12 @@ must be one of the following and is case-sensitive:
 
   Name                 string
   Addr                 string (1.2.3.4:40000) - the port is required
-  InternalAddr         string (1.2.3.4:40000) - the port is required
+  InternalAddr         string (1.2.3.4:40000) - optional, though the port is required if provided
   PublicKey            string
   NICSpeedMbps         integer
   IncludedBandwidthGB  integer
   State                any valid relay state (see below)
-  ManagementAddr       string (1.2.3.4:40000) - the port is optional
+  ManagementAddr       string (1.2.3.4) - required, do not provide a port number
   SSHUser              string
   SSHPort              integer
   MaxSessions          integer
@@ -2302,6 +2365,7 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  Notes                any string up to 500 characters (optional)
 
 Valid relay states:
    enabled
@@ -2345,10 +2409,11 @@ must be of the form:
   "StartDate": "December 15, 2020", // exactly this format (optional)
   "EndDate": "December 15, 2020",   // exactly this format (optional)
   "Type": "virtualmachine",         // any valid machine type (see below)
-  "Seller": "colocrossing"
+  "Seller": "colocrossing",
+  "Notes": "any notes up to 500 characters" // optional
 }
 
-All fields are required except as noted (InternalAddr).
+All fields are required except as noted (InternalAddr, Notes).
 
 Valid bandwidth rules:
    flat
@@ -2367,9 +2432,7 @@ Example JSON schema required to add a new customer:
 {
         "Code": "amazon",
         "Name": "Amazon.com, Inc.",
-        "AutomaticSignInDomains": "amazon.networknext.com", // comma separated list
-        "Active": true,
-        "Debug": false
+        "AutomaticSignInDomains": "amazon.networknext.com" // comma separated list
 }
 
 All fields are required. The Code field must be unique
@@ -2402,9 +2465,10 @@ var nextSellerUpdateLongHelp = `
 Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
-  EgressPrice US Dollars
+  EgressPrice  US Dollars
   IngressPrice US Dollars
   ShortName    string
+  Secret       boolean
 
 The value should be whatever type is appropriate for the field
 as defined above.

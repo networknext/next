@@ -10,6 +10,8 @@ type ServerInitMetrics struct {
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
+	BuyerNotActive               Counter
+	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
@@ -22,6 +24,8 @@ var EmptyServerInitMetrics = ServerInitMetrics{
 	HandlerMetrics:               &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
+	BuyerNotActive:               &EmptyCounter{},
+	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
@@ -35,6 +39,7 @@ type ServerUpdateMetrics struct {
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
+	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
@@ -46,6 +51,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	HandlerMetrics:               &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
+	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
@@ -74,6 +80,7 @@ type SessionUpdateMetrics struct {
 	FallbackToDirectDirectPongTimedOut         Counter
 	FallbackToDirectNextPongTimedOut           Counter
 	BuyerNotFound                              Counter
+	SignatureCheckFailed                       Counter
 	ClientLocateFailure                        Counter
 	ReadSessionDataFailure                     Counter
 	BadSessionID                               Counter
@@ -116,6 +123,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	FallbackToDirectDirectPongTimedOut:         &EmptyCounter{},
 	FallbackToDirectNextPongTimedOut:           &EmptyCounter{},
 	BuyerNotFound:                              &EmptyCounter{},
+	SignatureCheckFailed:                       &EmptyCounter{},
 	ClientLocateFailure:                        &EmptyCounter{},
 	ReadSessionDataFailure:                     &EmptyCounter{},
 	BadSessionID:                               &EmptyCounter{},
@@ -331,6 +339,28 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		return nil, err
 	}
 
+	m.BuyerNotActive, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Active",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_active",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained an inactive customer account.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.SDKTooOld, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " SDK Too Old",
 		ServiceName: serviceName,
@@ -415,6 +445,17 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		ID:          handlerID + ".buyer_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown customer ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
 	})
 	if err != nil {
 		return nil, err
@@ -658,6 +699,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".buyer_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown customer ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
 	})
 	if err != nil {
 		return nil, err
