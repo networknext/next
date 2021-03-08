@@ -174,13 +174,14 @@ func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) erro
 // -------------------------------------------------------------------------------------
 
 type NextBackendServerUpdatePacket struct {
-	VersionMajor  uint32
-	VersionMinor  uint32
-	VersionPatch  uint32
-	CustomerId    uint64
-	DatacenterId  uint64
-	NumSessions   uint32
-	ServerAddress net.UDPAddr
+	VersionMajor          uint32
+	VersionMinor          uint32
+	VersionPatch          uint32
+	CustomerId            uint64
+	DatacenterId          uint64
+	NumSessions           uint32
+	ServerAddress 		  net.UDPAddr
+	ServerInternalAddress net.UDPAddr
 }
 
 func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
@@ -191,6 +192,11 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
+	hasInternalAddress := false
+	stream.SerializeBool(&hasInternalAddress)
+	if hasInternalAddress {
+		stream.SerializeAddress(&packet.ServerInternalAddress)
+	}
 	return stream.Error()
 }
 
@@ -209,6 +215,7 @@ type NextBackendSessionUpdatePacket struct {
 	SessionData                     [NEXT_MAX_SESSION_DATA_BYTES]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
+	ServerInternalAddress           net.UDPAddr
 	ClientRoutePublicKey            []byte
 	ServerRoutePublicKey            []byte
 	UserHash                        uint64
@@ -271,7 +278,14 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
+
 	stream.SerializeAddress(&packet.ServerAddress)
+
+	hasInternalAddress := false
+	stream.SerializeBool(&hasInternalAddress)
+	if hasInternalAddress {
+		stream.SerializeAddress(&packet.ServerInternalAddress)
+	}
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
