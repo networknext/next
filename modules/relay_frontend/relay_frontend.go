@@ -7,12 +7,19 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"sync"
 	"time"
+
+	"github.com/networknext/backend/modules/common/helpers"
 
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+)
+
+const (
+	MatrixTypeCost   = "cost"
+	MatrixTypeNormal = "normal"
+	MatrixTypeValve  = "valve"
 )
 
 type RelayFrontendSvc struct {
@@ -20,110 +27,25 @@ type RelayFrontendSvc struct {
 	id                          uint64
 	store                       storage.MatrixStore
 	createdAt                   time.Time
-	currentlyMaster             bool
-	currentMasterOptimizer      uint64
 	currentMasterBackendAddress string
 
 	// cached matrix
-	routeMatrix      []byte
-	routeMatrixValve []byte
-	matrixMux        sync.RWMutex
+	costMatrix       *helpers.MatrixData
+	routeMatrix      *helpers.MatrixData
+	routeMatrixValve *helpers.MatrixData
 }
 
 func New(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
 	rand.Seed(time.Now().UnixNano())
-
 	r := new(RelayFrontendSvc)
 	r.cfg = cfg
 	r.id = rand.Uint64()
 	r.store = store
 	r.createdAt = time.Now().UTC()
-	r.currentlyMaster = false
-
+	r.costMatrix = new(helpers.MatrixData)
+	r.routeMatrix = new(helpers.MatrixData)
+	r.routeMatrixValve = new(helpers.MatrixData)
 	return r, nil
-}
-
-func svcError(err error) error {
-	return fmt.Errorf("route matrix svc: %s", err.Error())
-}
-
-func (r *RelayFrontendSvc) UpdateSvcDB() error {
-	svcData := storage.MatrixSvcData{
-		ID:        r.id,
-		CreatedAt: r.createdAt,
-		UpdatedAt: time.Now().UTC(),
-	}
-
-	err := r.store.UpdateMatrixSvc(svcData)
-	if err != nil {
-		return svcError(err)
-	}
-	return nil
-}
-
-func (r *RelayFrontendSvc) AmMaster() bool {
-	return r.currentlyMaster
-}
-
-func (r *RelayFrontendSvc) DetermineMaster() error {
-	matrixSvcs, err := r.store.GetMatrixSvcs()
-	if err != nil {
-		return svcError(err)
-	}
-
-	masterId, err := r.store.GetMatrixSvcMaster()
-	if err != nil && err.Error() != "matrix svc master not found" {
-		return svcError(err)
-	}
-
-	if !isMasterMatrixSvcValid(matrixSvcs, masterId, r.cfg.MatrixSvcTimeVariance) {
-		masterId = chooseMatrixSvcMaster(matrixSvcs, r.cfg.MatrixSvcTimeVariance)
-	}
-
-	if r.id != masterId {
-		r.currentlyMaster = false
-		return nil
-	}
-
-	if !r.currentlyMaster {
-		err := r.store.UpdateMatrixSvcMaster(masterId)
-		if err != nil {
-			return svcError(err)
-		}
-		r.currentlyMaster = true
-	}
-	return nil
-}
-
-func (r *RelayFrontendSvc) UpdateLiveRouteMatrixOptimizer() error {
-	routeMatrices, err := r.store.GetOptimizerMatrices()
-	if err != nil {
-		return svcError(err)
-	}
-
-	masterOptimizerID, err := r.store.GetOptimizerMaster()
-	if err != nil && err.Error() != "optimizer master not found" {
-		return svcError(err)
-	}
-
-	if !isMasterOptimizerValid(routeMatrices, masterOptimizerID, r.cfg.OptimizerTimeVariance) {
-		masterOptimizerID = chooseOptimizerMaster(routeMatrices, r.cfg.OptimizerTimeVariance)
-	}
-
-	if r.currentMasterOptimizer != masterOptimizerID {
-		err := r.store.UpdateOptimizerMaster(masterOptimizerID)
-		if err != nil {
-			return svcError(err)
-		}
-		r.currentMasterOptimizer = masterOptimizerID
-	}
-
-	err = r.updateLiveMatrix(routeMatrices, r.currentMasterOptimizer)
-	if err != nil {
-		return svcError(err)
-	}
-
-	return nil
 }
 
 func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
@@ -132,184 +54,41 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 		return err
 	}
 
-	masterRB, err := r.store.GetRelayBackendMaster()
-	if err != nil && err.Error() != "relay backend master not found" {
-		return svcError(err)
-	}
-
-	if !isMasterRelayBackendValid(rbArr, masterRB.Address, 3*time.Second) {
-		masterAddress, err := chooseRelayBackendMaster(rbArr, 3*time.Second)
-		if err != nil {
-			return err
-		}
-		r.currentMasterBackendAddress = masterAddress
-		for _, relay := range rbArr {
-			if relay.Address == r.currentMasterBackendAddress {
-				err := r.store.SetRelayBackendMaster(relay)
-				if err != nil {
-					return svcError(err)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (r *RelayFrontendSvc) GetRelayBackendMasterAddress() string {
-	return r.currentMasterBackendAddress
-}
-
-func (r *RelayFrontendSvc) UpdateLiveRouteMatrixBackend(address, matrixType string) error {
-	matrix, err := getHttpMatrix(address)
+	masterAddress, err := chooseRelayBackendMaster(rbArr, 3*time.Second)
 	if err != nil {
 		return err
 	}
-
-	err = r.store.UpdateLiveMatrix(matrix, matrixType)
-	if err != nil {
-		return err
-	}
+	r.currentMasterBackendAddress = masterAddress
 
 	return nil
 }
 
 func (r *RelayFrontendSvc) CacheMatrix(matrixType string) error {
 
-	matrix, err := r.store.GetLiveMatrix(matrixType)
+	matrixAddr, err := r.GetMatrixAddress(matrixType)
 	if err != nil {
 		return err
 	}
-	r.matrixMux.Lock()
+
+	return r.cacheMatrixInternal(matrixAddr, matrixType)
+}
+
+func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) error {
+	matrix, err := getHttpMatrix(matrixAddr)
+	if err != nil {
+		return err
+	}
+
 	switch matrixType {
-	case storage.MatrixTypeNormal:
-		r.routeMatrix = matrix
-	case storage.MatrixTypeValve:
-		r.routeMatrixValve = matrix
+	case MatrixTypeCost:
+		r.costMatrix.SetMatrix(matrix)
+	case MatrixTypeNormal:
+		r.routeMatrix.SetMatrix(matrix)
+	case MatrixTypeValve:
+		r.routeMatrixValve.SetMatrix(matrix)
 	}
-	r.matrixMux.Unlock()
 
 	return nil
-}
-
-func (r *RelayFrontendSvc) CleanUpDB() error {
-	currentTime := time.Now().UTC()
-	matrixSvcs, err := r.store.GetMatrixSvcs()
-	if err != nil {
-		return svcError(err)
-	}
-
-	for _, m := range matrixSvcs {
-		if currentTime.Sub(m.UpdatedAt) > r.cfg.MatrixSvcTimeVariance {
-			err := r.store.DeleteMatrixSvc(m.ID)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	opMatrices, err := r.store.GetOptimizerMatrices()
-	if err != nil {
-		return svcError(err)
-	}
-
-	for _, m := range opMatrices {
-		if currentTime.Sub(m.CreatedAt) > r.cfg.OptimizerTimeVariance {
-			err := r.store.DeleteOptimizerMatrix(m.OptimizerID, m.Type)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (r *RelayFrontendSvc) updateLiveMatrix(matrices []storage.Matrix, id uint64) error {
-	found := false
-	for _, m := range matrices {
-		if m.OptimizerID == id {
-			found = true
-			err := r.store.UpdateLiveMatrix(m.Data, m.Type)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if !found {
-		return fmt.Errorf("unable to find master matrix to update")
-	}
-	return nil
-}
-
-func isMasterMatrixSvcValid(matrices []storage.MatrixSvcData, id uint64, timeVariance time.Duration) bool {
-	for _, m := range matrices {
-		if m.ID == id {
-			if time.Now().Sub(m.UpdatedAt) < timeVariance {
-				return true
-			}
-			break
-		}
-	}
-	return false
-}
-
-func isMasterOptimizerValid(matrices []storage.Matrix, id uint64, timeVariance time.Duration) bool {
-	for _, m := range matrices {
-		if m.OptimizerID == id {
-			if time.Now().Sub(m.CreatedAt) < timeVariance {
-				return true
-			}
-			break
-		}
-	}
-	return false
-}
-
-func isMasterRelayBackendValid(rbData []storage.RelayBackendLiveData, masterAddress string, timeVariance time.Duration) bool {
-	for _, rb := range rbData {
-		if rb.Address == masterAddress {
-			if time.Now().Sub(rb.UpdatedAt) < timeVariance {
-				return true
-			}
-			break
-		}
-	}
-	return false
-}
-
-func chooseMatrixSvcMaster(matrices []storage.MatrixSvcData, timeVariance time.Duration) uint64 {
-	currentTime := time.Now().UTC()
-	masterSvc := storage.NewMatrixSvcData(0, currentTime, currentTime)
-	for _, m := range matrices {
-		if currentTime.Sub(m.UpdatedAt) > timeVariance {
-			continue
-		}
-		if m.CreatedAt.After(masterSvc.CreatedAt) {
-			continue
-		}
-		if m.CreatedAt.Equal(masterSvc.CreatedAt) && m.ID > masterSvc.ID {
-			continue
-		}
-		masterSvc = m
-	}
-	return masterSvc.ID
-}
-
-func chooseOptimizerMaster(matrices []storage.Matrix, timeVariance time.Duration) uint64 {
-	currentTime := time.Now().UTC()
-	masterOp := storage.NewMatrix(0, currentTime, currentTime, "", []byte{})
-	for _, m := range matrices {
-		if currentTime.Sub(m.CreatedAt) > timeVariance {
-			continue
-		}
-		if m.OptimizerCreatedAt.After(masterOp.OptimizerCreatedAt) {
-			continue
-		}
-		if m.OptimizerCreatedAt.Equal(masterOp.OptimizerCreatedAt) && m.OptimizerID > masterOp.OptimizerID {
-			continue
-		}
-		masterOp = m
-	}
-	return masterOp.OptimizerID
 }
 
 func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance time.Duration) (string, error) {
@@ -358,9 +137,11 @@ func getHttpMatrix(address string) ([]byte, error) {
 func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 	var addr string
 	switch matrixType {
-	case storage.MatrixTypeNormal:
+	case MatrixTypeCost:
+		addr = fmt.Sprintf("http:/%s/cost_matrix", r.currentMasterBackendAddress)
+	case MatrixTypeNormal:
 		addr = fmt.Sprintf("http:/%s/route_matrix", r.currentMasterBackendAddress)
-	case storage.MatrixTypeValve:
+	case MatrixTypeValve:
 		addr = fmt.Sprintf("http:/%s/route_matrix_valve", r.currentMasterBackendAddress)
 	default:
 		return "", errors.New("matrix type not supported")
@@ -368,11 +149,10 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 	return addr, nil
 }
 
-func (r *RelayFrontendSvc) GetMatrix() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-
-		buffer := bytes.NewBuffer(r.routeMatrix)
+		buffer := bytes.NewBuffer(r.costMatrix.GetMatrix())
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -380,13 +160,22 @@ func (r *RelayFrontendSvc) GetMatrix() func(w http.ResponseWriter, req *http.Req
 	}
 }
 
-func (r *RelayFrontendSvc) GetMatrixValve() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		r.matrixMux.RLock()
-		defer r.matrixMux.RUnlock()
+		w.Header().Set("Content-Type", "application/octet-stream")
+		buffer := bytes.NewBuffer(r.routeMatrix.GetMatrix())
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
+func (r *RelayFrontendSvc) GetRouteMatrixValve() func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
-		buffer := bytes.NewBuffer(r.routeMatrixValve)
+		buffer := bytes.NewBuffer(r.routeMatrixValve.GetMatrix())
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

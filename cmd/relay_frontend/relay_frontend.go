@@ -60,28 +60,6 @@ func main() {
 	}
 
 	shutdown := false
-	//update matrix service
-	go func() {
-		errorCount := 0
-		syncTimer := helpers.NewSyncTimer(250 * time.Millisecond)
-		for {
-			syncTimer.Run()
-			if shutdown {
-				return
-			}
-			err := svc.UpdateSvcDB()
-			if err != nil {
-				_ = level.Error(logger).Log("err", err)
-				errorCount++
-				if errorCount >= 3 {
-					_ = level.Error(logger).Log("msg", "updating svc failed multiple times in a row")
-					os.Exit(1)
-				}
-				continue
-			}
-			errorCount = 0
-		}
-	}()
 
 	//core loop
 	go func() {
@@ -92,47 +70,22 @@ func main() {
 				return
 			}
 
-			err := svc.DetermineMaster()
+			err := svc.UpdateRelayBackendMaster()
 			if err != nil {
 				_ = level.Error(logger).Log("error", err)
-				continue
 			}
 
-			if svc.AmMaster() {
-				if cfg.RB15Enabled {
-					err := svc.UpdateRelayBackendMaster()
-					if err != nil {
-						_ = level.Error(logger).Log("error", err)
-					}
-					currentMBAddr := svc.GetRelayBackendMasterAddress()
-					err = svc.UpdateLiveRouteMatrixBackend(fmt.Sprintf("http://%s/route_matrix", currentMBAddr), storage.MatrixTypeNormal)
-					if err != nil {
-						_ = level.Error(logger).Log("error", err)
-					}
-					err = svc.UpdateLiveRouteMatrixBackend(fmt.Sprintf("http://%s/route_matrix_valve", currentMBAddr), storage.MatrixTypeValve)
-					if err != nil {
-						_ = level.Error(logger).Log("error", err)
-					}
-				}
-
-				if cfg.RB20Enabled {
-					err = svc.UpdateLiveRouteMatrixOptimizer()
-					if err != nil {
-						_ = level.Error(logger).Log("error", err)
-					}
-				}
-				err = svc.CleanUpDB()
-				if err != nil {
-					_ = level.Error(logger).Log("error", err)
-				}
+			err = svc.CacheMatrix(rm.MatrixTypeCost)
+			if err != nil {
+				_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
 			}
 
-			err = svc.CacheMatrix(storage.MatrixTypeNormal)
+			err = svc.CacheMatrix(rm.MatrixTypeNormal)
 			if err != nil {
 				_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
 			}
 
-			err = svc.CacheMatrix(storage.MatrixTypeValve)
+			err = svc.CacheMatrix(rm.MatrixTypeValve)
 			if err != nil {
 				_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
 			}
@@ -143,8 +96,9 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/route_matrix", svc.GetMatrix()).Methods("GET")
-	router.HandleFunc("/route_matrix_valve", svc.GetMatrixValve()).Methods("GET")
+	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
+	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
+	router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
