@@ -31,11 +31,10 @@ func testRelayUpdateHandlerConfig(RelayMap *routing.RelayMap, statsdb *routing.S
 	}
 
 	return &transport.RelayUpdateHandlerConfig{
-		RelayMap:   RelayMap,
-		StatsDB:    statsdb,
-		Metrics:    &metrics,
-		Storer:     storer,
-		RB15NoInit: noInit,
+		RelayMap: RelayMap,
+		StatsDB:  statsdb,
+		Metrics:  &metrics,
+		Storer:   storer,
 	}
 }
 
