@@ -180,6 +180,7 @@ func mainReturnWithCode() int {
 	}
 
 	var matrixStore storage.MatrixStore
+	var backendLiveData storage.RelayBackendLiveData
 
 	//update redis so relay frontend knows this backend is live
 	if featureNRB {
@@ -246,22 +247,9 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		go func() {
-			ld := storage.RelayBackendLiveData{}
-			ld.Id = gcpProjectID
-			ld.Address = backendAddr
-			ld.InitAt = time.Now()
-			syncTimer := helpers.NewSyncTimer(time.Second)
-			for {
-				syncTimer.Run()
-				ld.UpdatedAt = time.Now()
-				err := matrixStore.SetRelayBackendLiveData(ld)
-				if err != nil {
-					fmt.Println("errored at push")
-					level.Error(logger).Log(err)
-				}
-			}
-		}()
+		backendLiveData.Id = gcpProjectID
+		backendLiveData.Address = backendAddr
+		backendLiveData.InitAt = time.Now()
 	}
 
 	// Create the relay map
@@ -714,6 +702,14 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
+			if featureNRB {
+				backendLiveData.UpdatedAt = time.Now()
+				err = matrixStore.SetRelayBackendLiveData(backendLiveData)
+				if err != nil {
+					level.Error(logger).Log(err)
+				}
+			}
+
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -747,7 +743,6 @@ func mainReturnWithCode() int {
 			}
 			if hashing {
 				timestamp := time.Now().UTC().Unix()
-
 				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
 				if len(downRelayNames) != 0 {
