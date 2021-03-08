@@ -12517,6 +12517,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
+        packet.server_internal_address = server->server_internal_address;
 
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
@@ -12603,6 +12604,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             }
             packet.client_address = session->address;
             packet.server_address = server->server_address;
+            packet.server_internal_address = server->server_internal_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
 
