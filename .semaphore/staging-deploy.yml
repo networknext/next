@@ -72,6 +72,10 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
+        - name: Fake Server
+          commands:
+            - make build-fake-server-artifacts-staging
+            - make publish-fake-server-artifacts-staging
         - name: Load Test Server
           commands:
             - make build-load-test-server-artifacts
