@@ -37,6 +37,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
+	zq "github.com/networknext/backend/modules/transport/pubsub"
 
 	gcStorage "cloud.google.com/go/storage"
 )
@@ -172,34 +173,27 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	backend15, err := envvar.GetBool("FEATURE_RB15_ENABLED", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	backend15NoInit, err := envvar.GetBool("FEATURE_RB15_NO_INIT", false)
+	featureNRB, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_ENABLED", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	var matrixStore storage.MatrixStore
-	backendMaster := false
 
 	//update redis so relay frontend knows this backend is live
-	if backend15 {
+	if featureNRB {
 
 		var backendAddr string
 		if env == "local" {
 			backendAddr = "127.0.0.1:30002"
 		} else {
 
-			if !envvar.Exists("FEATURE_RB15_ADDRESSES") {
-				level.Error(logger).Log("FEATURE_RB15_ENABLED_ADDRESSES not set")
+			if !envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES") {
+				level.Error(logger).Log("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
 				return 1
 			}
-			backendAddresses := envvar.GetList("FEATURE_RB15_ADDRESSES", []string{})
+			backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
 
 			addrFound := false
 			host, _ := os.Hostname()
@@ -268,24 +262,6 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
-
-		go func() {
-			syncTimer := helpers.NewSyncTimer(time.Second)
-			for {
-				syncTimer.Run()
-				rbMasterData, err := matrixStore.GetRelayBackendMaster()
-				if err != nil {
-					level.Error(logger).Log(err)
-					continue
-				}
-				if rbMasterData.Id == gcpProjectID && rbMasterData.Address == backendAddr {
-					backendMaster = true
-				} else {
-					backendMaster = false
-				}
-			}
-		}()
-
 	}
 
 	// Create the relay map
@@ -352,12 +328,6 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 
-				if backend15 {
-					if !backendMaster {
-						continue
-					}
-				}
-
 				cpy := statsdb.MakeCopy()
 				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss))
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
@@ -415,12 +385,6 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
-
-				if backend15 {
-					if !backendMaster {
-						continue
-					}
-				}
 
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
@@ -750,11 +714,6 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
-			if backend15 {
-				if !backendMaster {
-					continue
-				}
-			}
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -934,11 +893,10 @@ func mainReturnWithCode() int {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap:   relayMap,
-		StatsDB:    statsdb,
-		Metrics:    relayUpdateMetrics,
-		Storer:     storer,
-		RB15NoInit: backend15NoInit,
+		RelayMap: relayMap,
+		StatsDB:  statsdb,
+		Metrics:  relayUpdateMetrics,
+		Storer:   storer,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -971,6 +929,46 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	if featureNRB {
+		level.Debug(logger).Log("msg", "subscriber starting")
+
+		subscriberPort := envvar.Get("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_PORT", "5555")
+
+		subscriberRecieveBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_RECEIVE_BUFFER_SIZE", 100000)
+		if err != nil {
+			return 1
+		}
+
+		sub, err := zq.NewGenericSubscriber(subscriberPort, subscriberRecieveBufferSize)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+		defer sub.Close()
+
+		err = sub.Subscribe(zq.RelayUpdateTopic)
+		if err != nil {
+			return 1
+		}
+
+		for {
+			msgChan := sub.ReceiveMessage(context.Background())
+			msg := <-msgChan
+			_ = level.Debug(logger).Log("msg", "message received")
+			if msg.Err != nil {
+				_ = level.Error(logger).Log("err", err)
+				continue
+			}
+			if msg.Topic != zq.RelayUpdateTopic {
+				_ = level.Error(logger).Log("err", "received the wrong topic")
+				continue
+			}
+
+			transport.RelayUpdatePubSubFunc(msg.Message, logger, commonUpdateParams)
+		}
+
+	}
+
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
@@ -983,9 +981,8 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
-	if backend15 {
+	if featureNRB {
 		//new backend handlers
-		router.HandleFunc("/relay_init", transport.NewRelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 		router.HandleFunc("/relay_update", transport.NewRelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	} else {
 		//old backend handlers
