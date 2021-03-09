@@ -242,11 +242,12 @@ func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error 
 }
 
 type ServerUpdatePacket struct {
-	Version       SDKVersion
-	CustomerID    uint64
-	DatacenterID  uint64
-	NumSessions   uint32
-	ServerAddress net.UDPAddr
+	Version               SDKVersion
+	CustomerID            uint64
+	DatacenterID          uint64
+	NumSessions           uint32
+	ServerAddress         net.UDPAddr
+	ServerInternalAddress net.UDPAddr
 }
 
 func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
@@ -261,6 +262,15 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 11) {
+		hasInternalAddress := false
+		stream.SerializeBool(&hasInternalAddress)
+		if hasInternalAddress {
+			stream.SerializeAddress(&packet.ServerInternalAddress)
+		} else {
+			packet.ServerInternalAddress = packet.ServerAddress
+		}
+	}
 	return stream.Error()
 }
 
@@ -275,6 +285,7 @@ type SessionUpdatePacket struct {
 	SessionData                     [MaxSessionDataSize]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
+	ServerInternalAddress           net.UDPAddr
 	ClientRoutePublicKey            []byte
 	ServerRoutePublicKey            []byte
 	UserHash                        uint64
@@ -341,6 +352,16 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeAddress(&packet.ClientAddress)
 
 	stream.SerializeAddress(&packet.ServerAddress)
+
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 11) {
+		hasInternalAddress := false
+		stream.SerializeBool(&hasInternalAddress)
+		if hasInternalAddress {
+			stream.SerializeAddress(&packet.ServerInternalAddress)
+		} else {
+			packet.ServerInternalAddress = packet.ServerAddress
+		}
+	}
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, crypto.KeySize)
