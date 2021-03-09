@@ -225,8 +225,19 @@ func handleNearAndDestRelays(
 	destRelayIDs []uint64,
 	debug *string,
 ) (bool, nearRelayGroup, []int32, error) {
+	if debug != nil {
+		*debug += fmt.Sprintf("handleNearAndDestRelays\n")
+	}
 	if newSession {
+		if debug != nil {
+			*debug += fmt.Sprintf("new session\n")
+		}
 		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
+		if debug != nil {
+			for _, i := range nearRelayIDs {
+				*debug += fmt.Sprintf("near relay ID: %016x\n", i)
+			}
+		}
 		if len(nearRelayIDs) == 0 {
 			return false, nearRelayGroup{}, nil, errors.New("no near relays")
 		}
@@ -241,6 +252,12 @@ func handleNearAndDestRelays(
 			nearRelays.IDs[i] = nearRelayIDs[i]
 			nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
 			nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+		}
+
+		if debug != nil {
+			for _, n := range nearRelays.Names {
+				*debug += fmt.Sprintf("near relay: %s\n", n)
+			}
 		}
 
 		routeState.NumNearRelays = nearRelays.Count
