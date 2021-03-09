@@ -20,25 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testMatrixSvcData() []storage.MatrixSvcData {
-	return []storage.MatrixSvcData{
-		{1, time.Now().Add(-50 * time.Second), time.Now().Add(-5 * time.Second)},
-		{2, time.Now().Add(-2 * time.Second), time.Now().Add(-1 * time.Second)},
-		{3, time.Now().Add(-40 * time.Second), time.Now().Add(-3 * time.Second)},
-	}
-}
-
-func testOptimizerMatrices() []storage.Matrix {
-	return []storage.Matrix{
-		{1, time.Now().Add(time.Duration(-50) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.MatrixTypeNormal, []byte("optimizer1")},
-		{1, time.Now().Add(time.Duration(-49) * time.Second), time.Now().Add(time.Duration(-5) * time.Second), storage.MatrixTypeValve, []byte("optimizer1Valve")},
-		{2, time.Now().Add(time.Duration(-20) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.MatrixTypeNormal, []byte("optimizer2")},
-		{2, time.Now().Add(time.Duration(-25) * time.Second), time.Now().Add(time.Duration(-1) * time.Second), storage.MatrixTypeValve, []byte("optimizer2Valve")},
-		{3, time.Now().Add(time.Duration(-40) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.MatrixTypeNormal, []byte("optimizer3")},
-		{3, time.Now().Add(time.Duration(-45) * time.Second), time.Now().Add(time.Duration(-3) * time.Second), storage.MatrixTypeValve, []byte("optimizer3Valve")},
-	}
-}
-
 func TestNew(t *testing.T) {
 	t.Parallel()
 	store := storage.MatrixStoreMock{}
