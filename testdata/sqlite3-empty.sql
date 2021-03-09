@@ -106,6 +106,7 @@ create table datacenters (
 
 create table relays (
   id integer primary key autoincrement,
+  hex_id varchar(16) not null,
   contract_term integer not null,
   display_name varchar not null unique,
   end_date date,
@@ -117,8 +118,8 @@ create table relays (
   mrc bigint not null,
   overage bigint not null,
   port_speed integer not null,
-  public_ip inet not null,
-  public_ip_port integer not null,
+  public_ip inet,
+  public_ip_port integer,
   public_key bytea not null,
   ssh_port integer not null,
   ssh_user varchar not null,
@@ -148,7 +149,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/02/11 14:54:23
+-- File generation: 2021/03/09 09:25:23
 
 -- machine_types
 insert into machine_types values (0, 'none');
