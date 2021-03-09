@@ -235,7 +235,7 @@ func handleNearAndDestRelays(
 		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
 		if debug != nil {
 			for _, i := range nearRelayIDs {
-				*debug += fmt.Sprintf("near relay ID: %d\n", i)
+				*debug += fmt.Sprintf("near relay ID: %016x\n", i)
 			}
 		}
 		if len(nearRelayIDs) == 0 {
@@ -634,10 +634,6 @@ func SessionUpdateHandlerFunc(
 			}
 
 			return
-		}
-
-		if debug != nil {
-			*debug += fmt.Sprintf("best route cost is %d\n", newSession)
 		}
 
 		if newSession {
