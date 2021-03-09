@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
 
-	rm "github.com/networknext/backend/modules/route_matrix_selector"
+	rm "github.com/networknext/backend/modules/relay_frontend"
 	"github.com/networknext/backend/modules/storage"
 
 	//logging
@@ -32,20 +32,20 @@ var (
 
 func main() {
 
-	serviceName := "route_matrix_selector"
+	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 	gcpProjectID := backend.GetGCPProjectID()
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(2)
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 
 	cfg, err := rm.GetConfig()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		_ = level.Error(logger).Log("err", err)
 	}
 
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
@@ -53,35 +53,13 @@ func main() {
 		_ = level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
-	svc, err := rm.New(store, cfg.MatrixSvcTimeVariance, cfg.OptimizerTimeVariance)
+	svc, err := rm.New(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 
 	shutdown := false
-	//update matrix service
-	go func() {
-		errorCount := 0
-		syncTimer := helpers.NewSyncTimer(250 * time.Millisecond)
-		for {
-			syncTimer.Run()
-			if shutdown {
-				return
-			}
-			err := svc.UpdateSvcDB()
-			if err != nil {
-				_ = level.Error(logger).Log("err", err)
-				errorCount++
-				if errorCount >= 3 {
-					_ = level.Error(logger).Log("msg", "updating svc failed multiple times in a row")
-					os.Exit(1)
-				}
-				continue
-			}
-			errorCount = 0
-		}
-	}()
 
 	//core loop
 	go func() {
@@ -92,26 +70,25 @@ func main() {
 				return
 			}
 
-			err := svc.DetermineMaster()
-			if err != nil {
-				_ = level.Error(logger).Log("error", err)
-				continue
-			}
-
-			if !svc.AmMaster() {
-				continue
-			}
-
-			err = svc.UpdateLiveRouteMatrix()
+			err := svc.UpdateRelayBackendMaster()
 			if err != nil {
 				_ = level.Error(logger).Log("error", err)
 			}
 
-			err = svc.CleanUpDB()
+			err = svc.CacheMatrix(rm.MatrixTypeCost)
 			if err != nil {
-				_ = level.Error(logger).Log("error", err)
+				_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
 			}
 
+			err = svc.CacheMatrix(rm.MatrixTypeNormal)
+			if err != nil {
+				_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
+			}
+
+			err = svc.CacheMatrix(rm.MatrixTypeValve)
+			if err != nil {
+				_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
+			}
 		}
 	}()
 
@@ -119,6 +96,9 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
+	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
+	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
+	router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
@@ -133,11 +113,11 @@ func main() {
 	go func() {
 		port := envvar.Get("PORT", "30005")
 
-		level.Info(logger).Log("addr", ":"+port)
+		_ = level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			_ = level.Error(logger).Log("err", err)
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()

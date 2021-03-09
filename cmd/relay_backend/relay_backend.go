@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/storage"
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/common/helpers"
 
@@ -35,6 +37,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
+	zq "github.com/networknext/backend/modules/transport/pubsub"
 
 	gcStorage "cloud.google.com/go/storage"
 )
@@ -170,6 +173,85 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	featureNRB, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_ENABLED", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	var matrixStore storage.MatrixStore
+	var backendLiveData storage.RelayBackendLiveData
+
+	//update redis so relay frontend knows this backend is live
+	if featureNRB {
+
+		var backendAddr string
+		if env == "local" {
+			backendAddr = "127.0.0.1:30002"
+		} else {
+
+			if !envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES") {
+				level.Error(logger).Log("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+				return 1
+			}
+			backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+
+			addrFound := false
+			host, _ := os.Hostname()
+			addrs, _ := net.LookupIP(host)
+			for _, addr := range addrs {
+				if ipv4 := addr.To4(); ipv4 != nil {
+					for _, addr := range backendAddresses {
+						if ipv4.String() == addr {
+							if addr == "127.0.0.1" {
+								fmt.Sprintf("%s:30002", addr)
+							} else {
+								backendAddr = addr
+							}
+							addrFound = true
+							break
+						}
+					}
+				}
+				if addrFound {
+					break
+				}
+			}
+
+			if !addrFound {
+				level.Error(logger).Log("relay backend address not found")
+			}
+		}
+
+		if !envvar.Exists("MATRIX_STORE_ADDRESS") {
+			level.Error(logger).Log("MATRIX_STORE_ADDRESS not set")
+			return 1
+		}
+		matrixStoreAddress := envvar.Get("MATRIX_STORE_ADDRESS", "")
+
+		matrixStoreReadTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log(err.Error())
+			return 1
+		}
+
+		matrixStoreWriteTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log(err.Error())
+			return 1
+		}
+
+		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, matrixStoreReadTimeout, matrixStoreWriteTimeout, 5*time.Second)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		backendLiveData.Id = gcpProjectID
+		backendLiveData.Address = backendAddr
+		backendLiveData.InitAt = time.Now()
+	}
+
 	// Create the relay map
 	cleanupCallback := func(relayData *routing.RelayData) error {
 		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
@@ -233,6 +315,7 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
+
 				cpy := statsdb.MakeCopy()
 				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss))
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
@@ -290,6 +373,7 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
+
 				allRelayData := relayMap.GetAllRelayData()
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
@@ -618,6 +702,14 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
+			if featureNRB {
+				backendLiveData.UpdatedAt = time.Now()
+				err = matrixStore.SetRelayBackendLiveData(backendLiveData)
+				if err != nil {
+					level.Error(logger).Log(err)
+				}
+			}
+
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -651,7 +743,6 @@ func mainReturnWithCode() int {
 			}
 			if hashing {
 				timestamp := time.Now().UTC().Unix()
-
 				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
 				if len(downRelayNames) != 0 {
@@ -833,19 +924,66 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	if featureNRB {
+		level.Debug(logger).Log("msg", "subscriber starting")
+
+		subscriberPort := envvar.Get("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_PORT", "5555")
+
+		subscriberRecieveBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_RECEIVE_BUFFER_SIZE", 100000)
+		if err != nil {
+			return 1
+		}
+
+		sub, err := zq.NewGenericSubscriber(subscriberPort, subscriberRecieveBufferSize)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+		defer sub.Close()
+
+		err = sub.Subscribe(zq.RelayUpdateTopic)
+		if err != nil {
+			return 1
+		}
+
+		for {
+			msgChan := sub.ReceiveMessage(context.Background())
+			msg := <-msgChan
+			_ = level.Debug(logger).Log("msg", "message received")
+			if msg.Err != nil {
+				_ = level.Error(logger).Log("err", err)
+				continue
+			}
+			if msg.Topic != zq.RelayUpdateTopic {
+				_ = level.Error(logger).Log("err", "received the wrong topic")
+				continue
+			}
+
+			transport.RelayUpdatePubSubFunc(msg.Message, logger, commonUpdateParams)
+		}
+
+	}
+
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
-	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
+
+	if featureNRB {
+		//new backend handlers
+		router.HandleFunc("/relay_update", transport.NewRelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	} else {
+		//old backend handlers
+		router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
+		router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	}
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {

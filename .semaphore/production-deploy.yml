@@ -72,17 +72,5 @@ blocks:
             - make build-ghost-army-artifacts-prod
             - make publish-ghost-army-artifacts-prod
             - make publish-ghost-army-bootstrap-script-prod
-        - name: Relay Gateway
-          commands:
-            - make build-relay-gateway-artifacts-prod
-            - make publish-relay-gateway-artifacts-prod
-        - name: Optimizer
-          commands:
-            - make build-optimizer-artifacts-prod
-            - make publish-optimizer-artifacts-prod
-        - name: Route Matrix Selector
-          commands:
-            - make build-route-matrix-selector-artifacts-prod
-            - make publish-route-matrix-selector-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod

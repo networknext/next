@@ -266,95 +266,114 @@ func mainReturnWithCode() int {
 
 	// Sync route matrix
 	{
-		if envvar.Exists("ROUTE_MATRIX_URI") {
-			uri := envvar.Get("ROUTE_MATRIX_URI", "")
-			syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
+		uri := ""
+		newBackend, err := envvar.GetBool("FEATURE_NEW_BACKEND", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+
+		if newBackend {
+			if envvar.Exists("RELAY_FRONTEND_URI") {
+				uri = envvar.Get("RELAY_FRONTEND_URI", "")
+			}
+		} else {
+			if envvar.Exists("ROUTE_MATRIX_URI") {
+				uri = envvar.Get("ROUTE_MATRIX_URI", "")
+			}
+		}
+
+		if uri != "" {
+			level.Error(logger).Log("err", fmt.Errorf("no matrix uri specified"))
+			return 1
+		}
+
+		syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		go func() {
+			httpClient := &http.Client{
+				Timeout: time.Second * 2,
 			}
 
-			go func() {
-				httpClient := &http.Client{
-					Timeout: time.Second * 2,
+			syncTimer := helpers.NewSyncTimer(syncInterval)
+			for {
+				syncTimer.Run()
+
+				var buffer []byte
+				start := time.Now()
+
+				var routeEntriesReader io.ReadCloser
+
+				// Default to reading route matrix from file
+				if f, err := os.Open(uri); err == nil {
+					routeEntriesReader = f
 				}
 
-				syncTimer := helpers.NewSyncTimer(syncInterval)
-				for {
-					syncTimer.Run()
+				// Prefer to get it remotely if possible
+				if r, err := httpClient.Get(uri); err == nil {
+					routeEntriesReader = r.Body
+				}
 
-					var buffer []byte
-					start := time.Now()
+				if routeEntriesReader == nil {
+					routeMatrixMutex.Lock()
+					routeMatrix = &routing.RouteMatrix{}
+					routeMatrixMutex.Unlock()
 
-					var routeEntriesReader io.ReadCloser
+					continue
+				}
 
-					// Default to reading route matrix from file
-					if f, err := os.Open(uri); err == nil {
-						routeEntriesReader = f
-					}
+				buffer, err = ioutil.ReadAll(routeEntriesReader)
+				routeEntriesReader.Close()
 
-					// Prefer to get it remotely if possible
-					if r, err := httpClient.Get(uri); err == nil {
-						routeEntriesReader = r.Body
-					}
-
-					if routeEntriesReader == nil {
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-
-						continue
-					}
-
-					buffer, err = ioutil.ReadAll(routeEntriesReader)
-					routeEntriesReader.Close()
-
-					if err != nil {
-						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
-
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-
-						continue
-					}
-
-					var newRouteMatrix routing.RouteMatrix
-					if len(buffer) > 0 {
-						rs := encoding.CreateReadStream(buffer)
-						if err := newRouteMatrix.Serialize(rs); err != nil {
-							level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
-
-							routeMatrixMutex.Lock()
-							routeMatrix = &routing.RouteMatrix{}
-							routeMatrixMutex.Unlock()
-
-							continue
-						}
-					}
-
-					routeEntriesTime := time.Since(start)
-
-					duration := float64(routeEntriesTime.Milliseconds())
-					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-
-					if duration > 100 {
-						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
-					}
-
-					numRoutes := int32(0)
-					for i := range newRouteMatrix.RouteEntries {
-						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
-					}
-					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
-					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+				if err != nil {
+					level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 
 					routeMatrixMutex.Lock()
-					routeMatrix = &newRouteMatrix
+					routeMatrix = &routing.RouteMatrix{}
 					routeMatrixMutex.Unlock()
+
+					continue
 				}
-			}()
-		}
+
+				var newRouteMatrix routing.RouteMatrix
+				if len(buffer) > 0 {
+					rs := encoding.CreateReadStream(buffer)
+					if err := newRouteMatrix.Serialize(rs); err != nil {
+						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+
+						routeMatrixMutex.Lock()
+						routeMatrix = &routing.RouteMatrix{}
+						routeMatrixMutex.Unlock()
+
+						continue
+					}
+				}
+
+				routeEntriesTime := time.Since(start)
+
+				duration := float64(routeEntriesTime.Milliseconds())
+				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+
+				if duration > 100 {
+					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+				}
+
+				numRoutes := int32(0)
+				for i := range newRouteMatrix.RouteEntries {
+					numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
+				}
+				backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+
+				routeMatrixMutex.Lock()
+				routeMatrix = &newRouteMatrix
+				routeMatrixMutex.Unlock()
+			}
+		}()
+
 	}
 
 	// Create a local biller
