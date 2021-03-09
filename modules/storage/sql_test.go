@@ -175,6 +175,7 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddRelay", func(t *testing.T) {
 
+		// relay with no null values (except dc to trip an error)
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
@@ -226,8 +227,12 @@ func TestInsertSQL(t *testing.T) {
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
 
+		fmt.Printf("checkRelay.DatabaseID: %d\n", checkRelay.DatabaseID)
+		fmt.Printf("checkRelay.Addr: %s\n", checkRelay.Addr.String())
+
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
+		assert.Equal(t, relay.InternalAddr, checkRelay.InternalAddr)
 		assert.Equal(t, relay.ManagementAddr, checkRelay.ManagementAddr)
 		assert.Equal(t, relay.SSHPort, checkRelay.SSHPort)
 		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
@@ -252,6 +257,118 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
+
+		// overwrite with SetRelay - test nullable fields, possible in relay_backend
+		var relayMod routing.Relay
+
+		relayMod.ID = checkRelay.ID
+		relayMod.Name = checkRelay.Name
+		// Addr
+		// InternalAddr
+		relayMod.ManagementAddr = checkRelay.ManagementAddr
+		relayMod.SSHPort = checkRelay.SSHPort
+		relayMod.SSHUser = checkRelay.SSHUser
+		relayMod.MaxSessions = checkRelay.MaxSessions
+		relayMod.PublicKey = checkRelay.PublicKey
+		relayMod.Datacenter = checkRelay.Datacenter
+		relayMod.MRC = checkRelay.MRC
+		relayMod.Overage = checkRelay.Overage
+		relayMod.BWRule = checkRelay.BWRule
+		relayMod.ContractTerm = checkRelay.ContractTerm
+		// StartDate
+		// EndDate
+		relayMod.Type = checkRelay.Type
+		relayMod.State = checkRelay.State
+		relayMod.IncludedBandwidthGB = checkRelay.IncludedBandwidthGB
+		relayMod.NICSpeedMbps = checkRelay.NICSpeedMbps
+		relayMod.Notes = checkRelay.Notes
+		relayMod.DatabaseID = checkRelay.DatabaseID
+
+		relayMod.Seller = checkRelay.Seller
+
+		err = db.SetRelay(ctx, relayMod)
+		assert.NoError(t, err)
+
+		checkRelayMod, err := db.Relay(relay.ID)
+		assert.NoError(t, err)
+
+		// fmt.Printf("checkRelayMod.DatabaseID: %d\n", checkRelayMod.DatabaseID)
+		// fmt.Printf("checkRelayMod.Addr: %s\n", checkRelayMod.Addr.String())
+
+		assert.Equal(t, relayMod.Name, checkRelayMod.Name)
+		assert.Equal(t, net.UDPAddr{IP: net.IP(nil), Port: 0, Zone: ""}, checkRelayMod.Addr)
+		assert.Equal(t, net.UDPAddr{IP: net.IP(nil), Port: 0, Zone: ""}, checkRelayMod.InternalAddr)
+		assert.Equal(t, relayMod.ManagementAddr, checkRelayMod.ManagementAddr)
+		assert.Equal(t, relayMod.SSHPort, checkRelayMod.SSHPort)
+		assert.Equal(t, relayMod.SSHUser, checkRelayMod.SSHUser)
+		assert.Equal(t, relayMod.MaxSessions, checkRelayMod.MaxSessions)
+		assert.Equal(t, relayMod.PublicKey, checkRelayMod.PublicKey)
+		assert.Equal(t, relayMod.Datacenter.DatabaseID, checkRelayMod.Datacenter.DatabaseID)
+		assert.Equal(t, relayMod.MRC, checkRelayMod.MRC)
+		assert.Equal(t, relayMod.Overage, checkRelayMod.Overage)
+		assert.Equal(t, relayMod.BWRule, checkRelayMod.BWRule)
+		assert.Equal(t, relayMod.ContractTerm, checkRelayMod.ContractTerm)
+		assert.True(t, checkRelayMod.StartDate.IsZero())
+		assert.True(t, checkRelayMod.EndDate.IsZero())
+		assert.Equal(t, relayMod.Type, checkRelayMod.Type)
+		assert.Equal(t, relayMod.State, checkRelayMod.State)
+		assert.Equal(t, int32(10000), checkRelayMod.IncludedBandwidthGB)
+		assert.Equal(t, int32(1000), checkRelayMod.NICSpeedMbps)
+
+		assert.Equal(t, customerShortname, checkRelayMod.Seller.ID)
+		assert.Equal(t, customerShortname, checkRelayMod.Seller.ShortName)
+		assert.Equal(t, customerShortname, checkRelayMod.Seller.CompanyCode)
+		assert.Equal(t, routing.Nibblin(10), checkRelayMod.Seller.IngressPriceNibblinsPerGB)
+		assert.Equal(t, routing.Nibblin(20), checkRelayMod.Seller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, outerCustomer.DatabaseID, checkRelayMod.Seller.CustomerID)
+		assert.Equal(t, relayMod.Notes, checkRelayMod.Notes)
+
+		// relay with some null values null values (except dc to trip an error)
+		addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+		assert.NoError(t, err)
+
+		rid2 := crypto.HashID(addr2.String())
+
+		publicKey = make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		// fields not stored in the database are not tested here
+		relay2 := routing.Relay{
+			ID:   rid2,
+			Name: "local.2",
+			Addr: *addr2,
+			// InternalAddr:   *internalAddr, <-- nullable
+			ManagementAddr: "1.2.3.4",
+			SSHPort:        22,
+			SSHUser:        "fred",
+			MaxSessions:    1000,
+			PublicKey:      publicKey,
+			Datacenter:     outerDatacenter,
+			MRC:            19700000000000,
+			Overage:        26000000000000,
+			BWRule:         routing.BWRuleBurst,
+			ContractTerm:   12,
+			// StartDate:           time.Now(), <-- nullable
+			// EndDate:             time.Now(), <-- nullable
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
+			IncludedBandwidthGB: 10000,
+			NICSpeedMbps:        1000,
+			Notes:               "the original notes",
+		}
+
+		err = db.AddRelay(ctx, relay2)
+		assert.NoError(t, err)
+
+		// check only the fields *not* set above
+		checkRelay2, err := db.Relay(rid2)
+		assert.NoError(t, err)
+
+		assert.Equal(t, net.UDPAddr{IP: net.IP(nil), Port: 0, Zone: ""}, checkRelay2.InternalAddr)
+		assert.True(t, checkRelay2.StartDate.IsZero())
+		assert.True(t, checkRelay2.EndDate.IsZero())
+
 	})
 
 	t.Run("AddRelayWithNullables", func(t *testing.T) {
