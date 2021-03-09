@@ -251,7 +251,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 	}
 
 	sql.Write([]byte("update customers set (automatic_signin_domain, customer_name) ="))
-	sql.Write([]byte("($1, $2) where id = $5"))
+	sql.Write([]byte("($1, $2) where id = $3"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1115,7 +1115,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	var internalIP sql.NullString
 	var internalIPPort sql.NullInt64
-	if r.InternalAddr.String() != "" {
+	if r.InternalAddr.String() != "" && r.InternalAddr.String() != ":0" {
 		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
 		internalIP.Valid = true
 		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
@@ -1318,7 +1318,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	var publicIP sql.NullString
 	var publicIPPort sql.NullInt64
 
-	if r.Addr.String() != ":0" {
+	if r.Addr.String() != ":0" && r.Addr.String() != "" {
 		publicIP.String = strings.Split(r.Addr.String(), ":")[0]
 		publicIP.Valid = true
 		publicIPPort.Int64, err = strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
@@ -1333,7 +1333,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	var internalIP sql.NullString
 	var internalIPPort sql.NullInt64
-	if r.InternalAddr.String() != ":0" {
+	if r.InternalAddr.String() != ":0" && r.InternalAddr.String() != "" {
 		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
 		internalIP.Valid = true
 		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
