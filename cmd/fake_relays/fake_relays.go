@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
+
+	"github.com/networknext/backend/modules/crypto"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/backend"
@@ -29,17 +33,23 @@ var (
 )
 
 const (
-	maxRTT    = 300
-	maxJitter = 30
+	maxRTT               = 300
+	maxJitter            = 30
+	maxMultiplierPercent = 10
+
+	// pLChance is 1 in n
 
 	relayDisabled = 1
 	relayEnabled  = 2
 	relayCrashed  = 3
 
-	relayCrashValue      = 10000
-	relayCrashTimeout    = 60
-	relayShutdownValue   = 1000
-	relayShutdownTimeout = 30
+	//chances are 1 in n
+	pLChance             = 10000
+	pLValue              = .3
+	relayCrashChance     = 100000
+	relayCrashTimeout    = 60 * time.Second
+	relayShutdownChance  = 100000
+	relayShutdownTimeout = 30 * time.Second
 )
 
 func main() {
@@ -47,7 +57,6 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	//todo WIP
 	//Setup-------------------------------------------------------------------------------------------------------------
 	serviceName := "fake_relays"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
@@ -98,11 +107,10 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	//get relay info from firestore
-	//todo get "real" fake relays from firestore, create them first
+	// create fake relays
 	storageRelayArr := make([]routing.Relay, numRelays)
 	for i := 0; i < numRelays; i++ {
-		storageRelayArr[i] = tempFakeRelay(i)
+		storageRelayArr[i] = fakeRelay(i)
 	}
 
 	//create fake relay route Bases
@@ -112,7 +120,7 @@ func mainReturnWithCode() int {
 		newRelay := Relay{
 			data:         relayI,
 			state:        relayDisabled,
-			stateChanged: time.Now(),
+			stateChanged: time.Now().Add(-5 * time.Minute),
 			routeBaseMap: make(map[uint64]routeBase),
 		}
 
@@ -135,8 +143,6 @@ func mainReturnWithCode() int {
 	initAddress := fmt.Sprintf("%s/relay_init", relayBackendAddr)
 	updateAddress := fmt.Sprintf("%s/relay_update", relayBackendAddr)
 
-	//send first update/init
-	//first update is different because it has no packet data
 	for i := 0; i < numRelays; i++ {
 
 		relay := relayArr[i]
@@ -144,7 +150,6 @@ func mainReturnWithCode() int {
 		go func(relay Relay) {
 
 			var relaysToPing []uint64
-			stateChangeTicker := 0
 			syncTimer := helpers.NewSyncTimer(1 * time.Second)
 			for {
 				syncTimer.Run()
@@ -155,47 +160,50 @@ func mainReturnWithCode() int {
 					return
 				}
 
-				if stateChangeTicker > 0 {
-					stateChangeTicker--
-					continue
-				}
+				if relay.state != relayEnabled {
 
-				if stateChangeTicker == 0 {
+					// WIP relay chaos
+					// if relay.state == relayCrashed{
+					//	if relay.stateChanged.Sinc
+					//
+					// }
+
 					if FeatureNoInit {
-						newRelaysToPing, err := sendUpdateInit(relay, updateAddress)
+						_, err := sendUpdateInit(relay, updateAddress)
 						if err != nil {
 							level.Error(logger).Log("err", err)
 							continue
 						}
-						relaysToPing = newRelaysToPing
+						relaysToPing = relaysToPingFromRelayList(relayArr, relay.data.ID)
 
 					} else {
-						newRelaysToPing, err := sendInit(relay, initAddress)
+						err := sendInit(relay, initAddress)
 						if err != nil {
 							level.Error(logger).Log("err", err)
 							continue
 						}
-						relaysToPing = newRelaysToPing
-					}
-					stateChangeTicker = -1
-				}
-
-				//determine state change
-				isCrashed := rand.Int31n(relayCrashValue)
-				if isCrashed == 1 {
-					stateChangeTicker = relayCrashTimeout
-					continue
-				}
-
-				isShutdown := rand.Int31n(relayShutdownValue)
-				if isShutdown == 1 {
-					stateChangeTicker = relayShutdownTimeout
-					err := sendShutdown(relay, updateAddress)
-					if err != nil {
-						level.Error(logger).Log("err", err)
+						relaysToPing = relaysToPingFromRelayList(relayArr, relay.data.ID)
 					}
 					continue
 				}
+
+				// WIP determine state change
+				//isCrashed := rand.Int31n(relayCrashChance)
+				//if isCrashed == 1 {
+				//	relay.state = relayCrashed
+				//	relay.stateChanged = time.Now()
+				//	continue
+				//}
+				//
+				//isShutdown := rand.Int31n(relayShutdownChance)
+				//if isShutdown == 1 {
+				//	relay.state = relayDisabled
+				//	err := sendShutdown(relay, updateAddress)
+				//	if err != nil {
+				//		level.Error(logger).Log("err", err)
+				//	}
+				//	continue
+				//}
 				//if no state change populate packet update
 
 				newRelaysToPing, err := sendUpdate(relay, relaysToPing, updateAddress)
@@ -210,8 +218,13 @@ func mainReturnWithCode() int {
 
 	//shutdown and close application
 	go func() {
-
-		// todo system shutdowns / early shutdown
+		// Wait for interrupt signal
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		shutdown = true
+		time.Sleep(time.Minute)
+		os.Exit(0)
 	}()
 
 	time.Sleep(timeToRun)
@@ -221,10 +234,19 @@ func mainReturnWithCode() int {
 	return 0
 }
 
-func tempFakeRelay(i int) routing.Relay {
+func fakeRelay(i int) routing.Relay {
+
+	firstIpPart := i / 255
+	secondIpPart := i % 255
+	IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
+	addr, _ := net.ResolveUDPAddr("UDP", IP)
+
+	id := crypto.HashID(IP)
+
 	return routing.Relay{
 		Name: fmt.Sprintf("fake_relay_%v", i),
-		ID:   uint64(i),
+		ID:   id,
+		Addr: *addr,
 	}
 }
 
@@ -250,7 +272,7 @@ func newRouteBase() routeBase {
 	return *rb
 }
 
-func sendInit(relay Relay, addr string) ([]uint64, error) {
+func sendInit(relay Relay, addr string) error {
 	//todo needs public/private key, one key for all
 	initRequest := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
@@ -263,17 +285,22 @@ func sendInit(relay Relay, addr string) ([]uint64, error) {
 
 	initBinary, err := initRequest.MarshalBinary()
 	if err != nil {
-		return []uint64{}, err
+		return err
 	}
 	buffer := bytes.NewBuffer(initBinary)
 	resp, err := http.Post(addr, "application/octet-stream", buffer)
+	if err != nil {
+		return err
+	}
 
-	//todo handle response
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("response was non 200: %v", resp.StatusCode)
+	}
 
+	return nil
 }
 
 func sendUpdateInit(relay Relay, addr string) ([]uint64, error) {
-	//todo finish base
 	updateRequest := baseUpdate(relay)
 	updateBinary, err := updateRequest.MarshalBinary()
 	if err != nil {
@@ -282,9 +309,15 @@ func sendUpdateInit(relay Relay, addr string) ([]uint64, error) {
 
 	buffer := bytes.NewBuffer(updateBinary)
 	resp, err := http.Post(addr, "application/octet-stream", buffer)
+	if err != nil {
+		return []uint64{}, err
+	}
 
-	//todo handle response get relays to ping
+	if resp.StatusCode != http.StatusOK {
+		return []uint64{}, fmt.Errorf("response was non 200: %v", resp.StatusCode)
+	}
 
+	// WIP return relaysToPingFromUpdateResponse(resp)
 	return []uint64{}, nil
 }
 
@@ -298,7 +331,13 @@ func sendShutdown(relay Relay, addr string) error {
 
 	buffer := bytes.NewBuffer(updateBinary)
 	resp, err := http.Post(addr, "application/octet-stream", buffer)
-	//todo handle resp
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("shutdown response was non 200: %v", resp.StatusCode)
+	}
 
 	return nil
 }
@@ -310,7 +349,7 @@ func sendUpdate(relay Relay, relaysToPing []uint64, addr string) ([]uint64, erro
 	statsData := make([]routing.RelayStatsPing, len(relaysToPing))
 	for i := 0; i < numRelays; i++ {
 		if base, ok := relay.routeBaseMap[relaysToPing[i]]; ok {
-			statsData[i] = newPacketData(base)
+			statsData[i] = newPacketData(relaysToPing[i], base)
 		}
 	}
 	updateRequest.PingStats = statsData
@@ -321,10 +360,62 @@ func sendUpdate(relay Relay, relaysToPing []uint64, addr string) ([]uint64, erro
 
 	buffer := bytes.NewBuffer(updateBinary)
 	resp, err := http.Post(addr, "application/octet-stream", buffer)
+	if err != nil {
+		return []uint64{}, err
+	}
 
-	//todo handle response get relays to ping
+	if resp.StatusCode != http.StatusOK {
+		return []uint64{}, fmt.Errorf("shutdown response was non 200: %v", resp.StatusCode)
+	}
 
-	return []uint64{}, nil
+	// WIP return relaysToPingFromUpdateResponse(resp)
+	return relaysToPing, nil
+}
+
+func relaysToPingFromRelayList(relayArr []Relay, skipID uint64) []uint64 {
+	relays := make([]uint64, 0)
+	for _, relay := range relayArr {
+		if relay.data.ID == skipID {
+			continue
+		}
+
+		if relay.state != relayEnabled {
+			continue
+		}
+		relays = append(relays, relay.data.ID)
+	}
+
+	return relays
+
+}
+
+func relaysToPingFromUpdateResponse(resp *http.Response) ([]uint64, error) {
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []uint64{}, err
+	}
+	defer resp.Body.Close()
+
+	var relayUpdateResponse transport.RelayUpdateResponse
+	switch resp.Header.Get("Content-Type") {
+	case "application/octet-stream":
+		err = relayUpdateResponse.UnmarshalBinary(body)
+	default:
+		err = fmt.Errorf("unsupported content type")
+	}
+	if err != nil {
+		return []uint64{}, err
+	}
+
+	relaysToPing := make([]uint64, len(relayUpdateResponse.RelaysToPing))
+	for i, relay := range relayUpdateResponse.RelaysToPing {
+		if relay.ID != 0 {
+			relaysToPing[i] = relay.ID
+		}
+	}
+
+	return relaysToPing, nil
 }
 
 func baseUpdate(relay Relay) transport.RelayUpdateRequest {
@@ -336,7 +427,29 @@ func baseUpdate(relay Relay) transport.RelayUpdateRequest {
 	}
 }
 
-func newPacketData(base routeBase) routing.RelayStatsPing {
-	//todo handle packetData
-	return routing.RelayStatsPing{}
+func newPacketData(id uint64, base routeBase) routing.RelayStatsPing {
+	pingStat := routing.RelayStatsPing{}
+	pingStat.RelayID = id
+
+	rttMultiplier := calcMultiplier()
+	pingStat.RTT = base.rtt * rttMultiplier
+
+	jitterMultiplier := calcMultiplier()
+	pingStat.Jitter = base.jitter * jitterMultiplier
+
+	hasPL := rand.Int31n(pLChance)
+	if hasPL == 1 {
+		pingStat.PacketLoss = pLValue
+	} else {
+		pingStat.PacketLoss = 0.0
+	}
+
+	return pingStat
+}
+
+//this returns the float multiplier at +/- maxMultiplierPercent
+func calcMultiplier() float32 {
+	base := rand.Int31n(maxMultiplierPercent * 2)
+	return 1.0 + float32(base-maxMultiplierPercent)/100.0
+
 }
