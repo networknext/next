@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -339,12 +340,12 @@ func (db *SQL) syncDatacenters(ctx context.Context) error {
 func (db *SQL) syncRelays(ctx context.Context) error {
 
 	var sqlQuery bytes.Buffer
-	var relay sqlRelaySync
+	var relay sqlRelay
 
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
 
-	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
+	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
@@ -365,6 +366,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(&relay.DatabaseID,
+			&relay.HexID,
 			&relay.Name,
 			&relay.ContractTerm,
 			&relay.EndDate,
@@ -395,14 +397,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			return err
 		}
 
-		fullPublicAddress := relay.PublicIP + ":" + fmt.Sprintf("%d", relay.PublicIPPort)
-		rid := crypto.HashID(fullPublicAddress)
-
-		publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
-		}
-
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
@@ -428,12 +422,16 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
 
-		relayIDs[relay.DatabaseID] = rid
+		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+		}
+
+		relayIDs[relay.DatabaseID] = internalID
 
 		r := routing.Relay{
-			ID:                  rid,
+			ID:                  internalID,
 			Name:                relay.Name,
-			Addr:                *publicAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -454,13 +452,22 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 		}
 
 		// nullable values follow
-		if relay.InternalIP.String != "" {
+		if relay.InternalIP.Valid {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
 				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
 			}
 			r.InternalAddr = *internalAddr
+		}
+
+		if relay.PublicIP.Valid {
+			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
+			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+			}
+			r.Addr = *publicAddr
 		}
 
 		if relay.StartDate.Valid {
@@ -471,7 +478,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			r.EndDate = relay.EndDate.Time
 		}
 
-		relays[rid] = r
+		relays[internalID] = r
 
 	}
 
