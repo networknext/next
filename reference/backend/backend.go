@@ -174,16 +174,18 @@ func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) erro
 // -------------------------------------------------------------------------------------
 
 type NextBackendServerUpdatePacket struct {
-	VersionMajor  uint32
-	VersionMinor  uint32
-	VersionPatch  uint32
-	CustomerId    uint64
-	DatacenterId  uint64
-	NumSessions   uint32
-	ServerAddress net.UDPAddr
+	VersionMajor          uint32
+	VersionMinor          uint32
+	VersionPatch          uint32
+	CustomerId            uint64
+	DatacenterId          uint64
+	NumSessions           uint32
+	ServerAddress 		  net.UDPAddr
+	ServerInternalAddress net.UDPAddr
 }
 
 func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
+	// IMPORTANT: read only
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
@@ -191,6 +193,13 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
+	hasInternalAddress := false
+	stream.SerializeBool(&hasInternalAddress)
+	if hasInternalAddress {
+		stream.SerializeAddress(&packet.ServerInternalAddress)
+	} else {
+		packet.ServerInternalAddress = packet.ServerAddress
+	}
 	return stream.Error()
 }
 
@@ -209,6 +218,7 @@ type NextBackendSessionUpdatePacket struct {
 	SessionData                     [NEXT_MAX_SESSION_DATA_BYTES]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
+	ServerInternalAddress           net.UDPAddr
 	ClientRoutePublicKey            []byte
 	ServerRoutePublicKey            []byte
 	UserHash                        uint64
@@ -271,7 +281,16 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
+
 	stream.SerializeAddress(&packet.ServerAddress)
+
+	hasInternalAddress := false
+	stream.SerializeBool(&hasInternalAddress)
+	if hasInternalAddress {
+		stream.SerializeAddress(&packet.ServerInternalAddress)
+	} else {
+		packet.ServerInternalAddress = packet.ServerAddress
+	}
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
@@ -532,9 +551,10 @@ type RelayEntry struct {
 }
 
 type ServerEntry struct {
-	address    *net.UDPAddr
-	publicKey  []byte
-	lastUpdate int64
+	address    		*net.UDPAddr
+	internalAddress *net.UDPAddr
+	publicKey  		[]byte
+	lastUpdate 		int64
 }
 
 type SessionEntry struct {
@@ -574,7 +594,7 @@ func TimeoutThread() {
 				fmt.Printf("relay: %s\n", v.address)
 			}
 			for _, v := range backend.serverDatabase {
-				fmt.Printf("server: %s\n", v.address)
+				fmt.Printf("server: %s (%s)\n", v.address, v.internalAddress)
 			}
 			for k := range backend.sessionDatabase {
 				fmt.Printf("session: %x\n", k)
@@ -2519,7 +2539,8 @@ func main() {
 			}
 
 			serverEntry := ServerEntry{}
-			serverEntry.address = from
+			serverEntry.address = &serverUpdate.ServerAddress
+			serverEntry.internalAddress = &serverUpdate.ServerInternalAddress
 			serverEntry.lastUpdate = time.Now().Unix()
 
 			key := string(from.String())
