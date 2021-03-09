@@ -1444,7 +1444,6 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	db.relayMutex.Lock()
 	db.relays[r.ID] = r
 	db.relayMutex.Unlock()
-	// db.syncRelays(ctx)
 
 	db.IncrementSequenceNumber(ctx)
 
