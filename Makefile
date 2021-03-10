@@ -258,6 +258,8 @@ ifndef BEACON_ENTRY_VETO
 export BEACON_ENTRY_VETO = false
 endif
 
+export NEXT_DEBUG_LOGS = 1
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
