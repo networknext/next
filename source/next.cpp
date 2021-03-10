@@ -8981,7 +8981,9 @@ struct NextBackendServerUpdatePacket
     uint64_t datacenter_id;
     uint32_t num_sessions;
     next_address_t server_address;
+#if NEXT_EXPERIMENTAL
     next_address_t server_internal_address;
+#endif // #if NEXT_EXPRIMENTAL
 
     NextBackendServerUpdatePacket()
     {
@@ -8992,7 +8994,9 @@ struct NextBackendServerUpdatePacket
         datacenter_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
+#if NEXT_EXPERIMENTAL
         memset( &server_internal_address, 0, sizeof(next_address_t) );
+#endif // #if NEXT_EXPERIMENTAL
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -9004,12 +9008,14 @@ struct NextBackendServerUpdatePacket
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
+#if NEXT_EXPERIMENTAL
         bool has_internal_address = Stream::IsWriting && !next_address_equal( &server_address, &server_internal_address );
         serialize_bool( stream, has_internal_address );
         if ( has_internal_address )
         {
             serialize_address( stream, server_internal_address );
         }
+#endif // #if NEXT_EXPERIMENTAL
         return true;
     }
 };
@@ -9030,7 +9036,9 @@ struct NextBackendSessionUpdatePacket
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     next_address_t client_address;
     next_address_t server_address;
+#if NEXT_EXPERIMENTAL
     next_address_t server_internal_address;
+#endif // #if NEXT_EXPERIMENTAL
     uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint64_t user_hash;
@@ -9111,12 +9119,14 @@ struct NextBackendSessionUpdatePacket
 
         serialize_address( stream, server_address );
 
+#if NEXT_EXPERIMENTAL
         bool has_internal_address = Stream::IsWriting && !next_address_equal( &server_address, &server_internal_address );
         serialize_bool( stream, has_internal_address );
         if ( has_internal_address )
         {
             serialize_address( stream, server_internal_address );
         }
+#endif // #if NEXT_EXPERIMENTAL
 
         serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         serialize_bytes( stream, server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
@@ -12517,7 +12527,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
+#if NEXT_EXPERIMENTAL
         packet.server_internal_address = server->server_internal_address;
+#endif // #if NEXT_EXPERIMENTAL
 
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
@@ -12604,7 +12616,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             }
             packet.client_address = session->address;
             packet.server_address = server->server_address;
+#if NEXT_EXPERIMENTAL
             packet.server_internal_address = server->server_internal_address;
+#endif // #if NEXT_EXPERIMENTAL
             memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
 
