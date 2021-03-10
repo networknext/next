@@ -2,7 +2,6 @@ package transport
 
 import (
 	"errors"
-	"math"
 	"net"
 
 	"github.com/networknext/backend/modules/core"
@@ -46,15 +45,16 @@ const (
 	PlatformTypeUnknown     = 0
 	PlatformTypeWindows     = 1
 	PlatformTypeMac         = 2
-	PlatformTypeUnix        = 3
+	PlatformTypeLinux       = 3
 	PlatformTypeSwitch      = 4
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
 	PlatformTypeXBoxOne     = 7
-	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
 	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
-	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
+	PlatformTypeMax_Old     = 9 // SDK 4.0.6 and newer
+	PlatformTypeGDK         = 10
+	PlatformTypeMax_New     = 10 // SDK 4.0.10 and newer
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)
@@ -68,8 +68,7 @@ const (
 	FallbackFlagsRouteUpdateTimedOut        = (1 << 9)
 	FallbackFlagsDirectPongTimedOut         = (1 << 10)
 	FallbackFlagsNextPongTimedOut           = (1 << 11)
-	FallbackFlagsCount_400                  = 11
-	FallbackFlagsCount_401                  = 12
+	FallbackFlagsCount                      = 12
 
 	MaxTags = 8
 
@@ -110,8 +109,8 @@ func PlatformTypeText(platformType uint8) string {
 		return "Windows"
 	case PlatformTypeMac:
 		return "Mac"
-	case PlatformTypeUnix:
-		return "Unix"
+	case PlatformTypeLinux:
+		return "Linux"
 	case PlatformTypeSwitch:
 		return "Switch"
 	case PlatformTypePS4:
@@ -135,18 +134,22 @@ func ParsePlatformType(conntype string) uint8 {
 		return PlatformTypeWindows
 	case "Mac":
 		return PlatformTypeMac
-	case "Unix":
-		return PlatformTypeUnix
+	case "Linux":
+		return PlatformTypeLinux
 	case "Switch":
 		return PlatformTypeSwitch
 	case "PS4":
 		return PlatformTypePS4
+	case "PS5":
+		return PlatformTypePS5
 	case "IOS":
 		return PlatformTypeIOS
 	case "XBox One":
 		return PlatformTypeXBoxOne
 	case "XBox Series X":
 		return PlatformTypeXBoxSeriesX
+	case "GDK":
+		return PlatformTypeGDK
 	default:
 		return PlatformTypeUnknown
 	}
@@ -353,7 +356,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&packet.UserHash)
 
-	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 5) {
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 10) {
 		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_New)
 	} else {
 		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_Old)
@@ -367,9 +370,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
-	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 2) {
-		stream.SerializeBool(&packet.ClientPingTimedOut)
-	}
+	stream.SerializeBool(&packet.ClientPingTimedOut)
 
 	hasTags := stream.IsWriting() && packet.NumTags > 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
@@ -384,28 +385,14 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
 	if hasTags {
-		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 3) {
-			// multiple tags (SDK 4.0.3 and above)
-			stream.SerializeInteger(&packet.NumTags, 0, MaxTags)
-			for i := 0; i < int(packet.NumTags); i++ {
-				stream.SerializeUint64(&packet.Tags[i])
-			}
-		} else {
-			// single tag (< SDK 4.0.3)
-			stream.SerializeUint64(&packet.Tags[0])
-			if stream.IsWriting() {
-				packet.NumTags = 1
-			}
+		stream.SerializeInteger(&packet.NumTags, 0, MaxTags)
+		for i := 0; i < int(packet.NumTags); i++ {
+			stream.SerializeUint64(&packet.Tags[i])
 		}
 	}
 
 	if hasFlags {
-		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 1) {
-			// flag added in SDK 4.0.1 for fallback to new direct reason
-			stream.SerializeBits(&packet.Flags, FallbackFlagsCount_401)
-		} else {
-			stream.SerializeBits(&packet.Flags, FallbackFlagsCount_400)
-		}
+		stream.SerializeBits(&packet.Flags, FallbackFlagsCount)
 	}
 
 	if hasUserFlags {
@@ -433,24 +420,9 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	for i := int32(0); i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIDs[i])
-		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 4) {
-			// SDK 4.0.4 optimized transmission of near relay rtt, jitter and packet loss
-			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
-			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
-			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
-		} else {
-			rtt := float32(packet.NearRelayRTT[i])
-			jitter := float32(packet.NearRelayJitter[i])
-			packetLoss := float32(packet.NearRelayPacketLoss[i])
-
-			stream.SerializeFloat32(&rtt)
-			stream.SerializeFloat32(&jitter)
-			stream.SerializeFloat32(&packetLoss)
-
-			packet.NearRelayRTT[i] = int32(math.Ceil(float64(rtt)))
-			packet.NearRelayJitter[i] = int32(math.Ceil(float64(jitter)))
-			packet.NearRelayPacketLoss[i] = int32(math.Floor(float64(packetLoss + 0.5)))
-		}
+		stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+		stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+		stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
 	}
 
 	if packet.Next {
@@ -514,10 +486,8 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
 
 	nearRelaysChanged := true
-	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
-		stream.SerializeBool(&packet.NearRelaysChanged)
-		nearRelaysChanged = packet.NearRelaysChanged
-	}
+	stream.SerializeBool(&packet.NearRelaysChanged)
+	nearRelaysChanged = packet.NearRelaysChanged
 
 	if nearRelaysChanged {
 		stream.SerializeInteger(&packet.NumNearRelays, 0, core.MaxNearRelays)
@@ -551,23 +521,17 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeBytes(packet.Tokens)
 	}
 
-	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 4) {
-		stream.SerializeBool(&packet.HasDebug)
-		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
-	}
+	stream.SerializeBool(&packet.HasDebug)
+	stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
 
-	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 5) {
-		stream.SerializeBool(&packet.ExcludeNearRelays)
-		if packet.ExcludeNearRelays {
-			for i := range packet.NearRelayExcluded {
-				stream.SerializeBool(&packet.NearRelayExcluded[i])
-			}
+	stream.SerializeBool(&packet.ExcludeNearRelays)
+	if packet.ExcludeNearRelays {
+		for i := range packet.NearRelayExcluded {
+			stream.SerializeBool(&packet.NearRelayExcluded[i])
 		}
 	}
 
-	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 4, 0, 6) {
-		stream.SerializeBool(&packet.HighFrequencyPings)
-	}
+	stream.SerializeBool(&packet.HighFrequencyPings)
 
 	return stream.Error()
 }
