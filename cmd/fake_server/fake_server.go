@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -102,6 +103,12 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			return nil
+		},
+	}
+
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -150,13 +157,6 @@ func mainReturnWithCode() int {
 	errChan := make(chan error, 1)
 	for i := 0; i < numServers; i++ {
 		go func() {
-			bindAddress, err := net.ResolveUDPAddr("udp", "0.0.0.0:0")
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				errChan <- err
-				return
-			}
-
 			numClientsMutex.Lock()
 			clients := numClients
 
@@ -168,12 +168,15 @@ func mainReturnWithCode() int {
 			}
 			numClientsMutex.Unlock()
 
-			conn, err := net.DialUDP("udp", bindAddress, serverBackendAddress)
+			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:0")
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
 				return
 			}
+
+			conn := lp.(*net.UDPConn)
+			defer conn.Close()
 
 			if err := conn.SetReadBuffer(readBuffer); err != nil {
 				level.Error(logger).Log("msg", "could not set connection read buffer size", "err", err)
@@ -187,7 +190,7 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			server, err := fake_server.NewFakeServer(conn, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey)
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
@@ -196,6 +199,7 @@ func mainReturnWithCode() int {
 
 			if err := server.StartLoop(ctx, time.Second*10, readBuffer, writeBuffer); err != nil {
 				level.Error(logger).Log("err", err)
+				fmt.Printf("Error: %v\n", err)
 				errChan <- err
 				return
 			}

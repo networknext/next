@@ -26,12 +26,13 @@ type FakeServer struct {
 	logger               log.Logger
 	serverRoutePublicKey []byte
 
-	conn     net.Conn
-	sessions []Session
+	conn              *net.UDPConn
+	serverBackendAddr *net.UDPAddr
+	sessions          []Session
 }
 
 // NewFakeServer returns a fake server with the given parameters.
-func NewFakeServer(conn net.Conn, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte) (*FakeServer, error) {
+func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte) (*FakeServer, error) {
 	// We need to use a random address for the server so that
 	// each server instance is uniquely identifiable, so that
 	// the total session count is accurate.
@@ -63,6 +64,7 @@ func NewFakeServer(conn net.Conn, clientCount int, sdkVersion transport.SDKVersi
 		serverRoutePublicKey: routePublicKey,
 		sessions:             make([]Session, clientCount),
 		conn:                 conn,
+		serverBackendAddr:    serverBackendAddr,
 	}
 
 	return server, nil
@@ -303,7 +305,7 @@ func (server *FakeServer) sendPacket(packetType byte, packetData []byte) error {
 		return err
 	}
 
-	if _, err := server.conn.Write(packetData); err != nil {
+	if _, err := server.conn.WriteToUDP(packetData, server.serverBackendAddr); err != nil {
 		return fmt.Errorf("failed to write to UDP: %v", err)
 	}
 
@@ -319,7 +321,7 @@ func (server FakeServer) readPacket() (byte, []byte, error) {
 	incomingPacketDataArray := [transport.DefaultMaxPacketSize]byte{}
 	incomingPacketData := incomingPacketDataArray[:]
 
-	n, err := server.conn.Read(incomingPacketData)
+	n, _, err := server.conn.ReadFromUDP(incomingPacketData)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to read from UDP: %v", err)
 	}
