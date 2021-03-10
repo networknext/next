@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+const NEXT_EXPERIMENTAL = false
+
 const (
 	relayBin   = "./dist/reference_relay"
 	backendBin = "./dist/func_backend"
@@ -194,6 +196,7 @@ type ServerConfig struct {
 	tags_multi           bool
 	tags_change          bool
 	tags_clear           bool
+	internal_address     string
 }
 
 func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -255,6 +258,10 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	if config.tags_clear {
 		cmd.Env = append(cmd.Env, "SERVER_TAGS_CLEAR=1")
+	}
+
+	if config.internal_address != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_SERVER_INTERNAL_ADDRESS=%s", config.internal_address))
 	}
 
 	var output bytes.Buffer
@@ -2746,6 +2753,66 @@ func test_client_ping_timed_out() {
 
 }
 
+/*
+	This test makes sure that the server backend sees the server internal address 
+	in both server update and the session update packets. 
+*/
+
+func test_server_internal_address() {
+
+	fmt.Printf("test_server_internal_address\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.stop_sending_packets_time = 50.0
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.internal_address = "127.0.0.1:5000"
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
+	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
+
+	backendSawServerUpdateInternalAddress := strings.Contains(backend_stdout.String(), "server update internal address: 127.0.0.1:5000")
+	backendSawSessionUpdateInternalAddress := strings.Contains(backend_stdout.String(), "session update internal address: 127.0.0.1:5000")
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerUpdateInternalAddress)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdateInternalAddress)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]+client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED] == client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT])
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED] >= 40*60)
+
+}
+
 type test_function func()
 
 func main() {
@@ -2788,6 +2855,10 @@ func main() {
 		test_next_stats,
 		test_report_session,
 		test_client_ping_timed_out,
+	}
+
+	if NEXT_EXPERIMENTAL {
+		allTests = append(allTests, test_server_internal_address)
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
