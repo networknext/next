@@ -38,7 +38,7 @@ export ENV = local
 ##################
 
 export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local aliased
+export NEXT_DATACENTER = local
 export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
