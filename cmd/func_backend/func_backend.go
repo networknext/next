@@ -225,6 +225,13 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
 		return
 	}
+
+	// todo: server internal addres
+/*
+	if serverUpdate.ServerInternalAddress.String() != serverUpdate.ServerAddress.String() {
+		fmt.Printf("server update internal address: %s\n", serverUpdate.ServerInternalAddress.String())
+	}	
+*/
 }
 
 func excludeNearRelays(sessionResponse *transport.SessionResponsePacket, routeState core.RouteState) {
@@ -284,6 +291,13 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if sessionUpdate.PacketsLostServerToClient > 0 {
 		fmt.Printf("%d server to client packets lost\n", sessionUpdate.PacketsLostServerToClient)
 	}
+
+	// todo: server internal address
+/*
+	if sessionUpdate.ServerInternalAddress.String() != sessionUpdate.ServerAddress.String() {
+		fmt.Printf("session update internal address: %s\n", sessionUpdate.ServerInternalAddress.String())
+	}
+*/
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
 		if sessionUpdate.NextKbpsUp > 0 {
