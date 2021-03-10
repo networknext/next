@@ -612,7 +612,7 @@ func SessionUpdateHandlerFunc(
 		if buyer.Debug {
 			debug = new(string)
 		}
-
+		
 		// If a player has the "pro" tag, set pro mode in the route shader
 		if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
 			for i := int32(0); i < packet.NumTags; i++ {
