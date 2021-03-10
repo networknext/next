@@ -32,6 +32,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const NEXT_EXPERIMENTAL = false
+
 const NEXT_MAX_TAGS = 8
 
 const NEXT_MAX_ROUTE_RELAYS = 5
@@ -194,18 +196,17 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
-	// todo: internal address
-	/*
-	hasInternalAddress := false
-	stream.SerializeBool(&hasInternalAddress)
-	if hasInternalAddress {
-		stream.SerializeAddress(&packet.ServerInternalAddress)
+	if NEXT_EXPERIMENTAL {
+		hasInternalAddress := false
+		stream.SerializeBool(&hasInternalAddress)
+		if hasInternalAddress {
+			stream.SerializeAddress(&packet.ServerInternalAddress)
+		} else {
+			packet.ServerInternalAddress = packet.ServerAddress
+		}
 	} else {
 		packet.ServerInternalAddress = packet.ServerAddress
 	}
-	*/
-	packet.ServerInternalAddress = packet.ServerAddress
-	// todo: internal address
 	return stream.Error()
 }
 
@@ -290,18 +291,17 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 
 	stream.SerializeAddress(&packet.ServerAddress)
 
-	// todo: internal address
-	/*
-	hasInternalAddress := false
-	stream.SerializeBool(&hasInternalAddress)
-	if hasInternalAddress {
-		stream.SerializeAddress(&packet.ServerInternalAddress)
+	if NEXT_EXPERIMENTAL {
+		hasInternalAddress := false
+		stream.SerializeBool(&hasInternalAddress)
+		if hasInternalAddress {
+			stream.SerializeAddress(&packet.ServerInternalAddress)
+		} else {
+			packet.ServerInternalAddress = packet.ServerAddress
+		}
 	} else {
 		packet.ServerInternalAddress = packet.ServerAddress
 	}
-	*/
-	packet.ServerInternalAddress = packet.ServerAddress
-	// todo: internal address
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
@@ -2458,7 +2458,11 @@ func main() {
 
 	defer connection.Close()
 
-	fmt.Printf("\nreference backend (sdk4)\n\n")
+	if NEXT_EXPERIMENTAL {
+		fmt.Printf("\nreference backend (sdk4-experimental)\n\n")
+	} else {
+		fmt.Printf("\nreference backend (sdk4)\n\n")
+	}
 
 	multipath := false
 	if os.Getenv("BACKEND_MULTIPATH") == "1" {
