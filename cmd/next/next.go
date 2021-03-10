@@ -2003,6 +2003,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var validateCommand = &ffcli.Command{
+		Name:       "validate",
+		ShortUsage: "next validate [input_file]",
+		ShortHelp:  "Validate all relay and datacenter pairs for a route matrix",
+		Exec: func(ctx context.Context, args []string) error {
+			inputFile := "optimize.bin"
+			if len(args) > 0 {
+				inputFile = args[0]
+			}
+			validate(rpcClient, env, inputFile)
+			return nil
+		},
+	}
+
 	var viewCommand = &ffcli.Command{
 		Name:       "view",
 		ShortUsage: "next view <subcommand>",
