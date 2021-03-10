@@ -190,7 +190,17 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey)
+			// Assign a datacenter for this server
+			var dcName string
+			if gcpProjectID != "" {
+				// Staging datacenters are between 1 and 80, inclusive
+				dcNum := rand.Intn(80-1) + 1
+				dcName = fmt.Sprintf("staging.%d", dcNum)
+			} else {
+				dcName = "local"
+			}
+
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey, dcName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err

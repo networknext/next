@@ -25,6 +25,7 @@ type FakeServer struct {
 	publicAddress        *net.UDPAddr
 	logger               log.Logger
 	serverRoutePublicKey []byte
+	dcName               string
 
 	conn              *net.UDPConn
 	serverBackendAddr *net.UDPAddr
@@ -32,7 +33,7 @@ type FakeServer struct {
 }
 
 // NewFakeServer returns a fake server with the given parameters.
-func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte) (*FakeServer, error) {
+func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte, dcName string) (*FakeServer, error) {
 	// We need to use a random address for the server so that
 	// each server instance is uniquely identifiable, so that
 	// the total session count is accurate.
@@ -62,6 +63,7 @@ func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, clientCoun
 		customerPrivateKey:   customerPrivateKey,
 		logger:               logger,
 		serverRoutePublicKey: routePublicKey,
+		dcName:               dcName,
 		sessions:             make([]Session, clientCount),
 		conn:                 conn,
 		serverBackendAddr:    serverBackendAddr,
@@ -137,9 +139,9 @@ func (server *FakeServer) sendServerInitPacket() error {
 	requestPacket := transport.ServerInitRequestPacket{
 		Version:        server.sdkVersion,
 		CustomerID:     server.customerID,
-		DatacenterID:   crypto.HashID("local"),
+		DatacenterID:   crypto.HashID(server.dcName),
 		RequestID:      rand.Uint64(),
-		DatacenterName: "local aliased",
+		DatacenterName: server.dcName,
 	}
 
 	packetData, err := transport.MarshalPacket(&requestPacket)
@@ -180,7 +182,7 @@ func (server *FakeServer) sendServerUpdatePacket() error {
 	requestPacket := transport.ServerUpdatePacket{
 		Version:       server.sdkVersion,
 		CustomerID:    server.customerID,
-		DatacenterID:  crypto.HashID("local"),
+		DatacenterID:  crypto.HashID(server.dcName),
 		NumSessions:   uint32(len(server.sessions)),
 		ServerAddress: *server.publicAddress,
 	}
@@ -206,7 +208,7 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 	requestPacket := transport.SessionUpdatePacket{
 		Version:                         server.sdkVersion,
 		CustomerID:                      server.customerID,
-		DatacenterID:                    crypto.HashID("local"),
+		DatacenterID:                    crypto.HashID(server.dcName),
 		SessionID:                       session.sessionID,
 		SliceNumber:                     session.sliceNumber,
 		SessionDataBytes:                session.sessionDataBytes,

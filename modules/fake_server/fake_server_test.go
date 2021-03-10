@@ -21,12 +21,26 @@ const (
 	testSendInitErrorResponse     = 4
 )
 
-func createExpectedFakeServer(t *testing.T) *FakeServer {
+func createExpectedFakeServer(t *testing.T) (*FakeServer, *net.UDPConn) {
 	_, privateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
 
 	customerID := binary.LittleEndian.Uint64(privateKey[:8])
 	privateKey = privateKey[8:]
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:0")
+	assert.NoError(t, err)
+
+	conn := lp.(*net.UDPConn)
+
+	serverBackendLP, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:0")
+	assert.NoError(t, err)
+
+	serverBackendConn := serverBackendLP.(*net.UDPConn)
+	serverBackendAddr, err := net.ResolveUDPAddr("udp", serverBackendConn.LocalAddr().String())
+	assert.NoError(t, err)
 
 	expectedServer := FakeServer{
 		sdkVersion:         transport.SDKVersionMin,
@@ -34,10 +48,12 @@ func createExpectedFakeServer(t *testing.T) *FakeServer {
 		customerPrivateKey: privateKey,
 		logger:             log.NewNopLogger(),
 		sessions:           make([]Session, 100),
-		conn:               nil,
+		conn:               conn,
+		serverBackendAddr:  serverBackendAddr,
+		dcName:             "local",
 	}
 
-	return &expectedServer
+	return &expectedServer, serverBackendConn
 }
 
 func testInitResponse(t *testing.T, responseType uint32) []byte {
@@ -77,11 +93,11 @@ func testSessionResponse(t *testing.T) []byte {
 	return response
 }
 
-func runTestServerBackend(t *testing.T, backendConn net.Conn, sendResponse int) {
+func runTestServerBackend(t *testing.T, backendConn *net.UDPConn, sendResponse int) {
 	buffer := make([]byte, transport.DefaultMaxPacketSize)
 
 	for {
-		_, err := backendConn.Read(buffer)
+		_, fromAddr, err := backendConn.ReadFromUDP(buffer)
 
 		var response []byte
 
@@ -89,7 +105,7 @@ func runTestServerBackend(t *testing.T, backendConn net.Conn, sendResponse int) 
 		case testSendInvalidResponse:
 			response = []byte("bad data")
 
-			_, err = backendConn.Write(response)
+			_, err = backendConn.WriteToUDP(response, fromAddr)
 			assert.NoError(t, err)
 			return
 
@@ -135,16 +151,16 @@ func runTestServerBackend(t *testing.T, backendConn net.Conn, sendResponse int) 
 		}
 
 		if response != nil {
-			_, err = backendConn.Write(response)
+			_, err = backendConn.WriteToUDP(response, fromAddr)
 			assert.NoError(t, err)
 		}
 	}
 }
 
 func TestNewFakeServer(t *testing.T) {
-	expectedServer := createExpectedFakeServer(t)
+	expectedServer, _ := createExpectedFakeServer(t)
 
-	actualServer, err := NewFakeServer(expectedServer.conn, len(expectedServer.sessions), expectedServer.sdkVersion, expectedServer.logger, expectedServer.customerID, expectedServer.customerPrivateKey)
+	actualServer, err := NewFakeServer(expectedServer.conn, expectedServer.serverBackendAddr, len(expectedServer.sessions), expectedServer.sdkVersion, expectedServer.logger, expectedServer.customerID, expectedServer.customerPrivateKey, expectedServer.dcName)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedServer.sdkVersion, actualServer.sdkVersion)
 	assert.Equal(t, expectedServer.customerID, actualServer.customerID)
@@ -154,16 +170,15 @@ func TestNewFakeServer(t *testing.T) {
 	assert.NotEmpty(t, actualServer.serverRoutePublicKey)
 	assert.Equal(t, expectedServer.sessions, actualServer.sessions)
 	assert.Equal(t, expectedServer.conn, actualServer.conn)
+	assert.Equal(t, expectedServer.serverBackendAddr, actualServer.serverBackendAddr)
+	assert.Equal(t, expectedServer.dcName, actualServer.dcName)
 }
 
 func TestStartLoop(t *testing.T) {
-	server := createExpectedFakeServer(t)
+	server, backendConn := createExpectedFakeServer(t)
 
-	server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+	server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 	assert.NoError(t, err)
-
-	serverConn, backendConn := net.Pipe()
-	server.conn = serverConn
 
 	go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
@@ -175,13 +190,11 @@ func TestStartLoop(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	server := createExpectedFakeServer(t)
+	server, backendConn := createExpectedFakeServer(t)
 
-	server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+	server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 	assert.NoError(t, err)
 
-	serverConn, backendConn := net.Pipe()
-	server.conn = serverConn
 	go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
 	err = server.update()
@@ -190,9 +203,9 @@ func TestUpdate(t *testing.T) {
 
 func TestSendServerInitPacket(t *testing.T) {
 	t.Run("failed to marshal request", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		// Bad version which would fail to marshal
@@ -203,9 +216,9 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 
 	t.Run("failed to send request", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		// Simulate a bad connection
@@ -216,14 +229,12 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 
 	t.Run("failed to read response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate a bad response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendInvalidResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		err = server.sendServerInitPacket()
@@ -231,14 +242,12 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 
 	t.Run("mismatched response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate a mismatched response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendMismatchedResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		err = server.sendServerInitPacket()
@@ -246,14 +255,12 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 
 	t.Run("failed to unmarshal response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate an unmarshalable response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendUnmarshalableResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		err = server.sendServerInitPacket()
@@ -261,14 +268,12 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 
 	t.Run("error response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate an unmarshalable response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendInitErrorResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		err = server.sendServerInitPacket()
@@ -276,13 +281,11 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		err = server.sendServerInitPacket()
@@ -292,9 +295,9 @@ func TestSendServerInitPacket(t *testing.T) {
 
 func TestSendServerUpdatePacket(t *testing.T) {
 	t.Run("failed to marshal request", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		// Bad version which would fail to marshal
@@ -305,9 +308,9 @@ func TestSendServerUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("failed to send request", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		// Simulate a bad connection
@@ -318,13 +321,11 @@ func TestSendServerUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		assert.NoError(t, err)
@@ -334,9 +335,9 @@ func TestSendServerUpdatePacket(t *testing.T) {
 
 func TestSendSessionUpdatePacket(t *testing.T) {
 	t.Run("failed to marshal request", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		// Bad version which would fail to marshal
@@ -350,9 +351,9 @@ func TestSendSessionUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("failed to send request", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		// Simulate a bad connection
@@ -366,14 +367,12 @@ func TestSendSessionUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("failed to read response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate a bad response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendInvalidResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		session, err := NewSession()
@@ -384,14 +383,12 @@ func TestSendSessionUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("mismatched response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate a mismatched response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendMismatchedResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		session, err := NewSession()
@@ -402,14 +399,12 @@ func TestSendSessionUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("failed to unmarshal response", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
 		// Simulate an unmarshalable response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendUnmarshalableResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		session, err := NewSession()
@@ -420,14 +415,11 @@ func TestSendSessionUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		// Simulate an unmarshalable response
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go runTestServerBackend(t, backendConn, testSendNormalResponse)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		session, err := NewSession()
@@ -441,9 +433,9 @@ func TestSendSessionUpdatePacket(t *testing.T) {
 
 func TestSendPacket(t *testing.T) {
 	t.Run("fail to set write deadline", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		server.conn = &net.UDPConn{}
@@ -453,31 +445,24 @@ func TestSendPacket(t *testing.T) {
 	})
 
 	t.Run("fail to write", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
-
-		go func() {
-			time.Sleep(time.Millisecond * 10)
-			backendConn.Close()
-		}()
+		err = server.conn.Close()
+		assert.NoError(t, err)
 
 		err = server.sendPacket(transport.PacketTypeServerInitRequest, nil)
 		assert.Error(t, err)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 		go func() {
 			buffer := make([]byte, transport.DefaultMaxPacketSize)
 			_, err := backendConn.Read(buffer)
@@ -491,9 +476,9 @@ func TestSendPacket(t *testing.T) {
 
 func TestReadPacket(t *testing.T) {
 	t.Run("fail to set read deadline", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
 		server.conn = &net.UDPConn{}
@@ -505,18 +490,13 @@ func TestReadPacket(t *testing.T) {
 	})
 
 	t.Run("fail to read", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, _ := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
-
-		go func() {
-			time.Sleep(time.Millisecond * 10)
-			backendConn.Close()
-		}()
+		err = server.conn.Close()
+		assert.NoError(t, err)
 
 		packetType, packetData, err := server.readPacket()
 		assert.Zero(t, packetType)
@@ -525,16 +505,16 @@ func TestReadPacket(t *testing.T) {
 	})
 
 	t.Run("read empty packet", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
-
 		go func() {
-			_, err := backendConn.Write([]byte{})
+			serverAddr, err := net.ResolveUDPAddr("udp", server.conn.LocalAddr().String())
+			assert.NoError(t, err)
+
+			_, err = backendConn.WriteToUDP([]byte{}, serverAddr)
 			assert.NoError(t, err)
 		}()
 
@@ -545,16 +525,16 @@ func TestReadPacket(t *testing.T) {
 	})
 
 	t.Run("read non network next packet", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
 
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
-
 		go func() {
-			_, err := backendConn.Write([]byte("bad packet data"))
+			serverAddr, err := net.ResolveUDPAddr("udp", server.conn.LocalAddr().String())
+			assert.NoError(t, err)
+
+			_, err = backendConn.WriteToUDP([]byte("bad packet data"), serverAddr)
 			assert.NoError(t, err)
 		}()
 
@@ -565,20 +545,20 @@ func TestReadPacket(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		server := createExpectedFakeServer(t)
+		server, backendConn := createExpectedFakeServer(t)
 
-		server, err := NewFakeServer(server.conn, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, len(server.sessions), server.sdkVersion, server.logger, server.customerID, server.customerPrivateKey, server.dcName)
 		assert.NoError(t, err)
-
-		serverConn, backendConn := net.Pipe()
-		server.conn = serverConn
 
 		go func() {
 			responseData := make([]byte, 2+crypto.PacketHashSize) // We need to have at least 1 byte in the message, otherwise crypto.HashPacket will panic
 			responseData[0] = transport.PacketTypeServerInitResponse
 			crypto.HashPacket(crypto.PacketHashKey, responseData)
 
-			_, err = backendConn.Write(responseData)
+			serverAddr, err := net.ResolveUDPAddr("udp", server.conn.LocalAddr().String())
+			assert.NoError(t, err)
+
+			_, err = backendConn.WriteToUDP(responseData, serverAddr)
 			assert.NoError(t, err)
 		}()
 
