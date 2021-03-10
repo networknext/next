@@ -17,6 +17,8 @@ import (
 	"os"
 )
 
+const NEXT_EXPERIMENTAL = false
+
 const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
