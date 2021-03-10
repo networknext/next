@@ -52,7 +52,7 @@ const (
 	PlatformTypeXBoxOne     = 7
 	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
-	PlatformTypeMax_Old     = 9 // SDK 4.0.6 and newer
+	PlatformTypeMax_Old     = 9 // SDK 4.0.6 - 4.0.9
 	PlatformTypeGDK         = 10
 	PlatformTypeMax_New     = 10 // SDK 4.0.10 and newer
 
@@ -115,14 +115,16 @@ func PlatformTypeText(platformType uint8) string {
 		return "Switch"
 	case PlatformTypePS4:
 		return "PS4"
+	case PlatformTypePS5:
+		return "PS5"
 	case PlatformTypeIOS:
 		return "IOS"
 	case PlatformTypeXBoxOne:
 		return "XBox One"
 	case PlatformTypeXBoxSeriesX:
 		return "XBox Series X"
-	case PlatformTypePS5:
-		return "PS5"
+	case PlatformTypeGDK:
+		return "GDK"
 	default:
 		return "unknown"
 	}
@@ -330,9 +332,13 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
 
 	stream.SerializeUint64(&packet.CustomerID)
+
 	stream.SerializeUint64(&packet.DatacenterID)
+	
 	stream.SerializeUint64(&packet.SessionID)
+	
 	stream.SerializeUint32(&packet.SliceNumber)
+	
 	stream.SerializeInteger(&packet.RetryNumber, 0, MaxSessionUpdateRetries)
 
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
@@ -342,16 +348,13 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
-
 	stream.SerializeAddress(&packet.ServerAddress)
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, crypto.KeySize)
 		packet.ServerRoutePublicKey = make([]byte, crypto.KeySize)
 	}
-
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
-
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
 
 	stream.SerializeUint64(&packet.UserHash)
