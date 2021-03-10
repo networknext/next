@@ -57,6 +57,7 @@ const (
 	PlatformTypeMax_405     = 9 	// SDK 4.0.5 and newer
 	PlatformTypeGDK         = 10
 	PlatformTypeMax_410     = 10 	// SDK 4.0.10 and newer
+	PlatformTypeMax         = 10
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)

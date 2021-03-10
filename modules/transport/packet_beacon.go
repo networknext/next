@@ -66,7 +66,7 @@ func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.SessionID)
 	}
 
-	stream.SerializeInteger(&packet.PlatformID, PlatformTypeUnknown, PlatformTypeMax_410)
+	stream.SerializeInteger(&packet.PlatformID, PlatformTypeUnknown, PlatformTypeMax)
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 

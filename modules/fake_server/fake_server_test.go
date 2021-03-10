@@ -29,7 +29,7 @@ func createExpectedFakeServer(t *testing.T) *FakeServer {
 	privateKey = privateKey[8:]
 
 	expectedServer := FakeServer{
-		sdkVersion:         transport.SDKVersionMin,
+		sdkVersion:         transport.SDKVersionLatest,
 		customerID:         customerID,
 		customerPrivateKey: privateKey,
 		logger:             log.NewNopLogger(),
