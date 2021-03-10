@@ -212,7 +212,7 @@ func SeedSQLStorage(
 		// add datacenter maps
 		// fmt.Println("Adding datacenter_maps")
 		localDcMap := routing.DatacenterMap{
-			Alias:        "local aliased",
+			Alias:        "local",
 			BuyerID:      localBuyer.ID,
 			DatacenterID: localDatacenter.ID,
 		}

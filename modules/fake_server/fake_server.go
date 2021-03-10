@@ -135,9 +135,9 @@ func (server *FakeServer) sendServerInitPacket() error {
 	requestPacket := transport.ServerInitRequestPacket{
 		Version:        server.sdkVersion,
 		CustomerID:     server.customerID,
-		DatacenterID:   crypto.HashID("local aliased"),
+		DatacenterID:   crypto.HashID("local"),
 		RequestID:      rand.Uint64(),
-		DatacenterName: "local aliased",
+		DatacenterName: "local",
 	}
 
 	packetData, err := transport.MarshalPacket(&requestPacket)
@@ -178,7 +178,7 @@ func (server *FakeServer) sendServerUpdatePacket() error {
 	requestPacket := transport.ServerUpdatePacket{
 		Version:       server.sdkVersion,
 		CustomerID:    server.customerID,
-		DatacenterID:  crypto.HashID("local aliased"),
+		DatacenterID:  crypto.HashID("local"),
 		NumSessions:   uint32(len(server.sessions)),
 		ServerAddress: *server.publicAddress,
 	}
@@ -204,7 +204,7 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 	requestPacket := transport.SessionUpdatePacket{
 		Version:                         server.sdkVersion,
 		CustomerID:                      server.customerID,
-		DatacenterID:                    crypto.HashID("local aliased"),
+		DatacenterID:                    crypto.HashID("local"),
 		SessionID:                       session.sessionID,
 		SliceNumber:                     session.sliceNumber,
 		SessionDataBytes:                session.sessionDataBytes,
