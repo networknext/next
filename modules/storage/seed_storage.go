@@ -20,7 +20,6 @@ func SeedStorage(
 	customerID uint64,
 	customerPublicKey []byte,
 ) error {
-	fmt.Println("SeedStorage()")
 	routeShader := core.NewRouteShader()
 	internalConfig := core.NewInternalConfig()
 	internalConfig.ForceNext = true

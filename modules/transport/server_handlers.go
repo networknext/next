@@ -264,6 +264,10 @@ func handleNearAndDestRelays(
 
 func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+
+		core.Debug("-----------------------------------------")
+		core.Debug("server init packet from %s", incoming.SourceAddr.String())
+
 		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
@@ -274,94 +278,99 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 			if milliseconds > 100 {
 				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
+
+			core.Debug("server init duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
 		var packet ServerInitRequestPacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
-			level.Error(logger).Log("msg", "could not read server init packet", "err", err)
+			core.Debug("could not read server init packet: %v", err)
 			metrics.ReadPacketFailure.Add(1)
 			return
 		}
 
+		core.Debug("server customer id is %x", packet.CustomerID)
+
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
-			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
+			core.Debug("unknown customer")
 			metrics.BuyerNotFound.Add(1)
-
 			if err := writeServerInitResponse(w, &packet, InitResponseUnknownCustomer); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
-
 			return
 		}
 
 		if !buyer.Live {
-			level.Error(logger).Log("err", "customer not active", "customerID", packet.CustomerID)
+			core.Debug("customer not active")
 			metrics.BuyerNotActive.Add(1)
 			if err := writeServerInitResponse(w, &packet, InitResponseCustomerNotActive); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
-			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
-
 			if err := writeServerInitResponse(w, &packet, InitResponseSignatureCheckFailed); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
-
 			return
 		}
 
-		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
-			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
+		if !packet.Version.AtLeast(SDKVersion{4, 0, 6}) {
+			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
-
 			if err := writeServerInitResponse(w, &packet, InitResponseOldSDKVersion); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
-
 			return
 		}
 
 		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, packet.DatacenterName); err != nil {
-			level.Error(logger).Log("handler", "server_init", "err", err)
+			
+			core.Debug("could not get datacenter: %s [%x]", packet.DatacenterName, packet.DatacenterID );
 
 			switch err.(type) {
 			case ErrDatacenterNotFound:
+				core.Debug("datacenter not found")
 				metrics.DatacenterNotFound.Add(1)
 
 			case ErrDatacenterMapMisconfigured:
+				core.Debug("datacenter map misconfigured")
 				metrics.MisconfiguredDatacenterAlias.Add(1)
 
 			case ErrDatacenterNotAllowed:
+				core.Debug("datacenter not allowed")
 				metrics.DatacenterNotAllowed.Add(1)
 				if err := writeServerInitResponse(w, &packet, InitResponseDataCenterNotEnabled); err != nil {
-					level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+					core.Debug("failed to write server init response: %s", err)
 					metrics.WriteResponseFailure.Add(1)
 				}
 				return
 			}
 
 			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
+
 			return
 		}
 
 		if err := writeServerInitResponse(w, &packet, InitResponseOK); err != nil {
-			level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+			core.Debug("failed to write server init response: %s", err)
 			metrics.WriteResponseFailure.Add(1)
 			return
 		}
 
-		level.Debug(logger).Log("msg", "server initialized successfully", "source_address", incoming.SourceAddr.String())
+		core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
+
+		core.Debug("server initialized successfully")
 	}
 }
 
@@ -691,6 +700,8 @@ func SessionUpdateHandlerFunc(
 				slicePacketLoss = slicePacketLossServerToClient
 			}
 		}
+
+		// ------
 
 		// Don't accelerate any sessions if the buyer is not yet live
 		if !buyer.Live {
