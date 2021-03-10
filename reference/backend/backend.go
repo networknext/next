@@ -194,6 +194,8 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
+	// todo: internal address
+	/*
 	hasInternalAddress := false
 	stream.SerializeBool(&hasInternalAddress)
 	if hasInternalAddress {
@@ -201,6 +203,9 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	} else {
 		packet.ServerInternalAddress = packet.ServerAddress
 	}
+	*/
+	packet.ServerInternalAddress = packet.ServerAddress
+	// todo: internal address
 	return stream.Error()
 }
 
@@ -285,6 +290,8 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 
 	stream.SerializeAddress(&packet.ServerAddress)
 
+	// todo: internal address
+	/*
 	hasInternalAddress := false
 	stream.SerializeBool(&hasInternalAddress)
 	if hasInternalAddress {
@@ -292,6 +299,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	} else {
 		packet.ServerInternalAddress = packet.ServerAddress
 	}
+	*/
+	packet.ServerInternalAddress = packet.ServerAddress
+	// todo: internal address
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)

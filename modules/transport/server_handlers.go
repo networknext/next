@@ -321,7 +321,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 			return
 		}
 
-		if !packet.Version.AtLeast(SDKVersion{4, 0, 6}) {
+		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) {
 			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
 			if err := writeServerInitResponse(w, &packet, InitResponseOldSDKVersion); err != nil {
