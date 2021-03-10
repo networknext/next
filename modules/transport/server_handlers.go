@@ -228,6 +228,7 @@ func handleNearAndDestRelays(
 	if newSession {
 		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
 		if len(nearRelayIDs) == 0 {
+			core.Debug("no near relays :(")
 			return false, nearRelayGroup{}, nil, errors.New("no near relays")
 		}
 
@@ -528,9 +529,11 @@ func SessionUpdateHandlerFunc(
 		defer func() {
 
 			if response.RouteType != routing.RouteTypeDirect {
+				core.Debug("session takes network next")
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
 			} else {
+				core.Debug("session goes direct")
 				metrics.DirectSlices.Add(1)
 			}
 
