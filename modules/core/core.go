@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"sync"
 	"unsafe"
+	"os"
 )
 
 const CostBias = 3
@@ -29,6 +30,21 @@ const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 const NEXT_PRIVATE_KEY_BYTES = 32
+
+var debugLogs bool
+
+func init() {
+	value, ok := os.LookupEnv("NEXT_DEBUG_LOGS")
+	if ok && value == "1" {
+		debugLogs = true
+	}
+}
+
+func Debug(s string, params ...interface{}) {
+	if debugLogs {
+		fmt.Printf(s + "\n", params...)
+	}
+}
 
 func ProtocolVersionAtLeast(serverMajor uint32, serverMinor uint32, serverPatch uint32, targetMajor uint32, targetMinor uint32, targetPatch uint32) bool {
 	serverVersion := ((serverMajor & 0xFF) << 16) | ((serverMinor & 0xFF) << 8) | (serverPatch & 0xFF)
