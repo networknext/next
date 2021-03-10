@@ -34,5 +34,5 @@ It's tested working with Unreal Engine 4.25.
 
 6. Set environment variables on the server, so Network Next knows where your server is running.
 
-        export NEXT_SERVER_ADDRESS=10.2.100.23:7777        # change to the real public IP:port of your server
+        export NEXT_SERVER_ADDRESS=10.2.100.23:7777        # change to the public IP:port of your server
         export NEXT_DATACENTER=cloud                       # autodetects datacenter in GCP or AWS
