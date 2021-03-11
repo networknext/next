@@ -194,18 +194,11 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
 	relayIDs := make([]uint64, 0)
-	fmt.Println("DC ID:")
-	fmt.Println(fmt.Sprintf("%016x\n", datacenterID))
-	fmt.Println("------------------------------")
-	fmt.Println("Route Matrix Relays:")
 	for i := 0; i < len(m.RelayDatacenterIDs); i++ {
-		fmt.Println(m.RelayNames[i])
-		fmt.Println(fmt.Sprintf("%016x\n", m.RelayDatacenterIDs[i]))
 		if m.RelayDatacenterIDs[i] == datacenterID {
 			relayIDs = append(relayIDs, m.RelayIDs[i])
 		}
 	}
-	fmt.Println("------------------------------\n")
 
 	return relayIDs
 }
