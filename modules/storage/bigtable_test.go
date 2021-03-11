@@ -50,6 +50,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 	})
 
 	t.Run("Get Instances", func(t *testing.T) {
+		t.Skip() // Unimplemented feature in emulator
 		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", logger)
 		assert.NoError(t, err)
 		assert.NotNil(t, btInstanceAdmin)
@@ -81,7 +82,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 1
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := fmt.Sprintf("CreateInstance() display name %s must be between 4 and 30 characters", displayName)
+			errorStr := fmt.Errorf("CreateInstance() display name %s must be between 4 and 30 characters", displayName)
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -93,7 +94,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 1
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := fmt.Sprintf("CreateInstance() display name %s must be between 4 and 30 characters", displayName)
+			errorStr := fmt.Errorf("CreateInstance() display name %s must be between 4 and 30 characters", displayName)
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -105,7 +106,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 1
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := fmt.Sprintf("CreateInstance() instance ID %s must be between 6 and 33 characters", instanceID)
+			errorStr := fmt.Errorf("CreateInstance() instance ID %s must be between 6 and 33 characters", instanceID)
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -117,7 +118,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 1
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := fmt.Sprintf("CreateInstance() instance ID %s must be between 6 and 33 characters", instanceID)
+			errorStr := fmt.Errorf("CreateInstance() instance ID %s must be between 6 and 33 characters", instanceID)
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -129,7 +130,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 1
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := "CreateInstance() need at least one cluster in the instance"
+			errorStr := fmt.Errorf("CreateInstance() need at least one cluster in the instance")
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -141,7 +142,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 1
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := "CreateInstance() need an equal of number of zones as the number of clusters"
+			errorStr := fmt.Errorf("CreateInstance() need an equal of number of zones as the number of clusters")
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -153,7 +154,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 			numNodesPerCluster := 0
 
 			err := btInstanceAdmin.CreateInstance(ctx, instanceID, displayName, zones, numClusters, numNodesPerCluster)
-			errorStr := "CreateInstance() need at least one node per cluster"
+			errorStr := fmt.Errorf("CreateInstance() need at least one node per cluster")
 			assert.Equal(t, err, errorStr)
 		})
 
@@ -164,6 +165,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 		})
 
 		t.Run("Create and Delete Instance Success", func(t *testing.T) {
+			t.Skip() // Unimplemented feature in emulator
 			displayName := "test-display-name"
 			instanceID := "test-instance-id"
 			zones := []string{"us-central1-a", "us-central1-b"}
@@ -189,6 +191,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 		}()
 
 		t.Run("Verify Instance Exists False", func(t *testing.T) {
+			t.Skip() // Unimplemented feature in emulator
 			instanceID := "does-not-exist"
 			exists, err := btInstanceAdmin.VerifyInstanceExists(ctx, instanceID)
 			assert.NoError(t, err)
@@ -196,6 +199,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 		})
 
 		t.Run("Verify Instance Exists True", func(t *testing.T) {
+			t.Skip() // Unimplemented feature in emulator
 			displayName := "test-display-name"
 			instanceID := "test-instance-id"
 			zones := []string{"us-central1-a", "us-central1-b"}
