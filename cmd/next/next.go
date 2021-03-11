@@ -1864,7 +1864,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortHelp:  "Displays detailed info for the specified customer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
-						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+						handleRunTimeError(fmt.Sprintln("Please provide the customer code, only."), 0)
 					}
 
 					getCustomerInfo(rpcClient, env, args[0])
@@ -1882,6 +1882,19 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					updateCustomer(rpcClient, env, args[0], args[1], args[2])
+					return nil
+				},
+			},
+			{
+				Name:       "remove",
+				ShortUsage: "next customer remove (code)",
+				ShortHelp:  "Removes a customer from the database",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						handleRunTimeError(fmt.Sprintln("Please provide the customer code, only."), 0)
+					}
+
+					removeCustomer(rpcClient, env, args[0])
 					return nil
 				},
 			},
