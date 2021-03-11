@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -103,11 +102,7 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	lc := net.ListenConfig{
-		Control: func(network string, address string, c syscall.RawConn) error {
-			return nil
-		},
-	}
+	lc := net.ListenConfig{}
 
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
