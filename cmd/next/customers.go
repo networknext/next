@@ -92,3 +92,23 @@ func updateCustomer(
 	fmt.Printf("Customer %s updated successfully.\n", customerCode)
 	return nil
 }
+
+func removeCustomer(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	customerCode string,
+) error {
+
+	emptyReply := localjsonrpc.RemoveCustomerReply{}
+
+	args := localjsonrpc.RemoveCustomerArgs{
+		CustomerCode: customerCode,
+	}
+	if err := rpcClient.CallFor(&emptyReply, "OpsService.RemoveCustomer", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Customer %s updated successfully.\n", customerCode)
+	return nil
+}

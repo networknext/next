@@ -39,7 +39,7 @@ export ENV = local
 ##################
 
 export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local aliased
+export NEXT_DATACENTER = local
 export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
@@ -260,6 +260,8 @@ ifndef BEACON_ENTRY_VETO
 export BEACON_ENTRY_VETO = false
 endif
 
+export NEXT_DEBUG_LOGS = 1
+
 ## Relay Backend 1.5
 
 ifndef FEATURE_NEW_BACKEND
@@ -443,6 +445,10 @@ dev-api: build-api ## runs a local api endpoint service
 dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
 	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
+.PHONY: dev-fake-server
+dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
+	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
+
 $(DIST_DIR)/$(SDKNAME).so: dist
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
@@ -516,6 +522,12 @@ build-vanity: dist
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
 	@printf "done\n"
 
+.PHONY: build-fake-server
+build-fake-server: dist
+	@printf "Building fake server..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
+	@printf "done\n"
+
 .PHONY: deploy-portal-crunchers-dev
 deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
@@ -553,6 +565,10 @@ deploy-vanity-prod:
 	./deploy/deploy.sh -e prod -c prod-2 -t vanity -n vanity -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-3 -t vanity -n vanity -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t vanity -n vanity -b gs://prod_artifacts
+
+.PHONY: build-fake-server-artifacts-staging
+build-fake-server-artifacts-staging: build-fake-server
+	./deploy/build-artifacts.sh -e staging -s fake_server
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
@@ -777,6 +793,10 @@ publish-portal-cruncher-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-fake-server-artifacts-staging
+publish-fake-server-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_server
 
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts:

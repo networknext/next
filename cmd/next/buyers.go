@@ -468,6 +468,7 @@ func buyerIDFromName(
 	env Environment,
 	buyerRegex string,
 ) (string, uint64) {
+
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
 	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
