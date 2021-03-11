@@ -390,17 +390,13 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	newDatabaseID, err := result.LastInsertId()
-	if err != nil {
-		level.Error(db.Logger).Log("during", "Exec result does not contain new database ID", "err", err)
-		return err
-	}
-
-	// get the DatabaseID loaded
 	db.syncBuyers(ctx)
 
+	// get the DatabaseID loaded
+	dbBuyerID := uint64(db.buyerIDs[buyer.ID])
+
 	db.buyerMutex.RLock()
-	newBuyer := db.buyers[uint64(newDatabaseID)]
+	newBuyer := db.buyers[dbBuyerID]
 	db.buyerMutex.RUnlock()
 
 	newBuyer.HexID = fmt.Sprintf("%016x", buyer.ID)
@@ -409,7 +405,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// update local fields
 	db.buyerMutex.Lock()
-	db.buyers[uint64(newDatabaseID)] = newBuyer
+	db.buyers[dbBuyerID] = newBuyer
 	db.buyerMutex.Unlock()
 
 	db.customerMutex.Lock()
