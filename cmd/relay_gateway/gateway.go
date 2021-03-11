@@ -113,6 +113,7 @@ func mainReturnWithCode() int {
 			NRBNoInit:             cfg.NRBNoInit,
 			NRBHTTP:               cfg.NRBHTTP,
 			RelayBackendAddresses: cfg.RelayBackendAddresses,
+			LoadTest:              cfg.Loadtest,
 		}
 	}
 
@@ -152,17 +153,18 @@ func mainReturnWithCode() int {
 	return 0
 }
 
-type config struct {
+type Config struct {
 	PublisherSendBuffer   int
 	PublishToHosts        []string
 	RouterPrivateKey      []byte
 	NRBNoInit             bool
 	NRBHTTP               bool
 	RelayBackendAddresses []string
+	Loadtest              bool
 }
 
-func newConfig() (*config, error) {
-	cfg := new(config)
+func newConfig() (*Config, error) {
+	cfg := new(Config)
 
 	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
@@ -201,6 +203,12 @@ func newConfig() (*config, error) {
 		}
 		cfg.PublisherSendBuffer = publisherSendBuffer
 	}
+
+	featureLoadTest, err := envvar.GetBool("FEATURE_LOAD_TEST", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Loadtest = featureLoadTest
 
 	return cfg, nil
 }

@@ -179,6 +179,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	featureLoadTest, err := envvar.GetBool("FEATURE_LOAD_TEST", false)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 	var matrixStore storage.MatrixStore
 	var backendLiveData storage.RelayBackendLiveData
 
@@ -220,6 +225,7 @@ func mainReturnWithCode() int {
 
 			if !addrFound {
 				level.Error(logger).Log("relay backend address not found")
+				return 1
 			}
 		}
 
@@ -271,37 +277,39 @@ func mainReturnWithCode() int {
 	// ping stats
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
-		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-		if gcpProjectID != "" || emulatorOK {
+		if !featureLoadTest {
+			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+			if gcpProjectID != "" || emulatorOK {
 
-			pubsubCtx := ctx
-			if emulatorOK {
-				gcpProjectID = "local"
+				pubsubCtx := ctx
+				if emulatorOK {
+					gcpProjectID = "local"
 
-				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
+					var cancelFunc context.CancelFunc
+					pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+					defer cancelFunc()
 
-				level.Info(logger).Log("msg", "Detected pubsub emulator")
-			}
-
-			// Google Pubsub
-			{
-				settings := pubsub.PublishSettings{
-					DelayThreshold: time.Second,
-					CountThreshold: 1,
-					ByteThreshold:  1 << 14,
-					NumGoroutines:  runtime.GOMAXPROCS(0),
-					Timeout:        time.Minute,
+					level.Info(logger).Log("msg", "Detected pubsub emulator")
 				}
 
-				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
-				if err != nil {
-					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					return 1
-				}
+				// Google Pubsub
+				{
+					settings := pubsub.PublishSettings{
+						DelayThreshold: time.Second,
+						CountThreshold: 1,
+						ByteThreshold:  1 << 14,
+						NumGoroutines:  runtime.GOMAXPROCS(0),
+						Timeout:        time.Minute,
+					}
 
-				pingStatsPublisher = pubsub
+					pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+					if err != nil {
+						level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+						return 1
+					}
+
+					pingStatsPublisher = pubsub
+				}
 			}
 		}
 
@@ -329,37 +337,39 @@ func mainReturnWithCode() int {
 	// relay stats
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	{
-		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-		if gcpProjectID != "" || emulatorOK {
+		if !featureLoadTest {
+			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+			if gcpProjectID != "" || emulatorOK {
 
-			pubsubCtx := ctx
-			if emulatorOK {
-				gcpProjectID = "local"
+				pubsubCtx := ctx
+				if emulatorOK {
+					gcpProjectID = "local"
 
-				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
+					var cancelFunc context.CancelFunc
+					pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+					defer cancelFunc()
 
-				level.Info(logger).Log("msg", "Detected pubsub emulator")
-			}
-
-			// Google Pubsub
-			{
-				settings := pubsub.PublishSettings{
-					DelayThreshold: time.Second,
-					CountThreshold: 1,
-					ByteThreshold:  1 << 14,
-					NumGoroutines:  runtime.GOMAXPROCS(0),
-					Timeout:        time.Minute,
+					level.Info(logger).Log("msg", "Detected pubsub emulator")
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
-				if err != nil {
-					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					return 1
-				}
+				// Google Pubsub
+				{
+					settings := pubsub.PublishSettings{
+						DelayThreshold: time.Second,
+						CountThreshold: 1,
+						ByteThreshold:  1 << 14,
+						NumGoroutines:  runtime.GOMAXPROCS(0),
+						Timeout:        time.Minute,
+					}
 
-				relayStatsPublisher = pubsub
+					pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+					if err != nil {
+						level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+						return 1
+					}
+
+					relayStatsPublisher = pubsub
+				}
 			}
 		}
 
@@ -398,9 +408,14 @@ func mainReturnWithCode() int {
 					relayMap.ClearRelayData(relay.Addr.String())
 					relay.TrafficMu.Unlock()
 
-					fsrelay, err := storer.Relay(relay.ID)
-					if err != nil {
-						continue
+					var storeRelay routing.Relay
+					if !featureLoadTest {
+						storeRelay, err = storer.Relay(relay.ID)
+						if err != nil {
+							continue
+						}
+					} else {
+						storeRelay = routing.Relay{NICSpeedMbps: 1}
 					}
 
 					// use the sum of all the stats since the last publish here and convert to mbps
@@ -431,11 +446,11 @@ func mainReturnWithCode() int {
 					var bwRecvPercent float32
 					var envSentPercent float32
 					var envRecvPercent float32
-					if fsrelay.NICSpeedMbps != 0 {
-						bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
+					if storeRelay.NICSpeedMbps != 0 {
+						bwSentPercent = bwSentMbps / float32(storeRelay.NICSpeedMbps) * 100.0
+						bwRecvPercent = bwRecvMbps / float32(storeRelay.NICSpeedMbps) * 100.0
+						envSentPercent = envSentMbps / float32(storeRelay.NICSpeedMbps) * 100.0
+						envRecvPercent = envRecvMbps / float32(storeRelay.NICSpeedMbps) * 100.0
 					}
 
 					entries[count] = analytics.RelayStatsEntry{
@@ -473,44 +488,48 @@ func mainReturnWithCode() int {
 
 	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
 	{
-		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-		if gcpProjectID != "" || emulatorOK {
+		if !featureLoadTest {
+			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+			if gcpProjectID != "" || emulatorOK {
 
-			pubsubCtx := ctx
-			if emulatorOK {
-				gcpProjectID = "local"
+				pubsubCtx := ctx
+				if emulatorOK {
+					gcpProjectID = "local"
 
-				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
+					var cancelFunc context.CancelFunc
+					pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+					defer cancelFunc()
 
-				level.Info(logger).Log("msg", "Detected pubsub emulator")
-			}
-
-			// Google Pubsub
-			{
-				settings := pubsub.PublishSettings{
-					DelayThreshold: time.Second,
-					CountThreshold: 1,
-					ByteThreshold:  1 << 14,
-					NumGoroutines:  runtime.GOMAXPROCS(0),
-					Timeout:        time.Minute,
+					level.Info(logger).Log("msg", "Detected pubsub emulator")
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
-				if err != nil {
-					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					return 1
-				}
+				// Google Pubsub
+				{
+					settings := pubsub.PublishSettings{
+						DelayThreshold: time.Second,
+						CountThreshold: 1,
+						ByteThreshold:  1 << 14,
+						NumGoroutines:  runtime.GOMAXPROCS(0),
+						Timeout:        time.Minute,
+					}
 
-				relayNamesHashPublisher = pubsub
+					pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
+					if err != nil {
+						level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+						return 1
+					}
+
+					relayNamesHashPublisher = pubsub
+				}
 			}
 		}
 	}
 
-	relayEnabledCache := common.NewRelayEnabledCache(storer)
-	relayEnabledCache.StartRunner(1 * time.Minute)
-
+	var relayEnabledCache common.RelayEnabledCache
+	if !featureLoadTest {
+		relayEnabledCache := common.NewRelayEnabledCache(storer)
+		relayEnabledCache.StartRunner(1 * time.Minute)
+	}
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if err != nil {
@@ -553,10 +572,9 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 			// For now, exclude all valve relays
-			baseRelayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
-
-			namesMap := make(map[string]routing.Relay)
-			numRelays := len(baseRelayIDs)
+			baseRelayAddresses := relayMap.GetAllRelayAddresses([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
+			namesMap := make(map[string]routing.RelayData)
+			numRelays := len(baseRelayAddresses)
 			relayAddresses := make([]net.UDPAddr, numRelays)
 			relayNames := make([]string, numRelays)
 			relayLatitudes := make([]float32, numRelays)
@@ -564,15 +582,12 @@ func mainReturnWithCode() int {
 			relayDatacenterIDs := make([]uint64, numRelays)
 			relayIDs := make([]uint64, numRelays)
 
-			for i, relayID := range baseRelayIDs {
-				relay, err := storer.Relay(relayID)
-				if err != nil {
-					continue
-				}
-
+			for i, relayAddress := range baseRelayAddresses {
+				relay := relayMap.GetCopyRelayData(relayAddress)
 				relayNames[i] = relay.Name
 				namesMap[relay.Name] = relay
 			}
+
 			//sort relay names then populate other arrays
 			sort.Strings(relayNames)
 			for i, relayName := range relayNames {
@@ -741,7 +756,7 @@ func mainReturnWithCode() int {
 			if err != nil {
 				level.Error(logger).Log("err", err)
 			}
-			if hashing {
+			if hashing && !featureLoadTest {
 				timestamp := time.Now().UTC().Unix()
 				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
@@ -778,10 +793,9 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				// All relays included
-				baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
-
-				namesMap := make(map[string]routing.Relay)
-				numRelays := len(baseRelayIDs)
+				baseRelayAddresses := relayMap.GetAllRelayAddresses([]string{})
+				namesMap := make(map[string]routing.RelayData)
+				numRelays := len(baseRelayAddresses)
 				relayAddresses := make([]net.UDPAddr, numRelays)
 				relayNames := make([]string, numRelays)
 				relayLatitudes := make([]float32, numRelays)
@@ -789,12 +803,8 @@ func mainReturnWithCode() int {
 				relayDatacenterIDs := make([]uint64, numRelays)
 				relayIDs := make([]uint64, numRelays)
 
-				for i, relayID := range baseRelayIDs {
-					relay, err := storer.Relay(relayID)
-					if err != nil {
-						continue
-					}
-
+				for i, relayAddress := range baseRelayAddresses {
+					relay := relayMap.GetCopyRelayData(relayAddress)
 					relayNames[i] = relay.Name
 					namesMap[relay.Name] = relay
 				}

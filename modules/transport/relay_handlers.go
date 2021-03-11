@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -38,6 +39,7 @@ type RelayInitHandlerConfig struct {
 	Storer           storage.Storer
 	Metrics          *metrics.RelayInitMetrics
 	RouterPrivateKey []byte
+	LoadTest         bool
 }
 
 type RelayUpdateHandlerConfig struct {
@@ -45,6 +47,7 @@ type RelayUpdateHandlerConfig struct {
 	StatsDB  *routing.StatsDatabase
 	Metrics  *metrics.RelayUpdateMetrics
 	Storer   storage.Storer
+	LoadTest bool
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -100,12 +103,17 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		id := crypto.HashID(relayInitRequest.Address.String())
 
-		relay, err := params.Storer.Relay(id)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
-			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			return
+		var relay routing.Relay
+		if !params.LoadTest {
+			relay, err = params.Storer.Relay(id)
+			if err != nil {
+				level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
+				http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
+				params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+				return
+			}
+		} else {
+			relay = loadTestRelay(relayInitRequest.Address.String(), routing.RelayStateDisabled)
 		}
 
 		// Don't allow quarantined relays back in
@@ -135,15 +143,17 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		// Set the relay's state to enabled
-		relay.State = routing.RelayStateEnabled
+		if !params.LoadTest {
+			// Set the relay's state to enabled
+			relay.State = routing.RelayStateEnabled
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-		if err := params.Storer.SetRelay(ctx, relay); err != nil {
-			level.Error(locallogger).Log("msg", "failed to set relay state in storage", "err", err)
-			http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
-			return
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := params.Storer.SetRelay(ctx, relay); err != nil {
+				level.Error(locallogger).Log("msg", "failed to set relay state in storage", "err", err)
+				http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		// Ideally the ID and address should be the same as firestore,
@@ -185,6 +195,29 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
+	}
+}
+
+func loadTestRelay(address string, state routing.RelayState) routing.Relay {
+
+	id := crypto.HashID(address)
+	strID := fmt.Sprintf("%v", id)
+	fakeSeller := routing.Seller{
+		ID:   strID,
+		Name: "fake for load",
+	}
+	fakeDataCenter := routing.Datacenter{
+		ID: id,
+	}
+	internaladdr, _ := net.ResolveUDPAddr("udp", ":0")
+	return routing.Relay{
+		State:        state,
+		Name:         fmt.Sprintf("fake_relay_%v", address),
+		PublicKey:    []byte(routing.LoadRelayPublicKey),
+		Seller:       fakeSeller,
+		Datacenter:   fakeDataCenter,
+		MaxSessions:  100000,
+		InternalAddr: *internaladdr,
 	}
 }
 
@@ -254,13 +287,18 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		// If the relay does not exist in Firestore it's a ghost, ignore it
-		relay, err := params.Storer.Relay(relayDataReadOnly.ID)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
-			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			return
+		var relay routing.Relay
+		if !params.LoadTest {
+			// If the relay does not exist in Firestore it's a ghost, ignore it
+			relay, err = params.Storer.Relay(relayDataReadOnly.ID)
+			if err != nil {
+				level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
+				http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
+				params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+				return
+			}
+		} else {
+			relay = loadTestRelay(relayUpdateRequest.Address.String(), routing.RelayStateEnabled)
 		}
 
 		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
@@ -272,16 +310,18 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				return
 			}
 
-			if relay.State == routing.RelayStateEnabled {
-				relay.State = routing.RelayStateMaintenance
-			}
+			if !params.LoadTest {
+				if relay.State == routing.RelayStateEnabled {
+					relay.State = routing.RelayStateMaintenance
+				}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
-				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				return
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				if err := params.Storer.SetRelay(ctx, relay); err != nil {
+					level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
+					http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
+					return
+				}
 			}
 
 			params.RelayMap.Lock()
@@ -320,18 +360,21 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		for _, v := range allRelayData {
 			if v.ID != relay.ID {
-				otherRelay, err := params.Storer.Relay(v.ID)
-				if err != nil {
-					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
-					continue
+				var otherRelay routing.Relay
+				if !params.LoadTest {
+					otherRelay, err = params.Storer.Relay(v.ID)
+					if err != nil {
+						level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
+						continue
+					}
+				} else {
+					otherRelay = loadTestRelay(v.Addr.String(), routing.RelayStateEnabled)
 				}
 
 				if otherRelay.State == routing.RelayStateEnabled {
-					var address string
+					address := v.Addr.String()
 					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && relay.InternalAddr.String() != ":0" && otherRelay.InternalAddr.String() != ":0" {
 						address = otherRelay.InternalAddr.String()
-					} else {
-						address = v.Addr.String()
 					}
 					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: address})
 				}
@@ -479,12 +522,18 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 
 		// If the relay does not exist in Firestore it's a ghost, ignore it
 		id := crypto.HashID(relayUpdateRequest.Address.String())
-		relay, err := params.Storer.Relay(id)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
-			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			return
+
+		var relay routing.Relay
+		if !params.LoadTest {
+			relay, err = params.Storer.Relay(id)
+			if err != nil {
+				level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
+				http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
+				params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+				return
+			}
+		} else {
+			relay = loadTestRelay(relayUpdateRequest.Address.String(), routing.RelayStateEnabled)
 		}
 
 		if !bytes.Equal(relayUpdateRequest.Token, relay.PublicKey) {

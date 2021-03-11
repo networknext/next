@@ -154,6 +154,13 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
 	return relayMap.relays[relayAddress]
 }
 
+func (relayMap *RelayMap) GetCopyRelayData(relayAddress string) RelayData {
+	relayMap.RLock()
+	defer relayMap.RUnlock()
+	relay := relayMap.relays[relayAddress]
+	return *relay
+}
+
 func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	relayMap.RLock()
 	relays := make([]RelayData, len(relayMap.relays))
@@ -201,6 +208,31 @@ func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
 		}
 	}
 	return relayIDs
+}
+
+func (relayMap *RelayMap) GetAllRelayAddresses(excludeList []string) []string {
+	relayMap.RLock()
+	defer relayMap.RUnlock()
+	relayAddresses := make([]string, 0)
+
+	if len(excludeList) == 0 {
+		for _, relayData := range relayMap.relays {
+			relayAddresses = append(relayAddresses, relayData.Addr.String())
+		}
+		return relayAddresses
+	}
+
+	excludeMap := make(map[string]bool)
+	for _, exclude := range excludeList {
+		excludeMap[exclude] = true
+	}
+
+	for _, relayData := range relayMap.relays {
+		if _, ok := excludeMap[relayData.Seller.ID]; !ok {
+			relayAddresses = append(relayAddresses, relayData.Addr.String())
+		}
+	}
+	return relayAddresses
 }
 
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
