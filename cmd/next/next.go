@@ -845,6 +845,42 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "validate",
+				ShortUsage: "next relays validate [input_file]",
+				ShortHelp:  "Check if relays are configured correctly with associated datacenter",
+				FlagSet:    relaysfs,
+				Exec: func(ctx context.Context, args []string) error {
+					if relaysfs.NFlag() == 0 ||
+						((relaysfs.NFlag() == 1) && relayOpsOutput) ||
+						((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+						// If no flags are given, set the default set of flags
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+					}
+
+					if relaysAllFlag {
+						// Show all relays (except for decommissioned relays) with --all flag
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateShowFlags[routing.RelayStateMaintenance] = true
+						relaysStateShowFlags[routing.RelayStateDisabled] = true
+						relaysStateShowFlags[routing.RelayStateQuarantine] = true
+						relaysStateShowFlags[routing.RelayStateOffline] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+						relaysStateHideFlags[routing.RelayStateMaintenance] = false
+						relaysStateHideFlags[routing.RelayStateDisabled] = false
+						relaysStateHideFlags[routing.RelayStateQuarantine] = false
+						relaysStateHideFlags[routing.RelayStateOffline] = false
+					}
+					if len(args) == 0 {
+						validate(rpcClient, env, relaysStateShowFlags, relaysStateHideFlags, "optimize.bin")
+						return nil
+					}
+
+					validate(rpcClient, env, relaysStateShowFlags, relaysStateHideFlags, args[0])
+					return nil
+				},
+			},
 		},
 	}
 
