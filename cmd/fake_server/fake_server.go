@@ -200,7 +200,7 @@ func mainReturnWithCode() int {
 				dcName = "local"
 			}
 
-			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey, dcName)
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersionLatest, logger, customerID, customerPrivateKey, dcName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
