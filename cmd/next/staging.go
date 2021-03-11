@@ -7,14 +7,6 @@ import (
 	"sync"
 )
 
-const (
-	MaxVMsPerMIG = 1000
-
-	ClientsPerVM     = 2000
-	ServersPerVM     = 50
-	ClientsPerServer = 200
-)
-
 type StagingServiceConfig struct {
 	Cores int `json:"cores"`
 	Count int `json:"count"`
@@ -24,12 +16,13 @@ type StagingConfig struct {
 	RelayBackend   StagingServiceConfig `json:"relay-backend"`
 	Relays         StagingServiceConfig `json:"relays"`
 	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
+	Vanity         StagingServiceConfig `json:"vanity"`
+	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
 	Portal         StagingServiceConfig `json:"portal"`
 	ServerBackend  StagingServiceConfig `json:"server-backend"`
-	Server         StagingServiceConfig `json:"server"`
-	Client         StagingServiceConfig `json:"client"`
+	FakeServer     StagingServiceConfig `json:"fake-server"`
 }
 
 var DefaultStagingConfig = StagingConfig{
@@ -46,6 +39,16 @@ var DefaultStagingConfig = StagingConfig{
 	PortalCruncher: StagingServiceConfig{
 		Cores: 8,
 		Count: 4,
+	},
+
+	Vanity: StagingServiceConfig{
+		Cores: 4,
+		Count: 4,
+	},
+
+	Api: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
 	},
 
 	Analytics: StagingServiceConfig{
@@ -68,14 +71,9 @@ var DefaultStagingConfig = StagingConfig{
 		Count: 4,
 	},
 
-	Server: StagingServiceConfig{
-		Cores: 50,
-		Count: 500,
-	},
-
-	Client: StagingServiceConfig{
-		Cores: 8,
-		Count: 100000,
+	FakeServer: StagingServiceConfig{
+		Cores: 16,
+		Count: 1,
 	},
 }
 
@@ -324,17 +322,6 @@ func waitForMIGStable(mig string) error {
 }
 
 func StartStaging(config StagingConfig) error {
-	if config.Client.Count < ClientsPerVM {
-		return fmt.Errorf("must run at least %d clients", ClientsPerVM)
-	}
-
-	if config.Client.Count > MaxVMsPerMIG*ClientsPerVM {
-		return fmt.Errorf("cannot run more than %d clients", config.Client.Count)
-	}
-
-	config.Server.Count = config.Client.Count / ClientsPerServer / ServersPerVM
-	config.Client.Count /= ClientsPerVM
-
 	instanceGroups := createInstanceGroups(config)
 
 	for _, instanceGroup := range instanceGroups {
@@ -423,12 +410,13 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-server-mig", true, config.Server))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-clients-1", false, config.Client))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
 
 	return instanceGroups
 }
