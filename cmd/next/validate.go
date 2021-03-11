@@ -35,7 +35,6 @@ func validate(rpcClient jsonrpc.RPCClient, env Environment, relaysStateShowFlags
 	allRelays := relayReply.Relays
 	allDCs := dcReply.Datacenters
 
-	// Loop over all DCs and make sure there is a relay within them
 	for _, dc := range allDCs {
 		for _, relay := range allRelays {
 			relayState, err := routing.ParseRelayState(relay.State)
@@ -48,10 +47,8 @@ func validate(rpcClient jsonrpc.RPCClient, env Environment, relaysStateShowFlags
 			for i, flag := range relaysStateShowFlags {
 				if flag {
 					if relayState != routing.RelayState(i) {
-						// An "only show" flag is set and this relay doesn't match that state, so don't include it in the final output
 						includeRelay = false
 					} else {
-						// One of the flags should include the relay, so set to true and break out, since combining the flags is an OR operation
 						includeRelay = true
 						break
 					}
