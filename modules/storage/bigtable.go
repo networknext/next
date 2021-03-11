@@ -91,43 +91,59 @@ func NewBigTableInstanceAdmin(ctx context.Context, gcpProjectID string, logger l
 
 // Creates an bigtable instance with the same number of nodes per cluster
 // We also only use SSD storage type and production instances
-func (bt *BigTableInstanceAdmin) CreateInstance(ctx context.Context, instanceID string, displayName string, zone string, numClusters int, numNodesPerCluster int32) error {
+// Need to have an equal number of zones for numClusters (ideally want clusters in different zones)
+func (bt *BigTableInstanceAdmin) CreateInstance(ctx context.Context, instanceID string, displayName string, zones []string, numClusters int, numNodesPerCluster int) error {
 	// Verify display name length
 	if len(displayName) < 4 || len(displayName) > 30 {
-		return fmt.Errorf("CreateInstance() display name must be between 4 and 30 characters: %s\n", displayName)
+		return fmt.Errorf("CreateInstance() display name %s must be between 4 and 30 characters", displayName)
 	}
 
 	// Verify instance ID
 	{
 		if len(instanceID) < 6 || len(instanceID) > 33 {
-			return fmt.Errorf("CreateInstance() instance ID must be between 6 and 33 characters: %s\n", instanceID)
+			return fmt.Errorf("CreateInstance() instance ID %s must be between 6 and 33 characters", instanceID)
 		}
 
 		for i, r := range instanceID {
 			if i == 0 {
 				if !unicode.IsLower(r) || !unicode.IsLetter(r) {
-					return fmt.Errorf("CreateInstance() instance ID must start with a lowercase letter")
+					return fmt.Errorf("CreateInstance() instance ID %s must start with a lowercase letter", instanceID)
 				}
 			} else if !unicode.IsLower(r) && !unicode.IsNumber(r) && instanceID[i:i+1] != "-" {
-				return fmt.Errorf("CreateInstance() instance ID must only contain hyphens, lowercase letters, and numbers")
+				return fmt.Errorf("CreateInstance() instance ID %s must only contain hyphens, lowercase letters, and numbers", instanceID)
 			}
 		}
 	}
 
+	// Verify there is at least one cluster
+	if numClusters < 1 {
+		return fmt.Errorf("CreateInstance() need at least one cluster in the instance")
+	}
+
+	// Verify length of zones slice is the same as numClusters
+	if len(zones) != numClusters {
+		return fmt.Errorf("CreateInstance() need an equal of number of zones as the number of clusters")
+	}
+
+	// Verify there is at least 1 node per cluster
+	if numNodesPerCluster < 1 {
+		return fmt.Errorf("CreateInstance() need at least one node per cluster")
+	}
+
 	var clusterConfig []bigtable.ClusterConfig
-	for i := 1; i <= numClusters; i++ {
+	for i := 0; i < numClusters; i++ {
 		// clusterID must be between 6 and 30 characters
 		var clusterID string
 		if len(instanceID) > 27 {
-			clusterID = fmt.Sprintf("%s-c%d", instanceID[:27], i)
+			clusterID = fmt.Sprintf("%s-c%d", instanceID[:27], i+1)
 		} else {
-			clusterID = fmt.Sprintf("%s-c%d", instanceID, i)
+			clusterID = fmt.Sprintf("%s-c%d", instanceID, i+1)
 		}
 
 		conf := bigtable.ClusterConfig{
 			InstanceID:  instanceID,
 			ClusterID:   clusterID,
-			Zone:        zone,
+			Zone:        zones[i],
 			NumNodes:    int32(numNodesPerCluster),
 			StorageType: bigtable.StorageType(0),
 		}
@@ -148,6 +164,29 @@ func (bt *BigTableInstanceAdmin) CreateInstance(ctx context.Context, instanceID 
 // Deletes a bigtable instance
 func (bt *BigTableInstanceAdmin) DeleteInstance(ctx context.Context, instanceID string) error {
 	return bt.Client.DeleteInstance(ctx, instanceID)
+}
+
+// Gets all instances for this project
+func (bt *BigTableInstanceAdmin) GetInstances(ctx context.Context) ([]*bigtable.InstanceInfo, error) {
+	return bt.Client.Instances(ctx)
+}
+
+// Verifies if an instance exists
+func (bt *BigTableInstanceAdmin) VerifyInstanceExists(ctx context.Context, instanceID string) (bool, error) {
+	// Get the instances
+	instances, err := bt.GetInstances(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// Iterate through list of instances and identify if the instance exists
+	for _, instance := range instances {
+		if instanceID == instance.Name {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // Closes the bigtable instance admin
