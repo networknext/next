@@ -43,7 +43,7 @@ func createExpectedFakeServer(t *testing.T) (*FakeServer, *net.UDPConn) {
 	assert.NoError(t, err)
 
 	expectedServer := FakeServer{
-		sdkVersion:         transport.SDKVersionMin,
+		sdkVersion:         transport.SDKVersionLatest,
 		customerID:         customerID,
 		customerPrivateKey: privateKey,
 		logger:             log.NewNopLogger(),
