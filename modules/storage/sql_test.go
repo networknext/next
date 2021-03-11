@@ -2,6 +2,8 @@ package storage_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net"
@@ -921,12 +923,29 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
-		checkBuyer, err := db.Buyer(buyerWithID.ID)
+		newPublicKeyStr := "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="
+		newPublicKeyEncoded, err := base64.StdEncoding.DecodeString(newPublicKeyStr)
+		assert.NoError(t, err)
+		newBuyerID := binary.LittleEndian.Uint64(newPublicKeyEncoded[:8])
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "PublicKey", newPublicKeyStr)
+		assert.NoError(t, err)
+
+		// the changed public key also changes the buyer ID
+		checkBuyer, err := db.Buyer(newBuyerID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, checkBuyer.Live)
 		assert.Equal(t, false, checkBuyer.Debug)
 		assert.Equal(t, "newname", checkBuyer.ShortName)
+		assert.Equal(t, newBuyerID, checkBuyer.ID)
+		assert.Equal(t, newPublicKeyEncoded[8:], checkBuyer.PublicKey)
+		assert.Equal(t, newPublicKeyStr, checkBuyer.EncodedPublicKey())
+
+		// a datacenter map for this buyer were added above and the UpdateBuyer method
+		// must modify it for the new ID
+		dcMaps := db.GetDatacenterMapsForBuyer(newBuyerID)
+		assert.Equal(t, 1, len(dcMaps))
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {
@@ -1609,8 +1628,6 @@ func TestRouteShaders(t *testing.T) {
 	})
 
 	t.Run("RemoveRouteShader", func(t *testing.T) {
-		// causes flock errors when run with the rest of the tests
-		t.Skip()
 		err := db.RemoveRouteShader(context.Background(), outerBuyer.ID)
 		assert.NoError(t, err)
 
