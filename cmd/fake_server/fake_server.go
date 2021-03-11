@@ -36,7 +36,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "server_backend"
+	serviceName := "fake_server"
 	fmt.Printf("fake_server: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
@@ -102,6 +102,8 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	lc := net.ListenConfig{}
+
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -150,13 +152,6 @@ func mainReturnWithCode() int {
 	errChan := make(chan error, 1)
 	for i := 0; i < numServers; i++ {
 		go func() {
-			bindAddress, err := net.ResolveUDPAddr("udp", "0.0.0.0:0")
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				errChan <- err
-				return
-			}
-
 			numClientsMutex.Lock()
 			clients := numClients
 
@@ -168,12 +163,15 @@ func mainReturnWithCode() int {
 			}
 			numClientsMutex.Unlock()
 
-			conn, err := net.DialUDP("udp", bindAddress, serverBackendAddress)
+			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:0")
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
 				return
 			}
+
+			conn := lp.(*net.UDPConn)
+			defer conn.Close()
 
 			if err := conn.SetReadBuffer(readBuffer); err != nil {
 				level.Error(logger).Log("msg", "could not set connection read buffer size", "err", err)
@@ -187,7 +185,17 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			server, err := fake_server.NewFakeServer(conn, clients, transport.SDKVersion{4, 0, 6}, logger, customerID, customerPrivateKey)
+			// Assign a datacenter for this server
+			var dcName string
+			if gcpProjectID != "" {
+				// Staging datacenters are between 1 and 80, inclusive
+				dcNum := rand.Intn(80-1) + 1
+				dcName = fmt.Sprintf("staging.%d", dcNum)
+			} else {
+				dcName = "local"
+			}
+
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersionLatest, logger, customerID, customerPrivateKey, dcName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
@@ -196,6 +204,7 @@ func mainReturnWithCode() int {
 
 			if err := server.StartLoop(ctx, time.Second*10, readBuffer, writeBuffer); err != nil {
 				level.Error(logger).Log("err", err)
+				fmt.Printf("Error: %v\n", err)
 				errChan <- err
 				return
 			}
