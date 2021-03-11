@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"unicode"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -22,6 +23,11 @@ type BigTable struct {
 
 type BigTableAdmin struct {
 	Client *bigtable.AdminClient
+	Logger log.Logger
+}
+
+type BigTableInstanceAdmin struct {
+	Client *bigtable.InstanceAdminClient
 	Logger log.Logger
 }
 
@@ -56,7 +62,7 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, bt
 }
 
 // Creates a new Bigtable Admin
-// Admins have special abilities like creating an deleting tables
+// Admins have special abilities like creating and deleting tables
 func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID string, logger log.Logger, opts ...option.ClientOption) (*BigTableAdmin, error) {
 	client, err := bigtable.NewAdminClient(ctx, gcpProjectID, instanceID, opts...)
 	if err != nil {
@@ -67,6 +73,90 @@ func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID strin
 		Client: client,
 		Logger: logger,
 	}, nil
+}
+
+// Creates a new Bigtable Instance Admin
+// Instance Admins have special abilities like creating instances and clusters
+func NewBigTableInstanceAdmin(ctx context.Context, gcpProjectID string, logger log.Logger, opts ...option.ClientOption) (*BigTableInstanceAdmin, error) {
+	client, err := bigtable.NewInstanceAdminClient(ctx, gcpProjectID, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BigTableInstanceAdmin{
+		Client: client,
+		Logger: logger,
+	}, nil
+}
+
+// Creates an bigtable instance with the same number of nodes per cluster
+// We also only use SSD storage type and production instances
+func (bt *BigTableInstanceAdmin) CreateInstance(ctx context.Context, instanceID string, displayName string, zone string, numClusters int, numNodesPerCluster int32) error {
+	// Verify display name length
+	if len(displayName) < 4 || len(displayName) > 30 {
+		return fmt.Errorf("CreateInstance() display name must be between 4 and 30 characters: %s\n", displayName)
+	}
+
+	// Verify instance ID
+	{
+		if len(instanceID) < 6 || len(instanceID) > 33 {
+			return fmt.Errorf("CreateInstance() instance ID must be between 6 and 33 characters: %s\n", instanceID)
+		}
+
+		for i, r := range instanceID {
+			if i == 0 {
+				if !unicode.IsLower(r) || !unicode.IsLetter(r) {
+					return fmt.Errorf("CreateInstance() instance ID must start with a lowercase letter")
+				}
+			} else if !unicode.IsLower(r) && !unicode.IsNumber(r) && instanceID[i:i+1] != "-" {
+				return fmt.Errorf("CreateInstance() instance ID must only contain hyphens, lowercase letters, and numbers")
+			}
+		}
+	}
+
+	var clusterConfig []bigtable.ClusterConfig
+	for i := 1; i <= numClusters; i++ {
+		// clusterID must be between 6 and 30 characters
+		var clusterID string
+		if len(instanceID) > 27 {
+			clusterID = fmt.Sprintf("%s-c%d", instanceID[:27], i)
+		} else {
+			clusterID = fmt.Sprintf("%s-c%d", instanceID, i)
+		}
+
+		conf := bigtable.ClusterConfig{
+			InstanceID:  instanceID,
+			ClusterID:   clusterID,
+			Zone:        zone,
+			NumNodes:    int32(numNodesPerCluster),
+			StorageType: bigtable.StorageType(0),
+		}
+
+		clusterConfig = append(clusterConfig, conf)
+	}
+
+	instanceConf := &bigtable.InstanceWithClustersConfig{
+		InstanceID:   instanceID,
+		DisplayName:  displayName,
+		Clusters:     clusterConfig,
+		InstanceType: bigtable.InstanceType(0),
+	}
+
+	return bt.Client.CreateInstanceWithClusters(ctx, instanceConf)
+}
+
+// Deletes a bigtable instance
+func (bt *BigTableInstanceAdmin) DeleteInstance(ctx context.Context, instanceID string) error {
+	return bt.Client.DeleteInstance(ctx, instanceID)
+}
+
+// Closes the bigtable instance admin
+func (bt *BigTableInstanceAdmin) Close() error {
+	if err := bt.Client.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Gets a list of tables for the instance
