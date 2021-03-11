@@ -1,10 +1,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/storage"
+)
+
+const (
+	// Params for the bigtable instance and table
+	// These are based on staging.env files for the portal cruncher and portal
+	InstanceID = "network-next-portal-big-table-0"
+	TableName  = "portal-session-history"
+	CFName     = "portal-session-history"
 )
 
 type StagingServiceConfig struct {
@@ -324,6 +337,14 @@ func waitForMIGStable(mig string) error {
 func StartStaging(config StagingConfig) error {
 	instanceGroups := createInstanceGroups(config)
 
+	// Create the Bigtable instance and table if needed
+	fmt.Printf("Setting up Bigtable...")
+	err := createBigTable()
+	if err != nil {
+		return err
+	}
+	fmt.Println("done")
+
 	for _, instanceGroup := range instanceGroups {
 		serviceConfig := instanceGroup.ServiceConfig()
 
@@ -359,7 +380,7 @@ func StartStaging(config StagingConfig) error {
 		fmt.Println()
 	}
 
-	fmt.Println("staging started")
+	fmt.Println("\nstaging started")
 	return nil
 }
 
@@ -387,6 +408,13 @@ func StopStaging() []error {
 
 	wg.Wait()
 
+	err := deleteBigTable()
+	if err != nil {
+		errChan <- err
+	} else {
+		fmt.Println("deleted Bigtable")
+	}
+
 	errs := make([]error, 0)
 	select {
 	case err := <-errChan:
@@ -399,6 +427,103 @@ func StopStaging() []error {
 
 		fmt.Println()
 		return errs
+	}
+
+	return nil
+}
+
+// Creates a Bigtable instance and table, if needed
+// Bigtable is required for the portal crunchers and portal to function
+func createBigTable() error {
+	ctx := context.Background()
+	gcpProjectID := "network-next-v3-staging"
+	logger := log.NewNopLogger()
+
+	// Create a bigtable instance admin
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btInstanceAdmin.Close()
+	}()
+
+	// Verify if the instance already exists
+	instanceExists, err := btInstanceAdmin.VerifyInstanceExists(ctx, InstanceID)
+	if err != nil {
+		return err
+	}
+	if !instanceExists {
+		// Create the instance with 2 clusters and 5 zones per cluster
+		displayName := "bigtable-staging"
+		zones := []string{"us-central1-a", "us-central1-b"}
+		numClusters := 2
+		numNodesPerCluster := 5
+
+		err = btInstanceAdmin.CreateInstance(ctx, InstanceID, displayName, zones, numClusters, numNodesPerCluster)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Create a bigtable admin
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btAdmin.Close()
+	}()
+
+	// Verify if the table already exists
+	tableExists, err := btAdmin.VerifyTableExists(ctx, TableName)
+	if err != nil {
+		return err
+	}
+	if !tableExists {
+		// Create the table with a max age policy of 90 days
+		err = btAdmin.CreateTable(ctx, TableName, []string{CFName})
+		if err != nil {
+			return err
+		}
+
+		maxAge := time.Hour * time.Duration(1) * 24 * 90
+		err = btAdmin.SetMaxAgePolicy(ctx, TableName, []string{CFName}, maxAge)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Deletes a Bigtable instance, if needed
+// Deleting an instance automatically deletes any tables for that instance
+func deleteBigTable() error {
+	ctx := context.Background()
+	gcpProjectID := "network-next-v3-staging"
+	logger := log.NewNopLogger()
+
+	// Create a bigtable instance admin
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btInstanceAdmin.Close()
+	}()
+
+	// Verify if the instance already exists
+	instanceExists, err := btInstanceAdmin.VerifyInstanceExists(ctx, InstanceID)
+	if err != nil {
+		return err
+	}
+	if instanceExists {
+		// Delete the instance
+		err = btInstanceAdmin.DeleteInstance(ctx, InstanceID)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
