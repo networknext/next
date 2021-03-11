@@ -76,14 +76,6 @@ blocks:
           commands:
             - make build-fake-server-artifacts-staging
             - make publish-fake-server-artifacts-staging
-        - name: Load Test Server
-          commands:
-            - make build-load-test-server-artifacts
-            - make publish-load-test-server-artifacts
-        - name: Load Test Client
-          commands:
-            - make build-load-test-client-artifacts
-            - make publish-load-test-client-artifacts
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
