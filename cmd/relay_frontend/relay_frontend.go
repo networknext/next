@@ -96,10 +96,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
-	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
-	router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
