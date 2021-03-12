@@ -3,9 +3,10 @@ package billing
 import (
 	"context"
 	"errors"
-	"sync"
 	"fmt"
-	"os"
+	"math"
+	"strings"
+	"sync"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -35,7 +36,6 @@ type GoogleBigQueryClient struct {
 func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) error {
 	bq.Metrics.EntriesSubmitted.Add(1)
 	if bq.entries == nil {
-		fmt.Printf("Making internal golang channel for BigQuery of size %d\n", DefaultBigQueryChannelSize)
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
 
@@ -44,17 +44,19 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	bq.bufferMutex.RUnlock()
 
 	if bufferLength >= bq.BatchSize {
-		fmt.Printf("Error: entries buffer full. bufferLength size %d, BQ Batch Size %d\n", bufferLength, bq.BatchSize)
 		return errors.New("entries buffer full")
 	}
 
-	// PacketLoss is potentially NaN
-	if entry.PacketLoss != entry.PacketLoss {
-		// Set PacketLoss to 0
-		entry.PacketLoss = float32(0)
+	hasNanOrInf, nanOrInfFields := entry.CheckNaNOrInf()
+	if hasNanOrInf {
+		bq.Metrics.ErrorMetrics.BillingEntriesWithNaN.Add(1)
+		fieldStr := strings.Join(nanOrInfFields, " ")
+		fmt.Printf("Warn: billing entry had NaN or Inf values for %v.\n%+v\n", nanOrInfFields, entry)
+		level.Warn(bq.Logger).Log("msg", "Billing entry had NaN or Inf values", "fields", fieldStr)
 	}
 
 	if !entry.Validate() {
+		bq.Metrics.ErrorMetrics.BillingInvalidEntries.Add(1)
 		fmt.Printf("Error: billing entry not valid.\n%+v\n", entry)
 		return errors.New("invalid billing entry")
 	}
@@ -63,7 +65,6 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	case bq.entries <- entry:
 		return nil
 	default:
-		fmt.Printf("Error: entries channel full. bq.entries size %d, bufferLength size %d\n", bq.entries, bufferLength)
 		return errors.New("entries channel full")
 	}
 }
@@ -80,26 +81,19 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		bq.bufferMutex.Lock()
 		bq.buffer = append(bq.buffer, entry)
 		bufferLength := len(bq.buffer)
-		fmt.Printf("Log before insert. Size of buffer length is %d\n", bufferLength)
+
 		if bufferLength >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
-				fmt.Printf("Failed to write to BigQuery using Put(): %v. Buffer not cleared (size of buffer length is %d)\n", err, bufferLength)
-				for _, bufferedEntry := range bq.buffer {
-					fmt.Printf("%+v\n", bufferedEntry)
-				}
-
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
-				os.Exit(1)
+				continue
 			}
 
 			bq.buffer = bq.buffer[:0]
-			fmt.Printf("Successfully flushed entries to BigQuery, size: %d, total: %d\n", bq.BatchSize, bufferLength)
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
 			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
 		}
-		fmt.Printf("Log after insert. Size of buffer length is %d\n", bufferLength)
 
 		bq.bufferMutex.Unlock()
 	}
@@ -124,21 +118,16 @@ func (entry *BillingEntry) Validate() bool {
 		return false
 	}
 
-	if entry.DatacenterID == 0 {
-		fmt.Printf("invalid datacenter id\n")
-		return false
-	}
-
 	// IMPORTANT: Logic inverted because comparing a NaN float value always returns false
 	if !(entry.Latitude >= -90.0 && entry.Latitude <= +90.0) {
 		fmt.Printf("invalid latitude\n")
 		return false
-	}	
+	}
 
 	if !(entry.Longitude >= -180.0 && entry.Longitude <= +180.0) {
 		fmt.Printf("invalid longitude\n")
 		return false
-	}	
+	}
 
 	// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
 	if entry.ConnectionType < 0 || entry.ConnectionType > 3 {
@@ -224,8 +213,9 @@ func (entry *BillingEntry) Validate() bool {
 			for i := 0; i < int(entry.NumNearRelays); i++ {
 
 				if entry.NearRelayIDs[i] == 0 {
-					fmt.Printf("invalid near relay id\n")
-					return false
+					// Log this but do not return false
+					// TODO: investigate why nearRelayID is 0
+					fmt.Printf("NearRelayIDs[%d] is 0.\n%+v\n", i, entry)
 				}
 
 				if !(entry.NearRelayRTTs[i] >= 0.0 && entry.NearRelayRTTs[i] <= 255.0) {
@@ -249,35 +239,161 @@ func (entry *BillingEntry) Validate() bool {
 	return true
 }
 
-// Save implements the bigquery.ValueSaver interface for an Entry
-// so it can be used in Put()
+// Checks all floating point numbers for NaN and forces them to 0
+func (entry *BillingEntry) CheckNaNOrInf() (bool, []string) {
+	var nanOrInfExists bool
+	var nanOrInfFields []string
+
+	if math.IsNaN(float64(entry.NextRTT)) || math.IsInf(float64(entry.NextRTT), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NextRTT")
+		nanOrInfExists = true
+		entry.NextRTT = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.NextJitter)) || math.IsInf(float64(entry.NextJitter), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NextJitter")
+		nanOrInfExists = true
+		entry.NextJitter = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.NextPacketLoss)) || math.IsInf(float64(entry.NextPacketLoss), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NextPacketLoss")
+		nanOrInfExists = true
+		entry.NextPacketLoss = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.Latitude)) || math.IsInf(float64(entry.Latitude), 0) {
+		nanOrInfFields = append(nanOrInfFields, "Latitude")
+		nanOrInfExists = true
+		entry.Latitude = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.Longitude)) || math.IsInf(float64(entry.Longitude), 0) {
+		nanOrInfFields = append(nanOrInfFields, "Longitude")
+		nanOrInfExists = true
+		entry.Longitude = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.PacketLoss)) || math.IsInf(float64(entry.PacketLoss), 0) {
+		nanOrInfFields = append(nanOrInfFields, "PacketLoss")
+		nanOrInfExists = true
+		entry.PacketLoss = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.PredictedNextRTT)) || math.IsInf(float64(entry.PredictedNextRTT), 0) {
+		nanOrInfFields = append(nanOrInfFields, "PredictedNextRTT")
+		nanOrInfExists = true
+		entry.PredictedNextRTT = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.NearRelayRTT)) || math.IsInf(float64(entry.NearRelayRTT), 0) {
+		nanOrInfFields = append(nanOrInfFields, "NearRelayRTT")
+		nanOrInfExists = true
+		entry.NearRelayRTT = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.JitterClientToServer)) || math.IsInf(float64(entry.JitterClientToServer), 0) {
+		nanOrInfFields = append(nanOrInfFields, "JitterClientToServer")
+		nanOrInfExists = true
+		entry.JitterClientToServer = float32(0)
+	}
+
+	if math.IsNaN(float64(entry.JitterServerToClient)) || math.IsInf(float64(entry.JitterServerToClient), 0) {
+		nanOrInfFields = append(nanOrInfFields, "JitterServerToClient")
+		nanOrInfExists = true
+		entry.JitterServerToClient = float32(0)
+	}
+
+	if entry.NumNearRelays > 0 {
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			if math.IsNaN(float64(entry.NearRelayRTTs[i])) || math.IsInf(float64(entry.NearRelayRTTs[i]), 0) {
+				nanOrInfFields = append(nanOrInfFields, fmt.Sprintf("NearRelayRTTs[%d]", i))
+				nanOrInfExists = true
+				entry.NearRelayRTTs[i] = float32(0)
+			}
+
+			if math.IsNaN(float64(entry.NearRelayJitters[i])) || math.IsInf(float64(entry.NearRelayJitters[i]), 0) {
+				nanOrInfFields = append(nanOrInfFields, fmt.Sprintf("NearRelayJitters[%d]", i))
+				nanOrInfExists = true
+				entry.NearRelayJitters[i] = float32(0)
+			}
+
+			if math.IsNaN(float64(entry.NearRelayPacketLosses[i])) || math.IsInf(float64(entry.NearRelayPacketLosses[i]), 0) {
+				nanOrInfFields = append(nanOrInfFields, fmt.Sprintf("NearRelayPacketLosses[%d]", i))
+				nanOrInfExists = true
+				entry.NearRelayPacketLosses[i] = float32(0)
+			}
+		}
+	}
+
+	return nanOrInfExists, nanOrInfFields
+}
+
+// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
 func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	e := make(map[string]bigquery.Value)
 
 	e["timestamp"] = int(entry.Timestamp)
+
 	e["buyerId"] = int(entry.BuyerID)
 	e["sessionId"] = int(entry.SessionID)
+	e["datacenterID"] = int(entry.DatacenterID)
+	e["userHash"] = int(entry.UserHash)
+	e["latitude"] = entry.Latitude
+	e["longitude"] = entry.Longitude
+	e["isp"] = entry.ISP
+	e["connectionType"] = int(entry.ConnectionType)
+	e["platformType"] = int(entry.PlatformType)
+	e["sdkVersion"] = entry.SDKVersion
+
 	e["sliceNumber"] = int(entry.SliceNumber)
+
+	e["flagged"] = entry.Flagged
+	e["fallbackToDirect"] = entry.FallbackToDirect
+	e["multipathVetoed"] = entry.MultipathVetoed
+	e["abTest"] = entry.ABTest
+	e["committed"] = entry.Committed
+	e["multipath"] = entry.Multipath
+	e["rttReduction"] = entry.RTTReduction
+	e["packetLossReduction"] = entry.PacketLossReduction
+	e["relayWentAway"] = entry.RelayWentAway
+	e["routeLost"] = entry.RouteLost
+	e["mispredicted"] = entry.Mispredicted
+	e["vetoed"] = entry.Vetoed
+	e["latencyWorse"] = entry.LatencyWorse
+	e["noRoute"] = entry.NoRoute
+	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
+	e["routeChanged"] = entry.RouteChanged
+	e["commitVeto"] = entry.CommitVeto
+
+	if entry.Pro {
+		e["pro"] = entry.Pro
+	}
+
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = entry.RouteDiversity
+	}
+
+	if entry.LackOfDiversity {
+		e["lackOfDiversity"] = entry.LackOfDiversity
+	}
+
+	if entry.MultipathRestricted {
+		e["multipathRestricted"] = entry.MultipathRestricted
+	}
+
 	e["directRTT"] = entry.DirectRTT
 	e["directJitter"] = entry.DirectJitter
 	e["directPacketLoss"] = entry.DirectPacketLoss
-	e["userHash"] = int(entry.UserHash)
 
-	if entry.Next {
-		e["next"] = entry.Next
-		e["nextRTT"] = entry.NextRTT
-		e["nextJitter"] = entry.NextJitter
-		e["nextPacketLoss"] = entry.NextPacketLoss
+	if entry.ClientToServerPacketsSent > 0 {
+		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
 	}
 
-	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-	for i := 0; i < int(entry.NumNextRelays); i++ {
-		nextRelays[i] = int(entry.NextRelays[i])
+	if entry.ServerToClientPacketsSent > 0 {
+		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
 	}
-	e["nextRelays"] = nextRelays
-
-	e["totalPrice"] = int(entry.TotalPrice)
 
 	if entry.ClientToServerPacketsLost > 0 {
 		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
@@ -287,67 +403,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
 	}
 
-	e["committed"] = entry.Committed
-	e["flagged"] = entry.Flagged
-	e["multipath"] = entry.Multipath
-
-	if entry.Next {
-		e["initial"] = entry.Initial
-		e["nextBytesUp"] = int(entry.NextBytesUp)
-		e["nextBytesDown"] = int(entry.NextBytesDown)
-		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
-		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
-	}
-
-	e["datacenterID"] = int(entry.DatacenterID)
-
-	if entry.Next {
-		e["rttReduction"] = entry.RTTReduction
-		e["packetLossReduction"] = entry.PacketLossReduction
-	}
-
-	nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
-	for i := 0; i < int(entry.NumNextRelays); i++ {
-		nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
-	}
-	e["nextRelaysPrice"] = nextRelaysPrice
-
-	e["latitude"] = entry.Latitude
-	e["longitude"] = entry.Longitude
-	e["isp"] = entry.ISP
-	e["abTest"] = entry.ABTest
-	e["routeDecision"] = int(entry.RouteDecision)
-
-	e["connectionType"] = int(entry.ConnectionType)
-	e["platformType"] = int(entry.PlatformType)
-	e["sdkVersion"] = entry.SDKVersion
-
+	// IMPORTANT: This is derived from *PacketsSent and *PacketsLost, and is valid for both next and direct
 	if entry.PacketLoss > 0.0 {
 		e["packetLoss"] = entry.PacketLoss
-	}
-
-	if entry.PredictedNextRTT > 0.0 {
-		e["predictedNextRTT"] = entry.PredictedNextRTT
-	}
-
-	e["multipathVetoed"] = entry.MultipathVetoed
-
-	if entry.UseDebug && entry.Debug != "" {
-		e["debug"] = entry.Debug
-	}
-
-	e["fallbackToDirect"] = entry.FallbackToDirect
-
-	if entry.ClientFlags != 0 {
-		e["clientFlags"] = int(entry.ClientFlags)
-	}
-
-	if entry.UserFlags != 0 {
-		e["userFlags"] = int(entry.UserFlags)
-	}
-
-	if entry.NearRelayRTT != 0 {
-		e["nearRelayRTT"] = entry.NearRelayRTT
 	}
 
 	if entry.PacketsOutOfOrderClientToServer != 0 {
@@ -366,38 +424,17 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["jitterServerToClient"] = entry.JitterServerToClient
 	}
 
-	if entry.UseDebug {
-		if entry.NumNearRelays != 0 {
-			e["numNearRelays"] = int(entry.NumNearRelays)
-
-			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
-			}
-			e["nearRelayIDs"] = nearRelayIDs
-
-			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
-			}
-			e["nearRelayRTTs"] = nearRelayRTTs
-
-			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayJitters[i] = entry.NearRelayJitters[i]
-			}
-			e["nearRelayJitters"] = nearRelayJitters
-
-			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
-			}
-			e["nearRelayPacketLosses"] = nearRelayPacketLosses
-		}
+	if entry.UseDebug && entry.Debug != "" {
+		e["debug"] = entry.Debug
 	}
 
-	e["relayWentAway"] = entry.RelayWentAway
-	e["routeLost"] = entry.RouteLost
+	if entry.ClientFlags != 0 {
+		e["clientFlags"] = int(entry.ClientFlags)
+	}
+
+	if entry.UserFlags != 0 {
+		e["userFlags"] = int(entry.UserFlags)
+	}
 
 	if entry.NumTags > 0 {
 		tags := make([]bigquery.Value, entry.NumTags)
@@ -407,38 +444,75 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["tags"] = tags
 	}
 
-	e["mispredicted"] = entry.Mispredicted
-	e["vetoed"] = entry.Vetoed
+	if entry.Next {
 
-	e["latencyWorse"] = entry.LatencyWorse
-	e["noRoute"] = entry.NoRoute
-	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
-	e["routeChanged"] = entry.RouteChanged
-	e["commitVeto"] = entry.CommitVeto
+		e["next"] = entry.Next
 
-	if entry.RouteDiversity > 0 {
-		e["routeDiversity"] = entry.RouteDiversity
+		e["nextRTT"] = entry.NextRTT
+		e["nextJitter"] = entry.NextJitter
+		e["nextPacketLoss"] = entry.NextPacketLoss
+
+		e["totalPrice"] = int(entry.TotalPrice)
+
+		e["nextBytesUp"] = int(entry.NextBytesUp)
+		e["nextBytesDown"] = int(entry.NextBytesDown)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
+
+		if entry.PredictedNextRTT > 0.0 {
+			e["predictedNextRTT"] = entry.PredictedNextRTT
+		}
+
+		if entry.NearRelayRTT != 0 {
+			e["nearRelayRTT"] = entry.NearRelayRTT
+		}
+
+		if entry.NumNearRelays > 0 {
+
+			nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+			nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
+
+			for i := 0; i < int(entry.NumNextRelays); i++ {
+				nextRelays[i] = int(entry.NextRelays[i])
+				nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
+			}
+
+			e["nextRelays"] = nextRelays
+			e["nextRelaysPrice"] = nextRelaysPrice
+
+			if entry.UseDebug {
+
+				// IMPORTANT: Only write this data if debug is on because it is very large
+
+				e["numNearRelays"] = int(entry.NumNearRelays)
+
+				nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+				nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+				nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+				nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+
+				for i := 0; i < int(entry.NumNearRelays); i++ {
+					nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+					nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+					nearRelayJitters[i] = entry.NearRelayJitters[i]
+					nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+				}
+
+				e["nearRelayIDs"] = nearRelayIDs
+				e["nearRelayRTTs"] = nearRelayRTTs
+				e["nearRelayJitters"] = nearRelayJitters
+				e["nearRelayPacketLosses"] = nearRelayPacketLosses
+			}
+		}
 	}
 
-	if entry.LackOfDiversity {
-		e["lackOfDiversity"] = entry.LackOfDiversity
-	}
+	// todo: this is deprecated. we don't really need this anymore. should
+	// be made nullable in the schema and we just stop writing this.
+	e["initial"] = entry.Initial
 
-	if entry.Pro {
-		e["pro"] = entry.Pro
-	}
-
-	if entry.MultipathRestricted {
-		e["multipathRestricted"] = entry.MultipathRestricted
-	}
-
-	if entry.ClientToServerPacketsSent > 0 {
-		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
-	}
-
-	if entry.ServerToClientPacketsSent > 0 {
-		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
-	}
+	// todo: this is deprecated and should be made nullable in the schema
+	// at this point we should stop writing this
+	e["routeDecision"] = int(entry.RouteDecision)
 
 	return e, "", nil
 }

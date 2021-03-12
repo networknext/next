@@ -1146,6 +1146,93 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	return nil
 }
 
+type BuyerInformationArgs struct {
+	NewPublicKey string `json:"new_public_key"`
+}
+
+type BuyerInformationReply struct {
+	PublicKey string `json:"public_key"`
+}
+
+func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInformationArgs, reply *BuyerInformationReply) error {
+	var err error
+	var buyerID uint64
+	var buyer routing.Buyer
+
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+		err = fmt.Errorf("UpdateBuyerInformation(): %v", ErrInsufficientPrivileges)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	ctx := context.Background()
+
+	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok {
+		err := fmt.Errorf("UpdateBuyerInformation(): user is not assigned to a company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	if companyCode == "" {
+		err = fmt.Errorf("UpdateBuyerInformation(): failed to parse company code")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if args.NewPublicKey == "" {
+		err = fmt.Errorf("UpdateBuyerInformation() new public key is required")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+
+	// Buyer found
+	if buyer.ID != 0 {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "PublicKey", args.NewPublicKey); err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() buyer update failed: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	} else {
+		// New Buyer
+		byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() could not decode public key string")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
+
+		// Create new buyer
+		err = s.Storage.AddBuyer(ctx, routing.Buyer{
+			CompanyCode: companyCode,
+			ID:          buyerID,
+			Live:        false,
+			PublicKey:   byteKey[8:],
+		})
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() failed to add buyer")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		// Check if buyer is associated with the ID and everything worked
+		buyer, err = s.Storage.Buyer(buyerID)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() buyer creation failed: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	// Set reply
+	reply.PublicKey = buyer.EncodedPublicKey()
+
+	return nil
+}
+
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyerID uint64
@@ -1373,6 +1460,40 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 
 	reply.DatacenterMaps = replySlice
 	return nil
+
+}
+
+type JSRemoveDatacenterMapArgs struct {
+	DatacenterHexID string `json:"hexDatacenterID"`
+	BuyerHexID      string `json:"hexBuyerID"`
+	Alias           string `json:"alias"`
+}
+
+type JSRemoveDatacenterMapReply struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDatacenterMapArgs, reply *JSRemoveDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse BuyerID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse DatacenterID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		Alias:        args.Alias,
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.RemoveDatacenterMap(ctx, dcMap)
 
 }
 
@@ -2203,7 +2324,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-	case "ShortName":
+	case "ShortName", "PublicKey":
 		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)

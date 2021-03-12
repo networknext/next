@@ -87,8 +87,10 @@ func main() {
 }
 
 func mainReturnWithCode() int {
+	
 	serviceName := "server_backend"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	fmt.Printf("%s\n", serviceName)
 
 	ctx := context.Background()
 
@@ -572,7 +574,7 @@ func mainReturnWithCode() int {
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
