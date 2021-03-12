@@ -128,6 +128,18 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	beaconAddress, err := net.ResolveUDPAddr("udp", "127.0.0.1:35000")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	beaconAddress, err = envvar.GetAddress("NEXT_BEACON_ADDRESS", beaconAddress)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	numClients, err := envvar.GetInt("NUM_CLIENTS", 400)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -195,7 +207,7 @@ func mainReturnWithCode() int {
 				dcName = "local"
 			}
 
-			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersionLatest, logger, customerID, customerPrivateKey, dcName)
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, beaconAddress, clients, transport.SDKVersionLatest, logger, customerID, customerPrivateKey, dcName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
