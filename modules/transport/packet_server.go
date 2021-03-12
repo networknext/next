@@ -34,6 +34,8 @@ const (
 	InitResponseUnknownDatacenter    = 2
 	InitResponseOldSDKVersion        = 3
 	InitResponseSignatureCheckFailed = 4
+	InitResponseCustomerNotActive    = 5
+	InitResponseDataCenterNotEnabled = 6
 
 	ConnectionTypeUnknown  = 0
 	ConnectionTypeWired    = 1
@@ -44,15 +46,18 @@ const (
 	PlatformTypeUnknown     = 0
 	PlatformTypeWindows     = 1
 	PlatformTypeMac         = 2
-	PlatformTypeUnix        = 3
+	PlatformTypeLinux       = 3
 	PlatformTypeSwitch      = 4
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
 	PlatformTypeXBoxOne     = 7
-	PlatformTypeMax_Old     = 7 // SDK 4.0.4 and older
+	PlatformTypeMax_404     = 7 	// SDK 4.0.4 and older
 	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
-	PlatformTypeMax_New     = 9 // SDK 4.0.5 and newer
+	PlatformTypeMax_405     = 9 	// SDK 4.0.5 and newer
+	PlatformTypeGDK         = 10
+	PlatformTypeMax_410     = 10 	// SDK 4.0.10 and newer
+	PlatformTypeMax         = 10
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)
@@ -108,8 +113,8 @@ func PlatformTypeText(platformType uint8) string {
 		return "Windows"
 	case PlatformTypeMac:
 		return "Mac"
-	case PlatformTypeUnix:
-		return "Unix"
+	case PlatformTypeLinux:
+		return "Linux"
 	case PlatformTypeSwitch:
 		return "Switch"
 	case PlatformTypePS4:
@@ -122,6 +127,8 @@ func PlatformTypeText(platformType uint8) string {
 		return "XBox Series X"
 	case PlatformTypePS5:
 		return "PS5"
+	case PlatformTypeGDK:
+		return "GDK"
 	default:
 		return "unknown"
 	}
@@ -133,8 +140,8 @@ func ParsePlatformType(conntype string) uint8 {
 		return PlatformTypeWindows
 	case "Mac":
 		return PlatformTypeMac
-	case "Unix":
-		return PlatformTypeUnix
+	case "Linux":
+		return PlatformTypeLinux
 	case "Switch":
 		return PlatformTypeSwitch
 	case "PS4":
@@ -145,6 +152,10 @@ func ParsePlatformType(conntype string) uint8 {
 		return PlatformTypeXBoxOne
 	case "XBox Series X":
 		return PlatformTypeXBoxSeriesX
+	case "PS5":
+		return PlatformTypePS5
+	case "GDK":
+		return PlatformTypeGDK
 	default:
 		return PlatformTypeUnknown
 	}
@@ -352,9 +363,13 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.UserHash)
 
 	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 5) {
-		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_New)
+		if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 10) {
+			stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_410)
+		} else {
+			stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_405)
+		}
 	} else {
-		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_Old)
+		stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax_404)
 	}
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)

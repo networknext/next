@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -165,7 +166,7 @@ func NewPostgreSQL(
 		datacenterIDs:      make(map[int64]uint64),
 		relayIDs:           make(map[int64]uint64),
 		customerIDs:        make(map[int64]string),
-		buyerIDs:           make(map[int64]uint64),
+		buyerIDs:           make(map[uint64]int64),
 		sellerIDs:          make(map[int64]string),
 		routeShaders:       make(map[uint64]core.RouteShader),
 		internalConfigs:    make(map[uint64]core.InternalConfig),
@@ -344,7 +345,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
 
-	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
+	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
@@ -365,6 +366,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(&relay.DatabaseID,
+			&relay.HexID,
 			&relay.Name,
 			&relay.ContractTerm,
 			&relay.EndDate,
@@ -395,14 +397,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			return err
 		}
 
-		fullPublicAddress := relay.PublicIP + ":" + fmt.Sprintf("%d", relay.PublicIPPort)
-		rid := crypto.HashID(fullPublicAddress)
-
-		publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
-		}
-
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
@@ -428,12 +422,16 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
 
-		relayIDs[relay.DatabaseID] = rid
+		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+		}
+
+		relayIDs[relay.DatabaseID] = internalID
 
 		r := routing.Relay{
-			ID:                  rid,
+			ID:                  internalID,
 			Name:                relay.Name,
-			Addr:                *publicAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -454,13 +452,22 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 		}
 
 		// nullable values follow
-		if relay.InternalIP.String != "" {
+		if relay.InternalIP.Valid {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
 				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
 			}
 			r.InternalAddr = *internalAddr
+		}
+
+		if relay.PublicIP.Valid {
+			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
+			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+			}
+			r.Addr = *publicAddr
 		}
 
 		if relay.StartDate.Valid {
@@ -471,7 +478,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			r.EndDate = relay.EndDate.Time
 		}
 
-		relays[rid] = r
+		relays[internalID] = r
 
 	}
 
@@ -505,7 +512,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	var buyer sqlBuyer
 
 	buyers := make(map[uint64]routing.Buyer)
-	buyerIDs := make(map[int64]uint64)
+	buyerIDs := make(map[uint64]int64)
 
 	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
@@ -534,7 +541,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyer.ID = uint64(buyer.SdkID)
 
-		buyerIDs[buyer.DatabaseID] = buyer.ID
+		buyerIDs[buyer.ID] = buyer.DatabaseID
 
 		// apply default values - custom values will be attached in
 		// syncInternalConfigs() and syncRouteShaders() if they exist
@@ -555,7 +562,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			DatabaseID:     buyer.DatabaseID,
 		}
 
-		buyers[buyer.ID] = b
+		buyers[uint64(buyer.DatabaseID)] = b
 
 	}
 
@@ -657,9 +664,12 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 			return err
 		}
 
+		buyer := db.buyers[uint64(sqlMap.BuyerID)]
+		ephemeralBuyerID := buyer.ID
+
 		dcMap := routing.DatacenterMap{
 			Alias:        sqlMap.Alias,
-			BuyerID:      db.buyerIDs[sqlMap.BuyerID],
+			BuyerID:      ephemeralBuyerID,
 			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
 		}
 
@@ -815,16 +825,14 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			EnableVanityMetrics:        sqlIC.EnableVanityMetrics,
 		}
 
-		id := db.buyerIDs[buyerID]
-
-		buyer := db.buyers[id]
+		buyer := db.buyers[uint64(buyerID)]
 		buyer.InternalConfig = internalConfig
 
 		db.buyerMutex.Lock()
-		db.buyers[id] = buyer
+		db.buyers[uint64(buyerID)] = buyer
 		db.buyerMutex.Unlock()
 
-		internalConfigs[id] = internalConfig
+		internalConfigs[uint64(buyerID)] = internalConfig
 	}
 
 	db.internalConfigMutex.Lock()
@@ -906,18 +914,17 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
 		}
 
-		id := db.buyerIDs[buyerID]
-		buyer := db.buyers[id]
+		buyer := db.buyers[uint64(buyerID)]
 		buyer.RouteShader = routeShader
 
 		db.buyerMutex.Lock()
-		db.buyers[id] = buyer
+		db.buyers[uint64(buyerID)] = buyer
 		db.buyerMutex.Unlock()
 
-		if bannedUsers, ok := db.bannedUsers[id]; ok {
+		if bannedUsers, ok := db.bannedUsers[uint64(buyerID)]; ok {
 			routeShader.BannedUsers = bannedUsers
 		}
-		routeShaders[id] = routeShader
+		routeShaders[uint64(buyerID)] = routeShader
 	}
 
 	for buyerID, rs := range routeShaders {
@@ -955,7 +962,7 @@ func (db *SQL) syncBannedUsers(ctx context.Context) error {
 			return err
 		}
 
-		buyerID := db.buyerIDs[dbBuyerID]
+		buyerID := db.buyerIDs[uint64(dbBuyerID)]
 
 		bannedUser := make(map[uint64]bool)
 		bannedUser[uint64(userID)] = true

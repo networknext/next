@@ -20,7 +20,6 @@ func SeedStorage(
 	customerID uint64,
 	customerPublicKey []byte,
 ) error {
-	fmt.Println("SeedStorage()")
 	routeShader := core.NewRouteShader()
 	internalConfig := core.NewInternalConfig()
 	internalConfig.ForceNext = true
@@ -112,7 +111,7 @@ func SeedStorage(
 		datacenterMap := routing.DatacenterMap{
 			BuyerID:      customerID,
 			DatacenterID: datacenter.ID,
-			Alias:        "local aliased",
+			Alias:        "local",
 		}
 		if err := db.AddSeller(ctx, seller); err != nil {
 			return fmt.Errorf("AddSeller() err: %w", err)
