@@ -24,7 +24,7 @@ const (
 
 	MaxRelayNameLength = 63
 
-	LoadRelayPublicKey = "" // todo load key
+	LoadRelayPublicKey = "iZSBLaPMiAzTy3LHZl1OtLYY/4p9qm71QgZkuyYj5VE="
 )
 
 type RelayState uint32

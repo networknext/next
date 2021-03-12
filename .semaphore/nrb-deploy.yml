@@ -24,10 +24,6 @@ blocks:
     dependencies: []
     task:
       jobs:
-        - name: Analytics
-          commands:
-            - make build-analytics-artifacts-nrb
-            - make publish-analytics-artifacts-nrb
         - name: Relay Backend
           commands:
             - make build-relay-backend-artifacts-nrb

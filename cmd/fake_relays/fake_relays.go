@@ -24,12 +24,15 @@ import (
 )
 
 var (
-	buildtime             string
-	commitMessage         string
-	sha                   string
-	tag                   string
-	relayPrivatekey       string
-	relayBackendPublicKey string
+	buildtime               string
+	commitMessage           string
+	sha                     string
+	tag                     string
+	relayPrivatekey         string
+	relayBackendPublicKey   string
+	RELAY_PUBLIC_KEY        = []byte("iZSBLaPMiAzTy3LHZl1OtLYY/4p9qm71QgZkuyYj5VE=")
+	RELAY_PRIVATE_KEY       = []byte("h11vbdzQNdSKKAGBvS58S8sKuanaTorTn+6F3hqnpNc=")
+	RELAY_ROUTER_PUBLIC_KEY = []byte("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
 )
 
 const (
@@ -85,18 +88,6 @@ func mainReturnWithCode() int {
 	relayBackendAddr := envvar.Get("RELAY_BACKEND_ADDR", "")
 	if net.ParseIP(relayBackendAddr) == nil {
 		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	relayPrivatekey = envvar.Get("RELAY_PRIVATE_KEY", "")
-	if relayPrivatekey == "" {
-		level.Error(logger).Log("msg", "relay private key not set")
-		return 1
-	}
-
-	relayBackendPublicKey = envvar.Get("RELAY_BACKEND_PUBLIC_KEY", "")
-	if relayBackendPublicKey == "" {
-		level.Error(logger).Log("msg", "relay backend public key not set")
 		return 1
 	}
 
@@ -228,9 +219,10 @@ func fakeRelay(i int) routing.Relay {
 	id := crypto.HashID(IP)
 
 	return routing.Relay{
-		Name: fmt.Sprintf("fake_relay_%v", i),
-		ID:   id,
-		Addr: *addr,
+		Name:      fmt.Sprintf("fake_relay_%v", i),
+		ID:        id,
+		Addr:      *addr,
+		PublicKey: RELAY_PUBLIC_KEY,
 	}
 }
 
@@ -257,13 +249,15 @@ func newRouteBase() routeBase {
 }
 
 func sendInit(relay Relay, addr string) error {
-	//todo needs public/private key, one key for all
+	nonce := []byte(addr)
+	token := crypto.Seal([]byte("test relay"), nonce, RELAY_ROUTER_PUBLIC_KEY, RELAY_PRIVATE_KEY)
+
 	initRequest := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
 		Version:        transport.VersionNumberInitRequest,
-		Nonce:          []byte{}, //todo
+		Nonce:          nonce,
 		Address:        relay.data.Addr,
-		EncryptedToken: []byte{}, //todo
+		EncryptedToken: token,
 		RelayVersion:   "0.0.0",
 	}
 
