@@ -52,4 +52,4 @@ blocks:
             - make build-fake-relays-artifacts-nrb
             - make publish-fake-relays-artifacts-nrb
       secrets:
-        - name: google-cloud-platform
+        - name: google-cloud-platform-new-relay-backend

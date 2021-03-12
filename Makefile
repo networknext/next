@@ -1085,7 +1085,7 @@ dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
 .PHONY: build-relay-forwarder
 build-relay-forwarder:
 	@printf "Building relay forwarder... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/forwarder.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
 	@printf "done\n"
 
 .PHONY: build-relay-forwarder-artifacts-nrb
