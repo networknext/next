@@ -1053,6 +1053,28 @@ deploy-ghost-army-prod:
 	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
 
 #######################
+#     Fake Relay      #
+#######################
+
+.PHONY: dev-fake-relays
+dev-fake-relays: build-fake-relays ## runs a local relay forwarder
+	@PORT=30000 ./dist/fake_relays
+
+.PHONY: build-fake-relays
+build-fake-relays:
+	@printf "Building fake relays... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_relays ./cmd/fake_relays/fake_relays.go
+	@printf "done\n"
+
+.PHONY: build-fake-relays-artifacts-nrb
+build-fake-relays-artifacts-nrb: build-fake-relays
+	./deploy/build-artifacts.sh -e nrb -s fake_relays
+
+.PHONY: publish-fake-relays-artifacts-nrb
+publish-fake-relays-artifacts-nrb:
+	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s fake_relays
+
+#######################
 #   Relay Forwarder   #
 #######################
 
@@ -1066,13 +1088,13 @@ build-relay-forwarder:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/forwarder.go
 	@printf "done\n"
 
-.PHONY: build-relay-forwarder_artifacts-nrb
-build-relay-forwarder_artifacts-nrb: build-relay-forwarder
-	./deploy/build-artifacts.sh -e nrb -s relay_gateway
+.PHONY: build-relay-forwarder-artifacts-nrb
+build-relay-forwarder-artifacts-nrb: build-relay-forwarder
+	./deploy/build-artifacts.sh -e nrb -s relay_forwarder
 
-.PHONY: publish-relay-forwarder_artifacts-nrb
-publish-relay-forwarder_artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_gateway
+.PHONY: publish-relay-forwarder-artifacts-nrb
+publish-relay-forwarder-artifacts-nrb:
+	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_forwarder
 
 #######################
 #    Relay Gateway    #
@@ -1119,64 +1141,6 @@ publish-relay-gateway-artifacts-staging:
 .PHONY: publish-relay-gateway-artifacts-prod
 publish-relay-gateway-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
-
-#######################
-#     Optimizer       #
-#######################
-
-.PHONY: dev-optimizer
-dev-optimizer: build-optimizer ## runs a local optimizer
-	@PORT=30003 ./dist/optimizer
-
-.PHONY: build-optimizer
-build-optimizer:
-	@printf "Building Optimizer... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
-	@printf "done\n"
-
-.PHONY: build-optimizer-artifacts-dev
-build-optimizer-artifacts-dev: build-optimizer
-	./deploy/build-artifacts.sh -e dev -s optimizer
-
-.PHONY: build-optimizer-artifacts-nrb
-build-optimizer-artifacts-nrb: build-optimizer
-	./deploy/build-artifacts.sh -e nrb -s optimizer
-
-.PHONY: build-optimizer-artifacts-staging
-build-optimizer-artifacts-staging: build-optimizer
-	./deploy/build-artifacts.sh -e staging -s optimizer
-
-.PHONY: build-optimizer-artifacts-prod
-build-optimizer-artifacts-prod: build-optimizer
-	./deploy/build-artifacts.sh -e prod -s optimizer
-
-.PHONY: deploy-optimizer-dev
-deploy-optimizer-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t optimizer -n optimizer -b gs://development_artifacts
-
-.PHONY: deploy-optimizer-staging
-deploy-optimizer-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t optimizer -n optimizer -b gs://staging_artifacts
-
-.PHONY: deploy-optimizer-prod
-deploy-optimizer-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t optimizer -n optimizer -b gs://prod_artifacts
-
-.PHONY: publish-optimizer-artifacts-dev
-publish-optimizer-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s optimizer
-
-.PHONY: publish-optimizer-artifacts-nrb
-publish-optimizer-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s optimizer
-
-.PHONY: publish-optimizer-artifacts-staging
-publish-optimizer-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s optimizer
-
-.PHONY: publish-optimizer-artifacts-prod
-publish-optimizer-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s optimizer
 
 #######################
 ##   Relay Frontend  ##

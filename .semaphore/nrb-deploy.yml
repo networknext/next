@@ -43,10 +43,6 @@ blocks:
           commands:
             - make build-relay-gateway-artifacts-nrb
             - make publish-relay-gateway-artifacts-nrb
-        - name: Optimizer
-          commands:
-            - make build-optimizer-artifacts-nrb
-            - make publish-optimizer-artifacts-nrb
         - name: Relay Frontend
           commands:
             - make build-relay-frontend-artifacts-nrb
@@ -55,9 +51,5 @@ blocks:
           commands:
             - make build-fake-relays-artifacts-nrb
             - make publish-fake-relays-artifacts-nrb
-        - name: Fake Server Backend
-          commands:
-            - make build-fake-server-backend-artifacts-nrb
-            - make publish-fake-server-backend-artifacts-nrb
       secrets:
         - name: google-cloud-platform
