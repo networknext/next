@@ -342,7 +342,7 @@ func (server *FakeServer) sendBeaconPacket(session Session) error {
 		return err
 	}
 
-	packetDataHeader := make([]byte, 1+transport.MaxNextBeaconPacketBytes)
+	packetDataHeader := make([]byte, 1)
 	packetDataHeader[0] = transport.PacketTypeBeacon
 	packetData = append(packetDataHeader, packetData...)
 
