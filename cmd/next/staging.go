@@ -33,6 +33,8 @@ type StagingConfig struct {
 	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
+	Beacon         StagingServiceConfig `json:"beacon"`
+	BeaconInserter StagingServiceConfig `json:"beacon-inserter"`
 	Portal         StagingServiceConfig `json:"portal"`
 	ServerBackend  StagingServiceConfig `json:"server-backend"`
 	FakeServer     StagingServiceConfig `json:"fake-server"`
@@ -70,6 +72,16 @@ var DefaultStagingConfig = StagingConfig{
 	},
 
 	Billing: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
+	Beacon: StagingServiceConfig{
+		Cores: 8,
+		Count: -1,
+	},
+
+	BeaconInserter: StagingServiceConfig{
 		Cores: 1,
 		Count: -1,
 	},
