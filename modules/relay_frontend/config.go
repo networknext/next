@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	ENV                   string
+	MasterTimeVariance    time.Duration
 	MatrixStoreAddress    string
 	MSReadTimeout         time.Duration
 	MSWriteTimeout        time.Duration
@@ -20,6 +21,11 @@ func GetConfig() (*Config, error) {
 	var err error
 
 	cfg.ENV = envvar.Get("ENV", "local")
+
+	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5000*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg.MatrixStoreAddress = envvar.Get("MATRIX_STORE_ADDRESS", "127.0.0.1:6379")
 

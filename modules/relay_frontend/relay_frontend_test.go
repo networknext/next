@@ -23,12 +23,11 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 	store := storage.MatrixStoreMock{}
-	cfg := &Config{MatrixSvcTimeVariance: timeVariance(10), OptimizerTimeVariance: timeVariance(15)}
+	cfg := &Config{MasterTimeVariance: timeVariance(15)}
 	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
-	assert.Equal(t, timeVariance(10), cfg.MatrixSvcTimeVariance)
-	assert.Equal(t, timeVariance(15), cfg.OptimizerTimeVariance)
+	assert.Equal(t, timeVariance(15), svc.cfg.MasterTimeVariance)
 	assert.Equal(t, &store, svc.store)
 	assert.NotEqual(t, 0, svc.id)
 }
@@ -66,7 +65,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{MatrixSvcTimeVariance: time.Second, OptimizerTimeVariance: time.Second}
+	cfg := &Config{MasterTimeVariance: time.Second}
 	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 
@@ -104,7 +103,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{MatrixSvcTimeVariance: time.Second, OptimizerTimeVariance: time.Second}
+	cfg := &Config{MasterTimeVariance: time.Second}
 	svc, err := New(&store, cfg)
 	assert.Nil(t, err)
 

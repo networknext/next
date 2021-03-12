@@ -54,7 +54,7 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 		return err
 	}
 
-	masterAddress, err := chooseRelayBackendMaster(rbArr, 3*time.Second)
+	masterAddress, err := chooseRelayBackendMaster(rbArr, r.cfg.MasterTimeVariance)
 	if err != nil {
 		return err
 	}
