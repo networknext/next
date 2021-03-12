@@ -43,7 +43,7 @@ const (
 	relayEnabled  = 2
 	relayCrashed  = 3
 
-	//chances are 1 in n
+	// chances are 1 in n
 	pLChance             = 10000
 	pLValue              = .3
 	relayCrashChance     = 100000
@@ -57,7 +57,6 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	//Setup-------------------------------------------------------------------------------------------------------------
 	serviceName := "fake_relays"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
@@ -71,24 +70,18 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	//numRelays to fake
+	// numRelays to fake
 	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 5)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 	}
 
-	//time the load test runs for before calling shutdown to the relay backend.
-	timeToRun, err := envvar.GetDuration("TIME_TO_RUN", 20*time.Minute)
+	featureNoInit, err := envvar.GetBool("FEATURE_NO_INIT", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 	}
 
-	FeatureNoInit, err := envvar.GetBool("FEATURE_NO_INIT", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-
-	//get and verify relayBackendAddr
+	// get and verify relayBackendAddr
 	relayBackendAddr := envvar.Get("RELAY_BACKEND_ADDR", "")
 	if net.ParseIP(relayBackendAddr) == nil {
 		level.Error(logger).Log("err", err)
@@ -113,7 +106,7 @@ func mainReturnWithCode() int {
 		storageRelayArr[i] = fakeRelay(i)
 	}
 
-	//create fake relay route Bases
+	// create fake relay route Bases
 	relayArr := make([]Relay, len(storageRelayArr))
 	for i := 0; i < numRelays; i++ {
 		relayI := storageRelayArr[i]
@@ -138,7 +131,7 @@ func mainReturnWithCode() int {
 		relayArr[i] = newRelay
 	}
 
-	// core logic ----------------------------------------------------------------------------------------------------------
+	// core logic
 	shutdown := false
 	initAddress := fmt.Sprintf("%s/relay_init", relayBackendAddr)
 	updateAddress := fmt.Sprintf("%s/relay_update", relayBackendAddr)
@@ -168,7 +161,7 @@ func mainReturnWithCode() int {
 					//
 					// }
 
-					if FeatureNoInit {
+					if featureNoInit {
 						_, err := sendUpdateInit(relay, updateAddress)
 						if err != nil {
 							level.Error(logger).Log("err", err)
@@ -216,21 +209,12 @@ func mainReturnWithCode() int {
 		}(relay)
 	}
 
-	//shutdown and close application
-	go func() {
-		// Wait for interrupt signal
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt)
-		<-sigint
-		shutdown = true
-		time.Sleep(time.Minute)
-		os.Exit(0)
-	}()
-
-	time.Sleep(timeToRun)
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
 	shutdown = true
-
-	time.Sleep(1 * time.Minute)
+	time.Sleep(5 * time.Second)
+	os.Exit(0)
 	return 0
 }
 
@@ -447,7 +431,7 @@ func newPacketData(id uint64, base routeBase) routing.RelayStatsPing {
 	return pingStat
 }
 
-//this returns the float multiplier at +/- maxMultiplierPercent
+// this returns the float multiplier at +/- maxMultiplierPercent
 func calcMultiplier() float32 {
 	base := rand.Int31n(maxMultiplierPercent * 2)
 	return 1.0 + float32(base-maxMultiplierPercent)/100.0
