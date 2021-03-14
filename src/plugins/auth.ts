@@ -1,6 +1,6 @@
 import store from '@/store'
 import { Auth0Client } from '@auth0/auth0-spa-js'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { UserProfile } from '@/components/types/AuthTypes'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import Vue from 'vue'
 
@@ -38,9 +38,15 @@ export class AuthService {
 
   public signUp (email: string | undefined) {
     const emailHint = email || ''
+    if (emailHint === '' && Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      console.log('Sending clicked sign up')
+      Vue.prototype.$gtag.event('Clicked sign up', {
+        event_category: 'Account Creation'
+      })
+    }
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin + '/map',
+      redirect_uri: window.location.origin + '/map?signup=true',
       screen_hint: 'signup',
       login_hint: emailHint
     })
@@ -59,7 +65,6 @@ export class AuthService {
 
     // Current version of chrome doesn't like replace all apparently
     if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
-      store.commit('TOGGLE_IS_SIGN_UP_TOUR', true)
       return this.refreshToken()
     }
 

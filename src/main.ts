@@ -23,20 +23,6 @@ import VueTour from 'vue-tour'
 
 Vue.config.productionTip = false
 
-require('vue-tour/dist/vue-tour.css')
-
-Vue.use(VueTour)
-
-const clientID = process.env.VUE_APP_AUTH0_CLIENTID
-const domain = process.env.VUE_APP_AUTH0_DOMAIN
-
-Vue.use(AuthPlugin, {
-  domain: domain,
-  clientID: clientID
-})
-
-Vue.use(JSONRPCPlugin)
-
 const flags: Array<Flag> = [
   {
     name: FeatureEnum.FEATURE_EXPLORE,
@@ -83,6 +69,10 @@ if (useAPI) {
   Vue.prototype.$flagService.fetchEnvVarFeatureFlags()
 }
 
+require('vue-tour/dist/vue-tour.css')
+
+Vue.use(VueTour)
+
 const gtagID = process.env.VUE_APP_GTAG_ID || ''
 
 if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && gtagID !== '') {
@@ -91,6 +81,16 @@ if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && gtagI
   }, router)
 }
 
+const clientID = process.env.VUE_APP_AUTH0_CLIENTID
+const domain = process.env.VUE_APP_AUTH0_DOMAIN
+
+Vue.use(AuthPlugin, {
+  domain: domain,
+  clientID: clientID
+})
+
+Vue.use(JSONRPCPlugin)
+
 // This is VERY hacky. It would be much better to do this within the router but going that route (no pun intended) mounts half the app before hitting the redirect which is funky
 // TODO: Look into a lifecycle hook that handles this better...
 if (window.location.pathname === '/get-access') {
@@ -98,6 +98,25 @@ if (window.location.pathname === '/get-access') {
 } else {
   Vue.prototype.$authService.processAuthentication().then(() => {
     const query = window.location.search
+    if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
+      store.commit('TOGGLE_IS_SIGN_UP_TOUR', true)
+      if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+        setTimeout(() => {
+          Vue.prototype.$gtag.event('Account verified', {
+            event_category: 'Account Creation'
+          })
+        }, 5000)
+      }
+    }
+
+    if (query.includes('signup') && Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      setTimeout(() => {
+        Vue.prototype.$gtag.event('Auth0 account created', {
+          event_category: 'Account Creation'
+        })
+      }, 5000)
+    }
+
     if (query.includes('code=') && query.includes('state=')) {
       router.push('/map')
     }
