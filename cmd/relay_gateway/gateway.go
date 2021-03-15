@@ -45,11 +45,15 @@ func mainReturnWithCode() int {
 
 	gcpProjectID := backend.GetGCPProjectID()
 
+	fmt.Printf("gcp id: %v \n", gcpProjectID)
+
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	fmt.Printf("logger 1\n")
 
 	// todo why 2 loggers
 	relayLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
@@ -57,6 +61,8 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	fmt.Printf("logger 2\n")
 
 	env, err := backend.GetEnv()
 	if err != nil {
@@ -70,6 +76,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 	}
+	fmt.Printf("stack profiler\n")
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
