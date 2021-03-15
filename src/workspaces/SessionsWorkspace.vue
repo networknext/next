@@ -173,7 +173,10 @@ export default class SessionsWorkspace extends Vue {
         header: {
           title: 'Sessions'
         },
-        content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).'
+        content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).',
+        params: {
+          placement: 'bottom'
+        }
       }
     ]
 
