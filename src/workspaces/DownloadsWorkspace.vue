@@ -110,9 +110,9 @@ export default class DownloadsWorkspace extends Vue {
   }
 
   private mounted () {
-    // if (this.$store.getters.isSignUpTour && this.$route.name === 'downloads' && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning) {
-    this.$tours.downloadsTour.start()
-    // }
+    if (this.$store.getters.isSignUpTour && this.$route.name === 'downloads' && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning) {
+      this.$tours.downloadsTour.start()
+    }
   }
 
   private downloadSDK () {
