@@ -1,31 +1,26 @@
-# Server Backend
+# Debug Server Backend
 
-The Server Backend is responsible for:
+**IMPORTANT** This service is only to be used by internal developement teams. It's primary purpose is to mimic the functionality of the server backend and allow for teams to add debug logs and additional visibility tweaks without effecting live customers.
 
-1. Listening for new game servers that come online
+The Debug Server Backend is responsible for:
+
+1. Listening for test game servers that come online
 2. Pulls the route matrix from the relay backend
-3. Accepts client sessions from the game server to find relays near the client, find a route, and send it back to the game server
+3. Accepts test client sessions from the test game server to find relays near the client, find a route, and send it back to the test game server
 4. Send route information to the portal cruncher so that the sessions can be viewed in the portal
 5. Records metrics and billing information so that the routes being served are billed accordingly
 
 ### Load & Scalability
 
 Status: **HIGH**
-Scalability: **Horizontally, Load-Balanced**
+Scalability: **N/A**
 
-1. Game clients and game servers send UDP packets every 10 seconds
+1. Test game clients and test game servers send UDP packets every 10 seconds
 2. The only network calls made during these requests are to the portal cruncher to send portal data and to Google PubSub to send billing information, everything else is done in memory or in the background across the network to build a local cache
-
-### To Run
-
-Run `redis-server` in one terminal window
-Run `make dev-server-backend` in another terminal window
 
 ### Logging
 
 Levels are cumulative so if you set `BACKEND_LOG_LEVEL=info` you will get `error` and `warn` too.
-
-The default setting is `warn`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug dev-server-backend`.
 
 ### Environment Variables
 
@@ -53,6 +48,7 @@ The default setting is `warn`. To override this you can set your own value by do
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`. Default `warn`
 - `MAX_NEAR_RELAYS`: The maximum number of near relays to send down to a client. Cannot be greater than `32`. Default `32`
+- `NEXT_DEBUG_LOGS`: turns on logging to TTY via the core `Debug` function
 
 #### Optional for Cloud Environment
 
