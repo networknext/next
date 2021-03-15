@@ -64,6 +64,10 @@ blocks:
           commands:
             - make build-server-backend-artifacts-prod
             - make publish-server-backend-artifacts-prod
+        - name: Debug Server Backend
+          commands:
+            - make build-debug-server-backend-artifacts-prod
+            - make publish-debug-server-backend-artifacts-prod
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
