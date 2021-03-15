@@ -156,7 +156,7 @@ func mainReturnWithCode() int {
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
-
+	fmt.Println("http started")
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
