@@ -87,6 +87,7 @@ func mainReturnWithCode() int {
 	fmt.Printf("metrics handler\n")
 	relayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
 	if err != nil {
+		fmt.Printf("error: %v \n", err.Error())
 		level.Error(logger).Log("msg", msg, "err", err)
 		return 1
 	}
