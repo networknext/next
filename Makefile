@@ -486,7 +486,7 @@ build-server-backend:
 	@printf "done\n"
 
 .PHONY: build-debug-server-backend
-build-server-backend:
+build-debug-server-backend:
 	@printf "Building debug server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/debug_server_backend ./cmd/debug_server_backend/debug_server_backend.go
 	@printf "done\n"
