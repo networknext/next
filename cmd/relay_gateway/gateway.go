@@ -84,24 +84,27 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	fmt.Printf("metrics handler\n")
 	relayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", msg, "err", err)
 		return 1
 	}
 
+	fmt.Printf("metrics gateway\n")
 	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
+	fmt.Printf("storer\n")
 	cfg, err := newConfig()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-
+	fmt.Printf("config\n")
 	var publishers []pubsub.Publisher
 	if !cfg.NRBHTTP {
 		publishers, err = pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
