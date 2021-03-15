@@ -76,6 +76,7 @@
           <tr v-for="(session, index) in sessions" v-bind:key="index">
             <td>
               <font-awesome-icon
+                id="status"
                 icon="circle"
                 class="fa-w-16 fa-fw"
                 v-bind:class="{
@@ -170,7 +171,7 @@ export default class SessionsWorkspace extends Vue {
       {
         target: '[data-tour="0"]',
         header: {
-          title: 'Top Sessions'
+          title: 'Sessions'
         },
         content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).'
       }
@@ -261,11 +262,11 @@ export default class SessionsWorkspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-.fixed-width {
-  font-family: monospace;
-  font-size: 120%;
-}
-div.table-no-top-line th {
-  border-top: none !important;
-}
+  .fixed-width {
+    font-family: monospace;
+    font-size: 120%;
+  }
+  div.table-no-top-line th {
+    border-top: none !important;
+  }
 </style>

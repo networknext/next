@@ -42,7 +42,7 @@
           </small>
         </div>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm">
+      <button id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
         Update Company Settings
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -283,4 +283,12 @@ export default class AccountSettings extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+  #account-settings-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #account-settings-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

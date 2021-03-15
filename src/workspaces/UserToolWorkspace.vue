@@ -38,7 +38,7 @@
             >
           </div>
           <div class="col-auto">
-            <button class="btn btn-primary" type="submit">
+            <button id="user-tool-button" class="btn btn-primary" type="submit">
               View Sessions
             </button>
           </div>
@@ -132,4 +132,12 @@ export default class UserToolWorkspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  #user-tool-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #user-tool-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

@@ -26,6 +26,7 @@
           <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation" data-tour="sdkDocumentation">
             <a
               href="#"
+              id="sdk-button"
               v-on:click="downloadSDK()"
               class="btn btn-primary m-1 btn-width"
             >
@@ -36,6 +37,7 @@
             </a>
             <a
               href="#"
+              id="docs-button"
               v-on:click="downloadDocs()"
               class="btn btn-primary m-1 btn-width"
             >
@@ -79,9 +81,9 @@ export default class DownloadsWorkspace extends Vue {
       {
         target: '[data-tour="sdkDocumentation"]',
         header: {
-          title: 'SDK and Documentation'
+          title: 'SDK & Documentation'
         },
-        content: 'Get our open source SDK and view our latest Documentation here.\nIntegration instructions are in the Getting Started section of the Documentation.\nPlease contact us in chat (lower right) if you have any questions.',
+        content: 'Get our open source SDK and view our latest Documentation here.<br><br>Integration instructions are in the Getting Started section of the Documentation.<br><br>Please contact us in chat (lower right) if you have any questions.',
         params: {
           placement: 'left'
         }
@@ -108,9 +110,9 @@ export default class DownloadsWorkspace extends Vue {
   }
 
   private mounted () {
-    if (this.$store.getters.isSignUpTour && this.$route.name === 'downloads' && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning) {
-      this.$tours.downloadsTour.start()
-    }
+    // if (this.$store.getters.isSignUpTour && this.$route.name === 'downloads' && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning) {
+    this.$tours.downloadsTour.start()
+    // }
   }
 
   private downloadSDK () {
@@ -137,5 +139,21 @@ export default class DownloadsWorkspace extends Vue {
 <style scoped lang="scss">
   .btn-width {
     width: "160px";
+  }
+  #sdk-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #docs-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #sdk-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #docs-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
   }
 </style>

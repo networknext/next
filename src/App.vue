@@ -55,6 +55,7 @@ export default Vue.extend({})
   html, body {
     height: 100%;
     overflow: hidden;
+    font-family: "Montserrat" !important;
   }
   #app {
     position: absolute;
