@@ -7,6 +7,6 @@ RUN mkdir /app
 ADD . /app/
 WORKDIR /app
 
-RUN make build-server-backend
+RUN make build-debug-server-backend
 
-CMD ["./dist/server_backend"]
+CMD ["./dist/debug_server_backend"]
