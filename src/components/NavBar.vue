@@ -130,7 +130,6 @@
 <script lang="ts">
 import { cloneDeep } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
-import { UserProfile } from './types/AuthTypes'
 import { FeatureEnum } from './types/FeatureTypes'
 
 /**
@@ -176,7 +175,7 @@ export default class NavBar extends Vue {
         header: {
           title: 'Get Access'
         },
-        content: '<strong>Try it for your game for FREE!</strong> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.'
+        content: '<strong>Try it for your game for FREE!</strong><br><br> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.'
       }
     ]
 
@@ -210,7 +209,7 @@ export default class NavBar extends Vue {
         header: {
           title: 'Downloads'
         },
-        content: 'You\'re now logged in! You can now integrate the Network Next SDK into your game to start accelerating your traffic. \nThe SDK is in the Downloads section.',
+        content: 'You\'re now logged in! You can now integrate the Network Next SDK into your game to start accelerating your traffic.<br><br>The SDK is in the <strong>Downloads</strong> section.',
         params: {
           placement: 'bottom',
           enableScrolling: false

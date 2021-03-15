@@ -46,7 +46,7 @@ export default class Workspace extends Vue {
       {
         target: '#map',
         header: {
-          title: 'Welcome to Network Next!'
+          title: 'The Map'
         },
         content: 'Each green dot on the <strong>Map </strong>is a player being accelerated by Network Next',
         params: {
@@ -55,13 +55,14 @@ export default class Workspace extends Vue {
             buttonPrevious: false,
             buttonNext: true,
             buttonStop: false
-          }
+          },
+          placement: 'bottom'
         }
       },
       {
         target: '[data-tour="sessionsLink"]',
         header: {
-          title: 'Sessions Link'
+          title: 'Sessions'
         },
         content: 'Click <strong>Sessions</strong> to learn more about what Network Next does!'
       }
@@ -99,35 +100,40 @@ export default class Workspace extends Vue {
 <style lang="scss">
   .v-step {
     background-color: white !important;
-    color: black;
   }
   .v-step__header {
     padding: 1rem !important;
+    padding-bottom: 28px !important;
     background-color: white !important;
     color: black;
+    font-size: 24px;
     font-weight: bold;
     text-align: left;
     margin-bottom: 0 !important;
   }
   .v-step__content {
     background-color: white !important;
-    color: black;
+    padding-bottom: 28px !important;
+    font-size: 14px;
+    color: #1A1A1A;
     text-align: left;
+    margin: 0 !important;
   }
   .v-step__button {
-    border-color: black !important;
-    color: black !important;
-    font-weight: lighter;
+    border-color: #1A1A1A !important;
+    color: #1A1A1A !important;
+    font-size: 18px;
+    font-weight: 400;
     min-width: 80px;
   }
   .v-step__button.v-step__button-next {
-    background-color: rgb(0, 159, 223) !important;
+    background-color: #009FDF !important;
     border-color: rgb(0, 159, 223) !important;
     color: white !important;
   }
   .v-step__button.v-step__button-stop {
-    background-color: rgb(0, 159, 223) !important;
-    border-color: rgb(0, 159, 223) !important;
+    background-color: #009FDF !important;
+    border-color: #009FDF !important;
     color: white !important;
   }
   .v-step[x-placement^="top"] .v-step__arrow.v-step__arrow--dark{

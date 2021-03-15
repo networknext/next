@@ -24,6 +24,7 @@
         ></textarea>
       </div>
       <button
+        id="game-config-button"
         type="submit"
         class="btn btn-primary btn-sm"
         v-if="$store.getters.isOwner || $store.getters.isAdmin"
@@ -37,7 +38,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
 
 /**
@@ -120,4 +121,12 @@ export default class GameConfiguration extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  #game-config-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #game-config-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>
