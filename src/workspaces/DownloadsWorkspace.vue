@@ -1,5 +1,6 @@
 <template>
   <div>
+    <v-tour name="downloadsTour" :steps="downloadsTourSteps" :options="downloadsTourOptions" :callbacks="downloadsTourCallbacks"></v-tour>
     <div class="
               d-flex
               justify-content-between
@@ -22,7 +23,7 @@
     <div class="card mb-2">
       <div class="card-body">
         <div class="btn-group-vertical btn-group-sm float-right">
-          <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation">
+          <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation" data-tour="sdkDocumentation">
             <a
               href="#"
               v-on:click="downloadSDK()"
@@ -67,7 +68,50 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class DownloadsWorkspace extends Vue {
-  // Empty for now
+  private downloadsTourSteps: Array<any>
+  private downloadsTourOptions: any
+  private downloadsTourCallbacks: any
+
+  constructor () {
+    super()
+
+    this.downloadsTourSteps = [
+      {
+        target: '[data-tour="sdkDocumentation"]',
+        header: {
+          title: 'SDK and Documentation'
+        },
+        content: 'Get our open source SDK and view our latest Documentation here.\nIntegration instructions are in the Getting Started section of the Documentation.\nPlease contact us in chat (lower right) if you have any questions.',
+        params: {
+          placement: 'left'
+        }
+      }
+    ]
+
+    this.downloadsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'DONE'
+      }
+    }
+
+    this.downloadsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloads')
+      },
+      onSkip: () => {
+        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloads')
+      }
+    }
+  }
+
+  private mounted () {
+    if (this.$store.getters.isSignUpTour && this.$route.name === 'downloads' && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning) {
+      this.$tours.downloadsTour.start()
+    }
+  }
 
   private downloadSDK () {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {

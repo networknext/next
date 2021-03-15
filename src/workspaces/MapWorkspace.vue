@@ -20,6 +20,11 @@ import SessionMap from '@/components/SessionMap.vue'
   }
 })
 export default class MapWorkspace extends Vue {
+  private mounted () {
+    if (this.$store.getters.isTour && this.$tours.mapTour && !this.$tours.mapTour.isRunning && !this.$store.getters.finishedTours.includes('map')) {
+      this.$tours.mapTour.start()
+    }
+  }
 }
 </script>
 
