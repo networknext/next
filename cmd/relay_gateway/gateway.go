@@ -76,7 +76,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 	}
-	fmt.Printf("stack profiler\n")
+	fmt.Printf("stack driver profiler\n")
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
