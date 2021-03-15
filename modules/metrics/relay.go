@@ -265,7 +265,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.UnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init unmarshal failure count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.unmarshal_failure.count",
+		ID:          "relay_gateway.update.init.errors.unmarshal_failure.count",
 		Unit:        "unmarshal_failure",
 		Description: "The total number of received relay init requests that resulted in unmarshal failure",
 	})
@@ -276,7 +276,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.InvalidMagic, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init invalid magic error count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.invalid_magic.count",
+		ID:          "relay_gateway.update.init.errors.invalid_magic.count",
 		Unit:        "invalid_magic",
 		Description: "The total number of received relay init requests that resulted in invalid magic error",
 	})
@@ -287,7 +287,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.InvalidVersion, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init invalid version error count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.invalid_version.count",
+		ID:          "relay_gateway.update.init.errors.invalid_version.count",
 		Unit:        "invalid_version",
 		Description: "The total number of received relay init requests that resulted in invalid version error",
 	})
@@ -298,7 +298,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.RelayNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init relay not found error count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.not_found.count",
+		ID:          "relay_gateway.update.init.errors.not_found.count",
 		Unit:        "relay_not_found",
 		Description: "The total number of received relay init requests that resulted in relay not found error",
 	})
@@ -309,7 +309,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.RelayQuarantined, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init relay quarantined error count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.quarantined.count",
+		ID:          "relay_gateway.update.init.errors.quarantined.count",
 		Unit:        "relay_quarantined",
 		Description: "The total number of received relay init requests that resulted in relay quarantined error",
 	})
@@ -320,7 +320,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.DecryptionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init decryption failure count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.decryption_failure.count",
+		ID:          "relay_gateway.update.init.errors.decryption_failure.count",
 		Unit:        "decryption_failure",
 		Description: "The total number of received relay init requests that resulted in decryption failure",
 	})
@@ -331,7 +331,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.RelayAlreadyExists, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init relay already exists count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.already_exists.count",
+		ID:          "relay_gateway.update.init.errors.already_exists.count",
 		Unit:        "relay_already_exists",
 		Description: "The total number of received relay init requests that resulted in relay already exists",
 	})
@@ -342,7 +342,7 @@ func NewRelayGatewayUpdateMetrics(ctx context.Context, metricsHandler Handler) (
 	initErrorMetrics.IPLookupFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay init IP lookup failure count",
 		ServiceName: "relay_gateway",
-		ID:          "relay_gateway.init.errors.ip_lookup_failure.count",
+		ID:          "relay_gateway.update.init.errors.ip_lookup_failure.count",
 		Unit:        "ip_lookup_failure",
 		Description: "The total number of received relay init requests that resulted in IP lookup failure",
 	})
