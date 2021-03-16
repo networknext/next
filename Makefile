@@ -1157,13 +1157,12 @@ build-relay-frontend:
 	@printf "done\n"
 
 .PHONY: build-relay-frontend-artifacts-dev
-build-route-relay-frontend-artifacts-dev: build-relay-frontend
+build-relay-frontend-artifacts-dev: build-relay-frontend
 	./deploy/build-artifacts.sh -e dev -s relay_frontend
 
 .PHONY: build-relay-frontend-artifacts-nrb
-build-route-relay-frontend-artifacts-nrb: build-relay-frontend
+build-relay-frontend-artifacts-nrb: build-relay-frontend
 	./deploy/build-artifacts.sh -e nrb -s relay_frontend
-
 
 .PHONY: build-relay-frontend-artifacts-staging
 build-relay-frontend-artifacts-staging: build-relay-frontend
