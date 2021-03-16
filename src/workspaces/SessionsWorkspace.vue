@@ -171,7 +171,7 @@ export default class SessionsWorkspace extends Vue {
       {
         target: '[data-tour="0"]',
         header: {
-          title: 'Sessions'
+          title: 'Top Sessions'
         },
         content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).',
         params: {
