@@ -249,7 +249,7 @@ func newRouteBase() routeBase {
 }
 
 func sendInit(relay Relay, addr string) error {
-	nonce := []byte(addr)
+	nonce := []byte("123")
 	token := crypto.Seal([]byte("test relay"), nonce, RELAY_ROUTER_PUBLIC_KEY, RELAY_PRIVATE_KEY)
 
 	initRequest := transport.RelayInitRequest{
