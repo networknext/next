@@ -79,3 +79,14 @@ type BigQueryBillingEntry struct {
 	ClientToServerPacketsSent       bigquery.NullInt64
 	ServerToClientPacketsSent       bigquery.NullInt64
 }
+
+// BigQueryRelayPingsEntry contains 1 row of the BQ relay_pings table
+type BigQueryRelayPingsEntry struct {
+	Timestamp  time.Time `bigquery:"timestamp"`
+	RelayA     int64     `bigquery:"relay_a"`
+	RelayB     int64     `bigquery:"relay_b"`
+	RTT        float64   `bigquery:"rtt"`
+	Jitter     float64   `bigquery:"jitter"`
+	PacketLoss float64   `bigquery:"packet_loss"`
+	Routable   bool      `bigquery:"routable"`
+}

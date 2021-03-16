@@ -83,6 +83,7 @@ type Session struct {
 	sliceNumber         uint32
 	sessionDataBytes    int32
 	sessionData         [transport.MaxSessionDataSize]byte
+	upgraded			bool
 	next                bool
 	committed           bool
 	directRTT           float32
@@ -173,6 +174,8 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 	session.sessionDataBytes = response.SessionDataBytes
 	session.sessionData = response.SessionData
 
+	session.upgraded = true
+	
 	session.next = false
 	if response.RouteType != routing.RouteTypeDirect {
 		session.next = true

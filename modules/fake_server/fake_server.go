@@ -25,13 +25,16 @@ type FakeServer struct {
 	publicAddress        *net.UDPAddr
 	logger               log.Logger
 	serverRoutePublicKey []byte
+	dcName               string
 
-	conn     net.Conn
-	sessions []Session
+	conn              *net.UDPConn
+	serverBackendAddr *net.UDPAddr
+	beaconAddr        *net.UDPAddr
+	sessions          []Session
 }
 
 // NewFakeServer returns a fake server with the given parameters.
-func NewFakeServer(conn net.Conn, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte) (*FakeServer, error) {
+func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte, dcName string) (*FakeServer, error) {
 	// We need to use a random address for the server so that
 	// each server instance is uniquely identifiable, so that
 	// the total session count is accurate.
@@ -61,8 +64,11 @@ func NewFakeServer(conn net.Conn, clientCount int, sdkVersion transport.SDKVersi
 		customerPrivateKey:   customerPrivateKey,
 		logger:               logger,
 		serverRoutePublicKey: routePublicKey,
+		dcName:               dcName,
 		sessions:             make([]Session, clientCount),
 		conn:                 conn,
+		serverBackendAddr:    serverBackendAddr,
+		beaconAddr:           beaconAddr,
 	}
 
 	return server, nil
@@ -119,6 +125,10 @@ func (server *FakeServer) update() error {
 			}
 		}
 
+		if err := server.sendBeaconPacket(server.sessions[i]); err != nil {
+			return err
+		}
+
 		responsePacket, err := server.sendSessionUpdatePacket(server.sessions[i])
 		if err != nil {
 			return err
@@ -135,9 +145,9 @@ func (server *FakeServer) sendServerInitPacket() error {
 	requestPacket := transport.ServerInitRequestPacket{
 		Version:        server.sdkVersion,
 		CustomerID:     server.customerID,
-		DatacenterID:   crypto.HashID("local"),
+		DatacenterID:   crypto.HashID(server.dcName),
 		RequestID:      rand.Uint64(),
-		DatacenterName: "local",
+		DatacenterName: server.dcName,
 	}
 
 	packetData, err := transport.MarshalPacket(&requestPacket)
@@ -178,7 +188,7 @@ func (server *FakeServer) sendServerUpdatePacket() error {
 	requestPacket := transport.ServerUpdatePacket{
 		Version:       server.sdkVersion,
 		CustomerID:    server.customerID,
-		DatacenterID:  crypto.HashID("local"),
+		DatacenterID:  crypto.HashID(server.dcName),
 		NumSessions:   uint32(len(server.sessions)),
 		ServerAddress: *server.publicAddress,
 	}
@@ -204,7 +214,7 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 	requestPacket := transport.SessionUpdatePacket{
 		Version:                         server.sdkVersion,
 		CustomerID:                      server.customerID,
-		DatacenterID:                    crypto.HashID("local"),
+		DatacenterID:                    crypto.HashID(server.dcName),
 		SessionID:                       session.sessionID,
 		SliceNumber:                     session.sliceNumber,
 		SessionDataBytes:                session.sessionDataBytes,
@@ -296,14 +306,51 @@ func (server *FakeServer) sendPacket(packetType byte, packetData []byte) error {
 	packetDataHeader[0] = packetType
 	packetData = append(packetDataHeader, packetData...)
 
-	packetData = crypto.SignPacket(server.customerPrivateKey, packetData)
+	packetData = crypto.SignPacket(server.customerPrivateKey[8:], packetData)
 	crypto.HashPacket(crypto.PacketHashKey, packetData)
 
 	if err := server.conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); err != nil {
 		return err
 	}
 
-	if _, err := server.conn.Write(packetData); err != nil {
+	if _, err := server.conn.WriteToUDP(packetData, server.serverBackendAddr); err != nil {
+		return fmt.Errorf("failed to write to UDP: %v", err)
+	}
+
+	return nil
+}
+
+// sendBeaconPacket sends a packet to the beacon service.
+func (server *FakeServer) sendBeaconPacket(session Session) error {
+	beaconPacket := transport.NextBeaconPacket{
+		Version:          uint32(transport.BeaconPacketVersion),
+		CustomerID:       server.customerID,
+		DatacenterID:     crypto.HashID(server.dcName),
+		UserHash:         session.userHash,
+		AddressHash:      crypto.HashID(session.clientAddress.String()),
+		SessionID:        session.sessionID,
+		PlatformID:       session.platformType,
+		ConnectionType:   session.connectionType,
+		Enabled:          true, // We never have network next disabled locally or in staging
+		Upgraded:         session.upgraded,
+		Next:             session.next,
+		FallbackToDirect: false,
+	}
+
+	packetData, err := transport.WriteBeaconEntry(&beaconPacket)
+	if err != nil {
+		return err
+	}
+
+	packetDataHeader := make([]byte, 1)
+	packetDataHeader[0] = transport.PacketTypeBeacon
+	packetData = append(packetDataHeader, packetData...)
+
+	if err := server.conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); err != nil {
+		return err
+	}
+
+	if _, err := server.conn.WriteToUDP(packetData, server.beaconAddr); err != nil {
 		return fmt.Errorf("failed to write to UDP: %v", err)
 	}
 
@@ -319,7 +366,7 @@ func (server FakeServer) readPacket() (byte, []byte, error) {
 	incomingPacketDataArray := [transport.DefaultMaxPacketSize]byte{}
 	incomingPacketData := incomingPacketDataArray[:]
 
-	n, err := server.conn.Read(incomingPacketData)
+	n, _, err := server.conn.ReadFromUDP(incomingPacketData)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to read from UDP: %v", err)
 	}

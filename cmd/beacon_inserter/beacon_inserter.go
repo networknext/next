@@ -132,6 +132,7 @@ func mainReturnWithCode() int {
 		{
 			if pubsubEmulatorOK {
 				gcpProjectID = "local"
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
 			}
 
 			topicName := "beacon"
