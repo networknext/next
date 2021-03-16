@@ -51,7 +51,7 @@ export default class Workspace extends Vue {
         content: 'Each green dot on the <strong>Map </strong>is a player being accelerated by Network Next.',
         params: {
           enabledButtons: {
-            buttonSkip: true,
+            buttonSkip: false,
             buttonPrevious: false,
             buttonNext: true,
             buttonStop: false
@@ -64,7 +64,15 @@ export default class Workspace extends Vue {
         header: {
           title: 'Sessions'
         },
-        content: 'Click <strong>Sessions</strong> to learn more about what Network Next does!'
+        content: 'Click <strong>Sessions</strong> to learn more about what Network Next does!',
+        params: {
+          enabledButtons: {
+            buttonSkip: false,
+            buttonPrevious: false,
+            buttonNext: true,
+            buttonStop: true
+          }
+        }
       }
     ]
 
@@ -73,7 +81,7 @@ export default class Workspace extends Vue {
         buttonSkip: 'OK',
         buttonPrevious: 'BACK',
         buttonNext: 'NEXT',
-        buttonStop: 'DONE'
+        buttonStop: 'OK'
       }
     }
 

@@ -184,7 +184,7 @@ export default class NavBar extends Vue {
         buttonSkip: 'OK',
         buttonPrevious: 'BACK',
         buttonNext: 'NEXT',
-        buttonStop: 'DONE'
+        buttonStop: 'OK'
       }
     }
 

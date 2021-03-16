@@ -95,7 +95,7 @@ export default class DownloadsWorkspace extends Vue {
         buttonSkip: 'OK',
         buttonPrevious: 'BACK',
         buttonNext: 'NEXT',
-        buttonStop: 'DONE'
+        buttonStop: 'OK'
       }
     }
 
