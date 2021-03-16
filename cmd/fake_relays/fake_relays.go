@@ -214,7 +214,7 @@ func fakeRelay(i int) routing.Relay {
 	firstIpPart := i / 255
 	secondIpPart := i % 255
 	IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
-	addr, _ := net.ResolveUDPAddr("UDP", IP)
+	addr, _ := net.ResolveUDPAddr("udp", IP)
 
 	id := crypto.HashID(IP)
 
