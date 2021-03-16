@@ -38,6 +38,10 @@ func mainReturnWithCode() int {
 
 	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Println("")
+	fmt.Println("")
+	fmt.Println("")
+	fmt.Println("")
 
 	ctx := context.Background()
 	gcpProjectID := backend.GetGCPProjectID()
@@ -46,18 +50,21 @@ func mainReturnWithCode() int {
 		fmt.Println(err.Error())
 		return 1
 	}
-
+	fmt.Println("get config")
 	cfg, err := rm.GetConfig()
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
 
+	fmt.Println("new redis store")
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	fmt.Println("new storer")
 	svc, err := rm.New(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
@@ -65,7 +72,7 @@ func mainReturnWithCode() int {
 	}
 
 	shutdown := false
-
+	fmt.Println("core loop")
 	//core loop
 	go func() {
 		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
@@ -126,6 +133,7 @@ func mainReturnWithCode() int {
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
+	fmt.Println("finished starting http")
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
