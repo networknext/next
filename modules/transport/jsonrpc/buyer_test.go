@@ -698,8 +698,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{CompanyCode: "local"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 1, reply.Next)
-		assert.Equal(t, 50, reply.Direct)
+		assert.Equal(t, 6, reply.Next)
+		assert.Equal(t, 300, reply.Direct)
 	})
 }
 

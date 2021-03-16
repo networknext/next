@@ -80,7 +80,6 @@ type SessionCacheEntry struct {
 	UserHash                   uint64
 	Sequence                   uint64
 	RouteHash                  uint64
-	RouteDecision              routing.Decision
 	OnNNSliceCounter           uint64
 	CommitPending              bool
 	CommitObservedSliceCounter uint8
