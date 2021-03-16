@@ -46,9 +46,9 @@ export default class Workspace extends Vue {
       {
         target: '#map',
         header: {
-          title: 'The Map'
+          title: 'Map'
         },
-        content: 'Each green dot on the <strong>Map </strong>is a player being accelerated by Network Next',
+        content: 'Each green dot on the <strong>Map </strong>is a player being accelerated by Network Next.',
         params: {
           enabledButtons: {
             buttonSkip: true,
