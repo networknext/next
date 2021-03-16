@@ -175,7 +175,8 @@ export default class SessionsWorkspace extends Vue {
         },
         content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).',
         params: {
-          placement: 'bottom'
+          placement: 'bottom',
+          enableScrolling: false
         }
       }
     ]
@@ -230,9 +231,7 @@ export default class SessionsWorkspace extends Vue {
           this.$store.commit('TOGGLE_SESSION_TABLE', true)
         }
         if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
-          setTimeout(() => {
-            this.$tours.sessionsTour.start()
-          }, 2000)
+          this.$tours.sessionsTour.start()
         }
       })
       .catch((error: any) => {
