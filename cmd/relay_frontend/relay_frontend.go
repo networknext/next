@@ -85,6 +85,7 @@ func mainReturnWithCode() int {
 			err := svc.UpdateRelayBackendMaster()
 			if err != nil {
 				_ = level.Error(logger).Log("error", err)
+				continue
 			}
 
 			err = svc.CacheMatrix(rm.MatrixTypeCost)

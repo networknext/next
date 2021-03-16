@@ -55,12 +55,8 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 	}
 
 	masterAddress, err := chooseRelayBackendMaster(rbArr, r.cfg.MasterTimeVariance)
-	if err != nil {
-		return err
-	}
 	r.currentMasterBackendAddress = masterAddress
-
-	return nil
+	return err
 }
 
 func (r *RelayFrontendSvc) CacheMatrix(matrixType string) error {
@@ -115,6 +111,7 @@ func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance
 }
 
 func getHttpMatrix(address string) ([]byte, error) {
+
 	resp, err := http.Get(address)
 	if err != nil {
 		return []byte{}, err
