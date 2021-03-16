@@ -59,7 +59,6 @@ func main() {
 func forwardGet(address string, octet bool) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		resp, err := http.Get(address)
 		if err != nil {
 			log.Printf("error forwarding get: %s", err.Error())
@@ -78,13 +77,14 @@ func forwardGet(address string, octet bool) func(w http.ResponseWriter, r *http.
 			w.Header().Set("Content-Type", "application/octet-stream")
 		}
 		w.Write(body)
-
 	}
 }
 
 func forwardPost(address string) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		fmt.Println("post started")
 		resp, err := http.Post(address, r.Header.Get("Content-Type"), r.Body)
 		if err != nil {
 			fmt.Printf("error forwarding get: %s", err.Error())
@@ -102,5 +102,6 @@ func forwardPost(address string) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 		w.Write(body)
 
+		fmt.Println("post finished")
 	}
 }
