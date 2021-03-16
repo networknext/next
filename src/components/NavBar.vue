@@ -328,6 +328,24 @@ export default class NavBar extends Vue {
   border-width: 0;
   border-radius: 0;
 }
+@media not all and (min-resolution:.001dpcm) {
+  @supports (-webkit-appearance:none) {
+    .signup {
+      width: 6rem;
+      height: 1.7rem;
+      display: block;
+      text-align: center;
+      border-color: #343a40;
+      border-style: solid;
+      border-width: 1px;
+      border-radius: 9999px;
+      background-color: #FF6700;
+      font-weight: bold;
+      line-height: 1.1rem;
+    }
+  }
+}
+
 .signup {
   width: 6rem;
   height: 1.7rem;
