@@ -230,7 +230,9 @@ export default class SessionsWorkspace extends Vue {
           this.$store.commit('TOGGLE_SESSION_TABLE', true)
         }
         if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
-          this.$tours.sessionsTour.start()
+          setTimeout(() => {
+            this.$tours.sessionsTour.start()
+          }, 2000)
         }
       })
       .catch((error: any) => {
