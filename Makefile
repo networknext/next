@@ -1150,7 +1150,7 @@ publish-relay-gateway-artifacts-prod:
 dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 	@PORT=30005 ./dist/relay-frontend
 
-.PHONY: build-relay-Frontend
+.PHONY: build-relay-frontend
 build-relay-frontend:
 	@printf "Building Relay Frontend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
