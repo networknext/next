@@ -31,6 +31,10 @@ var (
 )
 
 func main() {
+	os.Exit(mainReturnWithCode())
+}
+
+func mainReturnWithCode() int {
 
 	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
@@ -40,23 +44,24 @@ func main() {
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		fmt.Println(err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	cfg, err := rm.GetConfig()
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
+		return 1
 	}
 
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
-		os.Exit(1)
+		return 1
 	}
 	svc, err := rm.New(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	shutdown := false
@@ -130,4 +135,5 @@ func main() {
 		shutdown = true
 		time.Sleep(5 * time.Second)
 	}
+	return 0
 }

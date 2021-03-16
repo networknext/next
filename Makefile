@@ -1153,41 +1153,41 @@ dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 .PHONY: build-relay-Frontend
 build-relay-frontend:
 	@printf "Building Relay Frontend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay-frontend ./cmd/relay_frontend/relay_frontend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
 	@printf "done\n"
 
 .PHONY: build-relay-frontend-artifacts-dev
 build-route-relay-frontend-artifacts-dev: build-relay-frontend
-	./deploy/build-artifacts.sh -e dev -s relay-frontend
+	./deploy/build-artifacts.sh -e dev -s relay_frontend
 
 .PHONY: build-relay-frontend-artifacts-nrb
 build-route-relay-frontend-artifacts-nrb: build-relay-frontend
-	./deploy/build-artifacts.sh -e nrb -s relay-frontend
+	./deploy/build-artifacts.sh -e nrb -s relay_frontend
 
 
 .PHONY: build-relay-frontend-artifacts-staging
 build-relay-frontend-artifacts-staging: build-relay-frontend
-	./deploy/build-artifacts.sh -e staging -s relay-frontend
+	./deploy/build-artifacts.sh -e staging -s relay_frontend
 
 .PHONY: build-relay-frontend-artifacts-prod
 build-relay-frontend-artifacts-prod: build-relay-frontend
-	./deploy/build-artifacts.sh -e prod -s relay-frontend
+	./deploy/build-artifacts.sh -e prod -s relay_frontend
 
 .PHONY: publish-relay-frontend-artifacts-dev
 publish-relay-frontend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay-frontend
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_frontend
 
 .PHONY: publish-relay-frontend-artifacts-nrb
 publish-relay-frontend-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay-frontend
+	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_frontend
 
 .PHONY: publish-relay-frontend-artifacts-staging
 publish-relay-frontend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay-frontend
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_frontend
 
 .PHONY: publish-relay-frontend-artifacts-prod
 publish-relay-frontend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay-frontend
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_frontend
 
 
 #######################
