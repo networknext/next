@@ -26,7 +26,6 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/beacon"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
@@ -370,8 +369,7 @@ func mainReturnWithCode() int {
 				// Start timer for packet processing
 				timeStart := time.Now()
 
-				readStream := encoding.CreateReadStream(data[1:])
-				err = beaconPacket.Serialize(readStream)
+				err = transport.ReadBeaconEntry(beaconPacket, data[1:])
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to serialize beacon packet", "err", err)
 					beaconServiceMetrics.BeaconMetrics.ErrorMetrics.BeaconSerializePacketFailure.Add(1)

@@ -228,6 +228,7 @@ func handleNearAndDestRelays(
 	if newSession {
 		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
 		if len(nearRelayIDs) == 0 {
+			core.Debug("no near relays :(")
 			return false, nearRelayGroup{}, nil, errors.New("no near relays")
 		}
 
@@ -264,6 +265,10 @@ func handleNearAndDestRelays(
 
 func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+
+		core.Debug("-----------------------------------------")
+		core.Debug("server init packet from %s", incoming.SourceAddr.String())
+
 		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
@@ -274,148 +279,164 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 			if milliseconds > 100 {
 				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
+
+			core.Debug("server init duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
 		var packet ServerInitRequestPacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
-			level.Error(logger).Log("msg", "could not read server init packet", "err", err)
+			core.Debug("could not read server init packet:\n\n%v\n", err)
 			metrics.ReadPacketFailure.Add(1)
 			return
 		}
 
+		core.Debug("server customer id is %x", packet.CustomerID)
+
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
-			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
+			core.Debug("unknown customer")
 			metrics.BuyerNotFound.Add(1)
-
 			if err := writeServerInitResponse(w, &packet, InitResponseUnknownCustomer); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
-
 			return
 		}
 
 		if !buyer.Live {
-			level.Error(logger).Log("err", "customer not active", "customerID", packet.CustomerID)
+			core.Debug("customer not active")
 			metrics.BuyerNotActive.Add(1)
 			if err := writeServerInitResponse(w, &packet, InitResponseCustomerNotActive); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
-			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
-
 			if err := writeServerInitResponse(w, &packet, InitResponseSignatureCheckFailed); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
-
 			return
 		}
 
-		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
-			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
+		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) {
+			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
-
 			if err := writeServerInitResponse(w, &packet, InitResponseOldSDKVersion); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
-
 			return
 		}
 
 		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, packet.DatacenterName); err != nil {
-			level.Error(logger).Log("handler", "server_init", "err", err)
+			
+			core.Debug("could not get datacenter: %s [%x]", packet.DatacenterName, packet.DatacenterID );
 
 			switch err.(type) {
 			case ErrDatacenterNotFound:
+				core.Debug("datacenter not found")
 				metrics.DatacenterNotFound.Add(1)
 
 			case ErrDatacenterMapMisconfigured:
+				core.Debug("datacenter map misconfigured")
 				metrics.MisconfiguredDatacenterAlias.Add(1)
 
 			case ErrDatacenterNotAllowed:
+				core.Debug("datacenter not allowed")
 				metrics.DatacenterNotAllowed.Add(1)
 				if err := writeServerInitResponse(w, &packet, InitResponseDataCenterNotEnabled); err != nil {
-					level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+					core.Debug("failed to write server init response: %s", err)
 					metrics.WriteResponseFailure.Add(1)
 				}
 				return
 			}
 
 			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
-				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 			}
+
 			return
 		}
 
 		if err := writeServerInitResponse(w, &packet, InitResponseOK); err != nil {
-			level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+			core.Debug("failed to write server init response: %s", err)
 			metrics.WriteResponseFailure.Add(1)
 			return
 		}
 
-		level.Debug(logger).Log("msg", "server initialized successfully", "source_address", incoming.SourceAddr.String())
+		core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
+
+		core.Debug("server initialized successfully")
 	}
 }
 
 func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+	
 	return func(w io.Writer, incoming *UDPPacket) {
+	
+		core.Debug("-----------------------------------------")
+		core.Debug("server update packet from %s", incoming.SourceAddr.String())
+
 		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
 			metrics.HandlerMetrics.Duration.Set(milliseconds)
-
 			if milliseconds > 100 {
 				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
+			core.Debug("server update duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
 		var packet ServerUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
-			level.Error(logger).Log("msg", "could not read server update packet", "err", err)
+			core.Debug("could not read server update packet:\n\n%v\n", err)
 			metrics.ReadPacketFailure.Add(1)
 			return
 		}
 
+		core.Debug("server customer id is %x", packet.CustomerID)
+
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
-			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
+			core.Debug("unknown customer")
 			metrics.BuyerNotFound.Add(1)
 			return
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
-			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
 			return
 		}
 
 		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
-			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
+			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
 			return
 		}
 
 		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
-			level.Error(logger).Log("handler", "server_update", "err", err)
+
+			core.Debug("could not get datacenter: %x]", packet.DatacenterID );
 
 			switch err.(type) {
 			case ErrDatacenterNotFound:
+				core.Debug("datacenter not found")
 				metrics.DatacenterNotFound.Add(1)
 
 			case ErrDatacenterMapMisconfigured:
+				core.Debug("datacenter map misconfigured")
 				metrics.MisconfiguredDatacenterAlias.Add(1)
 
 			case ErrDatacenterNotAllowed:
+				core.Debug("datacenter not allowed")
 				metrics.DatacenterNotAllowed.Add(1)
 			}
 
@@ -430,7 +451,11 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessi
 		}
 		postSessionHandler.SendPortalCounts(countData)
 
-		level.Debug(logger).Log("msg", "server updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String())
+		core.Debug("server is in datacenter %x", packet.DatacenterID)
+
+		core.Debug("server has %d sessions", packet.NumSessions)
+
+		core.Debug("server updated successfully")
 	}
 }
 
@@ -446,24 +471,34 @@ func SessionUpdateHandlerFunc(
 	metrics *metrics.SessionUpdateMetrics,
 ) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+
+		core.Debug("-----------------------------------------")
+		core.Debug("session update packet from %s", incoming.SourceAddr.String())
+
 		metrics.HandlerMetrics.Invocations.Add(1)
 
 		timeStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
 			metrics.HandlerMetrics.Duration.Set(milliseconds)
-
 			if milliseconds > 100 {
 				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
+			core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
 		var packet SessionUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
-			level.Error(logger).Log("msg", "could not read session update packet", "err", err)
+			core.Debug("could not read session update packet:\n\n%v\n", err)
 			metrics.ReadPacketFailure.Add(1)
 			return
 		}
+
+		core.Debug("customer id is %x", packet.CustomerID)
+		core.Debug("datacenter id is %x", packet.DatacenterID)
+		core.Debug("session id is %x", packet.SessionID)
+		core.Debug("slice number is %d", packet.SliceNumber)
+		core.Debug("retry number is %d", packet.RetryNumber)
 
 		newSession := packet.SliceNumber == 0
 
@@ -492,10 +527,13 @@ func SessionUpdateHandlerFunc(
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
+
 			if response.RouteType != routing.RouteTypeDirect {
+				core.Debug("session takes network next")
 				metrics.NextSlices.Add(1)
 				sessionData.EverOnNext = true
 			} else {
+				core.Debug("session goes direct")
 				metrics.DirectSlices.Add(1)
 			}
 
@@ -508,7 +546,7 @@ func SessionUpdateHandlerFunc(
 			sessionData.PrevPacketsLostServerToClient = packet.PacketsLostServerToClient
 
 			if err := writeSessionResponse(w, &response, &sessionData); err != nil {
-				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+				core.Debug("failed to write session update response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
 				return
 			}
@@ -568,51 +606,59 @@ func SessionUpdateHandlerFunc(
 		}()
 
 		if packet.ClientPingTimedOut {
+			core.Debug("client ping timed out")
 			metrics.ClientPingTimedOut.Add(1)
 			return
 		}
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
-			level.Error(logger).Log("msg", "buyer not found", "err", err)
+			core.Debug("buyer not found")
 			metrics.BuyerNotFound.Add(1)
 			return
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
-			level.Error(logger).Log("err", "signature check failed", "customerID", packet.CustomerID)
+			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
 			return
 		}
 
 		if buyer.Debug {
+			core.Debug("debug enabled")
 			debug = new(string)
 		}
-
+		
 		// If a player has the "pro" tag, set pro mode in the route shader
 		if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
 			for i := int32(0); i < packet.NumTags; i++ {
 				if packet.Tags[i] == crypto.HashID("pro") {
+					core.Debug("pro mode enabled")
 					buyer.RouteShader.ProMode = true
 					break
 				}
 			}
 			// Case for older SDK versions where there was only 1 tag
 		} else if len(packet.Tags) > 0 && packet.Tags[0] == crypto.HashID("pro") {
+			core.Debug("pro mode enabled")
 			buyer.RouteShader.ProMode = true
 		}
 
 		if datacenter, err = getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
-			level.Error(logger).Log("handler", "session_update", "err", err)
+
+			core.Debug("could not find datacenter")
 
 			switch err.(type) {
 			case ErrDatacenterNotFound:
+				core.Debug("datacenter not found")
 				metrics.DatacenterNotFound.Add(1)
 
 			case ErrDatacenterMapMisconfigured:
+				core.Debug("datacenter misconfigured")
 				metrics.MisconfiguredDatacenterAlias.Add(1)
 
 			case ErrDatacenterNotAllowed:
+				core.Debug("datacenter not allowed")
 				metrics.DatacenterNotAllowed.Add(1)
 			}
 
@@ -620,6 +666,9 @@ func SessionUpdateHandlerFunc(
 		}
 
 		if newSession {
+
+			core.Debug("new session")
+
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionID = packet.SessionID
 			sessionData.SliceNumber = packet.SliceNumber + 1
@@ -643,24 +692,26 @@ func SessionUpdateHandlerFunc(
 			}
 
 		} else {
+
+			core.Debug("existing session")
+
 			err := UnmarshalSessionData(&sessionData, packet.SessionData[:])
 			prevSessionData = sessionData // Have an extra copy of the session data so we can use the unmodified one in the post session
 
 			if err != nil {
-				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
+				core.Debug("could not read session data:\n\n%s\n", err)
 				metrics.ReadSessionDataFailure.Add(1)
 				return
 			}
 
 			if sessionData.SessionID != packet.SessionID {
-				level.Error(logger).Log("err", "bad session ID in session data")
+				core.Debug("bad session id")
 				metrics.BadSessionID.Add(1)
 				return
 			}
 
 			if sessionData.SliceNumber != packet.SliceNumber {
-				level.Error(logger).Log("err", "bad slice number in session data", "packet_slice_number", packet.SliceNumber, "session_data_slice_number", sessionData.SliceNumber,
-					"retry_count", packet.RetryNumber, "packet_next", packet.Next, "session_data_next", sessionData.RouteState.Next, "ever_on_next", sessionData.EverOnNext)
+				core.Debug("bad slice number")
 				metrics.BadSliceNumber.Add(1)
 				return
 			}
@@ -677,13 +728,13 @@ func SessionUpdateHandlerFunc(
 			if slicePacketsSentClientToServer == uint64(0) {
 				slicePacketLossClientToServer = float32(0)
 			} else {
-				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer) / float64(slicePacketsSentClientToServer))
+				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
 			}
 
 			if slicePacketsSentServerToClient == uint64(0) {
 				slicePacketLossServerToClient = float32(0)
 			} else {
-				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient) / float64(slicePacketsSentServerToClient))
+				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
 			}
 
 			slicePacketLoss = slicePacketLossClientToServer
@@ -694,14 +745,19 @@ func SessionUpdateHandlerFunc(
 
 		// Don't accelerate any sessions if the buyer is not yet live
 		if !buyer.Live {
+			core.Debug("buyer is not live")
 			metrics.BuyerNotLive.Add(1)
 			return
 		}
 
 		if packet.FallbackToDirect {
+
+			core.Debug("fallback to direct")
+
 			if !sessionData.FellBackToDirect {
 				sessionData.FellBackToDirect = true
 
+				// todo: these are bit flags. they are not mutually exclusive!
 				switch packet.Flags {
 				case FallbackFlagsBadRouteToken:
 					metrics.FallbackToDirectBadRouteToken.Add(1)
@@ -736,7 +792,7 @@ func SessionUpdateHandlerFunc(
 
 		destRelayIDs := routeMatrix.GetDatacenterRelayIDs(datacenter.ID)
 		if len(destRelayIDs) == 0 {
-			level.Error(logger).Log("msg", "failed to get dest relays")
+			core.Debug("no relays in datacenter")
 			metrics.NoRelaysInDatacenter.Add(1)
 			return
 		}
@@ -744,7 +800,6 @@ func SessionUpdateHandlerFunc(
 		incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
 		for i := int32(0); i < incomingNearRelays.Count; i++ {
 			incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
-
 			incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
 			incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
 			incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
@@ -773,7 +828,7 @@ func SessionUpdateHandlerFunc(
 			maxNearRelays,
 			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),
-			int32(slicePacketLoss),
+			int32(math.Floor(float64(slicePacketLoss)+0.5)),
 			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
 			sessionData.RouteRelayIDs[0],
 			destRelayIDs,
@@ -787,11 +842,12 @@ func SessionUpdateHandlerFunc(
 		response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
 
 		if err != nil {
+			// todo: string comparison in hot path?!
 			if strings.HasPrefix(err.Error(), "near relays changed") {
-				level.Error(logger).Log("msg", "near relays changed", "err", err)
+				core.Debug("near relays changed")
 				metrics.NearRelaysChanged.Add(1)
 			} else {
-				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
+				core.Debug("failed to get near relays")
 				metrics.NearRelaysLocateFailure.Add(1)
 			}
 
@@ -800,7 +856,7 @@ func SessionUpdateHandlerFunc(
 
 		// First slice always direct
 		if newSession {
-			level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
+			core.Debug("first slice always goes direct")
 			return
 		}
 
@@ -840,10 +896,8 @@ func SessionUpdateHandlerFunc(
 			}
 		} else {
 			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
-
 				routeRelays = [core.MaxRelaysPerRoute]int32{}
-
-				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist. Clearing route.")
+				core.Debug("one or more relays in the route no longer exist")
 				metrics.RouteDoesNotExist.Add(1)
 			}
 
@@ -851,46 +905,43 @@ func SessionUpdateHandlerFunc(
 			if !packet.Next {
 				sessionData.RouteState.Next = false
 				sessionData.RouteState.Veto = true
-
-				level.Warn(logger).Log("warn", "SDK aborted session")
+				core.Debug("aborted")
 				metrics.SDKAborted.Add(1)
 			} else {
 				var stay bool
 				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, slicePacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
 
-					// Continue token
+					// stay on network next
 
-					// Check if the route has changed
 					if nextRouteSwitched {
+						core.Debug("route changed")
 						metrics.RouteSwitched.Add(1)
-
-						// Create a next token here rather than a continue token since the route has switched
 						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 					} else {
+						core.Debug("route continued")
 						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 					}
 				} else {
-					// Route was vetoed - check to see why
+
+					// leave network next
+
 					if sessionData.RouteState.NoRoute {
-						level.Warn(logger).Log("warn", "route no longer exists")
+						core.Debug("route no longer exists")
 						metrics.NoRoute.Add(1)
 					}
 
 					if sessionData.RouteState.MultipathOverload {
-						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+						core.Debug("multipath overload")
 						metrics.MultipathOverload.Add(1)
-
-						// We will handle updating the multipath veto redis in the post session update
-						// to avoid blocking the routing response
 					}
 
 					if sessionData.RouteState.Mispredict {
-						level.Warn(logger).Log("warn", "we mispredicted too many times")
+						core.Debug("mispredict")
 						metrics.MispredictVeto.Add(1)
 					}
 
 					if sessionData.RouteState.LatencyWorse {
-						level.Warn(logger).Log("warn", "this route makes latency worse")
+						core.Debug("latency worse")
 						metrics.LatencyWorse.Add(1)
 					}
 				}
@@ -921,7 +972,7 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
-		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
+		core.Debug("session updated successfully")
 	}
 }
 

@@ -87,8 +87,8 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	
-	serviceName := "server_backend"
+
+	serviceName := "debug_server_backend"
 
 	fmt.Printf("%s\n", serviceName)
 
