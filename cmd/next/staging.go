@@ -98,7 +98,7 @@ var DefaultStagingConfig = StagingConfig{
 
 	FakeServer: StagingServiceConfig{
 		Cores: 16,
-		Count: 1,
+		Count: 2,
 	},
 }
 
