@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"fmt"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -72,7 +71,6 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 				bq.bufferMutex.Unlock()
 
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				fmt.Printf("Failed to write to BigQuery: %v\n", err)
 				bq.Metrics.ErrorMetrics.BeaconInserterWriteFailure.Add(float64(bufferLength))
 				continue
 			}
