@@ -199,7 +199,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	for _, b := range s.Storage.Buyers() {
 		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() could not find Customer %s fo %s: %v", b.CompanyCode, b.String(), err)
+			err = fmt.Errorf("Buyers() could not find Customer %s for %s: %v", b.CompanyCode, b.String(), err)
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -1473,6 +1473,19 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 	}
 
 	return nil
+}
+
+type RemoveCustomerArgs struct {
+	CustomerCode string `json:"customerCode"`
+}
+
+type RemoveCustomerReply struct{}
+
+func (s *OpsService) RemoveCustomer(r *http.Request, args *RemoveCustomerArgs, reply *RemoveCustomerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveCustomer(ctx, args.CustomerCode)
 }
 
 type UpdateSellerArgs struct {

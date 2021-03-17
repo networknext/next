@@ -12,6 +12,8 @@ import (
 const (
 	PacketTypeBeacon = 118 // Magic number to indicate beacon packet
 
+	BeaconPacketVersion = 0
+
 	MaxNextBeaconPacketBytes = 4 + // Version
 		8 + // Timestamp
 		8 + // CustomerID
@@ -66,7 +68,7 @@ func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.SessionID)
 	}
 
-	stream.SerializeInteger(&packet.PlatformID, PlatformTypeUnknown, PlatformTypeMax_New)
+	stream.SerializeInteger(&packet.PlatformID, PlatformTypeUnknown, PlatformTypeMax)
 
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 
@@ -76,7 +78,7 @@ func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 	if hasTimestamp {
 		stream.SerializeUint64(&packet.Timestamp)
 	}
-	
+
 	return stream.Error()
 }
 
