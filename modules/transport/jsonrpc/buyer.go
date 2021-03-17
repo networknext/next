@@ -445,6 +445,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		reply.Direct = totalCount - reply.Next
 
 	default:
+		var ghostArmyNextCount int
+
 		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
@@ -476,6 +478,16 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
+		}
+
+		if buyer.ID == ghostArmyBuyerID {
+			if firstNextCount > secondNextCount {
+				ghostArmyNextCount = firstNextCount * int(ghostArmyNextScaler)
+			} else {
+				ghostArmyNextCount = secondNextCount * int(ghostArmyNextScaler)
+			}
+			firstNextCount += ghostArmyNextCount
+			secondNextCount += ghostArmyNextCount
 		}
 
 		reply.Next = firstNextCount
