@@ -9,10 +9,10 @@ import (
 
 // Entry defines the methods for Google PubSub structs to implement
 type Entry interface {
-    Validate() (bool)
-    CheckNaNOrInf() (bool, []string)
+    validate() (bool) // private function within write entry
+    checkNaNOrInf() (bool, []string) // private function within write entry
     Save() (map[string]bigquery.Value, string, error)
-    WriteEntry() ([]byte)
+    WriteEntry() ([]byte, error)
     ReadEntry(data []byte) (bool)
 }
 
