@@ -27,6 +27,9 @@ us-east1-d                 google.southcarolina.4
 us-east4-a                 google.nothernvirginia.1
 us-east4-b                 google.nothernvirginia.2
 us-east4-c                 google.nothernvirginia.3
+us-west1-a                 google.oregon.1
+us-west1-b                 google.oregon.2
+us-west1-c                 google.oregon.3
 us-west2-a                 google.losangeles.1
 us-west2-b                 google.losangeles.2
 us-west2-c                 google.losangeles.3
