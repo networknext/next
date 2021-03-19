@@ -200,9 +200,6 @@ export default class SessionsWorkspace extends Vue {
             event_category: 'Tours'
           })
         }
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')
       }
     }
   }

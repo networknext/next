@@ -107,9 +107,6 @@ export default class DownloadsWorkspace extends Vue {
             event_category: 'Tours'
           })
         }
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloads')
       }
     }
   }

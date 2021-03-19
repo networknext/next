@@ -366,9 +366,6 @@ export default class SessionDetails extends Vue {
             event_category: 'Tours'
           })
         }
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')
       }
     }
   }

@@ -196,15 +196,6 @@ export default class NavBar extends Vue {
             event_category: 'Tours'
           })
         }
-        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning) {
-          this.$tours.getAccessTour.start()
-        }
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
-        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning) {
-          this.$tours.getAccessTour.start()
-        }
       }
     }
 
@@ -232,9 +223,6 @@ export default class NavBar extends Vue {
             event_category: 'Tours'
           })
         }
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
       }
     }
   }
