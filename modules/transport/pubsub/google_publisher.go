@@ -20,9 +20,9 @@ type PubSubPublisher struct {
 }
 
 type GooglePubSubClient struct {
-	PubsubClient         *pubsub.Client
-	Topic                *pubsub.Topic
-	ResultChan           chan *pubsub.PublishResult
+	PubsubClient         *googlepubsub.Client
+	Topic                *googlepubsub.Topic
+	ResultChan           chan *googlepubsub.PublishResult
 	Logger               log.Logger
 	Metrics              *metrics.GooglePublisherMetrics
 	BufferCountThreshold int
@@ -35,7 +35,17 @@ type GooglePubSubClient struct {
 }
 
 // Creates a new GooglePubSubPublisher with clientCount clients that will publish to the given topicID in Google Pub/Sub
-func NewPubSubPublisher(ctx context.Context, publisherMetrics *metrics.GooglePublisherMetrics, logger log.Logger, gcpProjectID string, topicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (*PubSubPublisher, error) {
+func NewPubSubPublisher(
+	ctx context.Context, 
+	publisherMetrics *metrics.GooglePublisherMetrics, 
+	logger log.Logger, 
+	gcpProjectID string, 
+	topicID string, 
+	clientCount int, 
+	clientBufferCountThreshold int, 
+	clientMinBufferBytes int, 
+	settings *pubsub.PublishSettings,
+) (*PubSubPublisher, error) {
 	if settings == nil {
 		return nil, errors.New("NewPubSubPublisher(): nil google pubsub publish settings")
 	}
