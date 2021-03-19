@@ -137,6 +137,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import SessionCounts from '@/components/SessionCounts.vue'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 /**
  * This component holds the workspace elements related to the top sessions page in the Portal
@@ -193,6 +194,12 @@ export default class SessionsWorkspace extends Vue {
     this.sessionsTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')
+
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Sessions tour finished', {
+            event_category: 'Tours'
+          })
+        }
       },
       onSkip: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')

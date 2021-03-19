@@ -19,6 +19,7 @@ import SessionCounts from '@/components/SessionCounts.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 /**
  * This component is the base component for all other workspace components
@@ -88,6 +89,12 @@ export default class Workspace extends Vue {
     this.mapTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'map')
+
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Map tour finished', {
+            event_category: 'Tours'
+          })
+        }
       },
       onSkip: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'map')

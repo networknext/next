@@ -273,6 +273,7 @@ import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
 import { AlertType } from './types/AlertTypes'
+import { FeatureEnum } from './types/FeatureTypes'
 // import data1 from '../../test_data/session_details.json'
 
 /**
@@ -360,6 +361,11 @@ export default class SessionDetails extends Vue {
     this.sessionDetailsTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Session details tour finished', {
+            event_category: 'Tours'
+          })
+        }
       },
       onSkip: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')

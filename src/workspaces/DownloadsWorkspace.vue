@@ -102,6 +102,11 @@ export default class DownloadsWorkspace extends Vue {
     this.downloadsTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloads')
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Downloads tour finished', {
+            event_category: 'Tours'
+          })
+        }
       },
       onSkip: () => {
         this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloads')
