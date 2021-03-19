@@ -101,7 +101,7 @@ func NewPubSubPublisher(ctx context.Context, publisherMetrics *metrics.GooglePub
 }
 
 // Batch-writes the given entry when the buffer count and minimum buffer byte thresholds have been met
-func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *pubsub.Entry) error {
+func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *Entry) error {
 	if publisher.clients == nil {
 		return fmt.Errorf("GooglePubSubPublisher Publish(): clients not initialized")
 	}
