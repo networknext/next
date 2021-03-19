@@ -196,14 +196,10 @@ export default class NavBar extends Vue {
     this.getAccessTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
-        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning) {
-          this.$tours.getAccessTour.start()
-        }
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
-        if (this.$tours.getAccessTour && !this.$tours.getAccessTour.isRunning) {
-          this.$tours.getAccessTour.start()
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Get access tour finished', {
+            event_category: 'Tours'
+          })
         }
       }
     }
@@ -226,9 +222,12 @@ export default class NavBar extends Vue {
     this.downloadLinkTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
-      },
-      onSkip: () => {
-        this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
+
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Download link tour finished', {
+            event_category: 'Tours'
+          })
+        }
       }
     }
   }
