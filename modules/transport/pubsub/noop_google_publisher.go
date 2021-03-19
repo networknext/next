@@ -31,6 +31,6 @@ func (publisher *NoOpPubSubPublisher) NumQueued() uint64 {
 	return 0
 }
 
-func (publisher *NoOpPubSubPublisher) NumFlushed() uint64 {
+func (publisher *NoOpPubSubPublisher) NumPublished() uint64 {
 	return atomic.LoadUint64(&publisher.submitted)
 }
