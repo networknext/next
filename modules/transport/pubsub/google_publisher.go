@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 )
 
-type GooglePubSubPublisher struct {
+type PubSubPublisher struct {
 	clients []*GooglePubSubClient
 }
 
@@ -35,9 +35,9 @@ type GooglePubSubClient struct {
 }
 
 // Creates a new GooglePubSubPublisher with clientCount clients that will publish to the given topicID in Google Pub/Sub
-func NewGooglePubSubPublisher(ctx context.Context, publisherMetrics *metrics.GooglePublisherMetrics, logger log.Logger, gcpProjectID string, topicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (*GooglePubSubPublisher, error) {
+func NewPubSubPublisher(ctx context.Context, publisherMetrics *metrics.GooglePublisherMetrics, logger log.Logger, gcpProjectID string, topicID string, clientCount int, clientBufferCountThreshold int, clientMinBufferBytes int, settings *pubsub.PublishSettings) (*PubSubPublisher, error) {
 	if settings == nil {
-		return nil, errors.New("NewGooglePubSubPublisher(): nil google pubsub publish settings")
+		return nil, errors.New("NewPubSubPublisher(): nil google pubsub publish settings")
 	}
 
 	clients := make([]*GooglePubSubClient, clientCount)
@@ -50,7 +50,7 @@ func NewGooglePubSubPublisher(ctx context.Context, publisherMetrics *metrics.Goo
 		client.Metrics = billingMetrics
 		client.Logger = resultLogger
 		if err != nil {
-			return nil, fmt.Errorf("NewGooglePubSubPublisher(): could not create pubsub client %v: %v", i, err)
+			return nil, fmt.Errorf("NewPubSubPublisher(): could not create pubsub client %v: %v", i, err)
 		}
 
 		// Create the pubsub topic if running locally with the pubsub emulator
@@ -58,7 +58,7 @@ func NewGooglePubSubPublisher(ctx context.Context, publisherMetrics *metrics.Goo
 			if _, err := client.PubsubClient.CreateTopic(ctx, topicID); err != nil {
 				// Not the best, but the underlying error type is internal so we can't check for it
 				if err.Error() != "rpc error: code = AlreadyExists desc = Topic already exists" {
-					return nil, fmt.Errorf("NewGooglePubSubPublisher(): %v", err)
+					return nil, fmt.Errorf("NewPubSubPublisher(): %v", err)
 				}
 			}
 		}
@@ -74,10 +74,10 @@ func NewGooglePubSubPublisher(ctx context.Context, publisherMetrics *metrics.Goo
 		client.Topic = client.PubsubClient.Topic(topicID)
 		ok, err := client.Topic.Exists(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("could not verify if topic %s exists: %v", topicID, err)
+			return nil, fmt.Errorf("NewPubSubPublisher(): could not verify if topic %s exists: %v", topicID, err)
 		}
 		if !ok {
-			return nil, fmt.Errorf("topic %s does not exist", topicID)
+			return nil, fmt.Errorf("NewPubSubPublisher(): topic %s does not exist", topicID)
 		}
 
 		client.Topic.PublishSettings = *settings
@@ -93,15 +93,15 @@ func NewGooglePubSubPublisher(ctx context.Context, publisherMetrics *metrics.Goo
 		clients[i] = client
 	}
 
-	publishers := &GooglePubSubPublisher{
+	publisher := &PubSubPublisher{
 		clients: clients,
 	}
 
-	return publishers, nil
+	return publisher, nil
 }
 
 // Batch-writes the given entry when the buffer count and minimum buffer byte thresholds have been met
-func (publisher *NewGooglePubSubPublisher) Publish(ctx context.Context, entry *pubsub.Entry) error {
+func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *pubsub.Entry) error {
 	if publisher.clients == nil {
 		return fmt.Errorf("GooglePubSubPublisher Publish(): clients not initialized")
 	}
@@ -113,7 +113,7 @@ func (publisher *NewGooglePubSubPublisher) Publish(ctx context.Context, entry *p
 	// Get the bytes for the entry
 	entryBytes, err := entry.WriteEntry()
 	if err != nil {
-		return fmt.Errorf("GooglePubSubPublisher Publish(): %v", err)
+		return fmt.Errorf("PubSubPublisher Publish(): %v", err)
 	}
 
 	// Add an offset for the entry for chaining entries together
@@ -148,15 +148,15 @@ func (publisher *NewGooglePubSubPublisher) Publish(ctx context.Context, entry *p
 	return nil
 }
 
-// Stops all clients for the GooglePubSubPublisher
-func (publisher *GooglePubSubPublisher) Stop() {
+// Stops all clients for the PubSubPublisher
+func (publisher *PubSubPublisher) Stop() {
 	for _, client := range publisher.clients {
 		client.CancelContextFunc()
 	}
 }
 
 // Handles publish results and closing clients when canceled
-func (client *NewGooglePubSubClient) pubsubResults(ctx context.Context) {
+func (client *GooglePubSubClient) pubsubResults(ctx context.Context) {
 	for {
 		select {
 		case result := <-client.ResultChan:
