@@ -89,6 +89,11 @@
       <ul class="navbar-nav px-3 w-100">
         <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
       </ul>
+      <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
+        <li class="nav-item text-nowrap" style="color: white;">
+          {{ $store.getters.userProfile.email || "" }}
+        </li>
+      </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
           <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
