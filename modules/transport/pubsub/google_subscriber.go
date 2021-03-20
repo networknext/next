@@ -40,8 +40,9 @@ type PubSubSubscriber struct {
 	ackMapMutex sync.RWMutex
 }
 
-func NewPubSubSubscriber(ctx context.Context,
-	logger log.logger,
+func NewPubSubSubscriber(
+	ctx context.Context,
+	logger log.Logger,
 	metrics *metrics.GoogleSubscriberMetrics,
 	gcpProjectID string,
 	topicID string,
@@ -61,8 +62,8 @@ func NewPubSubSubscriber(ctx context.Context,
 
 	if gcpProjectID == "local" {
 		// Create the subscription for the local environment
-		if _, err := pubsubClient.CreateSubscription(ctx, subscriptionID, pubsub.SubscriptionConfig{
-			Topic: pubsubClient.Topic(topicName),
+		if _, err := pubsubClient.CreateSubscription(ctx, subscriptionID, googlepubsub.SubscriptionConfig{
+			Topic: pubsubClient.Topic(topicID),
 		}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
 			// Not the best error check, but the underlying error type is internal so we can't check for it
 			return nil, fmt.Errorf("NewPubSubSubscriber(): could not create local pubsub subscription: %v", err)
@@ -71,7 +72,7 @@ func NewPubSubSubscriber(ctx context.Context,
 
 	// Verify the subscriptionID exists
 	subscriber := pubsubClient.Subscription(subscriptionID)
-	ok, err := subscriber.Exists(subscriptionID)
+	ok, err := subscriber.Exists(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("NewPubSubSubscriber(): could not verify if subscription %s exists", subscriptionID)
 	}
@@ -88,7 +89,7 @@ func NewPubSubSubscriber(ctx context.Context,
 	recvSettings := googlepubsub.ReceiveSettings{
 		MaxOutstandingMessages: -1,
 		MaxOutstandingBytes:    -1,
-		NumGoroutines:          recvGoroutines,
+		NumGoroutines:          recvNumGoroutines,
 	}
 	subscriber.ReceiveSettings = recvSettings
 
@@ -151,12 +152,12 @@ func (subscriber *PubSubSubscriber) Receive(ctx context.Context) error {
 
 		unbatchedEntries := make([]Entry, len(entries))
 		for i := range unbatchedEntries {
-			if &unbatchedEntries[i].ReadEntry(entries[i]) {
+			if (unbatchedEntries[i]).ReadEntry(entries[i]) {
 
 				// If we are on the last entry for this message, add the message to the ack map to be acked after writing to BigQuery
 				if i == len(entries)-1 {
 					subscriber.ackMapMutex.Lock()
-					ackMap[&unbatchedEntries[i]] = m
+					subscriber.ackMap[&unbatchedEntries[i]] = m
 					subscriber.ackMapMutex.Unlock()
 				}
 
@@ -168,7 +169,7 @@ func (subscriber *PubSubSubscriber) Receive(ctx context.Context) error {
 					// Delete the entry from the map if fail to submit
 					if i == len(entries)-1 {
 						subscriber.ackMapMutex.Lock()
-						delete(ackMap, &unbatchedEntries[i])
+						delete(subscriber.ackMap, &unbatchedEntries[i])
 						subscriber.ackMapMutex.Unlock()
 					}
 
@@ -192,7 +193,7 @@ func (subscriber *PubSubSubscriber) Receive(ctx context.Context) error {
 	return err
 }
 
-func (subscriber *PubSubSubscriber) UnbatchMessages(m *pubsub.Message) ([][]byte, error) {
+func (subscriber *PubSubSubscriber) UnbatchMessages(m *googlepubsub.Message) ([][]byte, error) {
 	messages := make([][]byte, 0)
 
 	var offset int
@@ -254,13 +255,13 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 
 		// See if any of these entries have a message that needs to be acked
 		subscriber.ackMapMutex.RLock()
-		message, exists := ackMap[entry]
+		message, exists := subscriber.ackMap[entry]
 		subscriber.ackMapMutex.RUnlock()
 		if exists {
 			messagesToAck = append(messagesToAck, message)
 			// Delete the entry and message from the ack map
 			subscriber.ackMapMutex.Lock()
-			delete(ackMap, message)
+			delete(subscriber.ackMap, entry)
 			subscriber.ackMapMutex.Unlock()
 		}
 
@@ -291,7 +292,7 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 		}
 
 		subscriber.bufferMutex.Unlock()
-		lastWriteTime := time.Now()
+		lastWriteTime = time.Now()
 	}
 	return nil
 }

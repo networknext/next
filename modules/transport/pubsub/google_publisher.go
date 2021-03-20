@@ -44,7 +44,7 @@ func NewPubSubPublisher(
 	clientCount int,
 	clientBufferCountThreshold int,
 	clientMinBufferBytes int,
-	settings *pubsub.PublishSettings,
+	settings *googlepubsub.PublishSettings,
 ) (*PubSubPublisher, error) {
 	if settings == nil {
 		return nil, errors.New("NewPubSubPublisher(): nil google pubsub publish settings")
@@ -57,8 +57,8 @@ func NewPubSubPublisher(
 		var err error
 		client = &GooglePubSubClient{}
 		client.PubsubClient, err = googlepubsub.NewClient(ctx, gcpProjectID)
-		client.Metrics = billingMetrics
-		client.Logger = resultLogger
+		client.Metrics = publisherMetrics
+		client.Logger = logger
 		if err != nil {
 			return nil, fmt.Errorf("NewPubSubPublisher(): could not create pubsub client %v: %v", i, err)
 		}
@@ -121,7 +121,7 @@ func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *Entry) err
 	client := publisher.clients[index]
 
 	// Get the bytes for the entry
-	entryBytes, err := entry.WriteEntry()
+	entryBytes, err := (*entry).WriteEntry()
 	if err != nil {
 		return fmt.Errorf("PubSubPublisher Publish(): %v", err)
 	}
@@ -145,7 +145,7 @@ func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *Entry) err
 	// Publish the results if we are over the message and minimum buffer byte thresholds
 	var result *googlepubsub.PublishResult
 	if client.bufferMessageCount >= client.BufferCountThreshold && len(client.buffer) >= client.MinBufferBytes {
-		result = client.Topic.Publish(ctx, &pubsub.Message{Data: client.buffer})
+		result = client.Topic.Publish(ctx, &googlepubsub.Message{Data: client.buffer})
 		if result != nil {
 			client.ResultChan <- result
 		}
@@ -181,7 +181,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context) {
 			}
 		case <-ctx.Done():
 			// Close the clients and finish up
-			err := client.Close()
+			err := client.PubsubClient.Close()
 			if err != nil {
 				level.Error(client.Logger).Log("err", err)
 			}

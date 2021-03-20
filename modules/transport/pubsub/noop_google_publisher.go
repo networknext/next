@@ -14,7 +14,7 @@ type NoOpPubSubPublisher struct {
 // Publish does nothing besides checking if the given entry can be marshaled and incrementing the appropriate metrics.
 func (publisher *NoOpPubSubPublisher) Publish(ctx context.Context, entry *Entry) error {
 	// Ensure the entry can be marshaled
-	_, err := entry.WriteEntry()
+	_, err := (*entry).WriteEntry()
 	if err != nil {
 		return fmt.Errorf("NoOpPubSubPublisher Publish(): %v", err)
 	}

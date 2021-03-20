@@ -58,8 +58,9 @@ var EmptyGoogleSubscriberErrorMetrics GoogleSubscriberErrorMetrics = GoogleSubsc
 	BigQueryWriteFailure: &EmptyCounter{},
 }
 
-func NewGooglePublisherMetrics(ctx context.Context, metricsHandler Handler, serviceName string, handlerName string, handlerID string) (*GooglePublisherMetrics, error) {
+func NewGooglePublisherMetrics(ctx context.Context, handler Handler, serviceName string, handlerName string, handlerID string) (*GooglePublisherMetrics, error) {
 	publisherMetrics := GooglePublisherMetrics{}
+	var err error
 
 	publisherMetrics.EntriesQueuedToPublish, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Entries Queued To Publish",
@@ -97,8 +98,9 @@ func NewGooglePublisherMetrics(ctx context.Context, metricsHandler Handler, serv
 	return &publisherMetrics, nil
 }
 
-func NewGoogleSubscriberMetircs(ctx context.Context, metricsHandler Handler, serviceName string, handlerName string, handlerID string) (*GoogleSubscriberMetrics, error) {
+func NewGoogleSubscriberMetircs(ctx context.Context, handler Handler, serviceName string, handlerName string, handlerID string) (*GoogleSubscriberMetrics, error) {
 	subscriberMetrics := GoogleSubscriberMetrics{}
+	var err error
 
 	subscriberMetrics.EntriesReceived, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Entries Received",
