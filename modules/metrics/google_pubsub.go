@@ -37,8 +37,8 @@ type GoogleSubscriberMetrics struct {
 // EmptyGoogleSubscriberMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyGoogleSubscriberMetrics GoogleSubscriberMetrics = GoogleSubscriberMetrics{
 	EntriesReceived:      &EmptyCounter{},
-	EntriesQueuedToWrite: &EmptyCounter{},
 	EntriesSubmitted:     &EmptyCounter{},
+	EntriesQueuedToWrite: &EmptyGauge{},
 	ErrorMetrics:         EmptyGoogleSubscriberErrorMetrics,
 }
 
@@ -46,8 +46,7 @@ var EmptyGoogleSubscriberMetrics GoogleSubscriberMetrics = GoogleSubscriberMetri
 type GoogleSubscriberErrorMetrics struct {
 	BatchedReadFailure   Counter
 	ReadFailure          Counter
-	EntriesWithNaN       Counter
-	InvalidEntries       Counter
+	QueueFailure         Counter
 	BigQueryWriteFailure Counter
 }
 
@@ -55,8 +54,7 @@ type GoogleSubscriberErrorMetrics struct {
 var EmptyGoogleSubscriberErrorMetrics GoogleSubscriberErrorMetrics = GoogleSubscriberErrorMetrics{
 	BatchedReadFailure:   &EmptyCounter{},
 	ReadFailure:          &EmptyCounter{},
-	EntriesWithNaN:       &EmptyCounter{},
-	InvalidEntries:       &EmptyCounter{},
+	QueueFailure:         &EmptyCounter{},
 	BigQueryWriteFailure: &EmptyCounter{},
 }
 
@@ -113,7 +111,7 @@ func NewGoogleSubscriberMetircs(ctx context.Context, metricsHandler Handler, ser
 		return nil, err
 	}
 
-	subscriberMetrics.EntriesQueuedToWrite, err = handler.NewCounter(ctx, &Descriptor{
+	subscriberMetrics.EntriesQueuedToWrite, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: handlerName + " Entries Queued To Write",
 		ServiceName: serviceName,
 		ID:          handlerID + ".entries.queued",
@@ -129,7 +127,7 @@ func NewGoogleSubscriberMetircs(ctx context.Context, metricsHandler Handler, ser
 		ServiceName: serviceName,
 		ID:          handlerID + ".entries.written",
 		Unit:        "entries",
-		Description: "The total number of " + handlerID + " entries written to BigQuery",
+		Description: "The total number of " + handlerID + " entries successfully written to BigQuery",
 	})
 	if err != nil {
 		return nil, err
@@ -146,7 +144,7 @@ func NewGoogleSubscriberMetircs(ctx context.Context, metricsHandler Handler, ser
 		return nil, err
 	}
 
-	subscriberMetrics.ErrorMetrics.BatchedReadFailure, err = handler.NewCounter(ctx, &Descriptor{
+	subscriberMetrics.ErrorMetrics.ReadFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Read Failure",
 		ServiceName: serviceName,
 		ID:          handlerID + ".error.read_failure",
@@ -157,23 +155,12 @@ func NewGoogleSubscriberMetircs(ctx context.Context, metricsHandler Handler, ser
 		return nil, err
 	}
 
-	subscriberMetrics.ErrorMetrics.EntriesWithNaN, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Entries With NaN or Inf",
+	subscriberMetrics.ErrorMetrics.QueueFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Queue Failure",
 		ServiceName: serviceName,
-		ID:          handlerID + ".error.entries_with_nan_or_inf",
+		ID:          handlerID + ".error.queue_failure",
 		Unit:        "errors",
-		Description: "The total number of " + handlerID + " entries that have NaN or Inf values",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	subscriberMetrics.ErrorMetrics.InvalidEntries, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Invalid Entries",
-		ServiceName: serviceName,
-		ID:          handlerID + ".error.invalid_entries",
-		Unit:        "errors",
-		Description: "The total number of " + handlerID + " entries that are invalid",
+		Description: "The total number of " + handlerID + " entries that could not be queued for submission to BigQuery",
 	})
 	if err != nil {
 		return nil, err
