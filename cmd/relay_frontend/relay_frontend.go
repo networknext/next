@@ -8,6 +8,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -38,10 +39,6 @@ func mainReturnWithCode() int {
 
 	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
-	fmt.Println("")
-	fmt.Println("")
-	fmt.Println("")
-	fmt.Println("")
 
 	ctx := context.Background()
 	gcpProjectID := backend.GetGCPProjectID()
@@ -50,21 +47,19 @@ func mainReturnWithCode() int {
 		fmt.Println(err.Error())
 		return 1
 	}
-	fmt.Println("get config")
+
 	cfg, err := rm.GetConfig()
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	fmt.Println("new redis store")
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	fmt.Println("new storer")
 	svc, err := rm.New(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
@@ -72,8 +67,9 @@ func mainReturnWithCode() int {
 	}
 
 	shutdown := false
-	fmt.Println("core loop")
-	//core loop
+
+	// todo metrics
+	// core loop
 	go func() {
 		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
 		for {
@@ -87,21 +83,37 @@ func mainReturnWithCode() int {
 				_ = level.Error(logger).Log("error", err)
 				continue
 			}
+			wg := sync.WaitGroup{}
 
-			err = svc.CacheMatrix(rm.MatrixTypeCost)
-			if err != nil {
-				_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
-			}
+			wg.Add(1)
+			go func() {
+				err = svc.CacheMatrix(rm.MatrixTypeCost)
+				if err != nil {
+					_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
+				}
+				wg.Done()
+			}()
 
-			err = svc.CacheMatrix(rm.MatrixTypeNormal)
-			if err != nil {
-				_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
-			}
+			wg.Add(1)
+			go func() {
+				err = svc.CacheMatrix(rm.MatrixTypeNormal)
+				if err != nil {
+					_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
+				}
+				wg.Done()
+			}()
 
-			err = svc.CacheMatrix(rm.MatrixTypeValve)
-			if err != nil {
-				_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
-			}
+			// todo add feature flag
+			//wg.Add(1)
+			//go func() {
+			//	err = svc.CacheMatrix(rm.MatrixTypeValve)
+			//	if err != nil {
+			//		_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
+			//	}
+			//	wg.Done()
+			//}
+
+			wg.Wait()
 		}
 	}()
 
@@ -112,6 +124,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
 	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
+	//todo add feature flag
 	router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 
@@ -134,7 +147,6 @@ func mainReturnWithCode() int {
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
-	fmt.Println("finished starting http")
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)

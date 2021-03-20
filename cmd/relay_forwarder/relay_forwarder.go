@@ -1,49 +1,38 @@
-package relay_forwarder
+package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
-	"net/url"
 	"os"
+	"os/signal"
+	"runtime"
+
+	"github.com/networknext/backend/modules/transport"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/envvar"
 )
 
 func main() {
-
 	lbAddr := envvar.Get("GATEWAY_LB", "")
-	_, err := url.Parse(lbAddr)
-	if err != nil {
-		log.Fatal(err)
+	ip := net.ParseIP(lbAddr)
+	if ip == nil {
+		log.Fatal("msg", "bad gateway address")
 	}
 
-	healthURI := fmt.Sprintf("http://%s/health", lbAddr)
-	versionURI := fmt.Sprintf("http://%s/version", lbAddr)
 	initURI := fmt.Sprintf("http://%s/relay_init", lbAddr)
 	updateURI := fmt.Sprintf("http://%s/relay_update", lbAddr)
-	costURI := fmt.Sprintf("http://%s/cost_matrix", lbAddr)
-	matrixURI := fmt.Sprintf("http://%s/route_matrix", lbAddr)
-	valveURI := fmt.Sprintf("http://%s/route_matrix_valve", lbAddr)
-	//debugURI := fmt.Sprintf("http://%s/debug/vars", lbAddr)
-	//dashURI := fmt.Sprintf("http://%s/relay_dashboard", lbAddr)
-	//statsURI := fmt.Sprintf("http://%s/relay_stats", lbAddr)
 
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
-	router.HandleFunc("/health", forwardGet(healthURI, false))
-	router.HandleFunc("/version", forwardGet(versionURI, false))
+	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/relay_init", forwardPost(initURI)).Methods("POST")
 	router.HandleFunc("/relay_update", forwardPost(updateURI)).Methods("POST")
-	router.HandleFunc("/cost_matrix", forwardGet(costURI, true)).Methods("GET")
-	router.HandleFunc("/route_matrix", forwardGet(matrixURI, true)).Methods("GET")
-	router.HandleFunc("/route_matrix_valve", forwardGet(valveURI, true)).Methods("GET")
-	//router.Handle("/debug/vars", expvar.Handler())
-	//router.HandleFunc("/relay_dashboard", forwardGet(dashURI))
-	//router.HandleFunc("/relay_stats", forwardGet(statsURI))
 
 	go func() {
 		port := envvar.Get("PORT", "30000")
@@ -54,6 +43,16 @@ func main() {
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
+
+	go func() {
+		for {
+			fmt.Printf("number of go routines %v", runtime.NumGoroutine())
+		}
+	}()
+
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
 }
 
 func forwardGet(address string, octet bool) func(w http.ResponseWriter, r *http.Request) {
@@ -85,22 +84,33 @@ func forwardPost(address string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Println("post started")
-		resp, err := http.Post(address, r.Header.Get("Content-Type"), r.Body)
-		if err != nil {
-			fmt.Printf("error forwarding get: %s", err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		body, err := ioutil.ReadAll(resp.Body)
+
+		reqBody, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			fmt.Printf("error reading response body: %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		defer resp.Body.Close()
+		r.Body.Close()
+
+		reqBuf := bytes.NewBuffer(reqBody)
+		resp, err := http.Post(address, r.Header.Get("Content-Type"), reqBuf)
+		if err != nil {
+			fmt.Printf("error forwarding get: %s", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("error reading response body: %s", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		resp.Body.Close()
+
 		w.WriteHeader(resp.StatusCode)
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
-		w.Write(body)
+		w.Write(respBody)
 
 		fmt.Println("post finished")
 	}

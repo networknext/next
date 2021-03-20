@@ -23,8 +23,6 @@ const (
 	MaxRelayAddressLength = 256
 
 	MaxRelayNameLength = 63
-
-	LoadRelayPublicKey = "iZSBLaPMiAzTy3LHZl1OtLYY/4p9qm71QgZkuyYj5VE="
 )
 
 type RelayState uint32

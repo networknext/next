@@ -11,8 +11,6 @@ import (
 
 	"github.com/networknext/backend/modules/common/helpers"
 
-	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -70,18 +68,18 @@ func (r *RelayFrontendSvc) CacheMatrix(matrixType string) error {
 }
 
 func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) error {
-	matrix, err := getHttpMatrix(matrixAddr)
+	matrixBin, err := getHttpMatrix(matrixAddr)
 	if err != nil {
 		return err
 	}
 
 	switch matrixType {
 	case MatrixTypeCost:
-		r.costMatrix.SetMatrix(matrix)
+		r.costMatrix.SetMatrix(matrixBin)
 	case MatrixTypeNormal:
-		r.routeMatrix.SetMatrix(matrix)
+		r.routeMatrix.SetMatrix(matrixBin)
 	case MatrixTypeValve:
-		r.routeMatrixValve.SetMatrix(matrix)
+		r.routeMatrixValve.SetMatrix(matrixBin)
 	}
 
 	return nil
@@ -116,17 +114,13 @@ func getHttpMatrix(address string) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+	defer resp.Body.Close()
 
 	buffer, err := ioutil.ReadAll(resp.Body)
 	if len(buffer) == 0 {
 		return []byte{}, errors.New("empty resp body")
 	}
 	fmt.Print()
-	var newRouteMatrix routing.RouteMatrix
-	rs := encoding.CreateReadStream(buffer)
-	if err := newRouteMatrix.Serialize(rs); err != nil {
-		return []byte{}, err
-	}
 
 	return buffer, nil
 }
@@ -135,11 +129,11 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 	var addr string
 	switch matrixType {
 	case MatrixTypeCost:
-		addr = fmt.Sprintf("http:/%s/cost_matrix", r.currentMasterBackendAddress)
+		addr = fmt.Sprintf("http://%s/cost_matrix", r.currentMasterBackendAddress)
 	case MatrixTypeNormal:
-		addr = fmt.Sprintf("http:/%s/route_matrix", r.currentMasterBackendAddress)
+		addr = fmt.Sprintf("http://%s/route_matrix", r.currentMasterBackendAddress)
 	case MatrixTypeValve:
-		addr = fmt.Sprintf("http:/%s/route_matrix_valve", r.currentMasterBackendAddress)
+		addr = fmt.Sprintf("http://%s/route_matrix_valve", r.currentMasterBackendAddress)
 	default:
 		return "", errors.New("matrix type not supported")
 	}

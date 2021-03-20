@@ -208,11 +208,7 @@ func mainReturnWithCode() int {
 				if ipv4 := addr.To4(); ipv4 != nil {
 					for _, addr := range backendAddresses {
 						if ipv4.String() == addr {
-							if addr == "127.0.0.1" {
-								fmt.Sprintf("%s:30002", addr)
-							} else {
-								backendAddr = addr
-							}
+							backendAddr = addr
 							addrFound = true
 							break
 						}
@@ -895,6 +891,7 @@ func mainReturnWithCode() int {
 		Storer:           storer,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
+		LoadTest:         featureLoadTest,
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
@@ -902,6 +899,7 @@ func mainReturnWithCode() int {
 		StatsDB:  statsdb,
 		Metrics:  relayUpdateMetrics,
 		Storer:   storer,
+		LoadTest: featureLoadTest,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -935,43 +933,46 @@ func mainReturnWithCode() int {
 	}
 
 	if featureNRB {
-		level.Debug(logger).Log("msg", "subscriber starting")
+		go func() {
+			level.Debug(logger).Log("msg", "subscriber starting")
 
-		subscriberPort := envvar.Get("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_PORT", "5555")
+			subscriberPort := envvar.Get("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_PORT", "5555")
 
-		subscriberRecieveBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_RECEIVE_BUFFER_SIZE", 100000)
-		if err != nil {
-			return 1
-		}
-
-		sub, err := zq.NewGenericSubscriber(subscriberPort, subscriberRecieveBufferSize)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-		defer sub.Close()
-
-		err = sub.Subscribe(zq.RelayUpdateTopic)
-		if err != nil {
-			return 1
-		}
-
-		for {
-			msgChan := sub.ReceiveMessage(context.Background())
-			msg := <-msgChan
-			_ = level.Debug(logger).Log("msg", "message received")
-			if msg.Err != nil {
-				_ = level.Error(logger).Log("err", err)
-				continue
-			}
-			if msg.Topic != zq.RelayUpdateTopic {
-				_ = level.Error(logger).Log("err", "received the wrong topic")
-				continue
+			subscriberRecieveBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_SUBSCRIBER_RECEIVE_BUFFER_SIZE", 100000)
+			if err != nil {
+				return
 			}
 
-			transport.RelayUpdatePubSubFunc(msg.Message, logger, commonUpdateParams)
-		}
+			sub, err := zq.NewGenericSubscriber(subscriberPort, subscriberRecieveBufferSize)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+			defer sub.Close()
 
+			err = sub.Subscribe(zq.RelayUpdateTopic)
+			if err != nil {
+				os.Exit(1)
+			}
+
+			for {
+				msgChan := sub.ReceiveMessage(context.Background())
+				msg := <-msgChan
+				_ = level.Debug(logger).Log("msg", "message received")
+				if msg.Err != nil {
+					_ = level.Error(logger).Log("err", err)
+					continue
+				}
+				if msg.Topic != zq.RelayUpdateTopic {
+					_ = level.Error(logger).Log("err", "received the wrong topic")
+					continue
+				}
+
+				go func(msg zq.MessageInfo) {
+					transport.RelayUpdatePubSubFunc(msg.Message, logger, &commonUpdateParams)
+				}(msg)
+			}
+		}()
 	}
 
 	fmt.Printf("starting http server\n")

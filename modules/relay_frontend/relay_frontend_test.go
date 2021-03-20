@@ -163,15 +163,15 @@ func TestRelayFrontendSvc_GetMatrixAddress(t *testing.T) {
 
 	address, err := svc.GetMatrixAddress(MatrixTypeCost)
 	assert.Nil(t, err)
-	assert.Equal(t, "http:/1.1.1.1/cost_matrix", address)
+	assert.Equal(t, "http://1.1.1.1/cost_matrix", address)
 
 	address, err = svc.GetMatrixAddress(MatrixTypeNormal)
 	assert.Nil(t, err)
-	assert.Equal(t, "http:/1.1.1.1/route_matrix", address)
+	assert.Equal(t, "http://1.1.1.1/route_matrix", address)
 
 	address, err = svc.GetMatrixAddress(MatrixTypeValve)
 	assert.Nil(t, err)
-	assert.Equal(t, "http:/1.1.1.1/route_matrix_valve", address)
+	assert.Equal(t, "http://1.1.1.1/route_matrix_valve", address)
 
 	address, err = svc.GetMatrixAddress("dog")
 	assert.NotNil(t, err)

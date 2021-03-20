@@ -64,11 +64,20 @@ func (r *RedisMatrixStore) SetRelayBackendLiveData(data RelayBackendLiveData) er
 	return err
 }
 
-func (r *RedisMatrixStore) GetRelayBackendLiveData(addresses []string) ([]RelayBackendLiveData, error) {
+func (r *RedisMatrixStore) GetRelayBackendLiveData(address []string) ([]RelayBackendLiveData, error) {
 	conn := r.pool.Get()
-	var rbArr []RelayBackendLiveData
-	for _, addr := range addresses {
-		key := fmt.Sprintf("%s-%s", relayBackendLiveData, addr)
+
+	keys, err := redis.Strings(conn.Do("KEYS", relayBackendLiveData+"*"))
+	if err == redis.ErrNil || err != nil {
+		return []RelayBackendLiveData{}, fmt.Errorf("issue with db: %v", err)
+	}
+
+	if len(keys) == 0 {
+		return []RelayBackendLiveData{}, fmt.Errorf("keys not found")
+	}
+
+	rbArr := make([]RelayBackendLiveData, len(keys))
+	for i, key := range keys {
 		bin, err := redis.Bytes(conn.Do("GET", key))
 		if err == redis.ErrNil {
 			continue
@@ -82,7 +91,8 @@ func (r *RedisMatrixStore) GetRelayBackendLiveData(addresses []string) ([]RelayB
 			return []RelayBackendLiveData{}, fmt.Errorf("unable to unmarshal relay data: %s", err.Error())
 		}
 
-		rbArr = append(rbArr, relayData)
+		rbArr[i] = relayData
 	}
+
 	return rbArr, nil
 }

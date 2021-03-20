@@ -86,7 +86,7 @@ func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig
 				return
 			}
 		} else {
-			loadTestRelay(relayInitRequest.Address.String(), routing.RelayStateDisabled)
+			relay = loadTestRelay(relayInitRequest.Address.String(), routing.RelayStateDisabled)
 		}
 
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
@@ -246,7 +246,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			// todo update instead of set when ready
+			// todo update instead of set when sql ready
 			if err := params.Storer.SetRelay(ctx, relay); err != nil {
 				level.Error(localLogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
 				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
@@ -259,20 +259,22 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		if params.NRBHTTP {
 			for _, address := range params.RelayBackendAddresses {
 				go func(address string) {
-					resp, err := http.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", request.Body)
+					buffer := bytes.NewBuffer(body)
+					resp, err := http.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
 					if err != nil || resp.StatusCode != http.StatusOK {
 						_ = level.Error(localLogger).Log("msg", "unable to send update to relay backend", "err", err)
 					}
+					resp.Body.Close()
 				}(address)
 			}
 		} else {
 			for _, pub := range params.Publishers {
-				go func() {
+				go func(pub pubsub.Publisher, body []byte) {
 					_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, body)
 					if err != nil {
 						_ = level.Error(localLogger).Log("msg", "unable to send update to optimizer", "err", err)
 					}
-				}()
+				}(pub, body)
 			}
 		}
 

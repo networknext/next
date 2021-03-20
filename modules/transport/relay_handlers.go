@@ -3,6 +3,7 @@ package transport
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"html/template"
@@ -206,14 +207,17 @@ func loadTestRelay(address string, state routing.RelayState) routing.Relay {
 		ID:   strID,
 		Name: "fake for load",
 	}
+
 	fakeDataCenter := routing.Datacenter{
 		ID: id,
 	}
+
+	relayKey, _ := base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	internaladdr, _ := net.ResolveUDPAddr("udp", ":0")
 	return routing.Relay{
 		State:        state,
 		Name:         fmt.Sprintf("fake_relay_%v", address),
-		PublicKey:    []byte(routing.LoadRelayPublicKey),
+		PublicKey:    relayKey,
 		Seller:       fakeSeller,
 		Datacenter:   fakeDataCenter,
 		MaxSessions:  100000,
@@ -422,7 +426,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 	}
 }
 
-func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params RelayUpdateHandlerConfig) {
+func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params *RelayUpdateHandlerConfig) {
+
+	level.Debug(logger).Log("msg", "update started")
 	var relayUpdateRequest RelayUpdateRequest
 	err := relayUpdateRequest.UnmarshalBinary(requestBody)
 	if err != nil {
@@ -433,10 +439,18 @@ func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params RelayUp
 
 	// If the relay does not exist in Firestore it's a ghost, ignore it
 	id := crypto.HashID(relayUpdateRequest.Address.String())
-	relay, err := params.Storer.Relay(id)
-	if err != nil {
-		params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-		return
+
+	var relay routing.Relay
+	if !params.LoadTest {
+		// If the relay does not exist in Firestore it's a ghost, ignore it
+		relay, err = params.Storer.Relay(id)
+		if err != nil {
+			level.Error(logger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+	} else {
+		relay = loadTestRelay(relayUpdateRequest.Address.String(), routing.RelayStateEnabled)
 	}
 
 	if relayUpdateRequest.ShuttingDown {
@@ -446,10 +460,12 @@ func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params RelayUp
 		return
 	}
 
-	relayData := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
-	if relayData == nil {
-		relayData = initRelayOnBackend(&relay, logger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, params.RelayMap)
-		return
+	params.RelayMap.RLock()
+	relayDataReadOnly := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+	params.RelayMap.RUnlock()
+
+	if relayDataReadOnly == nil {
+		relayDataReadOnly = initRelayOnBackend(&relay, relayUpdateRequest, logger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, params.RelayMap)
 	}
 
 	statsUpdate := &routing.RelayStatsUpdate{}
@@ -461,13 +477,14 @@ func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params RelayUp
 	params.RelayMap.Lock()
 	params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 	params.RelayMap.Unlock()
+	level.Debug(logger).Log("msg", "update finished")
 }
 
-func initRelayOnBackend(relay *routing.Relay, logger log.Logger, relayVersion string, errorMetrics *metrics.RelayInitErrorMetrics, relayMap *routing.RelayMap) *routing.RelayData {
+func initRelayOnBackend(relay *routing.Relay, relayUpdateRequest RelayUpdateRequest, logger log.Logger, relayVersion string, errorMetrics *metrics.RelayInitErrorMetrics, relayMap *routing.RelayMap) *routing.RelayData {
 	relayData := routing.NewRelayData()
-	relayData.ID = relay.ID
+	relayData.ID = crypto.HashID(relayUpdateRequest.Address.String())
 	relayData.Name = relay.Name
-	relayData.Addr = relay.Addr
+	relayData.Addr = relayUpdateRequest.Address
 	relayData.PublicKey = relay.PublicKey
 	relayData.Seller = relay.Seller
 	relayData.Datacenter = relay.Datacenter
@@ -489,6 +506,7 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 	handlerLogger := log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -502,7 +520,7 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		defer request.Body.Close()
+		request.Body.Close()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
@@ -556,7 +574,7 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 		params.RelayMap.RUnlock()
 
 		if relayDataReadOnly == nil {
-			relayDataReadOnly = initRelayOnBackend(&relay, locallogger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, params.RelayMap)
+			relayDataReadOnly = initRelayOnBackend(&relay, relayUpdateRequest, locallogger, relayUpdateRequest.RelayVersion, &params.Metrics.InitErrorMetrics, params.RelayMap)
 		}
 
 		statsUpdate := &routing.RelayStatsUpdate{}
@@ -598,6 +616,7 @@ func NewRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, param
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
 
+		return
 	}
 }
 

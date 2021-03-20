@@ -45,15 +45,11 @@ func mainReturnWithCode() int {
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	fmt.Printf("gcp id: %v \n", gcpProjectID)
-
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-
-	fmt.Printf("logger 1\n")
 
 	// todo why 2 loggers
 	relayLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
@@ -61,8 +57,6 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-
-	fmt.Printf("logger 2\n")
 
 	env, err := backend.GetEnv()
 	if err != nil {
@@ -76,7 +70,6 @@ func mainReturnWithCode() int {
 			return 1
 		}
 	}
-	fmt.Printf("stack driver profiler\n")
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -84,7 +77,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	fmt.Printf("metrics handler\n")
 	relayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
 	if err != nil {
 		fmt.Printf("error: %v \n", err.Error())
@@ -92,25 +84,24 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	fmt.Printf("metrics gateway\n")
 	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	fmt.Printf("storer\n")
 	cfg, err := newConfig()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-	fmt.Printf("config\n")
+
 	var publishers []pubsub.Publisher
 	if !cfg.NRBHTTP {
 		publishers, err = pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
 		if err != nil {
 			level.Error(logger).Log("err", err)
+			return 1
 		}
 	}
 
@@ -144,7 +135,6 @@ func mainReturnWithCode() int {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
 
-	fmt.Println("starting Http")
 	go func() {
 		port := envvar.Get("PORT", "30000")
 
@@ -156,7 +146,6 @@ func mainReturnWithCode() int {
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
-	fmt.Println("http started")
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
@@ -178,7 +167,7 @@ func newConfig() (*Config, error) {
 	cfg := new(Config)
 
 	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if err != nil {
+	if err != nil || routerPrivateKey == nil {
 		return nil, fmt.Errorf("RELAY_ROUTER_PRIVATE_KEY not set")
 	}
 	cfg.RouterPrivateKey = routerPrivateKey
