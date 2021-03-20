@@ -29,7 +29,7 @@ var EmptyGooglePublisherErrorMetrics = GooglePublisherErrorMetrics{
 // GoogleSubscriberMetrics defines the metrics for subscribing to Google Pub/Sub.
 type GoogleSubscriberMetrics struct {
 	EntriesReceived      Counter
-	EntriesQueuedToWrite Counter
+	EntriesQueuedToWrite Gauge
 	EntriesSubmitted     Counter
 	ErrorMetrics         GoogleSubscriberErrorMetrics
 }
@@ -37,8 +37,8 @@ type GoogleSubscriberMetrics struct {
 // EmptyGoogleSubscriberMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyGoogleSubscriberMetrics GoogleSubscriberMetrics = GoogleSubscriberMetrics{
 	EntriesReceived:      &EmptyCounter{},
-	EntriesSubmitted:     &EmptyCounter{},
 	EntriesQueuedToWrite: &EmptyGauge{},
+	EntriesSubmitted:     &EmptyCounter{},
 	ErrorMetrics:         EmptyGoogleSubscriberErrorMetrics,
 }
 
