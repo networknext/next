@@ -21,6 +21,8 @@ type GooglePubSubPublisher interface {
 }
 
 type GooglePubSubSubscriber interface {
-	ReceiveAndSubmit(ctx context.Context) error
-	UnbatchMessages(m *pubsub.Message) ([][]byte, error)
+	Receive(ctx context.Context) error
+	Submit(ctx context.Context) error
+    WriteLoop(ctx context.Context) error
+    UnbatchMessages(m *pubsub.Message) ([][]byte, error)
 }
