@@ -1,4 +1,4 @@
-package transport_test
+package transport
 
 import (
 	"bytes"
@@ -20,31 +20,10 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
 )
 
-func testRelayInitHandlerConfig(RelayMap *routing.RelayMap, storer storage.Storer, metric *metrics.RelayInitMetrics, routerPrivateKey []byte) *transport.RelayInitHandlerConfig {
-
-	if RelayMap == nil {
-		RelayMap = routing.NewRelayMap(func(relay *routing.RelayData) error {
-			return nil
-		})
-	}
-
-	if metric == nil {
-		metric = &metrics.EmptyRelayInitMetrics
-	}
-
-	return &transport.RelayInitHandlerConfig{
-		RelayMap:         RelayMap,
-		Storer:           storer,
-		Metrics:          metric,
-		RouterPrivateKey: routerPrivateKey,
-	}
-}
-
-func pingRelayBackendInit(t *testing.T, contentType string, body []byte, handlerConfig *transport.RelayInitHandlerConfig) *httptest.ResponseRecorder {
+func pingRelayGatewayInit(t *testing.T, contentType string, body []byte, handlerConfig *GatewayHandlerConfig) *httptest.ResponseRecorder {
 	customerPublicKey := make([]byte, crypto.KeySize)
 	rand.Read(customerPublicKey)
 
@@ -53,17 +32,10 @@ func pingRelayBackendInit(t *testing.T, contentType string, body []byte, handler
 	assert.NoError(t, err)
 	request.Header.Add("Content-Type", contentType)
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), handlerConfig)
+	handler := GatewayRelayInitHandlerFunc(log.NewNopLogger(), handlerConfig)
 
 	handler(recorder, request)
 	return recorder
-}
-
-func testMetric(t *testing.T) metrics.Counter {
-	localMetrics := metrics.LocalHandler{}
-	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-	assert.NoError(t, err)
-	return metric
 }
 
 func testAddRelayToStore(t *testing.T, storer *storage.InMemory, relay routing.Relay) {
@@ -75,17 +47,15 @@ func testAddRelayToStore(t *testing.T, storer *storage.InMemory, relay routing.R
 	assert.NoError(t, err)
 }
 
-func relayInitErrorAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedCode int, errMetric metrics.Counter) {
+func testRelayErrorAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedCode int, errMetric metrics.Counter) {
 	assert.Equal(t, expectedCode, recorder.Code)
 	assert.Equal(t, 1.0, errMetric.ValueReset())
 }
 
-func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, handlerConfig *transport.RelayInitHandlerConfig, addr string, before uint64, expected routing.RelayData) {
+func relayGatewayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, handlerConfig *GatewayHandlerConfig, before uint64, relayID uint64) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	actual := handlerConfig.RelayMap.GetRelayData(addr)
-	assert.NotNil(t, actual)
-	relay, err := handlerConfig.Storer.Relay(actual.ID)
+	relay, err := handlerConfig.Storer.Relay(relayID)
 	assert.NoError(t, err)
 
 	header := recorder.Header()
@@ -93,7 +63,7 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 	assert.True(t, ok)
 
 	body := recorder.Body.Bytes()
-	var response transport.RelayInitResponse
+	var response RelayInitResponse
 	switch expectedContentType {
 	case "application/octet-stream":
 		err = response.UnmarshalBinary(body)
@@ -103,19 +73,13 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 	}
 
 	assert.Equal(t, expectedContentType, contentType[0])
-	assert.Equal(t, transport.VersionNumberInitResponse, int(response.Version))
+	assert.Equal(t, VersionNumberInitResponse, int(response.Version))
 	assert.LessOrEqual(t, before, response.Timestamp)
 	assert.GreaterOrEqual(t, uint64(time.Now().Unix()*1000), response.Timestamp)
-	assert.Equal(t, actual.PublicKey, response.PublicKey) // entry gets a public key assigned at init which is returned in the response
 
-	assert.Equal(t, expected.ID, actual.ID)
-	assert.Equal(t, expected.Name, actual.Name)
-	assert.Equal(t, expected.Addr, actual.Addr)
-	assert.NotZero(t, actual.LastUpdateTime)
-	assert.Len(t, actual.PublicKey, 32)
 	assert.Equal(t, routing.RelayStateEnabled, relay.State)
 
-	errMetricsStruct := reflect.ValueOf(handlerConfig.Metrics.ErrorMetrics)
+	errMetricsStruct := reflect.ValueOf(handlerConfig.InitMetrics.ErrorMetrics)
 	for i := 0; i < errMetricsStruct.NumField(); i++ {
 		if errMetricsStruct.Field(i).CanInterface() {
 			assert.Equal(t, 0.0, errMetricsStruct.Field(i).Interface().(metrics.Counter).ValueReset())
@@ -123,35 +87,34 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 	}
 }
 
-func TestRelayInitUnmarshalFailure(t *testing.T) {
-	handlerConfig := testRelayInitHandlerConfig(nil, &storage.StorerMock{}, nil, []byte{})
+func TestRelayGatewayInitUnmarshalFailure(t *testing.T) {
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.UnmarshalFailure = metric
+	handlerConfig.InitMetrics.ErrorMetrics.UnmarshalFailure = metric
 	buff := []byte("bad packet")
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 
 }
 
-func TestRelayInitInvalidMagic(t *testing.T) {
-	packet := transport.RelayInitRequest{
+func TestRelayGatewayInitInvalidMagic(t *testing.T) {
+	packet := RelayInitRequest{
 		Magic:          0xFFFFFFFF,
 		Nonce:          make([]byte, crypto.NonceSize),
 		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
 
-	handlerConfig := testRelayInitHandlerConfig(nil, &storage.StorerMock{}, nil, []byte{})
+	handlerConfig := testGatewayHandlerConfig(&storage.StorerMock{})
 	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.InvalidMagic = metric
+	handlerConfig.InitMetrics.ErrorMetrics.InvalidMagic = metric
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
-func TestRelayInitInvalidAddress(t *testing.T) {
+func TestRelayGatewayInitInvalidAddress(t *testing.T) {
 	relayPublicKey, _, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 	_, routerPrivateKey, err := box.GenerateKey(rand.Reader)
@@ -176,17 +139,18 @@ func TestRelayInitInvalidAddress(t *testing.T) {
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
 
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
+	packet := RelayInitRequest{
+		Magic:          InitRequestMagic,
 		Version:        0,
 		Nonce:          make([]byte, crypto.NonceSize),
 		Address:        *udp,
 		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
 
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
+	handlerConfig := testGatewayHandlerConfig(inMemory)
+	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.UnmarshalFailure = metric
+	handlerConfig.InitMetrics.ErrorMetrics.UnmarshalFailure = metric
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
@@ -194,103 +158,103 @@ func TestRelayInitInvalidAddress(t *testing.T) {
 	for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
 		buff[4+4+crypto.NonceSize+4+i] = badAddr[i]
 	}
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
-func TestRelayInitRelayNotFound(t *testing.T) {
+func TestRelayGatewayInitRelayNotFound(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
 	inMemory := &storage.InMemory{} // Have empty storage to fail lookup
 
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
+	packet := RelayInitRequest{
+		Magic:          InitRequestMagic,
 		Nonce:          make([]byte, crypto.NonceSize),
 		Address:        *udpAddr,
 		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
 
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, []byte{})
+	handlerConfig := testGatewayHandlerConfig(inMemory)
 	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.RelayNotFound = metric
+	handlerConfig.InitMetrics.ErrorMetrics.RelayNotFound = metric
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusNotFound, metric)
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusNotFound, metric)
 }
 
-func TestRelayInitQuarantinedRelay(t *testing.T) {
+////todo still not working, fix when quarantine reimplemented
+//func TestRelayInitQuarantinedRelay(t *testing.T) {
+//
+//	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+//	assert.NoError(t, err)
+//	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+//	assert.NoError(t, err)
+//
+//	// generate nonce
+//	nonce := make([]byte, crypto.NonceSize)
+//	rand.Read(nonce)
+//
+//	// generate token
+//	token := make([]byte, crypto.KeySize)
+//	rand.Read(token)
+//
+//	// encrypt token
+//	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+//
+//	addr := "127.0.0.1:40000"
+//	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+//	assert.NoError(t, err)
+//
+//	relay := routing.Relay{
+//		ID: crypto.HashID(addr),
+//		Seller: routing.Seller{
+//			ID:   "sellerID",
+//			Name: "seller name",
+//		},
+//		Datacenter: routing.Datacenter{
+//			ID:   crypto.HashID("some datacenter"),
+//			Name: "some datacenter",
+//			Location: routing.Location{
+//				Latitude:  13,
+//				Longitude: 13,
+//			},
+//		},
+//		PublicKey: relayPublicKey[:],
+//		State:     routing.RelayStateQuarantine,
+//	}
+//
+//	packet := RelayInitRequest{
+//		Magic:          InitRequestMagic,
+//		Version:        0,
+//		Nonce:          nonce,
+//		Address:        *udpAddr,
+//		EncryptedToken: encryptedToken,
+//	}
+//
+//	inMemory := &storage.InMemory{}
+//	customerPublicKey := make([]byte, crypto.KeySize)
+//	rand.Read(customerPublicKey)
+//	err = inMemory.AddBuyer(context.Background(), routing.Buyer{
+//		PublicKey: customerPublicKey,
+//	})
+//	assert.NoError(t, err)
+//	testAddRelayToStore(t, inMemory, relay)
+//
+//	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
+//	metric := testMetric(t)
+//	handlerConfig.InitMetrics.ErrorMetrics.RelayQuarantined = metric
+//
+//	buff, err := packet.MarshalBinary()
+//	assert.NoError(t, err)
+//	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+//	testRelayErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
+//}
 
-	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
-	assert.NoError(t, err)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
-	assert.NoError(t, err)
-
-	// generate nonce
-	nonce := make([]byte, crypto.NonceSize)
-	rand.Read(nonce)
-
-	// generate token
-	token := make([]byte, crypto.KeySize)
-	rand.Read(token)
-
-	// encrypt token
-	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-
-	addr := "127.0.0.1:40000"
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	assert.NoError(t, err)
-
-	relay := routing.Relay{
-		ID: crypto.HashID(addr),
-		Seller: routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
-		},
-		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID("some datacenter"),
-			Name: "some datacenter",
-			Location: routing.Location{
-				Latitude:  13,
-				Longitude: 13,
-			},
-		},
-		PublicKey: relayPublicKey[:],
-		State:     routing.RelayStateQuarantine,
-	}
-
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
-		Version:        0,
-		Nonce:          nonce,
-		Address:        *udpAddr,
-		EncryptedToken: encryptedToken,
-	}
-
-	inMemory := &storage.InMemory{}
-	customerPublicKey := make([]byte, crypto.KeySize)
-	rand.Read(customerPublicKey)
-	err = inMemory.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: customerPublicKey,
-	})
-	assert.NoError(t, err)
-	testAddRelayToStore(t, inMemory, relay)
-
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
-	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.RelayQuarantined = metric
-
-	buff, err := packet.MarshalBinary()
-	assert.NoError(t, err)
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
-}
-
-func TestRelayInitInvalidToken(t *testing.T) {
+func TestRelayGatewayInitInvalidToken(t *testing.T) {
 	_, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
@@ -319,25 +283,26 @@ func TestRelayInitInvalidToken(t *testing.T) {
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
 
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
+	packet := RelayInitRequest{
+		Magic:          InitRequestMagic,
 		Version:        0,
 		Nonce:          nonce,
 		Address:        *udp,
 		EncryptedToken: token,
 	}
 
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
+	handlerConfig := testGatewayHandlerConfig(inMemory)
+	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.DecryptionFailure = metric
+	handlerConfig.InitMetrics.ErrorMetrics.DecryptionFailure = metric
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 }
 
-func TestRelayInitInvalidNonce(t *testing.T) {
+func TestRelayGatewayInitInvalidNonce(t *testing.T) {
 	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
@@ -369,8 +334,8 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 			Name: "some datacenter",
 		},
 	}
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
+	packet := RelayInitRequest{
+		Magic:          InitRequestMagic,
 		Version:        0,
 		Nonce:          make([]byte, crypto.NonceSize), // Send a different nonce than the one used
 		Address:        *udp,
@@ -379,17 +344,18 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
+	handlerConfig := testGatewayHandlerConfig(inMemory)
+	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
-	handlerConfig.Metrics.ErrorMetrics.DecryptionFailure = metric
+	handlerConfig.InitMetrics.ErrorMetrics.DecryptionFailure = metric
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 }
 
-func TestRelayInitRelayExists(t *testing.T) {
+func TestRelayGatewayInitRelayExists(t *testing.T) {
 	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
@@ -406,23 +372,9 @@ func TestRelayInitRelayExists(t *testing.T) {
 	// encrypt token
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-	name := "some name"
 	addr := "127.0.0.1:40000"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
-	dcname := "another name"
-
-	entry := &routing.RelayData{
-		ID:        crypto.HashID(addr),
-		Name:      name,
-		Addr:      *udpAddr,
-		PublicKey: token,
-		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID(dcname),
-			Name: dcname,
-		},
-		LastUpdateTime: time.Now(),
-	}
 
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
@@ -432,8 +384,8 @@ func TestRelayInitRelayExists(t *testing.T) {
 		PublicKey: relayPublicKey[:],
 	}
 
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
+	packet := RelayInitRequest{
+		Magic:          InitRequestMagic,
 		Version:        0,
 		Nonce:          nonce,
 		Address:        *udpAddr,
@@ -442,19 +394,18 @@ func TestRelayInitRelayExists(t *testing.T) {
 
 	inMemory := &storage.InMemory{}
 	testAddRelayToStore(t, inMemory, relay)
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
+	handlerConfig := testGatewayHandlerConfig(inMemory)
+	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
-	handlerConfig.RelayMap.AddRelayDataEntry(addr, entry)
-	handlerConfig.Metrics.ErrorMetrics.RelayAlreadyExists = metric
+	handlerConfig.InitMetrics.ErrorMetrics.RelayAlreadyExists = metric
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitErrorAssertions(t, recorder, http.StatusConflict, metric)
-
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	testRelayErrorAssertions(t, recorder, http.StatusConflict, metric)
 }
 
-func TestRelayInitSuccess(t *testing.T) {
+func TestRelayGatewayInitSuccess(t *testing.T) {
 	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
@@ -495,20 +446,12 @@ func TestRelayInitSuccess(t *testing.T) {
 		State: routing.RelayStateOffline,
 	}
 
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
+	packet := RelayInitRequest{
+		Magic:          InitRequestMagic,
 		Nonce:          nonce,
 		Address:        *udpAddr,
 		EncryptedToken: encryptedToken,
-	}
-
-	expected := routing.RelayData{
-		ID:   crypto.HashID(addr),
-		Addr: *udpAddr,
-		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID("some datacenter"),
-			Name: "some datacenter",
-		},
+		RelayVersion:   "1",
 	}
 
 	inMemory := &storage.InMemory{}
@@ -519,7 +462,8 @@ func TestRelayInitSuccess(t *testing.T) {
 		PublicKey: customerPublicKey,
 	})
 	testAddRelayToStore(t, inMemory, relay)
-	handlerConfig := testRelayInitHandlerConfig(nil, inMemory, nil, routerPrivateKey[:])
+	handlerConfig := testGatewayHandlerConfig(inMemory)
+	handlerConfig.RouterPrivateKey = routerPrivateKey[:]
 	metric := testMetric(t)
 
 	initMetrics := metrics.RelayInitMetrics{
@@ -533,11 +477,11 @@ func TestRelayInitSuccess(t *testing.T) {
 		}
 	}
 
-	handlerConfig.Metrics = &initMetrics
+	handlerConfig.InitMetrics = &initMetrics
 
 	buff, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	recorder := pingRelayBackendInit(t, "application/octet-stream", buff, handlerConfig)
-	relayInitSuccessAssertions(t, recorder, "application/octet-stream", handlerConfig, udpAddr.String(), before, expected)
+	recorder := pingRelayGatewayInit(t, "application/octet-stream", buff, handlerConfig)
+	relayGatewayInitSuccessAssertions(t, recorder, "application/octet-stream", handlerConfig, before, relay.ID)
 }
