@@ -141,7 +141,12 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		buffer := bytes.NewBuffer(r.costMatrix.GetMatrix())
+		data := r.costMatrix.GetMatrix()
+		if len(data) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -152,7 +157,12 @@ func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http
 func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		buffer := bytes.NewBuffer(r.routeMatrix.GetMatrix())
+		data := r.routeMatrix.GetMatrix()
+		if len(data) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -163,8 +173,12 @@ func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *htt
 func (r *RelayFrontendSvc) GetRouteMatrixValve() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-
-		buffer := bytes.NewBuffer(r.routeMatrixValve.GetMatrix())
+		data := r.routeMatrixValve.GetMatrix()
+		if len(data) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

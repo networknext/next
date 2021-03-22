@@ -544,7 +544,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
+	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1

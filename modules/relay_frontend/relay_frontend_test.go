@@ -264,7 +264,6 @@ func TestRelayFrontendSvc_CacheMatrixValve(t *testing.T) {
 }
 
 func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
-
 	svc := &RelayFrontendSvc{}
 	svc.costMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
@@ -289,14 +288,21 @@ func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 	assert.Equal(t, testMatrix, newRouteMatrix)
 }
 
-func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
+func TestRelayFrontendSvc_GetCostMatrixNotFound(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+	svc.costMatrix = new(helpers.MatrixData)
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrix()))
 
+	resp, err := http.Get(ts.URL)
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+}
+
+func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.routeMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
-
 	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
-
 	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
 
 	resp, err := http.Get(ts.URL)
@@ -316,8 +322,17 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	assert.Equal(t, testMatrix, newRouteMatrix)
 }
 
-func TestRelayFrontendSvc_GetRouteMatrixValve(t *testing.T) {
+func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+	svc.routeMatrix = new(helpers.MatrixData)
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
 
+	resp, err := http.Get(ts.URL)
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+}
+
+func TestRelayFrontendSvc_GetRouteMatrixValve(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.routeMatrixValve = new(helpers.MatrixData)
 
@@ -341,6 +356,16 @@ func TestRelayFrontendSvc_GetRouteMatrixValve(t *testing.T) {
 
 	newRouteMatrix.WriteResponseData(5000)
 	assert.Equal(t, testMatrix, newRouteMatrix)
+}
+
+func TestRelayFrontendSvc_GetRouteMatrixValveNotFound(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+	svc.routeMatrixValve = new(helpers.MatrixData)
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixValve()))
+
+	resp, err := http.Get(ts.URL)
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 }
 
 func testMatrix(t *testing.T) routing.RouteMatrix {
