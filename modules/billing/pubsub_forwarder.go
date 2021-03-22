@@ -68,6 +68,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 
 				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+					// Nack if we failed to submit the billing entry
+					m.Nack()
 					return
 				}
 
@@ -88,6 +90,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				}
 
 				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+				// Nack if we failed to read the billing entry
+				m.Nack()
 			}
 		}
 	})
