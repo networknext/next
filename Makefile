@@ -1104,6 +1104,31 @@ build-fake-relays-artifacts-nrb: build-fake-relays
 publish-fake-relays-artifacts-nrb:
 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s fake_relays
 
+.PHONY: build-fake-relays-artifacts-dev
+build-fake-relays-artifacts-dev: build-fake-relays
+	./deploy/build-artifacts.sh -e dev -s fake_relays
+
+.PHONY: publish-fake-relays-artifacts-dev
+publish-fake-relays-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET_DEV) -s fake_relays
+
+.PHONY: build-fake-relays-artifacts-staging
+build-fake-relays-artifacts-staging: build-fake-relays
+	./deploy/build-artifacts.sh -e staging -s fake_relays
+
+.PHONY: publish-fake-relays-artifacts-staging
+publish-fake-relays-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_relays
+
+.PHONY: build-fake-relays-artifacts-prod
+build-fake-relays-artifacts-prod: build-fake-relays
+	./deploy/build-artifacts.sh -e prod -s fake_relays
+
+.PHONY: publish-fake-relays-artifacts-prod
+publish-fake-relays-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s fake_relays
+
+
 #######################
 #   Relay Forwarder   #
 #######################
@@ -1125,6 +1150,30 @@ build-relay-forwarder-artifacts-nrb: build-relay-forwarder
 .PHONY: publish-relay-forwarder-artifacts-nrb
 publish-relay-forwarder-artifacts-nrb:
 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_forwarder
+
+.PHONY: build-relay-forwarder-artifacts-dev
+build-relay-forwarder-artifacts-dev: build-relay-forwarder
+	./deploy/build-artifacts.sh -e dev -s relay_forwarder
+
+.PHONY: publish-relay-forwarder-artifacts-dev
+publish-relay-forwarder-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET_DEV) -s relay_forwarder
+
+.PHONY: build-relay-forwarder-artifacts-staging
+build-relay-forwarder-artifacts-staging: build-relay-forwarder
+	./deploy/build-artifacts.sh -e staging -s relay_forwarder
+
+.PHONY: publish-relay-forwarder-artifacts-staging
+publish-relay-forwarder-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
+
+.PHONY: build-relay-forwarder-artifacts-prod
+build-relay-forwarder-artifacts-prod: build-relay-forwarder
+	./deploy/build-artifacts.sh -e prod -s relay_forwarder
+
+.PHONY: publish-relay-forwarder-artifacts-prod
+publish-relay-forwarder-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
 
 #######################
 #    Relay Gateway    #
