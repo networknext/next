@@ -10,6 +10,9 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
+
+	"github.com/networknext/backend/modules/common/helpers"
 
 	"github.com/networknext/backend/modules/transport"
 
@@ -45,7 +48,9 @@ func main() {
 	}()
 
 	go func() {
+		syncTimer := helpers.NewSyncTimer(10 * time.Second)
 		for {
+			syncTimer.Run()
 			fmt.Printf("number of go routines %v", runtime.NumGoroutine())
 		}
 	}()
