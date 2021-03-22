@@ -314,5 +314,3 @@ func NewValveRouteMatrixMetrics(ctx context.Context, metricsHandler Handler) (*R
 
 	return &routeMatrixMetrics, nil
 }
-
-//func NewTestingCostMatrixMetrics
