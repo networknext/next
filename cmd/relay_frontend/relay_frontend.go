@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/metrics"
+
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
@@ -54,6 +56,25 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, cfg.ENV); err != nil {
+			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			return 1
+		}
+	}
+
+	frontendMetrics, err := metrics.NewRelayFrontendMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
@@ -68,7 +89,6 @@ func mainReturnWithCode() int {
 
 	shutdown := false
 
-	// todo metrics
 	// core loop
 	go func() {
 		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
@@ -78,8 +98,10 @@ func mainReturnWithCode() int {
 				return
 			}
 
+			frontendMetrics.MasterSelect.Add(1)
 			err := svc.UpdateRelayBackendMaster()
 			if err != nil {
+				frontendMetrics.MasterSelectError.Add(1)
 				_ = level.Error(logger).Log("error", err)
 				continue
 			}
@@ -87,8 +109,10 @@ func mainReturnWithCode() int {
 
 			wg.Add(1)
 			go func() {
+				frontendMetrics.CostMatrix.Invocations.Add(1)
 				err = svc.CacheMatrix(rm.MatrixTypeCost)
 				if err != nil {
+					frontendMetrics.CostMatrix.Error.Add(1)
 					_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
 				}
 				wg.Done()
@@ -96,23 +120,27 @@ func mainReturnWithCode() int {
 
 			wg.Add(1)
 			go func() {
+				frontendMetrics.RouteMatrix.Invocations.Add(1)
 				err = svc.CacheMatrix(rm.MatrixTypeNormal)
 				if err != nil {
+					frontendMetrics.RouteMatrix.Error.Add(1)
 					_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
 				}
 				wg.Done()
 			}()
 
-			// todo add feature flag
-			//wg.Add(1)
-			//go func() {
-			//	err = svc.CacheMatrix(rm.MatrixTypeValve)
-			//	if err != nil {
-			//		_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
-			//	}
-			//	wg.Done()
-			//}
-
+			if cfg.ValveMatrix {
+				wg.Add(1)
+				go func() {
+					frontendMetrics.ValveMatrix.Invocations.Add(1)
+					err = svc.CacheMatrix(rm.MatrixTypeValve)
+					if err != nil {
+						frontendMetrics.ValveMatrix.Error.Add(1)
+						_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
+					}
+					wg.Done()
+				}()
+			}
 			wg.Wait()
 		}
 	}()
@@ -124,9 +152,11 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
 	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
-	//todo add feature flag
-	router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
+
+	if cfg.ValveMatrix {
+		router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
+	}
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {

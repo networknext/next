@@ -15,7 +15,7 @@ const (
 type MatrixStore interface {
 	//relay backend
 	SetRelayBackendLiveData(data RelayBackendLiveData) error
-	GetRelayBackendLiveData(address []string) ([]RelayBackendLiveData, error)
+	GetRelayBackendLiveData() ([]RelayBackendLiveData, error)
 }
 
 func wrap(pre, err, post string) error {

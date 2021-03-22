@@ -64,7 +64,7 @@ func (r *RedisMatrixStore) SetRelayBackendLiveData(data RelayBackendLiveData) er
 	return err
 }
 
-func (r *RedisMatrixStore) GetRelayBackendLiveData(address []string) ([]RelayBackendLiveData, error) {
+func (r *RedisMatrixStore) GetRelayBackendLiveData() ([]RelayBackendLiveData, error) {
 	conn := r.pool.Get()
 
 	keys, err := redis.Strings(conn.Do("KEYS", relayBackendLiveData+"*"))

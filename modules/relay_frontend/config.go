@@ -7,13 +7,13 @@ import (
 )
 
 type Config struct {
-	ENV                   string
-	MasterTimeVariance    time.Duration
-	MatrixStoreAddress    string
-	MSReadTimeout         time.Duration
-	MSWriteTimeout        time.Duration
-	MSMatrixTimeout       time.Duration
-	RelayBackendAddresses []string
+	ENV                string
+	MasterTimeVariance time.Duration
+	MatrixStoreAddress string
+	MSReadTimeout      time.Duration
+	MSWriteTimeout     time.Duration
+	MSMatrixTimeout    time.Duration
+	ValveMatrix        bool
 }
 
 func GetConfig() (*Config, error) {
@@ -44,9 +44,9 @@ func GetConfig() (*Config, error) {
 		return nil, err
 	}
 
-	cfg.RelayBackendAddresses = envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
-	if cfg.ENV == "local" {
-		cfg.RelayBackendAddresses = []string{"127.0.0.1:30002"}
+	cfg.ValveMatrix, err = envvar.GetBool("FEATURE_VALVE_MARTRIX", false)
+	if err != nil {
+		return nil, err
 	}
 
 	return cfg, nil

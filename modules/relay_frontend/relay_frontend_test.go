@@ -60,7 +60,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	}
 
 	store := storage.MatrixStoreMock{
-		GetRelayBackendLiveDataFunc: func(address []string) ([]storage.RelayBackendLiveData, error) {
+		GetRelayBackendLiveDataFunc: func() ([]storage.RelayBackendLiveData, error) {
 			return []storage.RelayBackendLiveData{rb1, rb2, rb3}, nil
 		},
 	}
@@ -98,7 +98,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	}
 
 	store := storage.MatrixStoreMock{
-		GetRelayBackendLiveDataFunc: func(address []string) ([]storage.RelayBackendLiveData, error) {
+		GetRelayBackendLiveDataFunc: func() ([]storage.RelayBackendLiveData, error) {
 			return []storage.RelayBackendLiveData{rb1, rb2}, nil
 		},
 	}

@@ -47,7 +47,7 @@ func New(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
 }
 
 func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
-	rbArr, err := r.store.GetRelayBackendLiveData(r.cfg.RelayBackendAddresses)
+	rbArr, err := r.store.GetRelayBackendLiveData()
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,6 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 }
 
 func (r *RelayFrontendSvc) CacheMatrix(matrixType string) error {
-
 	matrixAddr, err := r.GetMatrixAddress(matrixType)
 	if err != nil {
 		return err
@@ -109,7 +108,6 @@ func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance
 }
 
 func getHttpMatrix(address string) ([]byte, error) {
-
 	resp, err := http.Get(address)
 	if err != nil {
 		return []byte{}, err

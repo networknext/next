@@ -22,7 +22,7 @@ var _ MatrixStore = &MatrixStoreMock{}
 //
 //         // make and configure a mocked MatrixStore
 //         mockedMatrixStore := &MatrixStoreMock{
-//             GetRelayBackendLiveDataFunc: func(address []string) ([]RelayBackendLiveData, error) {
+//             GetRelayBackendLiveDataFunc: func() ([]RelayBackendLiveData, error) {
 // 	               panic("mock out the GetRelayBackendLiveData method")
 //             },
 //             SetRelayBackendLiveDataFunc: func(data RelayBackendLiveData) error {
@@ -36,7 +36,7 @@ var _ MatrixStore = &MatrixStoreMock{}
 //     }
 type MatrixStoreMock struct {
 	// GetRelayBackendLiveDataFunc mocks the GetRelayBackendLiveData method.
-	GetRelayBackendLiveDataFunc func(address []string) ([]RelayBackendLiveData, error)
+	GetRelayBackendLiveDataFunc func() ([]RelayBackendLiveData, error)
 
 	// SetRelayBackendLiveDataFunc mocks the SetRelayBackendLiveData method.
 	SetRelayBackendLiveDataFunc func(data RelayBackendLiveData) error
@@ -45,8 +45,6 @@ type MatrixStoreMock struct {
 	calls struct {
 		// GetRelayBackendLiveData holds details about calls to the GetRelayBackendLiveData method.
 		GetRelayBackendLiveData []struct {
-			// Address is the address argument value.
-			Address []string
 		}
 		// SetRelayBackendLiveData holds details about calls to the SetRelayBackendLiveData method.
 		SetRelayBackendLiveData []struct {
@@ -57,29 +55,24 @@ type MatrixStoreMock struct {
 }
 
 // GetRelayBackendLiveData calls GetRelayBackendLiveDataFunc.
-func (mock *MatrixStoreMock) GetRelayBackendLiveData(address []string) ([]RelayBackendLiveData, error) {
+func (mock *MatrixStoreMock) GetRelayBackendLiveData() ([]RelayBackendLiveData, error) {
 	if mock.GetRelayBackendLiveDataFunc == nil {
 		panic("MatrixStoreMock.GetRelayBackendLiveDataFunc: method is nil but MatrixStore.GetRelayBackendLiveData was just called")
 	}
 	callInfo := struct {
-		Address []string
-	}{
-		Address: address,
-	}
+	}{}
 	lockMatrixStoreMockGetRelayBackendLiveData.Lock()
 	mock.calls.GetRelayBackendLiveData = append(mock.calls.GetRelayBackendLiveData, callInfo)
 	lockMatrixStoreMockGetRelayBackendLiveData.Unlock()
-	return mock.GetRelayBackendLiveDataFunc(address)
+	return mock.GetRelayBackendLiveDataFunc()
 }
 
 // GetRelayBackendLiveDataCalls gets all the calls that were made to GetRelayBackendLiveData.
 // Check the length with:
 //     len(mockedMatrixStore.GetRelayBackendLiveDataCalls())
 func (mock *MatrixStoreMock) GetRelayBackendLiveDataCalls() []struct {
-	Address []string
 } {
 	var calls []struct {
-		Address []string
 	}
 	lockMatrixStoreMockGetRelayBackendLiveData.RLock()
 	calls = mock.calls.GetRelayBackendLiveData
