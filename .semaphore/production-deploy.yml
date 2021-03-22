@@ -76,5 +76,17 @@ blocks:
             - make build-ghost-army-artifacts-prod
             - make publish-ghost-army-artifacts-prod
             - make publish-ghost-army-bootstrap-script-prod
+        - name: Relay Forwarder
+          commands:
+            - make build-relay-forwarder-artifacts-prod
+            - make publish-relay-forwarder-artifacts-prod
+        - name: Relay Gateway
+          commands:
+            - make build-relay-gateway-artifacts-prod
+            - make publish-relay-gateway-artifacts-prod
+        - name: Relay Frontend
+          commands:
+            - make build-relay-frontend-artifacts-prod
+            - make publish-relay-frontend-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod
