@@ -85,6 +85,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				if err != nil {
 					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
 					psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+					// Nack if we failed to read the billing entry
+					m.Nack()
 					return
 				}
 
