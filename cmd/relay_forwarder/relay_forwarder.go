@@ -87,9 +87,6 @@ func forwardGet(address string, octet bool) func(w http.ResponseWriter, r *http.
 func forwardPost(address string) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		fmt.Println("post started")
-
 		reqBody, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			fmt.Printf("error reading response body: %s", err.Error())
@@ -116,7 +113,5 @@ func forwardPost(address string) func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(resp.StatusCode)
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 		w.Write(respBody)
-
-		fmt.Println("post finished")
 	}
 }

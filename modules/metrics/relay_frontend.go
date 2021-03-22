@@ -10,12 +10,12 @@ type RelayFrontendMetrics struct {
 	ValveMatrix       FrontendMatrix
 }
 
-var NoOpsRelayFrontendMetrics = &RelayFrontendMetrics{
+var EmptyRelayFrontendMetrics = &RelayFrontendMetrics{
 	MasterSelect:      &EmptyCounter{},
 	MasterSelectError: &EmptyCounter{},
-	CostMatrix:        *NoOpsGatewayMatrix,
-	RouteMatrix:       *NoOpsGatewayMatrix,
-	ValveMatrix:       *NoOpsGatewayMatrix,
+	CostMatrix:        *EmptyFrontendMatrix,
+	RouteMatrix:       *EmptyFrontendMatrix,
+	ValveMatrix:       *EmptyFrontendMatrix,
 }
 
 type FrontendMatrix struct {
@@ -23,7 +23,7 @@ type FrontendMatrix struct {
 	Error       Counter
 }
 
-var NoOpsGatewayMatrix = &FrontendMatrix{
+var EmptyFrontendMatrix = &FrontendMatrix{
 	Invocations: &EmptyCounter{},
 	Error:       &EmptyCounter{},
 }
@@ -48,7 +48,7 @@ func NewRelayFrontendMetrics(ctx context.Context, metricsHandler Handler) (*Rela
 		DisplayName: "Master Select Error Count",
 		ServiceName: "relay_Frontend",
 		ID:          "frontend.master_select.error",
-		Unit:        "Invocations",
+		Unit:        "error",
 		Description: "The Number of Master Select Errors",
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func NewRelayFrontendMetrics(ctx context.Context, metricsHandler Handler) (*Rela
 		DisplayName: "Cost Matrix Error Count",
 		ServiceName: "relay_Frontend",
 		ID:          "frontend.cost_matrix.error",
-		Unit:        "count",
+		Unit:        "error",
 		Description: "The Number of cache Cost Matrix Errors",
 	})
 	if err != nil {
@@ -92,7 +92,7 @@ func NewRelayFrontendMetrics(ctx context.Context, metricsHandler Handler) (*Rela
 		DisplayName: "Route Matrix Error Count",
 		ServiceName: "relay_Frontend",
 		ID:          "frontend.route_matrix.error",
-		Unit:        "count",
+		Unit:        "error",
 		Description: "The Number of cache Route Matrix Errors",
 	})
 	if err != nil {
@@ -114,7 +114,7 @@ func NewRelayFrontendMetrics(ctx context.Context, metricsHandler Handler) (*Rela
 		DisplayName: "Valve Matrix Error Count",
 		ServiceName: "relay_Frontend",
 		ID:          "frontend.valve_matrix.error",
-		Unit:        "count",
+		Unit:        "error",
 		Description: "The Number of cache Valve Matrix Errors",
 	})
 	if err != nil {

@@ -21,10 +21,9 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	t.Parallel()
 	store := storage.MatrixStoreMock{}
 	cfg := &Config{MasterTimeVariance: timeVariance(15)}
-	svc, err := New(&store, cfg)
+	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
 	assert.Equal(t, timeVariance(15), svc.cfg.MasterTimeVariance)
@@ -66,15 +65,15 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	}
 
 	cfg := &Config{MasterTimeVariance: time.Second}
-	svc, err := New(&store, cfg)
+	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 
-	//rb2 should be master
+	// rb2 should be master
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
 
-	//change to rb1 as master
+	// change to rb1 as master
 	rb2.UpdatedAt = rb2.UpdatedAt.Add(-6 * time.Second)
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
@@ -104,11 +103,11 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	}
 
 	cfg := &Config{MasterTimeVariance: time.Second}
-	svc, err := New(&store, cfg)
+	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 
 	svc.currentMasterBackendAddress = rb2.Address
-	//rb2 should be master
+	// rb2 should be master
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)

@@ -187,19 +187,19 @@ func mainReturnWithCode() int {
 	var matrixStore storage.MatrixStore
 	var backendLiveData storage.RelayBackendLiveData
 
-	//update redis so relay frontend knows this backend is live
+	// update redis so relay frontend knows this backend is live
 	if featureNRB {
 
 		var backendAddr string
-		if env == "local" {
-			backendAddr = "127.0.0.1:30002"
-		} else {
+		if !envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES") {
+			level.Error(logger).Log("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+			return 1
+		}
+		backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
 
-			if !envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES") {
-				level.Error(logger).Log("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
-				return 1
-			}
-			backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+		if env == "local" {
+			backendAddr = backendAddresses[0]
+		} else {
 
 			addrFound := false
 			host, _ := os.Hostname()
@@ -408,6 +408,7 @@ func mainReturnWithCode() int {
 					if !featureLoadTest {
 						storeRelay, err = storer.Relay(relay.ID)
 						if err != nil {
+							level.Error(logger).Log("err", err)
 							continue
 						}
 					} else {
@@ -952,6 +953,7 @@ func mainReturnWithCode() int {
 
 			err = sub.Subscribe(zq.RelayUpdateTopic)
 			if err != nil {
+				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
 
@@ -988,10 +990,10 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	if featureNRB {
-		//new backend handlers
+		// new backend handlers
 		router.HandleFunc("/relay_update", transport.NewRelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	} else {
-		//old backend handlers
+		// old backend handlers
 		router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 		router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	}

@@ -4,25 +4,25 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
-
-	"github.com/networknext/backend/modules/metrics"
-
-	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/envvar"
-
-	"io/ioutil"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
+
+	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 )
 
 func main() {
+
+	// WIP load testing validator.
 	serviceName := "route_matrix_validator"
 
 	ctx := context.Background()
@@ -162,7 +162,7 @@ func main() {
 			backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
 			backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
-			//todo need a way to check time created and version
+			// todo need a way to check time created and version
 		}
 	}()
 

@@ -33,7 +33,7 @@ type RelayFrontendSvc struct {
 	routeMatrixValve *helpers.MatrixData
 }
 
-func New(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
+func NewRelayFrontend(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
 	rand.Seed(time.Now().UnixNano())
 	r := new(RelayFrontendSvc)
 	r.cfg = cfg
@@ -118,7 +118,6 @@ func getHttpMatrix(address string) ([]byte, error) {
 	if len(buffer) == 0 {
 		return []byte{}, errors.New("empty resp body")
 	}
-	fmt.Print()
 
 	return buffer, nil
 }

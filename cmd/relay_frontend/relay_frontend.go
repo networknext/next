@@ -18,7 +18,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
 
-	rm "github.com/networknext/backend/modules/relay_frontend"
+	rf "github.com/networknext/backend/modules/relay_frontend"
 	"github.com/networknext/backend/modules/storage"
 
 	//logging
@@ -50,7 +50,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	cfg, err := rm.GetConfig()
+	cfg, err := rf.GetConfig()
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
@@ -81,7 +81,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	svc, err := rm.New(store, cfg)
+	svc, err := rf.NewRelayFrontend(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
@@ -110,7 +110,7 @@ func mainReturnWithCode() int {
 			wg.Add(1)
 			go func() {
 				frontendMetrics.CostMatrix.Invocations.Add(1)
-				err = svc.CacheMatrix(rm.MatrixTypeCost)
+				err = svc.CacheMatrix(rf.MatrixTypeCost)
 				if err != nil {
 					frontendMetrics.CostMatrix.Error.Add(1)
 					_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
@@ -121,7 +121,7 @@ func mainReturnWithCode() int {
 			wg.Add(1)
 			go func() {
 				frontendMetrics.RouteMatrix.Invocations.Add(1)
-				err = svc.CacheMatrix(rm.MatrixTypeNormal)
+				err = svc.CacheMatrix(rf.MatrixTypeNormal)
 				if err != nil {
 					frontendMetrics.RouteMatrix.Error.Add(1)
 					_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
@@ -133,7 +133,7 @@ func mainReturnWithCode() int {
 				wg.Add(1)
 				go func() {
 					frontendMetrics.ValveMatrix.Invocations.Add(1)
-					err = svc.CacheMatrix(rm.MatrixTypeValve)
+					err = svc.CacheMatrix(rf.MatrixTypeValve)
 					if err != nil {
 						frontendMetrics.ValveMatrix.Error.Add(1)
 						_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)

@@ -111,7 +111,7 @@ func mainReturnWithCode() int {
 			data:         relayI,
 			state:        relayDisabled,
 			stateChanged: time.Now().Add(-5 * time.Minute),
-			routeBaseMap: make(map[uint64]routeBase),
+			RouteBaseMap: make(map[uint64]RouteBase),
 		}
 
 		for j := 0; j < numRelays; j++ {
@@ -122,7 +122,7 @@ func mainReturnWithCode() int {
 			relayJ := storageRelayArr[j]
 
 			base := newRouteBase()
-			newRelay.routeBaseMap[relayJ.ID] = base
+			newRelay.RouteBaseMap[relayJ.ID] = base
 		}
 
 		relayArr[i] = newRelay
@@ -143,7 +143,10 @@ func mainReturnWithCode() int {
 
 				if shutdown {
 					err := sendShutdown(*relay, updateAddress)
-					level.Error(logger).Log("err", err)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						continue
+					}
 					return
 				}
 
@@ -180,7 +183,6 @@ func mainReturnWithCode() int {
 
 				_, err := sendUpdate(*relay, relaysToPing, updateAddress)
 				if err != nil {
-
 					level.Error(logger).Log("err", err)
 					relay.state = relayShutdown
 					continue
@@ -196,7 +198,6 @@ func mainReturnWithCode() int {
 	<-sigint
 	shutdown = true
 	time.Sleep(5 * time.Second)
-	os.Exit(0)
 	return 0
 }
 
@@ -220,17 +221,17 @@ type Relay struct {
 	data         routing.Relay
 	state        int
 	stateChanged time.Time
-	routeBaseMap map[uint64]routeBase
+	RouteBaseMap map[uint64]RouteBase
 }
 
-type routeBase struct {
+type RouteBase struct {
 	rtt        float32
 	jitter     float32
 	packetLoss float32
 }
 
-func newRouteBase() routeBase {
-	rb := new(routeBase)
+func newRouteBase() RouteBase {
+	rb := new(RouteBase)
 	rb.rtt = float32(rand.Int31n(maxRTT))
 	rb.jitter = float32(rand.Int31n(maxJitter))
 	rb.packetLoss = 0.0
@@ -247,7 +248,7 @@ func sendInit(relay Relay, addr string) error {
 		Nonce:          nonce,
 		Address:        relay.data.Addr,
 		EncryptedToken: token,
-		RelayVersion:   "0.0.0",
+		RelayVersion:   "1.1.0",
 	}
 
 	initBinary, err := initRequest.MarshalBinary()
@@ -314,7 +315,7 @@ func sendUpdate(relay Relay, relaysToPing []uint64, addr string) ([]uint64, erro
 	numRelays := len(relaysToPing)
 	statsData := make([]routing.RelayStatsPing, len(relaysToPing))
 	for i := 0; i < numRelays; i++ {
-		if base, ok := relay.routeBaseMap[relaysToPing[i]]; ok {
+		if base, ok := relay.RouteBaseMap[relaysToPing[i]]; ok {
 			statsData[i] = newPacketData(relaysToPing[i], base)
 		}
 	}
@@ -358,7 +359,7 @@ func baseUpdate(relay Relay) transport.RelayUpdateRequest {
 
 	req := transport.RelayUpdateRequest{
 		Version:      uint32(relayUpdateVersion),
-		RelayVersion: "2.0.0",
+		RelayVersion: "1.1.0",
 		Address:      relay.data.Addr,
 	}
 
@@ -377,7 +378,7 @@ func makeToken() ([]byte, []byte) {
 	return nonce, token
 }
 
-func newPacketData(id uint64, base routeBase) routing.RelayStatsPing {
+func newPacketData(id uint64, base RouteBase) routing.RelayStatsPing {
 	pingStat := routing.RelayStatsPing{}
 	pingStat.RelayID = id
 

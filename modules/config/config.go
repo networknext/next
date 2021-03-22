@@ -24,10 +24,3 @@ type Config interface {
 	AllEnabledFeatures() []Feature
 	AllDisabledFeatures() []Feature
 }
-
-var FeatureVantyMetrix = Feature{
-	Name:        "FEATURE_VANITY_METRIC",
-	Enum:        FEATURE_VANITY_METRIC,
-	Value:       false,
-	Description: "Vanity metrics for fast aggregate statistic lookup",
-}

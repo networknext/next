@@ -87,7 +87,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	
+
 	serviceName := "server_backend"
 
 	fmt.Printf("%s\n", serviceName)
@@ -269,7 +269,7 @@ func mainReturnWithCode() int {
 	// Sync route matrix
 	{
 		uri := ""
-		newBackend, err := envvar.GetBool("FEATURE_NEW_BACKEND", false)
+		newBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 		}

@@ -216,7 +216,7 @@ func loadTestRelay(address string, state routing.RelayState) routing.Relay {
 	internaladdr, _ := net.ResolveUDPAddr("udp", ":0")
 	return routing.Relay{
 		State:        state,
-		Name:         fmt.Sprintf("fake_relay_%v", address),
+		Name:         fmt.Sprintf("fake_relay_%s", address),
 		PublicKey:    relayKey,
 		Seller:       fakeSeller,
 		Datacenter:   fakeDataCenter,
