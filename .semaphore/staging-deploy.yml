@@ -100,5 +100,9 @@ blocks:
           commands:
             - make build-relay-frontend-artifacts-staging
             - make publish-relay-frontend-artifacts-staging
+        - name: Fake Relays
+          commands:
+            - make build-fake-relays-artifacts-nrb
+            - make publish-fake-relays-artifacts-nrb
       secrets:
         - name: google-cloud-platform-staging

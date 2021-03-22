@@ -55,8 +55,7 @@ func main() {
 
 func mainReturnWithCode() int {
 
-	//todo metrics
-
+	// todo metrics??
 	RELAY_PUBLIC_KEY, _ = base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	RELAY_PRIVATE_KEY, _ = base64.StdEncoding.DecodeString("ZiCSchVFo6T5gJvbQfcwU7yfELsNJaYIC2laQm9DSuA=")
 	RELAY_ROUTER_PUBLIC_KEY, _ = base64.StdEncoding.DecodeString("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
