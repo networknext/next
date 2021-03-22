@@ -231,7 +231,7 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
-## Bigtable emulator must be running before testing bigtable in happy path
+# Bigtable emulator must be running before testing bigtable in happy path
 ifndef FEATURE_BIGTABLE
 export FEATURE_BIGTABLE = false
 endif
@@ -504,6 +504,12 @@ build-server-backend:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
+.PHONY: build-debug-server-backend
+build-debug-server-backend:
+	@printf "Building debug server backend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/debug_server_backend ./cmd/debug_server_backend/debug_server_backend.go
+	@printf "done\n"
+
 .PHONY: build-billing
 build-billing:
 	@printf "Building billing... "
@@ -626,6 +632,10 @@ build-portal-cruncher-artifacts-dev: build-portal-cruncher
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
+.PHONY: build-debug-server-backend-artifacts-dev
+build-debug-server-backend-artifacts-dev: build-debug-server-backend
+	./deploy/build-artifacts.sh -e dev -s debug_server_backend
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -666,6 +676,10 @@ build-portal-cruncher-artifacts-staging: build-portal-cruncher
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
+.PHONY: build-debug-server-backend-artifacts-staging
+build-debug-server-backend-artifacts-staging: build-debug-server-backend
+	./deploy/build-artifacts.sh -e staging -s debug_server_backend
+
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
@@ -705,6 +719,10 @@ build-portal-cruncher-artifacts-prod: build-portal-cruncher
 .PHONY: build-server-backend-artifacts-prod
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
+
+.PHONY: build-debug-server-backend-artifacts-prod
+build-debug-server-backend-artifacts-prod: build-debug-server-backend
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
@@ -754,6 +772,10 @@ publish-portal-cruncher-artifacts-dev:
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
+.PHONY: publish-debug-server-backend-artifacts-dev
+publish-debug-server-backend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend
+
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
@@ -793,6 +815,10 @@ publish-portal-cruncher-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-debug-server-backend-artifacts-staging
+publish-debug-server-backend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend
 
 .PHONY: publish-fake-server-artifacts-staging
 publish-fake-server-artifacts-staging:
@@ -849,6 +875,10 @@ publish-portal-cruncher-artifacts-prod:
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
+
+.PHONY: publish-debug-server-backend-artifacts-prod
+publish-debug-server-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -1227,7 +1257,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-server-backend build-debug-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

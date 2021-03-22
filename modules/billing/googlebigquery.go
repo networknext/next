@@ -467,42 +467,38 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 			e["nearRelayRTT"] = entry.NearRelayRTT
 		}
 
-		if entry.NumNearRelays > 0 {
+		nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+		nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
 
-			nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-			nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			nextRelays[i] = int(entry.NextRelays[i])
+			nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
+		}
 
-			for i := 0; i < int(entry.NumNextRelays); i++ {
-				nextRelays[i] = int(entry.NextRelays[i])
-				nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
+		e["nextRelays"] = nextRelays
+		e["nextRelaysPrice"] = nextRelaysPrice
+
+		if entry.NumNearRelays > 0 && entry.UseDebug {
+			// IMPORTANT: Only write this data if debug is on because it is very large
+
+			e["numNearRelays"] = int(entry.NumNearRelays)
+
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+				nearRelayJitters[i] = entry.NearRelayJitters[i]
+				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
 			}
 
-			e["nextRelays"] = nextRelays
-			e["nextRelaysPrice"] = nextRelaysPrice
-
-			if entry.UseDebug {
-
-				// IMPORTANT: Only write this data if debug is on because it is very large
-
-				e["numNearRelays"] = int(entry.NumNearRelays)
-
-				nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
-				nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
-				nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
-				nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
-
-				for i := 0; i < int(entry.NumNearRelays); i++ {
-					nearRelayIDs[i] = int(entry.NearRelayIDs[i])
-					nearRelayRTTs[i] = entry.NearRelayRTTs[i]
-					nearRelayJitters[i] = entry.NearRelayJitters[i]
-					nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
-				}
-
-				e["nearRelayIDs"] = nearRelayIDs
-				e["nearRelayRTTs"] = nearRelayRTTs
-				e["nearRelayJitters"] = nearRelayJitters
-				e["nearRelayPacketLosses"] = nearRelayPacketLosses
-			}
+			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayRTTs"] = nearRelayRTTs
+			e["nearRelayJitters"] = nearRelayJitters
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
 		}
 	}
 
