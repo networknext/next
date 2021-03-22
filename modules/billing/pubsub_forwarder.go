@@ -22,7 +22,7 @@ type PubSubForwarder struct {
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string, numRecvGoroutines int) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -37,11 +37,15 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 		}
 	}
 
+	// Set the number goroutines for pulling from Google Pub/Sub
+	subscriber := pubsubClient.Subscription(subscriptionName)
+	subscriber.ReceiveSettings.NumGoroutines = numRecvGoroutines
+
 	return &PubSubForwarder{
 		Biller:             biller,
 		Logger:             logger,
 		Metrics:            metrics,
-		pubsubSubscription: pubsubClient.Subscription(subscriptionName),
+		pubsubSubscription: subscriber,
 	}, nil
 }
 
