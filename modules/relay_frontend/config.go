@@ -1,29 +1,28 @@
-package route_matrix_selector
+package relay_frontend
 
 import (
-	"github.com/networknext/backend/modules/envvar"
 	"time"
+
+	"github.com/networknext/backend/modules/envvar"
 )
 
 type Config struct {
-	MatrixSvcTimeVariance time.Duration
-	OptimizerTimeVariance time.Duration
-	MatrixStoreAddress    string
-	MSReadTimeout         time.Duration
-	MSWriteTimeout        time.Duration
-	MSMatrixTimeout       time.Duration
+	ENV                string
+	MasterTimeVariance time.Duration
+	MatrixStoreAddress string
+	MSReadTimeout      time.Duration
+	MSWriteTimeout     time.Duration
+	MSMatrixTimeout    time.Duration
+	ValveMatrix        bool
 }
 
 func GetConfig() (*Config, error) {
 	cfg := new(Config)
 	var err error
 
-	cfg.MatrixSvcTimeVariance, err = envvar.GetDuration("MATRIX_SVC_TIME_VARIANCE", 2000*time.Millisecond)
-	if err != nil {
-		return nil, err
-	}
+	cfg.ENV = envvar.Get("ENV", "local")
 
-	cfg.OptimizerTimeVariance, err = envvar.GetDuration("OPTIMIZER_TIME_VARIANCE", 5000*time.Millisecond)
+	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5000*time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +40,11 @@ func GetConfig() (*Config, error) {
 	}
 
 	cfg.MSMatrixTimeout, err = envvar.GetDuration("MATRIX_STORE_MATRIX_TIMEOUT", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.ValveMatrix, err = envvar.GetBool("FEATURE_VALVE_MARTRIX", false)
 	if err != nil {
 		return nil, err
 	}
