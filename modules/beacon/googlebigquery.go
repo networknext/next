@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultBigQueryBatchSize   = 1000
-	DefaultBigQueryChannelSize = 10000
+	DefaultBigQueryChannelSize = 20000
 )
 
 type GoogleBigQueryClient struct {
