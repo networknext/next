@@ -46,7 +46,6 @@ func NewPubSubForwarder(ctx context.Context, beaconer Beaconer, logger log.Logge
 		Beaconer:           beaconer,
 		Logger:             logger,
 		Metrics:            metrics,
-		pubsubSubscription: pubsubClient.Subscription(subscriptionName),
 		pubsubSubscription: subscriber,
 	}, nil
 }
