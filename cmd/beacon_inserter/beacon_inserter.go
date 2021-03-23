@@ -138,10 +138,16 @@ func mainReturnWithCode() int {
 			topicName := "beacon"
 			subscriptionName := "beacon"
 
+			numRecvGoroutines, err := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				return 1

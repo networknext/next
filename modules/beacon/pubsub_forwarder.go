@@ -23,7 +23,7 @@ type PubSubForwarder struct {
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, beaconer Beaconer, logger log.Logger, metrics *metrics.BeaconInserterMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, beaconer Beaconer, logger log.Logger, metrics *metrics.BeaconInserterMetrics, gcpProjectID string, topicName string, subscriptionName string, numRecvGoroutines int) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -38,11 +38,16 @@ func NewPubSubForwarder(ctx context.Context, beaconer Beaconer, logger log.Logge
 		}
 	}
 
+	// Set the number goroutines for pulling from Google Pub/Sub
+	subscriber := pubsubClient.Subscription(subscriptionName)
+	subscriber.ReceiveSettings.NumGoroutines = numRecvGoroutines
+
 	return &PubSubForwarder{
 		Beaconer:           beaconer,
 		Logger:             logger,
 		Metrics:            metrics,
 		pubsubSubscription: pubsubClient.Subscription(subscriptionName),
+		pubsubSubscription: subscriber,
 	}, nil
 }
 
@@ -64,6 +69,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 
 				if err := psf.Beaconer.Submit(context.Background(), &beaconEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit beacon entry", "err", err)
+					// Nack if we failed to submit the beacon entry
+					m.Nack()
 					return
 				}
 
@@ -73,6 +80,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				if err != nil {
 					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
 					psf.Metrics.ErrorMetrics.BeaconInserterReadFailure.Add(1)
+					// Nack if we failed to read the beacon entry
+					m.Nack()
 					return
 				}
 
@@ -82,6 +91,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				}
 
 				psf.Metrics.ErrorMetrics.BeaconInserterReadFailure.Add(1)
+				// Nack if we failed to read the beacon entry
+				m.Nack()
 			}
 		}
 	})
