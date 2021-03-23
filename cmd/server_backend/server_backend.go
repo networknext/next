@@ -95,33 +95,28 @@ func mainReturnWithCode() int {
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
-	fmt.Printf("GCP project id %s\n", gcpProjectID)
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("logger err: %v\n", err)
 		return 1
 	}
 
 	env, err := backend.GetEnv()
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("get env err: %v\n", err)
 		return 1
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("get metrics handler err: %v\n", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
 			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-			fmt.Printf("profiler err: %v\n", err)
 			return 1
 		}
 	}
@@ -129,7 +124,6 @@ func mainReturnWithCode() int {
 	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("storer err: %v\n", err)
 		return 1
 	}
 
@@ -137,7 +131,6 @@ func mainReturnWithCode() int {
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
-		fmt.Printf("create metrics err: %v\n", err)
 		return 1
 	}
 
@@ -145,7 +138,6 @@ func mainReturnWithCode() int {
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
-		fmt.Printf("maxmind err: %v\n", err)
 		return 1
 	}
 
@@ -167,27 +159,23 @@ func mainReturnWithCode() int {
 
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
-		fmt.Printf("server backend private key err: %v\n", err)
 		return 1
 	}
 
 	privateKey, err := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("server backend private key base64 err: %v\n", err)
 		return 1
 	}
 
 	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-		fmt.Printf("relay router private key err: %v\n", err)
 		return 1
 	}
 
 	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("relay router private key base64 err: %v\n", err)
 		return 1
 	}
 
@@ -396,21 +384,18 @@ func mainReturnWithCode() int {
 			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				fmt.Printf("billing client count err: %v\n", err)
 				return 1
 			}
 
 			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				fmt.Printf("billing batched message count err: %v\n", err)
 				return 1
 			}
 
 			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				fmt.Printf("billing batched message min bytes err: %v\n", err)
 				return 1
 			}
 
@@ -424,7 +409,6 @@ func mainReturnWithCode() int {
 			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
-				fmt.Printf("create pubsub biller err: %v\n", err)
 				return 1
 			}
 
@@ -440,7 +424,6 @@ func mainReturnWithCode() int {
 		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			fmt.Printf("post session portal send buffer size err: %v\n", err)
 			return 1
 		}
 
@@ -448,7 +431,6 @@ func mainReturnWithCode() int {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-				fmt.Printf("portal cruncher err: %v\n", err)
 				return 1
 			}
 
@@ -459,21 +441,18 @@ func mainReturnWithCode() int {
 	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("post session thread count err: %v\n", err)
 		return 1
 	}
 
 	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("post session buffer size err: %v\n", err)
 		return 1
 	}
 
 	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("post sessino portal max retries err: %v\n", err)
 		return 1
 	}
 
@@ -499,7 +478,6 @@ func mainReturnWithCode() int {
 		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			fmt.Printf("vanity metrics post send buffer size err: %v\n", err)
 			return 1
 		}
 
@@ -507,7 +485,6 @@ func mainReturnWithCode() int {
 			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
-				fmt.Printf("vanity metric publisher err: %v\n", err)
 				return 1
 			}
 
@@ -518,7 +495,6 @@ func mainReturnWithCode() int {
 	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("vanity metric post max retries err: %v\n", err)
 		return 1
 	}
 
@@ -533,20 +509,17 @@ func mainReturnWithCode() int {
 	multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("multipath veto sync freq err: %v\n", err)
 		return 1
 	}
 
 	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("multipath veto handler err: %v\n", err)
 		return 1
 	}
 
 	if err := multipathVetoHandler.Sync(); err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("multipath veto handler sync err: %v\n", err)
 		return 1
 	}
 
@@ -559,7 +532,6 @@ func mainReturnWithCode() int {
 				case <-ticker.C:
 					if err := multipathVetoHandler.Sync(); err != nil {
 						level.Error(logger).Log("err", err)
-						fmt.Printf("multipath veto handler sync goroutine err: %v\n", err)
 					}
 				case <-ctx.Done():
 					return
@@ -571,13 +543,11 @@ func mainReturnWithCode() int {
 	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("max near relays err: %v\n", err)
 		return 1
 	}
 
 	if maxNearRelays > 32 {
 		level.Error(logger).Log("err", "cannot support more than 32 near relays")
-		fmt.Printf("32 near relays err: %v\n", err)
 		return 1
 	}
 
@@ -602,7 +572,6 @@ func mainReturnWithCode() int {
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				fmt.Printf("http err: %v\n", err)
 				return
 			}
 		}()
@@ -611,21 +580,18 @@ func mainReturnWithCode() int {
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("num threads err: %v\n", err)
 		return 1
 	}
 
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("read buffer err: %v\n", err)
 		return 1
 	}
 
 	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		fmt.Printf("write buffer err: %v\n", err)
 		return 1
 	}
 
@@ -732,7 +698,6 @@ func mainReturnWithCode() int {
 	}
 
 	level.Info(logger).Log("msg", "waiting for incoming connections")
-	fmt.Printf("waiting for incoming connections\n")
 
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
