@@ -243,10 +243,16 @@ func main() {
 			topicName := "billing"
 			subscriptionName := "billing"
 
+			numRecvGoroutines, err := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
