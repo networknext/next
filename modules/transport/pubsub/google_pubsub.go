@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/pubsub"
 )
 
 // Entry defines the methods for Google PubSub structs to implement
