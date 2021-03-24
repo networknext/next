@@ -72,12 +72,14 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
+	assert.Equal(t, "http://2.1.1.1/relay_stats", svc.relayStatsAddress)
 
 	// change to rb1 as master
 	rb2.UpdatedAt = rb2.UpdatedAt.Add(-6 * time.Second)
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "1.1.1.1", svc.currentMasterBackendAddress)
+	assert.Equal(t, "http://1.1.1.1/relay_stats", svc.relayStatsAddress)
 }
 
 func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
@@ -111,6 +113,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
+	assert.Equal(t, "http://2.1.1.1/relay_stats", svc.relayStatsAddress)
 }
 
 func TestRelayFrontendSvc_ChooseRelayBackendMaster(t *testing.T) {
@@ -353,7 +356,8 @@ func TestRelayFrontendSvc_GetRouteMatrixValve(t *testing.T) {
 	err = newRouteMatrix.Serialize(rs)
 	assert.NoError(t, err)
 
-	newRouteMatrix.WriteResponseData(5000)
+	err = newRouteMatrix.WriteResponseData(5000)
+	assert.NoError(t, err)
 	assert.Equal(t, testMatrix, newRouteMatrix)
 }
 
@@ -365,6 +369,30 @@ func TestRelayFrontendSvc_GetRouteMatrixValveNotFound(t *testing.T) {
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+}
+
+func TestRelayFrontendSvc_GetRelayStats(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+
+	backendHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("test"))
+	}
+
+	bSvr := httptest.NewServer(http.HandlerFunc(backendHandler))
+	svc.relayStatsAddress = bSvr.URL
+
+	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayStats()))
+	resp, err := http.Get(fSvr.URL)
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, body)
+	assert.Equal(t, []byte("test"), body)
 }
 
 func testMatrix(t *testing.T) routing.RouteMatrix {
