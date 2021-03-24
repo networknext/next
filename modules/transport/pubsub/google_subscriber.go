@@ -21,6 +21,7 @@ const (
 	DefaultBigQueryChannelSize = 10000
 )
 
+// PubSubSubscriber pulls data from Google Pub/Sub and writes them to BigQuery.
 type PubSubSubscriber struct {
 	Logger        log.Logger
 	Metrics       *metrics.GoogleSubscriberMetrics
@@ -132,6 +133,8 @@ func NewPubSubSubscriber(
 	}, nil
 }
 
+// Spawns goroutines to receive messages from Google Pub/Sub and submits them to the internal channel.
+// Messages are acked when they are successfully written to BigQuery, and are otherwise nacked.
 func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error {
 	err := subscriber.PubSubSubscription.Receive(ctx, func(ctx context.Context, m *googlepubsub.Message) {
 		entries, err := subscriber.unbatchMessages(m)
@@ -185,6 +188,7 @@ func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error 
 	return err
 }
 
+// Unbatches a message from Google Pub/Sub since we do our own batching.
 func (subscriber *PubSubSubscriber) unbatchMessages(m *googlepubsub.Message) ([][]byte, error) {
 	messages := make([][]byte, 0)
 
@@ -210,6 +214,7 @@ func (subscriber *PubSubSubscriber) unbatchMessages(m *googlepubsub.Message) ([]
 	return messages, nil
 }
 
+// Submits the entries to the internal channel if space is available
 func (subscriber *PubSubSubscriber) submit(ctx context.Context, entry *Entry) error {
 	if subscriber.entries == nil {
 		subscriber.entries = make(chan *Entry, subscriber.ChannelSize)
@@ -231,11 +236,15 @@ func (subscriber *PubSubSubscriber) submit(ctx context.Context, entry *Entry) er
 	}
 }
 
+// WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
+// Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
+// only be called from 1 goroutine to avoid using a mutex around the internal buffer slice.
 func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 	if subscriber.entries == nil {
 		subscriber.entries = make(chan *Entry, subscriber.ChannelSize)
 	}
 
+	// Track which messages to ack once they have been written successfully
 	messagesToAck := make([]*googlepubsub.Message, subscriber.BatchSize)
 	lastWriteTime := time.Now()
 
@@ -275,6 +284,7 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 					ackMessage.Ack()
 				}
 
+				// Clear the buffers
 				messagesToAck = messagesToAck[:0]
 				subscriber.buffer = subscriber.buffer[:0]
 

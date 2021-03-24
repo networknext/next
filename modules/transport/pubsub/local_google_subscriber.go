@@ -21,11 +21,10 @@ const (
 	DefaultChannelSize = 1000
 )
 
-// LocalPubSubSubscriber is like PubSubSubscriber but writes to a local json file instead of BigQuery
+// LocalPubSubSubscriber is a local version of PubSubSubscriber that writes to a local json file instead of BigQuery.
 type LocalPubSubSubscriber struct {
-	Logger  log.Logger
-	Metrics *metrics.GoogleSubscriberMetrics
-
+	Logger             log.Logger
+	Metrics            *metrics.GoogleSubscriberMetrics
 	PubSubSubscription *PubSubSubscriber
 
 	jsonFileName string
@@ -39,8 +38,6 @@ func NewLocalPubSubSubscriber(
 	topicID string,
 	subscriptionID string,
 	recvNumGoroutines int,
-	subscriberDatasetName string,
-	subscriberTableName string,
 	subscriberBatchSize int,
 	subscriberChannelSize int,
 	subscriberWriteDuration time.Duration,
@@ -102,29 +99,29 @@ func NewLocalPubSubSubscriber(
 		jsonFileName = jsonFileName + ".json"
 	}
 
-	// Use the PubSubSubscriber's Receive(), UnbatchMessages(), and Submit() methods
+	// Create a PubSubSubscriber to use its ReceiveAndSubmit() method
 	googlePubSubSubscriber := &PubSubSubscriber{
-		Logger:        logger,
-		Metrics:       metrics,
-		TableInserter: nil,
-		BatchSize:     subscriberBatchSize,
-		ChannelSize:   subscriberChannelSize,
-		WriteDuration: subscriberWriteDuration,
-
+		Logger:             logger,
+		Metrics:            metrics,
+		TableInserter:      nil,
+		BatchSize:          subscriberBatchSize,
+		ChannelSize:        subscriberChannelSize,
+		WriteDuration:      subscriberWriteDuration,
 		PubSubSubscription: subscriber,
 		EntryVeto:          entryVeto,
 		AckMap:             make(map[*Entry]*googlepubsub.Message),
 	}
 
 	return &LocalPubSubSubscriber{
-		Logger:  logger,
-		Metrics: metrics,
-
+		Logger:             logger,
+		Metrics:            metrics,
 		PubSubSubscription: googlePubSubSubscriber,
-		jsonFileName:       jsonFileName,
+
+		jsonFileName: jsonFileName,
 	}, nil
 }
 
+// Uses PubSubSubscriber's ReceiveAndSubmit()
 func (subscriber *LocalPubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error {
 	err := subscriber.PubSubSubscription.ReceiveAndSubmit(ctx)
 
@@ -132,11 +129,15 @@ func (subscriber *LocalPubSubSubscriber) ReceiveAndSubmit(ctx context.Context) e
 	return err
 }
 
+// WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
+// Once the buffer fills to the BatchSize it will write all entries to a local JSON File.
+// This should only be called from 1 goroutine to avoid using a mutex around the internal buffer slice.
 func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 	if subscriber.PubSubSubscription.entries == nil {
 		subscriber.PubSubSubscription.entries = make(chan *Entry, subscriber.PubSubSubscription.ChannelSize)
 	}
 
+	// Track which messages to ack once they have been written successfully
 	messagesToAck := make([]*googlepubsub.Message, subscriber.PubSubSubscription.BatchSize)
 	lastWriteTime := time.Now()
 
@@ -176,6 +177,7 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 					ackMessage.Ack()
 				}
 
+				// Clear the buffers
 				messagesToAck = messagesToAck[:0]
 				subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
 
