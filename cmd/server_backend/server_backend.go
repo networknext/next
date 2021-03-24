@@ -126,7 +126,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-
+	fmt.Println("got storer")
 	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -157,6 +157,8 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	fmt.Println("got metrics")
+
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
 		return 1
@@ -185,7 +187,7 @@ func mainReturnWithCode() int {
 	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return routing.NullIsland
 	}
-
+	fmt.Println("start maxmind")
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
 	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
@@ -245,7 +247,7 @@ func mainReturnWithCode() int {
 		// 	}()
 		// }
 	}
-
+	fmt.Println("got mastermind")
 	// Use a custom IP locator for staging so that clients
 	// have different, random lat/longs
 	if env == "staging" {
@@ -265,7 +267,7 @@ func mainReturnWithCode() int {
 		routeMatrixMutex.RUnlock()
 		return rm4
 	}
-
+	fmt.Println("start getting route matrix")
 	// Sync route matrix
 	{
 		uri := ""
@@ -275,13 +277,10 @@ func mainReturnWithCode() int {
 		}
 
 		if newBackend {
-			if envvar.Exists("RELAY_FRONTEND_URI") {
-				uri = envvar.Get("RELAY_FRONTEND_URI", "")
-			}
+			fmt.Println("use NRB")
+			uri = envvar.Get("RELAY_FRONTEND_URI", "")
 		} else {
-			if envvar.Exists("ROUTE_MATRIX_URI") {
-				uri = envvar.Get("ROUTE_MATRIX_URI", "")
-			}
+			uri = envvar.Get("ROUTE_MATRIX_URI", "")
 		}
 
 		if uri != "" {
@@ -295,6 +294,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		fmt.Println("ready to get matrix")
 		go func() {
 			httpClient := &http.Client{
 				Timeout: time.Second * 2,
