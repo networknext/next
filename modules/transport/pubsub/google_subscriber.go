@@ -22,12 +22,12 @@ const (
 )
 
 type PubSubSubscriber struct {
-	Logger                log.Logger
-	Metrics               *metrics.GoogleSubscriberMetrics
-	TableInserter         *bigquery.Inserter
-	BatchSize             int
-	ChannelSize           int
-	BigQueryWriteDuration time.Duration
+	Logger        log.Logger
+	Metrics       *metrics.GoogleSubscriberMetrics
+	TableInserter *bigquery.Inserter
+	BatchSize     int
+	ChannelSize   int
+	WriteDuration time.Duration
 
 	pubsubSubscriber *googlepubsub.Subscription
 	buffer           []*Entry
@@ -60,16 +60,6 @@ func NewPubSubSubscriber(
 		return nil, fmt.Errorf("NewPubSubSubscriber(): could not create pubsub client: %v", err)
 	}
 
-	if gcpProjectID == "local" {
-		// Create the subscription for the local environment
-		if _, err := pubsubClient.CreateSubscription(ctx, subscriptionID, googlepubsub.SubscriptionConfig{
-			Topic: pubsubClient.Topic(topicID),
-		}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
-			// Not the best error check, but the underlying error type is internal so we can't check for it
-			return nil, fmt.Errorf("NewPubSubSubscriber(): could not create local pubsub subscription: %v", err)
-		}
-	}
-
 	// Verify the subscriptionID exists
 	subscriber := pubsubClient.Subscription(subscriptionID)
 	ok, err := subscriber.Exists(ctx)
@@ -86,6 +76,7 @@ func NewPubSubSubscriber(
 	}
 
 	// Update the default receive settings to allow for unlimited number of messages and bytes on unprocessed messages (unacked but not yet expired)
+	// and set the number of receive goroutines
 	recvSettings := googlepubsub.ReceiveSettings{
 		MaxOutstandingMessages: -1,
 		MaxOutstandingBytes:    -1,
@@ -128,21 +119,22 @@ func NewPubSubSubscriber(
 	}
 
 	return &PubSubSubscriber{
-		Logger:                logger,
-		Metrics:               metrics,
-		TableInserter:         subscriberTable.Inserter(),
-		BatchSize:             subscriberBatchSize,
-		ChannelSize:           subscriberChannelSize,
-		BigQueryWriteDuration: subscriberWriteDuration,
+		Logger:        logger,
+		Metrics:       metrics,
+		TableInserter: subscriberTable.Inserter(),
+		BatchSize:     subscriberBatchSize,
+		ChannelSize:   subscriberChannelSize,
+		WriteDuration: subscriberWriteDuration,
 
 		pubsubSubscriber: subscriber,
 		entryVeto:        entryVeto,
+		ackMap:           make(map[*Entry]*googlepubsub.Message),
 	}, nil
 }
 
-func (subscriber *PubSubSubscriber) Receive(ctx context.Context) error {
+func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error {
 	err := subscriber.pubsubSubscriber.Receive(ctx, func(ctx context.Context, m *googlepubsub.Message) {
-		entries, err := subscriber.UnbatchMessages(m)
+		entries, err := subscriber.unbatchMessages(m)
 		if err != nil {
 			level.Error(subscriber.Logger).Log("err", err)
 			subscriber.Metrics.ErrorMetrics.BatchedReadFailure.Add(1)
@@ -162,7 +154,7 @@ func (subscriber *PubSubSubscriber) Receive(ctx context.Context) error {
 				}
 
 				// Submit the entry for writing to BigQuery
-				if err := subscriber.Submit(context.Background(), &unbatchedEntries[i]); err != nil {
+				if err := subscriber.submit(context.Background(), &unbatchedEntries[i]); err != nil {
 					subscriber.Metrics.ErrorMetrics.QueueFailure.Add(1)
 					level.Error(subscriber.Logger).Log("msg", "PubSubSubscriber Receive(): could not submit entry", "err", err)
 
@@ -193,7 +185,7 @@ func (subscriber *PubSubSubscriber) Receive(ctx context.Context) error {
 	return err
 }
 
-func (subscriber *PubSubSubscriber) UnbatchMessages(m *googlepubsub.Message) ([][]byte, error) {
+func (subscriber *PubSubSubscriber) unbatchMessages(m *googlepubsub.Message) ([][]byte, error) {
 	messages := make([][]byte, 0)
 
 	var offset int
@@ -218,7 +210,7 @@ func (subscriber *PubSubSubscriber) UnbatchMessages(m *googlepubsub.Message) ([]
 	return messages, nil
 }
 
-func (subscriber *PubSubSubscriber) Submit(ctx context.Context, entry *Entry) error {
+func (subscriber *PubSubSubscriber) submit(ctx context.Context, entry *Entry) error {
 	if subscriber.entries == nil {
 		subscriber.entries = make(chan *Entry, subscriber.ChannelSize)
 	}
@@ -228,14 +220,14 @@ func (subscriber *PubSubSubscriber) Submit(ctx context.Context, entry *Entry) er
 	subscriber.bufferMutex.RUnlock()
 
 	if bufferLength >= subscriber.BatchSize {
-		return errors.New("PubSubSubscriber Submit(): entries buffer full")
+		return errors.New("PubSubSubscriber submit(): entries buffer full")
 	}
 
 	select {
 	case subscriber.entries <- entry:
 		return nil
 	default:
-		return errors.New("PubSubSubscriber Submit(): entries channel full")
+		return errors.New("PubSubSubscriber submit(): entries channel full")
 	}
 }
 
@@ -265,7 +257,7 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 			subscriber.ackMapMutex.Unlock()
 		}
 
-		if bufferLength >= subscriber.BatchSize || time.Since(lastWriteTime) > subscriber.BigQueryWriteDuration {
+		if bufferLength >= subscriber.BatchSize || time.Since(lastWriteTime) > subscriber.WriteDuration {
 			if err := subscriber.TableInserter.Put(ctx, subscriber.buffer); err != nil {
 				subscriber.bufferMutex.Unlock()
 				// Nack all messages
@@ -276,7 +268,7 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 				// Critical error, log to stdout
 				level.Error(subscriber.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				fmt.Printf("PubSubSubscriber WriteLoop(): failed to write to BigQuery: %v\n", err)
-				subscriber.Metrics.ErrorMetrics.BigQueryWriteFailure.Add(float64(bufferLength))
+				subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
 			} else {
 				// Ack all messages
 				for _, ackMessage := range messagesToAck {
@@ -294,5 +286,6 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 		subscriber.bufferMutex.Unlock()
 		lastWriteTime = time.Now()
 	}
+
 	return nil
 }

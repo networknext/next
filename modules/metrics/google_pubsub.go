@@ -44,18 +44,18 @@ var EmptyGoogleSubscriberMetrics GoogleSubscriberMetrics = GoogleSubscriberMetri
 
 // GoogleSubscriberErrorMetrics contains the error metrics for the Google Pub/Sub subscriber.
 type GoogleSubscriberErrorMetrics struct {
-	BatchedReadFailure   Counter
-	ReadFailure          Counter
-	QueueFailure         Counter
-	BigQueryWriteFailure Counter
+	BatchedReadFailure Counter
+	ReadFailure        Counter
+	QueueFailure       Counter
+	WriteFailure       Counter
 }
 
 // EmptyGoogleSubscriberErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyGoogleSubscriberErrorMetrics GoogleSubscriberErrorMetrics = GoogleSubscriberErrorMetrics{
-	BatchedReadFailure:   &EmptyCounter{},
-	ReadFailure:          &EmptyCounter{},
-	QueueFailure:         &EmptyCounter{},
-	BigQueryWriteFailure: &EmptyCounter{},
+	BatchedReadFailure: &EmptyCounter{},
+	ReadFailure:        &EmptyCounter{},
+	QueueFailure:       &EmptyCounter{},
+	WriteFailure:       &EmptyCounter{},
 }
 
 func NewGooglePublisherMetrics(ctx context.Context, handler Handler, serviceName string, handlerName string, handlerID string) (*GooglePublisherMetrics, error) {
@@ -168,12 +168,12 @@ func NewGoogleSubscriberMetircs(ctx context.Context, handler Handler, serviceNam
 		return nil, err
 	}
 
-	subscriberMetrics.ErrorMetrics.BigQueryWriteFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " BigQuery Write Failures",
+	subscriberMetrics.ErrorMetrics.WriteFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Write Failures",
 		ServiceName: serviceName,
 		ID:          handlerID + ".error.write_failure",
 		Unit:        "errors",
-		Description: "The total number of " + handlerID + " entries that failed to write to BigQuery",
+		Description: "The total number of " + handlerID + " entries that failed to be written to BigQuery or local JSON file",
 	})
 	if err != nil {
 		return nil, err

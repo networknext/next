@@ -14,10 +14,6 @@ func (subscriber *NoOpPubSubSubscriber) Receive(ctx context.Context) error {
 	return nil
 }
 
-func (subscriber *NoOpPubSubSubscriber) Submit(ctx context.Context) error {
-	return nil
-}
-
 func (subscriber *NoOpPubSubSubscriber) WriteLoop(ctx context.Context) error {
 	return nil
 }
