@@ -427,8 +427,13 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 }
 
 func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params *RelayUpdateHandlerConfig) {
+	durationStart := time.Now()
+	defer func() {
+		durationSince := time.Since(durationStart)
+		params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+		params.Metrics.Invocations.Add(1)
+	}()
 
-	level.Debug(logger).Log("msg", "update started")
 	var relayUpdateRequest RelayUpdateRequest
 	err := relayUpdateRequest.UnmarshalBinary(requestBody)
 	if err != nil {
@@ -477,7 +482,6 @@ func RelayUpdatePubSubFunc(requestBody []byte, logger log.Logger, params *RelayU
 	params.RelayMap.Lock()
 	params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 	params.RelayMap.Unlock()
-	level.Debug(logger).Log("msg", "update finished")
 }
 
 func initRelayOnBackend(relay *routing.Relay, relayUpdateRequest RelayUpdateRequest, logger log.Logger, relayVersion string, errorMetrics *metrics.RelayInitErrorMetrics, relayMap *routing.RelayMap) *routing.RelayData {
