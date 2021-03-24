@@ -29,15 +29,15 @@ type PubSubSubscriber struct {
 	ChannelSize   int
 	WriteDuration time.Duration
 
-	pubsubSubscriber *googlepubsub.Subscription
-	buffer           []*Entry
-	bufferMutex      sync.RWMutex
+	PubSubSubscription *googlepubsub.Subscription
+	buffer             []*Entry
+	bufferMutex        sync.RWMutex
 
 	entries   chan *Entry
-	entryVeto bool
+	EntryVeto bool
 
-	ackMap      map[*Entry]*googlepubsub.Message
-	ackMapMutex sync.RWMutex
+	AckMap      map[*Entry]*googlepubsub.Message
+	AckMapMutex sync.RWMutex
 }
 
 func NewPubSubSubscriber(
@@ -126,14 +126,14 @@ func NewPubSubSubscriber(
 		ChannelSize:   subscriberChannelSize,
 		WriteDuration: subscriberWriteDuration,
 
-		pubsubSubscriber: subscriber,
-		entryVeto:        entryVeto,
-		ackMap:           make(map[*Entry]*googlepubsub.Message),
+		PubSubSubscription: subscriber,
+		EntryVeto:          entryVeto,
+		AckMap:             make(map[*Entry]*googlepubsub.Message),
 	}, nil
 }
 
 func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error {
-	err := subscriber.pubsubSubscriber.Receive(ctx, func(ctx context.Context, m *googlepubsub.Message) {
+	err := subscriber.PubSubSubscription.Receive(ctx, func(ctx context.Context, m *googlepubsub.Message) {
 		entries, err := subscriber.unbatchMessages(m)
 		if err != nil {
 			level.Error(subscriber.Logger).Log("err", err)
@@ -148,9 +148,9 @@ func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error 
 
 				// If we are on the last entry for this message, add the message to the ack map to be acked after writing to BigQuery
 				if i == len(entries)-1 {
-					subscriber.ackMapMutex.Lock()
-					subscriber.ackMap[&unbatchedEntries[i]] = m
-					subscriber.ackMapMutex.Unlock()
+					subscriber.AckMapMutex.Lock()
+					subscriber.AckMap[&unbatchedEntries[i]] = m
+					subscriber.AckMapMutex.Unlock()
 				}
 
 				// Submit the entry for writing to BigQuery
@@ -160,9 +160,9 @@ func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error 
 
 					// Delete the entry from the map if fail to submit
 					if i == len(entries)-1 {
-						subscriber.ackMapMutex.Lock()
-						delete(subscriber.ackMap, &unbatchedEntries[i])
-						subscriber.ackMapMutex.Unlock()
+						subscriber.AckMapMutex.Lock()
+						delete(subscriber.AckMap, &unbatchedEntries[i])
+						subscriber.AckMapMutex.Unlock()
 					}
 
 					// Nack the message so it can be redelivered
@@ -170,7 +170,7 @@ func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error 
 					return
 				}
 			} else {
-				if subscriber.entryVeto {
+				if subscriber.EntryVeto {
 					m.Ack()
 					return
 				}
@@ -246,15 +246,15 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 		bufferLength := len(subscriber.buffer)
 
 		// See if any of these entries have a message that needs to be acked
-		subscriber.ackMapMutex.RLock()
-		message, exists := subscriber.ackMap[entry]
-		subscriber.ackMapMutex.RUnlock()
+		subscriber.AckMapMutex.RLock()
+		message, exists := subscriber.AckMap[entry]
+		subscriber.AckMapMutex.RUnlock()
 		if exists {
 			messagesToAck = append(messagesToAck, message)
 			// Delete the entry and message from the ack map
-			subscriber.ackMapMutex.Lock()
-			delete(subscriber.ackMap, entry)
-			subscriber.ackMapMutex.Unlock()
+			subscriber.AckMapMutex.Lock()
+			delete(subscriber.AckMap, entry)
+			subscriber.AckMapMutex.Unlock()
 		}
 
 		if bufferLength >= subscriber.BatchSize || time.Since(lastWriteTime) > subscriber.WriteDuration {
