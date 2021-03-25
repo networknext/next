@@ -95,9 +95,11 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		}
 	})
 
-	// If the Receive function returns for any reason, we want to immediately exit and restart the service
-	level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
-	os.Exit(1)
+	if err != nil {
+		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
+		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
+		os.Exit(1)
+	}
 }
 
 func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {
