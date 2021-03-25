@@ -16,6 +16,8 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -44,7 +46,8 @@ func main() {
 
 	fmt.Printf("billing: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
 	// Configure local logging
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -201,7 +204,8 @@ func main() {
 					batchSize = int(s)
 				}
 
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				// Pass context without cancel to ensure writing continues even past reception of shutdown signal
+				bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
@@ -217,8 +221,9 @@ func main() {
 				biller = &b
 
 				// Start the background WriteLoop to batch write to BigQuery
+				wg.Add(1)
 				go func() {
-					b.WriteLoop(ctx)
+					b.WriteLoop(ctx, wg)
 				}()
 			}
 		}
@@ -258,7 +263,8 @@ func main() {
 				os.Exit(1)
 			}
 
-			go pubsubForwarder.Forward(ctx)
+			wg.Add(1)
+			go pubsubForwarder.Forward(ctx, wg)
 		}
 	}
 
@@ -325,10 +331,13 @@ func main() {
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+	<-termChan
+	cancel()
+	// Wait for essential goroutines to finish up
+	wg.Wait()
 }
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
