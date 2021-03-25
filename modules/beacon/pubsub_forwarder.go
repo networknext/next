@@ -98,7 +98,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 		}
 	})
 
-	if err != context.Canceled {
+	if err != nil && err != context.Canceled {
 		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
 		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
 		os.Exit(1)
