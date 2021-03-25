@@ -26,7 +26,7 @@ func (biller *badBiller) Bill(ctx context.Context, billingEntry *billing.Billing
 	return errors.New("bad bill")
 }
 
-func (biller *badBiller) Close(){}
+func (biller *badBiller) Close() {}
 
 type mockBiller struct {
 	calledChan    chan bool
@@ -40,7 +40,7 @@ func (biller *mockBiller) Bill(ctx context.Context, billingEntry *billing.Billin
 	return nil
 }
 
-func (biller *mockBiller) Close(){}
+func (biller *mockBiller) Close() {}
 
 type badPublisher struct {
 	calledChan chan bool
