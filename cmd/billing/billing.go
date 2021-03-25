@@ -335,9 +335,11 @@ func main() {
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
+	fmt.Println("Received shutdown signal.")
 	cancel()
 	// Wait for essential goroutines to finish up
 	wg.Wait()
+	fmt.Println("Successfully shutdown.")
 }
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {

@@ -221,9 +221,11 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-termChan:
+		fmt.Println("Received shutdown signal.")
 		cancel()
 		// Wait for essential goroutines to finish up
 		wg.Wait()
+		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
 		return 1
