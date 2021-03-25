@@ -49,7 +49,7 @@ func TestConfigInterface(t *testing.T) {
 		assert.Equal(t, featureConfig.AllFeatures()[3].Enum, config.FEATURE_VANITY_METRIC)
 		assert.Equal(t, featureConfig.AllFeatures()[3].Value, false)
 		assert.Equal(t, featureConfig.AllFeatures()[3].Description, "Vanity metrics for fast aggregate statistic lookup")
-		assert.Equal(t, featureConfig.AllFeatures()[3].Value, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
-		assert.False(t, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
+		assert.Equal(t, featureConfig.AllFeatures()[3].Value, featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC))
+		assert.False(t, featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC))
 	})
 }
