@@ -129,7 +129,7 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry)
 	return nil
 }
 
-func (biller *GooglePubSubBiller) Stop() {
+func (biller *GooglePubSubBiller) Close() {
 	for _, client := range biller.clients {
 		client.CancelContextFunc()
 	}
