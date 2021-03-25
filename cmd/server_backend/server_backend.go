@@ -275,16 +275,12 @@ func mainReturnWithCode() int {
 		}
 
 		if newBackend {
-			if envvar.Exists("RELAY_FRONTEND_URI") {
-				uri = envvar.Get("RELAY_FRONTEND_URI", "")
-			}
+			uri = envvar.Get("RELAY_FRONTEND_URI", "")
 		} else {
-			if envvar.Exists("ROUTE_MATRIX_URI") {
-				uri = envvar.Get("ROUTE_MATRIX_URI", "")
-			}
+			uri = envvar.Get("ROUTE_MATRIX_URI", "")
 		}
 
-		if uri != "" {
+		if uri == "" {
 			level.Error(logger).Log("err", fmt.Errorf("no matrix uri specified"))
 			return 1
 		}
