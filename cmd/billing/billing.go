@@ -335,10 +335,14 @@ func main() {
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
+	level.Debug(logger).Log("msg", "Received shutdown signal")
 	fmt.Println("Received shutdown signal.")
+
 	cancel()
 	// Wait for essential goroutines to finish up
 	wg.Wait()
+
+	level.Debug(logger).Log("msg", "Successfully shutdown.")
 	fmt.Println("Successfully shutdown.")
 }
 
