@@ -85,9 +85,6 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 
 			bq.bufferMutex.Unlock()
 		case <-ctx.Done():
-			// Close entries channel to ensure messages get nacked
-			close(bq.entries)
-
 			var bufferLength int
 
 			// Received shutdown signal, write remainder of entries to BigQuery
