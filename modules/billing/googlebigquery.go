@@ -113,10 +113,11 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 				bq.Metrics.EntriesQueued.Set(float64(bufferLength))
 			}
 
-			fmt.Printf("About to flush %d entries to BQ.", bufferLength)
+			fmt.Printf("About to flush %d entries to BQ.\n", bufferLength)
 			// Emptied out the entries channel, flush to BigQuery
 			if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
+				fmt.Printf("BQ Write Error: %v\n", err)
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
 				return err
