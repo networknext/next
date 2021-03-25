@@ -45,7 +45,7 @@ var defaultFeatures = []Feature{
 		Description: "Enables the New Relay Backend project if true",
 	},
 	{
-		Name:        "PGSQL",
+		Name:        "FEATURE_POSTGRES",
 		Enum:        FEATURE_POSTGRES,
 		Value:       false,
 		Description: "Postgres implementation to replace Firestore",
