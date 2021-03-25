@@ -103,7 +103,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 			if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
+				bq.Metrics.ErrorMetrics.BeaconInserterWriteFailure.Add(float64(bufferLength))
 				return err
 			}
 			bq.buffer = bq.buffer[:0]
