@@ -13,10 +13,10 @@ func TestConfigInterface(t *testing.T) {
 
 		envVarConfig := config.NewEnvVarConfig([]config.Feature{
 			{
-				Name:        "FEATURE_BIGTABLE",
+				Name:        "FEATURE_BIG_TABLE",
 				Enum:        config.FEATURE_BIGTABLE,
 				Value:       false,
-				Description: "Bigtable integration for historic session data",
+				Description: "Bigtable integration for historic session data with override",
 			},
 			{
 				Name:        "FEATURE_NEW_RELAY_BACKEND",
@@ -35,14 +35,20 @@ func TestConfigInterface(t *testing.T) {
 		featureConfig = envVarConfig
 
 		assert.NotNil(t, featureConfig.AllFeatures())
-		assert.Equal(t, len(featureConfig.AllFeatures()), 3)
-		assert.Equal(t, len(featureConfig.AllDisabledFeatures()), 3)
-		assert.Equal(t, len(featureConfig.AllEnabledFeatures()), 0)
-		assert.Equal(t, featureConfig.AllFeatures()[0].Name, "FEATURE_BIGTABLE")
+		// check bigtable
+		assert.Equal(t, featureConfig.AllFeatures()[0].Name, "FEATURE_BIG_TABLE")
 		assert.Equal(t, featureConfig.AllFeatures()[0].Enum, config.FEATURE_BIGTABLE)
 		assert.Equal(t, featureConfig.AllFeatures()[0].Value, false)
-		assert.Equal(t, featureConfig.AllFeatures()[0].Description, "Bigtable integration for historic session data")
+		assert.Equal(t, featureConfig.AllFeatures()[0].Description, "Bigtable integration for historic session data with override")
 		assert.Equal(t, featureConfig.AllFeatures()[0].Value, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
+		assert.False(t, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
+
+		//check vanity
+		assert.Equal(t, featureConfig.AllFeatures()[3].Name, "FEATURE_VANITY_METRIC")
+		assert.Equal(t, featureConfig.AllFeatures()[3].Enum, config.FEATURE_VANITY_METRIC)
+		assert.Equal(t, featureConfig.AllFeatures()[3].Value, false)
+		assert.Equal(t, featureConfig.AllFeatures()[3].Description, "Vanity metrics for fast aggregate statistic lookup")
+		assert.Equal(t, featureConfig.AllFeatures()[3].Value, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
 		assert.False(t, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
 	})
 }
