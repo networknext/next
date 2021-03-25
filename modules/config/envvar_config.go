@@ -7,10 +7,16 @@ type EnvVarConfig struct {
 	LookUp   []bool
 }
 
-func NewEnvVarConfig(defaultFeatures []Feature) *EnvVarConfig {
+func NewEnvVarConfig(overrideFeatures []Feature) *EnvVarConfig {
 	lookUp := make([]bool, NumFeatures)
 	features := defaultFeatures
 	for _, f := range defaultFeatures {
+		newValue, _ := envvar.GetBool(f.Name, f.Value)
+		f.Value = newValue
+		lookUp[f.Enum] = newValue
+	}
+
+	for _, f := range overrideFeatures {
 		newValue, _ := envvar.GetBool(f.Name, f.Value)
 		f.Value = newValue
 		lookUp[f.Enum] = newValue
