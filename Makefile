@@ -382,7 +382,7 @@ dev-portal: build-portal-local ## runs a local portal
 
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix ./dist/server_backend
 
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend

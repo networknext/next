@@ -284,7 +284,7 @@ func mainReturnWithCode() int {
 			}
 		}
 
-		if uri != "" {
+		if uri == "" {
 			level.Error(logger).Log("err", fmt.Errorf("no matrix uri specified"))
 			return 1
 		}
