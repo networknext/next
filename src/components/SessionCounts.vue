@@ -20,7 +20,7 @@
         </a>
       </Alert>
     </div>
-    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus">
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus" style="max-width: 300px;">
       <div class="mr-auto"></div>
       <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
         <select class="form-control" v-on:change="updateFilter($event.target.value)">
