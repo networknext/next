@@ -106,6 +106,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 
 	// Close entries channel to ensure messages are drained for the final write to BigQuery
 	psf.Beaconer.Close()
+	level.Debug(psf.Logger).Log("msg", "receive canceled, closed entries channel")
+	fmt.Println("Receive canceled, closed entries channel.")
 }
 
 func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {

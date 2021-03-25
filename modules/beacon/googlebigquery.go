@@ -3,6 +3,7 @@ package beacon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"cloud.google.com/go/bigquery"
@@ -107,6 +108,8 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 			bq.bufferMutex.Unlock()
 
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bufferLength, "total", bufferLength)
+			fmt.Printf("Final flush of %d entries to BigQuery.\n", bufferLength)
+
 			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
 
 			return nil
