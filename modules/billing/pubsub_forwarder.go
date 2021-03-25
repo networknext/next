@@ -104,6 +104,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 			}
 		}
 	})
+	fmt.Printf("Outside receive, err: %v\n", err)
 
 	if err != context.Canceled {
 		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
