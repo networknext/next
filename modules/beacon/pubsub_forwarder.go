@@ -68,7 +68,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 		for i := range beaconEntries {
 
 			if err = transport.ReadBeaconEntry(&beaconEntries[i], entries[i]); err == nil {
-				if err := psf.Beaconer.Submit(context.Background(), &beaconEntries[i]); err != nil {
+				if err := psf.Beaconer.Submit(ctx, &beaconEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit beacon entry", "err", err)
 					// Nack if we failed to submit the beacon entry
 					m.Nack()
@@ -103,6 +103,9 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
 		os.Exit(1)
 	}
+
+	// Close entries channel to ensure messages are drained for the final write to BigQuery
+	psf.Beaconer.Close()
 }
 
 func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {

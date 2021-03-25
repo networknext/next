@@ -73,7 +73,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 					billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
 				}
 
-				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
+				if err := psf.Biller.Bill(ctx, &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 					// Nack if we failed to submit the billing entry
 					m.Nack()
@@ -110,6 +110,9 @@ func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
 		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
 		os.Exit(1)
 	}
+
+	// Close entries channel to ensure messages are drained for the final write to BigQuery
+	psf.Biller.Close()
 }
 
 func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {

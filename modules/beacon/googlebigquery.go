@@ -117,3 +117,8 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 	}
 	return nil
 }
+
+// Closes the entries channel. Should only be done by the entry sender.
+func (bq *GoogleBigQueryClient) Close() {
+	close(bq.entries)
+}

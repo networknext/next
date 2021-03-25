@@ -101,9 +101,6 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 
 			bq.bufferMutex.Unlock()
 		case <-ctx.Done():
-			// Close entries channel to ensure messages get nacked
-			close(bq.entries)
-
 			var bufferLength int
 
 			// Received shutdown signal, write remainder of entries to BigQuery
@@ -132,6 +129,11 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 		}
 	}
 	return nil
+}
+
+// Closes the entries channel. Should only be done by the entry sender.
+func (bq *GoogleBigQueryClient) Close() {
+	close(bq.entries)
 }
 
 // Validate a billing entry. Returns true if the billing entry is valid, false if invalid.
