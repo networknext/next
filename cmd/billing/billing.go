@@ -337,8 +337,9 @@ func main() {
 	<-termChan
 	level.Debug(logger).Log("msg", "Received shutdown signal")
 	fmt.Println("Received shutdown signal.")
-
+	fmt.Println("Calling cancel...")
 	cancel()
+	fmt.Println("Called cancel.")
 	// Wait for essential goroutines to finish up
 	wg.Wait()
 

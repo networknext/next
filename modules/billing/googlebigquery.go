@@ -101,6 +101,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 
 			bq.bufferMutex.Unlock()
 		case <-ctx.Done():
+			fmt.Println("Context done, preparing for final flush to BQ.")
 			var bufferLength int
 
 			// Received shutdown signal, write remainder of entries to BigQuery
@@ -112,6 +113,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 				bq.Metrics.EntriesQueued.Set(float64(bufferLength))
 			}
 
+			fmt.Printf("About to flush %d entries to BQ.", bufferLength)
 			// Emptied out the entries channel, flush to BigQuery
 			if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
