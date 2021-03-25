@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
@@ -50,7 +51,9 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 }
 
 // Forward reads the billing entry from pubsub and writes it to BigQuery
-func (psf *PubSubForwarder) Forward(ctx context.Context) {
+func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		entries, err := psf.unbatchMessages(m)
 		if err != nil {
@@ -102,7 +105,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		}
 	})
 
-	if err != nil {
+	if err != context.Canceled {
 		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
 		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
 		os.Exit(1)

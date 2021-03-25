@@ -263,7 +263,8 @@ func main() {
 				os.Exit(1)
 			}
 
-			go pubsubForwarder.Forward(ctx)
+			wg.Add(1)
+			go pubsubForwarder.Forward(ctx, wg)
 		}
 	}
 

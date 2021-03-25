@@ -157,7 +157,8 @@ func mainReturnWithCode() int {
 				return 1
 			}
 
-			go pubsubForwarder.Forward(ctx)
+			wg.Add(1)
+			go pubsubForwarder.Forward(ctx, wg)
 		}
 	}
 
