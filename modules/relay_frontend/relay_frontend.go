@@ -26,6 +26,7 @@ type RelayFrontendSvc struct {
 	store                       storage.MatrixStore
 	createdAt                   time.Time
 	currentMasterBackendAddress string
+	relayStatsAddress           string
 
 	// cached matrix
 	costMatrix       *helpers.MatrixData
@@ -53,8 +54,16 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 	}
 
 	masterAddress, err := chooseRelayBackendMaster(rbArr, r.cfg.MasterTimeVariance)
+	if err != nil {
+		r.currentMasterBackendAddress = ""
+		r.relayStatsAddress = ""
+		return err
+	}
+
 	r.currentMasterBackendAddress = masterAddress
-	return err
+	r.relayStatsAddress = fmt.Sprintf("http://%s/relay_stats", r.currentMasterBackendAddress)
+
+	return nil
 }
 
 func (r *RelayFrontendSvc) CacheMatrix(matrixType string) error {
@@ -182,5 +191,30 @@ func (r *RelayFrontendSvc) GetRouteMatrixValve() func(w http.ResponseWriter, req
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+	}
+}
+
+func (r *RelayFrontendSvc) GetRelayStats() func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+
+		if r.relayStatsAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		resp, err := http.Get(r.relayStatsAddress)
+		defer resp.Body.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		bin, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(bin)
 	}
 }

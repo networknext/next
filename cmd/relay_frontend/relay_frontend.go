@@ -152,6 +152,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
 	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
+	router.HandleFunc("relay_stats", svc.GetRelayStats())
 	router.Handle("/debug/vars", expvar.Handler())
 
 	if cfg.ValveMatrix {

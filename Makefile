@@ -1110,7 +1110,7 @@ build-fake-relays-artifacts-dev: build-fake-relays
 
 .PHONY: publish-fake-relays-artifacts-dev
 publish-fake-relays-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET_DEV) -s fake_relays
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s fake_relays
 
 .PHONY: build-fake-relays-artifacts-staging
 build-fake-relays-artifacts-staging: build-fake-relays
@@ -1157,7 +1157,7 @@ build-relay-forwarder-artifacts-dev: build-relay-forwarder
 
 .PHONY: publish-relay-forwarder-artifacts-dev
 publish-relay-forwarder-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET_DEV) -s relay_forwarder
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
 
 .PHONY: build-relay-forwarder-artifacts-staging
 build-relay-forwarder-artifacts-staging: build-relay-forwarder
