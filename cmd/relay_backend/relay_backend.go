@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/config"
+
 	"github.com/networknext/backend/modules/storage"
 
 	"github.com/networknext/backend/modules/common"
@@ -173,23 +175,50 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	featureNRB, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_ENABLED", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+	featureConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_NEW_RELAY_BACKEND_ENABLED",
+			Enum:        config.FEATURE_NEW_RELAY_BACKEND,
+			Value:       false,
+			Description: "Enables the New Relay Backend project if true",
+		},
+		{
+			Name:        "FEATURE_LOAD_TEST",
+			Enum:        config.FEATURE_LOAD_TEST,
+			Value:       false,
+			Description: "Disables pubsub and storer usage when true",
+		},
+		{
+			Name:        "FEATURE_ENABLE_PPROF",
+			Enum:        config.FEATURE_ENABLE_PPROF,
+			Value:       false,
+			Description: "Allows access to PPROF http handlers when true",
+		},
+		{
+			Name:        "FEATURE_ROUTE_MATRIX_STATS",
+			Enum:        config.FEATURE_ROUTE_MATRIX_STATS,
+			Value:       true,
+			Description: "writes Route Matrix Stats to pubsub when true",
+		},
+		{
+			Name:        "FEATURE_MATRIX_CLOUDSTORE",
+			Enum:        config.FEATURE_MATRIX_CLOUDSTORE,
+			Value:       false,
+			Description: "writes Route Matrix to cloudstore when true",
+		},
+		{
+			Name:        "FEATURE_VALVE_MATRIX",
+			Enum:        config.FEATURE_VALVE_MATRIX,
+			Value:       false,
+			Description: "creates the valve matrix when true",
+		},
+	})
 
-	featureLoadTest, err := envvar.GetBool("FEATURE_LOAD_TEST", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
 	var matrixStore storage.MatrixStore
 	var backendLiveData storage.RelayBackendLiveData
 
 	// update redis so relay frontend knows this backend is live
-	if featureNRB {
-
+	if featureConfig.FeatureEnabled(config.FEATURE_NEW_RELAY_BACKEND) {
 		var backendAddr string
 		if !envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES") {
 			level.Error(logger).Log("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
@@ -273,7 +302,7 @@ func mainReturnWithCode() int {
 	// ping stats
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
-		if !featureLoadTest {
+		if !featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST) {
 			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 			if gcpProjectID != "" || emulatorOK {
 
@@ -333,7 +362,7 @@ func mainReturnWithCode() int {
 	// relay stats
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	{
-		if !featureLoadTest {
+		if !!featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST) {
 			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 			if gcpProjectID != "" || emulatorOK {
 
@@ -405,7 +434,7 @@ func mainReturnWithCode() int {
 					relay.TrafficMu.Unlock()
 
 					var storeRelay routing.Relay
-					if !featureLoadTest {
+					if !!featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST) {
 						storeRelay, err = storer.Relay(relay.ID)
 						if err != nil {
 							level.Error(logger).Log("err", err)
@@ -485,7 +514,7 @@ func mainReturnWithCode() int {
 
 	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
 	{
-		if !featureLoadTest {
+		if !!featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST) {
 			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 			if gcpProjectID != "" || emulatorOK {
 
@@ -523,16 +552,12 @@ func mainReturnWithCode() int {
 	}
 
 	var relayEnabledCache common.RelayEnabledCache
-	if !featureLoadTest {
+	if !!featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST) {
 		relayEnabledCache := common.NewRelayEnabledCache(storer)
 		relayEnabledCache.StartRunner(1 * time.Minute)
 	}
 	var gcBucket *gcStorage.BucketHandle
-	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-	if gcStoreActive {
+	if featureConfig.FeatureEnabled(config.FEATURE_MATRIX_CLOUDSTORE) {
 		gcBucket, err = GCStoreConnect(ctx, gcpProjectID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
@@ -714,7 +739,7 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
-			if featureNRB {
+			if featureConfig.FeatureEnabled(config.FEATURE_NEW_RELAY_BACKEND) {
 				backendLiveData.UpdatedAt = time.Now()
 				err = matrixStore.SetRelayBackendLiveData(backendLiveData)
 				if err != nil {
@@ -722,12 +747,7 @@ func mainReturnWithCode() int {
 				}
 			}
 
-			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				continue
-			}
-			if gcStoreActive {
+			if featureConfig.FeatureEnabled(config.FEATURE_MATRIX_CLOUDSTORE) {
 				if gcBucket == nil {
 					gcBucket, err = GCStoreConnect(ctx, gcpProjectID)
 					if err != nil {
@@ -749,11 +769,7 @@ func mainReturnWithCode() int {
 				}
 			}
 
-			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-			}
-			if hashing && !featureLoadTest {
+			if featureConfig.FeatureEnabled(config.FEATURE_ROUTE_MATRIX_STATS) && !featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST) {
 				timestamp := time.Now().UTC().Unix()
 				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
 				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
@@ -778,12 +794,7 @@ func mainReturnWithCode() int {
 	// Separate route matrix specifically for Valve
 	valveMatrixData := new(helpers.MatrixData)
 
-	featureValveMatrix, err := envvar.GetBool("FEATURE_VALVE_MATRIX", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-
-	if featureValveMatrix {
+	if featureConfig.FeatureEnabled(config.FEATURE_VALVE_MATRIX) {
 		// Generate the route matrix specifically for valve
 		go func() {
 			syncTimer := helpers.NewSyncTimer(syncInterval)
@@ -892,7 +903,7 @@ func mainReturnWithCode() int {
 		Storer:           storer,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
-		LoadTest:         featureLoadTest,
+		LoadTest:         featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST),
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
@@ -900,7 +911,7 @@ func mainReturnWithCode() int {
 		StatsDB:  statsdb,
 		Metrics:  relayUpdateMetrics,
 		Storer:   storer,
-		LoadTest: featureLoadTest,
+		LoadTest: featureConfig.FeatureEnabled(config.FEATURE_LOAD_TEST),
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -933,7 +944,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	if featureNRB {
+	if featureConfig.FeatureEnabled(config.FEATURE_NEW_RELAY_BACKEND) {
 		go func() {
 			level.Debug(logger).Log("msg", "subscriber starting")
 
@@ -989,7 +1000,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
-	if featureNRB {
+	if featureConfig.FeatureEnabled(config.FEATURE_NEW_RELAY_BACKEND) {
 		// new backend handlers
 		router.HandleFunc("/relay_update", transport.NewRelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	} else {
@@ -998,11 +1009,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	}
 
-	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-	if enablePProf {
+	if featureConfig.FeatureEnabled(config.FEATURE_ENABLE_PPROF) {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
 
