@@ -177,6 +177,8 @@ type MaxmindDB struct {
 	HTTPClient *http.Client
 	CityURI    string
 	IspURI     string
+	CityFile   string
+	IspFile    string
 
 	cityReader *geoip2.Reader
 	ispReader  *geoip2.Reader
@@ -186,11 +188,11 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 	metrics.Invocations.Add(1)
 	durationStart := time.Now()
 
-	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI); err != nil {
+	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI, mmdb.CityFile); err != nil {
 		metrics.ErrorMetrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
 	}
-	if err := mmdb.OpenISP(ctx, mmdb.HTTPClient, mmdb.IspURI); err != nil {
+	if err := mmdb.OpenISP(ctx, mmdb.HTTPClient, mmdb.IspURI, mmdb.IspFile); err != nil {
 		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
@@ -201,8 +203,8 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 	return nil
 }
 
-func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, uri string) error {
-	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri)
+func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, uri string, file string) error {
+	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri, file)
 	if err != nil {
 		return err
 	}
@@ -211,8 +213,8 @@ func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, ur
 	return nil
 }
 
-func (mmdb *MaxmindDB) OpenISP(ctx context.Context, httpClient *http.Client, uri string) error {
-	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri)
+func (mmdb *MaxmindDB) OpenISP(ctx context.Context, httpClient *http.Client, uri string, file string) error {
+	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri, file)
 	if err != nil {
 		return err
 	}
@@ -221,15 +223,15 @@ func (mmdb *MaxmindDB) OpenISP(ctx context.Context, httpClient *http.Client, uri
 	return nil
 }
 
-func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, httpClient *http.Client, uri string) (*geoip2.Reader, error) {
+func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, httpClient *http.Client, uri string, file string) (*geoip2.Reader, error) {
 	var err error
 
 	// If there is a local file at this uri then just open it
-	if _, err := os.Stat(uri); err == nil {
-		return geoip2.Open(uri)
+	if _, err := os.Stat(file); err == nil {
+		return geoip2.Open(file)
 	}
 
-	// otherwise attempt to download it
+	// Otherwise attempt to download it
 	mmres, err := httpClient.Get(uri)
 	if err != nil {
 		return nil, err

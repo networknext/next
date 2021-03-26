@@ -189,11 +189,15 @@ func mainReturnWithCode() int {
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
 	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
-	if maxmindCityURI != "" && maxmindISPURI != "" {
+	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
+	if (maxmindCityURI != "" && maxmindISPURI != "") || (maxmindCityFile != "" && maxmindISPFile != "") {
 		mmdb := &routing.MaxmindDB{
 			HTTPClient: http.DefaultClient,
 			CityURI:    maxmindCityURI,
 			IspURI:     maxmindISPURI,
+			CityFile:   maxmindCityFile,
+			IspFile:    maxmindISPFile,
 		}
 		var mmdbMutex sync.RWMutex
 
