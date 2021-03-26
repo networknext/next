@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -200,7 +201,7 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 	// Append to file if it exists
 	if _, err := os.Stat(subscriber.jsonFileName); err == nil {
 		// Read from the existing file
-		prevData, err := os.ReadFile(subscriber.jsonFileName)
+		prevData, err := ioutil.ReadFile(subscriber.jsonFileName)
 		if err != nil {
 			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not read from jsonFileName %s: %v", subscriber.jsonFileName, err)
 		}
@@ -229,7 +230,7 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 		}
 
 		// Overwrite the file with the updated data
-		if err = os.WriteFile(subscriber.jsonFileName, updatedData, 0644); err != nil {
+		if err = ioutil.WriteFile(subscriber.jsonFileName, updatedData, 0644); err != nil {
 			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not overwrite jsonFileName %s with updated data: %v", subscriber.jsonFileName, err)
 		}
 	} else if os.IsNotExist(err) {
