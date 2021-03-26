@@ -10,11 +10,12 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
-	"runtime"
-	"time"
-
 	"os"
 	"os/signal"
+	"runtime"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
@@ -46,7 +47,8 @@ func mainReturnWithCode() int {
 
 	serviceName := "beacon_inserter"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
 	gcpProjectID := backend.GetGCPProjectID()
 	gcpOK := gcpProjectID != ""
@@ -99,8 +101,9 @@ func mainReturnWithCode() int {
 					return 1
 				}
 
-				// Create biquery client and start write loop
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				// Create biquery client
+				// Pass context without cancel to ensure writing continues even past reception of shutdown signal
+				bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					return 1
@@ -119,8 +122,9 @@ func mainReturnWithCode() int {
 				beaconer = &b
 
 				// Start the background WriteLoop to batch write to BigQuery
+				wg.Add(1)
 				go func() {
-					b.WriteLoop(ctx)
+					b.WriteLoop(ctx, wg)
 				}()
 			}
 		}
@@ -138,16 +142,23 @@ func mainReturnWithCode() int {
 			topicName := "beacon"
 			subscriptionName := "beacon"
 
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName)
+			numRecvGoroutines, err := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				return 1
 			}
 
-			go pubsubForwarder.Forward(ctx)
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsubForwarder, err := beacon.NewPubSubForwarder(pubsubCtx, beaconer, logger, beaconInserterServiceMetrics.BeaconInserterMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			wg.Add(1)
+			go pubsubForwarder.Forward(ctx, wg)
 		}
 	}
 
@@ -204,12 +215,21 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-sigint:
+	case <-termChan:
+		level.Debug(logger).Log("msg", "Received shutdown signal")
+		fmt.Println("Received shutdown signal.")
+
+		cancel()
+		// Wait for essential goroutines to finish up
+		wg.Wait()
+
+		level.Debug(logger).Log("msg", "Successfully shutdown")
+		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
 		return 1
