@@ -74,7 +74,10 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 			if bufferLength >= bq.BatchSize {
 				if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
 					bq.bufferMutex.Unlock()
+
 					level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+					fmt.Printf("Failed to write to BigQuery: %v\n", err)
+
 					bq.Metrics.ErrorMetrics.BeaconInserterWriteFailure.Add(float64(bufferLength))
 					continue
 				}
@@ -88,7 +91,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 		case <-ctx.Done():
 			var bufferLength int
 
-			// Received shutdown signal, write remainder of entries to BigQuery
+			// Received shutdown signal, write remaining entries to BigQuery
 			bq.bufferMutex.Lock()
 			for entry := range bq.entries {
 				// Add the remaining entries to the buffer
@@ -100,7 +103,10 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGrou
 			// Emptied out the entries channel, flush to BigQuery
 			if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
 				bq.bufferMutex.Unlock()
+
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+				fmt.Printf("Failed to write to BigQuery: %v\n", err)
+
 				bq.Metrics.ErrorMetrics.BeaconInserterWriteFailure.Add(float64(bufferLength))
 				return err
 			}
