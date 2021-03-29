@@ -37,6 +37,7 @@ type GooglePubSubClient struct {
 // Creates a new GooglePubSubPublisher with clientCount clients that will publish to the given topicID in Google Pub/Sub
 func NewPubSubPublisher(
 	ctx context.Context,
+	cancelFunc context.CancelFunc,
 	publisherMetrics *metrics.GooglePublisherMetrics,
 	logger log.Logger,
 	gcpProjectID string,
@@ -78,8 +79,6 @@ func NewPubSubPublisher(
 		client.BufferCountThreshold = clientBufferCountThreshold
 		client.MinBufferBytes = clientMinBufferBytes
 
-		ctx := context.Background()
-
 		// Ensure topic is valid
 		client.Topic = client.PubsubClient.Topic(topicID)
 		ok, err := client.Topic.Exists(ctx)
@@ -93,12 +92,11 @@ func NewPubSubPublisher(
 		client.Topic.PublishSettings = *settings
 		client.ResultChan = make(chan *googlepubsub.PublishResult)
 
-		// Define a cancel func to stop clients
-		cancelCtx, cancelFunc := context.WithCancel(ctx)
+		// Assign the cancel func to stop clients
 		client.CancelContextFunc = cancelFunc
 
 		// Start a goroutine for monitoring publish results
-		go client.pubsubResults(cancelCtx)
+		go client.pubsubResults(ctx)
 
 		clients[i] = client
 	}
@@ -123,7 +121,7 @@ func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *Entry) err
 	// Get the bytes for the entry
 	entryBytes, err := (*entry).WriteEntry()
 	if err != nil {
-		return fmt.Errorf("PubSubPublisher Publish(): %v", err)
+		return fmt.Errorf("PubSubPublisher Publish(): could not get bytes for entry: %v", err)
 	}
 
 	// Add an offset for the entry for chaining entries together
@@ -159,7 +157,7 @@ func (publisher *PubSubPublisher) Publish(ctx context.Context, entry *Entry) err
 }
 
 // Stops all clients for the PubSubPublisher
-func (publisher *PubSubPublisher) Stop() {
+func (publisher *PubSubPublisher) Close() {
 	for _, client := range publisher.clients {
 		client.CancelContextFunc()
 	}
