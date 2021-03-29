@@ -26,6 +26,8 @@ func (biller *badBiller) Bill(ctx context.Context, billingEntry *billing.Billing
 	return errors.New("bad bill")
 }
 
+func (biller *badBiller) Close() {}
+
 type mockBiller struct {
 	calledChan    chan bool
 	billedEntries []billing.BillingEntry
@@ -37,6 +39,8 @@ func (biller *mockBiller) Bill(ctx context.Context, billingEntry *billing.Billin
 	biller.calledChan <- true
 	return nil
 }
+
+func (biller *mockBiller) Close() {}
 
 type badPublisher struct {
 	calledChan chan bool
