@@ -23,6 +23,9 @@ func (publisher *NoOpPubSubPublisher) Publish(ctx context.Context, entry *Entry)
 	return nil
 }
 
+// Close does nothing
+func (publisher *NoOpPubSubPublisher) Close() {}
+
 func (publisher *NoOpPubSubPublisher) NumSubmitted() uint64 {
 	return atomic.LoadUint64(&publisher.submitted)
 }
