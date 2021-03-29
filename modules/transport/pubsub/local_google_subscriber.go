@@ -42,6 +42,7 @@ func NewLocalPubSubSubscriber(
 	subscriberBatchSize int,
 	subscriberChannelSize int,
 	subscriberWriteDuration time.Duration,
+	subscriberWriteTimeout time.Duration,
 	entryVeto bool,
 	jsonFileName string,
 ) (*LocalPubSubSubscriber, error) {
@@ -125,10 +126,15 @@ func NewLocalPubSubSubscriber(
 // Uses PubSubSubscriber's ReceiveAndSubmit()
 func (subscriber *LocalPubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error {
 	err := subscriber.PubSubSubscription.ReceiveAndSubmit(ctx)
+	if err != nil {
+		level.Error(subscriber.Logger).Log("err", err)
+	}
 
-	level.Error(subscriber.Logger).Log("err", err)
 	return err
 }
+
+// Close() is not implemented because we use PubSubSubscriber's Close() via ReceiveAndSubmit()
+func (subscriber *LocalPubSubSubscriber) Close() {}
 
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
 // Once the buffer fills to the BatchSize it will write all entries to a local JSON File.
@@ -142,27 +148,87 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 	messagesToAck := make([]*googlepubsub.Message, subscriber.PubSubSubscription.BatchSize)
 	lastWriteTime := time.Now()
 
-	for entry := range subscriber.PubSubSubscription.entries {
-		subscriber.Metrics.EntriesQueuedToWrite.Set(float64(len(subscriber.PubSubSubscription.entries)))
-		subscriber.PubSubSubscription.bufferMutex.Lock()
-		subscriber.PubSubSubscription.buffer = append(subscriber.PubSubSubscription.buffer, entry)
-		bufferLength := len(subscriber.PubSubSubscription.buffer)
+	for {
+		select {
+		case entry := <-subscriber.PubSubSubscription.entries:
+			subscriber.Metrics.EntriesQueuedToWrite.Set(float64(len(subscriber.PubSubSubscription.entries)))
+			subscriber.PubSubSubscription.bufferMutex.Lock()
+			subscriber.PubSubSubscription.buffer = append(subscriber.PubSubSubscription.buffer, entry)
+			bufferLength := len(subscriber.PubSubSubscription.buffer)
 
-		// See if any of these entries have a message that needs to be acked
-		subscriber.PubSubSubscription.AckMapMutex.RLock()
-		message, exists := subscriber.PubSubSubscription.AckMap[entry]
-		subscriber.PubSubSubscription.AckMapMutex.RUnlock()
-		if exists {
-			messagesToAck = append(messagesToAck, message)
-			// Delete the entry and message from the ack map
-			subscriber.PubSubSubscription.AckMapMutex.Lock()
-			delete(subscriber.PubSubSubscription.AckMap, entry)
-			subscriber.PubSubSubscription.AckMapMutex.Unlock()
-		}
+			// See if any of these entries have a message that needs to be acked
+			subscriber.PubSubSubscription.AckMapMutex.RLock()
+			message, exists := subscriber.PubSubSubscription.AckMap[entry]
+			subscriber.PubSubSubscription.AckMapMutex.RUnlock()
+			if exists {
+				messagesToAck = append(messagesToAck, message)
+				// Delete the entry and message from the ack map
+				subscriber.PubSubSubscription.AckMapMutex.Lock()
+				delete(subscriber.PubSubSubscription.AckMap, entry)
+				subscriber.PubSubSubscription.AckMapMutex.Unlock()
+			}
 
-		if bufferLength >= subscriber.PubSubSubscription.BatchSize || time.Since(lastWriteTime) > subscriber.PubSubSubscription.WriteDuration {
+			if bufferLength >= subscriber.PubSubSubscription.BatchSize || time.Since(lastWriteTime) > subscriber.PubSubSubscription.WriteDuration {
+				if err := subscriber.writeToJSON(); err != nil {
+					subscriber.PubSubSubscription.bufferMutex.Unlock()
+					// Nack all messages
+					for _, nackMessage := range messagesToAck {
+						nackMessage.Nack()
+					}
+
+					// Critical error, log to stdout
+					level.Error(subscriber.Logger).Log("msg", "failed to write to JSON file", "err", err)
+					fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write %d entries to jsonFileName %s: %v\n", bufferLength, subscriber.jsonFileName, err)
+					subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
+				} else {
+					// Ack all messages
+					for _, ackMessage := range messagesToAck {
+						ackMessage.Ack()
+					}
+
+					// Clear the buffers
+					messagesToAck = messagesToAck[:0]
+					subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
+
+					level.Info(subscriber.Logger).Log("msg", "wrote entries to JSON file", "size", subscriber.PubSubSubscription.BatchSize, "total", bufferLength)
+					subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
+				}
+
+				// Reset last attempted write
+				lastWriteTime = time.Now()
+			}
+
+			subscriber.PubSubSubscription.bufferMutex.Unlock()
+		case <-ctx.Done():
+			subscriber.Metrics.EntriesQueuedToWrite.Set(float64(len(subscriber.PubSubSubscription.entries)))
+			var bufferLength int
+
+			// Received shutdown signal, write remaining entries to JSON file
+			subscriber.PubSubSubscription.bufferMutex.Lock()
+			for entry := range subscriber.PubSubSubscription.entries {
+				subscriber.PubSubSubscription.buffer = append(subscriber.PubSubSubscription.buffer, entry)
+				bufferLength = len(subscriber.PubSubSubscription.buffer)
+
+				// See if any of these entries have a message that needs to be acked
+				subscriber.PubSubSubscription.AckMapMutex.RLock()
+				message, exists := subscriber.PubSubSubscription.AckMap[entry]
+				subscriber.PubSubSubscription.AckMapMutex.RUnlock()
+				if exists {
+					messagesToAck = append(messagesToAck, message)
+					// Delete the entry and message from the ack map
+					subscriber.PubSubSubscription.AckMapMutex.Lock()
+					delete(subscriber.PubSubSubscription.AckMap, entry)
+					subscriber.PubSubSubscription.AckMapMutex.Unlock()
+				}
+			}
+
+			// Nack all remaining messages in AckMap
+			for entry, message := range subscriber.PubSubSubscription.AckMap {
+				message.Nack()
+			}
+
+			// Emptied out entries channel, flush to JSON file
 			if err := subscriber.writeToJSON(); err != nil {
-				subscriber.PubSubSubscription.bufferMutex.Unlock()
 				// Nack all messages
 				for _, nackMessage := range messagesToAck {
 					nackMessage.Nack()
@@ -170,7 +236,7 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 
 				// Critical error, log to stdout
 				level.Error(subscriber.Logger).Log("msg", "failed to write to JSON file", "err", err)
-				fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write to jsonFileName %s: %v\n", subscriber.jsonFileName, err)
+				fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write %d entries to jsonFileName %s: %v\n", bufferLength, subscriber.jsonFileName, err)
 				subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
 			} else {
 				// Ack all messages
@@ -182,13 +248,14 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 				messagesToAck = messagesToAck[:0]
 				subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
 
-				level.Info(subscriber.Logger).Log("msg", "wrote entries to JSON file", "size", subscriber.PubSubSubscription.BatchSize, "total", bufferLength)
+				level.Info(subscriber.Logger).Log("msg", "wrote entries to JSON file", "size", bufferLength, "total", bufferLength)
+				fmt.Printf("Final flush of %d entries to jsonFileName %s.\n", bufferLength, subscriber.jsonFileName)
 				subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
 			}
-		}
 
-		subscriber.PubSubSubscription.bufferMutex.Unlock()
-		lastWriteTime = time.Now()
+			subscriber.PubSubSubscription.bufferMutex.Unlock()
+			return nil
+		}
 	}
 
 	return nil
@@ -213,7 +280,7 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 
 		// Add the new data
 		for _, entry := range subscriber.PubSubSubscription.buffer {
-			// Save the data to ensure BigQuery can accept the data
+			// Save the data to ensure it is acceptable for BigQuery
 			entryMap, _, err := (*entry).Save()
 			if err != nil {
 				return fmt.Errorf("Could not Save() entry %v: %v", entry, err)
