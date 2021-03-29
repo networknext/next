@@ -17,9 +17,11 @@ type Entry interface {
 
 type GooglePubSubPublisher interface {
 	Publish(ctx context.Context, entry *Entry) error
+	Close()
 }
 
 type GooglePubSubSubscriber interface {
 	ReceiveAndSubmit(ctx context.Context) error
 	WriteLoop(ctx context.Context) error
+	Close()
 }
