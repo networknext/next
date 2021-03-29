@@ -29,6 +29,7 @@ type PubSubSubscriber struct {
 	BatchSize     int
 	ChannelSize   int
 	WriteDuration time.Duration
+	WriteTimeout  time.Duration
 
 	PubSubSubscription *googlepubsub.Subscription
 	buffer             []*Entry
@@ -54,6 +55,7 @@ func NewPubSubSubscriber(
 	subscriberBatchSize int,
 	subscriberChannelSize int,
 	subscriberWriteDuration time.Duration,
+	subscriberWriteTimeout time.Duration,
 	entryVeto bool,
 ) (*PubSubSubscriber, error) {
 	pubsubClient, err := googlepubsub.NewClient(ctx, gcpProjectID)
@@ -119,6 +121,12 @@ func NewPubSubSubscriber(
 		subscriberChannelSize = DefaultBigQueryChannelSize
 	}
 
+	// Force write timeout to be <= 25 seconds because when context is canceled for shutdown,
+	// we only have 30 seconds to finish cleaning up before a SIGKILL is sent
+	if subscriberWriteTimeout > time.Second*25 {
+		subscriberWriteTimeout = time.Second * 25
+	}
+
 	return &PubSubSubscriber{
 		Logger:        logger,
 		Metrics:       metrics,
@@ -126,6 +134,7 @@ func NewPubSubSubscriber(
 		BatchSize:     subscriberBatchSize,
 		ChannelSize:   subscriberChannelSize,
 		WriteDuration: subscriberWriteDuration,
+		WriteTimeout:  subscriberWriteTimeout,
 
 		PubSubSubscription: subscriber,
 		EntryVeto:          entryVeto,
@@ -178,14 +187,24 @@ func (subscriber *PubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error 
 					return
 				}
 
+				// Nack if we failed to read the billing entry
+				m.Nack()
 				subscriber.Metrics.ErrorMetrics.ReadFailure.Add(1)
 			}
 		}
 	})
 
-	// If the Receive function returns for any reason, we want to immediately return and exit
-	level.Error(subscriber.Logger).Log("msg", "stopped receive loop", "err", err)
-	return err
+	if err != nil && err != context.Canceled {
+		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
+		level.Error(subscriber.Logger).Log("msg", "stopped receive loop", "err", err)
+		return err
+	}
+
+	// Close entries channel to ensure messages are drained for the final write to BigQuery
+	subscriber.Close()
+	level.Debug(subscriber.Logger).Log("msg", "receive canceled, closed entries channel")
+
+	return nil
 }
 
 // Unbatches a message from Google Pub/Sub since we do our own batching.
@@ -236,6 +255,11 @@ func (subscriber *PubSubSubscriber) submit(ctx context.Context, entry *Entry) er
 	}
 }
 
+// Closes the entries channel. Should only be done by the entry sender.
+func (subscriber *PubSubSubscriber) Close() {
+	close(subscriber.entries)
+}
+
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
 // Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
 // only be called from 1 goroutine to avoid using a mutex around the internal buffer slice.
@@ -248,37 +272,117 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 	messagesToAck := make([]*googlepubsub.Message, subscriber.BatchSize)
 	lastWriteTime := time.Now()
 
-	for entry := range subscriber.entries {
-		subscriber.Metrics.EntriesQueuedToWrite.Set(float64(len(subscriber.entries)))
-		subscriber.bufferMutex.Lock()
-		subscriber.buffer = append(subscriber.buffer, entry)
-		bufferLength := len(subscriber.buffer)
+	for {
+		select {
+		case entry := <-subscriber.entries:
+			subscriber.Metrics.EntriesQueuedToWrite.Set(float64(len(subscriber.entries)))
+			subscriber.bufferMutex.Lock()
+			subscriber.buffer = append(subscriber.buffer, entry)
+			bufferLength := len(subscriber.buffer)
 
-		// See if any of these entries have a message that needs to be acked
-		subscriber.AckMapMutex.RLock()
-		message, exists := subscriber.AckMap[entry]
-		subscriber.AckMapMutex.RUnlock()
-		if exists {
-			messagesToAck = append(messagesToAck, message)
-			// Delete the entry and message from the ack map
-			subscriber.AckMapMutex.Lock()
-			delete(subscriber.AckMap, entry)
-			subscriber.AckMapMutex.Unlock()
-		}
+			// See if any of these entries have a message that needs to be acked
+			subscriber.AckMapMutex.RLock()
+			message, exists := subscriber.AckMap[entry]
+			subscriber.AckMapMutex.RUnlock()
+			if exists {
+				messagesToAck = append(messagesToAck, message)
+				// Delete the entry and message from the ack map
+				subscriber.AckMapMutex.Lock()
+				delete(subscriber.AckMap, entry)
+				subscriber.AckMapMutex.Unlock()
+			}
 
-		if bufferLength >= subscriber.BatchSize || time.Since(lastWriteTime) > subscriber.WriteDuration {
-			if err := subscriber.TableInserter.Put(ctx, subscriber.buffer); err != nil {
-				subscriber.bufferMutex.Unlock()
+			// Create context with timeout to not indefinitely retry writing to BigQuery
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), subscriber.WriteTimeout)
+
+			// Write to BigQuery when buffer reached batch size, or it has been longer than WriteDuration since the last write
+			if bufferLength >= subscriber.BatchSize || time.Since(lastWriteTime) > subscriber.WriteDuration {
+				if err := subscriber.TableInserter.Put(ctxTimeout, subscriber.buffer); err != nil {
+					// Cancel the context with timeout
+					cancel()
+
+					subscriber.bufferMutex.Unlock()
+					// Nack all messages
+					for _, nackMessage := range messagesToAck {
+						nackMessage.Nack()
+					}
+
+					// Critical error, log to stdout
+					level.Error(subscriber.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+					fmt.Printf("PubSubSubscriber WriteLoop(): failed to write %d entries to BigQuery: %v\n", bufferLength, err)
+					subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
+				} else {
+					// Cancel the context with timeout
+					cancel()
+
+					// Ack all messages
+					for _, ackMessage := range messagesToAck {
+						ackMessage.Ack()
+					}
+
+					// Clear the buffers
+					messagesToAck = messagesToAck[:0]
+					subscriber.buffer = subscriber.buffer[:0]
+
+					level.Info(subscriber.Logger).Log("msg", "wrote entries to BigQuery", "size", subscriber.BatchSize, "total", bufferLength)
+					subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
+				}
+
+				// Reset last attempted write
+				lastWriteTime = time.Now()
+			}
+
+			subscriber.bufferMutex.Unlock()
+		case <-ctx.Done():
+			subscriber.Metrics.EntriesQueuedToWrite.Set(float64(len(subscriber.entries)))
+			var bufferLength int
+
+			// Received shutdown signal, write remaining entries to BigQuery
+			subscriber.bufferMutex.Lock()
+			for entry := range subscriber.entries {
+				subscriber.buffer = append(subscriber.buffer, entry)
+				bufferLength = len(subscriber.buffer)
+
+				// See if any of these entries have a message that needs to be acked
+				subscriber.AckMapMutex.RLock()
+				message, exists := subscriber.AckMap[entry]
+				subscriber.AckMapMutex.RUnlock()
+				if exists {
+					messagesToAck = append(messagesToAck, message)
+					// Delete the entry and message from the ack map
+					subscriber.AckMapMutex.Lock()
+					delete(subscriber.AckMap, entry)
+					subscriber.AckMapMutex.Unlock()
+				}
+			}
+
+			// Nack all remaining messages in AckMap
+			for entry, message := range subscriber.AckMap {
+				message.Nack()
+			}
+
+			// Create context with timeout to not indefinitely retry writing to BigQuery
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), subscriber.WriteTimeout)
+
+			// Emptied out the entries channel, flush to BigQuery
+			if err := subscriber.TableInserter.Put(ctxTimeout, subscriber.buffer); err != nil {
+				// Cancel the context with timeout
+				cancel()
+
 				// Nack all messages
 				for _, nackMessage := range messagesToAck {
 					nackMessage.Nack()
 				}
 
 				// Critical error, log to stdout
-				level.Error(subscriber.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				fmt.Printf("PubSubSubscriber WriteLoop(): failed to write to BigQuery: %v\n", err)
+				level.Error(subscriber.Logger).Log("msg", "failed final write to BigQuery", "err", err)
+				fmt.Printf("PubSubSubscriber WriteLoop(): failed to write %d entries to BigQuery: %v\n", bufferLength, err)
+
 				subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
 			} else {
+				// Cancel the context with timeout
+				cancel()
+
 				// Ack all messages
 				for _, ackMessage := range messagesToAck {
 					ackMessage.Ack()
@@ -288,13 +392,15 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 				messagesToAck = messagesToAck[:0]
 				subscriber.buffer = subscriber.buffer[:0]
 
-				level.Info(subscriber.Logger).Log("msg", "wrote entries to BigQuery", "size", subscriber.BatchSize, "total", bufferLength)
+				level.Info(subscriber.Logger).Log("msg", "wrote final entries to BigQuery", "size", bufferLength, "total", bufferLength)
+				fmt.Printf("Final flush of %d entries to BigQuery.\n", bufferLength)
+
 				subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
 			}
-		}
 
-		subscriber.bufferMutex.Unlock()
-		lastWriteTime = time.Now()
+			subscriber.bufferMutex.Unlock()
+			return nil
+		}
 	}
 
 	return nil
