@@ -1,18 +1,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/storage"
 )
 
 const (
-	MaxVMsPerMIG = 1000
-
-	ClientsPerVM     = 2000
-	ServersPerVM     = 50
-	ClientsPerServer = 200
+	// Params for the bigtable instance and table
+	// These are based on staging.env files for the portal cruncher and portal
+	InstanceID = "network-next-portal-big-table-0"
+	TableName  = "portal-session-history"
+	CFName     = "portal-session-history"
 )
 
 type StagingServiceConfig struct {
@@ -24,12 +29,15 @@ type StagingConfig struct {
 	RelayBackend   StagingServiceConfig `json:"relay-backend"`
 	Relays         StagingServiceConfig `json:"relays"`
 	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
+	Vanity         StagingServiceConfig `json:"vanity"`
+	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
+	Beacon         StagingServiceConfig `json:"beacon"`
+	BeaconInserter StagingServiceConfig `json:"beacon-inserter"`
 	Portal         StagingServiceConfig `json:"portal"`
 	ServerBackend  StagingServiceConfig `json:"server-backend"`
-	Server         StagingServiceConfig `json:"server"`
-	Client         StagingServiceConfig `json:"client"`
+	FakeServer     StagingServiceConfig `json:"fake-server"`
 }
 
 var DefaultStagingConfig = StagingConfig{
@@ -48,12 +56,32 @@ var DefaultStagingConfig = StagingConfig{
 		Count: 4,
 	},
 
+	Vanity: StagingServiceConfig{
+		Cores: 4,
+		Count: 4,
+	},
+
+	Api: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
 	Analytics: StagingServiceConfig{
 		Cores: 1,
 		Count: -1,
 	},
 
 	Billing: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
+	Beacon: StagingServiceConfig{
+		Cores: 8,
+		Count: -1,
+	},
+
+	BeaconInserter: StagingServiceConfig{
 		Cores: 1,
 		Count: -1,
 	},
@@ -68,14 +96,9 @@ var DefaultStagingConfig = StagingConfig{
 		Count: 4,
 	},
 
-	Server: StagingServiceConfig{
-		Cores: 50,
-		Count: 500,
-	},
-
-	Client: StagingServiceConfig{
-		Cores: 8,
-		Count: 100000,
+	FakeServer: StagingServiceConfig{
+		Cores: 16,
+		Count: 1,
 	},
 }
 
@@ -324,18 +347,15 @@ func waitForMIGStable(mig string) error {
 }
 
 func StartStaging(config StagingConfig) error {
-	if config.Client.Count < ClientsPerVM {
-		return fmt.Errorf("must run at least %d clients", ClientsPerVM)
-	}
-
-	if config.Client.Count > MaxVMsPerMIG*ClientsPerVM {
-		return fmt.Errorf("cannot run more than %d clients", config.Client.Count)
-	}
-
-	config.Server.Count = config.Client.Count / ClientsPerServer / ServersPerVM
-	config.Client.Count /= ClientsPerVM
-
 	instanceGroups := createInstanceGroups(config)
+
+	// Create the Bigtable instance and table if needed
+	fmt.Printf("Setting up Bigtable...")
+	err := createBigTable()
+	if err != nil {
+		return err
+	}
+	fmt.Println("done")
 
 	for _, instanceGroup := range instanceGroups {
 		serviceConfig := instanceGroup.ServiceConfig()
@@ -372,7 +392,7 @@ func StartStaging(config StagingConfig) error {
 		fmt.Println()
 	}
 
-	fmt.Println("staging started")
+	fmt.Println("\nstaging started")
 	return nil
 }
 
@@ -398,6 +418,17 @@ func StopStaging() []error {
 
 	}
 
+	wg.Add(1)
+	go func() {
+		if err := deleteBigTable(); err != nil {
+			errChan <- err
+		}
+
+		fmt.Println("deleted Bigtable")
+
+		wg.Done()
+	}()
+
 	wg.Wait()
 
 	errs := make([]error, 0)
@@ -417,18 +448,118 @@ func StopStaging() []error {
 	return nil
 }
 
+// Creates a Bigtable instance and table, if needed
+// Bigtable is required for the portal crunchers and portal to function
+func createBigTable() error {
+	ctx := context.Background()
+	gcpProjectID := "network-next-v3-staging"
+	logger := log.NewNopLogger()
+
+	// Create a bigtable instance admin
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btInstanceAdmin.Close()
+	}()
+
+	// Verify if the instance already exists
+	instanceExists, err := btInstanceAdmin.VerifyInstanceExists(ctx, InstanceID)
+	if err != nil {
+		return err
+	}
+	if !instanceExists {
+		// Create the instance with 2 clusters and 5 zones per cluster
+		displayName := "bigtable-staging"
+		zones := []string{"us-central1-a", "us-central1-b"}
+		numClusters := 2
+		numNodesPerCluster := 5
+
+		err = btInstanceAdmin.CreateInstance(ctx, InstanceID, displayName, zones, numClusters, numNodesPerCluster)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Create a bigtable admin
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btAdmin.Close()
+	}()
+
+	// Verify if the table already exists
+	tableExists, err := btAdmin.VerifyTableExists(ctx, TableName)
+	if err != nil {
+		return err
+	}
+	if !tableExists {
+		// Create the table with a max age policy of 90 days
+		err = btAdmin.CreateTable(ctx, TableName, []string{CFName})
+		if err != nil {
+			return err
+		}
+
+		maxAge := time.Hour * time.Duration(1) * 24 * 90
+		err = btAdmin.SetMaxAgePolicy(ctx, TableName, []string{CFName}, maxAge)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Deletes a Bigtable instance, if needed
+// Deleting an instance automatically deletes any tables for that instance
+func deleteBigTable() error {
+	ctx := context.Background()
+	gcpProjectID := "network-next-v3-staging"
+	logger := log.NewNopLogger()
+
+	// Create a bigtable instance admin
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btInstanceAdmin.Close()
+	}()
+
+	// Verify if the instance already exists
+	instanceExists, err := btInstanceAdmin.VerifyInstanceExists(ctx, InstanceID)
+	if err != nil {
+		return err
+	}
+	if instanceExists {
+		// Delete the instance
+		err = btInstanceAdmin.DeleteInstance(ctx, InstanceID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups := make([]InstanceGroup, 0)
 
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-server-mig", true, config.Server))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-clients-1", false, config.Client))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
 
 	return instanceGroups
 }
