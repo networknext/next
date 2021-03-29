@@ -32,3 +32,5 @@ func (local *LocalBiller) Bill(ctx context.Context, entry *BillingEntry) error {
 
 	return nil
 }
+
+func (local *LocalBiller) Close() {}
