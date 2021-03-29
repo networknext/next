@@ -5,15 +5,21 @@ import (
 	"sync/atomic"
 )
 
+// NoOpPubSubPublisher does not perform any receiving actions.
 type NoOpPubSubSubscriber struct {
 	received uint64
 }
 
-func (subscriber *NoOpPubSubSubscriber) Receive(ctx context.Context) error {
+// ReceiveAndSubmit() increments a counter.
+func (subscriber *NoOpPubSubSubscriber) ReceiveAndSubmit(ctx context.Context) error {
 	atomic.AddUint64(&subscriber.received, 1)
 	return nil
 }
 
+// Close() does nothing.
+func (subscriber *NoOpPubSubSubscriber) Close() {}
+
+// WriteLoop() does nothing.
 func (subscriber *NoOpPubSubSubscriber) WriteLoop(ctx context.Context) error {
 	return nil
 }

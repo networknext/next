@@ -11,7 +11,7 @@ type NoOpPubSubPublisher struct {
 	submitted uint64
 }
 
-// Publish does nothing besides checking if the given entry can be marshaled and incrementing the appropriate metrics.
+// Publish() does nothing besides checking if the given entry can be marshaled and incrementing the appropriate metrics.
 func (publisher *NoOpPubSubPublisher) Publish(ctx context.Context, entry *Entry) error {
 	// Ensure the entry can be marshaled
 	_, err := (*entry).WriteEntry()
@@ -23,7 +23,7 @@ func (publisher *NoOpPubSubPublisher) Publish(ctx context.Context, entry *Entry)
 	return nil
 }
 
-// Close does nothing
+// Close() does nothing.
 func (publisher *NoOpPubSubPublisher) Close() {}
 
 func (publisher *NoOpPubSubPublisher) NumSubmitted() uint64 {
