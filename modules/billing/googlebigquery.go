@@ -210,12 +210,12 @@ func (entry *BillingEntry) Validate() bool {
 		return false
 	}
 
-	if !(entry.JitterClientToServer >= 0.0 && entry.JitterClientToServer <= 10000.0) {
+	if !(entry.JitterClientToServer >= 0.0 && entry.JitterClientToServer <= 1000.0) {
 		fmt.Printf("invalid jitter client to server\n")
 		return false
 	}
 
-	if !(entry.JitterServerToClient >= 0.0 && entry.JitterServerToClient <= 10000.0) {
+	if !(entry.JitterServerToClient >= 0.0 && entry.JitterServerToClient <= 1000.0) {
 		fmt.Printf("invalid jitter server to client\n")
 		return false
 	}
