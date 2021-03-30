@@ -1181,10 +1181,10 @@ func PostSessionUpdate(
 
 	// Clamp jitter between client <-> server at 1000 (it is meaningless beyond that)
 	if packet.JitterClientToServer > 1000.0 {
-		packet.JitterClientToServer = 1000
+		packet.JitterClientToServer = float32(1000)
 	}
 	if packet.JitterServerToClient > 1000.0 {
-		packet.JitterServerToClient = 1000
+		packet.JitterServerToClient = float32(1000)
 	}
 
 	billingEntry := &billing.BillingEntry{
