@@ -28,6 +28,7 @@ type LocalPubSubSubscriber struct {
 	Metrics            *metrics.GoogleSubscriberMetrics
 	PubSubSubscription *PubSubSubscriber
 
+	writeTimeout time.Duration
 	jsonFileName string
 }
 
@@ -119,6 +120,7 @@ func NewLocalPubSubSubscriber(
 		Metrics:            metrics,
 		PubSubSubscription: googlePubSubSubscriber,
 
+		writeTimeout: subscriberWriteTimeout,
 		jsonFileName: jsonFileName,
 	}, nil
 }
@@ -169,7 +171,34 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 			}
 
 			if bufferLength >= subscriber.PubSubSubscription.BatchSize || time.Since(lastWriteTime) > subscriber.PubSubSubscription.WriteDuration {
-				if err := subscriber.writeToJSON(); err != nil {
+				select {
+				case err := <-subscriber.writeToJSON():
+					if err != nil {
+						subscriber.PubSubSubscription.bufferMutex.Unlock()
+						// Nack all messages
+						for _, nackMessage := range messagesToAck {
+							nackMessage.Nack()
+						}
+
+						// Critical error, log to stdout
+						level.Error(subscriber.Logger).Log("msg", "failed to write to JSON file", "err", err)
+						fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write %d entries to jsonFileName %s: %v\n", bufferLength, subscriber.jsonFileName, err)
+						subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
+					} else {
+						// Ack all messages
+						for _, ackMessage := range messagesToAck {
+							ackMessage.Ack()
+						}
+
+						// Clear the buffers
+						messagesToAck = messagesToAck[:0]
+						subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
+
+						level.Info(subscriber.Logger).Log("msg", "wrote entries to JSON file", "size", subscriber.PubSubSubscription.BatchSize, "total", bufferLength)
+						subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
+					}
+				case <-time.After(subscriber.writeTimeout):
+					// Write to JSON file timed out
 					subscriber.PubSubSubscription.bufferMutex.Unlock()
 					// Nack all messages
 					for _, nackMessage := range messagesToAck {
@@ -177,21 +206,9 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 					}
 
 					// Critical error, log to stdout
-					level.Error(subscriber.Logger).Log("msg", "failed to write to JSON file", "err", err)
-					fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write %d entries to jsonFileName %s: %v\n", bufferLength, subscriber.jsonFileName, err)
+					level.Error(subscriber.Logger).Log("msg", "failed to write to JSON file", "err", "timed out")
+					fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write %d entries to jsonFileName %s: timed out\n", bufferLength, subscriber.jsonFileName)
 					subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
-				} else {
-					// Ack all messages
-					for _, ackMessage := range messagesToAck {
-						ackMessage.Ack()
-					}
-
-					// Clear the buffers
-					messagesToAck = messagesToAck[:0]
-					subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
-
-					level.Info(subscriber.Logger).Log("msg", "wrote entries to JSON file", "size", subscriber.PubSubSubscription.BatchSize, "total", bufferLength)
-					subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
 				}
 
 				// Reset last attempted write
@@ -223,34 +240,48 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 			}
 
 			// Nack all remaining messages in AckMap
-			for entry, message := range subscriber.PubSubSubscription.AckMap {
+			for _, message := range subscriber.PubSubSubscription.AckMap {
 				message.Nack()
 			}
 
 			// Emptied out entries channel, flush to JSON file
-			if err := subscriber.writeToJSON(); err != nil {
+			select {
+			case err := <-subscriber.writeToJSON():
+				if err != nil {
+					// Nack all messages
+					for _, nackMessage := range messagesToAck {
+						nackMessage.Nack()
+					}
+
+					// Critical error, log to stdout
+					level.Error(subscriber.Logger).Log("msg", "failed final write to JSON file", "err", err)
+					fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed final write of %d entries to jsonFileName %s: %v\n", bufferLength, subscriber.jsonFileName, err)
+					subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
+				} else {
+					// Ack all messages
+					for _, ackMessage := range messagesToAck {
+						ackMessage.Ack()
+					}
+
+					// Clear the buffers
+					messagesToAck = messagesToAck[:0]
+					subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
+
+					level.Info(subscriber.Logger).Log("msg", "wrote final entries to JSON file", "size", bufferLength, "total", bufferLength)
+					fmt.Printf("Final flush of %d entries to jsonFileName %s.\n", bufferLength, subscriber.jsonFileName)
+					subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
+				}
+			case <-time.After(subscriber.writeTimeout):
+				// Write to JSON file timed out
 				// Nack all messages
 				for _, nackMessage := range messagesToAck {
 					nackMessage.Nack()
 				}
 
 				// Critical error, log to stdout
-				level.Error(subscriber.Logger).Log("msg", "failed to write to JSON file", "err", err)
-				fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed to write %d entries to jsonFileName %s: %v\n", bufferLength, subscriber.jsonFileName, err)
+				level.Error(subscriber.Logger).Log("msg", "failed final write to JSON file", "err", "timed out")
+				fmt.Printf("LocalPubSubSubscriber WriteLoop(): failed final write of %d entries to jsonFileName %s: timed out\n", bufferLength, subscriber.jsonFileName)
 				subscriber.Metrics.ErrorMetrics.WriteFailure.Add(float64(bufferLength))
-			} else {
-				// Ack all messages
-				for _, ackMessage := range messagesToAck {
-					ackMessage.Ack()
-				}
-
-				// Clear the buffers
-				messagesToAck = messagesToAck[:0]
-				subscriber.PubSubSubscription.buffer = subscriber.PubSubSubscription.buffer[:0]
-
-				level.Info(subscriber.Logger).Log("msg", "wrote entries to JSON file", "size", bufferLength, "total", bufferLength)
-				fmt.Printf("Final flush of %d entries to jsonFileName %s.\n", bufferLength, subscriber.jsonFileName)
-				subscriber.Metrics.EntriesSubmitted.Add(float64(bufferLength))
 			}
 
 			subscriber.PubSubSubscription.bufferMutex.Unlock()
@@ -262,20 +293,22 @@ func (subscriber *LocalPubSubSubscriber) WriteLoop(ctx context.Context) error {
 }
 
 // Writes the buffer to the local JSON file
-func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
+func (subscriber *LocalPubSubSubscriber) writeToJSON() <-chan error {
 	var dataList []map[string]bigquery.Value
-
+	errChan := make(chan error, 1)
 	// Append to file if it exists
 	if _, err := os.Stat(subscriber.jsonFileName); err == nil {
 		// Read from the existing file
 		prevData, err := ioutil.ReadFile(subscriber.jsonFileName)
 		if err != nil {
-			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not read from jsonFileName %s: %v", subscriber.jsonFileName, err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not read from jsonFileName %s: %v", subscriber.jsonFileName, err)
+			return errChan
 		}
 
 		// Unmarshal the data
 		if err := json.Unmarshal(prevData, &dataList); err != nil {
-			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not unmarshal previous data from %s: %v", subscriber.jsonFileName, err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not unmarshal previous data from %s: %v", subscriber.jsonFileName, err)
+			return errChan
 		}
 
 		// Add the new data
@@ -283,7 +316,8 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 			// Save the data to ensure it is acceptable for BigQuery
 			entryMap, _, err := (*entry).Save()
 			if err != nil {
-				return fmt.Errorf("Could not Save() entry %v: %v", entry, err)
+				errChan <- fmt.Errorf("Could not Save() entry %v: %v", entry, err)
+				return errChan
 			}
 
 			// Append the new data to previous data
@@ -293,18 +327,21 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 		// Marshal all the data
 		updatedData, err := json.MarshalIndent(dataList, "", "\t")
 		if err != nil {
-			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not marshal updated data: %v", err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not marshal updated data: %v", err)
+			return errChan
 		}
 
 		// Overwrite the file with the updated data
 		if err = ioutil.WriteFile(subscriber.jsonFileName, updatedData, 0644); err != nil {
-			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not overwrite jsonFileName %s with updated data: %v", subscriber.jsonFileName, err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not overwrite jsonFileName %s with updated data: %v", subscriber.jsonFileName, err)
+			return errChan
 		}
 	} else if os.IsNotExist(err) {
 		// File does not exist, create it
 		f, err := os.OpenFile(subscriber.jsonFileName, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not create jsonFileName %s: %v", subscriber.jsonFileName, err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not create jsonFileName %s: %v", subscriber.jsonFileName, err)
+			return errChan
 		}
 
 		// Close the file with a defer func
@@ -317,7 +354,8 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 			// Save the data to ensure BigQuery can accept the data
 			entryMap, _, err := (*entry).Save()
 			if err != nil {
-				return fmt.Errorf("Could not Save() entry %v: %v", entry, err)
+				errChan <- fmt.Errorf("Could not Save() entry %v: %v", entry, err)
+				return errChan
 			}
 
 			// Append the data
@@ -327,17 +365,21 @@ func (subscriber *LocalPubSubSubscriber) writeToJSON() error {
 		// Marshal the data
 		newData, err := json.MarshalIndent(dataList, "", "\t")
 		if err != nil {
-			return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not marshal new data: %v", err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not marshal new data: %v", err)
+			return errChan
 		}
 
 		// Write the data
 		if _, err := f.Write(newData); err != nil {
-			fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not write to jsonFileName %s with new data: %v", subscriber.jsonFileName, err)
+			errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not write to jsonFileName %s with new data: %v", subscriber.jsonFileName, err)
+			return errChan
 		}
 	} else {
 		// Could not confirm if file exists
-		return fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not confirm if jsonFileName %s exists: %v", subscriber.jsonFileName, err)
+		errChan <- fmt.Errorf("LocalPubSubSubscriber writeToJSON(): could not confirm if jsonFileName %s exists: %v", subscriber.jsonFileName, err)
+		return errChan
 	}
 
-	return nil
+	errChan <- nil
+	return errChan
 }

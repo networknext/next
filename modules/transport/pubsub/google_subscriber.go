@@ -357,7 +357,7 @@ func (subscriber *PubSubSubscriber) WriteLoop(ctx context.Context) error {
 			}
 
 			// Nack all remaining messages in AckMap
-			for entry, message := range subscriber.AckMap {
+			for _, message := range subscriber.AckMap {
 				message.Nack()
 			}
 
