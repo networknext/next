@@ -418,14 +418,18 @@ func StopStaging() []error {
 
 	}
 
-	wg.Wait()
+	wg.Add(1)
+	go func() {
+		if err := deleteBigTable(); err != nil {
+			errChan <- err
+		}
 
-	err := deleteBigTable()
-	if err != nil {
-		errChan <- err
-	} else {
 		fmt.Println("deleted Bigtable")
-	}
+
+		wg.Done()
+	}()
+
+	wg.Wait()
 
 	errs := make([]error, 0)
 	select {
@@ -551,6 +555,8 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))

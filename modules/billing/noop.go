@@ -16,6 +16,9 @@ func (noop *NoOpBiller) Bill(ctx context.Context, entry *BillingEntry) error {
 	return nil
 }
 
+// Close does nothing
+func (noop *NoOpBiller) Close() {}
+
 func (noop *NoOpBiller) NumSubmitted() uint64 {
 	return atomic.LoadUint64(&noop.submitted)
 }
