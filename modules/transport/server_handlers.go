@@ -1179,6 +1179,14 @@ func PostSessionUpdate(
 		slicePacketLoss = slicePacketLossServerToClient
 	}
 
+	// Clamp jitter between client <-> server at 1000 (it is meaningless beyond that)
+	if packet.JitterClientToServer > 1000.0 {
+		packet.JitterClientToServer = 1000
+	}
+	if packet.JitterServerToClient > 1000.0 {
+		packet.JitterServerToClient = 1000
+	}
+
 	billingEntry := &billing.BillingEntry{
 		Timestamp:                       uint64(time.Now().Unix()),
 		BuyerID:                         packet.CustomerID,
