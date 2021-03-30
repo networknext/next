@@ -10646,16 +10646,26 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
         if ( datacenter_env )
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter override '%s'", datacenter_env );
             datacenter = datacenter_env;
         }
-        if ( datacenter != NULL && 
-             datacenter[0] != 0 && 
-             datacenter[0] != 'c' &&
-             datacenter[1] != 'l' &&
-             datacenter[2] != 'o' &&
-             datacenter[3] != 'u' &&
-             datacenter[4] != 'd' &&
-             datacenter[5] != '\n' )
+        next_assert( datacenter );
+        const bool datacenter_is_empty_string = datacenter[0] == '\0';
+        const bool datacenter_is_cloud = datacenter[0] == 'c' &&
+                                         datacenter[1] == 'l' &&
+                                         datacenter[2] == 'o' &&
+                                         datacenter[3] == 'u' &&
+                                         datacenter[4] == 'd' &&
+                                         datacenter[5] == '\n';
+        if ( datacenter_is_empty_string )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server datacenter is empty string" );
+        }
+        if ( datacenter_is_cloud )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server datacenter is empty string" );
+        }
+        if ( !datacenter_is_empty_string && !datacenter_is_cloud )
         {
             server->datacenter_id = next_datacenter_id( datacenter );
             strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
