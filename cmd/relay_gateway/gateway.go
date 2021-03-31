@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"expvar"
 	"fmt"
@@ -13,9 +14,11 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
@@ -95,26 +98,82 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	var publishers []pubsub.Publisher
+	updateChan := make(chan []byte, 1000)
+
+	// ZeroMQ
 	if !cfg.NRBHTTP {
-		publishers, err = pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+		var publishers []pubsub.Publisher
+		refreshPubs := make(chan bool, 1)
+		publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			return 1
+			os.Exit(1)
+		}
+
+		go func() {
+			syncTimer := helpers.NewSyncTimer(cfg.PublisherRefreshTimer)
+			for {
+				syncTimer.Run()
+				refreshPubs <- true
+			}
+		}()
+
+		go func() {
+			for {
+				select {
+				case <-refreshPubs:
+					newPublishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+					if err != nil {
+						_ = level.Error(logger).Log("err", err)
+						continue
+					}
+
+					for _, pub := range publishers {
+						err = pub.Close()
+						if err != nil {
+							_ = level.Error(logger).Log("err", err)
+						}
+					}
+
+					publishers = newPublishers
+
+					continue
+
+				case msg := <-updateChan:
+					for _, pub := range publishers {
+						_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, msg)
+						if err != nil {
+							_ = level.Error(logger).Log("msg", "unable to send update to optimizer", "err", err)
+						}
+					}
+				}
+			}
+		}()
+	} else {
+		client := http.Client{Timeout: cfg.HTTPTimeout}
+		for {
+			msg := <-updateChan
+			for _, address := range cfg.RelayBackendAddresses {
+				go func(address string, body []byte) {
+					buffer := bytes.NewBuffer(body)
+					resp, err := client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
+					if err != nil || resp.StatusCode != http.StatusOK {
+						_ = level.Error(logger).Log("msg", "unable to send update to relay backend", "err", err)
+					}
+					resp.Body.Close()
+				}(address, msg)
+			}
 		}
 	}
 
 	getParams := func() *transport.GatewayHandlerConfig {
 		return &transport.GatewayHandlerConfig{
-			Storer:                storer,
-			InitMetrics:           relayMetrics.RelayInitMetrics,
-			UpdateMetrics:         relayMetrics.RelayUpdateMetrics,
-			RouterPrivateKey:      cfg.RouterPrivateKey,
-			Publishers:            publishers,
-			NRBNoInit:             cfg.NRBNoInit,
-			NRBHTTP:               cfg.NRBHTTP,
-			RelayBackendAddresses: cfg.RelayBackendAddresses,
-			LoadTest:              cfg.Loadtest,
+			Storer:           storer,
+			InitMetrics:      relayMetrics.RelayInitMetrics,
+			UpdateMetrics:    relayMetrics.RelayUpdateMetrics,
+			RouterPrivateKey: cfg.RouterPrivateKey,
+			NRBNoInit:        cfg.NRBNoInit,
+			LoadTest:         cfg.Loadtest,
 		}
 	}
 
@@ -123,7 +182,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc(logger, getParams())).Methods("POST")
-	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams())).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams(), updateChan)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -160,6 +219,8 @@ type Config struct {
 	NRBHTTP               bool
 	RelayBackendAddresses []string
 	Loadtest              bool
+	PublisherRefreshTimer time.Duration
+	HTTPTimeout           time.Duration
 }
 
 func newConfig() (*Config, error) {
@@ -189,6 +250,13 @@ func newConfig() (*Config, error) {
 		}
 		relayBackendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
 		cfg.RelayBackendAddresses = relayBackendAddresses
+
+		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second)
+		if err != nil {
+			return nil, err
+		}
+		cfg.HTTPTimeout = httpTimeout
+
 	} else {
 		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
 			return nil, fmt.Errorf("PUBLISH_TO_HOSTS not set")
@@ -201,6 +269,12 @@ func newConfig() (*Config, error) {
 			return nil, err
 		}
 		cfg.PublisherSendBuffer = publisherSendBuffer
+
+		publisherRefresh, err := envvar.GetDuration("PUBLISHER_REFRESH_TIMER", 60*time.Second)
+		if err != nil {
+			return nil, err
+		}
+		cfg.PublisherRefreshTimer = publisherRefresh
 	}
 
 	featureLoadTest, err := envvar.GetBool("FEATURE_LOAD_TEST", false)
