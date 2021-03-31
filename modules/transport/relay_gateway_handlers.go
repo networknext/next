@@ -9,10 +9,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/networknext/backend/modules/envvar"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -157,7 +158,8 @@ func initRelayOnGateway(relay *routing.Relay, relayVersion string, logger log.Lo
 }
 
 // GatewayRelayUpdateHandlerFunc returns the function for the relay update endpoint
-func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *GatewayHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+
+func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *GatewayHandlerConfig, requestChan chan []byte) func(writer http.ResponseWriter, request *http.Request) {
 	handlerLogger := log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -177,6 +179,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		defer request.Body.Close()
 
 		localLogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+		level.Debug(localLogger).Log("msg", "relay update received")
 
 		var relayUpdateRequest RelayUpdateRequest
 		switch request.Header.Get("Content-Type") {
@@ -256,27 +259,7 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 		}
 
-		if params.NRBHTTP {
-			for _, address := range params.RelayBackendAddresses {
-				go func(address string) {
-					buffer := bytes.NewBuffer(body)
-					resp, err := http.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
-					if err != nil || resp.StatusCode != http.StatusOK {
-						_ = level.Error(localLogger).Log("msg", "unable to send update to relay backend", "err", err)
-					}
-					resp.Body.Close()
-				}(address)
-			}
-		} else {
-			for _, pub := range params.Publishers {
-				go func(pub pubsub.Publisher, body []byte) {
-					_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, body)
-					if err != nil {
-						_ = level.Error(localLogger).Log("msg", "unable to send update to optimizer", "err", err)
-					}
-				}(pub, body)
-			}
-		}
+		requestChan <- body
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 		if !params.LoadTest {
@@ -331,5 +314,6 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
+
 	}
 }

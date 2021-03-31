@@ -13,9 +13,11 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
@@ -95,26 +97,63 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	var publishers []pubsub.Publisher
+	updateChan := make(chan []byte, 1000)
+
+	// ZeroMQ
 	if !cfg.NRBHTTP {
-		publishers, err = pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+		var publishers []pubsub.Publisher
+		refreshPubs := make(chan bool, 3)
+		publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			return 1
+			os.Exit(1)
 		}
+
+		go func() {
+			syncTimer := helpers.NewSyncTimer(60 * time.Second)
+			for {
+				syncTimer.Run()
+				refreshPubs <- true
+			}
+		}()
+
+		go func() {
+			for {
+				select {
+				case <-refreshPubs:
+					for _, pub := range publishers {
+						err = pub.Close()
+						if err != nil {
+							_ = level.Error(logger).Log("err", err)
+						}
+					}
+
+					publishers, err = pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+					if err != nil {
+						_ = level.Error(logger).Log("err", err)
+					}
+					continue
+
+				case msg := <-updateChan:
+					for _, pub := range publishers {
+						_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, msg)
+						if err != nil {
+							_ = level.Error(logger).Log("msg", "unable to send update to optimizer", "err", err)
+						}
+					}
+				}
+			}
+		}()
 	}
 
 	getParams := func() *transport.GatewayHandlerConfig {
 		return &transport.GatewayHandlerConfig{
-			Storer:                storer,
-			InitMetrics:           relayMetrics.RelayInitMetrics,
-			UpdateMetrics:         relayMetrics.RelayUpdateMetrics,
-			RouterPrivateKey:      cfg.RouterPrivateKey,
-			Publishers:            publishers,
-			NRBNoInit:             cfg.NRBNoInit,
-			NRBHTTP:               cfg.NRBHTTP,
-			RelayBackendAddresses: cfg.RelayBackendAddresses,
-			LoadTest:              cfg.Loadtest,
+			Storer:           storer,
+			InitMetrics:      relayMetrics.RelayInitMetrics,
+			UpdateMetrics:    relayMetrics.RelayUpdateMetrics,
+			RouterPrivateKey: cfg.RouterPrivateKey,
+			NRBNoInit:        cfg.NRBNoInit,
+			LoadTest:         cfg.Loadtest,
 		}
 	}
 
@@ -123,7 +162,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc(logger, getParams())).Methods("POST")
-	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams())).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams(), updateChan)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
