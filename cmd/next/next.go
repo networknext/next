@@ -649,11 +649,9 @@ func main() {
 				handleRunTimeError(fmt.Sprintf("Please provided a string"), 0)
 			}
 
-			srcString := args[0]
-
-			hashValue := crypto.HashID(srcString)
-
+			hashValue := crypto.HashID(args[0])
 			hexStr := fmt.Sprintf("%016x\n", hashValue)
+
 			fmt.Printf("unsigned: %d\n", hashValue)
 			fmt.Printf("signed  : %d\n", int64(hashValue))
 			fmt.Printf("hex     : 0x%s\n", strings.ToUpper(hexStr))
