@@ -63,3 +63,9 @@ func (p *GenericPublisher) Publish(ctx context.Context, topic Topic, message []b
 
 	return bytes, err
 }
+
+func (p *GenericPublisher) Close() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.socket.Close()
+}
