@@ -49,7 +49,9 @@ func pingRelayGatewayUpdate(t *testing.T, contentType string, body []byte, handl
 	assert.NoError(t, err)
 	request.Header.Add("Content-Type", contentType)
 
-	handler := GatewayRelayUpdateHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), handlerConfig)
+	updateChan := make(chan []byte, 1)
+
+	handler := GatewayRelayUpdateHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), handlerConfig, updateChan)
 	handler(recorder, request)
 	return recorder
 }

@@ -8,6 +8,10 @@ func (noop *NoOpPublisher) Publish(ctx context.Context, topic Topic, message []b
 	return 0, nil
 }
 
+func (noop *NoOpPublisher) Close() error {
+	return nil
+}
+
 type NoOpSubscriber struct{}
 
 func (noop *NoOpPublisher) Subscribe(topic Topic) error {
