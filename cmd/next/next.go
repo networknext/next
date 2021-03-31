@@ -640,6 +640,26 @@ func main() {
 		},
 	}
 
+	var hashCommand = &ffcli.Command{
+		Name:       "hash",
+		ShortUsage: "next hash (string)",
+		ShortHelp:  "Provide the 64-bit FNV-1a hash for the provided string (big-endian)",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a string"), 0)
+			}
+
+			hashValue := crypto.HashID(args[0])
+			hexStr := fmt.Sprintf("%016x\n", hashValue)
+
+			fmt.Printf("unsigned: %d\n", hashValue)
+			fmt.Printf("signed  : %d\n", int64(hashValue))
+			fmt.Printf("hex     : 0x%s\n", strings.ToUpper(hexStr))
+
+			return nil
+		},
+	}
+
 	var signedCommand = &ffcli.Command{
 		Name:       "signed",
 		ShortUsage: "next signed (uint64 in hex)",
@@ -2228,6 +2248,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		stagingCommand,
 		signedCommand,
 		unsignedCommand,
+		hashCommand,
 	}
 
 	root := &ffcli.Command{
