@@ -870,8 +870,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid []byte type", value)
 		}
 
-		fmt.Printf("UpdateRelay PublicKey: %s\n", string(publicKey))
-
 		newPublicKey, err := base64.StdEncoding.DecodeString(publicKey)
 		if err != nil {
 			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
