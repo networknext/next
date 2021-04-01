@@ -204,22 +204,22 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
 
-		for i := uint64(0); i < 10; i++ {
-			dcName := "happypath.name." + fmt.Sprintf("%d", i)
-			localDCID = crypto.HashID(dcName)
-			localDatacenter2 := routing.Datacenter{
-				ID:   localDCID,
-				Name: dcName,
-				Location: routing.Location{
-					Latitude:  70.5,
-					Longitude: 120.5,
-				},
-				SellerID: hpSeller.DatabaseID,
-			}
-			if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
-				return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
-			}
+		// for i := uint64(0); i < 10; i++ {
+		dcName := "happypath.localhost"
+		localDCID = crypto.HashID(dcName)
+		localDatacenter2 := routing.Datacenter{
+			ID:   localDCID,
+			Name: dcName,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+			SellerID: hpSeller.DatabaseID,
 		}
+		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
+			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
+		}
+		// }
 
 		ghostDCID := crypto.HashID("ghost-army.locale.name")
 		ghostDatacenter := routing.Datacenter{
@@ -294,7 +294,7 @@ func SeedSQLStorage(
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
-				Name:                "locale." + fmt.Sprintf("%d", i),
+				Name:                "happypath.localhost." + fmt.Sprintf("%d", i),
 				Addr:                addr,
 				InternalAddr:        internalAddr,
 				ManagementAddr:      "1.2.3.4" + fmt.Sprintf("%d", i),
