@@ -1039,6 +1039,23 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		args = append(args, notes, relay.DatabaseID)
 		relay.Notes = notes
 
+	case "Datacenter":
+		datacenterDatabaseID, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		if datacenterDatabaseID < 0 {
+			return fmt.Errorf("%d is not a valid Datacenter database ID", int32(datacenterDatabaseID))
+		}
+		updateSQL.Write([]byte("update relays set datacenter=$1 where id=$2"))
+		args = append(args, int64(datacenterDatabaseID), relay.DatabaseID)
+
+		datacenterID, ok := db.datacenterIDs[int64(datacenterDatabaseID)]
+		if !ok {
+			return fmt.Errorf("datacenter ID %d does not exist in the database", int32(datacenterDatabaseID))
+		}
+		relay.Datacenter = db.datacenters[datacenterID]
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the routing.Relay type", field)
 
