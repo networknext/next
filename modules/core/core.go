@@ -1133,7 +1133,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
 	if numBestRoutes == 0 {
 		if debug != nil {
-			*debug += "could not find any next routes.\n"
+			*debug += "could not find any next routes\n"
 		}
 		return
 	}
