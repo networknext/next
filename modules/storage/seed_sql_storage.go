@@ -204,7 +204,6 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
 
-		// for i := uint64(0); i < 10; i++ {
 		dcName := "happypath.localhost"
 		localDCID = crypto.HashID(dcName)
 		localDatacenter2 := routing.Datacenter{
@@ -219,7 +218,6 @@ func SeedSQLStorage(
 		if err := db.AddDatacenter(ctx, localDatacenter2); err != nil {
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
-		// }
 
 		ghostDCID := crypto.HashID("ghost-army.locale.name")
 		ghostDatacenter := routing.Datacenter{
