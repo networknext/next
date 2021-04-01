@@ -1376,7 +1376,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	case "PublicKey":
-		newPublicKey := []byte(args.Value)
+		newPublicKey := string(args.Value)
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newPublicKey)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
