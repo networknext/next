@@ -869,6 +869,9 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if !ok {
 			return fmt.Errorf("%v is not a valid []byte type", value)
 		}
+
+		fmt.Printf("UpdateRelay PublicKey: %s\n", string(publicKey))
+
 		updateSQL.Write([]byte("update relays set public_key=$1 where id=$2"))
 		args = append(args, publicKey, relay.DatabaseID)
 		relay.PublicKey = publicKey
