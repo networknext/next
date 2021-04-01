@@ -865,17 +865,16 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		relay.InternalAddr = *addr
 
 	case "PublicKey":
-		publicKey, ok := value.(string)
+		publicKey, ok := value.([]byte)
 		if !ok {
-			return fmt.Errorf("%v is not a valid string type", value)
+			return fmt.Errorf("%v is not a valid []byte type", value)
 		}
-		newPublicKey := []byte(publicKey)
 
-		fmt.Printf("UpdateRelay PublicKey: %s\n", string(newPublicKey))
+		fmt.Printf("UpdateRelay PublicKey: %s\n", string(publicKey))
 
 		updateSQL.Write([]byte("update relays set public_key=$1 where id=$2"))
-		args = append(args, newPublicKey, relay.DatabaseID)
-		relay.PublicKey = newPublicKey
+		args = append(args, publicKey, relay.DatabaseID)
+		relay.PublicKey = publicKey
 
 	case "NICSpeedMbps":
 		portSpeed, ok := value.(float64)
