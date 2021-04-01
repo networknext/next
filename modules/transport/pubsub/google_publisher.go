@@ -58,12 +58,13 @@ func NewPubSubPublisher(
 		var err error
 		client = &GooglePubSubClient{}
 		client.PubsubClient, err = googlepubsub.NewClient(ctx, gcpProjectID)
-		client.Metrics = publisherMetrics
-		client.Logger = logger
 		if err != nil {
 			return nil, fmt.Errorf("NewPubSubPublisher(): could not create pubsub client %v: %v", i, err)
 		}
 
+		client.Metrics = publisherMetrics
+		client.Logger = logger
+		
 		// Create the pubsub topic if running locally with the pubsub emulator
 		if gcpProjectID == "local" {
 			if _, err := client.PubsubClient.CreateTopic(ctx, topicID); err != nil {
