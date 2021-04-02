@@ -24,6 +24,27 @@ import (
 	"github.com/networknext/backend/modules/storage"
 )
 
+func init() {
+
+	f2, err := os.Open("relays.bin")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f2.Close()
+
+	var incomingRelays []routing.Relay
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingRelays)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("%+v\n", incomingRelays)
+}
+
 const (
 	InitRequestMagic = 0x9083708f
 
