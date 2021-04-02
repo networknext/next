@@ -17,7 +17,7 @@ const (
 	// EncryptedRelayTokenSize ...
 	EncryptedRelayTokenSize = crypto.KeySize + crypto.MACSize
 
-	RelayTimeout = 30 * time.Second
+	RelayTimeout = 60 * time.Second
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
