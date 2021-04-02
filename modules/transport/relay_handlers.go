@@ -53,10 +53,20 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()
+		var relayInitRequest RelayInitRequest
+
 		defer func() {
 			durationSince := time.Since(durationStart)
 			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
 			params.Metrics.Invocations.Add(1)
+
+			if durationSince.Milliseconds() > 100 {
+				if relayInitRequest.Address.String() != ":0" {
+					fmt.Printf("RelayInitHandlerFunc() Init duration for %s took %d ms\n", relayInitRequest.Address.String(), durationSince.Milliseconds())
+				} else {
+					fmt.Printf("RelayInitHandlerFunc() Init duration for unknown relay took %d ms\n", durationSince.Milliseconds())
+				}
+			}
 		}()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
@@ -69,7 +79,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 		defer request.Body.Close()
 
-		var relayInitRequest RelayInitRequest
 		switch request.Header.Get("Content-Type") {
 		case "application/octet-stream":
 			err = relayInitRequest.UnmarshalBinary(body)
@@ -209,10 +218,20 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()
+		var relayUpdateRequest RelayUpdateRequest
+
 		defer func() {
 			durationSince := time.Since(durationStart)
 			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
 			params.Metrics.Invocations.Add(1)
+
+			if durationSince.Milliseconds() > 100 {
+				if relayUpdateRequest.Address.String() != ":0" {
+					fmt.Printf("RelayUpdateHandlerFunc() Update duration for %s took %d ms\n", relayUpdateRequest.Address.String(), durationSince.Milliseconds())
+				} else {
+					fmt.Printf("RelayUpdateHandlerFunc() Update duration for unknown relay took %d ms\n", durationSince.Milliseconds())
+				}
+			}
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)
@@ -225,7 +244,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
-		var relayUpdateRequest RelayUpdateRequest
 		switch request.Header.Get("Content-Type") {
 		case "application/octet-stream":
 			err = relayUpdateRequest.UnmarshalBinary(body)
