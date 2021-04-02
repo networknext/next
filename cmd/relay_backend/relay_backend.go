@@ -290,7 +290,15 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
-				allRelayData := relayMap.GetAllRelayData()
+				allRelayAddrs := relayMap.GetAllRelayAddresses()
+				allRelayData := make([]routing.RelayData, len(allRelayAddrs))
+				index := 0
+				for _, addr := range allRelayAddrs {
+					relayMap.RLock()
+					relayData := relayMap.GetRelayData(addr)
+					relayMap.RUnlock()
+					allRelayData[index] = *relayData
+				}
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
 				count := 0
