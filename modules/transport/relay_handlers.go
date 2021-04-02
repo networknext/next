@@ -177,6 +177,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
 			core.Debug("%s - relay update unsupported content type", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
+			return
 		}
 
 		var relayUpdateRequest RelayUpdateRequest
