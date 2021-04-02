@@ -210,20 +210,6 @@ func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
 	return relayIDs
 }
 
-func (relayMap *RelayMap) GetAllRelayAddresses() []string {
-	relayMap.RLock()
-	defer relayMap.RUnlock()
-	numRelays := len(relayMap.relays)
-	relayAddrs := make([]string, numRelays)
-
-	index := 0
-	for _, relayData := range relayMap.relays {
-		relayAddrs[index] = relayData.Addr.String()
-		index++
-	}
-	return relayAddrs
-}
-
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	if relay, ok := relayMap.relays[relayAddress]; ok {
 		relayMap.cleanupCallback(relay)
