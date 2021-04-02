@@ -60,7 +60,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			params.Metrics.Invocations.Add(1)
 
 			if durationSince.Milliseconds() > 100 {
-				if request.RemoteAddr != ":0" {
+				if request.RemoteAddr != "" {
 					fmt.Printf("RelayInitHandlerFunc() Init duration for %s took %d ms\n", request.RemoteAddr, durationSince.Milliseconds())
 				} else {
 					fmt.Printf("RelayInitHandlerFunc() Init duration for unknown relay took %d ms\n", durationSince.Milliseconds())
@@ -225,7 +225,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			params.Metrics.Invocations.Add(1)
 
 			if durationSince.Milliseconds() > 100 {
-				if request.RemoteAddr != ":0" {
+				if request.RemoteAddr != "" {
 					fmt.Printf("RelayUpdateHandlerFunc() Update duration for %s took %d ms\n", request.RemoteAddr, durationSince.Milliseconds())
 				} else {
 					fmt.Printf("RelayUpdateHandlerFunc() Update duration for unknown relay took %d ms\n", durationSince.Milliseconds())
