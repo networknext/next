@@ -53,7 +53,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()
-		var relayInitRequest RelayInitRequest
 
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -61,8 +60,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			params.Metrics.Invocations.Add(1)
 
 			if durationSince.Milliseconds() > 100 {
-				if relayInitRequest.Address.String() != ":0" {
-					fmt.Printf("RelayInitHandlerFunc() Init duration for %s took %d ms\n", relayInitRequest.Address.String(), durationSince.Milliseconds())
+				if request.RemoteAddr != ":0" {
+					fmt.Printf("RelayInitHandlerFunc() Init duration for %s took %d ms\n", request.RemoteAddr, durationSince.Milliseconds())
 				} else {
 					fmt.Printf("RelayInitHandlerFunc() Init duration for unknown relay took %d ms\n", durationSince.Milliseconds())
 				}
@@ -78,6 +77,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 		defer request.Body.Close()
+		var relayInitRequest RelayInitRequest
 
 		switch request.Header.Get("Content-Type") {
 		case "application/octet-stream":
@@ -218,7 +218,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()
-		var relayUpdateRequest RelayUpdateRequest
 
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -226,8 +225,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			params.Metrics.Invocations.Add(1)
 
 			if durationSince.Milliseconds() > 100 {
-				if relayUpdateRequest.Address.String() != ":0" {
-					fmt.Printf("RelayUpdateHandlerFunc() Update duration for %s took %d ms\n", relayUpdateRequest.Address.String(), durationSince.Milliseconds())
+				if request.RemoteAddr != ":0" {
+					fmt.Printf("RelayUpdateHandlerFunc() Update duration for %s took %d ms\n", request.RemoteAddr, durationSince.Milliseconds())
 				} else {
 					fmt.Printf("RelayUpdateHandlerFunc() Update duration for unknown relay took %d ms\n", durationSince.Milliseconds())
 				}
@@ -241,6 +240,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 		defer request.Body.Close()
+		var relayUpdateRequest RelayUpdateRequest
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
