@@ -1,6 +1,9 @@
 package transport
 
 import (
+	"os"
+	"encoding/gob"
+
 	// "bytes"
 	// "context"
 	// "errors"
@@ -26,23 +29,29 @@ import (
 
 func init() {
 
-	f2, err := os.Open("relays.bin")
+	file, err := os.Open("./relays.bin")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return
 	}
-	defer f2.Close()
+	defer file.Close()
 
 	var incomingRelays []routing.Relay
 
-	decoder := gob.NewDecoder(f2)
+	decoder := gob.NewDecoder(file)
 	err = decoder.Decode(&incomingRelays)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("%+v\n", incomingRelays)
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(incomingRelays))
+	for i := range incomingRelays {
+		fmt.Printf( "    %s\n", incomingRelays[i].Name)
+	}
+	fmt.Printf("\n=======================================\n")
+
+	// fmt.Printf("%+v\n", incomingRelays)
 }
 
 const (

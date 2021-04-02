@@ -53,8 +53,10 @@ func main() {
 }
 
 func mainReturnWithCode() int {
+	
 	serviceName := "relay_backend"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	
+	fmt.Printf("\n%s\n\n", serviceName)
 
 	ctx := context.Background()
 
@@ -545,7 +547,8 @@ func mainReturnWithCode() int {
 
 			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
-				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+				// todo: shut the fuck up
+				// level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				continue
 			}
 
@@ -747,7 +750,8 @@ func mainReturnWithCode() int {
 
 				routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
 				if len(routeEntries) == 0 {
-					level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+					// todo: shut the fuck up
+					// level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 					continue
 				}
 
