@@ -474,7 +474,7 @@ func addRelayJS(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		Type:                int64(machineType),
 	}
 
-	var reply localjsonrpc.AddRelayReply
+	var reply localjsonrpc.JSAddRelayReply
 	if err := rpcClient.CallFor(&reply, "OpsService.JSAddRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
