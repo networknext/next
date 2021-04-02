@@ -335,7 +335,17 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		params.StatsDB.ProcessStats(statsUpdate)
 
 		relaysToPing := make([]routing.RelayPingData, 0)
-		allRelayData := params.RelayMap.GetAllRelayData()
+
+		allRelayAddrs := params.RelayMap.GetAllRelayAddresses()
+		allRelayData := make([]*routing.RelayData, len(allRelayAddrs))
+		index := 0
+		for _, addr := range allRelayAddrs {
+			params.RelayMap.RLock()
+			relayData := params.RelayMap.GetRelayData(addr)
+			params.RelayMap.RUnlock()
+			allRelayData[index] = relayData
+
+		}
 
 		enableInternalIPs, err := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
 		if err != nil {
@@ -541,9 +551,13 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 		routeMatrix := GetRouteMatrix()
 		res.Analysis = string(routeMatrix.GetAnalysisData())
 
-		allRelayData := relayMap.GetAllRelayData()
+		allRelayAddrs := relayMap.GetAllRelayAddresses()
 
-		for _, relayData := range allRelayData {
+		for _, addr := range allRelayAddrs {
+			relayMap.RLock()
+			relayData := relayMap.GetRelayData(addr)
+			relayMap.RUnlock()
+
 			display := displayRelay{
 				ID:   relayData.ID,
 				Name: relayData.Name,
