@@ -6,6 +6,18 @@
 package main
 
 import (
+	"fmt"
+)
+
+func main() {
+	fmt.Printf("not today\n")
+}
+
+// todo: not today
+/*
+package main
+
+import (
 	"context"
 	"expvar"
 	"fmt"
@@ -326,3 +338,4 @@ func mainReturnWithCode() int {
 
 	return 0
 }
+*/

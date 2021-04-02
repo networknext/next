@@ -112,7 +112,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		_ = id
 
-		relayData := routing.NewRelayData()
+		relayData := routing.RelayData{}
 		{
 			relayData.ID = id
 			relayData.Addr = relayInitRequest.Address
@@ -206,10 +206,10 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		// todo: this should be a *copy* instead of getting a reference. the reference will be out of date
 		params.RelayMap.RLock()
-		relayDataReadOnly := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+		relayDataReadOnly, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
 		params.RelayMap.RUnlock()
 
-		if relayDataReadOnly == nil {
+		if !ok {
 			core.Debug("%s - relay update relay not initialized", request.RemoteAddr)
 			writer.WriteHeader(http.StatusNotFound)	// 404
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
@@ -261,10 +261,10 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 		*/
 
-		// update the relay data
+		// update the relay data (updates the time that stops it timing out...)
 
 		params.RelayMap.Lock()
-		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
+		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String()) // , relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 		params.RelayMap.Unlock()
 
 		// build and write the response
