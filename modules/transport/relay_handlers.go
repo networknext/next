@@ -57,6 +57,15 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			durationSince := time.Since(durationStart)
 			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
 			params.Metrics.Invocations.Add(1)
+
+			if durationSince.Milliseconds() > 100 {
+				var relayAddr string
+				if relayInitRequest != (RelayInitRequest{}) {
+					fmt.Printf("RelayInitHandlerFunc() Init duration for %s took %d ms\n", relayInitRequest.Address.String(), durationSince.Milliseconds())
+				} else {
+					fmt.Printf("RelayInitHandlerFunc() Init duration for unknown relay took %d ms\n", durationSince.Milliseconds())
+				}
+			}
 		}()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
@@ -213,6 +222,15 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			durationSince := time.Since(durationStart)
 			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
 			params.Metrics.Invocations.Add(1)
+
+			if durationSince.Milliseconds() > 100 {
+				var relayAddr string
+				if relayUpdateRequest != (RelayUpdateRequest{}) {
+					fmt.Printf("RelayUpdateHandlerFunc() Init duration for %s took %d ms\n", relayInitRequest.Address.String(), durationSince.Milliseconds())
+				} else {
+					fmt.Printf("RelayUpdateHandlerFunc() Init duration for unknown relay took %d ms\n", durationSince.Milliseconds())
+				}
+			}
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)
