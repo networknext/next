@@ -205,7 +205,7 @@ func (entry *BillingEntry) Validate() bool {
 		return false
 	}
 
-	if !(entry.PacketLoss >= 0.0 && entry.PacketLoss <= 100.0) {
+	if !(entry.PacketLoss >= 0.0 && entry.PacketLoss <= 500.0) {
 		fmt.Printf("invalid packet loss\n")
 		return false
 	}
