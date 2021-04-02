@@ -27,6 +27,8 @@ import (
 	"github.com/networknext/backend/modules/storage"
 )
 
+var relays map[uint64]routing.Relay
+
 func init() {
 
 	file, err := os.Open("./relays.bin")
@@ -46,12 +48,12 @@ func init() {
 
 	fmt.Printf("\n=======================================\n")
 	fmt.Printf("\nLoaded %d relays:\n\n", len(incomingRelays))
+	relays = make(map[uint64]routing.Relay)
 	for i := range incomingRelays {
 		fmt.Printf( "    %s\n", incomingRelays[i].Name)
+		relays[incomingRelays[i].ID] = incomingRelays[i]
 	}
 	fmt.Printf("\n=======================================\n")
-
-	// fmt.Printf("%+v\n", incomingRelays)
 }
 
 const (
@@ -130,17 +132,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		id := crypto.HashID(relayInitRequest.Address.String())
 
-		// todo: find the relay in the static relay map. if it doesn't exist. don't let it init
-		foundRelay := true     // temp
+		relay, ok := relays[id]
 
-		if !foundRelay {
+		if !ok {
 			core.Debug("%s - could not find relay: %x", request.RemoteAddr, id)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			writer.WriteHeader(http.StatusNotFound)	// 404
 			return
 		}
-
-		_ = id
 
 		relayData := routing.RelayData{}
 		{
@@ -149,13 +148,11 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			relayData.LastUpdateTime = time.Now()
 			relayData.Version = relayInitRequest.RelayVersion
 
-			// todo: below needs to come from static data
-
-			// relayData.Name = relay.Name
-			// relayData.PublicKey = relay.PublicKey
-			// relayData.Seller = relay.Seller
-			// relayData.Datacenter = relay.Datacenter
-			// relayData.MaxSessions = relay.MaxSessions
+			relayData.Name = relay.Name
+			relayData.PublicKey = relay.PublicKey
+			relayData.Seller = relay.Seller
+			relayData.Datacenter = relay.Datacenter
+			relayData.MaxSessions = relay.MaxSessions
 		}
 
 		params.RelayMap.Lock()
@@ -234,7 +231,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		// todo: this should be a *copy* instead of getting a reference. the reference will be out of date
 		params.RelayMap.RLock()
 		relayDataReadOnly, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
 		params.RelayMap.RUnlock()
