@@ -120,20 +120,6 @@ func TestRelayMapGetAllRelayIDs(t *testing.T) {
 	}
 }
 
-func TestRelayMapGetAllRelayAddrs(t *testing.T) {
-	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error { return nil })
-	for i := 0; i < 6; i++ {
-		relay := newRelay()
-		relay.ID = uint64(i)
-		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", 10000+i))
-		relay.Addr = *addr
-		rmap.AddRelayDataEntry(relay.Addr.String(), relay)
-	}
-
-	relayAddresses := rmap.GetAllRelayAddresses()
-	assert.Equal(t, 6, len(relayAddresses))
-}
-
 func TestRelayMapRemoveRelay(t *testing.T) {
 	removedRelays := new(int)
 	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error {
