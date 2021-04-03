@@ -10,6 +10,7 @@ import (
 	"time"
 	"sort"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -270,11 +271,17 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 			}
 
 			deleteList = deleteList[:0]
-			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
+			currentTime := time.Now().Unix()
+			timeoutTimestamp := currentTime - timeoutSeconds
 
 			relayMap.RLock()
 			for k, v := range relayMap.relays {
+				timeSinceLastUpdate := currentTime - v.LastUpdateTime.Unix()
+				if timeSinceLastUpdate > 10 {
+					core.Debug("%s - %s hasn't received an update for %d seconds", v.Addr, v.Name, timeSinceLastUpdate)
+				}
 				if v.LastUpdateTime.Unix() < timeoutTimestamp {
+					core.Debug("%s - %s timed out :(", v.Addr, v.Name)
 					deleteList = append(deleteList, k)
 				}
 			}

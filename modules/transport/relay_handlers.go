@@ -103,7 +103,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
-		core.Debug("%s - processing relay init", request.RemoteAddr)
+		// core.Debug("%s - processing relay init", request.RemoteAddr)
 
 		durationStart := time.Now()
 		defer func() {
@@ -196,7 +196,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		writer.Write(responseData)
 
-		core.Debug("%s - relay initialized", request.RemoteAddr)
+		// core.Debug("%s - relay initialized", request.RemoteAddr)
 	}
 }
 
@@ -211,7 +211,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			params.Metrics.Invocations.Add(1)
 		}()
 
-		core.Debug("%s - processing relay update", request.RemoteAddr)
+		// core.Debug("%s - processing relay update", request.RemoteAddr)
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
@@ -323,7 +323,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		writer.Write(responseData)
 
-		core.Debug("%s - wrote relay update response", request.RemoteAddr)
+		// core.Debug("%s - wrote relay update response", request.RemoteAddr)
 	}
 }
 
