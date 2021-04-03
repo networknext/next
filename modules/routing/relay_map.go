@@ -64,6 +64,9 @@ type RelayData struct {
 	MemUsage       float32
 	Version        string
 
+	// todo: temporary for velan beta
+	SessionCount   int
+
 	// todo: this stuff is all huge and not threadsafe. bad
 	/*
 	// Traffic stats from last update
@@ -136,9 +139,10 @@ func (relayMap *RelayMap) AddRelayDataEntry(relayAddress string, data RelayData)
 	relayMap.relays[relayAddress] = &data  // todo: gross. store it by value not pointer after beta finishes
 }
 
-func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string) { // , newTraffic TrafficStats, cpuUsage float32, memUsage float32) {
+func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, sessionCount int) { // , newTraffic TrafficStats, cpuUsage float32, memUsage float32) {
 	entry := relayMap.relays[relayAddress]
 	entry.LastUpdateTime = time.Now()
+	entry.SessionCount = sessionCount
 
 	// todo: no
 	/*
@@ -233,26 +237,34 @@ func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	}
 }
 
+type RelayStatsEntry struct {
+	name 		 string
+	sessionCount int
+}
+
 func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
 	deleteList := make([]string, 0)
 	for {
 		select {
 		case <-c:
 
-			relayNames := make([]string, 0)
+			relayStats := make([]RelayStatsEntry, 0)
 			relayMap.RLock()
 			for _, v := range relayMap.relays {
-				relayNames = append(relayNames, v.Name)
+				relayStats = append(relayStats, RelayStatsEntry{name: v.Name, sessionCount: v.SessionCount})
 			}
 			relayMap.RUnlock()
-			if len(relayNames) > 0 {
-				sort.SliceStable(relayNames, func(i, j int) bool {
-				    return relayNames[i] < relayNames[j]
+			if len(relayStats) > 0 {
+				sort.SliceStable(relayStats, func(i, j int) bool {
+				    return relayStats[i].name < relayStats[j].name
+				})
+				sort.SliceStable(relayStats, func(i, j int) bool {
+				    return relayStats[i].sessionCount < relayStats[j].sessionCount
 				})
 				fmt.Printf("\n-----------------------------------------\n")
-				fmt.Printf("\n%d active relays:\n\n", len(relayNames))
-				for i := range relayNames {
-					fmt.Printf("    %s\n", relayNames[i])
+				fmt.Printf("\n%d active relays:\n\n", len(relayStats))
+				for i := range relayStats {
+					fmt.Printf("    %s [%d]\n", relayStats[i].name, relayStats[i].sessionCount)
 				}
 				fmt.Printf("\n-----------------------------------------\n\n")
 			}
