@@ -1,9 +1,14 @@
 package transport
 
 import (
-	"bytes"
-	"context"
-	"errors"
+	"os"
+	"encoding/gob"
+	"net"
+	"strconv"
+
+	// "bytes"
+	// "context"
+	// "errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -12,16 +17,62 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules/envvar"
+	// "github.com/networknext/backend/modules/envvar"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 )
+
+var relayArray []routing.Relay
+var relayHash map[uint64]routing.Relay
+
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
+
+func init() {
+
+	file, err := os.Open("./relays.bin")
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	decoder := gob.NewDecoder(file)
+	err = decoder.Decode(&relayArray)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	sort.SliceStable(relayArray, func(i, j int) bool {
+	    return relayArray[i].Name < relayArray[j].Name
+	})
+
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
+	relayHash = make(map[uint64]routing.Relay)
+	for i := range relayArray {
+		fmt.Printf( "    %s\n", relayArray[i].Name)
+		relayHash[relayArray[i].ID] = relayArray[i]
+	}
+	fmt.Printf("\n=======================================\n")
+}
 
 const (
 	InitRequestMagic = 0x9083708f
@@ -47,11 +98,12 @@ type RelayUpdateHandlerConfig struct {
 	Storer   storage.Storer
 }
 
-// RelayInitHandlerFunc returns the function for the relay init endpoint
 func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
-	handlerLogger := log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+
+		core.Debug("%s - processing relay init", request.RemoteAddr)
+
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -59,128 +111,71 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			params.Metrics.Invocations.Add(1)
 		}()
 
-		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
-
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "could not read packet", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
+			core.Debug("%s - could not read relay init packet: %v", request.RemoteAddr, err)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 		defer request.Body.Close()
 
-		var relayInitRequest RelayInitRequest
-		switch request.Header.Get("Content-Type") {
-		case "application/octet-stream":
-			err = relayInitRequest.UnmarshalBinary(body)
-		default:
-			err = errors.New("unsupported content type")
-		}
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+		if request.Header.Get("Content-Type") != "application/octet-stream" {
+			core.Debug("%s - init request has wrong content type", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
-		newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
+		var relayInitRequest RelayInitRequest
+		err = relayInitRequest.UnmarshalBinary(body)
 		if err != nil {
-			_ = level.Error(logger).Log("err", err)
+			core.Debug("%s - could not read relay init request packet", request.RemoteAddr)
+			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
+			return
 		}
-		if newRelayBackend && envvar.Exists("RELAY_GATEWAY_ADDRESS") {
-			go func() {
-				gatewayAddr := envvar.Get("RELAY_GATEWAY_ADDRESS", "")
-
-				resp, err := http.Post(fmt.Sprintf("http://%s/relay_init", gatewayAddr), "application/octet-stream", request.Body)
-				if err != nil || resp.StatusCode != http.StatusOK {
-					_ = level.Error(locallogger).Log("msg", "unable to send init to relay gateway", "err", err)
-				}
-			}()
-		}
-
-		locallogger = log.With(locallogger, "relay_addr", relayInitRequest.Address.String())
 
 		if relayInitRequest.Magic != InitRequestMagic {
-			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
-			http.Error(writer, "magic number mismatch", http.StatusBadRequest)
+			core.Debug("%s - magic number mismatch: %x vs. %x", request.RemoteAddr, relayInitRequest.Magic, InitRequestMagic)
 			params.Metrics.ErrorMetrics.InvalidMagic.Add(1)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		if relayInitRequest.Version > VersionNumberInitRequest {
-			level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
-			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			core.Debug("%s - version mismatch: %d > %d", request.RemoteAddr, relayInitRequest.Version, VersionNumberInitRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		id := crypto.HashID(relayInitRequest.Address.String())
 
-		relay, err := params.Storer.Relay(id)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
-			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
+		relay, ok := relayHash[id]
+
+		if !ok {
+			core.Debug("%s - could not find relay: %x", request.RemoteAddr, id)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			writer.WriteHeader(http.StatusNotFound)	// 404
 			return
 		}
 
-		// Don't allow quarantined relays back in
-		if relay.State == routing.RelayStateQuarantine {
-			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
-			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
-			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
-			return
-		}
-
-		params.RelayMap.Lock()
-		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
-		if relayData != nil {
-			level.Error(locallogger).Log("msg", "relay already initialized")
-			fmt.Printf("relay %v %v tried to reinitialized", relayData.ID, relayData.Name)
-			http.Error(writer, "relay already initialized", http.StatusConflict)
-			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
-			params.RelayMap.Unlock()
-			return
-		}
-		params.RelayMap.Unlock()
-
-		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
-			level.Error(locallogger).Log("msg", "crypto open failed")
-			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
-			params.Metrics.ErrorMetrics.DecryptionFailure.Add(1)
-			return
-		}
-
-		// Set the relay's state to enabled
-		relay.State = routing.RelayStateEnabled
-
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-		if err := params.Storer.SetRelay(ctx, relay); err != nil {
-			level.Error(locallogger).Log("msg", "failed to set relay state in storage", "err", err)
-			http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
-			return
-		}
-
-		// Ideally the ID and address should be the same as firestore,
-		// but when running locally they're not, so take them from the request packet
-		relayData = routing.NewRelayData()
+		relayData := routing.RelayData{}
 		{
 			relayData.ID = id
-			relayData.Name = relay.Name
 			relayData.Addr = relayInitRequest.Address
+			relayData.LastUpdateTime = time.Now()
+			relayData.Version = relayInitRequest.RelayVersion
+
+			relayData.Name = relay.Name
 			relayData.PublicKey = relay.PublicKey
 			relayData.Seller = relay.Seller
 			relayData.Datacenter = relay.Datacenter
-			relayData.LastUpdateTime = time.Now()
 			relayData.MaxSessions = relay.MaxSessions
-			relayData.Version = relayInitRequest.RelayVersion
 		}
 
 		params.RelayMap.Lock()
 		params.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
 		params.RelayMap.Unlock()
-
-		level.Debug(locallogger).Log("msg", "relay initialized")
 
 		var responseData []byte
 		response := RelayInitResponse{
@@ -189,25 +184,25 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			PublicKey: relayData.PublicKey,
 		}
 
-		switch request.Header.Get("Content-Type") {
-		case "application/octet-stream":
-			responseData, err = response.MarshalBinary()
-			if err != nil {
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		responseData, err = response.MarshalBinary()
+		if err != nil {
+			core.Debug("%s - failed to write relay init response: %v", request.RemoteAddr, err)
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
+
 		writer.Write(responseData)
+
+		core.Debug("%s - relay initialized", request.RemoteAddr)
 	}
 }
 
-// RelayUpdateHandlerFunc returns the function for the relay update endpoint
 func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
-	handlerLogger := log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -215,195 +210,124 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			params.Metrics.Invocations.Add(1)
 		}()
 
+		core.Debug("%s - processing relay update", request.RemoteAddr)
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
-			writer.WriteHeader(http.StatusInternalServerError)
+			core.Debug("%s - relay update could not read request body: %v", request.RemoteAddr, err)
+			writer.WriteHeader(http.StatusInternalServerError)	// 500
 			return
 		}
 		defer request.Body.Close()
 
-		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
-
-		var relayUpdateRequest RelayUpdateRequest
-		switch request.Header.Get("Content-Type") {
-		case "application/octet-stream":
-			err = relayUpdateRequest.UnmarshalBinary(body)
-		default:
-			err = errors.New("unsupported content type")
-		}
-		if err != nil {
-			level.Error(locallogger).Log("msg", "error unmarshaling relay update request", "err", err)
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+		if request.Header.Get("Content-Type") != "application/octet-stream" {
+			core.Debug("%s - relay update unsupported content type", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
-		newRelayBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
+		var relayUpdateRequest RelayUpdateRequest
+		err = relayUpdateRequest.UnmarshalBinary(body)
 		if err != nil {
-			_ = level.Error(logger).Log("err", err)
-		}
-		if newRelayBackend && envvar.Exists("RELAY_GATEWAY_ADDRESS") {
-			go func() {
-				gatewayAddr := envvar.Get("RELAY_GATEWAY_ADDRESS", "")
-				resp, err := http.Post(fmt.Sprintf("http://%s/relay_update", gatewayAddr), "application/octet-stream", request.Body)
-				if err != nil || resp.StatusCode != http.StatusOK {
-					_ = level.Error(locallogger).Log("msg", "unable to send update to relay gateway", "err", err)
-				}
-			}()
+			core.Debug("%s - relay update could not read request packet", request.RemoteAddr)
+			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
+			return
 		}
 
 		if relayUpdateRequest.Version > VersionNumberUpdateRequest {
-			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
-			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			core.Debug("%s - relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
-			level.Error(locallogger).Log("msg", "max relays exceeded", "relay count", len(relayUpdateRequest.PingStats))
-			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
+			core.Debug("%s - relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
 			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
+			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		params.RelayMap.RLock()
-		relayDataReadOnly := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+		relayData, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
 		params.RelayMap.RUnlock()
 
-		if relayDataReadOnly == nil {
-			level.Warn(locallogger).Log("msg", "relay not initialized")
-			http.Error(writer, "relay not initialized", http.StatusNotFound)
+		if !ok {
+			core.Debug("%s - relay update relay not initialized", request.RemoteAddr)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			writer.WriteHeader(http.StatusNotFound)	// 404
 			return
 		}
 
-		// If the relay does not exist in Firestore it's a ghost, ignore it
-		relay, err := params.Storer.Relay(relayDataReadOnly.ID)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
-			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			return
-		}
+		// update relay ping stats
 
-		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
-		if relayUpdateRequest.ShuttingDown {
-			relay, err := params.Storer.Relay(relayDataReadOnly.ID)
-			if err != nil {
-				level.Error(locallogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
-				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-
-			if relay.State == routing.RelayStateEnabled {
-				relay.State = routing.RelayStateMaintenance
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
-				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-
-			params.RelayMap.Lock()
-			params.RelayMap.RemoveRelayData(relayUpdateRequest.Address.String())
-			params.RelayMap.Unlock()
-			return
-		}
-
-		if !bytes.Equal(relayUpdateRequest.Token, relayDataReadOnly.PublicKey) {
-			level.Error(locallogger).Log("msg", "relay public key doesn't match")
-			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.InvalidToken.Add(1)
-			return
-		}
-
-		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
-		if relay.State != routing.RelayStateEnabled {
-			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr.String(), "relay_state", relay.State)
-			http.Error(writer, "cannot allow non-enabled relay to update", http.StatusUnauthorized)
-			params.Metrics.ErrorMetrics.RelayNotEnabled.Add(1)
-			return
-		}
-
-		statsUpdate := &routing.RelayStatsUpdate{}
-		statsUpdate.ID = relayDataReadOnly.ID
+		statsUpdate := routing.RelayStatsUpdate{}		
+		
+		statsUpdate.ID = relayData.ID
+		
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
-		params.StatsDB.ProcessStats(statsUpdate)
+
+		params.StatsDB.ProcessStats(&statsUpdate)
+
+		// get relays to ping
 
 		relaysToPing := make([]routing.RelayPingData, 0)
-		allRelayData := params.RelayMap.GetAllRelayData()
 
-		enableInternalIPs, err := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
-		if err != nil {
-			level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
-		}
+		for i := range relayArray {
 
-		for _, v := range allRelayData {
-			if v.ID != relay.ID {
-				otherRelay, err := params.Storer.Relay(v.ID)
-				if err != nil {
-					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
-					continue
-				}
-
-				if otherRelay.State == routing.RelayStateEnabled {
-					var address string
-					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && relay.InternalAddr.String() != ":0" && otherRelay.InternalAddr.String() != ":0" {
-						address = otherRelay.InternalAddr.String()
-					} else {
-						address = v.Addr.String()
-					}
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: address})
-				}
+			if relayArray[i].ID == relayData.ID {
+				continue
 			}
+
+			var address string
+			if relayData.Seller.Name == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
+				address = relayArray[i].InternalAddr.String()
+			} else {
+				address = relayArray[i].Addr.String()
+			}
+
+			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: address})
 		}
 
-		// Update the relay data
+		// update the relay data (updates the time that stops it timing out...)
+
 		params.RelayMap.Lock()
-		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
+		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), int(relayUpdateRequest.TrafficStats.SessionCount)) // , relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
 		params.RelayMap.Unlock()
 
-		level.Debug(relayslogger).Log(
-			"id", relayDataReadOnly.ID,
-			"name", relayDataReadOnly.Name,
-			"addr", relayDataReadOnly.Addr.String(),
-			"datacenter", relayDataReadOnly.Datacenter.Name,
-			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
-			"bytes_received", relayUpdateRequest.TrafficStats.AllRx(),
-			"bytes_send", relayUpdateRequest.TrafficStats.AllTx(),
-		)
-
-		level.Debug(locallogger).Log("msg", "relay updated")
+		// build and write the response
 
 		var responseData []byte
+		
 		response := RelayUpdateResponse{}
-		for _, pingData := range relaysToPing {
+
+		for i := range relaysToPing {
 			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
-				ID:      pingData.ID,
-				Address: pingData.Address,
+				ID:      relaysToPing[i].ID,
+				Address: relaysToPing[i].Address,
 			})
 		}
+
 		response.Timestamp = time.Now().Unix()
 
-		switch request.Header.Get("Content-Type") {
-		case "application/octet-stream":
-			responseData, err = response.MarshalBinary()
-			if err != nil {
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		responseData, err = response.MarshalBinary()
+		if err != nil {
+			core.Debug("%s - failed to write relay update response: %v", request.RemoteAddr, err)
+			writer.WriteHeader(http.StatusInternalServerError)	// 500
+			return
 		}
 
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
+
 		writer.Write(responseData)
+
+		core.Debug("%s - wrote relay update response", request.RemoteAddr)
 	}
 }
 
 func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
+
 	html := strings.Builder{}
 	html.WriteString("<table>")
 

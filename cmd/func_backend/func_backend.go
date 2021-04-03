@@ -879,15 +879,15 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	backend.mutex.Lock()
-	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
+	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
 	backend.mutex.Unlock()
-	if relayData != nil {
-		writer.WriteHeader(http.StatusConflict)
+	if !ok {
+		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	backend.mutex.Lock()
-	backend.relayMap.AddRelayDataEntry(relay.Addr.String(), relay)
+	backend.relayMap.AddRelayDataEntry(relay.Addr.String(), *relay)
 	backend.dirty = true
 	backend.mutex.Unlock()
 
@@ -986,13 +986,14 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
 		}
 	}
-	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
-	if relayData == nil {
+
+	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
+	if !ok {
 		backend.mutex.Unlock()
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
+	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), 0) // , relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
 	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
