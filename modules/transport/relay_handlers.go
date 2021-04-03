@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	// "github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -46,9 +46,10 @@ func ParseAddress(input string) *net.UDPAddr {
 }
 
 func init() {
-
-	file, err := os.Open("./relays.bin")
+	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+	file, err := os.Open(filePath)
 	if err != nil {
+		fmt.Printf("Could not find relay binary at %s\n", filePath)
 		return
 	}
 	defer file.Close()
