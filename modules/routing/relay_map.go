@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"sort"
 
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -158,7 +159,11 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string) { // , newTr
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
 	relayData, ok := relayMap.relays[relayAddress]
-	return *relayData, ok
+	if ok {
+		return *relayData, true
+	} else {
+		return RelayData{}, false
+	}
 }
 
 // todo: just... no
@@ -233,6 +238,25 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 	for {
 		select {
 		case <-c:
+
+			relayNames := make([]string, 0)
+			relayMap.RLock()
+			for _, v := range relayMap.relays {
+				relayNames = append(relayNames, v.Name)
+			}
+			relayMap.RUnlock()
+			if len(relayNames) > 0 {
+				sort.SliceStable(relayNames, func(i, j int) bool {
+				    return relayNames[i] < relayNames[j]
+				})
+				fmt.Printf("\n-----------------------------------------\n")
+				fmt.Printf("\n%d active relays:\n\n", len(relayNames))
+				for i := range relayNames {
+					fmt.Printf("    %s\n", relayNames[i])
+				}
+				fmt.Printf("\n-----------------------------------------\n\n")
+			}
+
 			deleteList = deleteList[:0]
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
 

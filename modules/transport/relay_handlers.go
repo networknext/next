@@ -3,6 +3,8 @@ package transport
 import (
 	"os"
 	"encoding/gob"
+	"net"
+	"strconv"
 
 	// "bytes"
 	// "context"
@@ -27,7 +29,21 @@ import (
 	"github.com/networknext/backend/modules/storage"
 )
 
-var relays map[uint64]routing.Relay
+var relayArray []routing.Relay
+var relayHash map[uint64]routing.Relay
+
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
 
 func init() {
 
@@ -37,21 +53,23 @@ func init() {
 	}
 	defer file.Close()
 
-	var incomingRelays []routing.Relay
-
 	decoder := gob.NewDecoder(file)
-	err = decoder.Decode(&incomingRelays)
+	err = decoder.Decode(&relayArray)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
+	sort.SliceStable(relayArray, func(i, j int) bool {
+	    return relayArray[i].Name < relayArray[j].Name
+	})
+
 	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(incomingRelays))
-	relays = make(map[uint64]routing.Relay)
-	for i := range incomingRelays {
-		fmt.Printf( "    %s\n", incomingRelays[i].Name)
-		relays[incomingRelays[i].ID] = incomingRelays[i]
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
+	relayHash = make(map[uint64]routing.Relay)
+	for i := range relayArray {
+		fmt.Printf( "    %s\n", relayArray[i].Name)
+		relayHash[relayArray[i].ID] = relayArray[i]
 	}
 	fmt.Printf("\n=======================================\n")
 }
@@ -132,7 +150,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		id := crypto.HashID(relayInitRequest.Address.String())
 
-		relay, ok := relays[id]
+		relay, ok := relayHash[id]
 
 		if !ok {
 			core.Debug("%s - could not find relay: %x", request.RemoteAddr, id)
@@ -232,60 +250,45 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		params.RelayMap.RLock()
-		relayDataReadOnly, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+		relayData, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
 		params.RelayMap.RUnlock()
 
 		if !ok {
 			core.Debug("%s - relay update relay not initialized", request.RemoteAddr)
-			writer.WriteHeader(http.StatusNotFound)	// 404
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			writer.WriteHeader(http.StatusNotFound)	// 404
 			return
 		}
 
-		// insert the relay update ping stats into the stats db
+		// update relay ping stats
 
-		statsUpdate := &routing.RelayStatsUpdate{}
-		statsUpdate.ID = relayDataReadOnly.ID
+		statsUpdate := routing.RelayStatsUpdate{}		
+		
+		statsUpdate.ID = relayData.ID
+		
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
 
-		params.StatsDB.ProcessStats(statsUpdate)
+		params.StatsDB.ProcessStats(&statsUpdate)
 
 		// get relays to ping
 
-		// todo
-
-		/*
 		relaysToPing := make([]routing.RelayPingData, 0)
 
-		// todo: sweet jesus this is a big copy... O_O
-		allRelayData := params.RelayMap.GetAllRelayData()
+		for i := range relayArray {
 
-		// todo: never read an environment var in the middle of a handler like this. it's slow
-		enableInternalIPs, err := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
-		if err != nil {
-			level.Error(logger).Log("msg", "unable to parse value of 'ENABLE_INTERNAL_IPS'", "err", err)
-		}
-
-		for _, v := range allRelayData {
-			if v.ID != relay.ID {
-				otherRelay, err := params.Storer.Relay(v.ID)
-				if err != nil {
-					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
-					continue
-				}
-
-				if otherRelay.State == routing.RelayStateEnabled {
-					var address string
-					if enableInternalIPs && relay.Seller.Name == otherRelay.Seller.Name && relay.InternalAddr.String() != ":0" && otherRelay.InternalAddr.String() != ":0" {
-						address = otherRelay.InternalAddr.String()
-					} else {
-						address = v.Addr.String()
-					}
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: address})
-				}
+			if relayArray[i].ID == relayData.ID {
+				continue
 			}
+
+			var address string
+			if relayData.Seller.Name == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
+				address = relayArray[i].InternalAddr.String()
+			} else {
+				address = relayArray[i].Addr.String()
+			}
+
+			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: address})
 		}
-		*/
 
 		// update the relay data (updates the time that stops it timing out...)
 
@@ -299,15 +302,12 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		
 		response := RelayUpdateResponse{}
 
-		// todo: fill in relays to ping
-		/*
-		for _, pingData := range relaysToPing {
+		for i := range relaysToPing {
 			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
-				ID:      pingData.ID,
-				Address: pingData.Address,
+				ID:      relaysToPing[i].ID,
+				Address: relaysToPing[i].Address,
 			})
 		}
-		*/
 
 		response.Timestamp = time.Now().Unix()
 

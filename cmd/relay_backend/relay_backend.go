@@ -53,7 +53,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	
+
 	serviceName := "relay_backend"
 	
 	fmt.Printf("\n%s\n\n", serviceName)
@@ -183,7 +183,7 @@ func mainReturnWithCode() int {
 	relayMap := routing.NewRelayMap(cleanupCallback)
 	go func() {
 		timeout := int64(routing.RelayTimeout.Seconds())
-		frequency := time.Second
+		frequency := time.Second * 10
 		ticker := time.NewTicker(frequency)
 		relayMap.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
@@ -839,7 +839,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	fmt.Printf("starting http server\n")
+	fmt.Printf("starting http server\n\n")
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
