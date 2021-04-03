@@ -5382,16 +5382,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    {
-        relay_address_t address_without_port = relay_address;
-        address_without_port.port = 0;
-        char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        printf( "    relay address is '%s'\n", relay_address_to_string( &address_without_port, address_buffer ) );
-    }
-
-    uint16_t relay_bind_port = relay_address.port;
-
-    printf( "    relay bind port is %d\n", relay_bind_port);
+    char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    printf( "    relay address is '%s'\n", relay_address_to_string( &relay_address, address_buffer ) );
 
     const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
     if ( !relay_private_key_env )
@@ -5511,7 +5503,7 @@ int main( int argc, const char ** argv )
 
     uint64_t router_timestamp = 0;
 
-    for ( int i = 0; i < 60; ++i )
+    for ( int i = 0; i < 120; ++i )
     {
         if ( relay_init( curl, backend_hostname, relay_token, relay_address_string, router_public_key, relay_private_key, &router_timestamp ) == RELAY_OK )
         {

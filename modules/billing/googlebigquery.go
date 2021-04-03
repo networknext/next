@@ -206,18 +206,33 @@ func (entry *BillingEntry) Validate() bool {
 	}
 
 	if !(entry.PacketLoss >= 0.0 && entry.PacketLoss <= 100.0) {
-		fmt.Printf("invalid packet loss\n")
-		return false
+		if entry.PacketLoss > 100.0 {
+			fmt.Printf("PacketLoss %v > 100.0. Clamping to 100.0\n%+v\n", entry.PacketLoss, entry)
+			entry.PacketLoss = 100.0
+		} else {
+			fmt.Printf("invalid packet loss\n")
+			return false
+		}
 	}
 
-	if !(entry.JitterClientToServer >= 0.0 && entry.JitterClientToServer <= 10000.0) {
-		fmt.Printf("invalid jitter client to server\n")
-		return false
+	if !(entry.JitterClientToServer >= 0.0 && entry.JitterClientToServer <= 1000.0) {
+		if entry.JitterClientToServer > 1000.0 {
+			fmt.Printf("JitterClientToServer %v > 1000.0. Clamping to 1000.0\n%+v\n", entry.JitterClientToServer, entry)
+			entry.JitterClientToServer = 1000.0
+		} else {
+			fmt.Printf("invalid jitter client to server\n")
+			return false
+		}
 	}
 
-	if !(entry.JitterServerToClient >= 0.0 && entry.JitterServerToClient <= 10000.0) {
-		fmt.Printf("invalid jitter server to client\n")
-		return false
+	if !(entry.JitterServerToClient >= 0.0 && entry.JitterServerToClient <= 1000.0) {
+		if entry.JitterServerToClient > 1000.0 {
+			fmt.Printf("JitterServerToClient %v > 1000.0. Clamping to 1000.0.\n%+v\n", entry.JitterServerToClient, entry)
+			entry.JitterServerToClient = 1000.0
+		} else {
+			fmt.Printf("invalid jitter server to client\n")
+			return false
+		}
 	}
 
 	if entry.NumTags < 0 || entry.NumTags > 8 {
