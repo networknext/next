@@ -993,7 +993,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String()) // , relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
+	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), 0) // , relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
 	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
