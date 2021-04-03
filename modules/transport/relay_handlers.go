@@ -255,10 +255,46 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		params.RelayMap.RUnlock()
 
 		if !ok {
-			core.Debug("%s - error: relay update relay not initialized", request.RemoteAddr)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			writer.WriteHeader(http.StatusNotFound)	// 404
-			return
+
+			// auto init
+
+			id := crypto.HashID(relayUpdateRequest.Address.String())
+
+			relay, ok := relayHash[id]
+
+			if !ok {
+				core.Debug("%s - error: could not find relay: %x", request.RemoteAddr, id)
+				params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+				writer.WriteHeader(http.StatusNotFound)	// 404
+				return
+			}
+
+			relayData := routing.RelayData{}
+			{
+				relayData.ID = id
+				relayData.Addr = relayUpdateRequest.Address
+				relayData.LastUpdateTime = time.Now()
+				relayData.Version = relayUpdateRequest.RelayVersion
+
+				relayData.Name = relay.Name
+				relayData.PublicKey = relay.PublicKey
+				relayData.Seller = relay.Seller
+				relayData.Datacenter = relay.Datacenter
+				relayData.MaxSessions = relay.MaxSessions
+			}
+
+			params.RelayMap.Lock()
+			params.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
+			params.RelayMap.Unlock()
+
+			params.RelayMap.RLock()
+			relayData, ok = params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+			params.RelayMap.RUnlock()
+			if !ok {
+				core.Debug("%s - error: what the actual fuck: %x", request.RemoteAddr, id)
+				writer.WriteHeader(http.StatusInternalServerError)	// 500
+				return
+			}
 		}
 
 		// update relay ping stats
