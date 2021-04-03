@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"sort"
 
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -63,6 +64,11 @@ type RelayData struct {
 	MemUsage       float32
 	Version        string
 
+	// todo: temporary for velan beta
+	SessionCount   int
+
+	// todo: this stuff is all huge and not threadsafe. bad
+	/*
 	// Traffic stats from last update
 	TrafficStats TrafficStats
 
@@ -77,8 +83,11 @@ type RelayData struct {
 
 	// only modified within the stats publish loop, so no need to lock access
 	LastStatsPublishTime time.Time
+	*/
 }
 
+// todo: no
+/*
 func NewRelayData() *RelayData {
 	return &RelayData{
 		TrafficStatsBuff:     make([]TrafficStats, 0),
@@ -86,6 +95,7 @@ func NewRelayData() *RelayData {
 		LastStatsPublishTime: time.Now(),
 	}
 }
+*/
 
 // RelayCleanupCallback is a callback function that will be called
 // right before a relay is timed out from the RelayMap
@@ -94,7 +104,6 @@ type RelayCleanupCallback func(relayData *RelayData) error
 type RelayMap struct {
 	relays          map[string]*RelayData
 	cleanupCallback RelayCleanupCallback
-
 	mutex sync.RWMutex
 }
 
@@ -126,16 +135,17 @@ func (relayMap *RelayMap) GetRelayCount() uint64 {
 	return uint64(len(relayMap.relays))
 }
 
-// NewRelayData inserts a new entry into the map and returns the pointer
-func (relayMap *RelayMap) AddRelayDataEntry(relayAddress string, data *RelayData) {
-	relayMap.relays[relayAddress] = data
+func (relayMap *RelayMap) AddRelayDataEntry(relayAddress string, data RelayData) {
+	relayMap.relays[relayAddress] = &data  // todo: gross. store it by value not pointer after beta finishes
 }
 
-// UpdateRelayDataEntry updates specific fields that may change per update
-func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic TrafficStats, cpuUsage float32, memUsage float32) {
+func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, sessionCount int) { // , newTraffic TrafficStats, cpuUsage float32, memUsage float32) {
 	entry := relayMap.relays[relayAddress]
 	entry.LastUpdateTime = time.Now()
+	entry.SessionCount = sessionCount
 
+	// todo: no
+	/*
 	entry.TrafficStats = newTraffic
 	entry.CPUUsage = cpuUsage
 	entry.MemUsage = memUsage
@@ -148,12 +158,19 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, newTraffic T
 	})
 	entry.TrafficStatsBuff = append(entry.TrafficStatsBuff, newTraffic)
 	entry.TrafficMu.Unlock()
+	*/
 }
 
-func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
-	return relayMap.relays[relayAddress]
+func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
+	relayData, ok := relayMap.relays[relayAddress]
+	if ok {
+		return *relayData, true
+	} else {
+		return RelayData{}, false
+	}
 }
 
+// todo: just... no
 func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	relayMap.RLock()
 	relays := make([]RelayData, len(relayMap.relays))
@@ -170,6 +187,8 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 }
 
 func (relayMap *RelayMap) ClearRelayData(relayAddress string) {
+	// no
+	/*
 	//entry is being writen to so a write lock is used before checking it
 	//if a read lock was used first it could be changed in between the read and write locks.
 	relayMap.Lock()
@@ -183,6 +202,7 @@ func (relayMap *RelayMap) ClearRelayData(relayAddress string) {
 		entry.PeakTrafficStats.EnvelopeDownKbps = 0
 		entry.TrafficStatsBuff = entry.TrafficStatsBuff[:0]
 	}
+	*/
 }
 
 func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
@@ -217,11 +237,38 @@ func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	}
 }
 
+type RelayStatsEntry struct {
+	name 		 string
+	sessionCount int
+}
+
 func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
 	deleteList := make([]string, 0)
 	for {
 		select {
 		case <-c:
+
+			relayStats := make([]RelayStatsEntry, 0)
+			relayMap.RLock()
+			for _, v := range relayMap.relays {
+				relayStats = append(relayStats, RelayStatsEntry{name: v.Name, sessionCount: v.SessionCount})
+			}
+			relayMap.RUnlock()
+			if len(relayStats) > 0 {
+				sort.SliceStable(relayStats, func(i, j int) bool {
+				    return relayStats[i].name < relayStats[j].name
+				})
+				sort.SliceStable(relayStats, func(i, j int) bool {
+				    return relayStats[i].sessionCount < relayStats[j].sessionCount
+				})
+				fmt.Printf("\n-----------------------------------------\n")
+				fmt.Printf("\n%d active relays:\n\n", len(relayStats))
+				for i := range relayStats {
+					fmt.Printf("    %s [%d]\n", relayStats[i].name, relayStats[i].sessionCount)
+				}
+				fmt.Printf("\n-----------------------------------------\n\n")
+			}
+
 			deleteList = deleteList[:0]
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
 
@@ -290,13 +337,20 @@ func (relayMap *RelayMap) MarshalBinary() ([]byte, error) {
 		}
 
 		encoding.WriteUint64(data, &index, relay.ID)
+
+		/*
 		relay.TrafficStats.WriteTo(data, &index, 2)
+		*/
+
 		encoding.WriteUint8(data, &index, major)
 		encoding.WriteUint8(data, &index, minor)
 		encoding.WriteUint8(data, &index, patch)
 		encoding.WriteUint64(data, &index, uint64(relay.LastUpdateTime.Unix()))
+
+		/*
 		encoding.WriteFloat32(data, &index, relay.CPUUsage)
 		encoding.WriteFloat32(data, &index, relay.MemUsage)
+		*/
 	}
 
 	return data, nil
