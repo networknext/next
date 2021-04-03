@@ -114,14 +114,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			core.Debug("%s - could not read relay init packet: %v", request.RemoteAddr, err)
+			core.Debug("%s - error: could not read relay init packet: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 		defer request.Body.Close()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Debug("%s - init request has wrong content type", request.RemoteAddr)
+			core.Debug("%s - error: init request has wrong content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
@@ -129,21 +129,21 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		var relayInitRequest RelayInitRequest
 		err = relayInitRequest.UnmarshalBinary(body)
 		if err != nil {
-			core.Debug("%s - could not read relay init request packet", request.RemoteAddr)
+			core.Debug("%s - error: could not read relay init request packet", request.RemoteAddr)
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		if relayInitRequest.Magic != InitRequestMagic {
-			core.Debug("%s - magic number mismatch: %x vs. %x", request.RemoteAddr, relayInitRequest.Magic, InitRequestMagic)
+			core.Debug("%s - error: magic number mismatch: %x vs. %x", request.RemoteAddr, relayInitRequest.Magic, InitRequestMagic)
 			params.Metrics.ErrorMetrics.InvalidMagic.Add(1)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		if relayInitRequest.Version > VersionNumberInitRequest {
-			core.Debug("%s - version mismatch: %d > %d", request.RemoteAddr, relayInitRequest.Version, VersionNumberInitRequest)
+			core.Debug("%s - error: version mismatch: %d > %d", request.RemoteAddr, relayInitRequest.Version, VersionNumberInitRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
@@ -154,7 +154,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		relay, ok := relayHash[id]
 
 		if !ok {
-			core.Debug("%s - could not find relay: %x", request.RemoteAddr, id)
+			core.Debug("%s - error: could not find relay: %x", request.RemoteAddr, id)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			writer.WriteHeader(http.StatusNotFound)	// 404
 			return
@@ -187,7 +187,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		responseData, err = response.MarshalBinary()
 		if err != nil {
-			core.Debug("%s - failed to write relay init response: %v", request.RemoteAddr, err)
+			core.Debug("%s - error: failed to write relay init response: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -215,14 +215,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			core.Debug("%s - relay update could not read request body: %v", request.RemoteAddr, err)
+			core.Debug("%s - error: relay update could not read request body: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError)	// 500
 			return
 		}
 		defer request.Body.Close()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Debug("%s - relay update unsupported content type", request.RemoteAddr)
+			core.Debug("%s - error: relay update unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
@@ -230,21 +230,21 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		var relayUpdateRequest RelayUpdateRequest
 		err = relayUpdateRequest.UnmarshalBinary(body)
 		if err != nil {
-			core.Debug("%s - relay update could not read request packet", request.RemoteAddr)
+			core.Debug("%s - error: relay update could not read request packet", request.RemoteAddr)
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		if relayUpdateRequest.Version > VersionNumberUpdateRequest {
-			core.Debug("%s - relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest)
+			core.Debug("%s - error: relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
 		}
 
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
-			core.Debug("%s - relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
+			core.Debug("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
 			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
 			writer.WriteHeader(http.StatusBadRequest)	// 400
 			return
@@ -255,7 +255,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		params.RelayMap.RUnlock()
 
 		if !ok {
-			core.Debug("%s - relay update relay not initialized", request.RemoteAddr)
+			core.Debug("%s - error: relay update relay not initialized", request.RemoteAddr)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			writer.WriteHeader(http.StatusNotFound)	// 404
 			return
@@ -314,7 +314,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		responseData, err = response.MarshalBinary()
 		if err != nil {
-			core.Debug("%s - failed to write relay update response: %v", request.RemoteAddr, err)
+			core.Debug("%s - error: failed to write relay update response: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError)	// 500
 			return
 		}
