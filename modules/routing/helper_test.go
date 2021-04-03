@@ -28,7 +28,7 @@ func fillRelayDatabase(relayMap *routing.RelayMap) {
 	fillData := func(addr string, updateTime time.Time) {
 		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		data := &routing.RelayData{
+		data := routing.RelayData{
 			ID:   id,
 			Name: addr,
 			Addr: *udp,
