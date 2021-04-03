@@ -851,7 +851,9 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
+	
+	// todo: not today
+	// router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
