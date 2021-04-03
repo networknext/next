@@ -20,7 +20,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	// "github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
@@ -549,9 +549,9 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 	}
 }
 
+// todo: not today
+/*
 func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.ResponseWriter, *http.Request) {
-	// todo: not today
-	/*
 	return func(w http.ResponseWriter, request *http.Request) {
 		if bin, err := rmap.MarshalBinary(); err == nil {
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(bin)))
@@ -562,5 +562,5 @@ func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.Respons
 			http.Error(w, "could not marshal relay map", http.StatusInternalServerError)
 		}
 	}
-	*/
 }
+*/
