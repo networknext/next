@@ -259,7 +259,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 				    return relayStats[i].name < relayStats[j].name
 				})
 				sort.SliceStable(relayStats, func(i, j int) bool {
-				    return relayStats[i].sessionCount < relayStats[j].sessionCount
+				    return relayStats[i].sessionCount > relayStats[j].sessionCount
 				})
 				fmt.Printf("\n-----------------------------------------\n")
 				fmt.Printf("\n%d active relays:\n\n", len(relayStats))
