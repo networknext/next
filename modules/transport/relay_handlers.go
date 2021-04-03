@@ -47,7 +47,7 @@ func ParseAddress(input string) *net.UDPAddr {
 
 func init() {
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
-	file, err := os.Open("./relays.bin")
+	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("Could not find relay binary at %s\n", filePath)
 		return
