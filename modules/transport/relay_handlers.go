@@ -272,8 +272,6 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				return
 			}
 
-			// todo: bring back the crypto check here
-
 			relayData := routing.RelayData{}
 			{
 				relayData.ID = id
@@ -300,6 +298,8 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				return
 			}
 		}
+
+		// todo: bring back the crypto check here
 
 		// update relay ping stats
 

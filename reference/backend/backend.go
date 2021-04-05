@@ -822,6 +822,8 @@ func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte)
 	return C.crypto_box_open((*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0])) != 0
 }
 
+// todo: this whole handler is deprecaed
+/*
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -893,6 +895,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	responseData = responseData[:index]
 	writer.Write(responseData)
 }
+*/
 
 func CompareTokens(a []byte, b []byte) bool {
 	if len(a) != len(b) {
@@ -934,18 +937,14 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	key := relay_address
 
+	// todo: crypto check here
+
 	backend.mutex.RLock()
-	relayEntry, ok := backend.relayDatabase[key]
-	found := false
-	if ok && CompareTokens(token, relayEntry.token) {
-		found = true
+	_, ok := backend.relayDatabase[key]
+	if !ok {
+		backend.dirty = true
 	}
 	backend.mutex.RUnlock()
-
-	if !found {
-		writer.WriteHeader(http.StatusNotFound)
-		return
-	}
 
 	var num_relays uint32
 	if !ReadUint32(body, &index, &num_relays) {
@@ -973,7 +972,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	relayEntry = RelayEntry{}
+	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
 	relayEntry.id = GetRelayId(relay_address)
 	relayEntry.address = ParseAddress(relay_address)
@@ -1024,7 +1023,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 func WebServer() {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }
