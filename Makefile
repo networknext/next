@@ -54,7 +54,7 @@ export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_ADDRESS
-export RELAY_ADDRESS = 127.0.0.1
+export RELAY_ADDRESS = 127.0.0.1:35000
 endif
 
 ifndef RELAY_DEBUG

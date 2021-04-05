@@ -60,11 +60,18 @@ func init() {
 	    return relayArray[i].Name < relayArray[j].Name
 	})
 
+	// todo: hack override
+	relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
+	relayArray[0].ID = 0xde0fb1e9a25b1948
+
+	for i := range relayArray {
+		relayHash[relayArray[i].ID] = relayArray[i]
+	}
+
 	fmt.Printf("\n=======================================\n")
 	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
 	for i := range relayArray {
-		fmt.Printf( "    %s\n", relayArray[i].Name)
-		relayHash[relayArray[i].ID] = relayArray[i]
+		fmt.Printf( "    %s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
 	}
 	fmt.Printf("\n=======================================\n")
 }
@@ -96,6 +103,8 @@ type RelayUpdateHandlerConfig struct {
 }
 
 func RelayInitHandlerFunc(params *RelayInitHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+
+	// todo: this entire handler is deprecated
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
@@ -258,11 +267,13 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 			relay, ok := relayHash[id]
 
 			if !ok {
-				core.Debug("%s - error: could not find relay: %x", request.RemoteAddr, id)
+				core.Debug("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
 				params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 				writer.WriteHeader(http.StatusNotFound)	// 404
 				return
 			}
+
+			// todo: bring back the crypto check here
 
 			relayData := routing.RelayData{}
 			{

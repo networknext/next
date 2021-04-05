@@ -138,8 +138,8 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 			for _, v := range relayMap.relays {
 				relayStats = append(relayStats, RelayStatsEntry{name: v.Name, sessionCount: v.SessionCount})
 			}
-			for k,v := range relayHash {
-				_, exists := relayMap.relays[string(k)]
+			for _,v := range relayHash {
+				_, exists := relayMap.relays[v.Addr.String()]
 				if !exists {
 					inactiveRelays = append(inactiveRelays, v.Name)
 				}

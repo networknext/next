@@ -4456,7 +4456,7 @@ struct relay_t
     relay_platform_socket_t * socket;
     relay_platform_mutex_t * mutex;
     double initialize_time;
-    uint64_t initialize_router_timestamp;
+    uint64_t initialize_router_timestamp;                       // todo: this needs to be grabbed on first successful update now
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
@@ -5497,35 +5497,9 @@ int main( int argc, const char ** argv )
     uint8_t relay_token[RELAY_TOKEN_BYTES];
     relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
-    printf( "\nInitializing relay\n" );
-
-    bool relay_initialized = false;
-
     uint64_t router_timestamp = 0;
 
-    for ( int i = 0; i < 120; ++i )
-    {
-        if ( relay_init( curl, backend_hostname, relay_token, relay_address_string, router_public_key, relay_private_key, &router_timestamp ) == RELAY_OK )
-        {
-            printf( "\n" );
-            relay_initialized = true;
-            break;
-        }
-
-        printf( "." );
-        fflush( stdout );
-
-        relay_platform_sleep( 1.0 );
-    }
-
-    if ( !relay_initialized )
-    {
-        printf( "\nerror: could not initialize relay\n\n" );
-        relay_platform_socket_destroy( socket );
-        curl_easy_cleanup( curl );
-        relay_term();
-        return 1;
-    }
+    // todo: router timestamp from backend
 
     relay_t relay;
     relay.relay_manager = nullptr;
@@ -5574,8 +5548,6 @@ int main( int argc, const char ** argv )
         printf( "\nerror: could not create ping thread\n\n" );
         quit = 1;
     }
-
-    printf( "Relay initialized\n\n" );
 
     signal( SIGINT, interrupt_handler );
     signal( SIGTERM, interrupt_handler );
