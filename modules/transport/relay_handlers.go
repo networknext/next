@@ -38,10 +38,13 @@ func ParseAddress(input string) *net.UDPAddr {
 }
 
 func init() {
+
+	relayHash = make(map[uint64]routing.Relay)
+
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("Could not find relay binary at %s\n", filePath)
+		// fmt.Printf("Could not find relay binary at %s\n", filePath)
 		return
 	}
 	defer file.Close()
@@ -59,12 +62,15 @@ func init() {
 
 	fmt.Printf("\n=======================================\n")
 	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
-	relayHash = make(map[uint64]routing.Relay)
 	for i := range relayArray {
 		fmt.Printf( "    %s\n", relayArray[i].Name)
 		relayHash[relayArray[i].ID] = relayArray[i]
 	}
 	fmt.Printf("\n=======================================\n")
+}
+
+func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
+	return relayArray, relayHash
 }
 
 const InitRequestMagic = 0x9083708f

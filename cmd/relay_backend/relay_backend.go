@@ -179,7 +179,7 @@ func mainReturnWithCode() int {
 		timeout := int64(routing.RelayTimeout.Seconds())
 		frequency := time.Second * 10
 		ticker := time.NewTicker(frequency)
-		relayMap.TimeoutLoop(ctx, timeout, ticker.C)
+		relayMap.TimeoutLoop(ctx, transport.GetRelayData, timeout, ticker.C)		// todo: own the relay data and updating in this module 
 	}()
 
 	// ping stats

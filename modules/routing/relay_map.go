@@ -120,32 +120,55 @@ type RelayStatsEntry struct {
 	sessionCount int
 }
 
-func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
+func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([]Relay, map[uint64]Relay), timeoutSeconds int64, c <-chan time.Time) {
 	deleteList := make([]string, 0)
 	for {
 		select {
 		case <-c:
 
+			relayArray, relayHash := getRelayData()
+
+			_ = relayArray
+
 			relayStats := make([]RelayStatsEntry, 0)
+	
+			inactiveRelays := make([]string, 0)
+	
 			relayMap.RLock()
 			for _, v := range relayMap.relays {
 				relayStats = append(relayStats, RelayStatsEntry{name: v.Name, sessionCount: v.SessionCount})
 			}
-			relayMap.RUnlock()
-			if len(relayStats) > 0 {
-				sort.SliceStable(relayStats, func(i, j int) bool {
-				    return relayStats[i].name < relayStats[j].name
-				})
-				sort.SliceStable(relayStats, func(i, j int) bool {
-				    return relayStats[i].sessionCount > relayStats[j].sessionCount
-				})
-				fmt.Printf("\n-----------------------------------------\n")
-				fmt.Printf("\n%d active relays:\n\n", len(relayStats))
-				for i := range relayStats {
-					fmt.Printf("    %s [%d]\n", relayStats[i].name, relayStats[i].sessionCount)
+			for k,v := range relayHash {
+				_, exists := relayMap.relays[string(k)]
+				if !exists {
+					inactiveRelays = append(inactiveRelays, v.Name)
 				}
-				fmt.Printf("\n-----------------------------------------\n\n")
 			}
+			relayMap.RUnlock()
+			
+			sort.SliceStable(relayStats, func(i, j int) bool {
+			    return relayStats[i].name < relayStats[j].name
+			})
+
+			sort.SliceStable(relayStats, func(i, j int) bool {
+			    return relayStats[i].sessionCount > relayStats[j].sessionCount
+			})
+
+			sort.SliceStable(inactiveRelays, func(i, j int) bool {
+			    return inactiveRelays[i] < inactiveRelays[j]
+			})
+
+			fmt.Printf("\n-----------------------------------------\n")
+			fmt.Printf("\n%d active relays:\n\n", len(relayStats))
+			for i := range relayStats {
+				fmt.Printf("    %s [%d]\n", relayStats[i].name, relayStats[i].sessionCount)
+			}
+			fmt.Printf("\n%d inactive relays:\n\n", len(inactiveRelays))
+			for i := range inactiveRelays {
+				fmt.Printf("    %s\n", inactiveRelays[i])
+			}
+			fmt.Printf("\n-----------------------------------------\n\n")
+
 
 			deleteList = deleteList[:0]
 			currentTime := time.Now().Unix()
