@@ -20,8 +20,8 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
-var relayArray []routing.Relay
-var relayHash map[uint64]routing.Relay
+var relayArray_internal []routing.Relay
+var relayHash_internal map[uint64]routing.Relay
 
 func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
@@ -38,7 +38,7 @@ func ParseAddress(input string) *net.UDPAddr {
 
 func init() {
 
-	relayHash = make(map[uint64]routing.Relay)
+	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
 	file, err := os.Open(filePath)
@@ -49,34 +49,36 @@ func init() {
 	defer file.Close()
 
 	decoder := gob.NewDecoder(file)
-	err = decoder.Decode(&relayArray)
+	err = decoder.Decode(&relayArray_internal)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	sort.SliceStable(relayArray, func(i, j int) bool {
-	    return relayArray[i].Name < relayArray[j].Name
+	sort.SliceStable(relayArray_internal, func(i, j int) bool {
+	    return relayArray_internal[i].Name < relayArray_internal[j].Name
 	})
 
-	// todo: hack override
-	relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-	relayArray[0].ID = 0xde0fb1e9a25b1948
+	/*
+	// todo: hack override for local testing
+	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
+	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+	*/
 
-	for i := range relayArray {
-		relayHash[relayArray[i].ID] = relayArray[i]
+	for i := range relayArray_internal {
+		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
 	}
 
 	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
-	for i := range relayArray {
-		fmt.Printf( "    %s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
+	for i := range relayArray_internal {
+		fmt.Printf( "    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
 	}
 	fmt.Printf("\n=======================================\n")
 }
 
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
-	return relayArray, relayHash
+	return relayArray_internal, relayHash_internal
 }
 
 const InitRequestMagic = 0x9083708f
@@ -154,6 +156,8 @@ func RelayInitHandlerFunc(params *RelayInitHandlerConfig) func(writer http.Respo
 		}
 
 		id := crypto.HashID(relayInitRequest.Address.String())
+
+		_, relayHash := params.GetRelayData()
 
 		relay, ok := relayHash[id]
 
@@ -256,6 +260,8 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		params.RelayMap.RLock()
 		relayData, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
 		params.RelayMap.RUnlock()
+
+		relayArray, relayHash := params.GetRelayData()
 
 		if !ok {
 
