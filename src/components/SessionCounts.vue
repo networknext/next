@@ -7,11 +7,11 @@
       <span
         class="badge badge-dark"
         data-test="totalSessions"
-      >{{ this.totalSessions.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} Total Sessions</span>&nbsp;
+      >{{ totalSessions.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} Total Sessions</span>&nbsp;
       <span
         class="badge badge-success"
         data-test="nnSessions"
-      >{{ this.totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
+      >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
     <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
       <Alert ref="verifyAlert">
@@ -20,7 +20,7 @@
         </a>
       </Alert>
     </div>
-    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus">
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus" style="max-width: 300px;">
       <div class="mr-auto"></div>
       <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
         <select class="form-control" v-on:change="updateFilter($event.target.value)">

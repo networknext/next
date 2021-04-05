@@ -20,9 +20,11 @@ export class JSONRPCService {
       const options = params || {}
       const id = 'id'
       let url = ''
+
       if (process.env.VUE_APP_MODE === 'local') {
         url = `${process.env.VUE_APP_API_URL}`
       }
+
       fetch(`${url}/rpc`, {
         method: 'POST',
         headers: this.headers,
@@ -33,12 +35,15 @@ export class JSONRPCService {
           id
         })
       }).then((response: Response) => {
-        response.json().then((json: any) => {
-          if (json.error) {
-            reject(json.error)
-          }
-          resolve(json.result)
-        })
+        return response.json()
+      }).then((json: any) => {
+        if (json.error) {
+          reject(json.error)
+          return
+        }
+        resolve(json.result)
+      }).catch((error: Error) => {
+        reject(error)
       })
     })
   }

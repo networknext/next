@@ -1,5 +1,6 @@
 <template>
   <div>
+    <v-tour name="sessionDetailsTour" :steps="sessionDetailsTourSteps" :options="sessionDetailsTourOptions" :callbacks="sessionDetailsTourCallbacks"></v-tour>
     <Alert ref="inputAlert"/>
     <div class="row" v-if="showDetails">
       <div class="col-12 col-lg-8">
@@ -21,7 +22,7 @@
               <span></span>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body" data-tour="latencyGraph">
             <div id="latency-chart-1"></div>
           </div>
         </div>
@@ -108,54 +109,62 @@
             <div class="card-text">
               <dl>
                 <dt>
+                  Datacenter
+                </dt>
+                <dd>
+                  <em>
+                    {{ meta.datacenter_alias !== "" ? meta.datacenter_alias : meta.datacenter_name }}
+                  </em>
+                </dd>
+                <dt>
                   ISP
                 </dt>
                 <dd>
                   <em>
-                    {{ this.meta.location.isp != '' ? this.meta.location.isp : 'Unknown' }}
+                    {{ meta.location.isp != '' ? meta.location.isp : 'Unknown' }}
                   </em>
                 </dd>
-                <div v-if="(!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus && getCustomerCode(this.meta.customer_id) === $store.getters.userProfile.companyCode) || $store.getters.isAdmin">
+                <div v-if="(!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus && getCustomerCode(meta.customer_id) === $store.getters.userProfile.companyCode) || $store.getters.isAdmin">
                   <dt>
                     User Hash
                   </dt>
                   <dd>
-                    <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
+                    <router-link v-bind:to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
                   </dd>
                 </div>
-                <div v-if="(!$store.getters.isAnonymous && this.meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
+                <div v-if="(!$store.getters.isAnonymous && meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
                   <dt>
                       IP Address
                   </dt>
                   <dd>
-                      {{ this.meta.client_addr }}
+                      {{ meta.client_addr }}
                   </dd>
                 </div>
                 <dt>
                     Platform
                 </dt>
                 <dd>
-                    {{ this.meta.platform }}
+                    {{ meta.platform }}
                 </dd>
                 <dt v-if="!$store.getters.isAnonymous">
                     Customer
                 </dt>
                 <dd v-if="!$store.getters.isAnonymous">
                     {{
-                        getCustomerName(this.meta.customer_id)
+                        getCustomerName(meta.customer_id)
                     }}
                 </dd>
                 <dt>
                   SDK Version
                 </dt>
                 <dd>
-                  {{ this.meta.sdk }}
+                  {{ meta.sdk }}
                 </dd>
                 <dt>
                   Connection Type
                 </dt>
                 <dd>
-                  {{ this.meta.connection }}
+                  {{ meta.connection }}
                 </dd>
                 <dt v-if="$store.getters.isAdmin" style="padding-top: 20px;">
                     Route
@@ -204,10 +213,10 @@
                 <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                     Nearby Relays
                 </dt>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && getBuyerIsLive(this.meta.customer_id)">
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && getBuyerIsLive(meta.customer_id)">
                     No Near Relays
                 </dd>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && !getBuyerIsLive(this.meta.customer_id)">
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && !getBuyerIsLive(meta.customer_id)">
                     Customer is not live
                 </dd>
                 <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
@@ -228,7 +237,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
+                      <tr v-for="(relay, index) in meta.nearby_relays" :key="index">
                         <td>
                           <a class="text-dark">{{relay.name}}</a>&nbsp;
                         </td>
@@ -264,6 +273,7 @@ import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
 import { AlertType } from './types/AlertTypes'
+import { FeatureEnum } from './types/FeatureTypes'
 // import data1 from '../../test_data/session_details.json'
 
 /**
@@ -315,11 +325,49 @@ export default class SessionDetails extends Vue {
     minZoom: 0
   }
 
+  private sessionDetailsTourSteps: Array<any>
+  private sessionDetailsTourOptions: any
+  private sessionDetailsTourCallbacks: any
+
   constructor () {
     super()
     this.searchID = ''
     // this.slices = (data1 as any).result.slices
     // this.meta = (data1 as any).result.meta
+
+    this.sessionDetailsTourSteps = [
+      {
+        target: '[data-tour="latencyGraph"]',
+        header: {
+          title: 'Session Details'
+        },
+        content: 'Stats about a specific session can be viewed in this <strong>Session Tool</strong>. These are real-time improvements to latency, jitter, and packet loss.',
+        params: {
+          placement: 'right',
+          enableScrolling: false
+        }
+      }
+    ]
+
+    this.sessionDetailsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'OK'
+      }
+    }
+
+    this.sessionDetailsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Session details tour finished', {
+            event_category: 'Tours'
+          })
+        }
+      }
+    }
   }
 
   private mounted () {
@@ -452,6 +500,9 @@ export default class SessionDetails extends Vue {
           } else {
             this.deckGlInstance.setProps({ layers: [] })
             this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
+          }
+          if (this.$store.getters.isTour && this.$tours.sessionDetailsTour && !this.$tours.sessionDetailsTour.isRunning && !this.$store.getters.finishedTours.includes('session-details')) {
+            this.$tours.sessionDetailsTour.start()
           }
         })
       })

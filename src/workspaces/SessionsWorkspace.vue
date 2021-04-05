@@ -1,5 +1,6 @@
 <template>
   <div>
+    <v-tour name="sessionsTour" :steps="sessionsTourSteps" :options="sessionsTourOptions" :callbacks="sessionsTourCallbacks"></v-tour>
     <div
       class="spinner-border"
       role="status"
@@ -82,6 +83,7 @@
           <tr v-for="(session, index) in sessions" v-bind:key="index">
             <td>
               <font-awesome-icon
+                id="status"
                 icon="circle"
                 class="fa-w-16 fa-fw"
                 v-bind:class="{
@@ -95,6 +97,7 @@
                 v-bind:to="`/session-tool/${session.id}`"
                 class="text-dark fixed-width"
                 v-bind:data-intercom="index"
+                v-bind:data-tour="index"
               >{{ session.id }}</router-link>
             </td>
             <td v-if="!$store.getters.isAnonymous">
@@ -141,6 +144,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import SessionCounts from '@/components/SessionCounts.vue'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 /**
  * This component holds the workspace elements related to the top sessions page in the Portal
@@ -162,10 +166,49 @@ export default class SessionsWorkspace extends Vue {
   private showTable: boolean
   private unwatch: any
 
+  private sessionsTourSteps: Array<any>
+  private sessionsTourOptions: any
+  private sessionsTourCallbacks: any
+
   constructor () {
     super()
     this.sessions = []
     this.showTable = false
+
+    this.sessionsTourSteps = [
+      {
+        target: '[data-tour="0"]',
+        header: {
+          title: 'Top Sessions'
+        },
+        content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).',
+        params: {
+          placement: 'bottom',
+          enableScrolling: false
+        }
+      }
+    ]
+
+    this.sessionsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'OK'
+      }
+    }
+
+    this.sessionsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')
+
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Sessions tour finished', {
+            event_category: 'Tours'
+          })
+        }
+      }
+    }
   }
 
   private mounted () {
@@ -193,10 +236,16 @@ export default class SessionsWorkspace extends Vue {
       })
       .then((response: any) => {
         this.sessions = response.sessions
+        if (!this.$store.getters.showTable) {
+          this.$store.commit('TOGGLE_SESSION_TABLE', true)
+        }
+        if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
+          this.$tours.sessionsTour.start()
+        }
       })
       .catch((error: any) => {
         this.sessions = []
-        console.log('Something went wrong fetching top sessions')
+        console.log('Something went wrong fetching the top sessions list')
         console.log(error)
       })
       .finally(() => {
@@ -232,11 +281,11 @@ export default class SessionsWorkspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-.fixed-width {
-  font-family: monospace;
-  font-size: 120%;
-}
-div.table-no-top-line th {
-  border-top: none !important;
-}
+  .fixed-width {
+    font-family: monospace;
+    font-size: 120%;
+  }
+  div.table-no-top-line th {
+    border-top: none !important;
+  }
 </style>
