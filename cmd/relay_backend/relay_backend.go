@@ -123,21 +123,6 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create optimize metrics", "err", err)
 	}
 
-	valveCostMatrixMetrics, err := metrics.NewValveCostMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve cost matrix metrics", "err", err)
-	}
-
-	valveOptimizeMetrics, err := metrics.NewValveOptimizeMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve optimize metrics", "err", err)
-	}
-
-	valveRouteMatrixMetrics, err := metrics.NewValveRouteMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve route matrix metrics", "err", err)
-	}
-
 	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create relay backend metrics", "err", err)
@@ -469,7 +454,7 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 
-			baseRelayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
+			baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
 
 			namesMap := make(map[string]routing.Relay)
 			numRelays := len(baseRelayIDs)
@@ -489,6 +474,7 @@ func mainReturnWithCode() int {
 				relayNames[i] = relay.Name
 				namesMap[relay.Name] = relay
 			}
+
 			//sort relay names then populate other arrays
 			sort.Strings(relayNames)
 			for i, relayName := range relayNames {
@@ -543,8 +529,6 @@ func mainReturnWithCode() int {
 
 			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
-				// todo: shut the fuck up
-				// level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				continue
 			}
 
@@ -673,124 +657,6 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	// Separate route matrix specifically for Valve
-	valveMatrixData := new(helpers.MatrixData)
-
-	featureValveMatrix, err := envvar.GetBool("FEATURE_VALVE_MATRIX", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-
-	if featureValveMatrix {
-		// Generate the route matrix specifically for valve
-		go func() {
-			syncTimer := helpers.NewSyncTimer(syncInterval)
-			for {
-				syncTimer.Run()
-				// All relays included
-				baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
-
-				namesMap := make(map[string]routing.Relay)
-				numRelays := len(baseRelayIDs)
-				relayAddresses := make([]net.UDPAddr, numRelays)
-				relayNames := make([]string, numRelays)
-				relayLatitudes := make([]float32, numRelays)
-				relayLongitudes := make([]float32, numRelays)
-				relayDatacenterIDs := make([]uint64, numRelays)
-				relayIDs := make([]uint64, numRelays)
-
-				for i, relayID := range baseRelayIDs {
-					relay, err := storer.Relay(relayID)
-					if err != nil {
-						continue
-					}
-
-					relayNames[i] = relay.Name
-					namesMap[relay.Name] = relay
-				}
-				//sort relay names then populate other arrays
-				sort.Strings(relayNames)
-				for i, relayName := range relayNames {
-					relay := namesMap[relayName]
-					relayIDs[i] = relay.ID
-					relayAddresses[i] = relay.Addr
-					relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
-					relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
-					relayDatacenterIDs[i] = relay.Datacenter.ID
-				}
-
-				valveCostMatrixMetrics.Invocations.Add(1)
-				costMatrixDurationStart := time.Now()
-
-				valveCostMatrix := statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
-
-				costMatrixDurationSince := time.Since(costMatrixDurationStart)
-				valveCostMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-				if costMatrixDurationSince.Seconds() > 1.0 {
-					valveCostMatrixMetrics.LongUpdateCount.Add(1)
-				}
-
-				valveCostMatrixMetrics.Bytes.Set(float64(len(valveCostMatrix) * 4))
-
-				numCPUs := runtime.NumCPU()
-				numSegments := numRelays
-				if numCPUs < numRelays {
-					numSegments = numRelays / 5
-					if numSegments == 0 {
-						numSegments = 1
-					}
-				}
-
-				valveOptimizeMetrics.Invocations.Add(1)
-				optimizeDurationStart := time.Now()
-
-				routeEntries := core.Optimize(numRelays, numSegments, valveCostMatrix, 5, relayDatacenterIDs)
-				if len(routeEntries) == 0 {
-					// todo: shut the fuck up
-					// level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
-					continue
-				}
-
-				optimizeDurationSince := time.Since(optimizeDurationStart)
-				valveOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
-
-				if optimizeDurationSince.Seconds() > 1.0 {
-					valveOptimizeMetrics.LongUpdateCount.Add(1)
-				}
-
-				valveRouteMatrixNew := &routing.RouteMatrix{
-					RelayIDs:           relayIDs,
-					RelayAddresses:     relayAddresses,
-					RelayNames:         relayNames,
-					RelayLatitudes:     relayLatitudes,
-					RelayLongitudes:    relayLongitudes,
-					RelayDatacenterIDs: relayDatacenterIDs,
-					RouteEntries:       routeEntries,
-				}
-
-				if err := valveRouteMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
-					level.Error(logger).Log("matrix", "route", "op", "write_response", "msg", "could not write response data", "err", err)
-					continue
-				}
-
-				valveRouteMatrixNew.WriteAnalysisData()
-
-				valveMatrixData.SetMatrix(valveRouteMatrixNew.GetResponseData())
-
-				valveRouteMatrixMetrics.Bytes.Set(float64(valveMatrixData.GetMatrixDataSize()))
-				valveRouteMatrixMetrics.RelayCount.Set(float64(len(valveRouteMatrixNew.RelayIDs)))
-				valveRouteMatrixMetrics.DatacenterCount.Set(float64(len(valveRouteMatrixNew.RelayDatacenterIDs)))
-
-				// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
-				numRoutes := int32(0)
-				for i := range valveRouteMatrixNew.RouteEntries {
-					numRoutes += valveRouteMatrixNew.RouteEntries[i].NumRoutes
-				}
-				valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
-			}
-		}()
-	}
-
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
 		Metrics:          relayInitMetrics,
@@ -809,16 +675,6 @@ func mainReturnWithCode() int {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		buffer := bytes.NewBuffer(routeMatrixData.GetMatrix())
-		_, err := buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	serveValveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-
-		buffer := bytes.NewBuffer(valveMatrixData.GetMatrix())
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -844,7 +700,6 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
-	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 

@@ -360,10 +360,6 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
-.PHONY: dev-server-backend-valve
-dev-server-backend-valve: build-server-backend
-	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
-
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon
 	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
