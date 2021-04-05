@@ -1,10 +1,6 @@
 package transport
 
 import (
-	"os"
-	"encoding/gob"
-	"net"
-	"strconv"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -13,73 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 )
-
-var relayArray_internal []routing.Relay
-var relayHash_internal map[uint64]routing.Relay
-
-func ParseAddress(input string) *net.UDPAddr {
-	address := &net.UDPAddr{}
-	ip_string, port_string, err := net.SplitHostPort(input)
-	if err != nil {
-		address.IP = net.ParseIP(input)
-		address.Port = 0
-		return address
-	}
-	address.IP = net.ParseIP(ip_string)
-	address.Port, _ = strconv.Atoi(port_string)
-	return address
-}
-
-func init() {
-
-	relayHash_internal = make(map[uint64]routing.Relay)
-
-	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
-	file, err := os.Open(filePath)
-	if err != nil {
-		// fmt.Printf("Could not find relay binary at %s\n", filePath)
-		return
-	}
-	defer file.Close()
-
-	decoder := gob.NewDecoder(file)
-	err = decoder.Decode(&relayArray_internal)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	sort.SliceStable(relayArray_internal, func(i, j int) bool {
-	    return relayArray_internal[i].Name < relayArray_internal[j].Name
-	})
-
-	/*
-	// todo: hack override for local testing
-	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
-	*/
-
-	for i := range relayArray_internal {
-		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
-	}
-
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
-	for i := range relayArray_internal {
-		fmt.Printf( "    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
-}
-
-func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
-	return relayArray_internal, relayHash_internal
-}
 
 const InitRequestMagic = 0x9083708f
 

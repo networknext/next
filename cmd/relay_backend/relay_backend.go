@@ -20,6 +20,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"strconv"
+	"encoding/gob"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/common/helpers"
@@ -179,7 +181,7 @@ func mainReturnWithCode() int {
 		timeout := int64(routing.RelayTimeout.Seconds())
 		frequency := time.Second * 10
 		ticker := time.NewTicker(frequency)
-		relayMap.TimeoutLoop(ctx, transport.GetRelayData, timeout, ticker.C)		// todo: own the relay data and updating in this module 
+		relayMap.TimeoutLoop(ctx, GetRelayData, timeout, ticker.C)
 	}()
 
 	// ping stats
@@ -793,14 +795,14 @@ func mainReturnWithCode() int {
 		RelayMap:         relayMap,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
-		GetRelayData:     transport.GetRelayData,	// todo: temporary. this file should own the get relay data fn.
+		GetRelayData:     GetRelayData,
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
 		RelayMap: 		  relayMap,
 		StatsDB:          statsdb,
 		Metrics:          relayUpdateMetrics,
-		GetRelayData:     transport.GetRelayData,	// todo: temporary. this file should own the get relay data fn.
+		GetRelayData:     GetRelayData,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -893,4 +895,65 @@ func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp tim
 	defer writer.Close()
 	_, err := writer.Write(matrix)
 	return err
+}
+
+var relayArray_internal []routing.Relay
+var relayHash_internal map[uint64]routing.Relay
+
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
+
+func init() {
+
+	relayHash_internal = make(map[uint64]routing.Relay)
+
+	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("could not load relay binary: %s\n", filePath)
+		return
+	}
+	defer file.Close()
+
+	decoder := gob.NewDecoder(file)
+	err = decoder.Decode(&relayArray_internal)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	sort.SliceStable(relayArray_internal, func(i, j int) bool {
+	    return relayArray_internal[i].Name < relayArray_internal[j].Name
+	})
+
+	/*
+	// todo: hack override for local testing
+	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
+	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+	*/
+
+	for i := range relayArray_internal {
+		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
+	}
+
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
+	for i := range relayArray_internal {
+		fmt.Printf( "    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
+	}
+	fmt.Printf("\n=======================================\n")
+}
+
+func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
+	return relayArray_internal, relayHash_internal
 }
