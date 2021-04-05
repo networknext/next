@@ -69,9 +69,11 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 		return errors.New("unable to read relay stats version")
 	}
 
+	/*
 	if version != routing.VersionNumberRelayMap {
 		return fmt.Errorf("incorrect relay map version number: %d", version)
 	}
+	*/
 
 	var count uint64
 	if !encoding.ReadUint64(data, &index, &count) {

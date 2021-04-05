@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/analytics"
-	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
@@ -63,12 +63,6 @@ func mainReturnWithCode() int {
 	gcpProjectID := backend.GetGCPProjectID()
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	relayslogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -173,7 +167,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create the relay map
-	cleanupCallback := func(relayData *routing.RelayData) error {
+	cleanupCallback := func(relayData routing.RelayData) error {
 		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
 		statsdb.DeleteEntry(relayData.ID)
 		level.Warn(logger).Log("msg", "relay timed out", "relay ID", relayData.ID, "relay addr", relayData.Addr.String(), "relay name", relayData.Name)
@@ -472,7 +466,7 @@ func mainReturnWithCode() int {
 		syncTimer := helpers.NewSyncTimer(syncInterval)
 		for {
 			syncTimer.Run()
-			// For now, exclude all valve relays
+
 			baseRelayIDs := relayMap.GetAllRelayIDs([]string{"valve"}) // Filter out any relays whose seller has a Firestore key of "valve"
 
 			namesMap := make(map[string]routing.Relay)
@@ -844,16 +838,13 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
-	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(&commonInitParams)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	
-	// todo: not today
-	// router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {

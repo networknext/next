@@ -267,7 +267,7 @@ func TestStatsDatabase(t *testing.T) {
 	t.Run("GetCostMatrix()", func(t *testing.T) {
 		t.Run("returns the cost matrix", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
-			relayMap := routing.NewRelayMap(func(relayData *routing.RelayData) error {
+			relayMap := routing.NewRelayMap(func(relayData routing.RelayData) error {
 				statsdb.DeleteEntry(relayData.ID)
 				return nil
 			})

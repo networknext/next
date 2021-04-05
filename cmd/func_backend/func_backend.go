@@ -575,7 +575,7 @@ func main() {
 	backend.statsDatabase = routing.NewStatsDatabase()
 	backend.routeMatrix = &routing.RouteMatrix{}
 
-	backend.relayMap = routing.NewRelayMap(func(relayData *routing.RelayData) error {
+	backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
 		backend.statsDatabase.DeleteEntry(relayData.ID)
 		return nil
 	})

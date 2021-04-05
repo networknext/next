@@ -5,10 +5,6 @@ import (
 	"encoding/gob"
 	"net"
 	"strconv"
-
-	// "bytes"
-	// "context"
-	// "errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -18,10 +14,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/envvar"
-
-	"github.com/go-kit/kit/log"
-	// "github.com/go-kit/kit/log/level"
-
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
@@ -75,11 +67,9 @@ func init() {
 	fmt.Printf("\n=======================================\n")
 }
 
-const (
-	InitRequestMagic = 0x9083708f
+const InitRequestMagic = 0x9083708f
 
-	MaxRelays = 1024
-)
+const MaxRelays = 1024
 
 var (
 	MaxJitter float64
@@ -99,7 +89,7 @@ type RelayUpdateHandlerConfig struct {
 	Storer   storage.Storer
 }
 
-func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(params *RelayInitHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
@@ -165,7 +155,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			relayData.ID = id
 			relayData.Addr = relayInitRequest.Address
 			relayData.LastUpdateTime = time.Now()
-			relayData.Version = relayInitRequest.RelayVersion
 
 			relayData.Name = relay.Name
 			relayData.PublicKey = relay.PublicKey
@@ -200,7 +189,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 	}
 }
 
-func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
@@ -274,7 +263,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				relayData.ID = id
 				relayData.Addr = relayUpdateRequest.Address
 				relayData.LastUpdateTime = time.Now()
-				relayData.Version = relayUpdateRequest.RelayVersion
 
 				relayData.Name = relay.Name
 				relayData.PublicKey = relay.PublicKey
@@ -330,7 +318,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		// update the relay data (updates the time that stops it timing out...)
 
 		params.RelayMap.Lock()
-		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), int(relayUpdateRequest.TrafficStats.SessionCount)) // , relayUpdateRequest.TrafficStats, float32(relayUpdateRequest.CPUUsage)*100.0, float32(relayUpdateRequest.MemUsage)*100.0)
+		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), int(relayUpdateRequest.TrafficStats.SessionCount))
 		params.RelayMap.Unlock()
 
 		// build and write the response
@@ -548,19 +536,3 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 		}
 	}
 }
-
-// todo: not today
-/*
-func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, request *http.Request) {
-		if bin, err := rmap.MarshalBinary(); err == nil {
-			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(bin)))
-			w.WriteHeader(http.StatusOK)
-			w.Write(bin)
-		} else {
-			level.Error(logger).Log("msg", "could not marshal relay map", "err", err)
-			http.Error(w, "could not marshal relay map", http.StatusInternalServerError)
-		}
-	}
-}
-*/
