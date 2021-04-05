@@ -82,6 +82,11 @@ export default class SessionMap extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
+        // check if mapbox exists - primarily for tests
+        if (!(window as any).mapboxgl) {
+          return
+        }
+
         if (!this.mapInstance) {
           this.mapInstance = new (window as any).mapboxgl.Map({
             accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
