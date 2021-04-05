@@ -18,7 +18,6 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/storage"
 )
 
 var relayArray []routing.Relay
@@ -90,16 +89,16 @@ var (
 
 type RelayInitHandlerConfig struct {
 	RelayMap         *routing.RelayMap
-	Storer           storage.Storer
 	Metrics          *metrics.RelayInitMetrics
 	RouterPrivateKey []byte
+	GetRelayData 	 func()([]routing.Relay, map[uint64]routing.Relay)
 }
 
 type RelayUpdateHandlerConfig struct {
-	RelayMap *routing.RelayMap
-	StatsDB  *routing.StatsDatabase
-	Metrics  *metrics.RelayUpdateMetrics
-	Storer   storage.Storer
+	RelayMap 		*routing.RelayMap
+	StatsDB  		*routing.StatsDatabase
+	Metrics  		*metrics.RelayUpdateMetrics
+	GetRelayData 	 func()([]routing.Relay, map[uint64]routing.Relay)
 }
 
 func RelayInitHandlerFunc(params *RelayInitHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {

@@ -791,16 +791,16 @@ func mainReturnWithCode() int {
 
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RelayMap:         relayMap,
-		Storer:           storer,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
+		GetRelayData:     transport.GetRelayData,	// todo: temporary. this file should own the get relay data fn.
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap: relayMap,
-		StatsDB:  statsdb,
-		Metrics:  relayUpdateMetrics,
-		Storer:   storer,
+		RelayMap: 		  relayMap,
+		StatsDB:          statsdb,
+		Metrics:          relayUpdateMetrics,
+		GetRelayData:     transport.GetRelayData,	// todo: temporary. this file should own the get relay data fn.
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
