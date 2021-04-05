@@ -148,6 +148,11 @@ export default class UserSessions extends Vue {
           console.log(error)
         }
       })
+      .finally(() => {
+        if (!this.showSessions) {
+          this.showSessions = true
+        }
+      })
   }
 
   private restartLoop () {
