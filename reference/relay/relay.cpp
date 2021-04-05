@@ -4456,7 +4456,7 @@ struct relay_t
     relay_platform_socket_t * socket;
     relay_platform_mutex_t * mutex;
     double initialize_time;
-    uint64_t initialize_router_timestamp;                       // todo: this needs to be grabbed on first successful update now
+    uint64_t initialize_router_timestamp;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
@@ -4693,7 +4693,11 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     uint64_t timestamp = relay_read_uint64( &q );
-    (void) timestamp;
+    if ( relay->initialize_router_timestamp == 0 )
+    {
+        printf( "Relay initialized\n" );
+        relay->initialize_router_timestamp = timestamp;
+    }
 
     uint32_t num_relays = relay_read_uint32( &q );
 
@@ -4787,6 +4791,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( packet_bytes == 0 )
             continue;
 
+        if ( relay->initialize_router_timestamp == 0 )
+            continue;
+
         if ( relay->fake_packet_loss_start_time >= 0.0f )
         {
             const double current_time = relay_platform_time();
@@ -4833,7 +4840,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( token.expire_timestamp < relay_timestamp( relay ) )
             {
-                relay_printf( "not a network next packet (%d)\n", packet_bytes );
+                relay_printf( "ignoring route request. route token expired" );
                 continue;
             }
 
@@ -5480,7 +5487,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "\nRelay socket opened on port %d\n", relay_address.port );
+    printf( "\nRelay socket opened on port %d\n\n", relay_address.port );
     char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
 
@@ -5497,16 +5504,11 @@ int main( int argc, const char ** argv )
     uint8_t relay_token[RELAY_TOKEN_BYTES];
     relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
-    uint64_t router_timestamp = 0;
-
-    // todo: router timestamp from backend
-
     relay_t relay;
     relay.relay_manager = nullptr;
     relay.socket = nullptr;
     relay.mutex = nullptr;
     relay.initialize_time = relay_platform_time();
-    relay.initialize_router_timestamp = router_timestamp;
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
@@ -5609,7 +5611,7 @@ int main( int argc, const char ** argv )
         }
     }
 
-    printf( "\nCleaning up\n" );
+    printf( "\n\nCleaning up\n\n" );
 
     if ( receive_thread )
     {

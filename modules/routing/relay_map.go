@@ -67,6 +67,7 @@ func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, sessionCount
 	entry := relayMap.relays[relayAddress]
 	entry.LastUpdateTime = time.Now()
 	entry.SessionCount = sessionCount
+	relayMap.relays[relayAddress] = entry
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
@@ -126,9 +127,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 		select {
 		case <-c:
 
-			relayArray, relayHash := getRelayData()
-
-			_ = relayArray
+			_, relayHash := getRelayData()
 
 			relayStats := make([]RelayStatsEntry, 0)
 	
@@ -178,10 +177,10 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 			for k, v := range relayMap.relays {
 				timeSinceLastUpdate := currentTime - v.LastUpdateTime.Unix()
 				if timeSinceLastUpdate > 10 {
-					core.Debug("%s - %s hasn't received an update for %d seconds", v.Addr.String(), v.Name, timeSinceLastUpdate)
+					core.Debug("error: %s - %s hasn't received an update for %d seconds (%d)", v.Addr.String(), v.Name, timeSinceLastUpdate, v.LastUpdateTime.Unix())
 				}
 				if v.LastUpdateTime.Unix() < timeoutTimestamp {
-					core.Debug("%s - %s timed out :(", v.Addr.String(), v.Name)
+					core.Debug("error: %s - %s timed out", v.Addr.String(), v.Name)
 					deleteList = append(deleteList, k)
 				}
 			}
@@ -195,6 +194,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 				}
 				relayMap.Unlock()
 			}
+			
 		case <-ctx.Done():
 			return
 		}

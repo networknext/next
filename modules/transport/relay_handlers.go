@@ -152,7 +152,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 			params.Metrics.Invocations.Add(1)
 		}()
 
-		// core.Debug("%s - processing relay update", request.RemoteAddr)
+		core.Debug("%s - relay update", request.RemoteAddr)
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
