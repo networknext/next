@@ -235,10 +235,7 @@ export default class SessionsWorkspace extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
-        this.sessions = response.sessions
-        if (!this.$store.getters.showTable) {
-          this.$store.commit('TOGGLE_SESSION_TABLE', true)
-        }
+        this.sessions = response.sessions || []
         if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
           this.$tours.sessionsTour.start()
         }
