@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/networknext/backend/modules/common/helpers"
 
 	"os"
@@ -187,13 +188,12 @@ func mainReturnWithCode() int {
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
-	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
-	if maxmindCityURI != "" && maxmindISPURI != "" {
+	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
+	if maxmindCityFile != "" && maxmindISPFile != "" {
 		mmdb := &routing.MaxmindDB{
-			HTTPClient: http.DefaultClient,
-			CityURI:    maxmindCityURI,
-			IspURI:     maxmindISPURI,
+			CityFile: maxmindCityFile,
+			IspFile:  maxmindISPFile,
 		}
 		var mmdbMutex sync.RWMutex
 
@@ -210,40 +210,32 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// todo: disable the sync for now until we can find out why it's causing session drops
+		// creatw a new file watcher
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
 
-		// if envvar.Exists("MAXMIND_SYNC_DB_INTERVAL") {
-		// 	syncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
-		// 	if err != nil {
-		// 		level.Error(logger).Log("err", err)
-		// 		return 1
-		// 	}
+		go func() {
+			for {
+				select {
+				case <-watcher.Events:
+					// File changed in some way - reload in memory store
+					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+						level.Error(logger).Log("err", err)
+						continue
+					}
+				case err := <-watcher.Errors:
+					level.Error(logger).Log("err", err)
+					continue
+				}
+			}
+		}()
 
-		// 	// Start a goroutine to sync from Maxmind.com
-		// 	go func() {
-		// 		ticker := time.NewTicker(syncInterval)
-		// 		for {
-		// 			newMMDB := &routing.MaxmindDB{}
-
-		// 			select {
-		// 			case <-ticker.C:
-		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-		// 					level.Error(logger).Log("err", err)
-		// 					continue
-		// 				}
-
-		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
-		// 				mmdbMutex.Lock()
-		// 				mmdb = newMMDB
-		// 				mmdbMutex.Unlock()
-		// 			case <-ctx.Done():
-		// 				return
-		// 			}
-
-		// 			time.Sleep(syncInterval)
-		// 		}
-		// 	}()
-		// }
+		if err := watcher.Add(maxmindCityFile); err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 	}
 
 	// Use a custom IP locator for staging so that clients

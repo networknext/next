@@ -333,8 +333,8 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 		}
 
 		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, packet.DatacenterName); err != nil {
-			
-			core.Debug("could not get datacenter: %s [%x]", packet.DatacenterName, packet.DatacenterID );
+
+			core.Debug("could not get datacenter: %s [%x]", packet.DatacenterName, packet.DatacenterID)
 
 			switch err.(type) {
 			case ErrDatacenterNotFound:
@@ -376,9 +376,9 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 }
 
 func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
-	
+
 	return func(w io.Writer, incoming *UDPPacket) {
-	
+
 		core.Debug("-----------------------------------------")
 		core.Debug("server update packet from %s", incoming.SourceAddr.String())
 
@@ -424,7 +424,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, storer storage.Storer, postSessi
 
 		if _, err := getDatacenter(storer, packet.CustomerID, packet.DatacenterID, ""); err != nil {
 
-			core.Debug("could not get datacenter: %x]", packet.DatacenterID );
+			core.Debug("could not get datacenter: %x]", packet.DatacenterID)
 
 			switch err.(type) {
 			case ErrDatacenterNotFound:
@@ -628,7 +628,7 @@ func SessionUpdateHandlerFunc(
 			core.Debug("debug enabled")
 			debug = new(string)
 		}
-		
+
 		// If a player has the "pro" tag, set pro mode in the route shader
 		if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
 			for i := int32(0); i < packet.NumTags; i++ {
@@ -688,7 +688,6 @@ func SessionUpdateHandlerFunc(
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ClientLocateFailure.Add(1)
-				return
 			}
 
 		} else {
