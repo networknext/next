@@ -1667,12 +1667,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A")
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B")
 			return sessions, err
 		}
 	default:
@@ -1694,12 +1696,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 	}
