@@ -16,13 +16,14 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/rjeczalik/notify"
 
 	"os"
 	"os/signal"
@@ -210,32 +211,35 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// creatw a new file watcher
-		watcher, err := fsnotify.NewWatcher()
+		c := make(chan notify.EventInfo, 1)
+
+		// Get parent folder of the maxmind files
+		fileLocation, err := filepath.Abs(filepath.Dir(maxmindCityFile))
 		if err != nil {
-			level.Error(logger).Log("err", err)
-		}
-
-		go func() {
-			for {
-				select {
-				case <-watcher.Events:
-					// File changed in some way - reload in memory store
-					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-						level.Error(logger).Log("err", err)
-						continue
-					}
-				case err := <-watcher.Errors:
-					level.Error(logger).Log("err", err)
-					continue
-				}
-			}
-		}()
-
-		if err := watcher.Add(maxmindCityFile); err != nil {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
+
+		// Check for Create events because cloud scheduler will be deleting and replacing each file with updates
+		if err := notify.Watch(fileLocation, c, notify.Create); err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		defer notify.Stop(c)
+
+		go func() {
+			for {
+				switch ei := <-c; ei.Event() {
+				default:
+					if ei.Path() == maxmindCityFile || ei.Path() == maxmindISPFile {
+						// Sync the maxmind memory store when a old files are replaced
+						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+							level.Error(logger).Log("err", err)
+							continue
+						}
+					}
+				}
+			}
+		}()
 	}
 
 	// Use a custom IP locator for staging so that clients
