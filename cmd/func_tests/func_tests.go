@@ -2817,10 +2817,8 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		/*
 		test_direct_raw,
 		test_direct_upgraded,
-		*/
 		test_network_next_route,
 		test_fallback_to_direct_backend,
 		test_fallback_to_direct_client_side,
