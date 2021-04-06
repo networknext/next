@@ -355,6 +355,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
 			firstNextCount += firstCount
@@ -363,6 +364,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
 			secondNextCount += secondCount
@@ -397,6 +399,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive first session count")
 				return err
 			}
 
@@ -415,6 +418,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive second session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive second session count")
 				return err
 			}
 
@@ -470,6 +474,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
@@ -477,6 +482,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
@@ -502,6 +508,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
 			return err
 		}
 
@@ -520,6 +527,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
 			return err
 		}
 
