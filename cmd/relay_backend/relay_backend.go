@@ -916,8 +916,8 @@ func init() {
 	})
 
 	// todo: hack override for local testing
-	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+	// relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
+	// relayArray_internal[0].ID = 0xde0fb1e9a25b1948
 
 	for i := range relayArray_internal {
 		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
