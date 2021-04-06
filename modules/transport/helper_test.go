@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
@@ -148,30 +147,30 @@ func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []stri
 	}
 }
 
-func seedRelayMap(t *testing.T, relayMap *routing.RelayMap, addressesToAdd []string) {
-	for i, addrString := range addressesToAdd {
-		addr, err := net.ResolveUDPAddr("udp", addrString)
-		assert.NoError(t, err)
+// func seedRelayMap(t *testing.T, relayMap *routing.RelayMap, addressesToAdd []string) {
+// 	for i, addrString := range addressesToAdd {
+// 		addr, err := net.ResolveUDPAddr("udp", addrString)
+// 		assert.NoError(t, err)
 
-		relayData := &routing.RelayData{
-			ID:   crypto.HashID(addrString),
-			Name: fmt.Sprintf("Relay %d", i),
-			Addr: *addr,
-			Seller: routing.Seller{
-				ID:   fmt.Sprintf("%d", i),
-				Name: fmt.Sprintf("Seller %d", i),
-			},
-			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID(fmt.Sprintf("Datacenter %d", i)),
-				Name: fmt.Sprintf("Datacenter %d", i),
-			},
-			PublicKey:      make([]byte, crypto.KeySize),
-			LastUpdateTime: time.Now().Add(-time.Second),
-		}
+// 		relayData := &routing.RelayData{
+// 			ID:   crypto.HashID(addrString),
+// 			Name: fmt.Sprintf("Relay %d", i),
+// 			Addr: *addr,
+// 			Seller: routing.Seller{
+// 				ID:   fmt.Sprintf("%d", i),
+// 				Name: fmt.Sprintf("Seller %d", i),
+// 			},
+// 			Datacenter: routing.Datacenter{
+// 				ID:   crypto.HashID(fmt.Sprintf("Datacenter %d", i)),
+// 				Name: fmt.Sprintf("Datacenter %d", i),
+// 			},
+// 			PublicKey:      make([]byte, crypto.KeySize),
+// 			LastUpdateTime: time.Now().Add(-time.Second),
+// 		}
 
-		relayMap.AddRelayDataEntry(addrString, relayData)
-	}
-}
+// 		relayMap.AddRelayDataEntry(addrString, relayData) // <-- generates compiler error
+// 	}
+// }
 
 func assertAllMetricsEqual(t *testing.T, expectedMetrics interface{}, actualMetrics interface{}) {
 	expectedMetricsValue := reflect.ValueOf(expectedMetrics)
