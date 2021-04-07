@@ -6,20 +6,12 @@ include $(MAKEFILE_DIR)/Makefile.common
 ### Vars ###
 ############
 
-EXE										:= relay.benchmark
+EXE								:= relay.benchmark
 
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.bench.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.bench.d, $(SRC_FILES))
 
-ifndef LOG_LEVEL
-LOG_LEVEL             			:= 3
-endif
-
-DEF_FLAGS						:= -DBENCH_BUILD -DRELAY_LOG_LEVEL=$(LOG_LEVEL)
-
-ifeq ($(LOG_ALL),true)
-DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL
-endif
+DEF_FLAGS						:= -DBENCH_BUILD
 
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_PERF_FLAGS)
 COMMON_COMPILE_FLAGS 			:= $(COMMON_FLAGS) -c $(DEF_FLAGS)
