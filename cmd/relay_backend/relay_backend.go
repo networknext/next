@@ -17,32 +17,31 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/networknext/backend/modules/config"
-
-	"github.com/networknext/backend/modules/storage"
-
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/common/helpers"
-
 	"cloud.google.com/go/pubsub"
+	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/rjeczalik/notify"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
-
-	gcStorage "cloud.google.com/go/storage"
 )
 
 var (
@@ -263,6 +262,66 @@ func mainReturnWithCode() int {
 		backendLiveData.Id = gcpProjectID
 		backendLiveData.Address = backendAddr
 		backendLiveData.InitAt = time.Now()
+	}
+
+	// Setup file watchman on relays.bin
+	{
+		// Get absolute path of relays.bin
+		relaysFilePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+		absPath, err := filepath.Abs(relaysFilePath)
+		if err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
+			return 1
+		}
+
+		// Check if file exists
+		if _, err := os.Stat(absPath); err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("%s does not exist", absPath), "err", err)
+			return 1
+		}
+
+		// Create channel to store notifications of file changing
+		fileChan := make(chan notify.EventInfo, 1)
+
+		// Check for Create events because cloud scheduler will be deleting and replacing each file with updates
+		if err := notify.Watch(absPath, fileChan, notify.Create); err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", absPath), "err", err)
+		}
+		defer notify.Stop(fileChan)
+
+		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
+		go func() {
+			for {
+				select {
+				case <-fileChan:
+					// File has changed
+					level.Debug(logger).Log("msg", fmt.Sprintf("detected file change at %s", absPath))
+					file, err := os.Open(absPath)
+					if err != nil {
+						level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
+						continue
+					}
+					defer file.Close()
+
+					// Setup relay array and hash to read into
+					var relayArray []routing.Relay
+					var relayHash map[uint64]routing.Relay
+
+					if err = decodeToRelayArray(file, &relayArray); err != nil {
+						level.Error(logger).Log("msg", "DecodeToRelayArray() error", "err", err)
+						continue
+					}
+
+					// Proceed to fill up the relay hash and swap the info
+					sortAndHashRelayArray(relayArray, relayHash, gcpProjectID)
+
+					_ = atomic.SwapPointer(&relayArray_internal, &relayArray)
+					_ = atomic.SwapPointer(&relayHash_internal, &relayHash)
+
+					displayLoadedRelays(relayArray_internal)
+				}
+			}
+		}()
 	}
 
 	// Create the relay map

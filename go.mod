@@ -36,6 +36,7 @@ require (
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
+	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/spaolacci/murmur3 v1.1.0
