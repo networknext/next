@@ -562,7 +562,7 @@ func mainReturnWithCode() int {
 			}
 
 			routeMatrixNew.WriteAnalysisData()
-			
+
 			routeMatrixDataNew := routeMatrixNew.GetResponseData()
 
 			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrixDataNew)))
@@ -706,10 +706,10 @@ func mainReturnWithCode() int {
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
-	   routeMatrixMutex.RLock()
-	   rm := routeMatrix
-	   routeMatrixMutex.RUnlock()
-	   return rm
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return rm
 	}
 
 	fmt.Printf("starting http server\n\n")
@@ -718,10 +718,10 @@ func mainReturnWithCode() int {
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	
+
 	// todo: remove the init entirely once the relays are updated to new version (1.4.0). deprecated
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(&commonInitParams)).Methods("POST")
-	
+
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
@@ -818,8 +818,8 @@ func init() {
 	})
 
 	// todo: hack override for local testing
-	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+	// relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
+	// relayArray_internal[0].ID = 0xde0fb1e9a25b1948
 
 	for i := range relayArray_internal {
 		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
