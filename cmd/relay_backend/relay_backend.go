@@ -445,6 +445,8 @@ func mainReturnWithCode() int {
 	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
 
+	_ = costMatrix
+
 	go func() {
 
 		syncTimer := helpers.NewSyncTimer(syncInterval)
