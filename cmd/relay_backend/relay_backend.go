@@ -934,7 +934,7 @@ func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]rout
 	})
 
 	if gcpProjectID == "" {
-		// TODO: hack override for local testing
+		// TODO: hack override for local testing for single relay
 		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
 		relayArray[0].ID = 0xde0fb1e9a25b1948
 	}
