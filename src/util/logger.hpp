@@ -15,19 +15,19 @@ extern util::Console _console_;
 
 #if RELAY_LOG_LEVEL >= 4 or defined LOG_ALL
 #define LOG_DEBUG(...)
-// #define LOG_DEBUG(...) 	_console_.log("debug: ", __VA_ARGS__)
+// #define LOG_DEBUG(...) 	_console_.log("", __VA_ARGS__)
 #else
 #define LOG_DEBUG(...)
 #endif
 
 #if RELAY_LOG_LEVEL >= 3 or defined LOG_ALL
-#define LOG_INFO(...)   _console_.log("info:  ", __VA_ARGS__)
+#define LOG_INFO(...)   _console_.log("", __VA_ARGS__)
 #else
 #define LOG_INFO(...)
 #endif
 
 #if RELAY_LOG_LEVEL >= 2 or defined LOG_ALL
-#define LOG_WARN(...)   _console_.log("warn:  ", __VA_ARGS__)
+#define LOG_WARN(...)   _console_.log("warning: ", __VA_ARGS__)
 #else
 #define LOG_WARN(...)
 #endif
@@ -39,7 +39,7 @@ extern util::Console _console_;
 #endif
 
 #if RELAY_LOG_LEVEL == 0 or defined LOG_ALL
-#define LOG_FATAL(...) 	_console_.log("fatal: ", __VA_ARGS__); std::exit(1)
+#define LOG_FATAL(...) 	_console_.log("error: ", __VA_ARGS__); std::exit(1)
 #else
 #define LOG_FATAL(...) std::exit(1)
 #endif
