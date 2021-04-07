@@ -12,6 +12,7 @@ import (
 	"expvar"
 	"fmt"
 	"hash/fnv"
+	"io"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -21,8 +22,8 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -47,7 +48,34 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+
+	relayArray_internal []routing.Relay
+	relayHash_internal  map[uint64]routing.Relay
+
+	relayArrayMutex sync.RWMutex
+	relayHashMutex  sync.RWMutex
 )
+
+func init() {
+	relayHash_internal = make(map[uint64]routing.Relay)
+
+	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("could not load relay binary: %s\n", filePath)
+		return
+	}
+	defer file.Close()
+
+	if err = decodeToRelayArray(file, &relayArray_internal); err != nil {
+		fmt.Printf("DecodeToRelayArray() error: %v\n", err)
+		os.Exit(1)
+	}
+
+	gcpProjectID := backend.GetGCPProjectID()
+	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	displayLoadedRelays(relayArray_internal)
+}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -59,7 +87,7 @@ func mainReturnWithCode() int {
 
 	serviceName := "relay_backend"
 
-	fmt.Printf("\n%s\n\n", serviceName)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -170,45 +198,75 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// Create channel to store notifications of file changing
-		fileChan := make(chan notify.EventInfo, 1)
+		// Get the directory of the relays.bin
+		// Used to watch over file creation and modification
+		directoryPath := filepath.Dir(absPath)
 
-		// Check for Create events because cloud scheduler will be deleting and replacing each file with updates
-		if err := notify.Watch(absPath, fileChan, notify.Create); err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", absPath), "err", err)
+		// Create channel to store notifications of file changing
+		// Use a size of 2 to ensure a change is detected even with io.EOF error
+		fileChan := make(chan notify.EventInfo, 2)
+
+		// Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
+		// Create covers the case where a file is explicitly deleted and then re-added
+		// InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
+		if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
+			return 1
 		}
 		defer notify.Stop(fileChan)
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
 		go func() {
+			level.Debug(logger).Log("msg", fmt.Sprintf("started watchman on %s", directoryPath))
 			for {
 				select {
-				case <-fileChan:
-					// File has changed
-					level.Debug(logger).Log("msg", fmt.Sprintf("detected file change at %s", absPath))
-					file, err := os.Open(absPath)
-					if err != nil {
-						level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
-						continue
+				case ei := <-fileChan:
+					if strings.Contains(ei.Path(), absPath) {
+						// File has changed
+						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
+						file, err := os.Open(absPath)
+						if err != nil {
+							level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
+							continue
+						}
+
+						// Setup relay array and hash to read into
+						var relayArrayNew []routing.Relay
+						relayHashNew := make(map[uint64]routing.Relay)
+
+						if err = decodeToRelayArray(file, &relayArrayNew); err == io.EOF {
+							// Sometimes we receive an EOF error since the file is still being replaced
+							// so early out here and proceed on the next notification
+							file.Close()
+							level.Debug(logger).Log("msg", "DecodeToRelayArray() EOF error, will wait for next notification")
+							continue
+						} else if err != nil {
+							file.Close()
+							level.Error(logger).Log("msg", "DecodeToRelayArray() error", "err", err)
+							continue
+						}
+
+						// Close the file since it is no longer needed
+						file.Close()
+
+						// Proceed to fill up the relay hash
+						sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+
+						// Pointer swap the relay array
+						relayArrayMutex.Lock()
+						relayArray_internal = relayArrayNew
+						relayArrayMutex.Unlock()
+
+						// Pointer swap the relay hash
+						relayHashMutex.Lock()
+						relayHash_internal = relayHashNew
+						relayHashMutex.Unlock()
+
+						level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
+
+						// Print the new list of relays
+						displayLoadedRelays(relayArray_internal)
 					}
-					defer file.Close()
-
-					// Setup relay array and hash to read into
-					var relayArray []routing.Relay
-					var relayHash map[uint64]routing.Relay
-
-					if err = decodeToRelayArray(file, &relayArray); err != nil {
-						level.Error(logger).Log("msg", "DecodeToRelayArray() error", "err", err)
-						continue
-					}
-
-					// Proceed to fill up the relay hash and swap the info
-					sortAndHashRelayArray(relayArray, relayHash, gcpProjectID)
-
-					_ = atomic.SwapPointer(&relayArray_internal, &relayArray)
-					_ = atomic.SwapPointer(&relayHash_internal, &relayHash)
-
-					displayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -623,7 +681,7 @@ func mainReturnWithCode() int {
 			}
 
 			routeMatrixNew.WriteAnalysisData()
-			
+
 			routeMatrixDataNew := routeMatrixNew.GetResponseData()
 
 			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrixDataNew)))
@@ -767,10 +825,10 @@ func mainReturnWithCode() int {
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
-	   routeMatrixMutex.RLock()
-	   rm := routeMatrix
-	   routeMatrixMutex.RUnlock()
-	   return rm
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return rm
 	}
 
 	fmt.Printf("starting http server\n\n")
@@ -779,10 +837,10 @@ func mainReturnWithCode() int {
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	
+
 	// todo: remove the init entirely once the relays are updated to new version (1.4.0). deprecated
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(&commonInitParams)).Methods("POST")
-	
+
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
@@ -852,32 +910,16 @@ func ParseAddress(input string) *net.UDPAddr {
 	return address
 }
 
-var relayArray_internal []routing.Relay
-var relayHash_internal map[uint64]routing.Relay
-
-func init() {
-	relayHash_internal = make(map[uint64]routing.Relay)
-
-	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
-	file, err := os.Open(filePath)
-	if err != nil {
-		fmt.Printf("could not load relay binary: %s\n", filePath)
-		return
-	}
-	defer file.Close()
-
-	if err = decodeToRelayArray(file, &relayArray_internal); err != nil {
-		fmt.Printf("DecodeToRelayArray() error: %v\n", err)
-		os.Exit(1)
-	}
-
-	gcpProjectID := backend.GetGCPProjectID()
-	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	displayLoadedRelays(relayArray_internal)
-}
-
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
-	return relayArray_internal, relayHash_internal
+	relayArrayMutex.RLock()
+	relayArrayData := relayArray_internal
+	relayArrayMutex.RUnlock()
+
+	relayHashMutex.RLock()
+	relayHashData := relayHash_internal
+	relayHashMutex.RUnlock()
+
+	return relayArrayData, relayHashData
 }
 
 func decodeToRelayArray(file *os.File, relayArray *[]routing.Relay) error {
