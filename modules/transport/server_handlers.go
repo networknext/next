@@ -675,6 +675,7 @@ func SessionUpdateHandlerFunc(
 			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 			sessionData.RouteState.UserID = packet.UserHash
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
+			level.Debug(logger).Log("msg", "found ip location", sessionData.Location)
 
 			// Set the AB test field manually on the first slice only, so that
 			// existing sessions don't start or stop running the AB test

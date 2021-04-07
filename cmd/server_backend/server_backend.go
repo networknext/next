@@ -18,6 +18,7 @@ import (
 	_ "net/http/pprof"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -220,7 +221,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// Check for Create events because cloud scheduler will be deleting and replacing each file with updates
+		// Only check for create events. cloud scheduler will delete and replace which will show up as a create event
 		if err := notify.Watch(fileLocation, c, notify.Create); err != nil {
 			level.Error(logger).Log("err", err)
 		}
@@ -229,8 +230,8 @@ func mainReturnWithCode() int {
 		go func() {
 			for {
 				switch ei := <-c; ei.Event() {
-				default:
-					if ei.Path() == maxmindCityFile || ei.Path() == maxmindISPFile {
+				case notify.Create:
+					if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
 						// Sync the maxmind memory store when a old files are replaced
 						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
 							level.Error(logger).Log("err", err)

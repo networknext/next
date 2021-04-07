@@ -122,11 +122,11 @@ export COST_MATRIX_INTERVAL = 1s
 endif
 
 ifndef MAXMIND_CITY_DB_FILE
-export MAXMIND_CITY_DB_FILE = ./testdata/GeoIP2-City-Test.mmdb
+export MAXMIND_CITY_DB_FILE = testdata/GeoIP2-City-Test.mmdb
 endif
 
 ifndef MAXMIND_ISP_DB_FILE
-export MAXMIND_ISP_DB_FILE = ./testdata/GeoIP2-ISP-Test.mmdb
+export MAXMIND_ISP_DB_FILE = testdata/GeoIP2-ISP-Test.mmdb
 endif
 
 ifndef LOCAL_RELAYS

@@ -242,6 +242,8 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 		return Location{}, err
 	}
 
+	fmt.Println("Using DB files to look up location")
+
 	return Location{
 		Latitude:  float32(cityres.Location.Latitude),
 		Longitude: float32(cityres.Location.Longitude),
