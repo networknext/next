@@ -71,14 +71,14 @@ namespace net
     slist = nullptr;
 
     if (ret != 0) {
-     LOG(ERROR, "curl request for '", hostname, endpoint, "' had an error: ", ret);
+     // LOG(ERROR, "curl request for '", hostname, endpoint, "' had an error: ", ret);
      return false;
     }
 
     long code = 0;
     curl_easy_getinfo(wrapper.mHandle, CURLINFO_RESPONSE_CODE, &code);
     if (code < 200 || code >= 300) {
-     LOG(ERROR, "http call to '", hostname, endpoint, "' did not return a success, code: ", code);
+     // LOG(ERROR, "http call to '", hostname, endpoint, "' did not return a success, code: ", code);
      return false;
     }
 

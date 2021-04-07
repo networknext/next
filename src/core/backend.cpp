@@ -270,25 +270,21 @@ namespace core
     bool success = true;
 
     while (should_loop) {
-      LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
+      // todo: wtf
+      // LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
       switch (update(recorder, false, should_loop)) {
-        case UpdateResult::FailureMaxAttemptsReached: {
-          LOG(ERROR, "could not update relay, max attempts reached, aborting program");
-          success = should_loop = false;
-        } break;
-        case UpdateResult::FailureTimeoutReached: {
-          LOG(ERROR, "could not update relay for over 30 seconds, aborting program");
+        case UpdateResult::Failure: {
+          LOG(ERROR, "could not update relay");
           success = should_loop = false;
         } break;
         default: {
           sessions.purge(this->router_info.current_time<uint64_t>());
-
           std::this_thread::sleep_for(1s);
         }
       }
     }
 
-    LOG(DEBUG, "exiting update loop");
+    // LOG(DEBUG, "exiting update loop");
 
     Clock backend_timeout;
     if (should_clean_shutdown) {
@@ -313,6 +309,8 @@ namespace core
   auto Backend::update(util::ThroughputRecorder& recorder, bool shutdown, const volatile bool& should_retry) -> UpdateResult
   {
     std::vector<uint8_t> req, res;
+
+    static bool first_update = true;
 
     // serialize request
     {
@@ -429,29 +427,24 @@ namespace core
 #endif // #if defined(linux) || defined(__linux) || defined(__linux__)
     }
 
-    LOG(DEBUG, "sending request");
+    // LOG(DEBUG, "sending request");
     util::Clock timeout;
     double elapsed_seconds = timeout.elapsed<Second>();
     size_t num_retries = 0;
     bool request_success = false;
     while (!(request_success = this->http_client.send_request(this->hostname, UPDATE_ENDPOINT, req, res)) && should_retry &&
            num_retries < MAX_UPDATE_ATTEMPTS && elapsed_seconds < UPDATE_TIMEOUT_SECS) {
+      LOG(ERROR, "relay update failed ", num_retries);
       num_retries++;
-      elapsed_seconds = timeout.elapsed<Second>();
-      LOG(DEBUG, "elapsed seconds = ", elapsed_seconds, ", num retries = ", num_retries);
       std::this_thread::sleep_for(1s);
     }
 
-    if (num_retries == MAX_UPDATE_ATTEMPTS) {
-      return UpdateResult::FailureMaxAttemptsReached;
-    }
-
-    if (elapsed_seconds >= UPDATE_TIMEOUT_SECS) {
-      return UpdateResult::FailureTimeoutReached;
+    if (num_retries >= MAX_UPDATE_ATTEMPTS) {
+      return UpdateResult::Failure;
     }
 
     if (!request_success) {
-      return UpdateResult::FailureOther;
+      return UpdateResult::Failure;
     }
 
     // early return if shutting down since the response won't be valid
@@ -459,35 +452,43 @@ namespace core
       return UpdateResult::Success;
     }
 
-    LOG(DEBUG, "parsing response");
+    // todo
+    // LOG(DEBUG, "parsing response");
 
     // parse response
     {
       UpdateResponse response;
       if (!response.from(res)) {
         LOG(ERROR, "could not deserialize update response, response size = ", res.size());
-        return UpdateResult::FailureOther;
+        return UpdateResult::Failure;
       }
 
       if (response.version != UPDATE_RESPONSE_VERSION) {
         LOG(ERROR, "bad relay version response version. expected ", UPDATE_RESPONSE_VERSION, ", got ", response.version);
-        return UpdateResult::FailureOther;
+        return UpdateResult::Failure;
       }
 
       this->router_info.set_timestamp(response.timestamp);
 
       if (response.num_relays > MAX_RELAYS) {
         LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.num_relays, '\n');
-        return UpdateResult::FailureOther;
+        return UpdateResult::Failure;
       }
 
       if (!this->relay_manager.update(response.num_relays, response.relays)) {
         LOG(ERROR, "could not update relay manager");
-        return UpdateResult::FailureOther;
+        return UpdateResult::Failure;
       }
     }
 
-    LOG(DEBUG, "updated relay");
+    // todo
+    // LOG(DEBUG, "updated relay");
+
+    if (first_update)
+    {
+      LOG(INFO, "relay initialized");
+      first_update = false;
+    }
 
     return UpdateResult::Success;
   }

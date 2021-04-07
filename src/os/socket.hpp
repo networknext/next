@@ -202,7 +202,8 @@ namespace os
 
       auto res = sendto(this->socket_fd, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        LOG(ERROR, "sendto (", to, ") failed");
+        // todo: debug level log
+        // LOG(ERROR, "sendto (", to, ") failed");
         return false;
       }
     } else {

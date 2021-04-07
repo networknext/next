@@ -130,9 +130,7 @@ namespace core
     enum class UpdateResult
     {
       Success,
-      FailureMaxAttemptsReached,
-      FailureTimeoutReached,
-      FailureOther,
+      Failure,
     };
 
    public:

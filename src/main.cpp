@@ -119,9 +119,9 @@ INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t
   } else {
     num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
     if (num_cpus > 0) {
-      LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
+      LOG(INFO, "number of processors available: ", num_cpus);
     } else {
-      LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
+      LOG(FATAL, "cannot autodetect number of processors available. please set RELAY_MAX_CORES");
     }
   }
   return num_cpus;
@@ -206,7 +206,7 @@ int main(int argc, const char* argv[])
     LOG(FATAL, "failed to initialize sodium");
   }
 
-  LOG(DEBUG, "initializing relay");
+  // LOG(DEBUG, "initializing relay");
 
   bool success = false;
 
@@ -280,7 +280,7 @@ int main(int argc, const char* argv[])
 
       auto thread = std::make_shared<std::thread>([&, socket, i] {
         core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
-        LOG(DEBUG, "exiting recv loop #", i);
+        // LOG(DEBUG, "exiting recv loop #", i);
       });
 
       set_thread_affinity(*thread, i + 1);
@@ -299,7 +299,7 @@ int main(int argc, const char* argv[])
     auto socket = sockets[0];  // will always have at least 1
     auto thread = std::make_shared<std::thread>([&, socket] {
       core::ping_loop(*socket, relay_manager, Globals.alive, recorder);
-      LOG(DEBUG, "exiting ping loop");
+      // LOG(DEBUG, "exiting ping loop");
     });
 
     set_thread_affinity(*thread, 0);
