@@ -30,16 +30,6 @@ TEST(net_Address_operator_eq_and_neq)
   CHECK(a != b);
   *a.ipv4.end() = 0;
 
-  a.type = net::AddressType::IPv6;
-
-  a.ipv6[0] = 1;
-  CHECK(a != b);
-  a.ipv6[0] = 0;
-
-  *a.ipv6.end() = 1;
-  CHECK(a != b);
-  *a.ipv6.end() = 0;
-
   a.type = net::AddressType::None;
 
   CHECK(a == b);
@@ -69,64 +59,6 @@ TEST(net_Address_parse_ipv4)
   CHECK(addr.ipv4[1] == 0);
   CHECK(addr.ipv4[2] == 0);
   CHECK(addr.ipv4[3] == 1);
-}
-
-TEST(net_Address_parse_ipv6_with_braces)
-{
-  net::Address addr;
-  CHECK(addr.parse("[::1]:51034") == true);
-  CHECK(addr.type == net::AddressType::IPv6);
-  CHECK(addr.port == 51034);
-  CHECK(addr.ipv6[0] == 0);
-  CHECK(addr.ipv6[1] == 0);
-  CHECK(addr.ipv6[2] == 0);
-  CHECK(addr.ipv6[3] == 0);
-  CHECK(addr.ipv6[4] == 0);
-  CHECK(addr.ipv6[5] == 0);
-  CHECK(addr.ipv6[6] == 0);
-  CHECK(addr.ipv6[7] == 1);
-
-  addr.reset();
-  CHECK(addr.parse("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000") == true);
-  CHECK(addr.type == net::AddressType::IPv6);
-  CHECK(addr.port == 20000);
-  CHECK(addr.ipv6[0] == 0x2001);
-  CHECK(addr.ipv6[1] == 0x0db8);
-  CHECK(addr.ipv6[2] == 0x85a3);
-  CHECK(addr.ipv6[3] == 0x0000);
-  CHECK(addr.ipv6[4] == 0x0000);
-  CHECK(addr.ipv6[5] == 0x8a2e);
-  CHECK(addr.ipv6[6] == 0x0370);
-  CHECK(addr.ipv6[7] == 0x7334);
-
-  addr.reset();
-  CHECK(addr.parse("[::]"));
-  CHECK(addr.type == net::AddressType::IPv6);
-  CHECK(addr.port == 0);
-  CHECK(addr.ipv6[0] == 0);
-  CHECK(addr.ipv6[1] == 0);
-  CHECK(addr.ipv6[2] == 0);
-  CHECK(addr.ipv6[3] == 0);
-  CHECK(addr.ipv6[4] == 0);
-  CHECK(addr.ipv6[5] == 0);
-  CHECK(addr.ipv6[6] == 0);
-  CHECK(addr.ipv6[7] == 0);
-}
-
-TEST(net_Address_parse_ipv6_without_braces)
-{
-  net::Address addr;
-  CHECK(addr.parse("2001:0db8:85a3:0000:0000:8a2e:0370:7334") == true);
-  CHECK(addr.type == net::AddressType::IPv6);
-  CHECK(addr.port == 0);
-  CHECK(addr.ipv6[0] == 0x2001);
-  CHECK(addr.ipv6[1] == 0x0db8);
-  CHECK(addr.ipv6[2] == 0x85a3);
-  CHECK(addr.ipv6[3] == 0x0000);
-  CHECK(addr.ipv6[4] == 0x0000);
-  CHECK(addr.ipv6[5] == 0x8a2e);
-  CHECK(addr.ipv6[6] == 0x0370);
-  CHECK(addr.ipv6[7] == 0x7334);
 }
 
 TEST(net_Address_parse_invalid_ips)
@@ -277,95 +209,5 @@ TEST(net_Address_parse_additional)
     CHECK(addr.ipv4[2] == 0);
     CHECK(addr.ipv4[3] == 1);
     addr.reset();
-  }
-
-  {
-    addr.reset();
-    CHECK(addr.parse("fe80::202:b3ff:fe1e:8329") == true);
-    CHECK(addr.type == net::AddressType::IPv6);
-    CHECK(addr.port == 0);
-    CHECK(addr.ipv6[0] == 0xfe80);
-    CHECK(addr.ipv6[1] == 0x0000);
-    CHECK(addr.ipv6[2] == 0x0000);
-    CHECK(addr.ipv6[3] == 0x0000);
-    CHECK(addr.ipv6[4] == 0x0202);
-    CHECK(addr.ipv6[5] == 0xb3ff);
-    CHECK(addr.ipv6[6] == 0xfe1e);
-    CHECK(addr.ipv6[7] == 0x8329);
-  }
-
-  {
-    addr.reset();
-    CHECK(addr.parse("::") == true);
-    CHECK(addr.type == net::AddressType::IPv6);
-    CHECK(addr.port == 0);
-    CHECK(addr.ipv6[0] == 0x0000);
-    CHECK(addr.ipv6[1] == 0x0000);
-    CHECK(addr.ipv6[2] == 0x0000);
-    CHECK(addr.ipv6[3] == 0x0000);
-    CHECK(addr.ipv6[4] == 0x0000);
-    CHECK(addr.ipv6[5] == 0x0000);
-    CHECK(addr.ipv6[6] == 0x0000);
-    CHECK(addr.ipv6[7] == 0x0000);
-  }
-
-  {
-    addr.reset();
-    CHECK(addr.parse("::1") == true);
-    CHECK(addr.type == net::AddressType::IPv6);
-    CHECK(addr.port == 0);
-    CHECK(addr.ipv6[0] == 0x0000);
-    CHECK(addr.ipv6[1] == 0x0000);
-    CHECK(addr.ipv6[2] == 0x0000);
-    CHECK(addr.ipv6[3] == 0x0000);
-    CHECK(addr.ipv6[4] == 0x0000);
-    CHECK(addr.ipv6[5] == 0x0000);
-    CHECK(addr.ipv6[6] == 0x0000);
-    CHECK(addr.ipv6[7] == 0x0001);
-  }
-
-  {
-    addr.reset();
-    CHECK(addr.parse("[fe80::202:b3ff:fe1e:8329]:40000") == true);
-    CHECK(addr.type == net::AddressType::IPv6);
-    CHECK(addr.port == 40000);
-    CHECK(addr.ipv6[0] == 0xfe80);
-    CHECK(addr.ipv6[1] == 0x0000);
-    CHECK(addr.ipv6[2] == 0x0000);
-    CHECK(addr.ipv6[3] == 0x0000);
-    CHECK(addr.ipv6[4] == 0x0202);
-    CHECK(addr.ipv6[5] == 0xb3ff);
-    CHECK(addr.ipv6[6] == 0xfe1e);
-    CHECK(addr.ipv6[7] == 0x8329);
-  }
-
-  {
-    addr.reset();
-    CHECK(addr.parse("[::]:40000") == true);
-    CHECK(addr.type == net::AddressType::IPv6);
-    CHECK(addr.port == 40000);
-    CHECK(addr.ipv6[0] == 0x0000);
-    CHECK(addr.ipv6[1] == 0x0000);
-    CHECK(addr.ipv6[2] == 0x0000);
-    CHECK(addr.ipv6[3] == 0x0000);
-    CHECK(addr.ipv6[4] == 0x0000);
-    CHECK(addr.ipv6[5] == 0x0000);
-    CHECK(addr.ipv6[6] == 0x0000);
-    CHECK(addr.ipv6[7] == 0x0000);
-  }
-
-  {
-    addr.reset();
-    CHECK(addr.parse("[::1]:40000") == true);
-    CHECK(addr.type == net::AddressType::IPv6);
-    CHECK(addr.port == 40000);
-    CHECK(addr.ipv6[0] == 0x0000);
-    CHECK(addr.ipv6[1] == 0x0000);
-    CHECK(addr.ipv6[2] == 0x0000);
-    CHECK(addr.ipv6[3] == 0x0000);
-    CHECK(addr.ipv6[4] == 0x0000);
-    CHECK(addr.ipv6[5] == 0x0000);
-    CHECK(addr.ipv6[6] == 0x0000);
-    CHECK(addr.ipv6[7] == 0x0001);
   }
 }

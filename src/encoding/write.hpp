@@ -230,27 +230,6 @@ namespace encoding
       }
 
       index += 12;  // increment the index past the address section
-    } else if (addr.type == net::AddressType::IPv6) {
-      // write the type
-      if (!write_uint8(buff, buff_length, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
-        LOG(DEBUG, "buffer too small for address type");
-        LOG(DEBUG, "index end = ", index + 1, ", buffer size = ", buff_length);
-        return false;
-      }
-
-      for (const auto& ip : addr.ipv6) {
-        if (!write_uint16(buff, buff_length, index, ip)) {
-          LOG(DEBUG, "buffer too small for address part");
-          LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buff_length);
-          return false;
-        }
-      }
-
-      if (!write_uint16(buff, buff_length, index, addr.port)) {
-        LOG(DEBUG, "buffer too small for address port");
-        LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buff_length);
-        return false;
-      }
     } else {
       std::fill(buff + index, buff + index + net::Address::SIZE_OF, 0);
       index += net::Address::SIZE_OF;
@@ -287,27 +266,6 @@ namespace encoding
       }
 
       index += 12;  // increment the index past the address section
-    } else if (addr.type == net::AddressType::IPv6) {
-      // write the type
-      if (!write_uint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
-        LOG(TRACE, "buffer too small for address type");
-        LOG(TRACE, "index end = ", index + 1, ", buffer size = ", buff.size());
-        return false;
-      }
-
-      for (const auto& ip : addr.ipv6) {
-        if (!write_uint16(buff, index, ip)) {
-          LOG(TRACE, "buffer too small for address part");
-          LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
-          return false;
-        }
-      }
-
-      if (!write_uint16(buff, index, addr.port)) {
-        LOG(TRACE, "buffer too small for address port");
-        LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
-        return false;
-      }
     } else {
       std::fill(buff.begin() + index, buff.begin() + index + net::Address::SIZE_OF, 0);
       index += net::Address::SIZE_OF;

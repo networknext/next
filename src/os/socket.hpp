@@ -51,23 +51,11 @@ namespace os
     // uses sendto()
     auto send(const Address& to, const uint8_t* data, size_t size) const -> bool;
 
-    // uses sendmmsg()
-    template <size_t BuffSize>
-    auto multisend(PacketBuffer<BuffSize>& packet_buff) const -> bool;
-
-    // uses sendmmsg()
-    template <size_t BuffSize>
-    auto multisend(std::array<mmsghdr, BuffSize>& packet_buff, int count) const -> bool;
-
     // uses recvfrom()
     auto recv(Address& from, uint8_t* data, size_t max_size) const -> int;
 
     // uses recvfrom()
     auto recv(Packet& packet) const -> bool;
-
-    // uses recvmmsg()
-    template <size_t BuffSize>
-    auto multirecv(PacketBuffer<BuffSize>& packet_buff) const -> bool;
 
     // close the socket
     void close();
@@ -84,10 +72,10 @@ namespace os
     auto set_port_reuse(bool reuse) -> bool;
 
     auto bind_ipv4(const Address& addr) -> bool;
-    auto bind_ipv6(const Address& addr) -> bool;
+    // auto bind_ipv6(const Address& addr) -> bool;
 
     auto get_port_ipv4(Address& addr) -> bool;
-    auto get_port_ipv6(Address& addr) -> bool;
+    // auto get_port_ipv6(Address& addr) -> bool;
 
     auto set_socket_type(SocketType type, std::optional<float> timeout) -> bool;
   };
@@ -120,6 +108,7 @@ namespace os
       }
     }
 
+    /*
     // force IPv6 only if necessary
     {
       if (bind_addr.type == AddressType::IPv6) {
@@ -132,6 +121,7 @@ namespace os
         }
       }
     }
+    */
 
     if (!this->set_buffer_sizes(config.send_buffer_size, config.recv_buffer_size)) {
       return false;
@@ -143,30 +133,34 @@ namespace os
 
     // bind to port
     {
+      /*
       if (bind_addr.type == AddressType::IPv6) {
         if (!bind_ipv6(bind_addr)) {
           return false;
         }
       } else {
+        */
         if (!bind_ipv4(bind_addr)) {
           return false;
         }
-      }
+      // }
     }
 
     // if bound to port 0, find the actual port we got
     // port 0 is a "wildcard" so using it will bind to any available port
     {
       if (bind_addr.port == 0) {
+        /*
         if (bind_addr.type == AddressType::IPv6) {
           if (!get_port_ipv6(bind_addr)) {
             return false;
           }
         } else {
+          */
           if (!get_port_ipv4(bind_addr)) {
             return false;
           }
-        }
+        // }
       }
     }
 
@@ -186,7 +180,7 @@ namespace os
 
   INLINE auto Socket::send(const Address& to, const uint8_t* data, size_t size) const -> bool
   {
-    if (to.type != AddressType::IPv4 && to.type != AddressType::IPv6) {
+    if (to.type != AddressType::IPv4) { 
       return false;
     }
 
@@ -202,16 +196,7 @@ namespace os
       return false;
     }
 
-    if (to.type == AddressType::IPv6) {
-      sockaddr_in6 socket_address;
-      to.into(socket_address);
-
-      auto res = sendto(this->socket_fd, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
-      if (res < 0) {
-        LOG(ERROR, "sendto (", to, ") failed");
-        return false;
-      }
-    } else if (to.type == AddressType::IPv4) {
+    if (to.type == AddressType::IPv4) {
       sockaddr_in socket_address;
       to.into(socket_address);
 
@@ -226,38 +211,6 @@ namespace os
     }
 
     return true;
-  }
-
-  template <size_t BuffSize>
-  INLINE auto Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int num_packets_to_send) const -> bool
-  {
-    static_assert(BuffSize <= 1024);  // max sendmmsg will allow
-
-    if (num_packets_to_send < 0) {
-      LOG(ERROR, "number of packets to send is less than 0: ", num_packets_to_send);
-      return false;
-    }
-
-    if (num_packets_to_send > 1024) {
-      LOG(ERROR, "number of packets to send is greater than 1024: ", num_packets_to_send);
-      return false;
-    }
-
-    int actual_sent = sendmmsg(this->socket_fd, headers.data(), num_packets_to_send, 0);
-
-    if (actual_sent < 0) {
-      LOG(ERROR, "sendmmsg() failed: ");
-      perror("OS msg:");
-      return false;
-    }
-
-    return num_packets_to_send == num_packets_to_send;
-  }
-
-  template <size_t BuffSize>
-  INLINE auto Socket::multisend(PacketBuffer<BuffSize>& packet_buff) const -> bool
-  {
-    return multisend(packet_buff.Headers, packet_buff.Count);
   }
 
   INLINE auto Socket::recv(Packet& packet) const -> bool
@@ -288,9 +241,7 @@ namespace os
      &len);
 
     if (res > 0) {
-      if (sockaddr_from.ss_family == AF_INET6) {
-        from = reinterpret_cast<sockaddr_in6&>(sockaddr_from);
-      } else if (sockaddr_from.ss_family == AF_INET) {
+      if (sockaddr_from.ss_family == AF_INET) {
         from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
       } else {
         LOG(ERROR, "received packet with invalid ss family: ", sockaddr_from.ss_family);
@@ -304,24 +255,6 @@ namespace os
     }
 
     return res;
-  }
-
-  template <size_t BuffSize>
-  INLINE auto Socket::multirecv(PacketBuffer<BuffSize>& packet_buff) const -> bool
-  {
-    packet_buff.count = recvmmsg(
-     this->socket_fd,
-     packet_buff.headers.data(),
-     BuffSize,
-     MSG_WAITFORONE,
-     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages state it is broken
-
-    if (packet_buff.count < 0) {
-      LOG(ERROR, "recvmmsg failed");
-      return false;
-    }
-
-    return true;
   }
 
   INLINE void Socket::close()
@@ -387,27 +320,6 @@ namespace os
     return true;
   }
 
-  INLINE auto Socket::bind_ipv6(const net::Address& addr) -> bool
-  {
-    sockaddr_in6 socket_address = {};
-
-    socket_address.sin6_family = AF_INET6;
-    for (int i = 0; i < 8; i++) {
-      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = htons(addr.ipv6[i]);
-    }
-
-    socket_address.sin6_port = htons(addr.port);
-
-    if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
-      LOG(ERROR, "failed to bind socket (ipv6)");
-      perror("OS msg:");
-      close();
-      return false;
-    }
-
-    return true;
-  }
-
   INLINE auto Socket::get_port_ipv4(net::Address& addr) -> bool
   {
     sockaddr_in sin;
@@ -419,20 +331,6 @@ namespace os
       return false;
     }
     addr.port = ntohs(sin.sin_port);
-    return true;
-  }
-
-  INLINE auto Socket::get_port_ipv6(net::Address& addr) -> bool
-  {
-    sockaddr_in6 sin;
-    socklen_t len = sizeof(sin);
-    if (getsockname(this->socket_fd, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
-      LOG(ERROR, "failed to get socket port (ipv6)");
-      perror("OS msg:");
-      close();
-      return false;
-    }
-    addr.port = ntohs(sin.sin6_port);
     return true;
   }
 

@@ -81,12 +81,6 @@ namespace testing
         ip = random_whole<uint8_t>();
       }
       retval.port = random_whole<uint16_t>();
-    } else {
-      retval.type = net::AddressType::IPv6;
-      for (auto& ip : retval.ipv6) {
-        ip = random_whole<uint16_t>();
-      }
-      retval.port = random_whole<uint16_t>();
     }
     return retval;
   }

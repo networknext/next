@@ -208,18 +208,6 @@ namespace encoding
         }
         index += 12;  // increment the index past the reserved area
       } break;
-      case AddressType::IPv6: {
-        // read address parts
-        for (int i = 0; i < 8; i++) {
-          if (!read_uint16(buff, buff_length, index, addr.ipv6[i])) {
-            return false;
-          }
-        }
-        // read the port
-        if (!read_uint16(buff, buff_length, index, addr.port)) {
-          return false;
-        }
-      } break;
       default: {
         // if no type, increment the index past the address area
         index += Address::SIZE_OF - 1;
@@ -248,15 +236,6 @@ namespace encoding
         return false;
       }
       index += 12;  // increment the index past the reserved area
-    } else if (addr.type == net::AddressType::IPv6) {
-      for (int i = 0; i < 8; i++) {
-        if (!read_uint16(buff, index, addr.ipv6[i])) {
-          return false;
-        }
-      }
-      if (!read_uint16(buff, index, addr.port)) {
-        return false;
-      }
     } else {
       addr.reset();
       index += net::Address::SIZE_OF - 1;  // if no type, increment the index past the address area

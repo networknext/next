@@ -23,8 +23,6 @@ namespace util
    private:
     std::ostream& stream;
     std::mutex lock;
-
-    static std::string stringify_time();
   };
 
   INLINE Console::Console(std::ostream& stream): stream(stream) {}
@@ -45,21 +43,11 @@ namespace util
   template <typename... Args>
   INLINE void Console::log(Args&&... args)
   {
-    write_line('[', stringify_time(), "] ", args...);
+    write_line(args...);
   }
 
   INLINE void Console::flush()
   {
     this->stream.flush();
-  }
-
-  INLINE std::string Console::stringify_time()
-  {
-    std::array<char, 16> timebuff;
-    auto t = time(nullptr);
-    auto timestruct = localtime(&t);
-    auto count = std::strftime(timebuff.data(), timebuff.size() * sizeof(char) - 1, "%I:%M:%S %P", timestruct);
-    //auto count = std::strftime(timebuff.data(), timebuff.size() * sizeof(char) - 1, "%s", timestruct);
-    return std::string(timebuff.begin(), timebuff.begin() + count);
   }
 }  // namespace util

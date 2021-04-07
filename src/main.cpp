@@ -27,7 +27,7 @@ using core::SessionMap;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
 using net::Address;
-using net::BeastWrapper;
+using net::CurlWrapper;
 using os::Socket;
 using os::SocketConfig;
 using os::SocketPtr;
@@ -49,6 +49,9 @@ namespace
 
 INLINE void set_thread_affinity(std::thread& thread, int core_id)
 {
+  (void) thread;
+  (void) core_id;
+#if defined(linux) || defined(__linux) || defined(__linux__)
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
   CPU_SET(core_id, &cpuset);
@@ -56,6 +59,7 @@ INLINE void set_thread_affinity(std::thread& thread, int core_id)
   if (res != 0) {
     LOG(ERROR, "error setting thread affinity: ", res);
   }
+#endif // #if defined(linux) || defined(__linux) || defined(__linux__)
 }
 
 INLINE void set_thread_sched_max(std::thread& thread)
@@ -308,31 +312,12 @@ int main(int argc, const char* argv[])
   // new backend setup
   if (Globals.alive) {
     std::thread thread([&] {
-      BeastWrapper wrapper;
+      CurlWrapper wrapper;
       core::Backend backend(
        env.backend_hostname, relay_addr.to_string(), keychain, router_info, relay_manager, sessions, wrapper);
 
-      size_t attempts = 0;
-      while (attempts < 60) {
-        if (backend.init()) {
-          std::cout << '\n';
-          break;
-        }
-
-        std::this_thread::sleep_for(1s);
-        attempts++;
-      }
-
-      if (attempts < 60) {
-        LOG(INFO, "relay initialized with new backend");
-      } else {
-        LOG(ERROR, "could not initialize relay");
-        Globals.alive = false;
-      }
-
       if (Globals.alive) {
         setup_signal_handlers();
-
         success = backend.update_loop(Globals.alive, Globals.should_clean_shutdown, recorder, sessions);
       }
     });
@@ -344,19 +329,28 @@ int main(int argc, const char* argv[])
     thread.join();
   }
 
-  LOG(DEBUG, "clean shutdown = ", Globals.should_clean_shutdown ? "true" : "false");
+  // IMPORTANT: If an error occurs, shut down properly! We don't need to wait and join.
+  if (!Globals.should_clean_shutdown)
+  {
+    LOG(ERROR, "hard shutdown!");
+    exit(1);
+  }
 
   should_receive = false;
+
+  LOG(DEBUG, "shutting down sockets");
 
   for (auto& socket : sockets) {
     socket->close();
   }
 
+  LOG(DEBUG, "joining threads");
+
   for (auto& thread : threads) {
     thread->join();
   }
 
-  LOG(DEBUG, "Receiving Address: ", relay_addr);
+  LOG(DEBUG, "all done");
 
   return success ? 0 : 1;
 }

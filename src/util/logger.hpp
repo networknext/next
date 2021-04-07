@@ -39,7 +39,7 @@ extern util::Console _console_;
 #if RELAY_LOG_LEVEL == 0 or defined LOG_ALL
 #define LOG_FATAL(...) 	_console_.log("fatal: ", __VA_ARGS__); std::exit(1)
 #else
-#define LOG_FATAL(...)
+#define LOG_FATAL(...) std::exit(1)
 #endif
 
 #define LOG(level, ...) LOG_##level(__VA_ARGS__)

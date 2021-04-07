@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 #include <array>
 #include <atomic>
-#include <boost/beast.hpp>
 #include <boost/beast/core/detail/base64.hpp>
 #include <cassert>
 #include <cerrno>
@@ -25,15 +24,31 @@
 #include <fstream>
 #include <functional>
 #include <future>
-#include <glibtop.h>
-#include <glibtop/cpu.h>
-#include <glibtop/mem.h>
 #include <ifaddrs.h>
 #include <iomanip>
 #include <iostream>
+
+#if defined(linux) || defined(__linux) || defined(__linux__)
+#include <glibtop.h>
+#include <glibtop/cpu.h>
+#include <glibtop/mem.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/wireless.h>
+#endif // defined(linux) || defined(__linux) || defined(__linux__)
+
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <ifaddrs.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif // #ifdef __APPLE__
+
+
 #include <list>
 #include <map>
 #include <memory>
@@ -64,4 +79,5 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-// #include <curl/curl.h>
+
+#include <curl/curl.h>

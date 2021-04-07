@@ -2,6 +2,8 @@
 
 #include "util/logger.hpp"
 
+#if defined(linux) || defined(__linux) || defined(__linux__)
+
 namespace os
 {
   class LibTopWrapper
@@ -144,3 +146,5 @@ namespace os
     return {usage, true};
   }
 }  // namespace os
+
+#endif // #if defined(linux) || defined(__linux) || defined(__linux__)

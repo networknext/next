@@ -17,115 +17,12 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "1.3.3";
+  const char* RELAY_VERSION = "1.4.0";
 
-  const char* const INIT_ENDPOINT = "/relay_init";
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
   const double UPDATE_TIMEOUT_SECS = 30.0;
   const double CLEAN_SHUTDOWN_TIMEOUT_SECS = 60.0;
-
-  auto InitRequest::size() -> size_t {
-    return 4 + 4 + nonce.size() + 4 + address.length() + encrypted_token.size() + 4 + relay_version.length();
-  }
-
-  auto InitRequest::into(std::vector<uint8_t>& v) -> bool
-  {
-    size_t index = 0;
-
-    if (!encoding::write_uint32(v, index, magic)) {
-      LOG(ERROR, "could not write init request magic");
-      return false;
-    }
-
-    if (!encoding::write_uint32(v, index, version)) {
-      LOG(ERROR, "could not write init request version");
-      return false;
-    }
-
-    if (!encoding::write_bytes(v, index, nonce, nonce.size())) {
-      LOG(ERROR, "could not write init request nonce bytes");
-      return false;
-    }
-
-    if (!encoding::write_string(v, index, address)) {
-      LOG(ERROR, "could not write init request address");
-      return false;
-    }
-
-    if (!encoding::write_bytes(v, index, encrypted_token, encrypted_token.size())) {
-      LOG(ERROR, "could not write init request token");
-      return false;
-    }
-
-    if (!encoding::write_string(v, index, relay_version)) {
-      LOG(ERROR, "could not write init request relay version");
-      return false;
-    }
-
-    return true;
-  }
-
-  auto InitRequest::from(const std::vector<uint8_t>& v) -> bool
-  {
-    size_t index = 0;
-    if (!encoding::read_uint32(v, index, this->magic)) {
-      return false;
-    }
-    if (!encoding::read_uint32(v, index, this->version)) {
-      return false;
-    }
-    if (!encoding::read_bytes(v, index, this->nonce, this->nonce.size())) {
-      return false;
-    }
-    if (!encoding::read_string(v, index, this->address)) {
-      return false;
-    }
-    if (!encoding::read_bytes(v, index, this->encrypted_token, this->encrypted_token.size())) {
-      return false;
-    }
-    if (!encoding::read_string(v, index, this->relay_version)) {
-      return false;
-    }
-    return true;
-  }
-
-  // only used in tests
-  auto InitResponse::into(std::vector<uint8_t>& v) -> bool
-  {
-    size_t index = 0;
-    if (!encoding::write_uint32(v, index, version)) {
-      LOG(TRACE, "unable to write version");
-      return false;
-    }
-
-    if (!encoding::write_uint64(v, index, timestamp)) {
-      LOG(TRACE, "unable to write timestamp");
-      return false;
-    }
-
-    if (!encoding::write_bytes(v, index, public_key, public_key.size())) {
-      LOG(TRACE, "unable to write public key");
-      return false;
-    }
-
-    return true;
-  }
-
-  auto InitResponse::from(const std::vector<uint8_t>& v) -> bool
-  {
-    size_t index = 0;
-    if (!encoding::read_uint32(v, index, this->version)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->timestamp)) {
-      return false;
-    }
-    if (!encoding::read_bytes(v, index, public_key, public_key.size())) {
-      return false;
-    }
-    return true;
-  }
 
   auto UpdateRequest::from(const std::vector<uint8_t>& v) -> bool
   {
@@ -354,7 +251,7 @@ namespace core
    RouterInfo& router_info,
    RelayManager& relay_manager,
    const core::SessionMap& sessions,
-   net::IHttpClient& client)
+   net::CurlWrapper& client)
    : hostname(hostname),
      relay_address(address),
      keychain(keychain),
@@ -364,79 +261,12 @@ namespace core
      http_client(client)
   {}
 
-  auto Backend::init() -> bool
-  {
-    std::vector<uint8_t> request_data, response_data;
-
-    // serialize request
-    {
-      InitRequest request;
-      request.address = this->relay_address;
-
-      crypto::make_nonce(request.nonce);
-
-      // just has to be something the backend can decrypt
-      GenericKey token = {};
-      crypto::random_bytes(token, token.size());
-
-      if (
-       crypto_box_easy(
-        request.encrypted_token.data(),
-        token.data(),
-        token.size(),
-        request.nonce.data(),
-        this->keychain.backend_public_key.data(),
-        this->keychain.relay_private_key.data()) != 0) {
-        LOG(TRACE, "failed to encrypt init token");
-        return false;
-      }
-
-      request_data.resize(request.size());
-      if (!request.into(request_data)) {
-        return false;
-      }
-    }
-
-    // send request
-    LOG(DEBUG, "sending init request");
-    if (!this->http_client.send_request(this->hostname, INIT_ENDPOINT, request_data, response_data)) {
-      LOG(ERROR, "init request failed");
-      return false;
-    }
-
-    LOG(DEBUG, "processing init response");
-    // deserialize response
-    {
-      InitResponse response;
-      if (!response.from(response_data)) {
-        return false;
-      }
-
-      if (response.version != INIT_RESPONSE_VERSION) {
-        LOG(ERROR, "error: bad relay init response version. expected ", INIT_RESPONSE_VERSION, ", got ", response.version);
-        return false;
-      }
-
-      // for old relay compat the router sends this back in millis, so convert back to seconds
-      // TODO eventually get to this ^
-      this->router_info.set_timestamp(response.timestamp / 1000);
-
-      this->update_token = response.public_key;
-    }
-
-    return true;
-  }
-
   bool Backend::update_loop(
    volatile bool& should_loop,
    const volatile bool& should_clean_shutdown,
    util::ThroughputRecorder& recorder,
    core::SessionMap& sessions)
   {
-    // update once every 10 seconds
-    // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
-    // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
-
     bool success = true;
 
     while (should_loop) {
@@ -585,9 +415,18 @@ namespace core
 
       encoding::write_uint8(req, index, shutdown);
 
+#if defined(linux) || defined(__linux) || defined(__linux__)
+
       auto sys_stats = os::GetUsage();
       encoding::write_double(req, index, sys_stats.cpu);
       encoding::write_double(req, index, sys_stats.mem);
+
+#else // #if defined(linux) || defined(__linux) || defined(__linux__)
+
+      encoding::write_double(req, index, 0.0);
+      encoding::write_double(req, index, 0.0);
+
+#endif // #if defined(linux) || defined(__linux) || defined(__linux__)
     }
 
     LOG(DEBUG, "sending request");

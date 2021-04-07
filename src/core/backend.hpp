@@ -17,7 +17,7 @@ using crypto::GenericKey;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
 using crypto::Nonce;
-using net::IHttpClient;
+using net::CurlWrapper;
 using util::Clock;
 using util::ThroughputRecorder;
 
@@ -143,7 +143,7 @@ namespace core
      RouterInfo& router_info,
      RelayManager& relay_manager,
      const SessionMap& sessions,
-     IHttpClient& client);
+     CurlWrapper & curl);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -163,7 +163,7 @@ namespace core
     RouterInfo& router_info;
     RelayManager& relay_manager;
     const SessionMap& session_map;
-    IHttpClient& http_client;
+    CurlWrapper& http_client;
 
     // this is the public key in the actual backend
     // for reference backends it's random so has to

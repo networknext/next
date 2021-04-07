@@ -4,227 +4,85 @@
 
 namespace net
 {
-  // Interface for sending http requests
-  class IHttpClient
+  class CurlWrapper
   {
-   public:
-    virtual ~IHttpClient() = default;
-    virtual auto send_request(
-     const std::string hostname,
-     const std::string endpoint,
-     const std::vector<uint8_t>& request,
-     std::vector<uint8_t>& response) -> bool = 0;
+  public:
+   CurlWrapper();
+   ~CurlWrapper();
 
-   protected:
-    IHttpClient() = default;
+   CURL* mHandle;
+
+   template <typename RespType>
+   static size_t curlWriteFunction(char* ptr, size_t size, size_t nmemb, void* userdata)
+   {
+     auto respBuff = reinterpret_cast<RespType*>(userdata);
+     auto index = respBuff->size();
+     respBuff->resize(respBuff->size() + size * nmemb);
+     std::copy(ptr, ptr + size * nmemb, respBuff->begin() + index);
+     return size * nmemb;
+   }
+
+  public:
+   template <typename ReqType, typename RespType>
+   static bool send_request(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
   };
 
-  namespace beast = boost::beast;
-  namespace http = beast::http;
-  namespace network = boost::asio;
-  using tcp = network::ip::tcp;
-
-  class BeastWrapper: public IHttpClient
+  INLINE CurlWrapper::CurlWrapper()
   {
-   public:
-    BeastWrapper();
-    ~BeastWrapper();
-
-    auto send_request(
-     const std::string hostname,
-     const std::string endpoint,
-     const std::vector<uint8_t>& request,
-     std::vector<uint8_t>& response) -> bool override;
-
-   private:
-    // The io_context is required for all I/O
-    network::io_context ioc;
-
-    // These objects perform I/O
-    tcp::resolver resolver;
-    beast::tcp_stream stream;
-  };
-
-  INLINE BeastWrapper::BeastWrapper(): resolver(ioc), stream(ioc) {}
-
-  INLINE BeastWrapper::~BeastWrapper()
-  {
-    // Gracefully close the socket
-    beast::error_code ec;
-    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-
-    // not_connected happens sometimes
-    // so don't bother reporting it
-
-    if (ec && ec != beast::errc::not_connected) {
-      LOG(ERROR, "shutting down socket: ", ec);
-    }
+   curl_global_init(0);
+   mHandle = curl_easy_init();
   }
 
-  INLINE auto BeastWrapper::send_request(
-   const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
-   -> bool
+  INLINE CurlWrapper::~CurlWrapper()
   {
-    static BeastWrapper wrapper;
-
-    try {
-      std::string proto;
-      std::string name;
-
-      auto protopos = hostname.find_first_of(':');
-      proto = hostname.substr(0, protopos);
-
-      auto namepos = hostname.find_last_of('/');
-      name = hostname.substr(namepos + 1);
-
-      auto portpos = name.find_first_of(':');
-      if (portpos != std::string::npos) {
-        proto = name.substr(portpos + 1);
-        name = name.substr(0, portpos);
-      }
-
-      // Look up the domain name
-      auto const results = wrapper.resolver.resolve(name, proto);
-
-      // Make the connection on the IP address we get from a lookup
-      wrapper.stream.connect(results);
-
-      // Set up an HTTP PUT request message
-      http::request<http::vector_body<uint8_t>> req;
-      req.method(http::verb::post);
-      req.target(endpoint);
-      req.version(11);
-      req.content_length(request.size());
-      req.body() = request;
-      req.set(http::field::host, name);
-      req.set(http::field::user_agent, "network next relay");
-      req.set(http::field::content_type, "application/octet-stream");
-      req.set(http::field::timeout, "10");
-
-      // Send the HTTP request to the remote host
-      beast::error_code ec;
-      http::write(wrapper.stream, req, ec);
-
-      if (ec) {
-        LOG(ERROR, "failed to send http request: ", ec);
-        return false;
-      }
-
-      // This buffer is used for reading and must be persisted
-      beast::flat_buffer buffer;
-
-      // Declare a container to hold the response
-      http::response<http::vector_body<uint8_t>> res;
-
-      // Receive the HTTP response
-      http::read(wrapper.stream, buffer, res, ec);
-      if (ec) {
-        LOG(ERROR, "failed to send http request: ", ec);
-        return false;
-      }
-
-      // Check the status code
-      if (res.result() != http::status::ok) {
-        LOG(ERROR, "http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
-        return false;
-      }
-
-      // Copy the response
-      response = res.body();
-
-      return true;
-    } catch (std::exception& e) {
-      LOG(ERROR, "could not send http request: ", e.what());
-      return false;
-    }
+   curl_easy_cleanup(mHandle);
+   curl_global_cleanup();
   }
 
-  // Previously curl was used for http communication, however it's a pain to link statically
-  // If for some reason we have to go back, this was the code used
+  template <typename ReqType, typename RespType>
+  bool CurlWrapper::send_request(const std::string hostname, const std::string endpoint, const ReqType& request, RespType&
+  response)
+  {
+    static CurlWrapper wrapper;
 
-  // class CurlWrapper
-  //{
-  //  CurlWrapper();
-  //  ~CurlWrapper();
+    curl_slist* slist = curl_slist_append(nullptr, "Content-Type:application/octet-stream");
 
-  //  CURL* mHandle;
+    std::stringstream ss;
+    ss << hostname << endpoint;
+    auto url = ss.str();
 
-  //  template <typename RespType>
-  //  static size_t curlWriteFunction(char* ptr, size_t size, size_t nmemb, void* userdata)
-  //  {
-  //    auto respBuff = reinterpret_cast<RespType*>(userdata);
-  //    auto index = respBuff->size();
-  //    respBuff->resize(respBuff->size() + size * nmemb);
-  //    std::copy(ptr, ptr + size * nmemb, respBuff->begin() + index);
-  //    return size * nmemb;
-  //  }
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_BUFFERSIZE, 102400L);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_NOPROGRESS, 1L);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_POSTFIELDS, request.data());
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)request.size());
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_HTTPHEADER, slist);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_USERAGENT, "network next relay");
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_MAXREDIRS, 50L);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_TIMEOUT_MS, long(10000));
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEFUNCTION, &curlWriteFunction<RespType>);
 
-  // public:
-  //  template <typename ReqType, typename RespType>
-  //  static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
-  //};
+    CURLcode ret = curl_easy_perform(wrapper.mHandle);
 
-  // INLINE CurlWrapper::CurlWrapper()
-  //{
-  //  curl_global_init(0);
-  //  mHandle = curl_easy_init();
-  //}
+    curl_slist_free_all(slist);
+    slist = nullptr;
 
-  // INLINE CurlWrapper::~CurlWrapper()
-  //{
-  //  curl_easy_cleanup(mHandle);
-  //  curl_global_cleanup();
-  //}
+    if (ret != 0) {
+     LOG(ERROR, "curl request for '", hostname, endpoint, "' had an error: ", ret);
+     return false;
+    }
 
-  ///*
-  // * Sends data to the specified hostname and endpoint
-  // * request can be anything that supplies ReqType::data() and ReqType::size()
-  // * response can be anything that supplies RespType::resize() and is compatable with std::copy()
-  // */
-  // template <typename ReqType, typename RespType>
-  // bool CurlWrapper::SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType&
-  // response)
-  //{
-  //  static CurlWrapper wrapper;
+    long code = 0;
+    curl_easy_getinfo(wrapper.mHandle, CURLINFO_RESPONSE_CODE, &code);
+    if (code < 200 || code >= 300) {
+     LOG(ERROR, "http call to '", hostname, endpoint, "' did not return a success, code: ", code);
+     return false;
+    }
 
-  //  curl_slist* slist = curl_slist_append(nullptr, "Content-Type:application/json");
-
-  //  std::stringstream ss;
-  //  ss << hostname << endpoint;
-  //  auto url = ss.str();
-
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_BUFFERSIZE, 102400L);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_URL, url.c_str());
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_NOPROGRESS, 1L);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_POSTFIELDS, request.data());
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)request.size());
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_HTTPHEADER, slist);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_USERAGENT, "network next relay");
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_MAXREDIRS, 50L);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_TCP_KEEPALIVE, 1L);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_TIMEOUT_MS, long(10000));
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEDATA, &response);
-  //  curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEFUNCTION, &curlWriteFunction<RespType>);
-
-  //  CURLcode ret = curl_easy_perform(wrapper.mHandle);
-
-  //  curl_slist_free_all(slist);
-  //  slist = nullptr;
-
-  //  if (ret != 0) {
-  //    Log("curl request for '", hostname, endpoint, "' had an error: ", ret);
-  //    return false;
-  //  }
-
-  //  long code = 0;
-  //  curl_easy_getinfo(wrapper.mHandle, CURLINFO_RESPONSE_CODE, &code);
-  //  if (code < 200 || code >= 300) {
-  //    Log("http call to '", hostname, endpoint, "' did not return a success, code: ", code);
-  //    return false;
-  //  }
-
-  //  return true;
-  //}
+    return true;
+  }
 
 }  // namespace net

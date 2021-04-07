@@ -8,6 +8,8 @@ namespace util
   using Instant = std::chrono::steady_clock::time_point;
 #elif defined __linux__
   using Instant = std::chrono::high_resolution_clock::time_point;
+#else
+  using Instant = std::chrono::high_resolution_clock::time_point;
 #endif
 
   using InternalClock = std::chrono::high_resolution_clock;

@@ -52,72 +52,10 @@ namespace core
     // wrapper array for received packets
     std::array<Packet, BuffSize> Packets;
 
-    // c struct needed for sendmmsg & recvmmsg
-    std::array<mmsghdr, BuffSize> Headers;
-
    private:
-    // using vectors here to reduce stack memory
-
-    // buffer for sockaddr's
-    std::vector<std::array<uint8_t, sizeof(sockaddr_in6)>> raw_address_buffer;
-
-    // buffer for iovec structs
-    std::vector<iovec> io_vec_buffer;
 
     std::mutex mutex;
   };
-
-  template <size_t BuffSize>
-  INLINE PacketBuffer<BuffSize>::PacketBuffer(): count(0), raw_address_buffer(BuffSize), io_vec_buffer(BuffSize)
-  {
-    for (size_t i = 0; i < BuffSize; i++) {
-      auto& pkt = Packets[i];
-
-      auto& mhdr = Headers[i];
-      auto& hdr = mhdr.msg_hdr;
-
-      // assign the address buffered area to the header
-      auto& addr = raw_address_buffer[i];
-      {
-        hdr.msg_namelen = addr.size();
-        hdr.msg_name = addr.data();
-      }
-
-      // assign the iovec to the packet buffer
-      auto iov = &io_vec_buffer[i];
-      {
-        iov->iov_len = pkt.Buffer.size();
-        iov->iov_base = pkt.Buffer.data();
-      }
-
-      // assign the packet buffered area to the header
-      {
-        hdr.msg_iovlen = 1;  // Don't change, needs to be 1 to accurately deterimine amount of bytes received afaik
-        hdr.msg_iov = iov;
-      }
-    }
-  }
-
-  template <size_t BuffSize>
-  INLINE void PacketBuffer<BuffSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
-  {
-    // if ever going back to sendmmsg/recvmmsg
-    // replace count with an atomic
-    // and set by auto count = count.exchange(count + 1)
-    // or something of the like, it should be possible
-    // to prevent a mutex lock within this
-    std::lock_guard<std::mutex> lk(mutex);
-
-    auto& pkt = Packets[count];
-    pkt.Len = len;
-    auto& iov = io_vec_buffer[count];
-    iov.iov_len = len;
-    std::copy(data, data + len, reinterpret_cast<uint8_t*>(iov.iov_base));
-
-    dest.into(Headers[count]);
-
-    count++;
-  }
 
   template <size_t BuffSize>
   INLINE void PacketBuffer<BuffSize>::push(const Packet& pkt)

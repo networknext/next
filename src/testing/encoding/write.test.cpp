@@ -114,37 +114,6 @@ TEST(encoding_write_address_ipv4)
   CHECK(bin[6] == 0xC7);
 }
 
-TEST(encoding_write_address_ipv6)
-{
-  Address addr;
-  std::array<uint8_t, Address::SIZE_OF> bin;
-
-  bin.fill(0);
-  addr.parse("[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
-  size_t index = 0;
-  encoding::write_address(bin, index, addr);
-  CHECK(index == Address::SIZE_OF);
-  CHECK(bin[0] == net::AddressType::IPv6);
-  CHECK(bin[1] == 0x1F);
-  CHECK(bin[2] == 0x3B);
-  CHECK(bin[3] == 0x33);
-  CHECK(bin[4] == 0x3C);
-  CHECK(bin[5] == 0x28);
-  CHECK(bin[6] == 0x99);
-  CHECK(bin[7] == 0xFF);
-  CHECK(bin[8] == 0xFF);
-  CHECK(bin[9] == 0xFF);
-  CHECK(bin[10] == 0xFF);
-  CHECK(bin[11] == 0xFF);
-  CHECK(bin[12] == 0xFF);
-  CHECK(bin[13] == 0xFF);
-  CHECK(bin[14] == 0xFF);
-  CHECK(bin[15] == 0xFF);
-  CHECK(bin[16] == 0xFF);
-  CHECK(bin[17] == 0x5A);
-  CHECK(bin[18] == 0xC7);
-}
-
 TEST(encoding_write_address_none)
 {
   Address addr;

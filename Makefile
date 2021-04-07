@@ -41,8 +41,8 @@ run-benchmarks: benchmark
 .PHONY: clean
 clean:
 	$(MAKE) -f $(RELEASE_MAKEFILE) 		clean
-	$(MAKE) -f $(DEBUG_MAKEFILE) 			clean
-	$(MAKE) -f $(TEST_MAKEFILE) 			clean
+	$(MAKE) -f $(DEBUG_MAKEFILE) 		clean
+	$(MAKE) -f $(TEST_MAKEFILE) 		clean
 	$(MAKE) -f $(BENCHMARK_MAKEFILE) 	clean
 
 .PHONY: reset-pch
