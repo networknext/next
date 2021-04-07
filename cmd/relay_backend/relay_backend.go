@@ -35,12 +35,10 @@ import (
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 )
 
@@ -847,7 +845,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	gcpProjectID = backend.GetGCPProjectID()
+	gcpProjectID := backend.GetGCPProjectID()
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	displayLoadedRelays(relayArray_internal)
 }
