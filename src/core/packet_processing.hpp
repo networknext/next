@@ -82,12 +82,9 @@ namespace core
           break;
         }
 
-        // todo: debug log level
-        /*
         if (!socket.send(pkt)) {
-          LOG(ERROR, "failed to send new ping to ", pkt.addr);
+          LOG(DEBUG, "failed to send new ping to ", pkt.addr);
         }
-        */
 
         size_t header_size = net::IPV4_UDP_PACKET_HEADER_SIZE;
 

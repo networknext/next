@@ -202,8 +202,7 @@ namespace os
 
       auto res = sendto(this->socket_fd, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        // todo: debug level log
-        // LOG(ERROR, "sendto (", to, ") failed");
+        LOG(DEBUG, "sendto (", to, ") failed");
         return false;
       }
     } else {
@@ -251,7 +250,7 @@ namespace os
     } else {
       // if not a timeout, log the error
       if (errno != EAGAIN && errno != EINTR) {
-        LOG(ERROR, "recvfrom failed");
+        LOG(DEBUG, "recvfrom failed");
       }
     }
 
@@ -287,7 +286,6 @@ namespace os
     return true;
   }
 
-  // good read - https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ
   INLINE auto Socket::set_port_reuse(bool reuse) -> bool
   {
     if (reuse) {

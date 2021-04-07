@@ -270,8 +270,7 @@ namespace core
     bool success = true;
 
     while (should_loop) {
-      // todo: wtf
-      // LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
+      LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
       switch (update(recorder, false, should_loop)) {
         case UpdateResult::Failure: {
           LOG(ERROR, "could not update relay");
@@ -284,7 +283,7 @@ namespace core
       }
     }
 
-    // LOG(DEBUG, "exiting update loop");
+    LOG(DEBUG, "exiting update loop");
 
     Clock backend_timeout;
     if (should_clean_shutdown) {
@@ -413,6 +412,8 @@ namespace core
 
       encoding::write_uint8(req, index, shutdown);
 
+// todo: disabled for now
+/*
 #if defined(linux) || defined(__linux) || defined(__linux__)
 
       auto sys_stats = os::GetUsage();
@@ -420,11 +421,11 @@ namespace core
       encoding::write_double(req, index, sys_stats.mem);
 
 #else // #if defined(linux) || defined(__linux) || defined(__linux__)
-
+*/
       encoding::write_double(req, index, 0.0);
       encoding::write_double(req, index, 0.0);
 
-#endif // #if defined(linux) || defined(__linux) || defined(__linux__)
+// #endif // #if defined(linux) || defined(__linux) || defined(__linux__)
     }
 
     // LOG(DEBUG, "sending request");
@@ -452,8 +453,7 @@ namespace core
       return UpdateResult::Success;
     }
 
-    // todo
-    // LOG(DEBUG, "parsing response");
+    LOG(DEBUG, "parsing response");
 
     // parse response
     {
@@ -481,8 +481,7 @@ namespace core
       }
     }
 
-    // todo
-    // LOG(DEBUG, "updated relay");
+    LOG(DEBUG, "updated relay");
 
     if (first_update)
     {

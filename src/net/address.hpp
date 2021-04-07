@@ -228,44 +228,6 @@ namespace net
     sin.sin_port = htons(this->port);
   }
 
-  /*
-  template <>
-  INLINE void Address::into(sockaddr_in6& sin) const
-  {
-    sin = {};
-    sin.sin6_family = AF_INET6;
-
-    for (int i = 0; i < 8; i++) {
-      reinterpret_cast<uint16_t*>(&sin.sin6_addr)[i] = htons(this->ipv6[i]);
-    }
-
-    sin.sin6_port = htons(this->port);
-  }
-  */
-  
-  // todo: not today
-  /*
-  template <>
-  INLINE void Address::into(mmsghdr& hdr) const
-  {
-    assert(hdr.msg_hdr.msg_name != nullptr);
-
-    switch (this->type) {
-      case AddressType::IPv4: {
-        this->into(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
-        hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in);
-      } break;
-      case AddressType::IPv6: {
-        this->into(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
-        hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in6);
-      } break;
-      case AddressType::None: {
-        // TODO log something?
-      } break;
-    }
-  }
-  */
-
   INLINE auto Address::operator==(const Address& other) const -> bool
   {
     if (this->type != other.type || this->port != other.port) {
