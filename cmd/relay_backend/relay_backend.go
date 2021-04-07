@@ -876,9 +876,6 @@ func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp tim
 	return err
 }
 
-var relayArray_internal []routing.Relay
-var relayHash_internal map[uint64]routing.Relay
-
 func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
 	ip_string, port_string, err := net.SplitHostPort(input)
@@ -892,8 +889,10 @@ func ParseAddress(input string) *net.UDPAddr {
 	return address
 }
 
-func init() {
+var relayArray_internal []routing.Relay
+var relayHash_internal map[uint64]routing.Relay
 
+func init() {
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
@@ -904,33 +903,47 @@ func init() {
 	}
 	defer file.Close()
 
-	decoder := gob.NewDecoder(file)
-	err = decoder.Decode(&relayArray_internal)
-	if err != nil {
-		fmt.Println(err)
+	if err = decodeToRelayArray(file, &relayArray_internal); err != nil {
+		fmt.Printf("DecodeToRelayArray() error: %v\n", err)
 		os.Exit(1)
 	}
 
-	sort.SliceStable(relayArray_internal, func(i, j int) bool {
-		return relayArray_internal[i].Name < relayArray_internal[j].Name
-	})
-
-	// todo: hack override for local testing
-	// relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	// relayArray_internal[0].ID = 0xde0fb1e9a25b1948
-
-	for i := range relayArray_internal {
-		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
-	}
-
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
-	for i := range relayArray_internal {
-		fmt.Printf("    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
+	gcpProjectID = backend.GetGCPProjectID()
+	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	displayLoadedRelays(relayArray_internal)
 }
 
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArray_internal, relayHash_internal
+}
+
+func decodeToRelayArray(file *os.File, relayArray *[]routing.Relay) error {
+	decoder := gob.NewDecoder(file)
+	err := decoder.Decode(relayArray)
+	return err
+}
+
+func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
+	sort.SliceStable(relayArray, func(i, j int) bool {
+		return relayArray[i].Name < relayArray[j].Name
+	})
+
+	if gcpProjectID == "" {
+		// TODO: hack override for local testing
+		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
+		relayArray[0].ID = 0xde0fb1e9a25b1948
+	}
+
+	for i := range relayArray {
+		relayHash[relayArray[i].ID] = relayArray[i]
+	}
+}
+
+func displayLoadedRelays(relayArray []routing.Relay) {
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
+	for i := range relayArray {
+		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
+	}
+	fmt.Printf("\n=======================================\n")
 }
