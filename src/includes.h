@@ -48,7 +48,6 @@
 #include <unistd.h>
 #endif // #ifdef __APPLE__
 
-
 #include <list>
 #include <map>
 #include <memory>
@@ -61,10 +60,6 @@
 #include <pthread.h>
 #include <queue>
 #include <random>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/rapidjson.h>
-#include <rapidjson/writer.h>
 #include <sched.h>
 #include <sodium.h>
 #include <sstream>
