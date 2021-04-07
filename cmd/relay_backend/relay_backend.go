@@ -436,23 +436,25 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	costMatrixData := new(helpers.MatrixData)
-	routeMatrixData := new(helpers.MatrixData)
+	var costMatrixData []byte
+	var routeMatrixData []byte
 
-	routeMatrix := routing.RouteMatrix{} //still needed for the route dashboard
+	costMatrix := &routing.CostMatrix{}
+	routeMatrix := &routing.RouteMatrix{}
+
+	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
-	getRouteMatrixFunc := func() *routing.RouteMatrix { // makes copy and returns pointer to copy
-		routeMatrixMutex.RLock()
-		rm := routeMatrix
-		routeMatrixMutex.RUnlock()
-		return &rm
-	}
 
-	// Generate the route matrix
+	_ = costMatrix
+
 	go func() {
+
 		syncTimer := helpers.NewSyncTimer(syncInterval)
+
 		for {
 			syncTimer.Run()
+
+			// get relay data
 
 			baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
 
@@ -470,12 +472,10 @@ func mainReturnWithCode() int {
 				if err != nil {
 					continue
 				}
-
 				relayNames[i] = relay.Name
 				namesMap[relay.Name] = relay
 			}
 
-			//sort relay names then populate other arrays
 			sort.Strings(relayNames)
 			for i, relayName := range relayNames {
 				relay := namesMap[relayName]
@@ -486,10 +486,12 @@ func mainReturnWithCode() int {
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 			}
 
+			// build cost matrix
+
 			costMatrixMetrics.Invocations.Add(1)
 			costMatrixDurationStart := time.Now()
 
-			costMatrixNew := &routing.CostMatrix{
+			costMatrixNew := routing.CostMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
 				RelayNames:         relayNames,
@@ -510,8 +512,16 @@ func mainReturnWithCode() int {
 				continue
 			}
 
-			costMatrixData.SetMatrix(costMatrixNew.GetResponseData())
-			costMatrixMetrics.Bytes.Set(float64(costMatrixData.GetMatrixDataSize()))
+			costMatrixDataNew := costMatrixNew.GetResponseData()
+
+			costMatrixMetrics.Bytes.Set(float64(len(costMatrixDataNew)))
+
+			costMatrixMutex.Lock()
+			costMatrix = &costMatrixNew
+			costMatrixData = costMatrixDataNew
+			costMatrixMutex.Unlock()
+
+			// optimize
 
 			numCPUs := runtime.NumCPU()
 			numSegments := numRelays
@@ -528,9 +538,6 @@ func mainReturnWithCode() int {
 			costThreshold := int32(1)
 
 			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
-			if len(routeEntries) == 0 {
-				continue
-			}
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
@@ -539,7 +546,7 @@ func mainReturnWithCode() int {
 				optimizeMetrics.LongUpdateCount.Add(1)
 			}
 
-			routeMatrixNew := &routing.RouteMatrix{
+			routeMatrixNew := routing.RouteMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
 				RelayNames:         relayNames,
@@ -555,18 +562,18 @@ func mainReturnWithCode() int {
 			}
 
 			routeMatrixNew.WriteAnalysisData()
+			
+			routeMatrixDataNew := routeMatrixNew.GetResponseData()
 
-			routeMatrixMutex.Lock()
-			routeMatrix = *routeMatrixNew
-			routeMatrixMutex.Unlock()
-
-			routeMatrixData.SetMatrix(routeMatrixNew.GetResponseData())
-
-			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(routeMatrixData.GetMatrixDataSize()))
+			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrixDataNew)))
 			relayBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(routeMatrixNew.RelayIDs)))
 			relayBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(routeMatrixNew.RelayDatacenterIDs)))
 
-			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+			routeMatrixMutex.Lock()
+			routeMatrix = &routeMatrixNew
+			routeMatrixData = routeMatrixDataNew
+			routeMatrixMutex.Unlock()
+
 			numRoutes := int32(0)
 			for i := range routeMatrixNew.RouteEntries {
 				numRoutes += routeMatrixNew.RouteEntries[i].NumRoutes
@@ -587,7 +594,6 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
 			fmt.Printf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
 			fmt.Printf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
-			fmt.Printf("%d relays in map\n", relayMap.GetRelayCount())
 			fmt.Printf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
 			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
 			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
@@ -602,6 +608,8 @@ func mainReturnWithCode() int {
 			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
+
+			// optionally write route matrix to cloud storage
 
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 			if err != nil {
@@ -629,6 +637,8 @@ func mainReturnWithCode() int {
 					continue
 				}
 			}
+
+			// optionally push route matrix stats to pubsub
 
 			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
 			if err != nil {
@@ -673,8 +683,10 @@ func mainReturnWithCode() int {
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-
-		buffer := bytes.NewBuffer(routeMatrixData.GetMatrix())
+		routeMatrixMutex.RLock()
+		data := routeMatrixData
+		routeMatrixMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -683,25 +695,39 @@ func mainReturnWithCode() int {
 
 	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-
-		buffer := bytes.NewBuffer(costMatrixData.GetMatrix())
+		costMatrixMutex.RLock()
+		data := costMatrixData
+		costMatrixMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+	   routeMatrixMutex.RLock()
+	   rm := routeMatrix
+	   routeMatrixMutex.RUnlock()
+	   return rm
+	}
+
 	fmt.Printf("starting http server\n\n")
 
 	router := mux.NewRouter()
+
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	
+	// todo: remove the init entirely once the relays are updated to new version (1.4.0). deprecated
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(&commonInitParams)).Methods("POST")
+	
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
-	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+
+	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
