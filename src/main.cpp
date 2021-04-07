@@ -181,6 +181,8 @@ int main(int argc, const char* argv[])
 
   LOG(INFO, "Network Next Relay");
 
+  LOG(INFO, "relay version is ", core::RELAY_VERSION);
+
   Env env;
 
   Address relay_addr;
@@ -189,12 +191,12 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  LOG(INFO, "relay address is '", relay_addr, '\'');
+  LOG(INFO, "relay address is '", relay_addr, "'");
 
   Keychain keychain;
   get_crypto_keys(env, keychain);
 
-  LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
+  LOG(INFO, "backend hostname is '", env.backend_hostname, "'");
 
   size_t num_cpus = get_num_cpus(env.max_cpus);
   int socket_recv_buff_size = get_buffer_size(env.recv_buffer_size);
@@ -246,7 +248,6 @@ int main(int argc, const char* argv[])
   config.recv_buffer_size = socket_recv_buff_size;
 
   size_t last_packet_processing_core_id = num_cpus - 1;
-  LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
   if (last_packet_processing_core_id == 0) {
     //  create 1 thread and assign it to core 0
