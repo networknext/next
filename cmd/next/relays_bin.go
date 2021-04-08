@@ -10,7 +10,9 @@ import (
 func getRelaysBin(env Environment, filename string) {
 	var err error
 
-	r, err := http.Get("https://portal-dev.networknext.com/relays.bin")
+	uri := fmt.Sprintf("%s/relays.bin", env.PortalHostname())
+
+	r, err := http.Get(uri)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not get relays.bin from the portal: %v\n", err), 1)
 	}
