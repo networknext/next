@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/crypto"
 )
 
 const InitRequestMagic = 0x9083708f
@@ -80,52 +80,40 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 			return
 		}
 
-		params.RelayMap.RLock()
-		relayData, ok := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
-		params.RelayMap.RUnlock()
+		// check if relay exists
 
 		relayArray, relayHash := params.GetRelayData()
 
+		id := crypto.HashID(relayUpdateRequest.Address.String())
+
+		relay, ok := relayHash[id]
+
 		if !ok {
+			core.Debug("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			writer.WriteHeader(http.StatusNotFound) // 404
+			return
+		}		
 
-			// auto init
+		// todo: bring back crypto check
 
-			id := crypto.HashID(relayUpdateRequest.Address.String())
+		// update relay data
 
-			relay, ok := relayHash[id]
-
-			if !ok {
-				core.Debug("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
-				params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-				writer.WriteHeader(http.StatusNotFound)	// 404
-				return
-			}
-
-			relayData := routing.RelayData{}
-			{
-				relayData.ID = id
-				relayData.Addr = relayUpdateRequest.Address
-				relayData.LastUpdateTime = time.Now()
-				relayData.Name = relay.Name
-				relayData.PublicKey = relay.PublicKey
-				relayData.MaxSessions = relay.MaxSessions
-			}
-
-			params.RelayMap.Lock()
-			params.RelayMap.AddRelayDataEntry(relayData.Addr.String(), relayData)
-			params.RelayMap.Unlock()
-
-			params.RelayMap.RLock()
-			relayData, ok = params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
-			params.RelayMap.RUnlock()
-			if !ok {
-				core.Debug("%s - error: what the actual fuck: %x", request.RemoteAddr, id)
-				writer.WriteHeader(http.StatusInternalServerError)	// 500
-				return
-			}
+		relayData := routing.RelayData{}
+		{
+			relayData.ID = id
+			relayData.Addr = relayUpdateRequest.Address
+			relayData.LastUpdateTime = time.Now()
+			relayData.Name = relay.Name
+			relayData.PublicKey = relay.PublicKey
+			relayData.MaxSessions = relay.MaxSessions
+			relayData.SessionCount = int(relayUpdateRequest.TrafficStats.SessionCount)
+			relayData.Version = relayUpdateRequest.RelayVersion
 		}
 
-		// todo: bring back the crypto check here
+		params.RelayMap.Lock()
+		params.RelayMap.UpdateRelayData(relayData)
+		params.RelayMap.Unlock()
 
 		// update relay ping stats
 
@@ -161,14 +149,6 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: relayArray[i].Addr.String()})
 		}
-
-		// update the relay data
-
-		// todo: we really should update the relay data entry here, with all fields, not just fields that can change
-
-		params.RelayMap.Lock()
-		params.RelayMap.UpdateRelayDataEntry(relayUpdateRequest.Address.String(), int(relayUpdateRequest.TrafficStats.SessionCount))
-		params.RelayMap.Unlock()
 
 		// build and write the response
 

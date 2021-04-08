@@ -295,7 +295,7 @@ func mainReturnWithCode() int {
 				id := relayData[i].ID
 				status := "active"
 				sessions := relayData[i].SessionCount
-				version := ""	// todo: version in relay data				
+				version := relayData[i].Version
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
 			}
 
@@ -316,10 +316,7 @@ func mainReturnWithCode() int {
 				name := inactiveRelays[i].Name
 				address := inactiveRelays[i].Addr.String()
 				id := inactiveRelays[i].ID
-				status := "inactive"
-				sessions := 0
-				version := ""
-				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,inactive,,", relaysDataString, name, address, id)
 			}
 
 			relaysMutex.Lock()
@@ -541,8 +538,8 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
-	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())
 
@@ -632,11 +629,9 @@ func init() {
 		return relayArray_internal[i].Name < relayArray_internal[j].Name
 	})
 
-	/*
 	// todo: hack override for local testing
 	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
 	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
-	*/
 
 	for i := range relayArray_internal {
 		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]

@@ -19,6 +19,7 @@ type RelayData struct {
 	MaxSessions    uint32
 	SessionCount   int
 	LastUpdateTime time.Time
+	Version        string
 }
 
 type RelayCleanupCallback func(relayData RelayData) error
@@ -57,15 +58,8 @@ func (relayMap *RelayMap) GetRelayCount() uint64 {
 	return uint64(len(relayMap.relays))
 }
 
-func (relayMap *RelayMap) AddRelayDataEntry(relayAddress string, data RelayData) {
-	relayMap.relays[relayAddress] = data
-}
-
-func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, sessionCount int) {
-	entry := relayMap.relays[relayAddress]
-	entry.LastUpdateTime = time.Now()
-	entry.SessionCount = sessionCount
-	relayMap.relays[relayAddress] = entry
+func (relayMap *RelayMap) UpdateRelayData(relayData RelayData) {
+	relayMap.relays[relayData.Addr.String()] = relayData
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
