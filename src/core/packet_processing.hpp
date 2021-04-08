@@ -110,7 +110,7 @@ namespace core
 
     while (!socket.closed() && should_receive) {
       if (!socket.recv(packet)) {
-        LOG(ERROR, "failed to receive packet");
+        LOG(DEBUG, "failed to receive packet");
         continue;
       }
 

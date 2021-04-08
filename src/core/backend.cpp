@@ -17,11 +17,10 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "1.4.0";
+  const char* RELAY_VERSION = "2.0.0";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
-  const double UPDATE_TIMEOUT_SECS = 30.0;
   const double CLEAN_SHUTDOWN_TIMEOUT_SECS = 60.0;
 
   auto UpdateRequest::from(const std::vector<uint8_t>& v) -> bool
@@ -434,7 +433,7 @@ namespace core
     size_t num_retries = 0;
     bool request_success = false;
     while (!(request_success = this->http_client.send_request(this->hostname, UPDATE_ENDPOINT, req, res)) && should_retry &&
-           num_retries < MAX_UPDATE_ATTEMPTS && elapsed_seconds < UPDATE_TIMEOUT_SECS) {
+           num_retries < MAX_UPDATE_ATTEMPTS) {
       LOG(ERROR, "relay update failed ", num_retries);
       num_retries++;
       std::this_thread::sleep_for(1s);

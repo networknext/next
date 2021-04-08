@@ -179,6 +179,12 @@ int main(int argc, const char* argv[])
   return 0;
 #endif
 
+  if (argc == 2 && strcmp(argv[1], "version")==0) {
+    printf("%s\n", core::RELAY_VERSION);
+    fflush(stdout);
+    exit(0);
+  }
+
   LOG(INFO, "Network Next Relay");
 
   LOG(INFO, "relay version is ", core::RELAY_VERSION);
