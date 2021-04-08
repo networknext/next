@@ -129,25 +129,22 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 
+		sellerName := relayHash[relayData.ID].Seller.Name
+
 		for i := range relayArray {
 
 			if relayArray[i].ID == relayData.ID {
 				continue
 			}
 
-			// todo: we gotta bring this back, without relying on seller in relay map
-			/*
 			var address string
-			if relayData.Seller.Name == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
+			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
 				address = relayArray[i].InternalAddr.String()
 			} else {
 				address = relayArray[i].Addr.String()
 			}
 
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: address})
-			*/
-
-			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: relayArray[i].Addr.String()})
 		}
 
 		// build and write the response
