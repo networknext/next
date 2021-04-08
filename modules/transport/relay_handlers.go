@@ -481,15 +481,11 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 					<tr>
 						<th>Name</th>
 						<th>Address</th>
-						<th>Datacenter</th>
-						<th>Lat / Long</th>
 					</tr>
 					{{ range .Relays }}
 					<tr>
 						<td>{{ .Name }}</td>
 						<td>{{ .Addr }}</td>
-						<td>{{ .Datacenter.Name }}</td>
-						<td>{{ printf "%.2f" .Datacenter.Location.Latitude }} / {{ printf "%.2f" .Datacenter.Location.Longitude }}</td>
 					</tr>
 					{{ end }}
 				</table>
