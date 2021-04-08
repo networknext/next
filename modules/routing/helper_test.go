@@ -1,7 +1,8 @@
 package routing_test
 
+// todo: not today
+/*
 import (
-	"math"
 	"math/rand"
 	"net"
 	"time"
@@ -32,10 +33,6 @@ func fillRelayDatabase(relayMap *routing.RelayMap) {
 			ID:   id,
 			Name: addr,
 			Addr: *udp,
-			Datacenter: routing.Datacenter{
-				ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-				Name: randomString(5),
-			},
 			PublicKey:      randomPublicKey(),
 			LastUpdateTime: updateTime,
 		}
@@ -68,3 +65,4 @@ func fillStatsDatabase(statsdb *routing.StatsDatabase) {
 	makeEntry(statsdb, "127.0.0.1:40000", "127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
 	makeEntry(statsdb, "127.0.0.2:40000", "127.0.0.1:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
 }
+*/

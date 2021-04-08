@@ -915,22 +915,18 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
-
 	if !ok {
-		// auto init
-		fmt.Printf("init\n")
-		relay := routing.RelayData{
-		       ID:             crypto.HashID(relay_address),
-		       Addr:           *udpAddr,
-		       PublicKey:      crypto.RelayPublicKey[:],
-		       LastUpdateTime: time.Now(),
-		}
-		backend.relayMap.AddRelayDataEntry(relay.Addr.String(), relay)
 		backend.dirty = true
-	} else {
-		fmt.Printf("update\n")
-		backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), 0)
+	} 
+
+	relayData := routing.RelayData{
+	       ID:             crypto.HashID(relay_address),
+	       Addr:           *udpAddr,
+	       PublicKey:      crypto.RelayPublicKey[:],
+	       LastUpdateTime: time.Now(),
 	}
+
+	backend.relayMap.UpdateRelayData(relayData)
 
 	backend.mutex.Unlock()
 
