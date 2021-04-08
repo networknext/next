@@ -76,6 +76,10 @@ blocks:
             - make build-ghost-army-artifacts-prod
             - make publish-ghost-army-artifacts-prod
             - make publish-ghost-army-bootstrap-script-prod
+        - name: Relay Pusher
+          commands:
+            - make build-relay-pusher-artifacts-prod
+            - make publish-relay-pusher-artifacts-prod
         - name: Relay Forwarder
           commands:
             - make build-relay-forwarder-artifacts-prod
