@@ -240,12 +240,14 @@ func mainReturnWithCode() int {
 
 	var costMatrixData []byte
 	var routeMatrixData []byte
+	var relaysData []byte
 
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
 
 	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
+	var relaysMutex sync.RWMutex
 
 	_ = costMatrix
 
@@ -282,6 +284,25 @@ func mainReturnWithCode() int {
 				relayDatacenterIDs[i] = relay.Datacenter.ID
 				*/
 			}
+
+			// build relays data (csv)
+
+			// todo: inactive relays
+
+			relaysDataString := "name,address,id,status,sessions,version"
+			for i := range relayData {
+				name := relayData[i].Name
+				address := relayData[i].Addr.String()
+				id := relayData[i].ID
+				status := "active"
+				sessions := relayData[i].SessionCount
+				version := ""	// todo: version in relay data				
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
+			}
+
+			relaysMutex.Lock()
+			relaysData = []byte(relaysDataString)
+			relaysMutex.Unlock()
 
 			// build cost matrix
 
@@ -444,6 +465,18 @@ func mainReturnWithCode() int {
 		GetRelayData: GetRelayData,
 	}
 
+	serveRelaysFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		relaysMutex.RLock()
+		data := relaysData
+		relaysMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		routeMatrixMutex.RLock()
@@ -484,6 +517,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
+	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 
 	router.Handle("/debug/vars", expvar.Handler())
