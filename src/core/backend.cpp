@@ -149,15 +149,16 @@ namespace core
       return false;
     }
 
+    // todo: relay version
+
     return true;
   }
 
   auto UpdateResponse::size() -> size_t
   {
-    size_t size = 4 + 8 + 4 + this->num_relays * (8 + 4);
+    size_t size = 10 * 1024;
 
     for (size_t i = 0; i < this->num_relays; i++) {
-      // only used in tests, so being lazy here;
       const auto& relay = relays[i];
       size += relay.address.to_string().length();
     }
@@ -368,63 +369,10 @@ namespace core
       }
 
       encoding::write_uint64(req, index, this->session_map.size());
-      encoding::write_uint64(req, index, this->session_map.envelope_up_total());
-      encoding::write_uint64(req, index, this->session_map.envelope_down_total());
-
-      util::ThroughputRecorder traffic_stats(std::move(recorder));
-
-      encoding::write_uint64(req, index, traffic_stats.outbound_ping_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.route_request_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.route_request_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.route_response_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.route_response_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.client_to_server_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.client_to_server_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.server_to_client_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.server_to_client_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.inbound_ping_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.inbound_ping_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.pong_rx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.session_ping_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.session_ping_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.session_pong_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.session_pong_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.continue_request_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.continue_request_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.continue_response_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.continue_response_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.near_ping_rx.num_bytes.load());
-      encoding::write_uint64(req, index, traffic_stats.near_ping_tx.num_bytes.load());
-
-      encoding::write_uint64(req, index, traffic_stats.unknown_rx.num_bytes.load());
 
       encoding::write_uint8(req, index, shutdown);
 
-// todo: disabled for now
-/*
-#if defined(linux) || defined(__linux) || defined(__linux__)
-
-      auto sys_stats = os::GetUsage();
-      encoding::write_double(req, index, sys_stats.cpu);
-      encoding::write_double(req, index, sys_stats.mem);
-
-#else // #if defined(linux) || defined(__linux) || defined(__linux__)
-*/
-      encoding::write_double(req, index, 0.0);
-      encoding::write_double(req, index, 0.0);
-
-// #endif // #if defined(linux) || defined(__linux) || defined(__linux__)
+      encoding::write_string(req, index, RELAY_VERSION);
     }
 
     // LOG(DEBUG, "sending request");

@@ -31,40 +31,11 @@ namespace testing
 namespace core
 {
   extern const char* RELAY_VERSION;
-  const uint32_t INIT_REQUEST_MAGIC = 0x9083708f;
 
-  const uint32_t INIT_REQUEST_VERSION = 1;
-  const uint32_t INIT_RESPONSE_VERSION = 0;
-  const uint32_t UPDATE_REQUEST_VERSION = 2;
+  const uint32_t UPDATE_REQUEST_VERSION = 3;
   const uint32_t UPDATE_RESPONSE_VERSION = 0;
 
   const uint8_t MAX_UPDATE_ATTEMPTS = 11;  // 1 initial + 10 more for failures
-
-  // | magic | version | nonce | address | encrypted token | relay version |
-  struct InitRequest
-  {
-    uint32_t magic = INIT_REQUEST_MAGIC;
-    uint32_t version = INIT_REQUEST_VERSION;
-    Nonce nonce;
-    std::string address;
-    std::array<uint8_t, KEY_SIZE + crypto_box_MACBYTES> encrypted_token;
-    std::string relay_version = RELAY_VERSION;
-
-    auto size() -> size_t;
-    auto into(std::vector<uint8_t>& v) -> bool;
-    auto from(const std::vector<uint8_t>& v) -> bool;
-  };
-
-  struct InitResponse
-  {
-    static const size_t SIZE_OF = 4 + 8 + KEY_SIZE;
-    uint32_t version;
-    uint64_t timestamp;
-    crypto::GenericKey public_key;
-
-    auto into(std::vector<uint8_t>& v) -> bool;
-    auto from(const std::vector<uint8_t>& v) -> bool;
-  };
 
   struct UpdateRequest
   {
