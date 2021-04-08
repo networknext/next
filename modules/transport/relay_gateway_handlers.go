@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,20 +8,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/transport/pubsub"
 )
-
-type GatewayConfig struct {
-	UseHTTP               bool
-	RelayBackendAddresses []string
-	HTTPTimeout           time.Duration
-
-	PublishToHosts        []string
-	PublisherSendBuffer   int
-	PublisherRefreshTimer time.Duration
-}
 
 // GatewayRelayUpdateHandlerFunc receives relay update requests and puts them in requestChan
 func GatewayRelayUpdateHandlerFunc(logger log.Logger, handlerMetrics *metrics.RelayUpdateMetrics, requestChan chan []byte) func(writer http.ResponseWriter, request *http.Request) {

@@ -6,10 +6,33 @@
 package main
 
 import (
+    "fmt"
+    "sync"
+    "net/http"
 	_ "net/http/pprof"
+    "runtime"
 
+    "github.com/networknext/backend/modules/backend"
     "github.com/networknext/backend/modules/tranpsort"
+
+    "github.com/go-kit/kit/log"
+    "github.com/go-kit/kit/log/level"
+    "github.com/gorilla/mux"
+
 )
+
+type GatewayConfig struct {
+    ChannelBufferSize     int
+    UseHTTP               bool
+    RelayBackendAddresses []string
+    HTTPTimeout           time.Duration
+    BatchSize             int
+
+    PublishToHosts        []string
+    PublisherSendBuffer   int
+    PublisherRefreshTimer time.Duration
+}
+
 
 var (
 	buildtime     string
@@ -28,6 +51,7 @@ func mainReturnWithCode() int {
 	serviceName := "relay_gateway"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
+    // Setup the service
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
@@ -37,13 +61,6 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-
-	// todo why 2 loggers
-	// relayLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
-	// if err != nil {
-	// 	level.Error(logger).Log("err", err)
-	// 	return 1
-	// }
 
 	env, err := backend.GetEnv()
 	if err != nil {
@@ -70,113 +87,127 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
-	// if err != nil {
-	// 	level.Error(logger).Log("err", err)
-	// 	return 1
-	// }
-
+    // Get a config for how the Gateway should operate
 	cfg, err := newConfig()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	updateChan := make(chan []byte, 1000)
+    // Create a channel to hold incoming relay update requests
+	updateChan := make(chan []byte, cfg.ChannelBufferSize)
 
-    // Prioritize using HTTP to send updates to relay backend
-	if cfg.NRBHTTP {
-        client := http.Client{Timeout: cfg.HTTPTimeout}
-        for {
-            msg := <-updateChan
-            for _, address := range cfg.RelayBackendAddresses {
-                go func(address string, body []byte) {
-                    buffer := bytes.NewBuffer(body)
-                    resp, err := client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
-                    if err != nil || resp.StatusCode != http.StatusOK {
-                        // Don't exit here because we want to continue sending relay updates
-                        _ = level.Error(logger).Log("msg", "unable to send update to relay backend", "err", err)
-                    }
-                    resp.Body.Close()
-                }(address, msg)
-            }
-        }
-    } else {
-        // Use ZeroMQ to publish updates to relay backend
-        var publishers []pubsub.Publisher
-        refreshPubs := make(chan bool, 1)
-        publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
-        if err != nil {
-            level.Error(logger).Log("err", err)
-            os.Exit(1)
-        }
+    // Prioritize using HTTP to batch-send updates to relay backends
+	if cfg.UseHTTP {
+        // Create HTTP client to communicate with relay backends
+        client := &http.Client{Timeout: cfg.HTTPTimeout}
 
-        go func() {
-            syncTimer := helpers.NewSyncTimer(cfg.PublisherRefreshTimer)
-            for {
-                syncTimer.Run()
-                refreshPubs <- true
-            }
-        }()
+        // Create a buffer to hold the requests that will go to the relay backends
+        var updateBuffer *transport.RelayUpdateRequestList
+        var updateBufferMutex sync.RWMutex
 
+        // Handle update requests
         go func() {
             for {
                 select {
-                case <-refreshPubs:
-                    newPublishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
-                    if err != nil {
-                        _ = level.Error(logger).Log("err", err)
-                        continue
-                    }
+                case update := <-updateChan:
+                    // Add the update to the buffer and get the buffer's length
+                    updateBufferMutex.Lock()
+                    updateBuffer.Requests = append(updateBuffer.Requests, update)
+                    bufferLength := len(updateBuffer.Requests)
+                    updateBufferMutex.Unlock()
 
-                    for _, pub := range publishers {
-                        err = pub.Close()
-                        if err != nil {
-                            _ = level.Error(logger).Log("err", err)
-                        }
-                    }
+                    // Check if we have reached the batch size
+                    if bufferLength >= cfg.BatchSize {
+                        // Copy the buffer so we can clear it once starting the worker goroutines
+                        updateBufferMutex.Lock()
+                        bufferCopy := updateBuffer
+                        updateBufferMutex.Unlock()
 
-                    publishers = newPublishers
+                        // Send the buffer to all relay backends
+                        for _, address := range cfg.RelayBackendAddresses {
+                            go func() {
+                                // Marshal the buffer copy
+                                body, err := bufferCopy.MarshalBinary()
+                                if err != nil {
+                                    _ = level.Error(logger).Log("msg", "unable to marshal buffer copy", "err", err)
+                                    return
+                                }
 
-                    continue
-
-                case msg := <-updateChan:
-                    for _, pub := range publishers {
-                        _, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, msg)
-                        if err != nil {
-                            _ = level.Error(logger).Log("msg", "unable to send update to optimizer", "err", err)
+                                buffer := bytes.NewBuffer(body)
+                                resp, err := client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
+                                if err != nil || resp.StatusCode != http.StatusOK {
+                                    _ = level.Error(logger).Log("msg", fmt.Sprintf("unable to send update to relay backend %s, response %d", address, resp.StatusCode), "err", err)
+                                    return
+                                }
+                                resp.Body.Close()
+                            }()
                         }
                     }
                 }
             }
         }()
+    } else {
+        // TODO: implement ZeroMQ functionality
+        level.Error(logger).Log("err", "ZeroMQ is not yet supported")
+        return 1
+
+        // // Use ZeroMQ to publish updates to relay backend
+        // var publishers []pubsub.Publisher
+        // refreshPubs := make(chan bool, 1)
+        // publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+        // if err != nil {
+        //     level.Error(logger).Log("err", err)
+        //     os.Exit(1)
+        // }
+
+        // go func() {
+        //     syncTimer := helpers.NewSyncTimer(cfg.PublisherRefreshTimer)
+        //     for {
+        //         syncTimer.Run()
+        //         refreshPubs <- true
+        //     }
+        // }()
+
+        // go func() {
+        //     for {
+        //         select {
+        //         case <-refreshPubs:
+        //             newPublishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+        //             if err != nil {
+        //                 _ = level.Error(logger).Log("err", err)
+        //                 continue
+        //             }
+
+        //             for _, pub := range publishers {
+        //                 err = pub.Close()
+        //                 if err != nil {
+        //                     _ = level.Error(logger).Log("err", err)
+        //                 }
+        //             }
+
+        //             publishers = newPublishers
+
+        //             continue
+
+        //         case msg := <-updateChan:
+        //             for _, pub := range publishers {
+        //                 _, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, msg)
+        //                 if err != nil {
+        //                     _ = level.Error(logger).Log("msg", "unable to send update to optimizer", "err", err)
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }()
     }
 
-
-    // ZeroMQ
-	if !cfg.NRBHTTP {
-
-	} else {
-
-	}
-
-	getParams := func() *transport.GatewayHandlerConfig {
-		return &transport.GatewayHandlerConfig{
-			// Storer:           storer,
-			InitMetrics:      relayMetrics.RelayInitMetrics,
-			UpdateMetrics:    relayMetrics.RelayUpdateMetrics,
-			// RouterPrivateKey: cfg.RouterPrivateKey,
-			NRBNoInit:        cfg.NRBNoInit,
-			LoadTest:         cfg.Loadtest,
-		}
-	}
 
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc(logger, getParams())).Methods("POST")
-	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams(), updateChan)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, relayMetrics.RelayUpdateMetrics, updateChan)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -198,6 +229,7 @@ func mainReturnWithCode() int {
 			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
 		}
 	}()
+
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
@@ -207,27 +239,21 @@ func mainReturnWithCode() int {
 
 func newConfig() (*transport.GatewayConfig, error) {
 	cfg := new(transport.GatewayConfig)
-
-	// routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	// if err != nil || routerPrivateKey == nil {
-	// 	return nil, fmt.Errorf("RELAY_ROUTER_PRIVATE_KEY not set")
-	// }
-	// cfg.RouterPrivateKey = routerPrivateKey
-
-    // Verify if we are using No Init on Relays
-	nrbNoInit, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_NO_INIT", false)
-	if err != nil {
-		return nil, err
-	}
-	cfg.NRBNoInit = nrbNoInit
+    // Get the channel size
+    channelBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_CHANNEL_BUFFER_SIZE", 100000)
+    if err != nil {
+        return nil, err
+    }
+    cfg.ChannelBufferSize = channelBufferSize
 
     // Decide if we are using HTTP to batch-write to relay backends
-	nrbHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", true)
+	useHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", true)
 	if err != nil {
 		return nil, err
 	}
-	cfg.NRBHTTP = nrbHTTP
+	cfg.UseHTTP = useHTTP
 
+    // Load env vars depending on relay update delivery method
 	if nrbHTTP {
         // Using HTTP, get the relay backend addresses to send relay updates to
 		if exists := envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES"); !exists {
@@ -243,6 +269,12 @@ func newConfig() (*transport.GatewayConfig, error) {
 		}
 		cfg.HTTPTimeout = httpTimeout
 
+        // Get the batch size threshold for sending updates to relay backends
+        batchSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_BATCH_SIZE", 20)
+        if err != nil {
+            return nil, err
+        }
+        cfg.BatchSize = batchSize
 	} else {
         // Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
 		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
@@ -265,13 +297,4 @@ func newConfig() (*transport.GatewayConfig, error) {
 		}
 		cfg.PublisherRefreshTimer = publisherRefresh
 	}
-
-    // Decide if we are using fake relays for a load test
-	featureLoadTest, err := envvar.GetBool("FEATURE_LOAD_TEST", false)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Loadtest = featureLoadTest
-
-	return cfg, nil
 }
