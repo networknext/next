@@ -49,6 +49,10 @@ var (
 	sha           string
 	tag           string
 
+	author    string
+	timestamp string
+	env       string
+
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
@@ -75,6 +79,8 @@ func init() {
 	gcpProjectID := backend.GetGCPProjectID()
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	displayLoadedRelays(relayArray_internal)
+
+	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -262,6 +268,7 @@ func mainReturnWithCode() int {
 						relayHash_internal = relayHashNew
 						relayHashMutex.Unlock()
 
+						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler
 						level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 						// Print the new list of relays
@@ -837,6 +844,7 @@ func mainReturnWithCode() int {
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
 
 	// todo: remove the init entirely once the relays are updated to new version (1.4.0). deprecated
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(&commonInitParams)).Methods("POST")
