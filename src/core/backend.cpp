@@ -241,6 +241,14 @@ namespace core
       }
     }
 
+    std::string target_version;
+    if (!encoding::read_string(v, index, target_version)) {
+      LOG(ERROR, "unable to read update response target version");
+      return false;
+    }
+
+    // printf( "target_version = %s\n", target_version.c_str());
+
     return true;
   }
 
@@ -316,43 +324,7 @@ namespace core
       RelayStats stats;
       this->relay_manager.get_stats(stats);
 
-      const size_t request_size = 4 +                             // request version
-                                  4 +                             // address length
-                                  this->relay_address.length() +  // address
-                                  KEY_SIZE +                      // public key
-                                  4 +                             // number of relay ping stats
-                                  stats.num_relays * 20 +         // relay ping stats
-                                  8 +                             // session count
-                                  8 +                             // envelope up
-                                  8 +                             // envelope down
-                                  8 +                             // outbound ping tx
-                                  8 +                             // route request rx
-                                  8 +                             // route request tx
-                                  8 +                             // route response rx
-                                  8 +                             // route response tx
-                                  8 +                             // client to server rx
-                                  8 +                             // client to server tx
-                                  8 +                             // server to client rx
-                                  8 +                             // server to client tx
-                                  8 +                             // inbound ping rx
-                                  8 +                             // inbound ping tx
-                                  8 +                             // pong rx
-                                  8 +                             // session ping rx
-                                  8 +                             // session ping tx
-                                  8 +                             // session pong rx
-                                  8 +                             // session pong tx
-                                  8 +                             // continue request rx
-                                  8 +                             // continue request tx
-                                  8 +                             // continue response rx
-                                  8 +                             // continue response tx
-                                  8 +                             // near ping rx
-                                  8 +                             // near ping tx
-                                  8 +                             // unknown Rx
-                                  1 +                             // shut down flag
-                                  8 +                             // cpu usage
-                                  8 +                             // memory usage
-                                  4;                              // relay version length
-      req.resize(request_size);
+      req.resize(100*1024);
 
       size_t index = 0;
 
