@@ -16,8 +16,6 @@ type RelayData struct {
 	Name           string
 	Addr           net.UDPAddr
 	PublicKey      []byte
-	Seller         Seller
-	Datacenter     Datacenter
 	MaxSessions    uint32
 	SessionCount   int
 	LastUpdateTime time.Time
@@ -87,24 +85,12 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	return relays
 }
 
-func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
+func (relayMap *RelayMap) GetAllRelayIDs() []uint64 {
 	relayIDs := make([]uint64, 0)
 	relayMap.RLock()
 	defer relayMap.RUnlock()
-	if len(excludeList) == 0 {
-		for _, relayData := range relayMap.relays {
-			relayIDs = append(relayIDs, relayData.ID)
-		}
-		return relayIDs
-	}
-	excludeMap := make(map[string]bool)
-	for _, exclude := range excludeList {
-		excludeMap[exclude] = true
-	}
 	for _, relayData := range relayMap.relays {
-		if _, ok := excludeMap[relayData.Seller.ID]; !ok {
-			relayIDs = append(relayIDs, relayData.ID)
-		}
+		relayIDs = append(relayIDs, relayData.ID)
 	}
 	return relayIDs
 }

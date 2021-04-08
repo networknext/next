@@ -1,7 +1,6 @@
 package routing_test
 
 import (
-	"math"
 	"math/rand"
 	"net"
 	"time"
@@ -32,10 +31,6 @@ func fillRelayDatabase(relayMap *routing.RelayMap) {
 			ID:   id,
 			Name: addr,
 			Addr: *udp,
-			Datacenter: routing.Datacenter{
-				ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-				Name: randomString(5),
-			},
 			PublicKey:      randomPublicKey(),
 			LastUpdateTime: updateTime,
 		}
