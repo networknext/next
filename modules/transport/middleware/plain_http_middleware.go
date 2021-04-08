@@ -12,7 +12,6 @@ import (
 )
 
 func HttpGetMiddleware(audience string, next http.Handler) http.Handler {
-	fmt.Printf("Audience: %s\n", audience)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
