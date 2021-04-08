@@ -911,7 +911,16 @@ func main() {
 					return nil
 				},
 			},
-		},
+			{
+				Name:       "bincheck",
+				ShortUsage: "next relays bincheck",
+				ShortHelp:  "Sanity checks a local relays.bin file",
+				Exec: func(ctx context.Context, args []string) error {
+
+					checkRelaysBin()
+					return nil
+				},
+			}},
 	}
 
 	var relayCommand = &ffcli.Command{

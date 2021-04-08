@@ -361,6 +361,7 @@ func main() {
 	}
 
 	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
+
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		var enabledRelays []routing.Relay
@@ -385,6 +386,7 @@ func main() {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
 	}
 
 	go func() {
@@ -524,7 +526,9 @@ func main() {
 		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
-		r.HandleFunc("/relays.bin", serveRelayBinFile).Methods("GET")
+
+		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
+		r.Handle("/relays.bin", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler, strings.Split(allowedOrigins, ",")))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
