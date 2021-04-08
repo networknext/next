@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/gob"
 	"expvar"
 	"fmt"
 	"net"
@@ -17,10 +18,9 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
-	"encoding/gob"
 
 	"github.com/networknext/backend/modules/common/helpers"
 
@@ -55,7 +55,7 @@ func main() {
 func mainReturnWithCode() int {
 
 	serviceName := "relay_backend"
-	
+
 	fmt.Printf("\n%s\n\n", serviceName)
 
 	ctx := context.Background()
@@ -359,7 +359,7 @@ func mainReturnWithCode() int {
 			}
 
 			routeMatrixNew.WriteAnalysisData()
-			
+
 			routeMatrixDataNew := routeMatrixNew.GetResponseData()
 
 			relayBackendMetrics.RouteMatrix.Bytes.Set(float64(len(routeMatrixDataNew)))
@@ -438,10 +438,10 @@ func mainReturnWithCode() int {
 	}()
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RelayMap: 		  relayMap,
-		StatsDB:          statsdb,
-		Metrics:          relayUpdateMetrics,
-		GetRelayData:     GetRelayData,
+		RelayMap:     relayMap,
+		StatsDB:      statsdb,
+		Metrics:      relayUpdateMetrics,
+		GetRelayData: GetRelayData,
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -469,10 +469,10 @@ func mainReturnWithCode() int {
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
-	   routeMatrixMutex.RLock()
-	   rm := routeMatrix
-	   routeMatrixMutex.RUnlock()
-	   return rm
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return rm
 	}
 
 	fmt.Printf("starting http server\n\n")
@@ -573,7 +573,7 @@ func init() {
 	}
 
 	sort.SliceStable(relayArray_internal, func(i, j int) bool {
-	    return relayArray_internal[i].Name < relayArray_internal[j].Name
+		return relayArray_internal[i].Name < relayArray_internal[j].Name
 	})
 
 	// todo: hack override for local testing
@@ -587,7 +587,7 @@ func init() {
 	fmt.Printf("\n=======================================\n")
 	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
 	for i := range relayArray_internal {
-		fmt.Printf( "    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
+		fmt.Printf("    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
 	}
 	fmt.Printf("\n=======================================\n")
 }
