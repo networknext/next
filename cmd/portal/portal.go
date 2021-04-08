@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -32,6 +34,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -357,6 +360,33 @@ func main() {
 		Storage: db,
 	}
 
+	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		var enabledRelays []routing.Relay
+		var relayWrapper routing.RelayBinWrapper
+
+		relays := db.Relays()
+
+		for _, localRelay := range relays {
+			if localRelay.State == routing.RelayStateEnabled {
+				enabledRelays = append(enabledRelays, localRelay)
+			}
+		}
+
+		relayWrapper.Relays = enabledRelays
+
+		var buffer *bytes.Buffer
+
+		encoder := gob.NewEncoder(buffer)
+		encoder.Encode(relayWrapper)
+
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	go func() {
 		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
 		syncInterval, err := time.ParseDuration(genmapinterval)
@@ -494,6 +524,7 @@ func main() {
 		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/relays.bin", serveRelayBinFile).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
