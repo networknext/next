@@ -12,11 +12,16 @@ func getRelaysBin(env Environment, filename string) {
 
 	uri := fmt.Sprintf("%s/relays.bin", env.PortalHostname())
 
+	// GET doesn't seem to like env.PortalHostname() for local
 	if env.Name == "local" {
 		uri = "http://127.0.0.1:20000/relays.bin"
 	}
 
-	r, err := http.Get(uri)
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
+
+	r, err := client.Do(req)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not get relays.bin from the portal: %v\n", err), 1)
 	}

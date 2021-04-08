@@ -528,7 +528,7 @@ func main() {
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
 		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
-		r.Handle("/relays.bin", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler, strings.Split(allowedOrigins, ",")))
+		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
