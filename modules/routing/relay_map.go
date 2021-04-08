@@ -67,40 +67,20 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
 	return relayData, ok
 }
 
-func (relayMap *RelayMap) GetRelayIds() []uint64 {
+func (relayMap *RelayMap) GetRelayEssentialData() ([]uint64, []int, []string) {
 	relayIds := make([]uint64, len(relayMap.relays))
-	relayMap.RLock()
-	index := 0
-	for _, v := range relayMap.relays {
-		relayIds[index] = v.ID
-		index++
-	}
-	relayMap.RUnlock()
-	return relayIds
-}
-
-func (relayMap *RelayMap) GetRelaySessionCounts() []int {
 	relaySessionCounts := make([]int, len(relayMap.relays))
-	relayMap.RLock()
-	index := 0
-	for _, v := range relayMap.relays {
-		relaySessionCounts[index] = v.SessionCount
-		index++
-	}
-	relayMap.RUnlock()
-	return relaySessionCounts
-}
-
-func (relayMap *RelayMap) GetRelayVersions() []string {
 	relayVersions := make([]string, len(relayMap.relays))
 	relayMap.RLock()
 	index := 0
 	for _, v := range relayMap.relays {
+		relayIds[index] = v.ID
+		relaySessionCounts[index] = v.SessionCount
 		relayVersions[index] = v.Version
 		index++
 	}
 	relayMap.RUnlock()
-	return relayVersions
+	return relayIds, relaySessionCounts, relayVersions
 }
 
 // todo: this is really a pretty naff function and we should deprecate it

@@ -262,12 +262,6 @@ func mainReturnWithCode() int {
 
 			_, relayHash := GetRelayData()
 
-			activeRelayIds := relayMap.GetRelayIds()
-
-			activeRelaySessionCounts := relayMap.GetRelaySessionCounts()
-
-			activeRelayVersions := relayMap.GetRelayVersions()
-
 			type ActiveRelayData struct {
 				ID             uint64
 				Name           string
@@ -281,27 +275,30 @@ func mainReturnWithCode() int {
 			}
 
 			activeRelays := make([]ActiveRelayData, 0)
+			{
+				activeRelayIds, activeRelaySessionCounts, activeRelayVersions := relayMap.GetRelayEssentialData()
 
-			for i := range activeRelayIds {
+				for i := range activeRelayIds {
 
-				id := activeRelayIds[i]
-				relay, ok := relayHash[id]
-				if !ok {
-					continue
+					id := activeRelayIds[i]
+					relay, ok := relayHash[id]
+					if !ok {
+						continue
+					}
+
+					relayData := ActiveRelayData{}
+					relayData.ID = relay.ID
+					relayData.Addr = relay.Addr
+					relayData.Name = relay.Name
+					relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
+					relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
+					relayData.SellerID = relay.Seller.ID
+					relayData.DatacenterID = relay.Datacenter.ID
+					relayData.SessionCount = activeRelaySessionCounts[i]
+					relayData.Version = activeRelayVersions[i]
+
+					activeRelays = append(activeRelays, relayData)
 				}
-
-				relayData := ActiveRelayData{}
-				relayData.ID = relay.ID
-				relayData.Addr = relay.Addr
-				relayData.Name = relay.Name
-				relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
-				relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
-				relayData.SellerID = relay.Seller.ID
-				relayData.DatacenterID = relay.Datacenter.ID
-				relayData.SessionCount = activeRelaySessionCounts[i]
-				relayData.Version = activeRelayVersions[i]
-
-				activeRelays = append(activeRelays, relayData)
 			}
 
 			sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })
