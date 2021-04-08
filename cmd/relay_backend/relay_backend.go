@@ -258,51 +258,90 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 
-			// get relay data
+			// build set active relays that are *also* in the current relays.bin
 
-			relayData := relayMap.GetAllRelayData()
+			_, relayHash := GetRelayData()
 
-			numRelays := len(relayData)
+			activeRelayIds := relayMap.GetRelayIds()
 
-			sort.SliceStable(relayData, func(i, j int) bool { return relayData[i].Name < relayData[j].Name })
+			activeRelaySessionCounts := relayMap.GetRelaySessionCounts()
+
+			activeRelayVersions := relayMap.GetRelayVersions()
+
+			type ActiveRelayData struct {
+				ID             uint64
+				Name           string
+				Addr           net.UDPAddr
+				SessionCount   int
+				Version        string
+				Latitude       float32
+				Longitude      float32
+				SellerID       string
+				DatacenterID   uint64
+			}
+
+			activeRelays := make([]ActiveRelayData, 0)
+
+			for i := range activeRelayIds {
+
+				id := activeRelayIds[i]
+				relay, ok := relayHash[id]
+				if !ok {
+					continue
+				}
+
+				relayData := ActiveRelayData{}
+				relayData.ID = relay.ID
+				relayData.Addr = relay.Addr
+				relayData.Name = relay.Name
+				relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
+				relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
+				relayData.SellerID = relay.Seller.ID
+				relayData.DatacenterID = relay.Datacenter.ID
+				relayData.SessionCount = activeRelaySessionCounts[i]
+				relayData.Version = activeRelayVersions[i]
+
+				activeRelays = append(activeRelays, relayData)
+			}
+
+			sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })
+
+			// gather relay data required for building cost matrix
+
+			numActiveRelays := len(activeRelays)
+
+			relayIDs := make([]uint64, numActiveRelays)
+			relayAddresses := make([]net.UDPAddr, numActiveRelays)
+			relayNames := make([]string, numActiveRelays)
+			relayLatitudes := make([]float32, numActiveRelays)
+			relayLongitudes := make([]float32, numActiveRelays)
+			relayDatacenterIDs := make([]uint64, numActiveRelays)
 			
-			relayIDs := make([]uint64, numRelays)
-			relayAddresses := make([]net.UDPAddr, numRelays)
-			relayNames := make([]string, numRelays)
-			relayLatitudes := make([]float32, numRelays)
-			relayLongitudes := make([]float32, numRelays)
-			relayDatacenterIDs := make([]uint64, numRelays)
-			
-			for i := range relayData {
-				relayIDs[i] = relayData[i].ID
-				relayNames[i] = relayData[i].Name
-				relayAddresses[i] = relayData[i].Addr
-				// todo
-				/*
-				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
-				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
-				relayDatacenterIDs[i] = relay.Datacenter.ID
-				*/
+			for i := range activeRelays {
+				relayIDs[i] = activeRelays[i].ID
+				relayNames[i] = activeRelays[i].Name
+				relayAddresses[i] = activeRelays[i].Addr
+				relayLatitudes[i] = float32(activeRelays[i].Latitude)
+				relayLongitudes[i] = float32(activeRelays[i].Longitude)
+				relayDatacenterIDs[i] = activeRelays[i].DatacenterID
 			}
 
 			// build relays data to serve up on "relays" endpoint (CSV)
 
 			relaysDataString := "name,address,id,status,sessions,version"
 	
-			for i := range relayData {
-				name := relayData[i].Name
-				address := relayData[i].Addr.String()
-				id := relayData[i].ID
+			for i := range activeRelays {
+				name := activeRelays[i].Name
+				address := activeRelays[i].Addr.String()
+				id := activeRelays[i].ID
 				status := "active"
-				sessions := relayData[i].SessionCount
-				version := relayData[i].Version
+				sessions := activeRelays[i].SessionCount
+				version := activeRelays[i].Version
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
 			}
 
 			inactiveRelays := make([]routing.Relay, 0)
 	
-			_, relayHash := GetRelayData()
-
 			relayMap.RLock()
 			for _,v := range relayHash {
 				_, exists := relayMap.GetRelayData(v.Addr.String())
@@ -363,9 +402,9 @@ func mainReturnWithCode() int {
 			// optimize
 
 			numCPUs := runtime.NumCPU()
-			numSegments := numRelays
-			if numCPUs < numRelays {
-				numSegments = numRelays / 5
+			numSegments := numActiveRelays
+			if numCPUs < numActiveRelays {
+				numSegments = numActiveRelays / 5
 				if numSegments == 0 {
 					numSegments = 1
 				}
@@ -376,7 +415,7 @@ func mainReturnWithCode() int {
 
 			costThreshold := int32(1)
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
+			routeEntries := core.Optimize(numActiveRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
@@ -631,11 +670,9 @@ func init() {
 		return relayArray_internal[i].Name < relayArray_internal[j].Name
 	})
 
-	/*
 	// todo: hack override for local testing
 	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
 	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
-	*/
 
 	for i := range relayArray_internal {
 		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
