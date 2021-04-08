@@ -285,11 +285,10 @@ func mainReturnWithCode() int {
 				*/
 			}
 
-			// build relays data (csv)
-
-			// todo: inactive relays
+			// build relays data to serve up on "relays" endpoint (CSV)
 
 			relaysDataString := "name,address,id,status,sessions,version"
+	
 			for i := range relayData {
 				name := relayData[i].Name
 				address := relayData[i].Addr.String()
@@ -297,6 +296,29 @@ func mainReturnWithCode() int {
 				status := "active"
 				sessions := relayData[i].SessionCount
 				version := ""	// todo: version in relay data				
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
+			}
+
+			inactiveRelays := make([]routing.Relay, 0)
+	
+			_, relayHash := GetRelayData()
+
+			relayMap.RLock()
+			for _,v := range relayHash {
+				_, exists := relayMap.GetRelayData(v.Addr.String())
+				if !exists {
+					inactiveRelays = append(inactiveRelays, v)
+				}
+			}
+			relayMap.RUnlock()
+
+			for i := range inactiveRelays {
+				name := inactiveRelays[i].Name
+				address := inactiveRelays[i].Addr.String()
+				id := inactiveRelays[i].ID
+				status := "inactive"
+				sessions := 0
+				version := ""
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
 			}
 
@@ -508,7 +530,9 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
-	fmt.Printf("starting http server\n\n")
+	port := envvar.Get("PORT", "30000")
+
+	fmt.Printf("starting http server on port %s\n\n", port)
 
 	router := mux.NewRouter()
 
@@ -531,8 +555,6 @@ func mainReturnWithCode() int {
 	}
 
 	go func() {
-		port := envvar.Get("PORT", "30000")
-
 		level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
