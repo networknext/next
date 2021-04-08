@@ -67,6 +67,43 @@ func (g *GCPStorage) CopyFromBytesToStorage(ctx context.Context, inputBytes []by
 	return nil
 }
 
+func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []string, outputFileName string) error {
+	// Check if there is a temp file with the same name already
+	if LocalFileExists(outputFileName) {
+		// delete temp file
+		if err := os.Remove(outputFileName); err != nil {
+			err = fmt.Errorf("failed to remove existing output file: %v", err)
+			return err
+		}
+	}
+
+	// Write bytes to temp file location
+	if err := ioutil.WriteFile(outputFileName, inputBytes, 0644); err != nil {
+		err = fmt.Errorf("failed to write to temp file: %v", err)
+		return err
+	}
+
+	for _, name := range instanceNames {
+		// Call gsutil to copy the tmp file over to the instance
+		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
+
+		buffer, err := runnable.CombinedOutput()
+		level.Debug(g.Logger).Log("msg", buffer)
+		if err != nil {
+			err = fmt.Errorf("failed to copy file to instance: %v", err)
+			return err
+		}
+	}
+
+	// delete temp file to clean up
+	if err := os.Remove(outputFileName); err != nil {
+		err = fmt.Errorf("failed to clean up tmp file: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // Copy artifact to local a local file location
 func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName string, outputLocation string) error {
 	if LocalFileExists(outputLocation) {
@@ -111,10 +148,12 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 	}
 
 	// Call gsutil to copy the tmp file over to the instance
-	command := fmt.Sprintf("gsutil compute scp %s %s:%s", srcFileName, instanceName, outputFileName)
-	runnable := exec.Command(command)
+	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", instanceName, outputFileName))
 
-	if err := runnable.Run(); err != nil {
+	buffer, err := runnable.CombinedOutput()
+
+	level.Debug(g.Logger).Log("msg", buffer)
+	if err != nil {
 		err = fmt.Errorf("failed to copy file to instance: %v", err)
 		return err
 	}

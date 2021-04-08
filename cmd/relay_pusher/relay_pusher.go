@@ -14,8 +14,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -26,6 +26,7 @@ import (
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/storage"
 )
 
 var (
@@ -94,12 +95,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// TODO: Use this for the relay.bin file
-	/* 	gcpStorage, err := storage.NewGCPStorageClient(ctx, bucketName, logger)
-	   	if err != nil {
-	   		level.Error(logger).Log("msg", "failed to initialze gcp storage", "err", err)
-	   		return 1
-	   	} */
+	gcpStorage, err := storage.NewGCPStorageClient(ctx, bucketName, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to initialze gcp storage", "err", err)
+		return 1
+	}
 
 	// Setup http client for maxmind DB file
 	maxmindHttpClient := &http.Client{
@@ -123,27 +123,47 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "maxmind DB ISP location not defined", "err", err)
 		return 1
 	}
+
 	cityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
 	if cityURI == "" {
 		level.Error(logger).Log("msg", "maxmind DB city location not defined", "err", err)
 		return 1
 	}
 
+	// Call gsutil to copy the tmp file over to the instance
+	runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", "server-backend-mig", "--zone", "us-central1-a", "--format", "value(instance)")
+
+	buffer, err := runnable.CombinedOutput()
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to fetch server backend instance names", "err", err)
+		return 1
+	}
+
+	serverBackendInstanceNames := strings.Split(string(buffer), "\n")
+
+	// Using the method above causes an empty string to be added at the end of the slice - remove it
+	if len(serverBackendInstanceNames) > 0 {
+		serverBackendInstanceNames = serverBackendInstanceNames[:len(serverBackendInstanceNames)-1]
+	}
+
 	// Setup maxmind download go routine
-	maxmindSyncInterval, err := envvar.GetDuration("", time.Hour*24)
+	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
 	if err != nil {
 		level.Error(logger).Log("msg", "maxmind DB sync interval not defined", "err", err)
 		return 1
 	}
+
+	ticker := time.NewTicker(maxmindSyncInterval)
 	go func() {
-		ticker := time.NewTicker(maxmindSyncInterval)
 		for {
 			select {
 			case <-ticker.C:
+				start := time.Now()
+
 				ispRes, err := maxmindHttpClient.Get(ispURI)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to get ISP file from maxmind", "err", err)
-					// TODO: add metric in here
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureISP.Add(1)
 					continue
 				}
 
@@ -151,12 +171,14 @@ func mainReturnWithCode() int {
 
 				if ispRes.StatusCode != http.StatusOK {
 					level.Error(logger).Log("msg", "http get was not successful for ISP file", ispRes.StatusCode, http.StatusText(ispRes.StatusCode))
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureISP.Add(1)
 					continue
 				}
 
 				gz, err := gzip.NewReader(ispRes.Body)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to open isp file with gzip", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
 					continue
 				}
 
@@ -169,6 +191,7 @@ func mainReturnWithCode() int {
 					}
 					if err != nil {
 						level.Error(logger).Log("msg", "failed reading from gzip file", "err", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
 						continue
 					}
 
@@ -176,18 +199,28 @@ func mainReturnWithCode() int {
 						_, err := io.Copy(buf, tr)
 						if err != nil {
 							level.Error(logger).Log("msg", "failed to copy ISP data to buffer", "err", err)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
 							continue
 						}
 					}
 				}
 				gz.Close()
 
-				// TODO: copy the buffer over to the VM
+				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, ispFileName); err != nil {
+					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to server backends", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.SCPWriteFailure.Add(1)
+					continue
+				}
+
+				updateTime := time.Since(start)
+				duration := float64(updateTime.Milliseconds())
+
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Set(duration)
 
 				cityRes, err := maxmindHttpClient.Get(cityURI)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to get city file from maxmind", "err", err)
-					// TODO: add metric in here
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureCity.Add(1)
 					continue
 				}
 
@@ -195,12 +228,14 @@ func mainReturnWithCode() int {
 
 				if cityRes.StatusCode != http.StatusOK {
 					level.Error(logger).Log("msg", "http get was not successful for ISP file", cityRes.StatusCode, http.StatusText(cityRes.StatusCode))
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureCity.Add(1)
 					continue
 				}
 
 				gz, err = gzip.NewReader(cityRes.Body)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to open isp file with gzip", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
 					continue
 				}
 
@@ -213,6 +248,7 @@ func mainReturnWithCode() int {
 					}
 					if err != nil {
 						level.Error(logger).Log("msg", "failed reading from gzip file", "err", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
 						continue
 					}
 
@@ -220,48 +256,33 @@ func mainReturnWithCode() int {
 						_, err := io.Copy(buf, tr)
 						if err != nil {
 							level.Error(logger).Log("msg", "failed to copy ISP data to buffer", "err", err)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
 							continue
 						}
 					}
 				}
 				gz.Close()
 
-				// TODO: copy the buffer over to the VM
+				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, cityFileName); err != nil {
+					level.Error(logger).Log("msg", "failed to copy maxmind city file to server backends", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.SCPWriteFailure.Add(1)
+					continue
+				}
+
+				updateTime = time.Since(start)
+				duration = float64(updateTime.Milliseconds())
+
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Set(duration)
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBTotalUpdateDuration.Set(duration)
 
 			case <-ctx.Done():
 				return
 			}
-
-			time.Sleep(maxmindSyncInterval)
 		}
 	}()
 
 	// Create error channel to error out from any goroutines
 	errChan := make(chan error, 1)
-
-	// Setup the stats print routine
-	{
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
-
-		go func() {
-			for {
-
-				relayPusherServiceMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				relayPusherServiceMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
-
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(relayPusherServiceMetrics.ServiceMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", relayPusherServiceMetrics.ServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("-----------------------------\n")
-
-				time.Sleep(time.Second * 10)
-			}
-		}()
-	}
 
 	// Wait for shutdown signal
 	termChan := make(chan os.Signal, 1)
