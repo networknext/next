@@ -1,5 +1,6 @@
 package transport
 
+/*
 import (
 	"bytes"
 	"context"
@@ -215,3 +216,4 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		writer.Write(responseData)
 	}
 }
+*/

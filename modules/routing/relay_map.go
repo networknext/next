@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"sync"
 	"time"
-	"sort"
 
 	"github.com/networknext/backend/modules/core"
 )
@@ -27,7 +27,7 @@ type RelayCleanupCallback func(relayData RelayData) error
 type RelayMap struct {
 	relays          map[string]RelayData
 	cleanupCallback RelayCleanupCallback
-	mutex sync.RWMutex
+	mutex           sync.RWMutex
 }
 
 func NewRelayMap(callback RelayCleanupCallback) *RelayMap {
@@ -116,6 +116,16 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	return relays
 }
 
+func (relayMap *RelayMap) GetAllRelayAddresses() []string {
+	relayMap.RLock()
+	defer relayMap.RUnlock()
+	relayAddresses := make([]string, 0)
+	for _, relayData := range relayMap.relays {
+		relayAddresses = append(relayAddresses, relayData.Addr.String())
+	}
+	return relayAddresses
+}
+
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	if relay, ok := relayMap.relays[relayAddress]; ok {
 		relayMap.cleanupCallback(relay)
@@ -124,11 +134,11 @@ func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 }
 
 type RelayStatsEntry struct {
-	name 		 string
+	name         string
 	sessionCount int
 }
 
-func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([]Relay, map[uint64]Relay), timeoutSeconds int64, c <-chan time.Time) {
+func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func() ([]Relay, map[uint64]Relay), timeoutSeconds int64, c <-chan time.Time) {
 	deleteList := make([]string, 0)
 	for {
 		select {
@@ -137,31 +147,31 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 			_, relayHash := getRelayData()
 
 			relayStats := make([]RelayStatsEntry, 0)
-	
+
 			inactiveRelays := make([]string, 0)
-	
+
 			relayMap.RLock()
 			for _, v := range relayMap.relays {
 				relayStats = append(relayStats, RelayStatsEntry{name: v.Name, sessionCount: v.SessionCount})
 			}
-			for _,v := range relayHash {
+			for _, v := range relayHash {
 				_, exists := relayMap.relays[v.Addr.String()]
 				if !exists {
 					inactiveRelays = append(inactiveRelays, v.Name)
 				}
 			}
 			relayMap.RUnlock()
-			
+
 			sort.SliceStable(relayStats, func(i, j int) bool {
-			    return relayStats[i].name < relayStats[j].name
+				return relayStats[i].name < relayStats[j].name
 			})
 
 			sort.SliceStable(relayStats, func(i, j int) bool {
-			    return relayStats[i].sessionCount > relayStats[j].sessionCount
+				return relayStats[i].sessionCount > relayStats[j].sessionCount
 			})
 
 			sort.SliceStable(inactiveRelays, func(i, j int) bool {
-			    return inactiveRelays[i] < inactiveRelays[j]
+				return inactiveRelays[i] < inactiveRelays[j]
 			})
 
 			fmt.Printf("\n-----------------------------------------\n")
@@ -174,7 +184,6 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 				fmt.Printf("    %s\n", inactiveRelays[i])
 			}
 			fmt.Printf("\n-----------------------------------------\n\n")
-
 
 			deleteList = deleteList[:0]
 			currentTime := time.Now().Unix()
@@ -201,7 +210,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func()([
 				}
 				relayMap.Unlock()
 			}
-			
+
 		case <-ctx.Done():
 			return
 		}

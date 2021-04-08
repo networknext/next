@@ -1,60 +1,29 @@
 package transport_test
 
-// todo: come back and fix these tests
+// func testRelayUpdateHandlerConfig(RelayMap *routing.RelayMap, statsdb *routing.StatsDatabase, storer storage.Storer, metrics metrics.RelayUpdateMetrics, noInit bool) *transport.RelayUpdateHandlerConfig {
 
-// import (
-// 	"bytes"
-// 	"context"
-// 	"encoding/json"
-// 	"math/rand"
-// 	"net"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"reflect"
-// 	"strings"
-// 	"testing"
-// 	"time"
-
-// 	"github.com/alicebob/miniredis/v2"
-// 	"github.com/go-kit/kit/log"
-// 	"github.com/go-redis/redis/v7"
-// 	"github.com/networknext/backend/crypto"
-// 	"github.com/networknext/backend/metrics"
-// 	"github.com/networknext/backend/routing"
-// 	"github.com/networknext/backend/storage"
-
-// 	"github.com/networknext/backend/transport"
-// 	"github.com/stretchr/testify/assert"
-// )
-
-// func pingRelayBackendUpdate(t *testing.T, contentType string, body []byte, metrics metrics.RelayUpdateMetrics, redisClient *redis.Client, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, inMemory *storage.InMemory) *httptest.ResponseRecorder {
-// 	if redisClient == nil {
-// 		redisServer, err := miniredis.Run()
-// 		assert.NoError(t, err)
-// 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+// 	if RelayMap == nil {
+// 		RelayMap = routing.NewRelayMap(func(relay *routing.RelayData) error {
+// 			return nil
+// 		})
 // 	}
 
-// 	if statsdb == nil {
-// 		statsdb = routing.NewStatsDatabase()
+// 	return &transport.RelayUpdateHandlerConfig{
+// 		RelayMap: RelayMap,
+// 		StatsDB:  statsdb,
+// 		Metrics:  &metrics,
+// 		Storer:   storer,
 // 	}
+// }
 
-// 	if inMemory == nil {
-// 		inMemory = &storage.InMemory{}
-
-// 	}
+// func pingRelayBackendUpdate(t *testing.T, contentType string, body []byte, handlerConfig *transport.RelayUpdateHandlerConfig) *httptest.ResponseRecorder {
 
 // 	recorder := httptest.NewRecorder()
 // 	request, err := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 // 	assert.NoError(t, err)
 // 	request.Header.Add("Content-Type", contentType)
 
-// 	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
-// 		RedisClient: redisClient,
-// 		GeoClient:   geoClient,
-// 		StatsDb:     statsdb,
-// 		Metrics:     &metrics,
-// 		Storer:      inMemory,
-// 	})
+// 	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), handlerConfig)
 
 // 	handler(recorder, request)
 // 	return recorder
@@ -65,24 +34,29 @@ package transport_test
 // 	assert.Equal(t, 1.0, errMetric.ValueReset())
 // }
 
-// func relayUpdateShutdownAssertions(t *testing.T, errMetrics metrics.RelayUpdateErrorMetrics, entry routing.RelayCacheEntry, redisClient *redis.Client, inMemory *storage.InMemory, statsdb *routing.StatsDatabase, addr string) {
-// 	res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
-// 	assert.NotNil(t, res.Err())
-// 	assert.EqualError(t, redis.Nil, res.Err().Error())
+// func relayUpdateShutdownAssertions(t *testing.T, recorder *httptest.ResponseRecorder, handlerConfig *transport.RelayUpdateHandlerConfig, addr string) {
+// 	relayData := handlerConfig.RelayMap.GetRelayData(addr)
+// 	assert.Nil(t, relayData)
 
-// 	relay, err := inMemory.Relay(crypto.HashID(addr))
+// 	if recorder.Code != 200 {
+// 		body, err := ioutil.ReadAll(recorder.Body)
+// 		assert.Nil(t, err)
+// 		fmt.Println(string(body))
+// 	}
+
+// 	relay, err := handlerConfig.Storer.Relay(crypto.HashID(addr))
 // 	assert.NoError(t, err)
-
+// 	fmt.Println(relay.State)
 // 	assert.Equal(t, routing.RelayStateMaintenance, relay.State)
 
-// 	for i, stat := range statsdb.Entries {
+// 	for i, stat := range handlerConfig.StatsDB.Entries {
 // 		assert.NotEqual(t, i, relay.ID)
 // 		for j := range stat.Relays {
 // 			assert.NotEqual(t, j, relay.ID)
 // 		}
 // 	}
 
-// 	errMetricsStruct := reflect.ValueOf(errMetrics)
+// 	errMetricsStruct := reflect.ValueOf(handlerConfig.Metrics.ErrorMetrics)
 // 	for i := 0; i < errMetricsStruct.NumField(); i++ {
 // 		if errMetricsStruct.Field(i).CanInterface() {
 // 			assert.Equal(t, 0.0, errMetricsStruct.Field(i).Interface().(metrics.Counter).ValueReset())
@@ -90,14 +64,14 @@ package transport_test
 // 	}
 // }
 
-// func relayUpdateSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, errMetrics metrics.RelayUpdateErrorMetrics, entry routing.RelayCacheEntry, redisClient *redis.Client, inMemory *storage.InMemory, statsdb *routing.StatsDatabase, statIps []string, addr string) {
+// func relayUpdateSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, entry *routing.RelayData, handlerConfig *transport.RelayUpdateHandlerConfig, statIps []string, addr string) {
 // 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-// 	res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
-// 	var actual routing.RelayCacheEntry
-// 	raw, err := res.Bytes()
-// 	assert.NoError(t, err)
-// 	actual.UnmarshalBinary(raw)
+// 	numRelays := handlerConfig.RelayMap.GetRelayCount()
+// 	assert.Equal(t, uint64(5), numRelays)
+
+// 	actual := handlerConfig.RelayMap.GetRelayData(addr)
+// 	assert.NotNil(t, actual)
 
 // 	assert.Equal(t, entry.ID, actual.ID)
 // 	assert.Equal(t, entry.Name, actual.Name)
@@ -122,9 +96,6 @@ package transport_test
 // 	case "application/octet-stream":
 // 		err := response.UnmarshalBinary(body)
 // 		assert.NoError(t, err)
-// 	case "application/json":
-// 		err := json.Unmarshal(body, &response)
-// 		assert.NoError(t, err)
 // 	default:
 // 		assert.FailNow(t, "Invalid expected content type")
 // 	}
@@ -139,8 +110,8 @@ package transport_test
 // 		relaysToPingAddrs = append(relaysToPingAddrs, data.Address)
 // 	}
 
-// 	assert.Contains(t, statsdb.Entries, entry.ID)
-// 	relations := statsdb.Entries[entry.ID]
+// 	assert.Contains(t, handlerConfig.StatsDB.Entries, entry.ID)
+// 	relations := handlerConfig.StatsDB.Entries[entry.ID]
 // 	for _, addr := range statIps {
 // 		id := crypto.HashID(addr)
 // 		assert.Contains(t, relaysToPingIDs, id)
@@ -151,12 +122,12 @@ package transport_test
 // 	assert.NotContains(t, relaysToPingIDs, entry.ID)
 // 	assert.NotContains(t, relaysToPingAddrs, addr)
 
-// 	relay, err := inMemory.Relay(crypto.HashID(addr))
+// 	relay, err := handlerConfig.Storer.Relay(crypto.HashID(addr))
 // 	assert.NoError(t, err)
 
 // 	assert.Equal(t, routing.RelayStateEnabled, relay.State)
 
-// 	errMetricsStruct := reflect.ValueOf(errMetrics)
+// 	errMetricsStruct := reflect.ValueOf(handlerConfig.Metrics.ErrorMetrics)
 // 	for i := 0; i < errMetricsStruct.NumField(); i++ {
 // 		if errMetricsStruct.Field(i).CanInterface() {
 // 			assert.Equal(t, 0.0, errMetricsStruct.Field(i).Interface().(metrics.Counter).ValueReset())
@@ -173,19 +144,11 @@ package transport_test
 
 // 	updateMetrics.ErrorMetrics.UnmarshalFailure = metric
 
-// 	// Binary version
-// 	{
-// 		buff := make([]byte, 10) // invalid relay packet size
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, &storage.StorerMock{}, updateMetrics, false)
 
-// 	// JSON version
-// 	{
-// 		buff := []byte("{") // basic but gets the job done
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
+// 	buff := make([]byte, 10) // invalid relay packet size
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 // }
 
 // func TestRelayUpdateInvalidAddress(t *testing.T) {
@@ -204,66 +167,16 @@ package transport_test
 
 // 	updateMetrics.ErrorMetrics.UnmarshalFailure = metric
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
-// 		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
-// 			buff[8+i] = badAddr[i]
-// 		}
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-
-// 		offset := strings.Index(string(buff), "127.0.0.1:40000")
-// 		assert.GreaterOrEqual(t, offset, 0)
-// 		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
-// 		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
-// 			buff[offset+i] = badAddr[i]
-// 		}
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
-// }
-
-// func TestRelayUpdateInvalidVersion(t *testing.T) {
-// 	udp, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+// 	buff, err := packet.MarshalBinary()
 // 	assert.NoError(t, err)
-// 	packet := transport.RelayUpdateRequest{
-// 		Version: 1,
-// 		Address: *udp,
-// 		Token:   make([]byte, crypto.KeySize),
+// 	badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+// 	for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+// 		buff[8+i] = badAddr[i]
 // 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, &storage.StorerMock{}, updateMetrics, false)
 
-// 	updateMetrics := metrics.EmptyRelayUpdateMetrics
-// 	localMetrics := metrics.LocalHandler{}
-
-// 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-// 	assert.NoError(t, err)
-
-// 	updateMetrics.ErrorMetrics.InvalidVersion = metric
-
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 // }
 
 // func TestRelayUpdateExceedMaxRelays(t *testing.T) {
@@ -283,21 +196,62 @@ package transport_test
 
 // 	updateMetrics.ErrorMetrics.ExceedMaxRelays = metric
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
+// 	buff, err := packet.MarshalBinary()
+// 	assert.NoError(t, err)
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, &storage.StorerMock{}, updateMetrics, false)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
+
+// }
+
+// func TestRelayUpdateRelayNotFoundInRelayMapNoInitOff(t *testing.T) {
+// 	addr := "127.0.0.1:40000"
+// 	udp, err := net.ResolveUDPAddr("udp", addr)
+// 	assert.NoError(t, err)
+// 	packet := transport.RelayUpdateRequest{
+// 		Address:   *udp,
+// 		Token:     make([]byte, crypto.KeySize),
+// 		PingStats: make([]routing.RelayStatsPing, 3),
 // 	}
 
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
+// 	updateMetrics := metrics.EmptyRelayUpdateMetrics
+// 	localMetrics := metrics.LocalHandler{}
+
+// 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+// 	assert.NoError(t, err)
+
+// 	updateMetrics.ErrorMetrics.RelayNotFound = metric
+
+// 	relay := routing.Relay{
+// 		ID:   crypto.HashID(addr),
+// 		Addr: *udp,
+// 		Datacenter: routing.Datacenter{
+// 			ID:   1,
+// 			Name: "some name",
+// 		},
+// 		PublicKey: make([]byte, crypto.KeySize),
+// 		Seller: routing.Seller{
+// 			ID:   "sellerID",
+// 			Name: "seller name",
+// 		},
+// 		State: routing.RelayStateEnabled,
 // 	}
+
+// 	inMemory := &storage.InMemory{}
+
+// 	err = inMemory.AddSeller(context.Background(), relay.Seller)
+// 	assert.NoError(t, err)
+// 	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+// 	assert.NoError(t, err)
+// 	err = inMemory.AddRelay(context.Background(), relay)
+// 	assert.NoError(t, err)
+
+// 	buff, err := packet.MarshalBinary()
+// 	assert.NoError(t, err)
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, inMemory, updateMetrics, false)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusNotFound, metric)
+
 // }
 
 // func TestGhostRelayIgnore(t *testing.T) {
@@ -318,125 +272,20 @@ package transport_test
 // 	assert.NoError(t, err)
 
 // 	updateMetrics.ErrorMetrics.RelayNotFound = metric
-
-// 	// No InMemory provided, no storage, so 404
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusNotFound, metric)
-// 	}
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusNotFound, metric)
-// 	}
-// }
-
-// func TestRelayUpdateRedisFailure(t *testing.T) {
-// 	redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0"})
-
-// 	udp, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-// 	assert.NoError(t, err)
-// 	packet := transport.RelayUpdateRequest{
-// 		Address: *udp,
-// 		Token:   make([]byte, crypto.KeySize),
-// 	}
-
-// 	updateMetrics := metrics.EmptyRelayUpdateMetrics
-// 	localMetrics := metrics.LocalHandler{}
-
-// 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-// 	assert.NoError(t, err)
-
-// 	updateMetrics.ErrorMetrics.RedisFailure = metric
-
-// 	// add a relay to storage to pass the ghost checks in RelayUpdateHandlerFunc
-// 	relay := routing.Relay{
-// 		ID:   crypto.HashID("127.0.0.1:40000"),
-// 		Addr: *udp,
-// 		Seller: routing.Seller{
-// 			ID:   "sellerID",
-// 			Name: "seller name",
-// 		},
-// 		Datacenter: routing.Datacenter{
-// 			ID:   1,
-// 			Name: "some name",
-// 		},
-// 		PublicKey: make([]byte, crypto.KeySize),
-// 		State:     routing.RelayStateEnabled,
-// 	}
-
 // 	inMemory := &storage.InMemory{}
-// 	err = inMemory.AddSeller(context.Background(), relay.Seller)
+
+// 	buff, err := packet.MarshalBinary()
 // 	assert.NoError(t, err)
-// 	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
-// 	assert.NoError(t, err)
-// 	err = inMemory.AddRelay(context.Background(), relay)
-// 	assert.NoError(t, err)
-
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, nil, nil, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
-// 	}
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, nil, nil, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
-// 	}
-// }
-
-// func TestRelayUpdateRelayNotFound(t *testing.T) {
-// 	udp, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-// 	assert.NoError(t, err)
-// 	packet := transport.RelayUpdateRequest{
-// 		Address:   *udp,
-// 		Token:     make([]byte, crypto.KeySize),
-// 		PingStats: make([]routing.RelayStatsPing, 3),
-// 	}
-
-// 	updateMetrics := metrics.EmptyRelayUpdateMetrics
-// 	localMetrics := metrics.LocalHandler{}
-
-// 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-// 	assert.NoError(t, err)
-
-// 	updateMetrics.ErrorMetrics.RelayNotFound = metric
-
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusNotFound, metric)
-// 	}
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil, nil, nil)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusNotFound, metric)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, inMemory, updateMetrics, false)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusNotFound, metric)
 // }
 
 // func TestRelayShuttingDown(t *testing.T) {
-// 	redisServer, err := miniredis.Run()
-// 	assert.NoError(t, err)
-// 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 // 	addr := "127.0.0.1:40000"
 // 	udp, err := net.ResolveUDPAddr("udp", addr)
 // 	assert.NoError(t, err)
+
 // 	statsdb := routing.NewStatsDatabase()
 // 	statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
 // 	packet := transport.RelayUpdateRequest{
@@ -454,9 +303,7 @@ package transport_test
 // 		stats.PacketLoss = rand.Float32()
 // 	}
 
-// 	seedRedis(t, redisServer, statIps)
-
-// 	entry := routing.RelayCacheEntry{
+// 	entry := &routing.RelayData{
 // 		ID:   crypto.HashID(addr),
 // 		Addr: *udp,
 // 		Datacenter: routing.Datacenter{
@@ -465,15 +312,6 @@ package transport_test
 // 		},
 // 		PublicKey:      make([]byte, crypto.KeySize),
 // 		LastUpdateTime: time.Now().Add(-time.Second),
-// 	}
-
-// 	raw, err := entry.MarshalBinary()
-// 	assert.NoError(t, err)
-// 	redisServer.Set(entry.Key(), "0")
-// 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
-
-// 	geoClient := &routing.GeoClient{
-// 		RedisClient: redisClient,
 // 	}
 
 // 	relay := routing.Relay{
@@ -514,39 +352,22 @@ package transport_test
 // 		}
 // 	}
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-// 		relayUpdateShutdownAssertions(t, updateMetrics.ErrorMetrics, entry, redisClient, inMemory, statsdb, addr)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, statsdb, inMemory, updateMetrics, false)
+// 	handlerConfig.RelayMap.AddRelayDataEntry(addr, entry)
+
+// 	buff, err := packet.MarshalBinary()
+// 	assert.NoError(t, err)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateShutdownAssertions(t, recorder, handlerConfig, addr)
 
 // 	// Check that the relay cache entry is gone
-// 	_, err = redisServer.Get(entry.Key())
-// 	assert.Error(t, err)
+// 	relayData := handlerConfig.RelayMap.GetRelayData(addr)
+// 	assert.Nil(t, relayData)
 
-// 	// Add the relay cache entry back for the JSON version
-// 	redisServer.Set(entry.Key(), "0")
-// 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-// 		relayUpdateShutdownAssertions(t, updateMetrics.ErrorMetrics, entry, redisClient, inMemory, statsdb, addr)
-// 	}
-
-// 	// Check that the relay cache entry is gone
-// 	_, err = redisServer.Get(entry.Key())
-// 	assert.Error(t, err)
 // }
 
 // func TestRelayUpdateRelayUnmarshalFailure(t *testing.T) {
-// 	redisServer, err := miniredis.Run()
-// 	assert.NoError(t, err)
-// 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
 // 	addr := "127.0.0.1:40000"
 // 	udp, err := net.ResolveUDPAddr("udp", addr)
 // 	assert.NoError(t, err)
@@ -558,7 +379,7 @@ package transport_test
 // 	}
 
 // 	storedToken := make([]byte, crypto.KeySize)
-// 	entry := routing.RelayCacheEntry{
+// 	entry := &routing.RelayData{
 // 		ID:   crypto.HashID(addr),
 // 		Addr: *udp,
 // 		Datacenter: routing.Datacenter{
@@ -566,13 +387,7 @@ package transport_test
 // 			Name: "some name",
 // 		},
 // 		PublicKey:      storedToken,
-// 		LastUpdateTime: time.Now().Add(-time.Second)}
-
-// 	redisServer.Set(entry.Key(), "0")
-// 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), "invalid relay data")
-
-// 	geoClient := &routing.GeoClient{
-// 		RedisClient: redisClient,
+// 		LastUpdateTime: time.Now().Add(-time.Second),
 // 	}
 
 // 	updateMetrics := metrics.EmptyRelayUpdateMetrics
@@ -581,7 +396,7 @@ package transport_test
 // 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 // 	assert.NoError(t, err)
 
-// 	updateMetrics.ErrorMetrics.RelayUnmarshalFailure = metric
+// 	updateMetrics.ErrorMetrics.UnmarshalFailure = metric
 
 // 	// add a relay to storage to pass the ghost checks in RelayUpdateHandlerFunc
 // 	relay := routing.Relay{
@@ -604,27 +419,17 @@ package transport_test
 // 	err = inMemory.AddRelay(context.Background(), relay)
 // 	assert.NoError(t, err)
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, inMemory, updateMetrics, false)
+// 	handlerConfig.RelayMap.AddRelayDataEntry(addr, entry)
+// 	buff, err := packet.MarshalBinary()
+// 	buff[3] = 'a'
+// 	assert.NoError(t, err)
 
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
-// 	}
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 // }
 
 // func TestRelayUpdateInvalidToken(t *testing.T) {
-// 	redisServer, err := miniredis.Run()
-// 	assert.NoError(t, err)
-// 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 // 	addr := "127.0.0.1:40000"
 // 	udp, err := net.ResolveUDPAddr("udp", addr)
 // 	assert.NoError(t, err)
@@ -639,7 +444,7 @@ package transport_test
 // 		PingStats: make([]routing.RelayStatsPing, 0),
 // 	}
 
-// 	entry := routing.RelayCacheEntry{
+// 	entry := &routing.RelayData{
 // 		ID:   crypto.HashID(addr),
 // 		Addr: *udp,
 // 		Datacenter: routing.Datacenter{
@@ -648,15 +453,6 @@ package transport_test
 // 		},
 // 		PublicKey:      storedToken,
 // 		LastUpdateTime: time.Now().Add(-time.Second),
-// 	}
-
-// 	raw, err := entry.MarshalBinary()
-// 	assert.NoError(t, err)
-// 	redisServer.Set(entry.Key(), "0")
-// 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
-
-// 	geoClient := &routing.GeoClient{
-// 		RedisClient: redisClient,
 // 	}
 
 // 	updateMetrics := metrics.EmptyRelayUpdateMetrics
@@ -688,27 +484,17 @@ package transport_test
 // 	err = inMemory.AddRelay(context.Background(), relay)
 // 	assert.NoError(t, err)
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, nil, inMemory, updateMetrics, false)
+// 	handlerConfig.RelayMap.AddRelayDataEntry(addr, entry)
 
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
-// 	}
+// 	buff, err := packet.MarshalBinary()
+// 	assert.NoError(t, err)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
+
 // }
 
 // func TestRelayUpdateInvalidState(t *testing.T) {
-// 	redisServer, err := miniredis.Run()
-// 	assert.NoError(t, err)
-// 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 // 	addr := "127.0.0.1:40000"
 // 	udp, err := net.ResolveUDPAddr("udp", addr)
 // 	assert.NoError(t, err)
@@ -728,9 +514,7 @@ package transport_test
 // 		stats.PacketLoss = rand.Float32()
 // 	}
 
-// 	seedRedis(t, redisServer, statIps)
-
-// 	entry := routing.RelayCacheEntry{
+// 	entry := &routing.RelayData{
 // 		ID:   crypto.HashID(addr),
 // 		Addr: *udp,
 // 		Datacenter: routing.Datacenter{
@@ -739,15 +523,6 @@ package transport_test
 // 		},
 // 		PublicKey:      make([]byte, crypto.KeySize),
 // 		LastUpdateTime: time.Now().Add(-time.Second),
-// 	}
-
-// 	raw, err := entry.MarshalBinary()
-// 	assert.NoError(t, err)
-// 	redisServer.Set(entry.Key(), "0")
-// 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
-
-// 	geoClient := &routing.GeoClient{
-// 		RedisClient: redisClient,
 // 	}
 
 // 	relay := routing.Relay{
@@ -781,27 +556,15 @@ package transport_test
 
 // 	updateMetrics.ErrorMetrics.RelayNotEnabled = metric
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
-// 	}
-
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-// 		relayUpdateErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, statsdb, inMemory, updateMetrics, false)
+// 	handlerConfig.RelayMap.AddRelayDataEntry(addr, entry)
+// 	buff, err := packet.MarshalBinary()
+// 	assert.NoError(t, err)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 // }
 
 // func TestRelayUpdateSuccess(t *testing.T) {
-// 	redisServer, err := miniredis.Run()
-// 	assert.NoError(t, err)
-// 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 // 	addr := "127.0.0.1:40000"
 // 	udp, err := net.ResolveUDPAddr("udp", addr)
 // 	assert.NoError(t, err)
@@ -821,9 +584,7 @@ package transport_test
 // 		stats.PacketLoss = rand.Float32()
 // 	}
 
-// 	seedRedis(t, redisServer, statIps)
-
-// 	entry := routing.RelayCacheEntry{
+// 	entry := &routing.RelayData{
 // 		ID:   crypto.HashID(addr),
 // 		Addr: *udp,
 // 		Datacenter: routing.Datacenter{
@@ -833,15 +594,7 @@ package transport_test
 // 		PublicKey:      make([]byte, crypto.KeySize),
 // 		LastUpdateTime: time.Now().Add(-time.Second),
 // 	}
-
-// 	raw, err := entry.MarshalBinary()
-// 	assert.NoError(t, err)
-// 	redisServer.Set(entry.Key(), "0")
-// 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
-
-// 	geoClient := &routing.GeoClient{
-// 		RedisClient: redisClient,
-// 	}
+// 	orgEntry := *entry
 
 // 	relay := routing.Relay{
 // 		ID:   entry.ID,
@@ -856,7 +609,6 @@ package transport_test
 // 	}
 
 // 	inMemory := &storage.InMemory{}
-
 // 	err = inMemory.AddSeller(context.Background(), relay.Seller)
 // 	assert.NoError(t, err)
 // 	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
@@ -881,19 +633,12 @@ package transport_test
 // 		}
 // 	}
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-// 		relayUpdateSuccessAssertions(t, recorder, "application/octet-stream", updateMetrics.ErrorMetrics, entry, redisClient, inMemory, statsdb, statIps, addr)
-// 	}
+// 	handlerConfig := testRelayUpdateHandlerConfig(nil, statsdb, inMemory, updateMetrics, false)
+// 	handlerConfig.RelayMap.AddRelayDataEntry(addr, entry)
+// 	seedRelayMap(t, handlerConfig.RelayMap, statIps)
 
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
-// 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-// 		relayUpdateSuccessAssertions(t, recorder, "application/json", updateMetrics.ErrorMetrics, entry, redisClient, inMemory, statsdb, statIps, addr)
-// 	}
+// 	buff, err := packet.MarshalBinary()
+// 	assert.NoError(t, err)
+// 	recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, handlerConfig)
+// 	relayUpdateSuccessAssertions(t, recorder, "application/octet-stream", &orgEntry, handlerConfig, statIps, addr)
 // }

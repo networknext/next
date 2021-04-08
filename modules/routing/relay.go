@@ -25,6 +25,10 @@ const (
 	MaxRelayNameLength = 63
 )
 
+type RelayBinWrapper struct {
+	Relays []Relay
+}
+
 type RelayState uint32
 
 func (state RelayState) String() string {
