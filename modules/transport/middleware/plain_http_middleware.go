@@ -17,7 +17,6 @@ func HttpGetMiddleware(audience string, next http.Handler) http.Handler {
 		if r.Method == http.MethodGet {
 			authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
 			if len(authHeader) != 2 {
-				fmt.Println("Malformed token")
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte("Malformed Token"))
 			} else {
