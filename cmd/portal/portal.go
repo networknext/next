@@ -364,6 +364,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		var enabledRelays []routing.Relay
+		var relayWrapper routing.RelayBinWrapper
 
 		relays := db.Relays()
 
@@ -373,10 +374,12 @@ func main() {
 			}
 		}
 
+		relayWrapper.Relays = enabledRelays
+
 		var buffer *bytes.Buffer
 
 		encoder := gob.NewEncoder(buffer)
-		encoder.Encode(enabledRelays)
+		encoder.Encode(relayWrapper)
 
 		_, err = buffer.WriteTo(w)
 		if err != nil {
