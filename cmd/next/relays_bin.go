@@ -1,16 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
+
+	"github.com/networknext/backend/modules/routing"
 )
 
 func getRelaysBin(env Environment, filename string) {
 	var err error
 
 	uri := fmt.Sprintf("%s/relays.bin", env.PortalHostname())
+
+	if env.Name == "local" {
+		uri = "http://127.0.0.1:20000/relays.bin"
+	}
 
 	r, err := http.Get(uri)
 	if err != nil {
@@ -28,7 +37,37 @@ func getRelaysBin(env Environment, filename string) {
 	}
 	defer file.Close()
 
-	if _, err := io.Copy(file, r.Body); err != nil {
+	var buf []byte
+
+	if buf, err = ioutil.ReadAll(r.Body); err != nil {
 		handleRunTimeError(fmt.Sprintf("error writing data to relays.bin: %v\n", err), 1)
 	}
+
+	relayBinWrapperBuffer := bytes.NewBuffer(buf)
+
+	// temporary dev debug stuff
+	var incomingRelays routing.RelayBinWrapper
+	var relayNames []string
+
+	decoder := gob.NewDecoder(relayBinWrapperBuffer)
+	err = decoder.Decode(&incomingRelays)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// fmt.Printf("RelayBinWrapper: %+v\n", incomingRelays)
+
+	for _, relay := range incomingRelays.Relays {
+		relayNames = append(relayNames, relay.Name)
+	}
+
+	sort.Strings(relayNames)
+
+	// fmt.Printf("%+v\n", incomingRelays)
+
+	for _, name := range relayNames {
+		fmt.Println(name)
+	}
+
 }

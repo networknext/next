@@ -376,9 +376,9 @@ func main() {
 
 		relayWrapper.Relays = enabledRelays
 
-		var buffer *bytes.Buffer
+		var buffer bytes.Buffer
 
-		encoder := gob.NewEncoder(buffer)
+		encoder := gob.NewEncoder(&buffer)
 		encoder.Encode(relayWrapper)
 
 		_, err = buffer.WriteTo(w)
