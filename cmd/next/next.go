@@ -901,6 +901,16 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "binfile",
+				ShortUsage: "next relays binfile",
+				ShortHelp:  "GET relays.bin from the portal",
+				Exec: func(ctx context.Context, args []string) error {
+
+					getRelaysBin(env, "relays.bin")
+					return nil
+				},
+			},
 		},
 	}
 
