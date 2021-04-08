@@ -165,6 +165,8 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 		response.Timestamp = time.Now().Unix()
 
+		response.TargetVersion = "2.0.0"
+
 		responseData, err = response.MarshalBinary()
 		if err != nil {
 			core.Debug("%s - error: failed to write relay update response: %v", request.RemoteAddr, err)

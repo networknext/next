@@ -312,6 +312,8 @@ func mainReturnWithCode() int {
 			}
 			relayMap.RUnlock()
 
+			sort.SliceStable(inactiveRelays, func(i, j int) bool { return inactiveRelays[i].Name < inactiveRelays[j].Name })
+
 			for i := range inactiveRelays {
 				name := inactiveRelays[i].Name
 				address := inactiveRelays[i].Addr.String()
