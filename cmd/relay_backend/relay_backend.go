@@ -11,7 +11,6 @@ import (
 	"encoding/gob"
 	"expvar"
 	"fmt"
-	"hash/fnv"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/common/helpers"
 
 	"cloud.google.com/go/pubsub"
@@ -89,25 +87,16 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
+	/*
 	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 		return 1
 	}
+	*/
 
-	// Create relay init metrics
-	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay init metrics", "err", err)
-	}
+	// create metrics
 
-	// Create relay update metrics
 	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
@@ -130,7 +119,8 @@ func mainReturnWithCode() int {
 
 	statsdb := routing.NewStatsDatabase()
 
-	// Get the max jitter and max packet loss env vars
+	// get the max jitter and max packet loss env vars
+
 	if !envvar.Exists("RELAY_ROUTER_MAX_JITTER") {
 		level.Error(logger).Log("err", "RELAY_ROUTER_MAX_JITTER not set")
 		return 1
@@ -153,11 +143,8 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create the relay map
 	cleanupCallback := func(relayData routing.RelayData) error {
-		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
 		statsdb.DeleteEntry(relayData.ID)
-		level.Warn(logger).Log("msg", "relay timed out", "relay ID", relayData.ID, "relay addr", relayData.Addr.String(), "relay name", relayData.Name)
 		return nil
 	}
 
@@ -169,7 +156,8 @@ func mainReturnWithCode() int {
 		relayMap.TimeoutLoop(ctx, GetRelayData, timeout, ticker.C)
 	}()
 
-	// ping stats
+	// relay ping stats
+
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -226,192 +214,6 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// todo: nope
-	/*
-		// relay stats
-		var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
-		{
-			emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-			if gcpProjectID != "" || emulatorOK {
-
-				pubsubCtx := ctx
-				if emulatorOK {
-					gcpProjectID = "local"
-
-					var cancelFunc context.CancelFunc
-					pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-					defer cancelFunc()
-
-					level.Info(logger).Log("msg", "Detected pubsub emulator")
-				}
-
-				// Google Pubsub
-				{
-					settings := pubsub.PublishSettings{
-						DelayThreshold: time.Second,
-						CountThreshold: 1,
-						ByteThreshold:  1 << 14,
-						NumGoroutines:  runtime.GOMAXPROCS(0),
-						Timeout:        time.Minute,
-					}
-
-					pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
-					if err != nil {
-						level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-						return 1
-					}
-
-					relayStatsPublisher = pubsub
-				}
-			}
-
-			go func() {
-				publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
-				}
-
-				syncTimer := helpers.NewSyncTimer(publishInterval)
-				for {
-					syncTimer.Run()
-					allRelayData := relayMap.GetAllRelayData()
-					entries := make([]analytics.RelayStatsEntry, len(allRelayData))
-
-					count := 0
-					for i := range allRelayData {
-						relay := &allRelayData[i]
-
-						// convert peak to mbps
-
-						var traffic routing.TrafficStats
-
-						relay.TrafficMu.Lock()
-						for i := range relay.TrafficStatsBuff {
-							stats := &relay.TrafficStatsBuff[i]
-							traffic = traffic.Add(stats)
-						}
-						numSessions := relay.PeakTrafficStats.SessionCount
-						envUp := relay.PeakTrafficStats.EnvelopeUpKbps
-						envDown := relay.PeakTrafficStats.EnvelopeDownKbps
-						elapsed := time.Since(relay.LastStatsPublishTime)
-
-						relayMap.ClearRelayData(relay.Addr.String())
-						relay.TrafficMu.Unlock()
-
-						fsrelay, err := storer.Relay(relay.ID)
-						if err != nil {
-							continue
-						}
-
-						// use the sum of all the stats since the last publish here and convert to mbps
-						bwSentMbps := float32(float64(traffic.AllTx()) * 8.0 / 1000000.0 / elapsed.Seconds())
-						bwRecvMbps := float32(float64(traffic.AllRx()) * 8.0 / 1000000.0 / elapsed.Seconds())
-
-						// use the peak envelope values here and convert, it's already per second so no need for time adjustment
-						envSentMbps := float32(float64(envUp) / 1000.0)
-						envRecvMbps := float32(float64(envDown) / 1000.0)
-
-						var numRouteable uint32 = 0
-						for i := range allRelayData {
-							otherRelay := &allRelayData[i]
-
-							if relay.ID == otherRelay.ID {
-								continue
-							}
-
-							rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
-							if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
-								if jitter <= float32(maxJitter) && pl <= float32(maxPacketLoss) {
-									numRouteable++
-								}
-							}
-						}
-
-						var bwSentPercent float32
-						var bwRecvPercent float32
-						var envSentPercent float32
-						var envRecvPercent float32
-						if fsrelay.NICSpeedMbps != 0 {
-							bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-							bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-							envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-							envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						}
-
-						entries[count] = analytics.RelayStatsEntry{
-							ID:                       relay.ID,
-							CPUUsage:                 relay.CPUUsage,
-							MemUsage:                 relay.MemUsage,
-							BandwidthSentPercent:     bwSentPercent,
-							BandwidthReceivedPercent: bwRecvPercent,
-							EnvelopeSentPercent:      envSentPercent,
-							EnvelopeReceivedPercent:  envRecvPercent,
-							BandwidthSentMbps:        bwSentMbps,
-							BandwidthReceivedMbps:    bwRecvMbps,
-							EnvelopeSentMbps:         envSentMbps,
-							EnvelopeReceivedMbps:     envRecvMbps,
-							NumSessions:              uint32(numSessions),
-							MaxSessions:              relay.MaxSessions,
-							NumRoutable:              numRouteable,
-							NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
-						}
-
-						count++
-					}
-
-					entriesToPublish := entries[:count]
-					if len(entriesToPublish) > 0 {
-						if err := relayStatsPublisher.Publish(ctx, entriesToPublish); err != nil {
-							level.Error(logger).Log("err", err)
-							os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
-						}
-					}
-				}
-			}()
-		}
-	*/
-
-	var relayNamesHashPublisher analytics.RouteMatrixStatsPublisher = &analytics.NoOpRouteMatrixStatsPublisher{}
-	{
-		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-		if gcpProjectID != "" || emulatorOK {
-
-			pubsubCtx := ctx
-			if emulatorOK {
-				gcpProjectID = "local"
-
-				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
-
-				level.Info(logger).Log("msg", "Detected pubsub emulator")
-			}
-
-			// Google Pubsub
-			{
-				settings := pubsub.PublishSettings{
-					DelayThreshold: time.Second,
-					CountThreshold: 1,
-					ByteThreshold:  1 << 14,
-					NumGoroutines:  runtime.GOMAXPROCS(0),
-					Timeout:        time.Minute,
-				}
-
-				pubsub, err := analytics.NewGooglePubSubRouteMatrixStatsPublisher(pubsubCtx, &relayBackendMetrics.RouteMatrixStatsMetrics, logger, gcpProjectID, "route_matrix_stats", settings)
-				if err != nil {
-					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-					return 1
-				}
-
-				relayNamesHashPublisher = pubsub
-			}
-		}
-	}
-
-	relayEnabledCache := common.NewRelayEnabledCache(storer)
-	relayEnabledCache.StartRunner(1 * time.Minute)
-
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if err != nil {
@@ -438,12 +240,14 @@ func mainReturnWithCode() int {
 
 	var costMatrixData []byte
 	var routeMatrixData []byte
+	var relaysData []byte
 
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
 
 	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
+	var relaysMutex sync.RWMutex
 
 	_ = costMatrix
 
@@ -454,37 +258,111 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 
-			// get relay data
+			// build set active relays that are *also* in the current relays.bin
 
-			baseRelayIDs := relayMap.GetAllRelayIDs([]string{})
+			_, relayHash := GetRelayData()
 
-			namesMap := make(map[string]routing.Relay)
-			numRelays := len(baseRelayIDs)
-			relayAddresses := make([]net.UDPAddr, numRelays)
-			relayNames := make([]string, numRelays)
-			relayLatitudes := make([]float32, numRelays)
-			relayLongitudes := make([]float32, numRelays)
-			relayDatacenterIDs := make([]uint64, numRelays)
-			relayIDs := make([]uint64, numRelays)
+			activeRelayIds := relayMap.GetRelayIds()
 
-			for i, relayID := range baseRelayIDs {
-				relay, err := storer.Relay(relayID)
-				if err != nil {
+			activeRelaySessionCounts := relayMap.GetRelaySessionCounts()
+
+			activeRelayVersions := relayMap.GetRelayVersions()
+
+			type ActiveRelayData struct {
+				ID             uint64
+				Name           string
+				Addr           net.UDPAddr
+				SessionCount   int
+				Version        string
+				Latitude       float32
+				Longitude      float32
+				SellerID       string
+				DatacenterID   uint64
+			}
+
+			activeRelays := make([]ActiveRelayData, 0)
+
+			for i := range activeRelayIds {
+
+				id := activeRelayIds[i]
+				relay, ok := relayHash[id]
+				if !ok {
 					continue
 				}
-				relayNames[i] = relay.Name
-				namesMap[relay.Name] = relay
+
+				relayData := ActiveRelayData{}
+				relayData.ID = relay.ID
+				relayData.Addr = relay.Addr
+				relayData.Name = relay.Name
+				relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
+				relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
+				relayData.SellerID = relay.Seller.ID
+				relayData.DatacenterID = relay.Datacenter.ID
+				relayData.SessionCount = activeRelaySessionCounts[i]
+				relayData.Version = activeRelayVersions[i]
+
+				activeRelays = append(activeRelays, relayData)
 			}
 
-			sort.Strings(relayNames)
-			for i, relayName := range relayNames {
-				relay := namesMap[relayName]
-				relayIDs[i] = relay.ID
-				relayAddresses[i] = relay.Addr
-				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
-				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
-				relayDatacenterIDs[i] = relay.Datacenter.ID
+			sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })
+
+			// gather relay data required for building cost matrix
+
+			numActiveRelays := len(activeRelays)
+
+			relayIDs := make([]uint64, numActiveRelays)
+			relayAddresses := make([]net.UDPAddr, numActiveRelays)
+			relayNames := make([]string, numActiveRelays)
+			relayLatitudes := make([]float32, numActiveRelays)
+			relayLongitudes := make([]float32, numActiveRelays)
+			relayDatacenterIDs := make([]uint64, numActiveRelays)
+			
+			for i := range activeRelays {
+				relayIDs[i] = activeRelays[i].ID
+				relayNames[i] = activeRelays[i].Name
+				relayAddresses[i] = activeRelays[i].Addr
+				relayLatitudes[i] = float32(activeRelays[i].Latitude)
+				relayLongitudes[i] = float32(activeRelays[i].Longitude)
+				relayDatacenterIDs[i] = activeRelays[i].DatacenterID
 			}
+
+			// build relays data to serve up on "relays" endpoint (CSV)
+
+			relaysDataString := "name,address,id,status,sessions,version"
+	
+			for i := range activeRelays {
+				name := activeRelays[i].Name
+				address := activeRelays[i].Addr.String()
+				id := activeRelays[i].ID
+				status := "active"
+				sessions := activeRelays[i].SessionCount
+				version := activeRelays[i].Version
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
+			}
+
+			inactiveRelays := make([]routing.Relay, 0)
+	
+			relayMap.RLock()
+			for _,v := range relayHash {
+				_, exists := relayMap.GetRelayData(v.Addr.String())
+				if !exists {
+					inactiveRelays = append(inactiveRelays, v)
+				}
+			}
+			relayMap.RUnlock()
+
+			sort.SliceStable(inactiveRelays, func(i, j int) bool { return inactiveRelays[i].Name < inactiveRelays[j].Name })
+
+			for i := range inactiveRelays {
+				name := inactiveRelays[i].Name
+				address := inactiveRelays[i].Addr.String()
+				id := inactiveRelays[i].ID
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,inactive,,", relaysDataString, name, address, id)
+			}
+
+			relaysMutex.Lock()
+			relaysData = []byte(relaysDataString)
+			relaysMutex.Unlock()
 
 			// build cost matrix
 
@@ -524,9 +402,9 @@ func mainReturnWithCode() int {
 			// optimize
 
 			numCPUs := runtime.NumCPU()
-			numSegments := numRelays
-			if numCPUs < numRelays {
-				numSegments = numRelays / 5
+			numSegments := numActiveRelays
+			if numCPUs < numActiveRelays {
+				numSegments = numActiveRelays / 5
 				if numSegments == 0 {
 					numSegments = 1
 				}
@@ -537,7 +415,7 @@ func mainReturnWithCode() int {
 
 			costThreshold := int32(1)
 
-			routeEntries := core.Optimize(numRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
+			routeEntries := core.Optimize(numActiveRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
@@ -637,48 +515,26 @@ func mainReturnWithCode() int {
 					continue
 				}
 			}
-
-			// optionally push route matrix stats to pubsub
-
-			hashing, err := envvar.GetBool("FEATURE_ROUTE_MATRIX_STATS", true)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-			}
-			if hashing {
-				timestamp := time.Now().UTC().Unix()
-
-				downRelayNames, downRelayIDs := relayEnabledCache.GetDownRelays(relayIDs)
-				namesHashEntry := analytics.RouteMatrixStatsEntry{Timestamp: uint64(timestamp), Hash: uint64(0), IDs: downRelayIDs}
-				if len(downRelayNames) != 0 {
-					relayHash := fnv.New64a()
-					for _, name := range downRelayNames {
-						relayHash.Write([]byte(name))
-					}
-
-					hash := relayHash.Sum64()
-					namesHashEntry.Hash = hash
-				}
-
-				err = relayNamesHashPublisher.Publish(ctx, namesHashEntry)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-				}
-			}
 		}
 	}()
-
-	commonInitParams := transport.RelayInitHandlerConfig{
-		RelayMap:         relayMap,
-		Metrics:          relayInitMetrics,
-		RouterPrivateKey: routerPrivateKey,
-		GetRelayData:     GetRelayData,
-	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
 		RelayMap:     relayMap,
 		StatsDB:      statsdb,
 		Metrics:      relayUpdateMetrics,
 		GetRelayData: GetRelayData,
+	}
+
+	serveRelaysFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		relaysMutex.RLock()
+		data := relaysData
+		relaysMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -712,20 +568,19 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
-	fmt.Printf("starting http server\n\n")
+	port := envvar.Get("PORT", "30000")
+
+	fmt.Printf("starting http server on port %s\n\n", port)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-
-	// todo: remove the init entirely once the relays are updated to new version (1.4.0). deprecated
-	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(&commonInitParams)).Methods("POST")
-
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())
 
@@ -738,8 +593,6 @@ func mainReturnWithCode() int {
 	}
 
 	go func() {
-		port := envvar.Get("PORT", "30000")
-
 		level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
@@ -817,9 +670,11 @@ func init() {
 		return relayArray_internal[i].Name < relayArray_internal[j].Name
 	})
 
+	/*
 	// todo: hack override for local testing
-	// relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	// relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
+	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+	*/
 
 	for i := range relayArray_internal {
 		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
