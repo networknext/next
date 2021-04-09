@@ -920,7 +920,18 @@ func main() {
 					checkRelaysBin()
 					return nil
 				},
-			}},
+			},
+			{
+				Name:       "bincommit",
+				ShortUsage: "next relays bincommit",
+				ShortHelp:  "Copies the local relays.bin file to the relevant GCP *_artifacts bucket",
+				Exec: func(ctx context.Context, args []string) error {
+
+					commitRelaysBin(env)
+					return nil
+				},
+			},
+		},
 	}
 
 	var relayCommand = &ffcli.Command{

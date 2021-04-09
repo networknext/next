@@ -88,11 +88,11 @@ func mainReturnWithCode() int {
 	}
 
 	/*
-	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if err != nil {
-		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-		return 1
-	}
+		routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+		if err != nil {
+			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+			return 1
+		}
 	*/
 
 	// create metrics
@@ -263,15 +263,15 @@ func mainReturnWithCode() int {
 			_, relayHash := GetRelayData()
 
 			type ActiveRelayData struct {
-				ID             uint64
-				Name           string
-				Addr           net.UDPAddr
-				SessionCount   int
-				Version        string
-				Latitude       float32
-				Longitude      float32
-				SellerID       string
-				DatacenterID   uint64
+				ID           uint64
+				Name         string
+				Addr         net.UDPAddr
+				SessionCount int
+				Version      string
+				Latitude     float32
+				Longitude    float32
+				SellerID     string
+				DatacenterID uint64
 			}
 
 			activeRelays := make([]ActiveRelayData, 0)
@@ -313,7 +313,7 @@ func mainReturnWithCode() int {
 			relayLatitudes := make([]float32, numActiveRelays)
 			relayLongitudes := make([]float32, numActiveRelays)
 			relayDatacenterIDs := make([]uint64, numActiveRelays)
-			
+
 			for i := range activeRelays {
 				relayIDs[i] = activeRelays[i].ID
 				relayNames[i] = activeRelays[i].Name
@@ -328,7 +328,7 @@ func mainReturnWithCode() int {
 			// active relays
 
 			relaysDataString := "name,address,id,status,sessions,version"
-	
+
 			for i := range activeRelays {
 				name := activeRelays[i].Name
 				address := activeRelays[i].Addr.String()
@@ -342,9 +342,9 @@ func mainReturnWithCode() int {
 			// inactive relays
 
 			inactiveRelays := make([]routing.Relay, 0)
-	
+
 			relayMap.RLock()
-			for _,v := range relayHash {
+			for _, v := range relayHash {
 				_, exists := relayMap.GetRelayData(v.Addr.String())
 				if !exists {
 					inactiveRelays = append(inactiveRelays, v)
@@ -364,9 +364,9 @@ func mainReturnWithCode() int {
 			// shutting down relays
 
 			shuttingDownRelays := make([]routing.Relay, 0)
-	
+
 			relayMap.RLock()
-			for _,v := range relayHash {
+			for _, v := range relayHash {
 				relayData, exists := relayMap.GetRelayData(v.Addr.String())
 				if exists && relayData.ShuttingDown {
 					shuttingDownRelays = append(shuttingDownRelays, v)
@@ -654,7 +654,7 @@ func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp tim
 	return err
 }
 
-var relayArray_internal []routing.Relay
+var relayArray_internal routing.RelayBinWrapper
 var relayHash_internal map[uint64]routing.Relay
 
 func ParseAddress(input string) *net.UDPAddr {
@@ -689,28 +689,28 @@ func init() {
 		os.Exit(1)
 	}
 
-	sort.SliceStable(relayArray_internal, func(i, j int) bool {
-		return relayArray_internal[i].Name < relayArray_internal[j].Name
+	sort.SliceStable(relayArray_internal.Relays, func(i, j int) bool {
+		return relayArray_internal.Relays[i].Name < relayArray_internal.Relays[j].Name
 	})
 
 	/*
-	// todo: hack override for local testing
-	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
+		// todo: hack override for local testing
+		relayArray_internal.Relays[0].Addr = *ParseAddress("127.0.0.1:35000")
+		relayArray_internal.Relays[0].ID = 0xde0fb1e9a25b1948
 	*/
 
-	for i := range relayArray_internal {
-		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
+	for i := range relayArray_internal.Relays {
+		relayHash_internal[relayArray_internal.Relays[i].ID] = relayArray_internal.Relays[i]
 	}
 
 	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
-	for i := range relayArray_internal {
-		fmt.Printf("    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal.Relays))
+	for i := range relayArray_internal.Relays {
+		fmt.Printf("    %s - %s [%x]\n", relayArray_internal.Relays[i].Name, relayArray_internal.Relays[i].Addr.String(), relayArray_internal.Relays[i].ID)
 	}
 	fmt.Printf("\n=======================================\n")
 }
 
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
-	return relayArray_internal, relayHash_internal
+	return relayArray_internal.Relays, relayHash_internal
 }
