@@ -325,6 +325,8 @@ func mainReturnWithCode() int {
 
 			// build relays data to serve up on "relays" endpoint (CSV)
 
+			// active relays
+
 			relaysDataString := "name,address,id,status,sessions,version"
 	
 			for i := range activeRelays {
@@ -336,6 +338,8 @@ func mainReturnWithCode() int {
 				version := activeRelays[i].Version
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
 			}
+
+			// inactive relays
 
 			inactiveRelays := make([]routing.Relay, 0)
 	
@@ -355,6 +359,28 @@ func mainReturnWithCode() int {
 				address := inactiveRelays[i].Addr.String()
 				id := inactiveRelays[i].ID
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,inactive,,", relaysDataString, name, address, id)
+			}
+
+			// shutting down relays
+
+			shuttingDownRelays := make([]routing.Relay, 0)
+	
+			relayMap.RLock()
+			for _,v := range relayHash {
+				relayData, exists := relayMap.GetRelayData(v.Addr.String())
+				if exists && relayData.ShuttingDown {
+					shuttingDownRelays = append(shuttingDownRelays, v)
+				}
+			}
+			relayMap.RUnlock()
+
+			sort.SliceStable(shuttingDownRelays, func(i, j int) bool { return shuttingDownRelays[i].Name < shuttingDownRelays[j].Name })
+
+			for i := range shuttingDownRelays {
+				name := shuttingDownRelays[i].Name
+				address := shuttingDownRelays[i].Addr.String()
+				id := shuttingDownRelays[i].ID
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,shutting down,,", relaysDataString, name, address, id)
 			}
 
 			relaysMutex.Lock()
