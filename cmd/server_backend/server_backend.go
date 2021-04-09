@@ -228,16 +228,23 @@ func mainReturnWithCode() int {
 		defer notify.Stop(c)
 
 		go func() {
+			// Start by skipping the first event
+			inSync := true
 			for {
-				switch ei := <-c; ei.Event() {
-				default:
-					if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
-						fmt.Println("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
-						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
-						// Sync the maxmind memory store when a old files are replaced
-						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-							level.Error(logger).Log("err", err)
-							continue
+				select {
+				case ei := <-c:
+					// Ignore every other notify event. cp, mv, and replace operations always fire 2 events
+					if inSync {
+						inSync = false
+					} else {
+						if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
+							inSync = true
+							level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
+							// Sync the maxmind memory store when a old files are replaced
+							if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+								level.Error(logger).Log("err", err)
+								continue
+							}
 						}
 					}
 				}
