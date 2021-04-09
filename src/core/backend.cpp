@@ -65,7 +65,7 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "relay binary is good");
 
-  system( "rm relay 2>/dev/null" );
+  system( "rm -f relay 2>/dev/null" );
 
   sprintf( command, "mv relay-%s relay", version );
   if ( system( command ) != 0 )
@@ -89,7 +89,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.1";
+  const char* RELAY_VERSION = "2.0.2";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
