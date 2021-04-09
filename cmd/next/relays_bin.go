@@ -236,9 +236,9 @@ func commitRelaysBin(env Environment) {
 		}
 
 		// gsutil cp relays.bin gs://${bucketName}
-		gsutilCpCommand := exec.Command("gsutil", "cp", "relays.bin", bucketName)
+		gsutilCpCommand = exec.Command("gsutil", "cp", "relays.bin", bucketName)
 
-		err := gsutilCpCommand.Run()
+		err = gsutilCpCommand.Run()
 		if err != nil {
 			handleRunTimeError(fmt.Sprintf("Error copying relays.bin to %s: %v\n", bucketName, err), 1)
 		}
