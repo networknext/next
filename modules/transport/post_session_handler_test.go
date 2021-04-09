@@ -26,6 +26,8 @@ func (biller *badBiller) Bill(ctx context.Context, billingEntry *billing.Billing
 	return errors.New("bad bill")
 }
 
+func (biller *badBiller) Close() {}
+
 type mockBiller struct {
 	calledChan    chan bool
 	billedEntries []billing.BillingEntry
@@ -38,6 +40,8 @@ func (biller *mockBiller) Bill(ctx context.Context, billingEntry *billing.Billin
 	return nil
 }
 
+func (biller *mockBiller) Close() {}
+
 type badPublisher struct {
 	calledChan chan bool
 }
@@ -45,6 +49,10 @@ type badPublisher struct {
 func (pub *badPublisher) Publish(ctx context.Context, topic pubsub.Topic, message []byte) (int, error) {
 	pub.calledChan <- true
 	return 0, errors.New("bad publish")
+}
+
+func (pub *badPublisher) Close() error {
+	return nil
 }
 
 type retryPublisher struct {
@@ -61,6 +69,10 @@ func (pub *retryPublisher) Publish(ctx context.Context, topic pubsub.Topic, mess
 	return 0, &pubsub.ErrRetry{}
 }
 
+func (pub *retryPublisher) Close() error {
+	return nil
+}
+
 type mockPublisher struct {
 	calledChan        chan bool
 	publishedMessages [][][]byte
@@ -71,6 +83,10 @@ func (pub *mockPublisher) Publish(ctx context.Context, topic pubsub.Topic, messa
 
 	pub.calledChan <- true
 	return len(message), nil
+}
+
+func (pub *mockPublisher) Close() error {
+	return nil
 }
 
 func testBillingEntry() *billing.BillingEntry {
