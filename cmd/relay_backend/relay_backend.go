@@ -59,7 +59,7 @@ var (
 )
 
 func init() {
-	var binWrapper *routing.RelayBinWrapper
+	var binWrapper routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
@@ -70,8 +70,8 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeToRelayArray(file, binWrapper); err != nil {
-		fmt.Printf("DecodeToRelayArray() error: %v\n", err)
+	if err = decodeBinWrapper(file, &binWrapper); err != nil {
+		fmt.Printf("decodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -230,26 +230,27 @@ func mainReturnWithCode() int {
 						}
 
 						// Setup relay array and hash to read into
-						var binWrapperNew *routing.RelayBinWrapper
+						var binWrapperNew routing.RelayBinWrapper
 						relayHashNew := make(map[uint64]routing.Relay)
 
-						if err = decodeToRelayArray(file, binWrapperNew); err == io.EOF {
+						if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
 							// Sometimes we receive an EOF error since the file is still being replaced
 							// so early out here and proceed on the next notification
 							file.Close()
-							level.Debug(logger).Log("msg", "DecodeToRelayArray() EOF error, will wait for next notification")
+							level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
 							continue
 						} else if err != nil {
 							file.Close()
-							level.Error(logger).Log("msg", "DecodeToRelayArray() error", "err", err)
+							level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
 							continue
 						}
 
 						// Close the file since it is no longer needed
 						file.Close()
 
+						// Get the new relay array
 						relayArrayNew := binWrapperNew.Relays
-						// Proceed to fill up the relay hash
+						// Proceed to fill up the new relay hash
 						sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
 						// Pointer swap the relay array
@@ -811,9 +812,9 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
-func decodeToRelayArray(file *os.File, relayArray *routing.RelayBinWrapper) error {
+func decodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
 	decoder := gob.NewDecoder(file)
-	err := decoder.Decode(relayArray)
+	err := decoder.Decode(binWrapper)
 	return err
 }
 
