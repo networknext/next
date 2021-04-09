@@ -1,5 +1,7 @@
 package routing_test
 
+/*
+
 import (
 	"math"
 	"math/rand"
@@ -9,7 +11,6 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
-
 func randomPublicKey() []byte {
 	arr := make([]byte, crypto.KeySize)
 	rand.Read(arr)
@@ -68,3 +69,4 @@ func fillStatsDatabase(statsdb *routing.StatsDatabase) {
 	makeEntry(statsdb, "127.0.0.1:40000", "127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
 	makeEntry(statsdb, "127.0.0.2:40000", "127.0.0.1:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
 }
+*/
