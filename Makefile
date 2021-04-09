@@ -1125,6 +1125,19 @@ build-fake-relays-artifacts-prod: build-fake-relays
 publish-fake-relays-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s fake_relays
 
+#######################
+# Relay Build Process #
+#######################
+
+RELAY_DIR := ./relay
+RELAY_MAKEFILE := Makefile
+RELAY_EXE := relay
+
+.PHONY: build-relay-ref
+build-relay-ref:
+	@printf "Building reference relay... "
+	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
+	@printf "done\n"
 
 #######################
 #   Relay Forwarder   #
