@@ -97,24 +97,28 @@ func mainReturnWithCode() int {
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
+	fmt.Println("found gcpProjectID")
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("setup logger")
 
 	env, err := backend.GetEnv()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("found env")
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("setup metrics")
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -122,12 +126,14 @@ func mainReturnWithCode() int {
 			return 1
 		}
 	}
+	fmt.Println("started stack driver")
 
 	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("started storer")
 
 	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
@@ -135,6 +141,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
 		return 1
 	}
+	fmt.Println("setup metrics handler")
 
 	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
@@ -142,6 +149,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
 		return 1
 	}
+	fmt.Println("setup maxmind metrics")
 
 	// Create a goroutine to update metrics
 	go func() {
@@ -169,11 +177,13 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("found server backend private key")
 
 	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 		return 1
 	}
+	fmt.Println("found relay private key")
 
 	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
@@ -192,6 +202,7 @@ func mainReturnWithCode() int {
 	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
 	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
 	if maxmindCityFile != "" && maxmindISPFile != "" {
+		fmt.Println("found maxmind file info")
 		mmdb := &routing.MaxmindDB{
 			CityFile: maxmindCityFile,
 			IspFile:  maxmindISPFile,
@@ -210,6 +221,7 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
+		fmt.Println("init sync maxmind")
 
 		c := make(chan notify.EventInfo, 1)
 
@@ -243,6 +255,7 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
+		fmt.Println("finished maxmind")
 	}
 
 	// Use a custom IP locator for staging so that clients
