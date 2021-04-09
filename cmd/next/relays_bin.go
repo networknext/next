@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/networknext/backend/modules/routing"
 )
@@ -223,12 +224,23 @@ func commitRelaysBin(env Environment) {
 	answer = strings.Replace(answer, "\n", "", -1)
 
 	if strings.Compare("y", answer) == 0 {
+		// make a local copy in case things go pear-shaped
+		// gsutil cp gs://development_artifacts/relays.bin ./relays.bin.remote
+		remoteFileName := bucketName + "/relays.bin"
+		localCopy := fmt.Sprintf("relays.bin.%d", time.Now().Unix())
+		gsutilCpCommand := exec.Command("gsutil", "cp", remoteFileName, localCopy)
+
+		err := gsutilCpCommand.Run()
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Error copying relays.bin to %s: %v\n", bucketName, err), 1)
+		}
+
 		// gsutil cp relays.bin gs://${bucketName}
 		gsutilCpCommand := exec.Command("gsutil", "cp", "relays.bin", bucketName)
 
 		err := gsutilCpCommand.Run()
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error copuying relays.bin to %s: %v\n", bucketName, err), 1)
+			handleRunTimeError(fmt.Sprintf("Error copying relays.bin to %s: %v\n", bucketName, err), 1)
 		}
 
 		fmt.Printf("\nrelays.bin copied to %s.\n", bucketName)
