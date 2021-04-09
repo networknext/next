@@ -24,7 +24,7 @@ OBJ							:= obj
 INCLUDE						:= $(SRC)
 INCLUDE_DIRS				:= -I$(INCLUDE) $(shell pkg-config --cflags-only-I $(LIBS))
 
-LIBRARIES					:= -lsodium -lcurl
+LIBRARIES					:= -lsodium -lcurl -lpthread
 
 SRC_SUB_DIRS				:= $(shell find src/* -type d -print)
 SRC_OBJ_DIRS				:= $(patsubst $(SRC)/%, $(OBJ)/$(SRC)/%, $(SRC_SUB_DIRS))
