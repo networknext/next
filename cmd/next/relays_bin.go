@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -183,5 +186,54 @@ func checkRelaysBin() {
 		handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
 	}
 	fmt.Printf("\nCSV file written: relays_bin.csv\n")
+
+}
+
+func commitRelaysBin(env Environment) {
+
+	// dev    : development_artifacts
+	// prod   : prod_artifacts
+	// staging: staging_artifacts
+
+	bucketName := "gs://"
+
+	switch env.Name {
+	case "dev":
+		bucketName += "development_artifacts"
+	case "prod":
+		bucketName += "prod_artifacts"
+	case "staging":
+		bucketName += "staging_artifacts"
+	case "local":
+		fmt.Println("No need to commit relays.bin for the happy path.")
+		os.Exit(0)
+	}
+
+	if _, err := os.Stat("./relays.bin"); errors.Is(err, os.ErrNotExist) {
+		fmt.Println("Local file relays.bin does not exist.")
+		os.Exit(0)
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("This command will copy relays.bin to %s\n", bucketName)
+	fmt.Println("Are you sure you want to do this? (N/y)")
+	fmt.Print("-> ")
+
+	answer, _ := reader.ReadString('\n')
+	answer = strings.Replace(answer, "\n", "", -1)
+
+	if strings.Compare("y", answer) == 0 {
+		// gsutil cp relays.bin gs://${bucketName}
+		gsutilCpCommand := exec.Command("gsutil", "cp", "relays.bin", bucketName)
+
+		err := gsutilCpCommand.Run()
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Error copuying relays.bin to %s: %v\n", bucketName, err), 1)
+		}
+
+		fmt.Printf("\nrelays.bin copied to %s.\n", bucketName)
+	} else {
+		fmt.Printf("\nOk - not pushing relays.bin to %s\n", bucketName)
+	}
 
 }

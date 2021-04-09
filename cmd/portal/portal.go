@@ -413,7 +413,8 @@ func main() {
 
 	relayMap := jsonrpc.NewRelayStatsMap()
 
-	// TODO: b0rked, needs to process a csv file from /relays
+	// TODO: b0rked, needs to process a csv file from /relays and this GET
+	//       needs to be auth'd...
 	// go func() {
 	// 	relayStatsURL := os.Getenv("RELAY_STATS_URI")
 	// 	fmt.Printf("RELAY_STATS_URI: %s\n", relayStatsURL)
