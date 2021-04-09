@@ -1,5 +1,7 @@
 package main
 
+// todo: not today
+/*
 import (
 	"bytes"
 	"context"
@@ -404,3 +406,4 @@ func calcMultiplier() float32 {
 	return 1.0 + float32(base-maxMultiplierPercent)/100.0
 
 }
+*/

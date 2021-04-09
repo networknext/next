@@ -16,11 +16,11 @@ type RelayData struct {
 	Name           string
 	Addr           net.UDPAddr
 	PublicKey      []byte
-	Seller         Seller
-	Datacenter     Datacenter
 	MaxSessions    uint32
 	SessionCount   int
+	ShuttingDown   bool
 	LastUpdateTime time.Time
+	Version        string
 }
 
 type RelayCleanupCallback func(relayData RelayData) error
@@ -59,15 +59,8 @@ func (relayMap *RelayMap) GetRelayCount() uint64 {
 	return uint64(len(relayMap.relays))
 }
 
-func (relayMap *RelayMap) AddRelayDataEntry(relayAddress string, data RelayData) {
-	relayMap.relays[relayAddress] = data
-}
-
-func (relayMap *RelayMap) UpdateRelayDataEntry(relayAddress string, sessionCount int) {
-	entry := relayMap.relays[relayAddress]
-	entry.LastUpdateTime = time.Now()
-	entry.SessionCount = sessionCount
-	relayMap.relays[relayAddress] = entry
+func (relayMap *RelayMap) UpdateRelayData(relayData RelayData) {
+	relayMap.relays[relayData.Addr.String()] = relayData
 }
 
 func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
@@ -75,14 +68,29 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
 	return relayData, ok
 }
 
-// relay indirection below generates compiler error
-// func (relayMap *RelayMap) GetCopyRelayData(relayAddress string) RelayData {
-// 	relayMap.RLock()
-// 	defer relayMap.RUnlock()
-// 	relay := relayMap.relays[relayAddress]
-// 	return *relay
-// }
+func (relayMap *RelayMap) GetActiveRelayData() ([]uint64, []int, []string) {
+	relayIds := make([]uint64, len(relayMap.relays))
+	relaySessionCounts := make([]int, len(relayMap.relays))
+	relayVersions := make([]string, len(relayMap.relays))
+	relayMap.RLock()
+	index := 0
+	for _, v := range relayMap.relays {
+		if v.ShuttingDown {
+			continue
+		}
+		relayIds[index] = v.ID
+		relaySessionCounts[index] = v.SessionCount
+		relayVersions[index] = v.Version
+		index++
+	}
+	relayMap.RUnlock()
+	relayIds = relayIds[:index]
+	relaySessionCounts = relaySessionCounts[:index]
+	relayVersions = relayVersions[:index]
+	return relayIds, relaySessionCounts, relayVersions
+}
 
+// todo: this is really a pretty naff function and we should deprecate it
 func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	relays := make([]RelayData, len(relayMap.relays))
 	relayMap.RLock()
@@ -95,49 +103,12 @@ func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	return relays
 }
 
-func (relayMap *RelayMap) GetAllRelayIDs(excludeList []string) []uint64 {
-	relayIDs := make([]uint64, 0)
-	relayMap.RLock()
-	defer relayMap.RUnlock()
-	if len(excludeList) == 0 {
-		for _, relayData := range relayMap.relays {
-			relayIDs = append(relayIDs, relayData.ID)
-		}
-		return relayIDs
-	}
-	excludeMap := make(map[string]bool)
-	for _, exclude := range excludeList {
-		excludeMap[exclude] = true
-	}
-	for _, relayData := range relayMap.relays {
-		if _, ok := excludeMap[relayData.Seller.ID]; !ok {
-			relayIDs = append(relayIDs, relayData.ID)
-		}
-	}
-	return relayIDs
-}
-
-func (relayMap *RelayMap) GetAllRelayAddresses(excludeList []string) []string {
+func (relayMap *RelayMap) GetAllRelayAddresses() []string {
 	relayMap.RLock()
 	defer relayMap.RUnlock()
 	relayAddresses := make([]string, 0)
-
-	if len(excludeList) == 0 {
-		for _, relayData := range relayMap.relays {
-			relayAddresses = append(relayAddresses, relayData.Addr.String())
-		}
-		return relayAddresses
-	}
-
-	excludeMap := make(map[string]bool)
-	for _, exclude := range excludeList {
-		excludeMap[exclude] = true
-	}
-
 	for _, relayData := range relayMap.relays {
-		if _, ok := excludeMap[relayData.Seller.ID]; !ok {
-			relayAddresses = append(relayAddresses, relayData.Addr.String())
-		}
+		relayAddresses = append(relayAddresses, relayData.Addr.String())
 	}
 	return relayAddresses
 }
