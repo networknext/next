@@ -14,4 +14,5 @@ import (
 // Beaconer is a beacon service interface that handles sending beacon packet entries through google pubsub to bigquery
 type Beaconer interface {
 	Submit(ctx context.Context, entry *transport.NextBeaconPacket) error
+	Close()
 }

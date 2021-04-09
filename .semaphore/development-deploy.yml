@@ -92,5 +92,6 @@ blocks:
             commands:
               - make build-relay-frontend-artifacts-dev
               - make publish-relay-frontend-artifacts-dev
+
       secrets:
         - name: google-cloud-platform
