@@ -80,17 +80,5 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-prod
             - make publish-relay-pusher-artifacts-prod
-        - name: Relay Forwarder
-          commands:
-            - make build-relay-forwarder-artifacts-prod
-            - make publish-relay-forwarder-artifacts-prod
-        - name: Relay Gateway
-          commands:
-            - make build-relay-gateway-artifacts-prod
-            - make publish-relay-gateway-artifacts-prod
-        - name: Relay Frontend
-          commands:
-            - make build-relay-frontend-artifacts-prod
-            - make publish-relay-frontend-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod
