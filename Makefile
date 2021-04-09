@@ -935,6 +935,56 @@ build-next:
 	@printf "done\n"
 
 #######################
+#    Relay Pusher    #
+#######################
+
+.PHONY: build-relay-pusher
+build-relay-pusher:
+	@printf "Building relay pusher... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_pusher ./cmd/relay_pusher/relay_pusher.go
+	@printf "done\n"
+
+.PHONY: build-relay-pusher-artifacts-dev
+build-relay-pusher-artifacts-dev: build-relay-pusher
+	./deploy/build-artifacts.sh -e dev -s relay_pusher
+
+.PHONY: build-relay-pusher-artifacts-staging
+build-relay-pusher-artifacts-staging: build-relay-pusher
+	./deploy/build-artifacts.sh -e staging -s relay_pusher
+
+.PHONY: build-relay-pusher-artifacts-prod
+build-relay-pusher-artifacts-prod: build-relay-pusher
+	./deploy/build-artifacts.sh -e prod -s relay_pusher
+
+.PHONY: deploy-relay-pusher-dev
+deploy-relay-pusher-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-pusher -n relay_pusher -b gs://development_artifacts
+
+.PHONY: deploy-relay-pusher-staging
+deploy-relay-pusher-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-pusher -n relay_pusher -b gs://staging_artifacts
+
+.PHONY: deploy-relay-pusher-prod
+deploy-relay-pusher-prod:
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
+
+.PHONY: publish-relay-pusher-artifacts-dev
+publish-relay-pusher-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_pusher
+
+.PHONY: publish-relay-pusher-artifacts-nrb
+publish-relay-pusher-artifacts-nrb:
+	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_pusher
+
+.PHONY: publish-relay-pusher-artifacts-staging
+publish-relay-pusher-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_pusher
+
+.PHONY: publish-relay-pusher-artifacts-prod
+publish-relay-pusher-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_pusher
+
+#######################
 #    Relay Backend    #
 #######################
 
@@ -1285,7 +1335,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-server-backend build-debug-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-relay-pusher build-server-backend build-debug-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
