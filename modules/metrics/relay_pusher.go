@@ -112,7 +112,7 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		return nil, err
 	}
 
-	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBTotalUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Maxmind DB City Update Duration",
 		ServiceName: "relay_pusher",
 		ID:          "maxmind_db_city_update.duration",

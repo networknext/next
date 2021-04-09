@@ -52,7 +52,6 @@ func mainReturnWithCode() int {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	if gcpProjectID == "" {
-		fmt.Println("GCP project ID not defined")
 		return 1
 	}
 
@@ -75,7 +74,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create beacon inserter metrics
+	// Create relay pusher metrics
 	relayPusherServiceMetrics, err := metrics.NewRelayPusherServiceMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create beacon service metrics", "err", err)
@@ -92,6 +91,13 @@ func mainReturnWithCode() int {
 	bucketName := envvar.Get("ARTIFACT_BUCKET", "")
 	if bucketName == "" {
 		level.Error(logger).Log("msg", "gcp bucket not specified", "err")
+		return 1
+	}
+
+	// Setup GCP storage
+	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
+	if bucketName == "" {
+		level.Error(logger).Log("msg", "server backend mig name not specified", "err")
 		return 1
 	}
 
@@ -131,7 +137,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Call gsutil to copy the tmp file over to the instance
-	runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", "server-backend-mig", "--zone", "us-central1-a", "--format", "value(instance)")
+	runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", serverBackendMIGName, "--zone", "us-central1-a", "--format", "value(instance)")
 
 	buffer, err := runnable.CombinedOutput()
 	if err != nil {
