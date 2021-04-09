@@ -59,6 +59,7 @@ var (
 )
 
 func init() {
+	var binWrapper *routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
@@ -69,16 +70,18 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeToRelayArray(file, &relayArray_internal); err != nil {
+	if err = decodeToRelayArray(file, binWrapper); err != nil {
 		fmt.Printf("DecodeToRelayArray() error: %v\n", err)
 		os.Exit(1)
 	}
+
+	relayArray_internal = binWrapper.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	displayLoadedRelays(relayArray_internal)
 
-	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler
+	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -227,10 +230,10 @@ func mainReturnWithCode() int {
 						}
 
 						// Setup relay array and hash to read into
-						var relayArrayNew []routing.Relay
+						var binWrapperNew *routing.RelayBinWrapper
 						relayHashNew := make(map[uint64]routing.Relay)
 
-						if err = decodeToRelayArray(file, &relayArrayNew); err == io.EOF {
+						if err = decodeToRelayArray(file, binWrapperNew); err == io.EOF {
 							// Sometimes we receive an EOF error since the file is still being replaced
 							// so early out here and proceed on the next notification
 							file.Close()
@@ -245,6 +248,7 @@ func mainReturnWithCode() int {
 						// Close the file since it is no longer needed
 						file.Close()
 
+						relayArrayNew := binWrapperNew.Relays
 						// Proceed to fill up the relay hash
 						sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
@@ -258,7 +262,7 @@ func mainReturnWithCode() int {
 						relayHash_internal = relayHashNew
 						relayHashMutex.Unlock()
 
-						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler
+						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
 						level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 						// Print the new list of relays
@@ -491,9 +495,9 @@ func mainReturnWithCode() int {
 			// shutting down relays
 
 			shuttingDownRelays := make([]routing.Relay, 0)
-	
+
 			relayMap.RLock()
-			for _,v := range relayHash {
+			for _, v := range relayHash {
 				relayData, exists := relayMap.GetRelayData(v.Addr.String())
 				if exists && relayData.ShuttingDown {
 					shuttingDownRelays = append(shuttingDownRelays, v)
@@ -807,7 +811,7 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
-func decodeToRelayArray(file *os.File, relayArray *[]routing.Relay) error {
+func decodeToRelayArray(file *os.File, relayArray *routing.RelayBinWrapper) error {
 	decoder := gob.NewDecoder(file)
 	err := decoder.Decode(relayArray)
 	return err
