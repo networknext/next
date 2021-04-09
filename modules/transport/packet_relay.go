@@ -161,3 +161,32 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	encoding.WriteString(responseData, &index, r.TargetVersion, MaxVersionStringLength)
 	return responseData[:index], nil
 }
+
+type RelayUpdateRequestList struct {
+	Requests 	[][]byte
+}
+
+func (r *RelayUpdateRequestList) MarshalBinary() ([]byte, error) {
+	index := 0
+	requestListLength := len(r.Requests)
+	data := make([]byte, requestListLength)
+
+	for i := range r.Requests {
+		encoding.WriteBytes(data, &index, r.Requests[i], requestListLength)
+	}
+
+	return data[:index], nil
+}
+
+func (r *RelayUpdateRequestList) UnmarshalBinary(buff []byte, batchSize int) error {
+	index := 0
+	var requests [][]byte
+
+	for i := 0; i < batchSize; i++ {
+		if !encoding.ReadBytes(buff, &index, &r.Requests, batchSize) {
+			return errors.New("failed to unmarshal relay update reuqest list requests")
+		}
+	}
+
+	return nil
+}
