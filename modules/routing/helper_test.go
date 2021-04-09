@@ -10,7 +10,6 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
-
 func randomPublicKey() []byte {
 	arr := make([]byte, crypto.KeySize)
 	rand.Read(arr)
