@@ -89,7 +89,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.3";
+  const char* RELAY_VERSION = "2.0.4";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
