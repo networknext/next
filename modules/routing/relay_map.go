@@ -18,6 +18,7 @@ type RelayData struct {
 	PublicKey      []byte
 	MaxSessions    uint32
 	SessionCount   int
+	ShuttingDown   bool
 	LastUpdateTime time.Time
 	Version        string
 }
@@ -67,19 +68,25 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) (RelayData, bool) {
 	return relayData, ok
 }
 
-func (relayMap *RelayMap) GetRelayEssentialData() ([]uint64, []int, []string) {
+func (relayMap *RelayMap) GetActiveRelayData() ([]uint64, []int, []string) {
 	relayIds := make([]uint64, len(relayMap.relays))
 	relaySessionCounts := make([]int, len(relayMap.relays))
 	relayVersions := make([]string, len(relayMap.relays))
 	relayMap.RLock()
 	index := 0
 	for _, v := range relayMap.relays {
+		if v.ShuttingDown {
+			continue
+		}
 		relayIds[index] = v.ID
 		relaySessionCounts[index] = v.SessionCount
 		relayVersions[index] = v.Version
 		index++
 	}
 	relayMap.RUnlock()
+	relayIds = relayIds[:index]
+	relaySessionCounts = relaySessionCounts[:index]
+	relayVersions = relayVersions[:index]
 	return relayIds, relaySessionCounts, relayVersions
 }
 

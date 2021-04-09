@@ -276,7 +276,7 @@ func mainReturnWithCode() int {
 
 			activeRelays := make([]ActiveRelayData, 0)
 			{
-				activeRelayIds, activeRelaySessionCounts, activeRelayVersions := relayMap.GetRelayEssentialData()
+				activeRelayIds, activeRelaySessionCounts, activeRelayVersions := relayMap.GetActiveRelayData()
 
 				for i := range activeRelayIds {
 
