@@ -149,8 +149,6 @@ namespace core
       return false;
     }
 
-    // todo: relay version
-
     return true;
   }
 

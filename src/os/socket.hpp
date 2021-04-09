@@ -108,21 +108,6 @@ namespace os
       }
     }
 
-    /*
-    // force IPv6 only if necessary
-    {
-      if (bind_addr.type == AddressType::IPv6) {
-        int enable = 1;
-        if (setsockopt(this->socket_fd, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
-          LOG(ERROR, "failed to set socket ipv6 only");
-          perror("OS msg:");
-          close();
-          return false;
-        }
-      }
-    }
-    */
-
     if (!this->set_buffer_sizes(config.send_buffer_size, config.recv_buffer_size)) {
       return false;
     }
@@ -132,35 +117,15 @@ namespace os
     }
 
     // bind to port
-    {
-      /*
-      if (bind_addr.type == AddressType::IPv6) {
-        if (!bind_ipv6(bind_addr)) {
-          return false;
-        }
-      } else {
-        */
-        if (!bind_ipv4(bind_addr)) {
-          return false;
-        }
-      // }
+    if (!bind_ipv4(bind_addr)) {
+      return false;
     }
 
     // if bound to port 0, find the actual port we got
     // port 0 is a "wildcard" so using it will bind to any available port
-    {
-      if (bind_addr.port == 0) {
-        /*
-        if (bind_addr.type == AddressType::IPv6) {
-          if (!get_port_ipv6(bind_addr)) {
-            return false;
-          }
-        } else {
-          */
-          if (!get_port_ipv4(bind_addr)) {
-            return false;
-          }
-        // }
+    if (bind_addr.port == 0) {
+      if (!get_port_ipv4(bind_addr)) {
+        return false;
       }
     }
 

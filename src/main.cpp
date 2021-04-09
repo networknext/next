@@ -252,6 +252,7 @@ int main(int argc, const char* argv[])
   config.reuse_port = true;
   config.send_buffer_size = socket_send_buff_size;
   config.recv_buffer_size = socket_recv_buff_size;
+  config.recv_timeout = 0.1;
 
   size_t last_packet_processing_core_id = num_cpus - 1;
 
@@ -286,7 +287,7 @@ int main(int argc, const char* argv[])
 
       auto thread = std::make_shared<std::thread>([&, socket, i] {
         core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
-        // LOG(DEBUG, "exiting recv loop #", i);
+        LOG(DEBUG, "exiting recv loop #", i);
       });
 
       set_thread_affinity(*thread, i + 1);
@@ -305,7 +306,7 @@ int main(int argc, const char* argv[])
     auto socket = sockets[0];  // will always have at least 1
     auto thread = std::make_shared<std::thread>([&, socket] {
       core::ping_loop(*socket, relay_manager, Globals.alive, recorder);
-      // LOG(DEBUG, "exiting ping loop");
+      LOG(DEBUG, "exiting ping loop");
     });
 
     set_thread_affinity(*thread, 0);
@@ -343,21 +344,24 @@ int main(int argc, const char* argv[])
     exit(1);
   }
 
+  LOG(INFO, "clean shutdown...");
+
   should_receive = false;
 
-  LOG(DEBUG, "shutting down sockets");
+  LOG(INFO, "shutting down sockets");
 
   for (auto& socket : sockets) {
     socket->close();
   }
 
-  LOG(DEBUG, "joining threads");
-
+  int i = 0;
   for (auto& thread : threads) {
+    LOG(INFO, "joining thread ", i);
     thread->join();
+    i++;
   }
 
-  LOG(DEBUG, "all done");
+  LOG(INFO, "all done");
 
   return success ? 0 : 1;
 }
