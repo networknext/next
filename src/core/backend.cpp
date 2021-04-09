@@ -53,7 +53,7 @@ void * upgrade_thread_function( void * data )
   sprintf( command, "./relay-%s version", version );
   FILE * file = popen( command, "r" );
   char buffer[1024];
-  if ( fgets( buffer, sizeof(buffer), file ) == NULL || strcmp(buffer, version) != 0 )
+  if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr(buffer, version) == NULL )
   {
     pclose( file );
     LOG(ERROR, "relay binary is bad");
@@ -89,7 +89,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.2";
+  const char* RELAY_VERSION = "2.0.3";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
