@@ -88,33 +88,33 @@ var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetri
 }
 
 type RelayGatewayMetrics struct {
-	HandlerMetrics		*PacketHandlerMetrics
-	UpdatesReceived		Counter
-	UpdatesQueued		Gauge
-	UpdatesFlushed		Counter
-	ErrorMetrics 		RelayGatewayErrorMetrics
+	HandlerMetrics  *PacketHandlerMetrics
+	UpdatesReceived Counter
+	UpdatesQueued   Gauge
+	UpdatesFlushed  Counter
+	ErrorMetrics    RelayGatewayErrorMetrics
 }
 
 var EmptyRelayGatewayMetrics = RelayGatewayMetrics{
-	HandlerMetrics: &EmptyPacketHandlerMetrics,
+	HandlerMetrics:  &EmptyPacketHandlerMetrics,
 	UpdatesReceived: &EmptyCounter{},
-	UpdatesQueued: &EmptyGauge{},
-	UpdatesFlushed: &EmptyCounter{},
-	ErrorMetrics: EmptyRelayGatewayErrorMetrics,
+	UpdatesQueued:   &EmptyGauge{},
+	UpdatesFlushed:  &EmptyCounter{},
+	ErrorMetrics:    EmptyRelayGatewayErrorMetrics,
 }
 
 type RelayGatewayErrorMetrics struct {
-	ReadPacketFailure	Counter
-	ContentTypeFailure Counter
+	ReadPacketFailure    Counter
+	ContentTypeFailure   Counter
 	MarshalBinaryFailure Counter
-	BackendSendFailure Counter
+	BackendSendFailure   Counter
 }
 
 var EmptyRelayGatewayErrorMetrics = RelayGatewayErrorMetrics{
-	ReadPacketFailure: &EmptyCounter{},
-	ContentTypeFailure: &EmptyCounter{},
+	ReadPacketFailure:    &EmptyCounter{},
+	ContentTypeFailure:   &EmptyCounter{},
 	MarshalBinaryFailure: &EmptyCounter{},
-	BackendSendFailure: &EmptyCounter{},
+	BackendSendFailure:   &EmptyCounter{},
 }
 
 func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*RelayGatewayMetrics, error) {
@@ -127,9 +127,9 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	}
 
 	m.UpdatesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total Updates Received",
+		DisplayName: handlerName + " Total Updates Received",
 		ServiceName: serviceName,
-		ID:          handlerID + "updates_received"
+		ID:          handlerID + "updates_received",
 		Unit:        "updates",
 		Description: "The total number of received relay update requests",
 	})
@@ -138,9 +138,9 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	}
 
 	m.UpdatesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Current Updates Queued",
+		DisplayName: handlerName + " Current Updates Queued",
 		ServiceName: serviceName,
-		ID:          handlerID + "updates_queued"
+		ID:          handlerID + "updates_queued",
 		Unit:        "updates",
 		Description: "The current number of relay update requests queued for batch-writing to the relay backends via HTTP",
 	})
@@ -149,20 +149,20 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	}
 
 	m.UpdatesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total Updates Flushed",
+		DisplayName: handlerName + " Total Updates Flushed",
 		ServiceName: serviceName,
-		ID:          handlerID + "updates_flushed"
+		ID:          handlerID + "updates_flushed",
 		Unit:        "updates",
-		Description: "The total number of unique relay update requests sent to the relay backends via HTTP",
+		Description: "The total number of unique relay update requests that were sent to the relay backends via HTTP (not necessarily successful)",
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	m.ErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total Read Packet Failures",
+		DisplayName: handlerName + " Total Read Packet Failures",
 		ServiceName: serviceName,
-		ID:          handlerID + ".error.read_failure"
+		ID:          handlerID + ".error.read_failure",
 		Unit:        "errors",
 		Description: "The total number of relay update request packets that could not be read",
 	})
@@ -171,9 +171,9 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	}
 
 	m.ErrorMetrics.ContentTypeFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total Content Type Failures",
+		DisplayName: handlerName + " Total Content Type Failures",
 		ServiceName: serviceName,
-		ID:          handlerID + ".error.content_type_failure"
+		ID:          handlerID + ".error.content_type_failure",
 		Unit:        "errors",
 		Description: "The total number of relay update request packets that had unsupported content types",
 	})
@@ -182,9 +182,9 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	}
 
 	m.ErrorMetrics.MarshalBinaryFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total Marshal Binary Failures",
+		DisplayName: handlerName + " Total Marshal Binary Failures",
 		ServiceName: serviceName,
-		ID:          handlerID + ".error.marhsal_binary_failure"
+		ID:          handlerID + ".error.marhsal_binary_failure",
 		Unit:        "errors",
 		Description: "The total number of relay update request batches that could not be marshaled",
 	})
@@ -193,9 +193,9 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	}
 
 	m.ErrorMetrics.BackendSendFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Total Backend Send Failures",
+		DisplayName: handlerName + " Total Backend Send Failures",
 		ServiceName: serviceName,
-		ID:          handlerID + ".error.backend_send_failure"
+		ID:          handlerID + ".error.backend_send_failure",
 		Unit:        "errors",
 		Description: "The total number of relay update request batches that failed to be sent to the relay backends",
 	})
