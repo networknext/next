@@ -8,6 +8,7 @@
 #include "encoding/write.hpp"
 #include "net/http.hpp"
 #include "os/system.hpp"
+#include <string.h>
 
 using core::RelayStats;
 using crypto::KEY_SIZE;
@@ -152,18 +153,6 @@ namespace core
     return true;
   }
 
-  auto UpdateResponse::size() -> size_t
-  {
-    size_t size = 10 * 1024;
-
-    for (size_t i = 0; i < this->num_relays; i++) {
-      const auto& relay = relays[i];
-      size += relay.address.to_string().length();
-    }
-
-    return size;
-  }
-
   // only used in tests
   auto UpdateResponse::into(std::vector<uint8_t>& v) -> bool
   {
@@ -239,7 +228,6 @@ namespace core
       }
     }
 
-    std::string target_version;
     if (!encoding::read_string(v, index, target_version)) {
       LOG(ERROR, "unable to read update response target version");
       return false;
@@ -277,16 +265,12 @@ namespace core
 
     while (should_loop) {
       LOG(DEBUG, "should loop = ", should_loop ? "true" : "false");
-      switch (update(recorder, false, should_loop)) {
-        case UpdateResult::Failure: {
-          LOG(ERROR, "could not update relay");
-          success = should_loop = false;
-        } break;
-        default: {
-          sessions.purge(this->router_info.current_time<uint64_t>());
-          std::this_thread::sleep_for(1s);
-        }
+      if (update(recorder, false, should_loop) == UpdateResult::Failure) {
+        LOG(ERROR, "could not update relay");
+        success = should_loop = false;
       }
+      sessions.purge(this->router_info.current_time<uint64_t>());
+      std::this_thread::sleep_for(1s);
     }
 
     LOG(DEBUG, "exiting update loop");
@@ -366,29 +350,27 @@ namespace core
     LOG(DEBUG, "parsing response");
 
     // parse response
-    {
-      UpdateResponse response;
-      if (!response.from(res)) {
-        LOG(ERROR, "could not deserialize update response, response size = ", res.size());
-        return UpdateResult::Failure;
-      }
+    UpdateResponse response;
+    if (!response.from(res)) {
+      LOG(ERROR, "could not deserialize update response, response size = ", res.size());
+      return UpdateResult::Failure;
+    }
 
-      if (response.version != UPDATE_RESPONSE_VERSION) {
-        LOG(ERROR, "bad relay version response version. expected ", UPDATE_RESPONSE_VERSION, ", got ", response.version);
-        return UpdateResult::Failure;
-      }
+    if (response.version != UPDATE_RESPONSE_VERSION) {
+      LOG(ERROR, "bad relay version response version. expected ", UPDATE_RESPONSE_VERSION, ", got ", response.version);
+      return UpdateResult::Failure;
+    }
 
-      this->router_info.set_timestamp(response.timestamp);
+    this->router_info.set_timestamp(response.timestamp);
 
-      if (response.num_relays > MAX_RELAYS) {
-        LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.num_relays, '\n');
-        return UpdateResult::Failure;
-      }
+    if (response.num_relays > MAX_RELAYS) {
+      LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.num_relays, '\n');
+      return UpdateResult::Failure;
+    }
 
-      if (!this->relay_manager.update(response.num_relays, response.relays)) {
-        LOG(ERROR, "could not update relay manager");
-        return UpdateResult::Failure;
-      }
+    if (!this->relay_manager.update(response.num_relays, response.relays)) {
+      LOG(ERROR, "could not update relay manager");
+      return UpdateResult::Failure;
     }
 
     LOG(DEBUG, "updated relay");
@@ -397,6 +379,10 @@ namespace core
     {
       LOG(INFO, "relay initialized");
       first_update = false;
+    }
+
+    if (response.target_version[0] != '\0' && strcmp(core::RELAY_VERSION, response.target_version.c_str()) != 0) {
+      LOG(INFO, "upgrade from ", core::RELAY_VERSION, " -> ", response.target_version.c_str());
     }
 
     return UpdateResult::Success;
