@@ -1264,37 +1264,6 @@ publish-fake-relays-artifacts-prod:
 # publish-relay-frontend-artifacts-prod:
 # 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_frontend
 
-
-#######################
-# Relay Build Process #
-#######################
-
-RELAY_DIR := ./relay
-RELAY_MAKEFILE := Makefile
-RELAY_EXE := relay
-
-.PHONY: build-relay-ref
-build-relay-ref:
-	@printf "Building reference relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-relay
-build-relay:
-	@printf "Building relay... "
-	@mkdir -p $(DIST_DIR)
-	@cd $(RELAY_DIR) && $(MAKE) release
-	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)
-	@echo "done"
-
-.PHONY: dev-relay
-dev-relay: build-relay ## runs a local relay
-	@$(DIST_DIR)/$(RELAY_EXE)
-
-.PHONY: dev-multi-relays
-dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 10 -p 10000
-
 #######################
 
 .PHONY: format
