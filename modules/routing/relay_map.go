@@ -2,9 +2,7 @@ package routing
 
 import (
 	"context"
-	"fmt"
 	"net"
-	"sort"
 	"sync"
 	"time"
 
@@ -130,47 +128,6 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func() (
 	for {
 		select {
 		case <-c:
-
-			_, relayHash := getRelayData()
-
-			relayStats := make([]RelayStatsEntry, 0)
-
-			inactiveRelays := make([]string, 0)
-
-			relayMap.RLock()
-			for _, v := range relayMap.relays {
-				relayStats = append(relayStats, RelayStatsEntry{name: v.Name, sessionCount: v.SessionCount})
-			}
-			for _, v := range relayHash {
-				_, exists := relayMap.relays[v.Addr.String()]
-				if !exists {
-					inactiveRelays = append(inactiveRelays, v.Name)
-				}
-			}
-			relayMap.RUnlock()
-
-			sort.SliceStable(relayStats, func(i, j int) bool {
-				return relayStats[i].name < relayStats[j].name
-			})
-
-			sort.SliceStable(relayStats, func(i, j int) bool {
-				return relayStats[i].sessionCount > relayStats[j].sessionCount
-			})
-
-			sort.SliceStable(inactiveRelays, func(i, j int) bool {
-				return inactiveRelays[i] < inactiveRelays[j]
-			})
-
-			fmt.Printf("\n-----------------------------------------\n")
-			fmt.Printf("\n%d active relays:\n\n", len(relayStats))
-			for i := range relayStats {
-				fmt.Printf("    %s [%d]\n", relayStats[i].name, relayStats[i].sessionCount)
-			}
-			fmt.Printf("\n%d inactive relays:\n\n", len(inactiveRelays))
-			for i := range inactiveRelays {
-				fmt.Printf("    %s\n", inactiveRelays[i])
-			}
-			fmt.Printf("\n-----------------------------------------\n\n")
 
 			deleteList = deleteList[:0]
 			currentTime := time.Now().Unix()

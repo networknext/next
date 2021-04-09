@@ -16,12 +16,15 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/rjeczalik/notify"
 
 	"os"
 	"os/signal"
@@ -94,24 +97,28 @@ func mainReturnWithCode() int {
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
+	fmt.Println("found gcpProjectID")
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("setup logger")
 
 	env, err := backend.GetEnv()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("found env")
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("setup metrics")
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -119,12 +126,14 @@ func mainReturnWithCode() int {
 			return 1
 		}
 	}
+	fmt.Println("started stack driver")
 
 	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("started storer")
 
 	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
@@ -132,6 +141,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
 		return 1
 	}
+	fmt.Println("setup metrics handler")
 
 	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
@@ -139,6 +149,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
 		return 1
 	}
+	fmt.Println("setup maxmind metrics")
 
 	// Create a goroutine to update metrics
 	go func() {
@@ -166,11 +177,13 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	fmt.Println("found server backend private key")
 
 	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 		return 1
 	}
+	fmt.Println("found relay private key")
 
 	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
@@ -186,13 +199,13 @@ func mainReturnWithCode() int {
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
-	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
-	if maxmindCityURI != "" && maxmindISPURI != "" {
+	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
+	if maxmindCityFile != "" && maxmindISPFile != "" {
+		fmt.Println("found maxmind file info")
 		mmdb := &routing.MaxmindDB{
-			HTTPClient: http.DefaultClient,
-			CityURI:    maxmindCityURI,
-			IspURI:     maxmindISPURI,
+			CityFile: maxmindCityFile,
+			IspFile:  maxmindISPFile,
 		}
 		var mmdbMutex sync.RWMutex
 
@@ -208,41 +221,41 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("err", err)
 			return 1
 		}
+		fmt.Println("init sync maxmind")
 
-		// todo: disable the sync for now until we can find out why it's causing session drops
+		c := make(chan notify.EventInfo, 1)
 
-		// if envvar.Exists("MAXMIND_SYNC_DB_INTERVAL") {
-		// 	syncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
-		// 	if err != nil {
-		// 		level.Error(logger).Log("err", err)
-		// 		return 1
-		// 	}
+		// Get parent folder of the maxmind files
+		fileLocation, err := filepath.Abs(filepath.Dir(maxmindCityFile))
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 
-		// 	// Start a goroutine to sync from Maxmind.com
-		// 	go func() {
-		// 		ticker := time.NewTicker(syncInterval)
-		// 		for {
-		// 			newMMDB := &routing.MaxmindDB{}
+		// Only check for create events. cloud scheduler will delete and replace which will show up as a create event
+		if err := notify.Watch(fileLocation, c, notify.Create, notify.InModify); err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		defer notify.Stop(c)
 
-		// 			select {
-		// 			case <-ticker.C:
-		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-		// 					level.Error(logger).Log("err", err)
-		// 					continue
-		// 				}
-
-		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
-		// 				mmdbMutex.Lock()
-		// 				mmdb = newMMDB
-		// 				mmdbMutex.Unlock()
-		// 			case <-ctx.Done():
-		// 				return
-		// 			}
-
-		// 			time.Sleep(syncInterval)
-		// 		}
-		// 	}()
-		// }
+		go func() {
+			// Start by skipping the first event
+			for {
+				select {
+				case ei := <-c:
+					// Ignore every other notify event. cp, mv, and replace operations always fire 2 events
+					if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
+						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s. Sys info: %s", ei.Event().String(), ei.Path(), ei.Sys()))
+						// Sync the maxmind memory store when a old files are replaced
+						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+							level.Error(logger).Log("err", err)
+							continue
+						}
+					}
+				}
+			}
+		}()
+		fmt.Println("finished maxmind")
 	}
 
 	// Use a custom IP locator for staging so that clients
