@@ -6,25 +6,18 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"expvar"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"time"
+	"runtime"
+	"sync"
 
-	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/pubsub"
+	"github.com/networknext/backend/modules/tranpsort"
 
+	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -33,6 +26,18 @@ var (
 	sha           string
 	tag           string
 )
+
+type GatewayConfig struct {
+	ChannelBufferSize     int
+	UseHTTP               bool
+	RelayBackendAddresses []string
+	HTTPTimeout           time.Duration
+	BatchSize             int
+
+	PublishToHosts        []string
+	PublisherSendBuffer   int
+	PublisherRefreshTimer time.Duration
+}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -44,18 +49,12 @@ func mainReturnWithCode() int {
 	serviceName := "relay_gateway"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
+	// Setup the service
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	// todo why 2 loggers
-	relayLogger, err := backend.GetLogger(ctx, gcpProjectID, "relays")
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -80,109 +79,174 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	relayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler)
+	gatewayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler, serviceName, "relay_gateway", "Relay Gateway", "relay update request")
 	if err != nil {
 		level.Error(logger).Log("msg", msg, "err", err)
 		return 1
 	}
 
-	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
+	// Get a config for how the Gateway should operate
 	cfg, err := newConfig()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	updateChan := make(chan []byte, 1000)
+	// Create a channel to hold incoming relay update requests
+	updateChan := make(chan []byte, cfg.ChannelBufferSize)
 
-	// ZeroMQ
-	if !cfg.NRBHTTP {
-		var publishers []pubsub.Publisher
-		refreshPubs := make(chan bool, 1)
-		publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
+	// Prioritize using HTTP to batch-send updates to relay backends
+	if cfg.UseHTTP {
+		// Create HTTP client to communicate with relay backends
+		client := &http.Client{Timeout: cfg.HTTPTimeout}
 
-		go func() {
-			syncTimer := helpers.NewSyncTimer(cfg.PublisherRefreshTimer)
-			for {
-				syncTimer.Run()
-				refreshPubs <- true
-			}
-		}()
+		// Create a buffer to hold the requests that will go to the relay backends
+		var updateBuffer *transport.RelayUpdateRequestList
+		var updateBufferMutex sync.RWMutex
 
+		// Handle update requests
 		go func() {
 			for {
 				select {
-				case <-refreshPubs:
-					newPublishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
-					if err != nil {
-						_ = level.Error(logger).Log("err", err)
-						continue
-					}
+				case update := <-updateChan:
+					// Add the update to the buffer and get the buffer's length
+					updateBufferMutex.Lock()
+					updateBuffer.Requests = append(updateBuffer.Requests, update)
+					bufferLength := len(updateBuffer.Requests)
+					updateBufferMutex.Unlock()
 
-					for _, pub := range publishers {
-						err = pub.Close()
-						if err != nil {
-							_ = level.Error(logger).Log("err", err)
+					// Increment the updates received metric
+					gatewayMetrics.UpdatesReceived.Add(1)
+					// Set the number of updates queued for batch-sending
+					gatewayMetrics.UpdatesQueued.Set(bufferLength)
+
+					// Check if we have reached the batch size
+					if bufferLength >= cfg.BatchSize {
+						// Copy the buffer so we can clear it without affecting the worker goroutines
+						updateBufferMutex.Lock()
+						bufferCopy := updateBuffer
+						updateBuffer = updateBuffer[:0]
+						updateBufferMutex.Unlock()
+
+						// Send the buffer to all relay backends
+						for _, address := range cfg.RelayBackendAddresses {
+							go func() {
+								// Marshal the buffer copy
+								body, err := bufferCopy.MarshalBinary()
+								if err != nil {
+									gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Add(1)
+									_ = level.Error(logger).Log("msg", "unable to marshal buffer copy", "err", err)
+									return
+								}
+
+								buffer := bytes.NewBuffer(body)
+								resp, err := client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
+								if err != nil || resp.StatusCode != http.StatusOK {
+									gatewayMetrics.ErrorMetrics.BackendSendFailure.Add(1)
+									_ = level.Error(logger).Log("msg", fmt.Sprintf("unable to send update to relay backend %s, response %d", address, resp.StatusCode), "err", err)
+									return
+								}
+								resp.Body.Close()
+							}()
 						}
-					}
 
-					publishers = newPublishers
-
-					continue
-
-				case msg := <-updateChan:
-					for _, pub := range publishers {
-						_, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, msg)
-						if err != nil {
-							_ = level.Error(logger).Log("msg", "unable to send update to optimizer", "err", err)
-						}
+						// Set the number of relay update requests sent to the relay backends (not necessarily successful)
+						gatewayMetrics.UpdatesFlushed.Add(bufferLength)
+						level.Info(logger).Log("msg", fmt.Sprintf("Sent %d relay updates to the relay backends", bufferLength))
 					}
 				}
 			}
 		}()
 	} else {
-		client := http.Client{Timeout: cfg.HTTPTimeout}
-		for {
-			msg := <-updateChan
-			for _, address := range cfg.RelayBackendAddresses {
-				go func(address string, body []byte) {
-					buffer := bytes.NewBuffer(body)
-					resp, err := client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
-					if err != nil || resp.StatusCode != http.StatusOK {
-						_ = level.Error(logger).Log("msg", "unable to send update to relay backend", "err", err)
-					}
-					resp.Body.Close()
-				}(address, msg)
-			}
-		}
+		// TODO: implement ZeroMQ functionality
+		level.Error(logger).Log("err", "ZeroMQ is not yet supported")
+		return 1
+
+		// // Use ZeroMQ to publish updates to relay backend
+		// var publishers []pubsub.Publisher
+		// refreshPubs := make(chan bool, 1)
+		// publishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+		// if err != nil {
+		//     level.Error(logger).Log("err", err)
+		//     os.Exit(1)
+		// }
+
+		// go func() {
+		//     syncTimer := helpers.NewSyncTimer(cfg.PublisherRefreshTimer)
+		//     for {
+		//         syncTimer.Run()
+		//         refreshPubs <- true
+		//     }
+		// }()
+
+		// go func() {
+		//     for {
+		//         select {
+		//         case <-refreshPubs:
+		//             newPublishers, err := pubsub.NewMultiPublisher(cfg.PublishToHosts, cfg.PublisherSendBuffer)
+		//             if err != nil {
+		//                 _ = level.Error(logger).Log("err", err)
+		//                 continue
+		//             }
+
+		//             for _, pub := range publishers {
+		//                 err = pub.Close()
+		//                 if err != nil {
+		//                     _ = level.Error(logger).Log("err", err)
+		//                 }
+		//             }
+
+		//             publishers = newPublishers
+
+		//             continue
+
+		//         case msg := <-updateChan:
+		//             for _, pub := range publishers {
+		//                 _, err = pub.Publish(context.Background(), pubsub.RelayUpdateTopic, msg)
+		//                 if err != nil {
+		//                     _ = level.Error(logger).Log("msg", "unable to send update to optimizer", "err", err)
+		//                 }
+		//             }
+		//         }
+		//     }
+		// }()
 	}
 
-	getParams := func() *transport.GatewayHandlerConfig {
-		return &transport.GatewayHandlerConfig{
-			Storer:           storer,
-			InitMetrics:      relayMetrics.RelayInitMetrics,
-			UpdateMetrics:    relayMetrics.RelayUpdateMetrics,
-			RouterPrivateKey: cfg.RouterPrivateKey,
-			NRBNoInit:        cfg.NRBNoInit,
-			LoadTest:         cfg.Loadtest,
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
 		}
+
+		go func() {
+			for {
+				gatewayMetrics.GatewayServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(gatewayMetrics.GatewayServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d update requests received\n", int(gatewayMetrics.UpdatesReceived.Value()))
+				fmt.Printf("%d update requests queued\n", int(gatewayMetrics.UpdatesQueued.Value()))
+				fmt.Printf("%d update requests flushed\n", int(gatewayMetrics.UpdatesFlushed.Value()))
+				fmt.Printf("%d update request read packet failures\n", int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value()))
+				fmt.Printf("%d update request content type failures\n", int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value()))
+				fmt.Printf("%d batch update request marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value()))
+				fmt.Printf("%d batch update request backend send failures\n", int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
 	}
 
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc(logger, getParams())).Methods("POST")
-	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, getParams(), updateChan)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, gatewayMetrics, updateChan)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -193,95 +257,86 @@ func mainReturnWithCode() int {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
 
-	go func() {
-		port := envvar.Get("PORT", "30000")
+	port := envvar.Get("PORT", "30000")
+	fmt.Printf("starting http server on :%s\n", port)
 
+	go func() {
 		level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			os.Exit(1) // TODO: don't os.Exit() here, but find a way to exit using errChan
 		}
 	}()
+
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+	// TODO: implement clean shutdown to flush update requests in buffer
 
 	return 0
 }
 
-type Config struct {
-	PublisherSendBuffer   int
-	PublishToHosts        []string
-	RouterPrivateKey      []byte
-	NRBNoInit             bool
-	NRBHTTP               bool
-	RelayBackendAddresses []string
-	Loadtest              bool
-	PublisherRefreshTimer time.Duration
-	HTTPTimeout           time.Duration
-}
-
-func newConfig() (*Config, error) {
-	cfg := new(Config)
-
-	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if err != nil || routerPrivateKey == nil {
-		return nil, fmt.Errorf("RELAY_ROUTER_PRIVATE_KEY not set")
-	}
-	cfg.RouterPrivateKey = routerPrivateKey
-
-	nrbNoInit, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_NO_INIT", false)
+// Get the config for how this relay gateway should operate
+func newConfig() (*transport.GatewayConfig, error) {
+	cfg := new(transport.GatewayConfig)
+	// Get the channel size
+	channelBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_CHANNEL_BUFFER_SIZE", 100000)
 	if err != nil {
 		return nil, err
 	}
-	cfg.NRBNoInit = nrbNoInit
+	cfg.ChannelBufferSize = channelBufferSize
 
-	nrbHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", false)
+	// Decide if we are using HTTP to batch-write to relay backends
+	useHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", true)
 	if err != nil {
 		return nil, err
 	}
-	cfg.NRBHTTP = nrbHTTP
+	cfg.UseHTTP = useHTTP
 
+	// Load env vars depending on relay update delivery method
 	if nrbHTTP {
+		// Using HTTP, get the relay backend addresses to send relay updates to
 		if exists := envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES"); !exists {
 			return nil, fmt.Errorf("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
 		}
 		relayBackendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
 		cfg.RelayBackendAddresses = relayBackendAddresses
 
+		// Get the HTTP timeout duration
 		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second)
 		if err != nil {
 			return nil, err
 		}
 		cfg.HTTPTimeout = httpTimeout
 
+		// Get the batch size threshold for sending updates to relay backends
+		batchSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_BATCH_SIZE", 20)
+		if err != nil {
+			return nil, err
+		}
+		cfg.BatchSize = batchSize
 	} else {
+		// Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
 		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
 			return nil, fmt.Errorf("PUBLISH_TO_HOSTS not set")
 		}
 		publishToHosts := envvar.GetList("PUBLISH_TO_HOSTS", []string{"tcp://127.0.0.1:5555"})
 		cfg.PublishToHosts = publishToHosts
 
+		// Get publisher send buffer size
 		publisherSendBuffer, err := envvar.GetInt("PUBLISHER_SEND_BUFFER", 100000)
 		if err != nil {
 			return nil, err
 		}
 		cfg.PublisherSendBuffer = publisherSendBuffer
 
+		// Get publisher refresh time duration
 		publisherRefresh, err := envvar.GetDuration("PUBLISHER_REFRESH_TIMER", 60*time.Second)
 		if err != nil {
 			return nil, err
 		}
 		cfg.PublisherRefreshTimer = publisherRefresh
 	}
-
-	featureLoadTest, err := envvar.GetBool("FEATURE_LOAD_TEST", false)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Loadtest = featureLoadTest
-
-	return cfg, nil
 }
