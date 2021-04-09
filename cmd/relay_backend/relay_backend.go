@@ -834,7 +834,6 @@ func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]rout
 	}
 }
 
-func displayLoadedRelays(relayArray []routing.Relay) {
 	fmt.Printf("\n=======================================\n")
 	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
 	for i := range relayArray {
