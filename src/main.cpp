@@ -35,17 +35,8 @@ using os::SocketType;
 using util::Env;
 using util::ThroughputRecorder;
 
-namespace
-{
-  struct
-  {
-    volatile bool alive;
-    volatile bool should_clean_shutdown;
-  } Globals = {
-   .alive = true,
-   .should_clean_shutdown = false,
-  };
-}  // namespace
+volatile bool alive = true;
+volatile bool should_clean_shutdown = false;
 
 INLINE void set_thread_affinity(std::thread& thread, int core_id)
 {
@@ -145,17 +136,17 @@ INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
 INLINE void setup_signal_handlers()
 {
   auto hard_shutdown_handler = [](int) {
-    if (Globals.alive) {
-      Globals.alive = false;
+    if (alive) {
+      alive = false;
     } else {
       std::exit(1);
     }
   };
 
   auto clean_shutdown_handler = [](int) {
-    if (Globals.alive) {
-      Globals.should_clean_shutdown = true;
-      Globals.alive = false;
+    if (alive) {
+      should_clean_shutdown = true;
+      alive = false;
     } else {
       std::exit(1);
     }
@@ -259,11 +250,11 @@ int main(int argc, const char* argv[])
     auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
-      Globals.alive = false;
+      alive = false;
     }
 
     auto thread = std::make_shared<std::thread>([&, socket] {
-      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, alive, recorder, router_info);
     });
 
     set_thread_affinity(*thread, 0);
@@ -276,15 +267,15 @@ int main(int argc, const char* argv[])
     LOG(DEBUG, "created 1 packet processing thread assigned to core 0");
   } else {
     // create num_cpus - 1 threads and assign it to cores 1-n
-    for (size_t i = 0; i < last_packet_processing_core_id && Globals.alive; i++) {
+    for (size_t i = 0; i < last_packet_processing_core_id && alive; i++) {
       auto socket = make_socket(relay_addr, config);
       if (!socket) {
         LOG(ERROR, "could not create socket");
-        Globals.alive = false;
+        alive = false;
       }
 
       auto thread = std::make_shared<std::thread>([&, socket, i] {
-        core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+        core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, alive, recorder, router_info);
         LOG(DEBUG, "exiting recv loop #", i);
       });
 
@@ -300,10 +291,10 @@ int main(int argc, const char* argv[])
   }
 
   // ping processing setup
-  if (Globals.alive) {
+  if (alive) {
     auto socket = sockets[0];  // will always have at least 1
     auto thread = std::make_shared<std::thread>([&, socket] {
-      core::ping_loop(*socket, relay_manager, Globals.alive, recorder);
+      core::ping_loop(*socket, relay_manager, alive, recorder);
       LOG(DEBUG, "exiting ping loop");
     });
 
@@ -316,15 +307,15 @@ int main(int argc, const char* argv[])
   }
 
   // new backend setup
-  if (Globals.alive) {
+  if (alive) {
     std::thread thread([&] {
       CurlWrapper wrapper;
       core::Backend backend(
        env.backend_hostname, relay_addr.to_string(), keychain, router_info, relay_manager, sessions, wrapper);
 
-      if (Globals.alive) {
+      if (alive) {
         setup_signal_handlers();
-        success = backend.update_loop(Globals.alive, Globals.should_clean_shutdown, recorder, sessions);
+        success = backend.update_loop(alive, should_clean_shutdown, recorder, sessions);
       }
     });
 
@@ -336,7 +327,7 @@ int main(int argc, const char* argv[])
   }
 
   // IMPORTANT: If an error occurs, shut down hard! We don't need to wait and join.
-  if (!Globals.should_clean_shutdown)
+  if (!should_clean_shutdown)
   {
     LOG(ERROR, "hard shutdown!");
     exit(1);

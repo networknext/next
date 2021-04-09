@@ -14,6 +14,9 @@ using core::RelayStats;
 using crypto::KEY_SIZE;
 using util::Second;
 
+extern volatile bool alive;
+extern volatile bool should_clean_shutdown;
+
 namespace core
 {
   using namespace std::chrono_literals;
@@ -322,7 +325,9 @@ namespace core
       encoding::write_string(req, index, RELAY_VERSION);
     }
 
-    // LOG(DEBUG, "sending request");
+    // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!
+    
+    LOG(DEBUG, "sending relay update");
     util::Clock timeout;
     double elapsed_seconds = timeout.elapsed<Second>();
     size_t num_retries = 0;
@@ -334,6 +339,8 @@ namespace core
       std::this_thread::sleep_for(1s);
     }
 
+    // end naff section
+
     if (num_retries >= MAX_UPDATE_ATTEMPTS) {
       return UpdateResult::Failure;
     }
@@ -344,6 +351,8 @@ namespace core
 
     // early return if shutting down since the response won't be valid
     if (shutdown) {
+      std::array<RelayPingInfo, MAX_RELAYS> relays;
+      this->relay_manager.update(0, relays);
       return UpdateResult::Success;
     }
 
@@ -382,7 +391,71 @@ namespace core
     }
 
     if (response.target_version[0] != '\0' && strcmp(core::RELAY_VERSION, response.target_version.c_str()) != 0) {
-      LOG(INFO, "upgrade from ", core::RELAY_VERSION, " -> ", response.target_version.c_str());
+
+      static volatile bool upgrading = false;
+
+      if (!upgrading)
+      {
+        upgrading = true;
+
+        // todo: do everything below in a background thread
+
+        LOG(INFO, "upgrading from ", core::RELAY_VERSION, " -> ", response.target_version.c_str());
+
+        char command[1024];
+        sprintf( command, "wget https://storage.googleapis.com/relay_artifacts/relay-%s", response.target_version.c_str() );
+        if ( system( command ) != 0 ) {
+          LOG(ERROR, "failed to download relay version ", response.target_version);
+          std::this_thread::sleep_for(60s);
+          upgrading = false;
+          return UpdateResult::Success;
+        }
+
+        LOG(INFO, "successfully downloaded relay-", response.target_version);
+
+        sprintf( command, "chmod +x relay-%s", response.target_version.c_str() );
+        if ( system( command ) != 0 ) {
+          LOG(ERROR, "failed to chmod +x relay-", response.target_version);
+          std::this_thread::sleep_for(60s);
+          upgrading = false;
+          return UpdateResult::Success;
+        }
+
+        LOG(INFO, "chmod +x relay-", response.target_version, " succeeded");
+
+        sprintf( command, "./relay-%s version", response.target_version.c_str() );
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        if ( fgets( buffer, sizeof(buffer), file ) == NULL || strcmp(buffer, response.target_version.c_str()) != 0 )
+        {
+          pclose( file );
+          LOG(ERROR, "relay binary is bad");
+          std::this_thread::sleep_for(60s);
+          upgrading = false;
+          return UpdateResult::Success;
+        }
+        pclose( file );
+
+        LOG(INFO, "relay binary is good");
+  
+        system( "rm relay 2>/dev/null" );
+
+        sprintf( command, "mv relay-%s relay", response.target_version.c_str() );
+        if ( system( command ) != 0 )
+        {
+          LOG(ERROR, "could not install new relay binary");
+          std::this_thread::sleep_for(60s);
+          upgrading = false;
+          return UpdateResult::Success;
+        }
+
+        LOG(INFO, "new relay binary is installed");
+
+        should_clean_shutdown = true;
+        alive = false;
+
+        upgrading = false;
+      }
     }
 
     return UpdateResult::Success;
