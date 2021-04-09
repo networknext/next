@@ -353,5 +353,5 @@ int main(int argc, const char* argv[])
 
   LOG(INFO, "all done");
 
-  return success ? 0 : 1;
+  return 1; // IMPORTANT: Always return failure. Otherwise some relays won't restart the service.
 }
