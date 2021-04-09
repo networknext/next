@@ -5,7 +5,6 @@
 
 package main
 
-
 import (
 	"fmt"
 	"net/http"
@@ -21,6 +20,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var (
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
+)
+
 type GatewayConfig struct {
 	ChannelBufferSize     int
 	UseHTTP               bool
@@ -32,13 +38,6 @@ type GatewayConfig struct {
 	PublisherSendBuffer   int
 	PublisherRefreshTimer time.Duration
 }
-
-var (
-	buildtime     string
-	commitMessage string
-	sha           string
-	tag           string
-)
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -213,6 +212,36 @@ func mainReturnWithCode() int {
 		// }()
 	}
 
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				gatewayMetrics.GatewayServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(gatewayMetrics.GatewayServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d update requests received\n", int(gatewayMetrics.UpdatesReceived.Value()))
+				fmt.Printf("%d update requests queued\n", int(gatewayMetrics.UpdatesQueued.Value()))
+				fmt.Printf("%d update requests flushed\n", int(gatewayMetrics.UpdatesFlushed.Value()))
+				fmt.Printf("%d update request read packet failures\n", int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value()))
+				fmt.Printf("%d update request content type failures\n", int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value()))
+				fmt.Printf("%d batch update request marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value()))
+				fmt.Printf("%d batch update request backend send failures\n", int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
@@ -228,9 +257,10 @@ func mainReturnWithCode() int {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
 
-	go func() {
-		port := envvar.Get("PORT", "30000")
+	port := envvar.Get("PORT", "30000")
+	fmt.Printf("starting http server on :%s\n", port)
 
+	go func() {
 		level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
@@ -243,10 +273,12 @@ func mainReturnWithCode() int {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+	// TODO: implement clean shutdown to flush update requests in buffer
 
 	return 0
 }
 
+// Get the config for how this relay gateway should operate
 func newConfig() (*transport.GatewayConfig, error) {
 	cfg := new(transport.GatewayConfig)
 	// Get the channel size

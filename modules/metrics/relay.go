@@ -88,19 +88,21 @@ var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetri
 }
 
 type RelayGatewayMetrics struct {
-	HandlerMetrics  *PacketHandlerMetrics
-	UpdatesReceived Counter
-	UpdatesQueued   Gauge
-	UpdatesFlushed  Counter
-	ErrorMetrics    RelayGatewayErrorMetrics
+	HandlerMetrics        *PacketHandlerMetrics
+	GatewayServiceMetrics *ServiceMetrics
+	UpdatesReceived       Counter
+	UpdatesQueued         Gauge
+	UpdatesFlushed        Counter
+	ErrorMetrics          RelayGatewayErrorMetrics
 }
 
 var EmptyRelayGatewayMetrics = RelayGatewayMetrics{
-	HandlerMetrics:  &EmptyPacketHandlerMetrics,
-	UpdatesReceived: &EmptyCounter{},
-	UpdatesQueued:   &EmptyGauge{},
-	UpdatesFlushed:  &EmptyCounter{},
-	ErrorMetrics:    EmptyRelayGatewayErrorMetrics,
+	HandlerMetrics:        &EmptyPacketHandlerMetrics,
+	GatewayServiceMetrics: &EmptyServiceMetrics,
+	UpdatesReceived:       &EmptyCounter{},
+	UpdatesQueued:         &EmptyGauge{},
+	UpdatesFlushed:        &EmptyCounter{},
+	ErrorMetrics:          EmptyRelayGatewayErrorMetrics,
 }
 
 type RelayGatewayErrorMetrics struct {
@@ -121,7 +123,12 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 	m := &RelayGatewayMetrics{}
 	var err error
 
-	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
+	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, metricsHandler, serviceName, handlerID, handlerName, packetDescription)
+	if err != nil {
+		return nil, err
+	}
+
+	m.GatewayServiceMetrics, err = NewServiceMetrics(ctx, metricsHandler, serviceName)
 	if err != nil {
 		return nil, err
 	}
