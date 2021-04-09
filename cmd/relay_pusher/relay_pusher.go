@@ -153,6 +153,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Maxmind sync routine
 	ticker := time.NewTicker(maxmindSyncInterval)
 	go func() {
 		for {

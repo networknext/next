@@ -212,7 +212,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		c := make(chan notify.EventInfo, 1)
+		c := make(chan notify.EventInfo, 2)
 
 		// Get parent folder of the maxmind files
 		fileLocation, err := filepath.Abs(filepath.Dir(maxmindCityFile))
@@ -222,16 +222,18 @@ func mainReturnWithCode() int {
 		}
 
 		// Only check for create events. cloud scheduler will delete and replace which will show up as a create event
-		if err := notify.Watch(fileLocation, c, notify.Create); err != nil {
+		if err := notify.Watch(fileLocation, c, notify.Create, notify.InModify); err != nil {
 			level.Error(logger).Log("err", err)
 		}
 		defer notify.Stop(c)
 
 		go func() {
 			for {
-				switch ei := <-c; ei.Event() {
-				case notify.Create:
+				select {
+				case ei := <-c:
 					if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
+						fmt.Println("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
+						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
 						// Sync the maxmind memory store when a old files are replaced
 						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
 							level.Error(logger).Log("err", err)
