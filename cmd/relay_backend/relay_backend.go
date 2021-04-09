@@ -33,7 +33,6 @@ import (
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -124,11 +123,11 @@ func mainReturnWithCode() int {
 	}
 
 	/*
-	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if err != nil {
-		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-		return 1
-	}
+		routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+		if err != nil {
+			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+			return 1
+		}
 	*/
 
 	// create metrics
@@ -391,15 +390,15 @@ func mainReturnWithCode() int {
 			_, relayHash := GetRelayData()
 
 			type ActiveRelayData struct {
-				ID             uint64
-				Name           string
-				Addr           net.UDPAddr
-				SessionCount   int
-				Version        string
-				Latitude       float32
-				Longitude      float32
-				SellerID       string
-				DatacenterID   uint64
+				ID           uint64
+				Name         string
+				Addr         net.UDPAddr
+				SessionCount int
+				Version      string
+				Latitude     float32
+				Longitude    float32
+				SellerID     string
+				DatacenterID uint64
 			}
 
 			activeRelays := make([]ActiveRelayData, 0)
@@ -441,7 +440,7 @@ func mainReturnWithCode() int {
 			relayLatitudes := make([]float32, numActiveRelays)
 			relayLongitudes := make([]float32, numActiveRelays)
 			relayDatacenterIDs := make([]uint64, numActiveRelays)
-			
+
 			for i := range activeRelays {
 				relayIDs[i] = activeRelays[i].ID
 				relayNames[i] = activeRelays[i].Name
@@ -454,7 +453,7 @@ func mainReturnWithCode() int {
 			// build relays data to serve up on "relays" endpoint (CSV)
 
 			relaysDataString := "name,address,id,status,sessions,version"
-	
+
 			for i := range activeRelays {
 				name := activeRelays[i].Name
 				address := activeRelays[i].Addr.String()
@@ -466,9 +465,9 @@ func mainReturnWithCode() int {
 			}
 
 			inactiveRelays := make([]routing.Relay, 0)
-	
+
 			relayMap.RLock()
-			for _,v := range relayHash {
+			for _, v := range relayHash {
 				_, exists := relayMap.GetRelayData(v.Addr.String())
 				if !exists {
 					inactiveRelays = append(inactiveRelays, v)
