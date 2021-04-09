@@ -3,6 +3,7 @@ package transport
 // update for merge
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -357,6 +358,22 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 
 		if err := tmpl.Execute(writer, res); err != nil {
 			fmt.Println(err)
+		}
+	}
+}
+
+func RelaysBinVersionFunc(author string, timestamp string, env string) func(w http.ResponseWriter, r *http.Request) {
+	binInfo := map[string]string{
+		"author":    author,
+		"timestamp": timestamp,
+		"env":       env,
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(binInfo); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 }
