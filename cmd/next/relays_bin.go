@@ -41,6 +41,14 @@ func getRelaysBin(env Environment, filename string) {
 		handleRunTimeError(fmt.Sprintf("error writing data to relays.bin: %v\n", err), 1)
 	}
 
+	f, err := os.Stat("./relays.bin")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not find relays.bin? %v\n", err), 1)
+	}
+
+	fileSize := f.Size()
+	fmt.Printf("Successfully retrieved ./relays.bin (%d bytes)\n", fileSize)
+
 }
 
 func checkRelaysBin() {
