@@ -164,7 +164,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 		response.Timestamp = time.Now().Unix()
 
-		response.TargetVersion = "2.0.4"
+		response.TargetVersion = "2.0.5"
 
 		responseData, err = response.MarshalBinary()
 		if err != nil {
