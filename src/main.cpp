@@ -36,6 +36,7 @@ using util::Env;
 using util::ThroughputRecorder;
 
 volatile bool alive = true;
+volatile bool upgrading = false;
 volatile bool should_clean_shutdown = false;
 
 INLINE void set_thread_affinity(std::thread& thread, int core_id)

@@ -15,7 +15,75 @@ using crypto::KEY_SIZE;
 using util::Second;
 
 extern volatile bool alive;
+extern volatile bool upgrading;
 extern volatile bool should_clean_shutdown;
+
+using namespace std::chrono_literals;
+
+void * upgrade_thread_function( void * data )
+{
+  const char * version = (const char*) data;
+
+  LOG(INFO, "upgrading from ", core::RELAY_VERSION, " -> ", version);
+
+  char command[1024];
+  sprintf( command, "rm -f relay-%s", version );
+  system( command );
+
+  sprintf( command, "wget https://storage.googleapis.com/relay_artifacts/relay-%s", version );
+  if ( system( command ) != 0 ) {
+    LOG(ERROR, "failed to download relay version ", version);
+    std::this_thread::sleep_for(60s);
+    upgrading = false;
+    return NULL;
+  }
+
+  LOG(INFO, "successfully downloaded relay-", version);
+
+  sprintf( command, "chmod +x relay-%s", version );
+  if ( system( command ) != 0 ) {
+    LOG(ERROR, "failed to chmod +x relay-", version);
+    std::this_thread::sleep_for(60s);
+    upgrading = false;
+    return NULL;
+  }
+
+  LOG(INFO, "chmod +x relay-", version, " succeeded");
+
+  sprintf( command, "./relay-%s version", version );
+  FILE * file = popen( command, "r" );
+  char buffer[1024];
+  if ( fgets( buffer, sizeof(buffer), file ) == NULL || strcmp(buffer, version) != 0 )
+  {
+    pclose( file );
+    LOG(ERROR, "relay binary is bad");
+    std::this_thread::sleep_for(60s);
+    upgrading = false;
+    return NULL;
+  }
+  pclose( file );
+
+  LOG(INFO, "relay binary is good");
+
+  system( "rm relay 2>/dev/null" );
+
+  sprintf( command, "mv relay-%s relay", version );
+  if ( system( command ) != 0 )
+  {
+    LOG(ERROR, "could not install new relay binary");
+    std::this_thread::sleep_for(60s);
+    upgrading = false;
+    return NULL;
+  }
+
+  LOG(INFO, "new relay binary is installed");
+
+  should_clean_shutdown = true;
+  alive = false;
+  upgrading = false;
+
+  return NULL;
+}
 
 namespace core
 {
@@ -392,69 +460,20 @@ namespace core
 
     if (response.target_version[0] != '\0' && strcmp(core::RELAY_VERSION, response.target_version.c_str()) != 0) {
 
-      static volatile bool upgrading = false;
-
       if (!upgrading)
       {
         upgrading = true;
 
-        // todo: do everything below in a background thread
-
-        LOG(INFO, "upgrading from ", core::RELAY_VERSION, " -> ", response.target_version.c_str());
-
-        char command[1024];
-        sprintf( command, "wget https://storage.googleapis.com/relay_artifacts/relay-%s", response.target_version.c_str() );
-        if ( system( command ) != 0 ) {
-          LOG(ERROR, "failed to download relay version ", response.target_version);
-          std::this_thread::sleep_for(60s);
-          upgrading = false;
-          return UpdateResult::Success;
-        }
-
-        LOG(INFO, "successfully downloaded relay-", response.target_version);
-
-        sprintf( command, "chmod +x relay-%s", response.target_version.c_str() );
-        if ( system( command ) != 0 ) {
-          LOG(ERROR, "failed to chmod +x relay-", response.target_version);
-          std::this_thread::sleep_for(60s);
-          upgrading = false;
-          return UpdateResult::Success;
-        }
-
-        LOG(INFO, "chmod +x relay-", response.target_version, " succeeded");
-
-        sprintf( command, "./relay-%s version", response.target_version.c_str() );
-        FILE * file = popen( command, "r" );
-        char buffer[1024];
-        if ( fgets( buffer, sizeof(buffer), file ) == NULL || strcmp(buffer, response.target_version.c_str()) != 0 )
+        static pthread_t upgrade_thread;
+        static char target_version[1024];
+        strcpy( target_version, response.target_version.c_str() );
+        int err = pthread_create( &upgrade_thread, NULL, &upgrade_thread_function, target_version );
+        if ( err )
         {
-          pclose( file );
-          LOG(ERROR, "relay binary is bad");
-          std::this_thread::sleep_for(60s);
-          upgrading = false;
+          LOG(ERROR, "could not create upgrade thread");
+          upgrading = false;          
           return UpdateResult::Success;
         }
-        pclose( file );
-
-        LOG(INFO, "relay binary is good");
-  
-        system( "rm relay 2>/dev/null" );
-
-        sprintf( command, "mv relay-%s relay", response.target_version.c_str() );
-        if ( system( command ) != 0 )
-        {
-          LOG(ERROR, "could not install new relay binary");
-          std::this_thread::sleep_for(60s);
-          upgrading = false;
-          return UpdateResult::Success;
-        }
-
-        LOG(INFO, "new relay binary is installed");
-
-        should_clean_shutdown = true;
-        alive = false;
-
-        upgrading = false;
       }
     }
 
