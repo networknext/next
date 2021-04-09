@@ -46,6 +46,17 @@ var (
 	tag           string
 )
 
+var startTime time.Time
+
+func uptime() time.Duration {
+    return time.Since(startTime)
+}
+
+func init() {
+    est, _ := time.LoadLocation("EST")
+    startTime = time.Now().In(est)
+}
+
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func main() {
@@ -241,6 +252,7 @@ func mainReturnWithCode() int {
 	var costMatrixData []byte
 	var routeMatrixData []byte
 	var relaysData []byte
+	var statusData []byte
 
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
@@ -248,6 +260,7 @@ func mainReturnWithCode() int {
 	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
 	var relaysMutex sync.RWMutex
+	var statusMutex sync.RWMutex
 
 	_ = costMatrix
 
@@ -475,6 +488,8 @@ func mainReturnWithCode() int {
 			routeMatrixData = routeMatrixDataNew
 			routeMatrixMutex.Unlock()
 
+			// update status data for "/status" handler
+
 			numRoutes := int32(0)
 			for i := range routeMatrixNew.RouteEntries {
 				numRoutes += routeMatrixNew.RouteEntries[i].NumRoutes
@@ -488,27 +503,33 @@ func mainReturnWithCode() int {
 			}
 
 			relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			
 			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
 
-			fmt.Printf("-----------------------------\n")
-			fmt.Printf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
-			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
-			fmt.Printf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
-			fmt.Printf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
-			fmt.Printf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
-			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
-			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
-			fmt.Printf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
-			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
-			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
-			fmt.Printf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrix.Bytes.Value()))
-			fmt.Printf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-			fmt.Printf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
-			fmt.Printf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-			fmt.Printf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
-			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
-			fmt.Printf("-----------------------------\n")
+			statusDataString := fmt.Sprintf("relay backend\n")
+			statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
+			statusDataString += fmt.Sprintf("uptime %s\n", uptime())
+			statusDataString += fmt.Sprintf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
+			statusDataString += fmt.Sprintf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
+			statusDataString += fmt.Sprintf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
+			statusDataString += fmt.Sprintf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
+			statusDataString += fmt.Sprintf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
+			statusDataString += fmt.Sprintf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
+			statusDataString += fmt.Sprintf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
+			statusDataString += fmt.Sprintf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
+			statusDataString += fmt.Sprintf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
+			statusDataString += fmt.Sprintf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
+			statusDataString += fmt.Sprintf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrix.Bytes.Value()))
+			statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+			statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
+			statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+			statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+			statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+			statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+
+			statusMutex.Lock()
+			statusData = []byte(statusDataString)
+			statusMutex.Unlock()
 
 			// optionally write route matrix to cloud storage
 
@@ -560,6 +581,18 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		routeMatrixMutex.RLock()
@@ -604,6 +637,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
+	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())
 
@@ -693,22 +727,9 @@ func init() {
 		return relayArray_internal[i].Name < relayArray_internal[j].Name
 	})
 
-	/*
-	// todo: hack override for local testing
-	relayArray_internal[0].Addr = *ParseAddress("127.0.0.1:35000")
-	relayArray_internal[0].ID = 0xde0fb1e9a25b1948
-	*/
-
 	for i := range relayArray_internal {
 		relayHash_internal[relayArray_internal[i].ID] = relayArray_internal[i]
 	}
-
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray_internal))
-	for i := range relayArray_internal {
-		fmt.Printf("    %s - %s [%x]\n", relayArray_internal[i].Name, relayArray_internal[i].Addr.String(), relayArray_internal[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
 }
 
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
