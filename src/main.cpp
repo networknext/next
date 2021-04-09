@@ -144,7 +144,7 @@ INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
 
 INLINE void setup_signal_handlers()
 {
-  auto graceful_shutdown_handler = [](int) {
+  auto hard_shutdown_handler = [](int) {
     if (Globals.alive) {
       Globals.alive = false;
     } else {
@@ -161,7 +161,7 @@ INLINE void setup_signal_handlers()
     }
   };
 
-  std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
+  std::signal(SIGINT, hard_shutdown_handler);      // ctrl-c
   std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
   std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
 }
@@ -211,8 +211,6 @@ int main(int argc, const char* argv[])
   if (sodium_init() == -1) {
     LOG(FATAL, "failed to initialize sodium");
   }
-
-  // LOG(DEBUG, "initializing relay");
 
   bool success = false;
 
@@ -337,7 +335,7 @@ int main(int argc, const char* argv[])
     thread.join();
   }
 
-  // IMPORTANT: If an error occurs, shut down properly! We don't need to wait and join.
+  // IMPORTANT: If an error occurs, shut down hard! We don't need to wait and join.
   if (!Globals.should_clean_shutdown)
   {
     LOG(ERROR, "hard shutdown!");

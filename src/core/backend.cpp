@@ -17,7 +17,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.0";
+  const char* RELAY_VERSION = "2.0.1";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
@@ -293,18 +293,11 @@ namespace core
 
     Clock backend_timeout;
     if (should_clean_shutdown) {
-      LOG(DEBUG, "starting clean shutdown");
-      double time_since_last_update = backend_timeout.elapsed<Second>();
-      // should_loop will be false here
-      while (update(recorder, true, should_loop) != UpdateResult::Success &&
-             time_since_last_update < CLEAN_SHUTDOWN_TIMEOUT_SECS) {
-        time_since_last_update = backend_timeout.elapsed<Second>();
-        LOG(DEBUG, "time since last update = ", time_since_last_update);
+      LOG(INFO, "clean shutdown");
+      for (int i = 0; i < CLEAN_SHUTDOWN_TIMEOUT_SECS; i++) {
+        LOG(INFO, CLEAN_SHUTDOWN_TIMEOUT_SECS - i);
+        update(recorder, true, should_loop);
         std::this_thread::sleep_for(1s);
-      }
-
-      if (time_since_last_update < 60.0) {
-        std::this_thread::sleep_for(30s);
       }
     }
 
