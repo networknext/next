@@ -33,7 +33,6 @@ import (
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -57,9 +56,12 @@ var (
 
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
+
+	startTime time.Time
 )
 
 func init() {
+	var binWrapper routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
@@ -70,16 +72,27 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeToRelayArray(file, &relayArray_internal); err != nil {
-		fmt.Printf("DecodeToRelayArray() error: %v\n", err)
+	if err = decodeBinWrapper(file, &binWrapper); err != nil {
+		fmt.Printf("decodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
+
+	relayArray_internal = binWrapper.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	displayLoadedRelays(relayArray_internal)
 
-	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler
+	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
+}
+
+func uptime() time.Duration {
+    return time.Since(startTime)
+}
+
+func init() {
+    est, _ := time.LoadLocation("EST")
+    startTime = time.Now().In(est)
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -124,11 +137,11 @@ func mainReturnWithCode() int {
 	}
 
 	/*
-	routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if err != nil {
-		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-		return 1
-	}
+		routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+		if err != nil {
+			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+			return 1
+		}
 	*/
 
 	// create metrics
@@ -228,25 +241,27 @@ func mainReturnWithCode() int {
 						}
 
 						// Setup relay array and hash to read into
-						var relayArrayNew []routing.Relay
+						var binWrapperNew routing.RelayBinWrapper
 						relayHashNew := make(map[uint64]routing.Relay)
 
-						if err = decodeToRelayArray(file, &relayArrayNew); err == io.EOF {
+						if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
 							// Sometimes we receive an EOF error since the file is still being replaced
 							// so early out here and proceed on the next notification
 							file.Close()
-							level.Debug(logger).Log("msg", "DecodeToRelayArray() EOF error, will wait for next notification")
+							level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
 							continue
 						} else if err != nil {
 							file.Close()
-							level.Error(logger).Log("msg", "DecodeToRelayArray() error", "err", err)
+							level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
 							continue
 						}
 
 						// Close the file since it is no longer needed
 						file.Close()
 
-						// Proceed to fill up the relay hash
+						// Get the new relay array
+						relayArrayNew := binWrapperNew.Relays
+						// Proceed to fill up the new relay hash
 						sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
 						// Pointer swap the relay array
@@ -259,7 +274,7 @@ func mainReturnWithCode() int {
 						relayHash_internal = relayHashNew
 						relayHashMutex.Unlock()
 
-						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler
+						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
 						level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 						// Print the new list of relays
@@ -369,6 +384,7 @@ func mainReturnWithCode() int {
 	var costMatrixData []byte
 	var routeMatrixData []byte
 	var relaysData []byte
+	var statusData []byte
 
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
@@ -376,6 +392,7 @@ func mainReturnWithCode() int {
 	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
 	var relaysMutex sync.RWMutex
+	var statusMutex sync.RWMutex
 
 	_ = costMatrix
 
@@ -391,15 +408,15 @@ func mainReturnWithCode() int {
 			_, relayHash := GetRelayData()
 
 			type ActiveRelayData struct {
-				ID             uint64
-				Name           string
-				Addr           net.UDPAddr
-				SessionCount   int
-				Version        string
-				Latitude       float32
-				Longitude      float32
-				SellerID       string
-				DatacenterID   uint64
+				ID           uint64
+				Name         string
+				Addr         net.UDPAddr
+				SessionCount int
+				Version      string
+				Latitude     float32
+				Longitude    float32
+				SellerID     string
+				DatacenterID uint64
 			}
 
 			activeRelays := make([]ActiveRelayData, 0)
@@ -441,7 +458,7 @@ func mainReturnWithCode() int {
 			relayLatitudes := make([]float32, numActiveRelays)
 			relayLongitudes := make([]float32, numActiveRelays)
 			relayDatacenterIDs := make([]uint64, numActiveRelays)
-			
+
 			for i := range activeRelays {
 				relayIDs[i] = activeRelays[i].ID
 				relayNames[i] = activeRelays[i].Name
@@ -453,8 +470,10 @@ func mainReturnWithCode() int {
 
 			// build relays data to serve up on "relays" endpoint (CSV)
 
+			// active relays
+
 			relaysDataString := "name,address,id,status,sessions,version"
-	
+
 			for i := range activeRelays {
 				name := activeRelays[i].Name
 				address := activeRelays[i].Addr.String()
@@ -465,10 +484,12 @@ func mainReturnWithCode() int {
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
 			}
 
+			// inactive relays
+
 			inactiveRelays := make([]routing.Relay, 0)
-	
+
 			relayMap.RLock()
-			for _,v := range relayHash {
+			for _, v := range relayHash {
 				_, exists := relayMap.GetRelayData(v.Addr.String())
 				if !exists {
 					inactiveRelays = append(inactiveRelays, v)
@@ -483,6 +504,28 @@ func mainReturnWithCode() int {
 				address := inactiveRelays[i].Addr.String()
 				id := inactiveRelays[i].ID
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,inactive,,", relaysDataString, name, address, id)
+			}
+
+			// shutting down relays
+
+			shuttingDownRelays := make([]routing.Relay, 0)
+
+			relayMap.RLock()
+			for _, v := range relayHash {
+				relayData, exists := relayMap.GetRelayData(v.Addr.String())
+				if exists && relayData.ShuttingDown {
+					shuttingDownRelays = append(shuttingDownRelays, v)
+				}
+			}
+			relayMap.RUnlock()
+
+			sort.SliceStable(shuttingDownRelays, func(i, j int) bool { return shuttingDownRelays[i].Name < shuttingDownRelays[j].Name })
+
+			for i := range shuttingDownRelays {
+				name := shuttingDownRelays[i].Name
+				address := shuttingDownRelays[i].Addr.String()
+				id := shuttingDownRelays[i].ID
+				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,shutting down,,", relaysDataString, name, address, id)
 			}
 
 			relaysMutex.Lock()
@@ -577,6 +620,8 @@ func mainReturnWithCode() int {
 			routeMatrixData = routeMatrixDataNew
 			routeMatrixMutex.Unlock()
 
+			// update status data for "/status" handler
+
 			numRoutes := int32(0)
 			for i := range routeMatrixNew.RouteEntries {
 				numRoutes += routeMatrixNew.RouteEntries[i].NumRoutes
@@ -590,27 +635,33 @@ func mainReturnWithCode() int {
 			}
 
 			relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			
 			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
 
-			fmt.Printf("-----------------------------\n")
-			fmt.Printf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
-			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
-			fmt.Printf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
-			fmt.Printf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
-			fmt.Printf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
-			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
-			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
-			fmt.Printf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
-			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
-			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
-			fmt.Printf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrix.Bytes.Value()))
-			fmt.Printf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-			fmt.Printf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
-			fmt.Printf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-			fmt.Printf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
-			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
-			fmt.Printf("-----------------------------\n")
+			statusDataString := fmt.Sprintf("relay backend\n")
+			statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
+			statusDataString += fmt.Sprintf("uptime %s\n", uptime())
+			statusDataString += fmt.Sprintf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
+			statusDataString += fmt.Sprintf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
+			statusDataString += fmt.Sprintf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
+			statusDataString += fmt.Sprintf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
+			statusDataString += fmt.Sprintf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
+			statusDataString += fmt.Sprintf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
+			statusDataString += fmt.Sprintf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
+			statusDataString += fmt.Sprintf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
+			statusDataString += fmt.Sprintf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
+			statusDataString += fmt.Sprintf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
+			statusDataString += fmt.Sprintf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrix.Bytes.Value()))
+			statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+			statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
+			statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+			statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+			statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+			statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+
+			statusMutex.Lock()
+			statusData = []byte(statusDataString)
+			statusMutex.Unlock()
 
 			// optionally write route matrix to cloud storage
 
@@ -655,6 +706,18 @@ func mainReturnWithCode() int {
 		relaysMutex.RLock()
 		data := relaysData
 		relaysMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
 		buffer := bytes.NewBuffer(data)
 		_, err := buffer.WriteTo(w)
 		if err != nil {
@@ -707,6 +770,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
+	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())
 
@@ -782,9 +846,9 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
-func decodeToRelayArray(file *os.File, relayArray *[]routing.Relay) error {
+func decodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
 	decoder := gob.NewDecoder(file)
-	err := decoder.Decode(relayArray)
+	err := decoder.Decode(binWrapper)
 	return err
 }
 
