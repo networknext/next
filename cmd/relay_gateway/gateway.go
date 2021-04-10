@@ -13,7 +13,8 @@ import (
 	"sync"
 
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/tranpsort"
+    gateway "github.com/networknext/backend/modules/relay_gateway"
+	"github.com/networknext/backend/modules/transport"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -26,18 +27,6 @@ var (
 	sha           string
 	tag           string
 )
-
-type GatewayConfig struct {
-	ChannelBufferSize     int
-	UseHTTP               bool
-	RelayBackendAddresses []string
-	HTTPTimeout           time.Duration
-	BatchSize             int
-
-	PublishToHosts        []string
-	PublisherSendBuffer   int
-	PublisherRefreshTimer time.Duration
-}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -97,66 +86,15 @@ func mainReturnWithCode() int {
 
 	// Prioritize using HTTP to batch-send updates to relay backends
 	if cfg.UseHTTP {
-		// Create HTTP client to communicate with relay backends
-		client := &http.Client{Timeout: cfg.HTTPTimeout}
+		// Create a Gateway HTTP Client
+        gatewayHTTPClient, err := NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics, logger)
+        if err != nil {
+            level.Error(logger).Log("msg", "could not create gateway http client", "err", err)
+            return 1
+        }
 
-		// Create a buffer to hold the requests that will go to the relay backends
-		var updateBuffer *transport.RelayUpdateRequestList
-		var updateBufferMutex sync.RWMutex
-
-		// Handle update requests
-		go func() {
-			for {
-				select {
-				case update := <-updateChan:
-					// Add the update to the buffer and get the buffer's length
-					updateBufferMutex.Lock()
-					updateBuffer.Requests = append(updateBuffer.Requests, update)
-					bufferLength := len(updateBuffer.Requests)
-					updateBufferMutex.Unlock()
-
-					// Increment the updates received metric
-					gatewayMetrics.UpdatesReceived.Add(1)
-					// Set the number of updates queued for batch-sending
-					gatewayMetrics.UpdatesQueued.Set(bufferLength)
-
-					// Check if we have reached the batch size
-					if bufferLength >= cfg.BatchSize {
-						// Copy the buffer so we can clear it without affecting the worker goroutines
-						updateBufferMutex.Lock()
-						bufferCopy := updateBuffer
-						updateBuffer = updateBuffer[:0]
-						updateBufferMutex.Unlock()
-
-						// Send the buffer to all relay backends
-						for _, address := range cfg.RelayBackendAddresses {
-							go func() {
-								// Marshal the buffer copy
-								body, err := bufferCopy.MarshalBinary()
-								if err != nil {
-									gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Add(1)
-									_ = level.Error(logger).Log("msg", "unable to marshal buffer copy", "err", err)
-									return
-								}
-
-								buffer := bytes.NewBuffer(body)
-								resp, err := client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
-								if err != nil || resp.StatusCode != http.StatusOK {
-									gatewayMetrics.ErrorMetrics.BackendSendFailure.Add(1)
-									_ = level.Error(logger).Log("msg", fmt.Sprintf("unable to send update to relay backend %s, response %d", address, resp.StatusCode), "err", err)
-									return
-								}
-								resp.Body.Close()
-							}()
-						}
-
-						// Set the number of relay update requests sent to the relay backends (not necessarily successful)
-						gatewayMetrics.UpdatesFlushed.Add(bufferLength)
-						level.Info(logger).Log("msg", fmt.Sprintf("Sent %d relay updates to the relay backends", bufferLength))
-					}
-				}
-			}
-		}()
+        // Start up goroutins to POST to relay backends
+        gatewayHTTPClient.Start(ctx)
 	} else {
 		// TODO: implement ZeroMQ functionality
 		level.Error(logger).Log("err", "ZeroMQ is not yet supported")
@@ -279,8 +217,8 @@ func mainReturnWithCode() int {
 }
 
 // Get the config for how this relay gateway should operate
-func newConfig() (*transport.GatewayConfig, error) {
-	cfg := new(transport.GatewayConfig)
+func newConfig() (*gateway.GatewayConfig, error) {
+	cfg := new(gateway.GatewayConfig)
 	// Get the channel size
 	channelBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_CHANNEL_BUFFER_SIZE", 100000)
 	if err != nil {
@@ -317,6 +255,12 @@ func newConfig() (*transport.GatewayConfig, error) {
 			return nil, err
 		}
 		cfg.BatchSize = batchSize
+
+        numGoroutines, er := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_NUM_GOROUTINES", 1)
+        if err != nil {
+            return nil, err
+        }
+        cfg.NumGoroutines = numGoroutines
 	} else {
 		// Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
 		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {

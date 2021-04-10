@@ -144,7 +144,7 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 		return nil, err
 	}
 
-	m.UpdatesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	m.UpdatesQueued, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: handlerName + " Current Updates Queued",
 		ServiceName: serviceName,
 		ID:          handlerID + "updates_queued",
