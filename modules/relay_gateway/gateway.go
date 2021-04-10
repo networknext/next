@@ -1,9 +1,12 @@
 package relay_gateway
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
@@ -26,11 +29,11 @@ type GatewayConfig struct {
 }
 
 type GatewayHTTPClient struct {
-	cfg				 GatewayConfig
-	updateChan chan []byte
+	cfg            *GatewayConfig
+	updateChan     chan []byte
 	gatewayMetrics *metrics.RelayGatewayMetrics
-	client 		*http.Client
-	logger		log.Logger
+	client         *http.Client
+	logger         log.Logger
 }
 
 func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMetrics *metrics.RelayGatewayMetrics, logger log.Logger) (*GatewayHTTPClient, error) {
@@ -38,11 +41,11 @@ func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMet
 	client := &http.Client{Timeout: cfg.HTTPTimeout}
 
 	return &GatewayHTTPClient{
-		cfg: cfg,
-		updateChan: updateChan,
+		cfg:            cfg,
+		updateChan:     updateChan,
 		gatewayMetrics: gatewayMetrics,
-		client: client,
-		logger: logger,
+		client:         client,
+		logger:         logger,
 	}, nil
 }
 
@@ -76,14 +79,14 @@ func (httpClient *GatewayHTTPClient) Start(ctx context.Context) error {
 					// Increment the updates received metric
 					httpClient.gatewayMetrics.UpdatesReceived.Add(1)
 					// Set the number of updates queued for batch-sending
-					httpClient.gatewayMetrics.UpdatesQueued.Set(bufferLength)
+					httpClient.gatewayMetrics.UpdatesQueued.Set(float64(bufferLength))
 
 					// Check if we have reached the batch size
 					if bufferLength >= httpClient.cfg.BatchSize {
 						// Copy the buffer so we can clear it without affecting the worker goroutines
 						updateBufferMutex.Lock()
 						bufferCopy := updateBuffer
-						updateBuffer = updateBuffer[:0]
+						updateBuffer.Requests = updateBuffer.Requests[:0]
 						updateBufferMutex.Unlock()
 
 						// Send the buffer to all relay backends
@@ -110,7 +113,7 @@ func (httpClient *GatewayHTTPClient) Start(ctx context.Context) error {
 						}
 
 						// Set the number of relay update requests sent to the relay backends (not necessarily successful)
-						httpClient.gatewayMetrics.UpdatesFlushed.Add(bufferLength)
+						httpClient.gatewayMetrics.UpdatesFlushed.Add(float64(bufferLength))
 						level.Info(httpClient.logger).Log("msg", fmt.Sprintf("Sent %d relay updates to the relay backends", bufferLength))
 					}
 				}

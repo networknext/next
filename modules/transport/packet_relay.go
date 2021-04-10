@@ -13,7 +13,7 @@ import (
 const (
 	VersionNumberUpdateRequest  = 3
 	VersionNumberUpdateResponse = 0
-	MaxVersionStringLength = 32
+	MaxVersionStringLength      = 32
 )
 
 type RelayUpdateRequest struct {
@@ -27,8 +27,8 @@ type RelayUpdateRequest struct {
 
 	// todo: remove this stuff. belongs in another packet
 	TrafficStats routing.TrafficStats
-	CPUUsage float64
-	MemUsage float64
+	CPUUsage     float64
+	MemUsage     float64
 }
 
 func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
@@ -163,7 +163,7 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 }
 
 type RelayUpdateRequestList struct {
-	Requests 	[][]byte
+	Requests [][]byte
 }
 
 func (r *RelayUpdateRequestList) MarshalBinary() ([]byte, error) {
@@ -180,10 +180,9 @@ func (r *RelayUpdateRequestList) MarshalBinary() ([]byte, error) {
 
 func (r *RelayUpdateRequestList) UnmarshalBinary(buff []byte, batchSize int) error {
 	index := 0
-	var requests [][]byte
 
 	for i := 0; i < batchSize; i++ {
-		if !encoding.ReadBytes(buff, &index, &r.Requests, batchSize) {
+		if !encoding.ReadBytes(buff, &index, &r.Requests[i], uint32(batchSize)) {
 			return errors.New("failed to unmarshal relay update reuqest list requests")
 		}
 	}

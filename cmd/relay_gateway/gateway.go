@@ -6,17 +6,22 @@
 package main
 
 import (
+	"context"
+	"expvar"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 	"runtime"
-	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/backend"
-    gateway "github.com/networknext/backend/modules/relay_gateway"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
+	gateway "github.com/networknext/backend/modules/relay_gateway"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
@@ -68,9 +73,9 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	gatewayMetrics, err, msg := metrics.NewRelayGatewayMetrics(ctx, metricsHandler, serviceName, "relay_gateway", "Relay Gateway", "relay update request")
+	gatewayMetrics, err := metrics.NewRelayGatewayMetrics(ctx, metricsHandler, serviceName, "relay_gateway", "Relay Gateway", "relay update request")
 	if err != nil {
-		level.Error(logger).Log("msg", msg, "err", err)
+		level.Error(logger).Log("msg", "could not create gateway metrics", "err", err)
 		return 1
 	}
 
@@ -81,20 +86,29 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Create an error channel for goroutines
+	errChan := make(chan error, 1)
+
 	// Create a channel to hold incoming relay update requests
 	updateChan := make(chan []byte, cfg.ChannelBufferSize)
 
 	// Prioritize using HTTP to batch-send updates to relay backends
 	if cfg.UseHTTP {
 		// Create a Gateway HTTP Client
-        gatewayHTTPClient, err := NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics, logger)
-        if err != nil {
-            level.Error(logger).Log("msg", "could not create gateway http client", "err", err)
-            return 1
-        }
+		gatewayHTTPClient, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics, logger)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create gateway http client", "err", err)
+			return 1
+		}
 
-        // Start up goroutins to POST to relay backends
-        gatewayHTTPClient.Start(ctx)
+		go func() {
+			// Start up goroutins to POST to relay backends
+			if err := gatewayHTTPClient.Start(ctx); err != nil {
+				level.Error(logger).Log("err", err)
+				errChan <- err
+			}
+		}()
+
 	} else {
 		// TODO: implement ZeroMQ functionality
 		level.Error(logger).Log("err", "ZeroMQ is not yet supported")
@@ -184,7 +198,7 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, relayLogger, gatewayMetrics, updateChan)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, gatewayMetrics, updateChan)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -210,10 +224,14 @@ func mainReturnWithCode() int {
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
-	<-sigint
-	// TODO: implement clean shutdown to flush update requests in buffer
 
-	return 0
+	select {
+	case <-sigint:
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		// TODO: implement clean shutdown to flush update requests in buffer
+		return 1
+	}
 }
 
 // Get the config for how this relay gateway should operate
@@ -234,7 +252,7 @@ func newConfig() (*gateway.GatewayConfig, error) {
 	cfg.UseHTTP = useHTTP
 
 	// Load env vars depending on relay update delivery method
-	if nrbHTTP {
+	if useHTTP {
 		// Using HTTP, get the relay backend addresses to send relay updates to
 		if exists := envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES"); !exists {
 			return nil, fmt.Errorf("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
@@ -256,11 +274,11 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		}
 		cfg.BatchSize = batchSize
 
-        numGoroutines, er := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_NUM_GOROUTINES", 1)
-        if err != nil {
-            return nil, err
-        }
-        cfg.NumGoroutines = numGoroutines
+		numGoroutines, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_NUM_GOROUTINES", 1)
+		if err != nil {
+			return nil, err
+		}
+		cfg.NumGoroutines = numGoroutines
 	} else {
 		// Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
 		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
@@ -283,4 +301,6 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		}
 		cfg.PublisherRefreshTimer = publisherRefresh
 	}
+
+	return cfg, nil
 }

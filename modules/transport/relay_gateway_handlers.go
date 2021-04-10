@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -12,8 +13,6 @@ import (
 
 // GatewayRelayUpdateHandlerFunc receives relay update requests and puts them in requestChan
 func GatewayRelayUpdateHandlerFunc(logger log.Logger, gatewayMetrics *metrics.RelayGatewayMetrics, requestChan chan []byte) func(writer http.ResponseWriter, request *http.Request) {
-	handlerLogger := log.With(logger, "handler", "update")
-
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()
 		defer func() {

@@ -289,6 +289,10 @@ ifndef FEATURE_RB15_ADDRESSES
 export FEATURE_RB15_ADDRESSES = 127.0.0.1
 endif
 
+ifndef FEATURE_NEW_RELAY_BACKEND_ADDRESSES
+export FEATURE_NEW_RELAY_BACKEND_ADDRESSES = http://127.0.0.1:30000
+endif
+
 
 .PHONY: help
 help:
@@ -1239,47 +1243,47 @@ build-relay-ref:
 #    Relay Gateway    #
 #######################
 
-# .PHONY: dev-relay-gateway
-# dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
-# 	@PORT=30001 ./dist/relay_gateway
+.PHONY: dev-relay-gateway
+dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+	@PORT=30001 ./dist/relay_gateway
 
-# .PHONY: build-relay-gateway
-# build-relay-gateway:
-# 	@printf "Building relay gateway... "
-# 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
-# 	@printf "done\n"
+.PHONY: build-relay-gateway
+build-relay-gateway:
+	@printf "Building relay gateway... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
+	@printf "done\n"
 
-# .PHONY: build-relay-gateway-artifacts-dev
-# build-relay-gateway-artifacts-dev: build-relay-gateway
-# 	./deploy/build-artifacts.sh -e dev -s relay_gateway
+.PHONY: build-relay-gateway-artifacts-dev
+build-relay-gateway-artifacts-dev: build-relay-gateway
+	./deploy/build-artifacts.sh -e dev -s relay_gateway
 
 # .PHONY: build-relay-gateway-artifacts-nrb
 # build-relay-gateway-artifacts-nrb: build-relay-gateway
 # 	./deploy/build-artifacts.sh -e nrb -s relay_gateway
 
-# .PHONY: build-relay-gateway-artifacts-staging
-# build-relay-gateway-artifacts-staging: build-relay-gateway
-# 	./deploy/build-artifacts.sh -e staging -s relay_gateway
+.PHONY: build-relay-gateway-artifacts-staging
+build-relay-gateway-artifacts-staging: build-relay-gateway
+	./deploy/build-artifacts.sh -e staging -s relay_gateway
 
-# .PHONY: build-relay-gateway-artifacts-prod
-# build-relay-gateway-artifacts-prod: build-relay-gateway
-# 	./deploy/build-artifacts.sh -e prod -s relay_gateway
+.PHONY: build-relay-gateway-artifacts-prod
+build-relay-gateway-artifacts-prod: build-relay-gateway
+	./deploy/build-artifacts.sh -e prod -s relay_gateway
 
-# .PHONY: publish-relay-gateway-artifacts-dev
-# publish-relay-gateway-artifacts-dev:
-# 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
+.PHONY: publish-relay-gateway-artifacts-dev
+publish-relay-gateway-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
 
 # .PHONY: publish-relay-gateway-artifacts-nrb
 # publish-relay-gateway-artifacts-nrb:
 # 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_gateway
 
-# .PHONY: publish-relay-gateway-artifacts-staging
-# publish-relay-gateway-artifacts-staging:
-# 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
+.PHONY: publish-relay-gateway-artifacts-staging
+publish-relay-gateway-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
 
-# .PHONY: publish-relay-gateway-artifacts-prod
-# publish-relay-gateway-artifacts-prod:
-# 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
+.PHONY: publish-relay-gateway-artifacts-prod
+publish-relay-gateway-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
 
 #######################
 ##   Relay Frontend  ##
