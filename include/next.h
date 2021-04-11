@@ -30,21 +30,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// #define NEXT_EXPERIMENTAL 1
-
 #if !defined(NEXT_DEVELOPMENT)
 
-    #if NEXT_EXPERIMENTAL
-        #define NEXT_VERSION_FULL                          "4.0.11"
-        #define NEXT_VERSION_MAJOR_INT                            4
-        #define NEXT_VERSION_MINOR_INT                            0
-        #define NEXT_VERSION_PATCH_INT                           11
-    #else // #if NEXT_EXPERIMENTAL
-        #define NEXT_VERSION_FULL                          "4.0.10"
-        #define NEXT_VERSION_MAJOR_INT                            4
-        #define NEXT_VERSION_MINOR_INT                            0
-        #define NEXT_VERSION_PATCH_INT                           10
-    #endif // #if NEXT_EXPERIMENTAL
+    #define NEXT_VERSION_FULL                              "4.0.11"
+    #define NEXT_VERSION_MAJOR_INT                                4
+    #define NEXT_VERSION_MINOR_INT                                0
+    #define NEXT_VERSION_PATCH_INT                               11
 
 #else // !defined(NEXT_DEVELOPMENT)
 

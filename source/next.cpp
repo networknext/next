@@ -8981,9 +8981,6 @@ struct NextBackendServerUpdatePacket
     uint64_t datacenter_id;
     uint32_t num_sessions;
     next_address_t server_address;
-#if NEXT_EXPERIMENTAL
-    next_address_t server_internal_address;
-#endif // #if NEXT_EXPRIMENTAL
 
     NextBackendServerUpdatePacket()
     {
@@ -8994,9 +8991,6 @@ struct NextBackendServerUpdatePacket
         datacenter_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
-#if NEXT_EXPERIMENTAL
-        memset( &server_internal_address, 0, sizeof(next_address_t) );
-#endif // #if NEXT_EXPERIMENTAL
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -9008,14 +9002,6 @@ struct NextBackendServerUpdatePacket
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
-#if NEXT_EXPERIMENTAL
-        bool has_internal_address = Stream::IsWriting && !next_address_equal( &server_address, &server_internal_address );
-        serialize_bool( stream, has_internal_address );
-        if ( has_internal_address )
-        {
-            serialize_address( stream, server_internal_address );
-        }
-#endif // #if NEXT_EXPERIMENTAL
         return true;
     }
 };
@@ -9036,9 +9022,6 @@ struct NextBackendSessionUpdatePacket
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     next_address_t client_address;
     next_address_t server_address;
-#if NEXT_EXPERIMENTAL
-    next_address_t server_internal_address;
-#endif // #if NEXT_EXPERIMENTAL
     uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint64_t user_hash;
@@ -9118,15 +9101,6 @@ struct NextBackendSessionUpdatePacket
         serialize_address( stream, client_address );
 
         serialize_address( stream, server_address );
-
-#if NEXT_EXPERIMENTAL
-        bool has_internal_address = Stream::IsWriting && !next_address_equal( &server_address, &server_internal_address );
-        serialize_bool( stream, has_internal_address );
-        if ( has_internal_address )
-        {
-            serialize_address( stream, server_internal_address );
-        }
-#endif // #if NEXT_EXPERIMENTAL
 
         serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         serialize_bytes( stream, server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
@@ -10232,7 +10206,6 @@ struct next_server_internal_t
     next_address_t resolve_hostname_result;
     next_address_t backend_address;
     next_address_t server_address;
-    next_address_t server_internal_address;
     next_address_t bind_address;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
@@ -10705,12 +10678,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
 
-    char server_internal_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    strncpy( server_internal_address_buffer, server_address_string, NEXT_MAX_ADDRESS_STRING_LENGTH );
-    server_internal_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH-1] = '\0';
-
-    const char * server_internal_address_string = server_internal_address_buffer;
-
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
     {
@@ -10718,24 +10685,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         server_address_string = server_address_override;
     }
 
-    const char * server_internal_address_override = next_platform_getenv( "NEXT_SERVER_INTERNAL_ADDRESS" );
-    if ( server_internal_address_override )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server internal address override: '%s'", server_internal_address_override );
-        server_internal_address_string = server_internal_address_override;
-    }
-
     next_address_t server_address;
     if ( next_address_parse( &server_address, server_address_string ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse server address: '%s'", server_address_string );
-        return NULL;
-    }
-
-    next_address_t server_internal_address;
-    if ( next_address_parse( &server_internal_address, server_internal_address_string ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse server internal address: '%s'", server_internal_address_string );
         return NULL;
     }
 
@@ -10843,7 +10796,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->bind_address = bind_address;
     server->server_address = server_address;
-    server->server_internal_address = server_internal_address;
 
     int result = next_platform_mutex_create( &server->session_mutex );
     if ( result != NEXT_OK )
@@ -10902,11 +10854,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
-
-    if ( !next_address_equal( &server_address, &server_internal_address ) )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server internal address is %s", next_address_to_string( &server_internal_address, address_string ) );        
-    }
 
     next_crypto_kx_keypair( server->server_kx_public_key, server->server_kx_private_key );
 
@@ -12687,9 +12634,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
-#if NEXT_EXPERIMENTAL
-        packet.server_internal_address = server->server_internal_address;
-#endif // #if NEXT_EXPERIMENTAL
 
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
@@ -12776,9 +12720,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             }
             packet.client_address = session->address;
             packet.server_address = server->server_address;
-#if NEXT_EXPERIMENTAL
-            packet.server_internal_address = server->server_internal_address;
-#endif // #if NEXT_EXPERIMENTAL
             memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
 
