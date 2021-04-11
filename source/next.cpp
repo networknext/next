@@ -10545,7 +10545,11 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run whois" );
         return false;
     }
-    fread( whois_buffer, 1, sizeof(whois_buffer), file );
+    if ( fread( whois_buffer, 1, sizeof(whois_buffer), file ) == 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: fread failed on whois" );
+        return false;
+    }
     pclose( file );
 
     // check against multiplay supplier mappings
