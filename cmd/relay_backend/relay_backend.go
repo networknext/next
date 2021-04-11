@@ -11,25 +11,26 @@ import (
 	"encoding/gob"
 	"expvar"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
+	// "io"
+	// "path/filepath"
+	// "strings"
 
 	"cloud.google.com/go/pubsub"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/rjeczalik/notify"
+
+	// "github.com/rjeczalik/notify"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
@@ -192,6 +193,8 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// todo: disabled because it doesn't build on macos
+	/*
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
@@ -284,6 +287,7 @@ func mainReturnWithCode() int {
 			}
 		}()
 	}
+	*/
 
 	// Create the relay map
 	cleanupCallback := func(relayData routing.RelayData) error {
