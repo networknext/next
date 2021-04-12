@@ -200,11 +200,11 @@ func commitRelaysBin(env Environment) {
 
 	switch env.Name {
 	case "dev":
-		bucketName += "development_artifacts"
+		bucketName += "dev_database_bin"
 	case "prod":
-		bucketName += "prod_artifacts"
+		bucketName += "prod_database_bin"
 	case "staging":
-		bucketName += "staging_artifacts"
+		bucketName += "staging_database_bin"
 	case "local":
 		fmt.Println("No need to commit relays.bin for the happy path.")
 		os.Exit(0)
@@ -232,7 +232,7 @@ func commitRelaysBin(env Environment) {
 
 		err := gsutilCpCommand.Run()
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error copying relays.bin to %s: %v\n", bucketName, err), 1)
+			fmt.Println("Remote relays.bin file does not exist (!!), so no local backup made.")
 		}
 
 		// gsutil cp relays.bin gs://${bucketName}
