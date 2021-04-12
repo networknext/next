@@ -23,6 +23,10 @@ import (
 
 	"github.com/networknext/backend/modules/common/helpers"
 
+	// "github.com/rjeczalik/notify"
+	// "strings"
+	// "path/filepath"
+
 	"os"
 	"os/signal"
 
@@ -47,7 +51,6 @@ import (
 )
 
 // MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
-// An equal number of valve relays will also be added
 const MaxRelayCount = 10
 
 var (
@@ -187,13 +190,12 @@ func mainReturnWithCode() int {
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
-	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
-	if maxmindCityURI != "" && maxmindISPURI != "" {
+	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
+	if maxmindCityFile != "" && maxmindISPFile != "" {
 		mmdb := &routing.MaxmindDB{
-			HTTPClient: http.DefaultClient,
-			CityURI:    maxmindCityURI,
-			IspURI:     maxmindISPURI,
+			CityFile: maxmindCityFile,
+			IspFile:  maxmindISPFile,
 		}
 		var mmdbMutex sync.RWMutex
 
@@ -210,40 +212,41 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// todo: disable the sync for now until we can find out why it's causing session drops
+		// todo: disabled because notify doesn't compile on macos
+		/*
+		c := make(chan notify.EventInfo, 1)
 
-		// if envvar.Exists("MAXMIND_SYNC_DB_INTERVAL") {
-		// 	syncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
-		// 	if err != nil {
-		// 		level.Error(logger).Log("err", err)
-		// 		return 1
-		// 	}
+		// Get parent folder of the maxmind files
+		fileLocation, err := filepath.Abs(filepath.Dir(maxmindCityFile))
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 
-		// 	// Start a goroutine to sync from Maxmind.com
-		// 	go func() {
-		// 		ticker := time.NewTicker(syncInterval)
-		// 		for {
-		// 			newMMDB := &routing.MaxmindDB{}
+		// Only check for create events. cloud scheduler will delete and replace which will show up as a create event
+		if err := notify.Watch(fileLocation, c, notify.Create, notify.InModify); err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		defer notify.Stop(c)
 
-		// 			select {
-		// 			case <-ticker.C:
-		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-		// 					level.Error(logger).Log("err", err)
-		// 					continue
-		// 				}
-
-		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
-		// 				mmdbMutex.Lock()
-		// 				mmdb = newMMDB
-		// 				mmdbMutex.Unlock()
-		// 			case <-ctx.Done():
-		// 				return
-		// 			}
-
-		// 			time.Sleep(syncInterval)
-		// 		}
-		// 	}()
-		// }
+		go func() {
+			// Start by skipping the first event
+			for {
+				select {
+				case ei := <-c:
+					// Ignore every other notify event. cp, mv, and replace operations always fire 2 events
+					if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
+						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s. Sys info: %s", ei.Event().String(), ei.Path(), ei.Sys()))
+						// Sync the maxmind memory store when a old files are replaced
+						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+							level.Error(logger).Log("err", err)
+							continue
+						}
+					}
+				}
+			}
+		}()
+		*/
 	}
 
 	// Use a custom IP locator for staging so that clients
