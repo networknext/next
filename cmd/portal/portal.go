@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/gob"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -32,6 +33,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -357,6 +359,35 @@ func main() {
 		Storage: db,
 	}
 
+	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		var enabledRelays []routing.Relay
+		var relayWrapper routing.RelayBinWrapper
+
+		relays := db.Relays()
+
+		for _, localRelay := range relays {
+			if localRelay.State == routing.RelayStateEnabled {
+				enabledRelays = append(enabledRelays, localRelay)
+			}
+		}
+
+		relayWrapper.Relays = enabledRelays
+
+		var buffer bytes.Buffer
+
+		encoder := gob.NewEncoder(&buffer)
+		encoder.Encode(relayWrapper)
+
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+	}
+
 	go func() {
 		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
 		syncInterval, err := time.ParseDuration(genmapinterval)
@@ -382,51 +413,54 @@ func main() {
 
 	relayMap := jsonrpc.NewRelayStatsMap()
 
-	go func() {
-		relayStatsURL := os.Getenv("RELAY_STATS_URI")
+	// TODO: b0rked, needs to process a csv file from /relays and this GET
+	//       needs to be auth'd...
+	// go func() {
+	// 	relayStatsURL := os.Getenv("RELAY_STATS_URI")
+	// 	fmt.Printf("RELAY_STATS_URI: %s\n", relayStatsURL)
 
-		sleepInterval := time.Second
-		if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
-			if si, err := time.ParseDuration(siStr); err == nil {
-				sleepInterval = si
-			} else {
-				level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
-			}
-		}
+	// 	sleepInterval := time.Second
+	// 	if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
+	// 		if si, err := time.ParseDuration(siStr); err == nil {
+	// 			sleepInterval = si
+	// 		} else {
+	// 			level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
+	// 		}
+	// 	}
 
-		for {
-			time.Sleep(sleepInterval)
+	// 	for {
+	// 		time.Sleep(sleepInterval)
 
-			res, err := http.Get(relayStatsURL)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
-				continue
-			}
+	// 		res, err := http.Get(relayStatsURL)
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
+	// 			continue
+	// 		}
 
-			if res.StatusCode != http.StatusOK {
-				level.Error(logger).Log("msg", "bad relay_stats request")
-				continue
-			}
+	// 		if res.StatusCode != http.StatusOK {
+	// 			level.Error(logger).Log("msg", "bad relay_stats request")
+	// 			continue
+	// 		}
 
-			if res.ContentLength == -1 {
-				level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
-				res.Body.Close()
-				continue
-			}
+	// 		if res.ContentLength == -1 {
+	// 			level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
+	// 			res.Body.Close()
+	// 			continue
+	// 		}
 
-			data, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to read response body", "err", err)
-				res.Body.Close()
-				continue
-			}
-			res.Body.Close()
+	// 		data, err := ioutil.ReadAll(res.Body)
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "unable to read response body", "err", err)
+	// 			res.Body.Close()
+	// 			continue
+	// 		}
+	// 		res.Body.Close()
 
-			if err := relayMap.ReadAndSwap(data); err != nil {
-				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
-			}
-		}
-	}()
+	// 		if err := relayMap.ReadAndSwap(data); err != nil {
+	// 			level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
+	// 		}
+	// 	}
+	// }()
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
@@ -494,6 +528,9 @@ func main() {
 		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+
+		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
+		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler)).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
