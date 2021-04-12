@@ -865,19 +865,13 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		relay.InternalAddr = *addr
 
 	case "PublicKey":
-		publicKey, ok := value.(string)
+		publicKey, ok := value.([]byte)
 		if !ok {
 			return fmt.Errorf("%v is not a valid []byte type", value)
 		}
-
-		newPublicKey, err := base64.StdEncoding.DecodeString(publicKey)
-		if err != nil {
-			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
-		}
-
 		updateSQL.Write([]byte("update relays set public_key=$1 where id=$2"))
-		args = append(args, newPublicKey, relay.DatabaseID)
-		relay.PublicKey = newPublicKey
+		args = append(args, publicKey, relay.DatabaseID)
+		relay.PublicKey = publicKey
 
 	case "NICSpeedMbps":
 		portSpeed, ok := value.(float64)
@@ -1943,6 +1937,20 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
 	}
+
+	// SQLite3 does not like this check but it is necessary...
+	// TODO: fix/research
+	// result, err := stmt.Exec(sequenceNumber)
+	// if err != nil {
+	// 	level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+	// }
+	// rows, err := result.RowsAffected()
+	// if err != nil {
+	// 	level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+	// }
+	// if rows != 1 {
+	// 	level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+	// }
 
 	return nil
 }

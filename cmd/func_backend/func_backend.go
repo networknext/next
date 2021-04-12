@@ -224,6 +224,13 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
 		return
 	}
+
+	// todo: server internal addres
+/*
+	if serverUpdate.ServerInternalAddress.String() != serverUpdate.ServerAddress.String() {
+		fmt.Printf("server update internal address: %s\n", serverUpdate.ServerInternalAddress.String())
+	}	
+*/
 }
 
 func excludeNearRelays(sessionResponse *transport.SessionResponsePacket, routeState core.RouteState) {
@@ -283,6 +290,13 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if sessionUpdate.PacketsLostServerToClient > 0 {
 		fmt.Printf("%d server to client packets lost\n", sessionUpdate.PacketsLostServerToClient)
 	}
+
+	// todo: server internal address
+/*
+	if sessionUpdate.ServerInternalAddress.String() != sessionUpdate.ServerAddress.String() {
+		fmt.Printf("session update internal address: %s\n", sessionUpdate.ServerInternalAddress.String())
+	}
+*/
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
 		if sessionUpdate.NextKbpsUp > 0 {
@@ -561,7 +575,7 @@ func main() {
 	backend.statsDatabase = routing.NewStatsDatabase()
 	backend.routeMatrix = &routing.RouteMatrix{}
 
-	backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
+	backend.relayMap = routing.NewRelayMap(func(relayData *routing.RelayData) error {
 		backend.statsDatabase.DeleteEntry(relayData.ID)
 		return nil
 	})
@@ -814,13 +828,83 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	}
 }
 
-func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-	
-	fmt.Printf("relay update\n")
-
+func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		fmt.Printf("could not read body\n")
+		return
+	}
+	defer request.Body.Close()
+
+	index := 0
+
+	var magic uint32
+	if !ReadUint32(body, &index, &magic) || magic != InitRequestMagic {
+		return
+	}
+
+	var version uint32
+	if !ReadUint32(body, &index, &version) || version != InitRequestVersion {
+		return
+	}
+
+	var nonce []byte
+	if !ReadBytes(body, &index, &nonce, crypto.NonceSize) {
+		return
+	}
+
+	var relay_address string
+	if !ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
+		return
+	}
+
+	var encrypted_token []byte
+	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes+crypto.MACSize) {
+		return
+	}
+
+	if _, success := crypto.Open(encrypted_token, nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !success {
+		return
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+	if err != nil {
+		return
+	}
+
+	relay := &routing.RelayData{
+		ID:             crypto.HashID(relay_address),
+		Addr:           *udpAddr,
+		PublicKey:      crypto.RelayPublicKey[:],
+		LastUpdateTime: time.Now(),
+	}
+
+	backend.mutex.Lock()
+	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
+	backend.mutex.Unlock()
+	if !ok {
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	backend.mutex.Lock()
+	backend.relayMap.AddRelayDataEntry(relay.Addr.String(), *relay)
+	backend.dirty = true
+	backend.mutex.Unlock()
+
+	writer.Header().Set("Content-Type", "application/octet-stream")
+
+	responseData := make([]byte, 64)
+	index = 0
+	WriteUint32(responseData, &index, InitResponseVersion)
+	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+	WriteBytes(responseData, &index, relay.PublicKey, RelayTokenBytes)
+	responseData = responseData[:index]
+	writer.Write(responseData)
+}
+
+func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
+	body, err := ioutil.ReadAll(request.Body)
+	if err != nil {
 		return
 	}
 	defer request.Body.Close()
@@ -829,25 +913,21 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	var version uint32
 	if !ReadUint32(body, &index, &version) || version != UpdateRequestVersion {
-		fmt.Printf("bad version\n")
 		return
 	}
 
 	var relay_address string
 	if !ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
-		fmt.Printf("address\n")
 		return
 	}
 
 	var token []byte
 	if !ReadBytes(body, &index, &token, RelayTokenBytes) {
-		fmt.Printf("bad token\n")
 		return
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
 	if err != nil {
-		fmt.Printf("bad resolve addr %s\n", relay_address)
 		return
 	}
 
@@ -860,12 +940,10 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	var numRelays uint32
 	if !ReadUint32(body, &index, &numRelays) {
-		fmt.Printf("could not read num relays\n")
 		return
 	}
 
 	if numRelays > MaxRelays {
-		fmt.Printf("too many relays\n")
 		return
 	}
 
@@ -876,19 +954,15 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		var id uint64
 		var rtt, jitter, packetLoss float32
 		if !ReadUint64(body, &index, &id) {
-			fmt.Printf("bad relay id\n")
 			return
 		}
 		if !ReadFloat32(body, &index, &rtt) {
-			fmt.Printf("bad relay rtt\n")
 			return
 		}
 		if !ReadFloat32(body, &index, &jitter) {
-			fmt.Printf("bad relay jitter\n")
 			return
 		}
 		if !ReadFloat32(body, &index, &packetLoss) {
-			fmt.Printf("bad relay packet loss\n")
 			return
 		}
 		ping := routing.RelayStatsPing{}
@@ -906,7 +980,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	relaysToPing := make([]routing.RelayPingData, 0)
 
 	backend.mutex.Lock()
-
 	allRelayData := backend.relayMap.GetAllRelayData()
 	for _, v := range allRelayData {
 		if v.Addr.String() != relay.Addr.String() {
@@ -916,18 +989,11 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
 	if !ok {
-		backend.dirty = true
-	} 
-
-	relayData := routing.RelayData{
-	       ID:             crypto.HashID(relay_address),
-	       Addr:           *udpAddr,
-	       PublicKey:      crypto.RelayPublicKey[:],
-	       LastUpdateTime: time.Now(),
+		backend.mutex.Unlock()
+		writer.WriteHeader(http.StatusNotFound)
+		return
 	}
-
-	backend.relayMap.UpdateRelayData(relayData)
-
+	backend.relayMap.UpdateRelayDataEntry(relay.Addr.String(), 0) // , relay.TrafficStats, relay.CPUUsage, relay.MemUsage)
 	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
@@ -965,8 +1031,8 @@ func NearHandler(writer http.ResponseWriter, request *http.Request) {
 
 func WebServer() {
 	router := mux.NewRouter()
+	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	router.HandleFunc("/near", NearHandler).Methods("GET")
-	fmt.Printf("WebServer\n")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }

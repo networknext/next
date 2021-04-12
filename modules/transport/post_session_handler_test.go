@@ -51,10 +51,6 @@ func (pub *badPublisher) Publish(ctx context.Context, topic pubsub.Topic, messag
 	return 0, errors.New("bad publish")
 }
 
-func (pub *badPublisher) Close() error {
-	return nil
-}
-
 type retryPublisher struct {
 	retryCount int
 	retries    int
@@ -69,10 +65,6 @@ func (pub *retryPublisher) Publish(ctx context.Context, topic pubsub.Topic, mess
 	return 0, &pubsub.ErrRetry{}
 }
 
-func (pub *retryPublisher) Close() error {
-	return nil
-}
-
 type mockPublisher struct {
 	calledChan        chan bool
 	publishedMessages [][][]byte
@@ -83,10 +75,6 @@ func (pub *mockPublisher) Publish(ctx context.Context, topic pubsub.Topic, messa
 
 	pub.calledChan <- true
 	return len(message), nil
-}
-
-func (pub *mockPublisher) Close() error {
-	return nil
 }
 
 func testBillingEntry() *billing.BillingEntry {

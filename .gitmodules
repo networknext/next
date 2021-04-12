@@ -1,3 +1,6 @@
+[submodule "relay"]
+	path = relay
+	url = git@github.com:networknext/relay
 [submodule "sdk"]
 	path = sdk
 	url = git@github.com:networknext/sdk.git

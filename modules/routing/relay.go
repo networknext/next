@@ -27,10 +27,6 @@ const (
 
 type RelayState uint32
 
-type RelayBinWrapper struct {
-	Relays []Relay
-}
-
 func (state RelayState) String() string {
 	switch state {
 	case RelayStateEnabled:

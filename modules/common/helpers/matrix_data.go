@@ -10,8 +10,7 @@ type MatrixData struct {
 func (m *MatrixData) GetMatrix() []byte {
 	m.locker.RLock()
 	defer m.locker.RUnlock()
-	data := m.data
-	return data
+	return m.data
 }
 
 func (m *MatrixData) SetMatrix(matrix []byte) {

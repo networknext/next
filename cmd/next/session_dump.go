@@ -119,10 +119,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NearRelayRTTs",
 		"NearRelayJitters",
 		"NearRelayPacketLosses",
-		"LackOfDiversity",
-		"RouteDiversity",
-		"Pro",
-		"PacketLoss",
 		"Tags",
 		"ABTest",
 		"Next",
@@ -188,10 +184,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// NextRelays
 		nextRelays := billingEntry.NextRelaysStrings
 		// TotalPrice
-		totalPrice := ""
-		if billingEntry.TotalPrice.Valid {
-			totalPrice = fmt.Sprintf("%d", billingEntry.TotalPrice.Int64)
-		}
+		totalPrice := fmt.Sprintf("%d", billingEntry.TotalPrice)
 		// ClientToServerPacketsLost
 		clientToServerPacketsLost := ""
 		if billingEntry.ClientToServerPacketsLost.Valid {
@@ -460,27 +453,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			serverToClientPacketsSent = fmt.Sprintf("%d", billingEntry.ServerToClientPacketsSent.Int64)
 		}
 
-		// LackOfDiversity,
-		lackOfDiversity := ""
-		if billingEntry.LackOfDiversity.Valid {
-			lackOfDiversity = fmt.Sprintf("%t", billingEntry.LackOfDiversity.Bool)
-		}
-		// PacketLoss
-		packetLoss := ""
-		if billingEntry.PacketLoss.Valid {
-			packetLoss = fmt.Sprintf("%5.5f", billingEntry.PacketLoss.Float64)
-		}
-		// Pro
-		pro := ""
-		if billingEntry.Pro.Valid {
-			pro = fmt.Sprintf("%t", billingEntry.Pro.Bool)
-		}
-		// RouteDiversity
-		routeDiversity := ""
-		if billingEntry.RouteDiversity.Valid {
-			routeDiversity = fmt.Sprintf("%d", billingEntry.RouteDiversity.Int64)
-		}
-
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
 			timeStamp,
@@ -521,10 +493,6 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nearRelayRTTs,
 			nearRelayJitters,
 			nearRelayPacketLosses,
-			lackOfDiversity,
-			routeDiversity,
-			pro,
-			packetLoss,
 			tags,
 			abTest,
 			next,
@@ -644,11 +612,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	routeChanged,
 	commitVeto,
 	clientToServerPacketsSent,
-	serverToClientPacketsSent,
-	lackOfDiversity,
-	packetLoss,
-	pro,
-	routeDiversity
+	serverToClientPacketsSent
     from `))
 
 	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {
@@ -705,7 +669,6 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 
 		it, err := job.Read(ctx)
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("GetAllSessionBillingInfo() job.Read() error: %v", err), 1)
 			return nil, err
 		}
 
@@ -718,7 +681,6 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 				break
 			}
 			if err != nil {
-				handleRunTimeError(fmt.Sprintf("GetAllSessionBillingInfo() BigQuery iterator error: %v", err), 1)
 				return nil, err
 			}
 			rows = append(rows, rec)

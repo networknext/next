@@ -23,7 +23,6 @@ type MessageInfo struct {
 
 type Publisher interface {
 	Publish(ctx context.Context, topic Topic, message []byte) (int, error)
-	Close() error
 }
 
 type Subscriber interface {
