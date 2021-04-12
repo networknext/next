@@ -11,10 +11,10 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"unsafe"
-	"os"
 )
 
 const NEXT_EXPERIMENTAL = false
@@ -44,7 +44,7 @@ func init() {
 
 func Debug(s string, params ...interface{}) {
 	if debugLogs {
-		fmt.Printf(s + "\n", params...)
+		fmt.Printf(s+"\n", params...)
 	}
 }
 
@@ -1133,7 +1133,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
 	if numBestRoutes == 0 {
 		if debug != nil {
-			*debug += "could not find any next routes. this should never happen\n"
+			*debug += "could not find any next routes\n"
 		}
 		return
 	}

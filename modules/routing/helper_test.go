@@ -1,7 +1,8 @@
 package routing_test
 
+// todo: not today
+/*
 import (
-	"math"
 	"math/rand"
 	"net"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
-
 func randomPublicKey() []byte {
 	arr := make([]byte, crypto.KeySize)
 	rand.Read(arr)
@@ -28,14 +28,10 @@ func fillRelayDatabase(relayMap *routing.RelayMap) {
 	fillData := func(addr string, updateTime time.Time) {
 		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		data := &routing.RelayData{
+		data := routing.RelayData{
 			ID:   id,
 			Name: addr,
 			Addr: *udp,
-			Datacenter: routing.Datacenter{
-				ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-				Name: randomString(5),
-			},
 			PublicKey:      randomPublicKey(),
 			LastUpdateTime: updateTime,
 		}
@@ -68,3 +64,4 @@ func fillStatsDatabase(statsdb *routing.StatsDatabase) {
 	makeEntry(statsdb, "127.0.0.1:40000", "127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
 	makeEntry(statsdb, "127.0.0.2:40000", "127.0.0.1:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
 }
+*/
