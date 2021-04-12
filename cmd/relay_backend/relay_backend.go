@@ -68,7 +68,7 @@ func init() {
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("could not load relay binary: %s\n", filePath)
+		// fmt.Printf("could not load relay binary: %s\n", filePath)
 		return
 	}
 	defer file.Close()
@@ -106,7 +106,7 @@ func mainReturnWithCode() int {
 
 	serviceName := "relay_backend"
 
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("\n%s\n\n", serviceName)
 
 	ctx := context.Background()
 
@@ -643,6 +643,7 @@ func mainReturnWithCode() int {
 			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
 
 			statusDataString := fmt.Sprintf("relay backend\n")
+			statusDataString += fmt.Sprintf("git hash %s\n", sha)
 			statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
 			statusDataString += fmt.Sprintf("uptime %s\n", uptime())
 			statusDataString += fmt.Sprintf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())

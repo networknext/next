@@ -102,10 +102,8 @@ func (r *RelayUpdateRequest) unmarshalBinaryV3(buff []byte, index int) error {
 	var numRelays uint32
 
 	var addr string
-	if !(encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) &&
-		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
-		encoding.ReadUint32(buff, &index, &numRelays)) {
-		return errors.New("invalid packet")
+	if !encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) {
+		return errors.New("could not read relay address")
 	}
 
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
@@ -114,17 +112,25 @@ func (r *RelayUpdateRequest) unmarshalBinaryV3(buff []byte, index int) error {
 		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
 	}
 
+	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize {
+		return errors.New("could not read relay token")
+	}
+
+	if !encoding.ReadUint32(buff, &index, &numRelays) {
+		return errors.New("could not read num relays")
+	}
+
 	r.PingStats = make([]routing.RelayStatsPing, numRelays)
+	
 	for i := 0; i < int(numRelays); i++ {
+	
 		stats := &r.PingStats[i]
 
 		// todo: these could be much more efficient as byte values [0,255]
-		if !(encoding.ReadUint64(buff, &index, &stats.RelayID) &&
-			encoding.ReadFloat32(buff, &index, &stats.RTT) &&
-			encoding.ReadFloat32(buff, &index, &stats.Jitter) &&
-			encoding.ReadFloat32(buff, &index, &stats.PacketLoss)) {
-			return errors.New("invalid packet, could not read a ping stat")
-		}
+		encoding.ReadUint64(buff, &index, &stats.RelayID)
+		encoding.ReadFloat32(buff, &index, &stats.RTT)
+		encoding.ReadFloat32(buff, &index, &stats.Jitter)
+		encoding.ReadFloat32(buff, &index, &stats.PacketLoss)
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.SessionCount) {
