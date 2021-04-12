@@ -165,6 +165,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			if err != nil && err != redis.ErrNil {
 				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("UserSessions() failed getting session slices")
 				return err
 			}
 
@@ -399,6 +400,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive first session count")
 				return err
 			}
 
@@ -417,6 +419,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive second session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive second session count")
 				return err
 			}
 
@@ -472,7 +475,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
-			err = fmt.Errorf("TotalSessions() failed getting total session next counts")
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
@@ -480,7 +483,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
-			err = fmt.Errorf("TotalSessions() failed getting total session next counts")
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
@@ -657,6 +660,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionDetails() failed getting session slices")
 			return err
 		}
 
@@ -749,6 +753,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer")
 			return err
 		}
 
@@ -1738,6 +1743,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
 			return sessions, err
 		}
 

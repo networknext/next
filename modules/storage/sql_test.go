@@ -1069,11 +1069,14 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, uint32(25000), checkRelay.MaxSessions)
 
 		// relay.PublicKey
-		err = db.UpdateRelay(ctx, rid, "PublicKey", []byte("public key"))
+		err = db.UpdateRelay(ctx, rid, "PublicKey", "1AKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, []byte("public key"), checkRelay.PublicKey)
+
+		newPublicKey, err := base64.StdEncoding.DecodeString("1AKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+		assert.NoError(t, err)
+		assert.Equal(t, newPublicKey, checkRelay.PublicKey)
 
 		// relay.Datacenter = only one datacenter available...
 
