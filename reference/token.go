@@ -1,5 +1,8 @@
 package reference
 
+// todo: not today, friends
+
+/*
 import (
 	"encoding/base64"
 	"fmt"
@@ -57,3 +60,4 @@ func main() {
 	fmt.Println(ok)
 	fmt.Println(arr)
 }
+*/
