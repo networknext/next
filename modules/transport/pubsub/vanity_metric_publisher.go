@@ -54,9 +54,3 @@ func (pub *VanityMetricPublisher) Publish(ctx context.Context, topic Topic, mess
 
 	return bytes, err
 }
-
-func (pub *VanityMetricPublisher) Close() error {
-	pub.mutex.Lock()
-	defer pub.mutex.Unlock()
-	return pub.socket.Close()
-}

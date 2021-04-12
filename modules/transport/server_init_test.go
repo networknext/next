@@ -1,6 +1,6 @@
 package transport_test
 
-/* import (
+import (
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -497,4 +497,3 @@ func TestServerInitHandlerSuccessDatacenterAliasFound(t *testing.T) {
 
 	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerInitMetrics)
 }
-*/

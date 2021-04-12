@@ -1,6 +1,5 @@
 package transport
 
-/*
 import (
 	"bytes"
 	"context"
@@ -28,6 +27,122 @@ type GatewayHandlerConfig struct {
 	UpdateMetrics    *metrics.RelayUpdateMetrics
 	RouterPrivateKey []byte
 	Publishers       []pubsub.Publisher
+}
+
+// RelayInitHandlerFunc returns the function for the relay init endpoint
+func GatewayRelayInitHandlerFunc(logger log.Logger, params *GatewayHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+	handlerLogger := log.With(logger, "handler", "init")
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		durationStart := time.Now()
+		defer func() {
+			durationSince := time.Since(durationStart)
+			params.InitMetrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			params.InitMetrics.Invocations.Add(1)
+		}()
+
+		localLogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			level.Error(localLogger).Log("msg", "could not read packet", "err", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		defer request.Body.Close()
+
+		var relayInitRequest RelayInitRequest
+		switch request.Header.Get("Content-Type") {
+		case "application/octet-stream":
+			err = relayInitRequest.UnmarshalBinary(body)
+		default:
+			err = errors.New("unsupported content type")
+		}
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			params.InitMetrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			return
+		}
+
+		localLogger = log.With(localLogger, "relay_addr", relayInitRequest.Address.String())
+
+		if relayInitRequest.Magic != InitRequestMagic {
+			level.Error(localLogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
+			http.Error(writer, "magic number mismatch", http.StatusBadRequest)
+			params.InitMetrics.ErrorMetrics.InvalidMagic.Add(1)
+			return
+		}
+
+		if relayInitRequest.Version > VersionNumberInitRequest {
+			level.Error(localLogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
+			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			params.InitMetrics.ErrorMetrics.InvalidVersion.Add(1)
+			return
+		}
+
+		id := crypto.HashID(relayInitRequest.Address.String())
+
+		relay, err := params.Storer.Relay(id)
+		if err != nil {
+			level.Error(localLogger).Log("msg", "failed to get relay from storage", "err", err)
+			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
+			params.InitMetrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			level.Error(localLogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.InitMetrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
+			return
+		}
+
+		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
+			level.Error(localLogger).Log("msg", "crypto open failed")
+			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
+			params.InitMetrics.ErrorMetrics.DecryptionFailure.Add(1)
+			return
+		}
+
+		// Set the relay's state to enabled
+		relay.State = routing.RelayStateEnabled
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := params.Storer.SetRelay(ctx, relay); err != nil {
+			level.Error(localLogger).Log("msg", "failed to set relay state in storage", "err", err)
+			http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
+			return
+		}
+
+		relayData := storage.NewRelayStoreData(id, relayInitRequest.RelayVersion, relayInitRequest.Address)
+		err = params.RelayStore.Set(*relayData)
+		if err != nil {
+			fmt.Printf("redis error %s \n", err.Error())
+		}
+
+		level.Debug(localLogger).Log("msg", "relay initialized")
+
+		var responseData []byte
+		response := RelayInitResponse{
+			Version:   VersionNumberInitResponse,
+			Timestamp: uint64(time.Now().Unix()),
+			PublicKey: relay.PublicKey,
+		}
+
+		switch request.Header.Get("Content-Type") {
+		case "application/octet-stream":
+			responseData, err = response.MarshalBinary()
+			if err != nil {
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
+		writer.Write(responseData)
+	}
 }
 
 // GatewayRelayUpdateHandlerFunc returns the function for the relay update endpoint
@@ -216,4 +331,3 @@ func GatewayRelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, p
 		writer.Write(responseData)
 	}
 }
-*/

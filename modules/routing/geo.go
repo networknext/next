@@ -1,13 +1,19 @@
 package routing
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules/encoding"
@@ -168,8 +174,9 @@ func (l *Location) ParseRedisString(values []string) error {
 
 // MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface
 type MaxmindDB struct {
-	CityFile string
-	IspFile  string
+	HTTPClient *http.Client
+	CityURI    string
+	IspURI     string
 
 	cityReader *geoip2.Reader
 	ispReader  *geoip2.Reader
@@ -179,11 +186,11 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 	metrics.Invocations.Add(1)
 	durationStart := time.Now()
 
-	if err := mmdb.OpenCity(ctx, mmdb.CityFile); err != nil {
+	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI); err != nil {
 		metrics.ErrorMetrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
 	}
-	if err := mmdb.OpenISP(ctx, mmdb.IspFile); err != nil {
+	if err := mmdb.OpenISP(ctx, mmdb.HTTPClient, mmdb.IspURI); err != nil {
 		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
@@ -194,8 +201,8 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 	return nil
 }
 
-func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
-	reader, err := mmdb.openMaxmindDB(ctx, file)
+func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, uri string) error {
+	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri)
 	if err != nil {
 		return err
 	}
@@ -204,8 +211,8 @@ func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
 	return nil
 }
 
-func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
-	reader, err := mmdb.openMaxmindDB(ctx, file)
+func (mmdb *MaxmindDB) OpenISP(ctx context.Context, httpClient *http.Client, uri string) error {
+	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri)
 	if err != nil {
 		return err
 	}
@@ -214,13 +221,51 @@ func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
 	return nil
 }
 
-func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.Reader, error) {
+func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, httpClient *http.Client, uri string) (*geoip2.Reader, error) {
+	var err error
+
 	// If there is a local file at this uri then just open it
-	if _, err := os.Stat(file); err != nil {
-		return nil, err
+	if _, err := os.Stat(uri); err == nil {
+		return geoip2.Open(uri)
 	}
 
-	return geoip2.Open(file)
+	// otherwise attempt to download it
+	mmres, err := httpClient.Get(uri)
+	if err != nil {
+		return nil, err
+	}
+	defer mmres.Body.Close()
+
+	if mmres.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received %d: %s from Maxmind.com", mmres.StatusCode, http.StatusText(mmres.StatusCode))
+	}
+
+	gz, err := gzip.NewReader(mmres.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+
+	buf := bytes.NewBuffer(nil)
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if strings.HasSuffix(hdr.Name, "mmdb") {
+			_, err := io.Copy(buf, tr)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return geoip2.FromBytes(buf.Bytes())
 }
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
@@ -241,8 +286,6 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	if err != nil {
 		return Location{}, err
 	}
-
-	fmt.Println("Using DB files to look up location")
 
 	return Location{
 		Latitude:  float32(cityres.Location.Latitude),

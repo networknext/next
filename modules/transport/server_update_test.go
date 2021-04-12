@@ -1,6 +1,5 @@
 package transport_test
 
-/*
 import (
 	"bytes"
 	"context"
@@ -403,4 +402,3 @@ func TestServerUpdateHandlerSuccessDatacenterAliasFound(t *testing.T) {
 
 	assertAllMetricsEqual(t, expectedMetrics, *metrics.ServerUpdateMetrics)
 }
-*/

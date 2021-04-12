@@ -12,6 +12,9 @@ type Metrics struct {
 	RelayBackendMetrics     *metrics.RelayBackendMetrics
 	RelayInitMetrics        *metrics.RelayInitMetrics
 	RelayUpdateMetrics      *metrics.RelayUpdateMetrics
+	ValveCostMatrixMetrics  *metrics.CostMatrixMetrics
+	ValveOptimizeMetrics    *metrics.OptimizeMetrics
+	ValveRouteMatrixMetrics *metrics.RouteMatrixMetrics
 }
 
 func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error, string) {
@@ -45,6 +48,24 @@ func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, 
 		return nil, err, "failed to create relay update metrics"
 	}
 	m.RelayUpdateMetrics = relayUpdateMetrics
+
+	valveCostMatrixMetrics, err := metrics.NewValveCostMatrixMetrics(ctx, metricsHandler)
+	if err != nil {
+		return nil, err, "failed to create valve cost matrix metrics"
+	}
+	m.ValveCostMatrixMetrics = valveCostMatrixMetrics
+
+	valveOptimizeMetrics, err := metrics.NewValveOptimizeMetrics(ctx, metricsHandler)
+	if err != nil {
+		return nil, err, "failed to create valve optimize metrics"
+	}
+	m.ValveOptimizeMetrics = valveOptimizeMetrics
+
+	valveRouteMatrixMetrics, err := metrics.NewValveRouteMatrixMetrics(ctx, metricsHandler)
+	if err != nil {
+		return nil, err, "failed to create valve route matrix metrics"
+	}
+	m.ValveRouteMatrixMetrics = valveRouteMatrixMetrics
 
 	return m, nil, ""
 }
