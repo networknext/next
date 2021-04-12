@@ -232,7 +232,7 @@ func commitRelaysBin(env Environment) {
 
 		err := gsutilCpCommand.Run()
 		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error copying relays.bin to %s: %v\n", bucketName, err), 1)
+			fmt.Println("Remote relays.bin file does not exist (!!), so no local backup made.")
 		}
 
 		// gsutil cp relays.bin gs://${bucketName}
