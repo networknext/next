@@ -1,5 +1,7 @@
 package relay_gateway
 
+// todo: not today
+/*
 import (
 	"fmt"
 	"net/http"
@@ -30,18 +32,6 @@ type Gateway struct {
 func (g *Gateway) Shutdown() {
 	g.ShutdownSvc = true
 	time.Sleep(10 * time.Second)
-}
-
-func (g *Gateway) RelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
-	fmt.Println("init request recieved")
-	Cfg := &transport.GatewayHandlerConfig{
-		RelayStore:       g.RelayStore,
-		RelayCache:       *g.RelayCache,
-		Storer:           *g.Store,
-		InitMetrics:      g.Metrics.RelayInitMetrics,
-		RouterPrivateKey: g.Cfg.RouterPrivateKey,
-	}
-	return transport.GatewayRelayInitHandlerFunc(g.Logger, Cfg)
 }
 
 func (g *Gateway) RelayUpdateHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
@@ -85,3 +75,4 @@ func (g *Gateway) RelayCacheRunner() error {
 	}
 	return nil
 }
+*/

@@ -1,6 +1,6 @@
 package transport_test
 
-import (
+/* import (
 	"bytes"
 	"context"
 	"fmt"
@@ -147,6 +147,31 @@ func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []stri
 	}
 }
 
+// func seedRelayMap(t *testing.T, relayMap *routing.RelayMap, addressesToAdd []string) {
+// 	for i, addrString := range addressesToAdd {
+// 		addr, err := net.ResolveUDPAddr("udp", addrString)
+// 		assert.NoError(t, err)
+
+// 		relayData := &routing.RelayData{
+// 			ID:   crypto.HashID(addrString),
+// 			Name: fmt.Sprintf("Relay %d", i),
+// 			Addr: *addr,
+// 			Seller: routing.Seller{
+// 				ID:   fmt.Sprintf("%d", i),
+// 				Name: fmt.Sprintf("Seller %d", i),
+// 			},
+// 			Datacenter: routing.Datacenter{
+// 				ID:   crypto.HashID(fmt.Sprintf("Datacenter %d", i)),
+// 				Name: fmt.Sprintf("Datacenter %d", i),
+// 			},
+// 			PublicKey:      make([]byte, crypto.KeySize),
+// 			LastUpdateTime: time.Now().Add(-time.Second),
+// 		}
+
+// 		relayMap.AddRelayDataEntry(addrString, relayData) // <-- generates compiler error
+// 	}
+// }
+
 func assertAllMetricsEqual(t *testing.T, expectedMetrics interface{}, actualMetrics interface{}) {
 	expectedMetricsValue := reflect.ValueOf(expectedMetrics)
 	actualMetricsValue := reflect.ValueOf(actualMetrics)
@@ -169,3 +194,4 @@ func assertAllMetricsEqual(t *testing.T, expectedMetrics interface{}, actualMetr
 		}
 	}
 }
+*/
