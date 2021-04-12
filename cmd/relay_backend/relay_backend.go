@@ -274,39 +274,21 @@ func mainReturnWithCode() int {
 					// Proceed to fill up the new relay hash
 					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
-					// Check if the file contents are actually new
-					fileChange := false
-					if len(relayArray_internal) != len(relayArrayNew) {
-						fileChange = true
-					} else {
-						for i := 0; i < len(relayArrayNew); i++ {
-							if !relayArray_internal[i].CompareEquals(&relayArrayNew[i]) {
-								fileChange = true
-								level.Debug(logger).Log("msg", "new file detected")
-								break
-							}
-						}
-					}
+					// Pointer swap the relay array
+					relayArrayMutex.Lock()
+					relayArray_internal = relayArrayNew
+					relayArrayMutex.Unlock()
 
-					if fileChange {
-						// Pointer swap the relay array
-						relayArrayMutex.Lock()
-						relayArray_internal = relayArrayNew
-						relayArrayMutex.Unlock()
+					// Pointer swap the relay hash
+					relayHashMutex.Lock()
+					relayHash_internal = relayHashNew
+					relayHashMutex.Unlock()
 
-						// Pointer swap the relay hash
-						relayHashMutex.Lock()
-						relayHash_internal = relayHashNew
-						relayHashMutex.Unlock()
+					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
+					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
-						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
-						level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
-
-						// Print the new list of relays
-						displayLoadedRelays(relayArray_internal)
-					} else {
-						level.Debug(logger).Log("msg", "no file change detected")
-					}
+					// Print the new list of relays
+					displayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()

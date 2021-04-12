@@ -757,34 +757,3 @@ func (r *Relay) String() string {
 
 	return relay
 }
-
-// Compares if two relays are equal based on important fields
-func (r *Relay) CompareEquals(rNew *Relay) bool {
-	if r.ID == rNew.ID &&
-		r.Name == rNew.Name &&
-		r.Addr.String() == rNew.Addr.String() &&
-		r.InternalAddr.String() == rNew.InternalAddr.String() &&
-		string(r.PublicKey) == string(rNew.PublicKey) &&
-		r.Seller.DatabaseID == rNew.Seller.DatabaseID &&
-		r.Datacenter.ID == rNew.Datacenter.ID &&
-		r.NICSpeedMbps == rNew.NICSpeedMbps &&
-		r.IncludedBandwidthGB == rNew.IncludedBandwidthGB &&
-		r.State == rNew.State &&
-		r.ManagementAddr == rNew.ManagementAddr &&
-		r.SSHUser == rNew.SSHUser &&
-		r.SSHPort == rNew.SSHPort &&
-		r.MaxSessions == rNew.MaxSessions &&
-		r.MRC == rNew.MRC &&
-		r.Overage == rNew.Overage &&
-		r.BWRule == rNew.BWRule &&
-		r.ContractTerm == rNew.ContractTerm &&
-		r.StartDate.String() == rNew.StartDate.String() &&
-		r.EndDate.String() == rNew.EndDate.String() &&
-		r.Type == rNew.Type &&
-		r.DatabaseID == rNew.DatabaseID &&
-		r.Notes == rNew.Notes {
-		return true
-	}
-
-	return false
-}
