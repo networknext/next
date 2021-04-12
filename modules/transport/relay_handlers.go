@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/crypto"
 )
 
 const InitRequestMagic = 0x9083708f
@@ -25,6 +26,25 @@ const MaxRelays = 1024
 var (
 	MaxJitter float64
 )
+
+func RelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/octet-stream")
+		responseData := make([]byte, 64)
+		index := 0
+		var nilVersion uint32 = 0
+		var nilPubKey []byte = make([]byte, 32)
+
+		encoding.WriteUint32(responseData, &index, nilVersion)
+		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+		encoding.WriteBytes(responseData, &index, nilPubKey, len(nilPubKey))
+		responseData = responseData[:index]
+
+		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
+
+		writer.Write(responseData)
+	}
+}
 
 type RelayUpdateHandlerConfig struct {
 	RelayMap     *routing.RelayMap
@@ -96,7 +116,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			writer.WriteHeader(http.StatusNotFound) // 404
 			return
-		}		
+		}
 
 		// todo: bring back crypto check
 
@@ -246,9 +266,9 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 
 func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
-		ID         uint64
-		Name       string
-		Addr       string
+		ID   uint64
+		Name string
+		Addr string
 	}
 
 	type response struct {
@@ -324,7 +344,7 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 				Name: relayData.Name,
 				// needs to be stringified before html,
 				//otherwise braces are displayed surrounding the ip
-				Addr:       relayData.Addr.String(),
+				Addr: relayData.Addr.String(),
 			}
 			if display.Name == "" {
 				display.Name = display.Addr
