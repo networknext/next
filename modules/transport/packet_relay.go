@@ -112,7 +112,7 @@ func (r *RelayUpdateRequest) unmarshalBinaryV3(buff []byte, index int) error {
 		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
 	}
 
-	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize {
+	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) {
 		return errors.New("could not read relay token")
 	}
 
