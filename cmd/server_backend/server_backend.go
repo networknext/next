@@ -16,15 +16,16 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/rjeczalik/notify"
+
+	// "github.com/rjeczalik/notify"
+	// "strings"
+	// "path/filepath"
 
 	"os"
 	"os/signal"
@@ -188,6 +189,12 @@ func mainReturnWithCode() int {
 		return routing.NullIsland
 	}
 
+	// Setup maxmind download go routine
+	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
+	if err != nil {
+		maxmindSyncInterval = time.Minute * 1
+	}
+
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
 	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
@@ -211,35 +218,17 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		c := make(chan notify.EventInfo, 1)
-
-		// Get parent folder of the maxmind files
-		fileLocation, err := filepath.Abs(filepath.Dir(maxmindCityFile))
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		// Only check for create events. cloud scheduler will delete and replace which will show up as a create event
-		if err := notify.Watch(fileLocation, c, notify.Create, notify.InModify); err != nil {
-			level.Error(logger).Log("err", err)
-		}
-		defer notify.Stop(c)
-
+		ticker := time.NewTicker(maxmindSyncInterval)
 		go func() {
-			// Start by skipping the first event
 			for {
 				select {
-				case ei := <-c:
-					// Ignore every other notify event. cp, mv, and replace operations always fire 2 events
-					if strings.Contains(ei.Path(), maxmindCityFile) || strings.Contains(ei.Path(), maxmindISPFile) {
-						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s. Sys info: %s", ei.Event().String(), ei.Path(), ei.Sys()))
-						// Sync the maxmind memory store when a old files are replaced
-						if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-							level.Error(logger).Log("err", err)
-							continue
-						}
+				case <-ticker.C:
+					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+						level.Error(logger).Log("err", err)
+						continue
 					}
+				case <-ctx.Done():
+					return
 				}
 			}
 		}()

@@ -21,15 +21,16 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
+	// "strings"
 
 	"cloud.google.com/go/pubsub"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/rjeczalik/notify"
+
+	// "github.com/rjeczalik/notify"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
@@ -67,7 +68,7 @@ func init() {
 	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("could not load relay binary: %s\n", filePath)
+		// fmt.Printf("could not load relay binary: %s\n", filePath)
 		return
 	}
 	defer file.Close()
@@ -87,12 +88,12 @@ func init() {
 }
 
 func uptime() time.Duration {
-    return time.Since(startTime)
+	return time.Since(startTime)
 }
 
 func init() {
-    est, _ := time.LoadLocation("EST")
-    startTime = time.Now().In(est)
+	est, _ := time.LoadLocation("EST")
+	startTime = time.Now().In(est)
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -105,7 +106,7 @@ func mainReturnWithCode() int {
 
 	serviceName := "relay_backend"
 
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("\n%s\n\n", serviceName)
 
 	ctx := context.Background()
 
@@ -212,74 +213,82 @@ func mainReturnWithCode() int {
 		// Used to watch over file creation and modification
 		directoryPath := filepath.Dir(absPath)
 
-		// Create channel to store notifications of file changing
-		// Use a size of 2 to ensure a change is detected even with io.EOF error
-		fileChan := make(chan notify.EventInfo, 2)
+		// todo: disabled because it doesn't build on macos
+		/*
+			// Create channel to store notifications of file changing
+			// Use a size of 2 to ensure a change is detected even with io.EOF error
+			fileChan := make(chan notify.EventInfo, 2)
 
-		// Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
-		// Create covers the case where a file is explicitly deleted and then re-added
-		// InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
-		if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
+			// Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
+			// Create covers the case where a file is explicitly deleted and then re-added
+			// InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
+			if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
+				level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
+				return 1
+			}
+			defer notify.Stop(fileChan)
+		*/
+
+		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+		if err != nil {
+			level.Error(logger).Log("err", err)
 			return 1
 		}
-		defer notify.Stop(fileChan)
+
+		ticker := time.NewTicker(binSyncInterval)
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
 		go func() {
 			level.Debug(logger).Log("msg", fmt.Sprintf("started watchman on %s", directoryPath))
 			for {
 				select {
-				case ei := <-fileChan:
-					if strings.Contains(ei.Path(), absPath) {
-						// File has changed
-						level.Debug(logger).Log("msg", fmt.Sprintf("detected file change type %s at %s", ei.Event().String(), ei.Path()))
-						file, err := os.Open(absPath)
-						if err != nil {
-							level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
-							continue
-						}
-
-						// Setup relay array and hash to read into
-						var binWrapperNew routing.RelayBinWrapper
-						relayHashNew := make(map[uint64]routing.Relay)
-
-						if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
-							// Sometimes we receive an EOF error since the file is still being replaced
-							// so early out here and proceed on the next notification
-							file.Close()
-							level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
-							continue
-						} else if err != nil {
-							file.Close()
-							level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
-							continue
-						}
-
-						// Close the file since it is no longer needed
-						file.Close()
-
-						// Get the new relay array
-						relayArrayNew := binWrapperNew.Relays
-						// Proceed to fill up the new relay hash
-						sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
-
-						// Pointer swap the relay array
-						relayArrayMutex.Lock()
-						relayArray_internal = relayArrayNew
-						relayArrayMutex.Unlock()
-
-						// Pointer swap the relay hash
-						relayHashMutex.Lock()
-						relayHash_internal = relayHashNew
-						relayHashMutex.Unlock()
-
-						// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
-						level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
-
-						// Print the new list of relays
-						displayLoadedRelays(relayArray_internal)
+				case <-ticker.C:
+					// File has changed
+					file, err := os.Open(absPath)
+					if err != nil {
+						level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
+						continue
 					}
+
+					// Setup relay array and hash to read into
+					var binWrapperNew routing.RelayBinWrapper
+					relayHashNew := make(map[uint64]routing.Relay)
+
+					if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
+						// Sometimes we receive an EOF error since the file is still being replaced
+						// so early out here and proceed on the next notification
+						file.Close()
+						level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
+						continue
+					} else if err != nil {
+						file.Close()
+						level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
+						continue
+					}
+
+					// Close the file since it is no longer needed
+					file.Close()
+
+					// Get the new relay array
+					relayArrayNew := binWrapperNew.Relays
+					// Proceed to fill up the new relay hash
+					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+
+					// Pointer swap the relay array
+					relayArrayMutex.Lock()
+					relayArray_internal = relayArrayNew
+					relayArrayMutex.Unlock()
+
+					// Pointer swap the relay hash
+					relayHashMutex.Lock()
+					relayHash_internal = relayHashNew
+					relayHashMutex.Unlock()
+
+					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
+					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
+
+					// Print the new list of relays
+					displayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -635,10 +644,11 @@ func mainReturnWithCode() int {
 			}
 
 			relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-			
+
 			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
 
 			statusDataString := fmt.Sprintf("relay backend\n")
+			statusDataString += fmt.Sprintf("git hash %s\n", sha)
 			statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
 			statusDataString += fmt.Sprintf("uptime %s\n", uptime())
 			statusDataString += fmt.Sprintf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())

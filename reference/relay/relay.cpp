@@ -4598,9 +4598,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 {
     // build update data
 
-    uint32_t update_version = 0;
+    uint32_t update_version = 3;
 
-    uint8_t update_data[10*1024 + 8 + 8 + 8 + 1]; // + 8 for the session count, + 8 for the bytes sent counter, + 8 for the bytes received counter, + 1 for the shutdown flag
+    uint8_t update_data[10*1024];
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4622,14 +4622,8 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     relay_write_uint64(&p, relay->sessions->size());
-    relay_write_uint64(&p, relay->bytes_sent.load());
-    relay->bytes_sent.store(0);
-    relay_write_uint64(&p, relay->bytes_received.load());
-    relay->bytes_received.store(0);
-    relay_write_uint8(&p, shutdown);
-    relay_write_float64(&p, 0.00); // cpu usage
-    relay_write_float64(&p, 0.00); // memory usage
-    relay_write_string(&p, "1.0.0", sizeof("1.0.0")); // relay version
+    relay_write_uint8(&p, uint8_t(shutdown));
+    relay_write_string(&p, "reference", 32);
 
     int update_data_length = (int) ( p - update_data );
 

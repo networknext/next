@@ -16,15 +16,16 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/rjeczalik/notify"
+
+	// "github.com/rjeczalik/notify"
+	// "path/filepath"
+	// "strings"
 
 	"os"
 	"os/signal"
@@ -211,6 +212,8 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		// todo: disabled because notify doesn't compile on macos
+		/*
 		c := make(chan notify.EventInfo, 2)
 
 		// Get parent folder of the maxmind files
@@ -242,6 +245,7 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
+		*/
 	}
 
 	// Use a custom IP locator for staging so that clients
