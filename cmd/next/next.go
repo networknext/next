@@ -813,6 +813,12 @@ func main() {
 				ShortHelp:  "Sanity check a local database.bin file.",
 				Exec: func(ctx context.Context, args []string) error {
 
+					checkRelaysInBinFile()
+					// checkDatacentersInBinFile()
+					// checkSellersInBinFile()
+					// checkBuyersInBinFile()
+					// checkDCMapsInBinFile()
+
 					return nil
 				},
 			},
@@ -823,6 +829,7 @@ func main() {
 				ShortHelp:  "Publish a local database.bin file to the relevant GCP bucket.",
 				Exec: func(ctx context.Context, args []string) error {
 
+					commitDatabaseBin(env)
 					return nil
 				},
 			},
