@@ -390,12 +390,10 @@ func main() {
 
 	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
 
-		w.Header().Set("Content-Type", "application/octet-stream")
-
+		var dbWrapper routing.DatabaseBinWrapper
 		var enabledRelays []routing.Relay
 
-		var dbWrapper routing.DatabaseBinWrapper
-
+		buyers := db.Buyers()
 		relays := db.Relays()
 
 		for _, localRelay := range relays {
@@ -404,13 +402,24 @@ func main() {
 			}
 		}
 
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+		for _, buyer := range buyers {
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
+		}
+
 		dbWrapper.Relays = enabledRelays
+		dbWrapper.Sellers = db.Sellers()
+		dbWrapper.Buyers = buyers
+		dbWrapper.Datacenters = db.Datacenters()
+		dbWrapper.DatacenterMaps = datacenterMaps
 
 		var buffer bytes.Buffer
 
 		encoder := gob.NewEncoder(&buffer)
 		encoder.Encode(dbWrapper)
 
+		w.Header().Set("Content-Type", "application/octet-stream")
 		_, err = buffer.WriteTo(w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

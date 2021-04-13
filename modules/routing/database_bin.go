@@ -7,5 +7,6 @@ type DatabaseBinWrapper struct {
 	Buyers         []Buyer
 	Sellers        []Seller
 	Datacenters    []Datacenter
-	DatacenterMaps map[uint64]DatacenterMap
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap
+	//                 ^ Buyer.ID   ^ DatacenterMap map index
 }
