@@ -10578,9 +10578,9 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
             *buffer += len;
         }
 
-        if (nhost == NULL) 
+        if ( nhost == NULL )
         {
-            if (recurse && strcmp(hostname, ANICHOST) == 0) 
+            if ( recurse && strcmp(hostname, ANICHOST) == 0 ) 
             {
                 for (c = 0; c <= len; c++)
                 {
@@ -10590,7 +10590,7 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
                 {
                     if (strnstr(buf, ip_whois[i], len) != NULL) 
                     {
-                        asprintf(&nhost, "%s", ip_whois[i]);
+                        asprintf( &nhost, "%s", ip_whois[i] );  // note: nhost is allocated here
                         break;
                     }
                 }
@@ -10604,12 +10604,11 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
 
     bool result = true;
 
-    if ( recurse && nhost != NULL) 
+    if ( nhost != NULL) 
     {
         result = next_whois( address, nhost, 0, buffer, bytes_remaining );
+        free( nhost );
     }
-
-    free( nhost );
 
     return result;
 }
