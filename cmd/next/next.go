@@ -785,17 +785,6 @@ func main() {
 		},
 	}
 
-	var statusCommand = &ffcli.Command{
-		Name:       "status",
-		ShortUsage: "next status",
-		ShortHelp:  "Show realtime information about the relay fleet",
-		Exec: func(ctx context.Context, args []string) error {
-			queryRelayBackend(env)
-
-			return nil
-		},
-	}
-
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -803,62 +792,64 @@ func main() {
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
 
-			if relaysfs.NFlag() == 0 ||
-				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
-				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
-				// If no flags are given, set the default set of flags
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-			}
+			queryRelayBackend(env)
 
-			if relaysAllFlag {
-				// Show all relays (except for decommissioned relays) with --all flag
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateShowFlags[routing.RelayStateMaintenance] = true
-				relaysStateShowFlags[routing.RelayStateDisabled] = true
-				relaysStateShowFlags[routing.RelayStateQuarantine] = true
-				relaysStateShowFlags[routing.RelayStateOffline] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-				relaysStateHideFlags[routing.RelayStateMaintenance] = false
-				relaysStateHideFlags[routing.RelayStateDisabled] = false
-				relaysStateHideFlags[routing.RelayStateQuarantine] = false
-				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
+			// if relaysfs.NFlag() == 0 ||
+			// 	((relaysfs.NFlag() == 1) && relayOpsOutput) ||
+			// 	((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+			// 	// If no flags are given, set the default set of flags
+			// 	relaysStateShowFlags[routing.RelayStateEnabled] = true
+			// 	relaysStateHideFlags[routing.RelayStateEnabled] = false
+			// }
 
-			var arg string
-			if len(args) > 0 {
-				arg = args[0]
-			}
+			// if relaysAllFlag {
+			// 	// Show all relays (except for decommissioned relays) with --all flag
+			// 	relaysStateShowFlags[routing.RelayStateEnabled] = true
+			// 	relaysStateShowFlags[routing.RelayStateMaintenance] = true
+			// 	relaysStateShowFlags[routing.RelayStateDisabled] = true
+			// 	relaysStateShowFlags[routing.RelayStateQuarantine] = true
+			// 	relaysStateShowFlags[routing.RelayStateOffline] = true
+			// 	relaysStateHideFlags[routing.RelayStateEnabled] = false
+			// 	relaysStateHideFlags[routing.RelayStateMaintenance] = false
+			// 	relaysStateHideFlags[routing.RelayStateDisabled] = false
+			// 	relaysStateHideFlags[routing.RelayStateQuarantine] = false
+			// 	relaysStateHideFlags[routing.RelayStateOffline] = false
+			// }
 
-			if relayOpsOutput {
-				opsRelays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-					relayBWSort,
-				)
-			} else {
-				relays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					relaysListFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-				)
-			}
+			// var arg string
+			// if len(args) > 0 {
+			// 	arg = args[0]
+			// }
+
+			// if relayOpsOutput {
+			// 	opsRelays(
+			// 		rpcClient,
+			// 		env,
+			// 		arg,
+			// 		relaysStateShowFlags,
+			// 		relaysStateHideFlags,
+			// 		relaysDownFlag,
+			// 		csvOutputFlag,
+			// 		relayVersionFilter,
+			// 		relaysCount,
+			// 		relayIDSigned,
+			// 		relayBWSort,
+			// 	)
+			// } else {
+			// 	relays(
+			// 		rpcClient,
+			// 		env,
+			// 		arg,
+			// 		relaysStateShowFlags,
+			// 		relaysStateHideFlags,
+			// 		relaysDownFlag,
+			// 		relaysListFlag,
+			// 		csvOutputFlag,
+			// 		relayVersionFilter,
+			// 		relaysCount,
+			// 		relayIDSigned,
+			// 	)
+			// }
 
 			return nil
 		},
@@ -2291,7 +2282,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		signedCommand,
 		unsignedCommand,
 		hashCommand,
-		statusCommand,
 	}
 
 	root := &ffcli.Command{
