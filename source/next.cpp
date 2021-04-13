@@ -10513,7 +10513,7 @@ bool next_autodetect_amazon( char * output )
 
 const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
 
-int next_whois( const char * address, const char * hostname, int recurse )
+bool next_whois( const char * address, const char * hostname, int recurse, char ** buffer, size_t & bytes_remaining )
 {
     struct addrinfo *hostres, *res;
     char *buf, *nhost;
@@ -10571,7 +10571,12 @@ int next_whois( const char * address, const char * hostname, int recurse )
             buf[--len] = '\0';
         }
 
-        printf("%.*s\n", (int)len, buf);
+        if ( len < bytes_remaining )
+        {
+            memcpy( *buffer, buf, len );
+            bytes_remaining -= len;
+            *buffer += len;
+        }
 
         if (nhost == NULL) 
         {
@@ -10593,25 +10598,21 @@ int next_whois( const char * address, const char * hostname, int recurse )
         }
     }
 
-    int result = 1;
+    close( s );
+    fclose( sfo );
+    fclose( sfi );
+
+    bool result = true;
 
     if ( recurse && nhost != NULL) 
     {
-        result = next_whois(address, nhost, 0);
+        result = next_whois( address, nhost, 0, buffer, bytes_remaining );
     }
 
-    free(nhost);
+    free( nhost );
 
     return result;
 }
-
-/*
-int main(int argc, char *argv[])
-{
-    whois(argv[1], ANICHOST, 1);
-    return 0;
-}
-*/
 
 bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output )
 {
@@ -10662,21 +10663,10 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
     char whois_buffer[1024*256];
     memset( whois_buffer, 0, sizeof(whois_buffer) );
-    char whois_command[1024];
-    sprintf( whois_command, "whois %s", address );
-    file = popen( whois_command, "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run whois" );
-        return false;
-    }
-    if ( fread( whois_buffer, 1, sizeof(whois_buffer), file ) == 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: fread failed on whois" );
-        return false;
-    }
-    pclose( file );
-
+    char * whois_output = &whois_buffer[0];
+    size_t bytes_remaining = sizeof(whois_buffer) - 1;
+    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
+    
     // check against multiplay supplier mappings
 
     bool found = false;
