@@ -537,6 +537,9 @@ func main() {
 	var relayBWSort bool
 	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
+	var relaysAlphaSort bool
+	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
+
 	// accept session ID as a signed int (next session dump)
 	sessionDumpfs := flag.NewFlagSet("session dump", flag.ExitOnError)
 	var sessionDumpSignedInt bool
@@ -831,7 +834,12 @@ func main() {
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
 
-			queryRelayBackend(env)
+			var regexName string
+			if len(args) > 0 {
+				regexName = args[0]
+			}
+
+			queryRelayBackend(env, relaysCount, relaysAlphaSort, regexName)
 
 			// if relaysfs.NFlag() == 0 ||
 			// 	((relaysfs.NFlag() == 1) && relayOpsOutput) ||
