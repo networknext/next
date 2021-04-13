@@ -84,7 +84,7 @@ func checkRelaysInBinFile() {
 	})
 
 	fmt.Println("Relays:")
-	fmt.Printf("\t%-25s %-16s %-17s\n", "Name", "ID", "Address")
+	fmt.Printf("\t%-25s %-18s %-17s\n", "Name", "ID", "Address")
 	fmt.Printf("\t%s\n", strings.Repeat("-", 61))
 	for _, relay := range incomingDB.Relays {
 		id := strings.ToUpper(fmt.Sprintf("%016x", relay.ID))
