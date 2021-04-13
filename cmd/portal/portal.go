@@ -359,6 +359,7 @@ func main() {
 		Storage: db,
 	}
 
+	// serverRelayBinFile will be deprecated by serveDatabaseBinFile, below
 	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -385,7 +386,44 @@ func main() {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+	}
 
+	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
+
+		var dbWrapper routing.DatabaseBinWrapper
+		var enabledRelays []routing.Relay
+
+		buyers := db.Buyers()
+		relays := db.Relays()
+
+		for _, localRelay := range relays {
+			if localRelay.State == routing.RelayStateEnabled {
+				enabledRelays = append(enabledRelays, localRelay)
+			}
+		}
+
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+		for _, buyer := range buyers {
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
+		}
+
+		dbWrapper.Relays = enabledRelays
+		dbWrapper.Sellers = db.Sellers()
+		dbWrapper.Buyers = buyers
+		dbWrapper.Datacenters = db.Datacenters()
+		dbWrapper.DatacenterMaps = datacenterMaps
+
+		var buffer bytes.Buffer
+
+		encoder := gob.NewEncoder(&buffer)
+		encoder.Encode(dbWrapper)
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	go func() {
@@ -531,6 +569,9 @@ func main() {
 
 		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
 		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler)).Methods("GET")
+
+		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
+		r.Handle("/database.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler)).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
