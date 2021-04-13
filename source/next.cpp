@@ -10504,6 +10504,7 @@ bool next_autodetect_amazon( char * output )
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define ANICHOST    "whois.arin.net"
 #define LNICHOST    "whois.lacnic.net"
