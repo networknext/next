@@ -251,7 +251,7 @@ func commitRelaysBin(env Environment) {
 
 }
 
-func queryRelayBackend(env Environment, relayCount int64) {
+func queryRelayBackend(env Environment, relayCount int64, alphaSort bool) {
 
 	relayBackendURI, err := env.RelayBackendHostname()
 	if err != nil {
@@ -320,9 +320,15 @@ func queryRelayBackend(env Environment, relayCount int64) {
 		})
 	}
 
-	sort.SliceStable(relays, func(i, j int) bool {
-		return relays[i].Sessions > relays[j].Sessions
-	})
+	if alphaSort {
+		sort.SliceStable(relays, func(i, j int) bool {
+			return relays[i].Name < relays[j].Name
+		})
+	} else {
+		sort.SliceStable(relays, func(i, j int) bool {
+			return relays[i].Sessions > relays[j].Sessions
+		})
+	}
 
 	outputRelays := []struct {
 		Name     string
