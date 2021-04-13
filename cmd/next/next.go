@@ -815,8 +815,8 @@ func main() {
 
 					checkRelaysInBinFile()
 					checkDatacentersInBinFile()
-					// checkSellersInBinFile()
-					// checkBuyersInBinFile()
+					checkSellersInBinFile()
+					checkBuyersInBinFile()
 					// checkDCMapsInBinFile()
 
 					return nil

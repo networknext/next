@@ -84,6 +84,8 @@ func checkRelaysInBinFile() {
 	})
 
 	fmt.Println("Relays:")
+	fmt.Printf("\t%-25s %-16s %-17s\n", "Name", "ID", "Address")
+	fmt.Printf("\t%s\n", strings.Repeat("-", 61))
 	for _, relay := range incomingDB.Relays {
 		id := strings.ToUpper(fmt.Sprintf("%016x", relay.ID))
 		fmt.Printf("\t%-25s %016s %17s\n", relay.Name, id, relay.Addr.String())
@@ -115,9 +117,75 @@ func checkDatacentersInBinFile() {
 	})
 
 	fmt.Println("Datacenters:")
+	fmt.Printf("\t%-25s %-16s\n", "Name", "ID")
+	fmt.Printf("\t%s\n", strings.Repeat("-", 43))
 	for _, datacenter := range incomingDB.Datacenters {
 		id := strings.ToUpper(fmt.Sprintf("%016x", datacenter.ID))
 		fmt.Printf("\t%-25s %016s\n", datacenter.Name, id)
+	}
+	fmt.Println()
+}
+
+func checkSellersInBinFile() {
+	f2, err := os.Open("database.bin")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f2.Close()
+
+	var incomingDB routing.DatabaseBinWrapper
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingDB)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// print a list
+	sort.SliceStable(incomingDB.Sellers, func(i, j int) bool {
+		return incomingDB.Sellers[i].ID < incomingDB.Sellers[j].ID
+	})
+
+	fmt.Println("Sellers:")
+	fmt.Printf("\t%-25s\n", "ID")
+	fmt.Printf("\t%s\n", strings.Repeat("-", 25))
+	for _, seller := range incomingDB.Sellers {
+		fmt.Printf("\t%-25s\n", seller.ID)
+	}
+	fmt.Println()
+
+}
+
+func checkBuyersInBinFile() {
+	f2, err := os.Open("database.bin")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f2.Close()
+
+	var incomingDB routing.DatabaseBinWrapper
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingDB)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// print a list
+	sort.SliceStable(incomingDB.Buyers, func(i, j int) bool {
+		return incomingDB.Buyers[i].ShortName < incomingDB.Buyers[j].ShortName
+	})
+
+	fmt.Println("Buyers:")
+	fmt.Printf("\t%-25s %-16s  %-5s\n", "ShortName", "ID", "Live")
+	fmt.Printf("\t%s\n", strings.Repeat("-", 50))
+	for _, buyer := range incomingDB.Buyers {
+		id := strings.ToUpper(fmt.Sprintf("%016x", buyer.ID))
+		fmt.Printf("\t%-25s %016s %5t\n", buyer.ShortName, id, buyer.Live)
 	}
 	fmt.Println()
 }
