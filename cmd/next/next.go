@@ -785,12 +785,24 @@ func main() {
 		},
 	}
 
+	var statusCommand = &ffcli.Command{
+		Name:       "status",
+		ShortUsage: "next status",
+		ShortHelp:  "Show realtime information about the relay fleet",
+		Exec: func(ctx context.Context, args []string) error {
+			queryRelayBackend(env)
+
+			return nil
+		},
+	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
 		ShortHelp:  "List relays",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
+
 			if relaysfs.NFlag() == 0 ||
 				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
 				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
@@ -2279,6 +2291,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		signedCommand,
 		unsignedCommand,
 		hashCommand,
+		statusCommand,
 	}
 
 	root := &ffcli.Command{
