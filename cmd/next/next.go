@@ -814,7 +814,7 @@ func main() {
 				Exec: func(ctx context.Context, args []string) error {
 
 					checkRelaysInBinFile()
-					// checkDatacentersInBinFile()
+					checkDatacentersInBinFile()
 					// checkSellersInBinFile()
 					// checkBuyersInBinFile()
 					// checkDCMapsInBinFile()

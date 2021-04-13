@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/csv"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -85,109 +83,43 @@ func checkRelaysInBinFile() {
 		return incomingDB.Relays[i].Name < incomingDB.Relays[j].Name
 	})
 
+	fmt.Println("Relays:")
 	for _, relay := range incomingDB.Relays {
 		id := strings.ToUpper(fmt.Sprintf("%016x", relay.ID))
-		fmt.Printf("%-25s 0x%016s %17s\n", relay.Name, id, relay.Addr.String())
+		fmt.Printf("\t%-25s %016s %17s\n", relay.Name, id, relay.Addr.String())
 	}
+	fmt.Println()
 
-	// generate a csv file
-	relaysCSV := [][]string{{}}
+}
 
-	relaysCSV = append(relaysCSV, []string{
-		"Name", "MRC", "Overage", "BW Rule",
-		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address", "Notes"})
-
-	for _, relay := range incomingDB.Relays {
-		mrc := ""
-		if relay.MRC > 0 {
-			mrc = fmt.Sprintf("%.2f", relay.MRC.ToCents()/100)
-		}
-		overage := ""
-		if relay.Overage > 0 {
-			overage = fmt.Sprintf("%.5f", relay.Overage.ToCents()/100)
-		}
-
-		var bwRule string
-		switch relay.BWRule {
-		case routing.BWRuleNone:
-			bwRule = ""
-		case routing.BWRuleFlat:
-			bwRule = "flat"
-		case routing.BWRuleBurst:
-			bwRule = "burst"
-		case routing.BWRulePool:
-			bwRule = "pool"
-		default:
-			bwRule = ""
-		}
-
-		var machineType string
-		switch relay.Type {
-		case routing.NoneSpecified:
-			machineType = ""
-		case routing.BareMetal:
-			machineType = "bare metal"
-		case routing.VirtualMachine:
-			machineType = "virtual machine"
-		default:
-			machineType = ""
-		}
-
-		contractTerm := ""
-		if relay.ContractTerm != 0 {
-			contractTerm = fmt.Sprintf("%d", relay.ContractTerm)
-		}
-
-		startDate := ""
-		if !relay.StartDate.IsZero() {
-			startDate = relay.StartDate.Format("January 2, 2006")
-		}
-
-		endDate := ""
-		if !relay.EndDate.IsZero() {
-			endDate = relay.EndDate.Format("January 2, 2006")
-		}
-
-		bandwidth := strconv.FormatInt(int64(relay.IncludedBandwidthGB), 10)
-		if bandwidth == "0" {
-			bandwidth = ""
-		}
-
-		nicSpeed := strconv.FormatInt(int64(relay.NICSpeedMbps), 10)
-		if nicSpeed == "0" {
-			nicSpeed = ""
-		}
-
-		relaysCSV = append(relaysCSV, []string{
-			relay.Name,
-			mrc,
-			overage,
-			bwRule,
-			contractTerm,
-			startDate,
-			endDate,
-			machineType,
-			bandwidth,
-			nicSpeed,
-			relay.State.String(),
-			relay.Addr.String(),
-			relay.Notes,
-		})
-	}
-
-	fileName := "./relays_bin.csv"
-	f, err := os.Create(fileName)
+func checkDatacentersInBinFile() {
+	f2, err := os.Open("database.bin")
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+		fmt.Println(err)
+		os.Exit(1)
 	}
+	defer f2.Close()
 
-	writer := csv.NewWriter(f)
-	err = writer.WriteAll(relaysCSV)
+	var incomingDB routing.DatabaseBinWrapper
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingDB)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+		fmt.Println(err)
+		os.Exit(1)
 	}
-	fmt.Printf("\nCSV file written: relays_bin.csv\n")
 
+	// print a list
+	sort.SliceStable(incomingDB.Datacenters, func(i, j int) bool {
+		return incomingDB.Datacenters[i].Name < incomingDB.Datacenters[j].Name
+	})
+
+	fmt.Println("Datacenters:")
+	for _, datacenter := range incomingDB.Datacenters {
+		id := strings.ToUpper(fmt.Sprintf("%016x", datacenter.ID))
+		fmt.Printf("\t%-25s %016s\n", datacenter.Name, id)
+	}
+	fmt.Println()
 }
 
 func commitDatabaseBin(env Environment) {
