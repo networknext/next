@@ -190,6 +190,47 @@ func checkBuyersInBinFile() {
 	fmt.Println()
 }
 
+func checkDCMapsInBinFile() {
+	f2, err := os.Open("database.bin")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f2.Close()
+
+	var incomingDB routing.DatabaseBinWrapper
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingDB)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Datacenter Maps:")
+	for _, buyer := range incomingDB.Buyers {
+		if dcMaps, ok := incomingDB.DatacenterMaps[buyer.ID]; ok {
+			fmt.Printf("\t%s:\n", buyer.ShortName)
+			fmt.Printf("\t\t%-25s %-16s\n", "Datacenter", "Alias")
+			fmt.Printf("\t\t%s\n", strings.Repeat("-", 50))
+			for _, dcMap := range dcMaps {
+
+				dcName := "name not found"
+				for _, dc := range incomingDB.Datacenters {
+					if dc.ID == dcMap.DatacenterID {
+						dcName = dc.Name
+					}
+				}
+
+				fmt.Printf("\t\t%-25s %-16s\n", dcName, dcMap.Alias)
+			}
+			fmt.Println()
+		}
+
+	}
+
+}
+
 func commitDatabaseBin(env Environment) {
 
 	// dev    : development_artifacts

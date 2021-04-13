@@ -817,7 +817,7 @@ func main() {
 					checkDatacentersInBinFile()
 					checkSellersInBinFile()
 					checkBuyersInBinFile()
-					// checkDCMapsInBinFile()
+					checkDCMapsInBinFile()
 
 					return nil
 				},
