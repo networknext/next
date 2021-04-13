@@ -10504,9 +10504,6 @@ bool next_autodetect_amazon( char * output )
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
-#include <bsd/stdio.h>
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
 #define ANICHOST    "whois.arin.net"
 #define LNICHOST    "whois.lacnic.net"
@@ -10519,9 +10516,9 @@ const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
 bool next_whois( const char * address, const char * hostname, int recurse, char ** buffer, size_t & bytes_remaining )
 {
     struct addrinfo *hostres, *res;
-    char *buf, *nhost;
+    char *nhost;
     int i, s;
-    size_t c, len;
+    size_t c;
 
     struct addrinfo hints;
     int error;
@@ -10567,12 +10564,11 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
 
     nhost = NULL;
 
-    while ( ( buf = fgetln(sfi, &len) ) != NULL ) 
+    char buf[10*1024];
+
+    while ( fgets(buf, sizeof(buf), sfi) ) 
     {
-        while (len > 0 && isspace((unsigned char)buf[len - 1]))
-        {
-            buf[--len] = '\0';
-        }
+        size_t len = strlen(buf);
 
         if ( len < bytes_remaining )
         {
