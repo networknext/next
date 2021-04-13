@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 )
 
@@ -247,5 +248,70 @@ func commitRelaysBin(env Environment) {
 	} else {
 		fmt.Printf("\nOk - not pushing relays.bin to %s\n", bucketName)
 	}
+
+}
+
+func queryRelayBackend(env Environment) {
+
+	relayBackendURI, err := env.RelayBackendHostname()
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not get env.RelayBackendHostname() from env: %s\n", env.Name), 1)
+	}
+
+	uri := fmt.Sprintf("http://%s/relays", relayBackendURI)
+
+	// GET doesn't seem to like env.PortalHostname() for local
+	if env.Name == "local" {
+		uri = "http://127.0.0.1:30000/relays"
+	}
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
+
+	r, err := client.Do(req)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not get relays.bin from the portal: %v\n", err), 1)
+	}
+	defer r.Body.Close()
+
+	reader := csv.NewReader(r.Body)
+	relayData, err := reader.ReadAll()
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not parse relays csv file from %s: %v\n", uri, err), 1)
+	}
+
+	// drop headings row
+	relayData = append(relayData[:0], relayData[1:]...)
+
+	// name,address,id,status,sessions,version
+	relays := []struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions string
+		Version  string
+	}{}
+
+	for _, relay := range relayData {
+		relays = append(relays, struct {
+			Name     string
+			Address  string
+			Id       string
+			Status   string
+			Sessions string
+			Version  string
+		}{
+			relay[0],
+			strings.Split(relay[1], ":")[0],
+			strings.ToUpper(relay[2]),
+			relay[3],
+			relay[4],
+			relay[5],
+		})
+	}
+
+	table.Output(relays)
 
 }
