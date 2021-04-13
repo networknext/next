@@ -785,6 +785,45 @@ func main() {
 		},
 	}
 
+	var databaseCommand = &ffcli.Command{
+		Name:       "database",
+		ShortUsage: "next database <subcommand>",
+		ShortHelp:  "Generate, check and publish database.bin files",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "get",
+				ShortUsage: "next database get",
+				ShortHelp:  "Generate a local database.bin file based on the current database state.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					return nil
+				},
+			},
+			{
+				Name:       "check",
+				ShortUsage: "next database check",
+				ShortHelp:  "Sanity check a local database.bin file.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					return nil
+				},
+			},
+
+			{
+				Name:       "commit",
+				ShortUsage: "next database commit",
+				ShortHelp:  "Publish a local database.bin file to the relevant GCP bucket.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					return nil
+				},
+			},
+		},
+	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -2282,6 +2321,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		signedCommand,
 		unsignedCommand,
 		hashCommand,
+		databaseCommand,
 	}
 
 	root := &ffcli.Command{
