@@ -32,10 +32,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.11"
+    #define NEXT_VERSION_FULL                              "4.0.12"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               11
+    #define NEXT_VERSION_PATCH_INT                               12
 
 #else // !defined(NEXT_DEVELOPMENT)
 
