@@ -10504,7 +10504,9 @@ bool next_autodetect_amazon( char * output )
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <stdio.h>
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#include <bsd/stdio.h>
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
 #define ANICHOST    "whois.arin.net"
 #define LNICHOST    "whois.lacnic.net"
