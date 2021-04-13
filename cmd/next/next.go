@@ -792,7 +792,7 @@ func main() {
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
 
-			queryRelayBackend(env)
+			queryRelayBackend(env, relaysCount)
 
 			// if relaysfs.NFlag() == 0 ||
 			// 	((relaysfs.NFlag() == 1) && relayOpsOutput) ||

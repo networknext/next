@@ -251,7 +251,7 @@ func commitRelaysBin(env Environment) {
 
 }
 
-func queryRelayBackend(env Environment) {
+func queryRelayBackend(env Environment, relayCount int64) {
 
 	relayBackendURI, err := env.RelayBackendHostname()
 	if err != nil {
@@ -290,28 +290,45 @@ func queryRelayBackend(env Environment) {
 		Address  string
 		Id       string
 		Status   string
-		Sessions string
+		Sessions int
 		Version  string
 	}{}
 
 	for _, relay := range relayData {
+
+		maxSessions, err := strconv.Atoi(relay[4])
+		if err != nil {
+			// tbd
+			// fmt.Printf("Error parsing MaxSessions for %s: %v\n", relay[0], err)
+			maxSessions = -1
+		}
+
 		relays = append(relays, struct {
 			Name     string
 			Address  string
 			Id       string
 			Status   string
-			Sessions string
+			Sessions int
 			Version  string
 		}{
 			relay[0],
 			strings.Split(relay[1], ":")[0],
 			strings.ToUpper(relay[2]),
 			relay[3],
-			relay[4],
+			maxSessions,
 			relay[5],
 		})
 	}
 
-	table.Output(relays)
+	sort.SliceStable(relays, func(i, j int) bool {
+		return relays[i].Sessions > relays[j].Sessions
+	})
+
+	//  limit the number of relays displayed
+	if relayCount != 0 {
+		table.Output(relays[0:relayCount])
+	} else {
+		table.Output(relays)
+	}
 
 }
