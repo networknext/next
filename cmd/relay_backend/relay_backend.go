@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
 	// "strings"
 
 	"cloud.google.com/go/pubsub"
@@ -775,6 +776,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
+	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
