@@ -324,11 +324,44 @@ func queryRelayBackend(env Environment, relayCount int64) {
 		return relays[i].Sessions > relays[j].Sessions
 	})
 
+	outputRelays := []struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions string
+		Version  string
+	}{}
+
+	for _, relay := range relays {
+
+		sessions := fmt.Sprintf("%d", relay.Sessions)
+
+		if relay.Sessions == -1 {
+			sessions = ""
+		}
+		outputRelays = append(outputRelays, struct {
+			Name     string
+			Address  string
+			Id       string
+			Status   string
+			Sessions string
+			Version  string
+		}{
+			relay.Name,
+			relay.Address,
+			relay.Id,
+			relay.Status,
+			sessions,
+			relay.Version,
+		})
+	}
+
 	//  limit the number of relays displayed
 	if relayCount != 0 {
-		table.Output(relays[0:relayCount])
+		table.Output(outputRelays[0:relayCount])
 	} else {
-		table.Output(relays)
+		table.Output(outputRelays)
 	}
 
 }
