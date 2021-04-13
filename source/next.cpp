@@ -10488,6 +10488,131 @@ bool next_autodetect_amazon( char * output )
     return found;
 }
 
+// --------------------------------------------------------------------------------------------------------------
+
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <err.h>
+#include <netdb.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
+
+#define ANICHOST    "whois.arin.net"
+#define LNICHOST    "whois.lacnic.net"
+#define RNICHOST    "whois.ripe.net"
+#define PNICHOST    "whois.apnic.net"
+#define BNICHOST    "whois.registro.br"
+
+const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
+
+int next_whois( const char * address, const char * hostname, int recurse )
+{
+    struct addrinfo *hostres, *res;
+    char *buf, *nhost;
+    int i, s;
+    size_t c, len;
+
+    struct addrinfo hints;
+    int error;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_flags = 0;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    error = getaddrinfo(hostname, "nicname", &hints, &hostres);
+    if ( error != 0 )
+    {
+        return 0;
+    }
+
+    for (res = hostres; res; res = res->ai_next) {
+        s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+        if (s < 0)
+            continue;
+        if (connect(s, res->ai_addr, res->ai_addrlen) == 0)
+            break;
+        close(s);
+    }
+
+    freeaddrinfo(hostres);
+    
+    if (res == NULL)
+        return 0;
+
+    FILE * sfi = fdopen( s, "r" );
+    FILE * sfo = fdopen( s, "w" );
+    if ( sfi == NULL || sfo == NULL )
+        return 0;
+    
+    if (strcmp(hostname, "de.whois-servers.net") == 0) {
+#ifdef __APPLE__
+        fprintf(sfo, "-T dn -C UTF-8 %s\r\n", address);
+#else
+        fprintf(sfo, "-T dn,ace -C US-ASCII %s\r\n", address);
+#endif
+    } else {
+        fprintf(sfo, "%s\r\n", address);
+    }
+    fflush(sfo);
+
+    nhost = NULL;
+
+    while ( ( buf = fgetln(sfi, &len) ) != NULL ) 
+    {
+        while (len > 0 && isspace((unsigned char)buf[len - 1]))
+        {
+            buf[--len] = '\0';
+        }
+
+        printf("%.*s\n", (int)len, buf);
+
+        if (nhost == NULL) 
+        {
+            if (recurse && strcmp(hostname, ANICHOST) == 0) 
+            {
+                for (c = 0; c <= len; c++)
+                {
+                    buf[c] = tolower((int)buf[c]);
+                }
+                for (i = 0; ip_whois[i] != NULL; i++) 
+                {
+                    if (strnstr(buf, ip_whois[i], len) != NULL) 
+                    {
+                        asprintf(&nhost, "%s", ip_whois[i]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    int result = 1;
+
+    if ( recurse && nhost != NULL) 
+    {
+        result = next_whois(address, nhost, 0);
+    }
+
+    free(nhost);
+
+    return result;
+}
+
+/*
+int main(int argc, char *argv[])
+{
+    whois(argv[1], ANICHOST, 1);
+    return 0;
+}
+*/
+
 bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output )
 {
     FILE * file;
