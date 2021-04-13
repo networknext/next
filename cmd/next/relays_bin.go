@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -251,7 +252,12 @@ func commitRelaysBin(env Environment) {
 
 }
 
-func queryRelayBackend(env Environment, relayCount int64, alphaSort bool) {
+func queryRelayBackend(
+	env Environment,
+	relayCount int64,
+	alphaSort bool,
+	regexName string,
+) {
 
 	relayBackendURI, err := env.RelayBackendHostname()
 	if err != nil {
@@ -294,6 +300,15 @@ func queryRelayBackend(env Environment, relayCount int64, alphaSort bool) {
 		Version  string
 	}{}
 
+	filtered := []struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions int
+		Version  string
+	}{}
+
 	for _, relay := range relayData {
 
 		maxSessions, err := strconv.Atoi(relay[4])
@@ -320,13 +335,20 @@ func queryRelayBackend(env Environment, relayCount int64, alphaSort bool) {
 		})
 	}
 
+	for _, relay := range relays {
+		if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
+			filtered = append(filtered, relay)
+			continue
+		}
+	}
+
 	if alphaSort {
-		sort.SliceStable(relays, func(i, j int) bool {
-			return relays[i].Name < relays[j].Name
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return filtered[i].Name < filtered[j].Name
 		})
 	} else {
-		sort.SliceStable(relays, func(i, j int) bool {
-			return relays[i].Sessions > relays[j].Sessions
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return filtered[i].Sessions > filtered[j].Sessions
 		})
 	}
 
@@ -339,7 +361,7 @@ func queryRelayBackend(env Environment, relayCount int64, alphaSort bool) {
 		Version  string
 	}{}
 
-	for _, relay := range relays {
+	for _, relay := range filtered {
 
 		sessions := fmt.Sprintf("%d", relay.Sessions)
 

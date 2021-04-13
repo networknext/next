@@ -795,7 +795,12 @@ func main() {
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
 
-			queryRelayBackend(env, relaysCount, relaysAlphaSort)
+			var regexName string
+			if len(args) > 0 {
+				regexName = args[0]
+			}
+
+			queryRelayBackend(env, relaysCount, relaysAlphaSort, regexName)
 
 			// if relaysfs.NFlag() == 0 ||
 			// 	((relaysfs.NFlag() == 1) && relayOpsOutput) ||
