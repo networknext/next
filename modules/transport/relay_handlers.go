@@ -130,7 +130,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		relayData.Name = relay.Name
 		relayData.PublicKey = relay.PublicKey
 		relayData.MaxSessions = relay.MaxSessions
-		relayData.SessionCount = int(relayUpdateRequest.TrafficStats.SessionCount)
+		relayData.SessionCount = int(relayUpdateRequest.SessionCount)
 		relayData.ShuttingDown = relayUpdateRequest.ShuttingDown
 		relayData.Version = relayUpdateRequest.RelayVersion
 
