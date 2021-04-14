@@ -434,7 +434,7 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		cfg.HTTPTimeout = httpTimeout
 
 		// Get the batch size threshold for sending updates to relay backends
-		batchSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_BATCH_SIZE", 20)
+		batchSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_BATCH_SIZE", 10)
 		if err != nil {
 			return nil, err
 		}
