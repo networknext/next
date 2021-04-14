@@ -106,17 +106,27 @@ var EmptyRelayGatewayMetrics = RelayGatewayMetrics{
 }
 
 type RelayGatewayErrorMetrics struct {
-	ReadPacketFailure    Counter
-	ContentTypeFailure   Counter
-	MarshalBinaryFailure Counter
-	BackendSendFailure   Counter
+	ReadPacketFailure            Counter
+	ContentTypeFailure           Counter
+	UnmarshalFailure             Counter
+	InvalidVersion               Counter
+	ExceedMaxRelays              Counter
+	RelayNotFound                Counter
+	MarshalBinaryResponseFailure Counter
+	MarshalBinaryFailure         Counter
+	BackendSendFailure           Counter
 }
 
 var EmptyRelayGatewayErrorMetrics = RelayGatewayErrorMetrics{
-	ReadPacketFailure:    &EmptyCounter{},
-	ContentTypeFailure:   &EmptyCounter{},
-	MarshalBinaryFailure: &EmptyCounter{},
-	BackendSendFailure:   &EmptyCounter{},
+	ReadPacketFailure:            &EmptyCounter{},
+	ContentTypeFailure:           &EmptyCounter{},
+	UnmarshalFailure:             &EmptyCounter{},
+	InvalidVersion:               &EmptyCounter{},
+	ExceedMaxRelays:              &EmptyCounter{},
+	RelayNotFound:                &EmptyCounter{},
+	MarshalBinaryResponseFailure: &EmptyCounter{},
+	MarshalBinaryFailure:         &EmptyCounter{},
+	BackendSendFailure:           &EmptyCounter{},
 }
 
 func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*RelayGatewayMetrics, error) {
@@ -183,6 +193,61 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 		ID:          handlerID + ".error.content_type_failure",
 		Unit:        "errors",
 		Description: "The total number of relay update request packets that had unsupported content types",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.UnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Unmarshal Failures",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.unmarshal_failure",
+		Unit:        "errors",
+		Description: "The total number of relay update requests that failed to be unmarshaled",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.InvalidVersion, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Invalid Versions",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.invalid_version",
+		Unit:        "errors",
+		Description: "The total number of relay update requests that had invalid versions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.ExceedMaxRelays, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Exceed Max Relays",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.exceed_max_relays",
+		Unit:        "errors",
+		Description: "The total number of relay update requests that had too many relays in ping stats",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.RelayNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Relays Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.relay_not_found",
+		Unit:        "errors",
+		Description: "The total number of relay update requests that could not be found in the internal map",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.MarshalBinaryResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Marshal Binary Response Failures",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.marhsal_binary_response_failure",
+		Unit:        "errors",
+		Description: "The total number of relay update responses that could not be marshaled",
 	})
 	if err != nil {
 		return nil, err
