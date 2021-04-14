@@ -482,63 +482,65 @@ func main() {
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
-	// Flags to only show relays in certain states
-	var relaysStateShowFlags [6]bool
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
-
-	// Flags to hide relays in certain states
-	var relaysStateHideFlags [6]bool
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
-
-	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
-	var relaysDownFlag bool
-	relaysfs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
-
-	// Show all relays (including decommissioned ones) regardless of other flags
-	var relaysAllFlag bool
-	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
-
-	// -list and -csv should work with all other flags
-	// Show only a list or relay names
-	var relaysListFlag bool
-	relaysfs.BoolVar(&relaysListFlag, "list", false, "show list of names")
-
-	// Return a CSV file instead of a table
-	var csvOutputFlag bool
-	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
-
-	// Return all relays at this version
-	var relayVersionFilter string
-	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
-
 	// Limit the number of relays displayed, in descending order of sessions carried
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "number of relays to display (default: all)")
 
+	var relaysAlphaSort bool
+	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
+
+	relaysDbFs := flag.NewFlagSet("relays state", flag.ExitOnError)
+
+	// Flags to only show relays in certain states
+	var relaysStateShowFlags [6]bool
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
+
+	// Flags to hide relays in certain states
+	var relaysStateHideFlags [6]bool
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
+
+	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
+	var relaysDownFlag bool
+	relaysDbFs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
+
+	// Show all relays (including decommissioned ones) regardless of other flags
+	var relaysAllFlag bool
+	relaysDbFs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
+
+	// -list and -csv should work with all other flags
+	// Show only a list or relay names
+	var relaysListFlag bool
+	relaysDbFs.BoolVar(&relaysListFlag, "list", false, "show list of names")
+
+	// Return a CSV file instead of a table
+	var csvOutputFlag bool
+	relaysDbFs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
+
+	// Return all relays at this version
+	var relayVersionFilter string
+	relaysDbFs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
+
 	// Display relay IDs as signed ints instead of the default hex
 	var relayIDSigned bool
-	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
+	relaysDbFs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
 	// display the OPS version of the relay output
 	var relayOpsOutput bool
-	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
+	relaysDbFs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
 
 	// Sort -ops output by IncludedBandwidthGB, descending
 	var relayBWSort bool
-	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
-
-	var relaysAlphaSort bool
-	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
+	relaysDbFs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
 	// accept session ID as a signed int (next session dump)
 	sessionDumpfs := flag.NewFlagSet("session dump", flag.ExitOnError)
@@ -857,7 +859,7 @@ func main() {
 				Name:       "db",
 				ShortUsage: "next relays db <regex>",
 				ShortHelp:  "Collect and present relay data from the database",
-				FlagSet:    relaysfs,
+				FlagSet:    relaysDbFs,
 				Exec: func(ctx context.Context, args []string) error {
 
 					if relaysfs.NFlag() == 0 ||
