@@ -1,5 +1,9 @@
 package routing
 
+const (
+    MaxDatabaseBinWrapperSize = 100000000
+)
+
 // DatabaseBinWrapper contains all the data from the database for
 // static use by the relay_backend and server_backend
 type DatabaseBinWrapper struct {
