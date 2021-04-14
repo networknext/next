@@ -129,7 +129,7 @@ func mainReturnWithCode() int {
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+		relaysFilePath := envvar.Get("BIN_PATH", "./relays.bin")
 		absPath, err := filepath.Abs(relaysFilePath)
 		if err != nil {
 			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
