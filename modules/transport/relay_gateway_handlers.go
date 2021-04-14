@@ -47,7 +47,7 @@ type GatewayRelayUpdateHandlerConfig struct {
 	GetRelayData func() ([]routing.Relay, map[uint64]routing.Relay)
 }
 
-// GatewayRelayUpdateHandlerFunc receives relay update requests and puts them in requestChan
+// GatewayRelayUpdateHandlerFunc receives relay update requests, puts them in requestChan, and responds with relays to ping
 func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()

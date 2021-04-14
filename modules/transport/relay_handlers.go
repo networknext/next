@@ -1,7 +1,5 @@
 package transport
 
-// update for merge
-
 import (
 	"encoding/json"
 	"fmt"
@@ -23,25 +21,6 @@ var (
 	MaxJitter float64
 )
 
-func RelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		responseData := make([]byte, 64)
-		index := 0
-		var nilVersion uint32 = 0
-		var nilPubKey []byte = make([]byte, 32)
-
-		encoding.WriteUint32(responseData, &index, nilVersion)
-		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		encoding.WriteBytes(responseData, &index, nilPubKey, len(nilPubKey))
-		responseData = responseData[:index]
-
-		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
-
-		writer.Write(responseData)
-	}
-}
-
 type RelayUpdateHandlerConfig struct {
 	RelayMap     *routing.RelayMap
 	StatsDB      *routing.StatsDatabase
@@ -52,7 +31,7 @@ type RelayUpdateHandlerConfig struct {
 func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		
+
 		core.Debug("%s - relay update", request.RemoteAddr)
 
 		// Get the batched updates
@@ -78,7 +57,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 			return
 		}
 
-		for i := range updateRequests {
+		for i := range updates {
 			// Use anonymous function to allow for defers to complete
 			func() {
 				durationStart := time.Now()
@@ -88,47 +67,27 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 					params.Metrics.Invocations.Add(1)
 				}()
 
-				var relayUpdateRequest
+				var relayUpdateRequest RelayUpdateRequest
 				if err = relayUpdateRequest.UnmarshalBinary(updates[i]); err != nil {
-					core.Debug("%s - error: relay update could not read request packet", request.RemoteAddr)
+					// This should not happen since we only include good relay updates in Gateway's batch-send
+					core.Debug("%s - error (this should not happen): relay update could not read request packet", request.RemoteAddr)
 					params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
-					writer.WriteHeader(http.StatusBadRequest) // 400
 					return
 				}
 
-				if relayUpdateRequest.Version > VersionNumberUpdateRequest {
-					core.Debug("%s - error: relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest)
-					params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
-					writer.WriteHeader(http.StatusBadRequest) // 400
-					return
-				}
-
-				if len(relayUpdateRequest.PingStats) > MaxRelays {
-					core.Debug("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
-					params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
-					writer.WriteHeader(http.StatusBadRequest) // 400
-					return
-				}
-
-				// check if relay exists
-
-				relayArray, relayHash := params.GetRelayData()
-
+				// Get the relay's ID
+				_, relayHash := params.GetRelayData()
 				id := crypto.HashID(relayUpdateRequest.Address.String())
 
 				relay, ok := relayHash[id]
-
 				if !ok {
+					// If we could not find the relay, skip it and move on
 					core.Debug("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
 					params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-					writer.WriteHeader(http.StatusNotFound) // 404
 					return
 				}
 
-				// todo: bring back crypto check
-
-				// update relay data
-
+				// Update relay data
 				relayData := routing.RelayData{}
 
 				relayData.ID = id
@@ -145,94 +104,44 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				params.RelayMap.UpdateRelayData(relayData)
 				params.RelayMap.Unlock()
 
-				// update relay ping stats
-
+				// Update relay ping stats
 				statsUpdate := routing.RelayStatsUpdate{}
 
 				statsUpdate.ID = relayData.ID
-
 				statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
-
 				params.StatsDB.ProcessStats(&statsUpdate)
 
-				// get relays to ping
-
-				relaysToPing := make([]routing.RelayPingData, 0)
-
-				sellerName := relayHash[relayData.ID].Seller.Name
-
-				for i := range relayArray {
-
-					if relayArray[i].ID == relayData.ID {
-						continue
-					}
-
-					var address string
-					if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
-						address = relayArray[i].InternalAddr.String()
-					} else {
-						address = relayArray[i].Addr.String()
-					}
-
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: address})
-				}
-
-				// build and write the response
-
-				var responseData []byte
-
-				response := RelayUpdateResponse{}
-
-				for i := range relaysToPing {
-					response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
-						ID:      relaysToPing[i].ID,
-						Address: relaysToPing[i].Address,
-					})
-				}
-
-				response.Timestamp = time.Now().Unix()
-
-				response.TargetVersion = "2.0.6"
-
-				responseData, err = response.MarshalBinary()
-				if err != nil {
-					core.Debug("%s - error: failed to write relay update response: %v", request.RemoteAddr, err)
-					writer.WriteHeader(http.StatusInternalServerError) // 500
-					return
-				}
-
-				writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
-
-				writer.Write(responseData)
-
-				// core.Debug("%s - wrote relay update response", request.RemoteAddr)
+				// core.Debug("%s - processed relay update", relayData.Addr)
 			}()
-		}		
+		}
+
+		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
+		writer.WriteHeader(http.StatusOK) // 200
 	}
 }
 
-func unbatchRelayUpdates(messageChain []byte) ([][]byte, error) {
+func unbatchRelayUpdates(updateChain []byte) ([][]byte, error) {
 	updates := make([][]byte, 0)
-	
+
 	var offset int
 	for {
-		if offset >= len(messageChain) {
+		if offset >= len(updateChain) {
 			break
 		}
 
 		var updateLength uint32
 		var updateRequest []byte
-		if !encoding.ReadUint32(updateBuffer, &offset, &updateLength) {
-			return nil, fmt.Errorf("failed to read batched message length at offset %d (length %d)", offset, len(messageChain))
+		if !encoding.ReadUint32(updateChain, &offset, &updateLength) {
+			return nil, fmt.Errorf("failed to read batched message length at offset %d (length %d)", offset, len(updateChain))
 		}
 
-		if !encoding.ReadBytes(updateBuffer, &offset, &updateRequest, updateLength) {
-			return nil, fmt.Errorf("failed to read batched message length at offset %d (length %d)", offset, len(messageChain))
+		if !encoding.ReadBytes(updateChain, &offset, &updateRequest, updateLength) {
+			return nil, fmt.Errorf("failed to read batched message length at offset %d (length %d)", offset, len(updateChain))
 		}
 
 		updates = append(updates, updateRequest)
 	}
-	
+
 	return updates, nil
 }
 
