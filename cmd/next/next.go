@@ -839,7 +839,7 @@ func main() {
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
-		ShortHelp:  "List relays",
+		ShortHelp:  "Return real-time relay data from the relay backend",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
 
@@ -850,66 +850,76 @@ func main() {
 
 			queryRelayBackend(env, relaysCount, relaysAlphaSort, regexName)
 
-			// if relaysfs.NFlag() == 0 ||
-			// 	((relaysfs.NFlag() == 1) && relayOpsOutput) ||
-			// 	((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
-			// 	// If no flags are given, set the default set of flags
-			// 	relaysStateShowFlags[routing.RelayStateEnabled] = true
-			// 	relaysStateHideFlags[routing.RelayStateEnabled] = false
-			// }
-
-			// if relaysAllFlag {
-			// 	// Show all relays (except for decommissioned relays) with --all flag
-			// 	relaysStateShowFlags[routing.RelayStateEnabled] = true
-			// 	relaysStateShowFlags[routing.RelayStateMaintenance] = true
-			// 	relaysStateShowFlags[routing.RelayStateDisabled] = true
-			// 	relaysStateShowFlags[routing.RelayStateQuarantine] = true
-			// 	relaysStateShowFlags[routing.RelayStateOffline] = true
-			// 	relaysStateHideFlags[routing.RelayStateEnabled] = false
-			// 	relaysStateHideFlags[routing.RelayStateMaintenance] = false
-			// 	relaysStateHideFlags[routing.RelayStateDisabled] = false
-			// 	relaysStateHideFlags[routing.RelayStateQuarantine] = false
-			// 	relaysStateHideFlags[routing.RelayStateOffline] = false
-			// }
-
-			// var arg string
-			// if len(args) > 0 {
-			// 	arg = args[0]
-			// }
-
-			// if relayOpsOutput {
-			// 	opsRelays(
-			// 		rpcClient,
-			// 		env,
-			// 		arg,
-			// 		relaysStateShowFlags,
-			// 		relaysStateHideFlags,
-			// 		relaysDownFlag,
-			// 		csvOutputFlag,
-			// 		relayVersionFilter,
-			// 		relaysCount,
-			// 		relayIDSigned,
-			// 		relayBWSort,
-			// 	)
-			// } else {
-			// 	relays(
-			// 		rpcClient,
-			// 		env,
-			// 		arg,
-			// 		relaysStateShowFlags,
-			// 		relaysStateHideFlags,
-			// 		relaysDownFlag,
-			// 		relaysListFlag,
-			// 		csvOutputFlag,
-			// 		relayVersionFilter,
-			// 		relaysCount,
-			// 		relayIDSigned,
-			// 	)
-			// }
-
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
+			{
+				Name:       "db",
+				ShortUsage: "next relays db <regex>",
+				ShortHelp:  "Collect and present relay data from the database",
+				FlagSet:    relaysfs,
+				Exec: func(ctx context.Context, args []string) error {
+
+					if relaysfs.NFlag() == 0 ||
+						((relaysfs.NFlag() == 1) && relayOpsOutput) ||
+						((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+						// If no flags are given, set the default set of flags
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+					}
+
+					if relaysAllFlag {
+						// Show all relays (except for decommissioned relays) with --all flag
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateShowFlags[routing.RelayStateMaintenance] = true
+						relaysStateShowFlags[routing.RelayStateDisabled] = true
+						relaysStateShowFlags[routing.RelayStateQuarantine] = true
+						relaysStateShowFlags[routing.RelayStateOffline] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+						relaysStateHideFlags[routing.RelayStateMaintenance] = false
+						relaysStateHideFlags[routing.RelayStateDisabled] = false
+						relaysStateHideFlags[routing.RelayStateQuarantine] = false
+						relaysStateHideFlags[routing.RelayStateOffline] = false
+					}
+
+					var arg string
+					if len(args) > 0 {
+						arg = args[0]
+					}
+
+					if relayOpsOutput {
+						opsRelays(
+							rpcClient,
+							env,
+							arg,
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+							relaysCount,
+							relayIDSigned,
+							relayBWSort,
+						)
+					} else {
+						relays(
+							rpcClient,
+							env,
+							arg,
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							relaysListFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+							relaysCount,
+							relayIDSigned,
+						)
+					}
+
+					return nil
+				},
+			},
 			{
 				Name:       "count",
 				ShortUsage: "next relays count <regex>",
