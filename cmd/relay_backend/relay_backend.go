@@ -64,7 +64,7 @@ func init() {
 	var binWrapper routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
-	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+	filePath := envvar.Get("BIN_PATH", "./relays.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
 		// fmt.Printf("could not load relay binary: %s\n", filePath)
@@ -195,7 +195,7 @@ func mainReturnWithCode() int {
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+		relaysFilePath := envvar.Get("BIN_PATH", "./relays.bin")
 		absPath, err := filepath.Abs(relaysFilePath)
 		if err != nil {
 			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
