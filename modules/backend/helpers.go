@@ -3,9 +3,13 @@ package backend
 import (
 	"context"
 	"encoding/binary"
+	"encoding/gob"
 	"errors"
 	"fmt"
+	"net"
 	"os"
+	"sort"
+	"strconv"
 	"time"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -16,6 +20,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -337,4 +342,52 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 	}
 
 	return storer, nil
+}
+
+// Parses a string for a UDP address
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
+
+// Decodes a Relay Bin Wrapper from GOB
+func DecodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
+	decoder := gob.NewDecoder(file)
+	err := decoder.Decode(binWrapper)
+	return err
+}
+
+// Sorts a relay array and hash via Name
+func SortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
+	sort.SliceStable(relayArray, func(i, j int) bool {
+		return relayArray[i].Name < relayArray[j].Name
+	})
+
+	if gcpProjectID == "" {
+		// TODO: hack override for local testing for single relay
+		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
+		relayArray[0].ID = 0xde0fb1e9a25b1948
+	}
+
+	for i := range relayArray {
+		relayHash[relayArray[i].ID] = relayArray[i]
+	}
+}
+
+// Prints a list of relays in the relay array to console
+func DisplayLoadedRelays(relayArray []routing.Relay) {
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
+	for i := range relayArray {
+		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
+	}
+	fmt.Printf("\n=======================================\n")
 }
