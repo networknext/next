@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/gob"
 	"expvar"
 	"fmt"
 	"io"
@@ -20,7 +19,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -74,16 +72,16 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeBinWrapper(file, &binWrapper); err != nil {
-		fmt.Printf("decodeBinWrapper() error: %v\n", err)
+	if err = backend.DecodeBinWrapper(file, &binWrapper); err != nil {
+		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
 
 	relayArray_internal = binWrapper.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
-	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	displayLoadedRelays(relayArray_internal)
+	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	backend.DisplayLoadedRelays(relayArray_internal)
 
 	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
 }
@@ -255,15 +253,15 @@ func mainReturnWithCode() int {
 					var binWrapperNew routing.RelayBinWrapper
 					relayHashNew := make(map[uint64]routing.Relay)
 
-					if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
+					if err = backend.DecodeBinWrapper(file, &binWrapperNew); err == io.EOF {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
-						level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
+						level.Debug(logger).Log("msg", "DecodeBinWrapper() EOF error, will wait for next notification")
 						continue
 					} else if err != nil {
 						file.Close()
-						level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
+						level.Error(logger).Log("msg", "DecodeBinWrapper() error", "err", err)
 						continue
 					}
 
@@ -273,7 +271,7 @@ func mainReturnWithCode() int {
 					// Get the new relay array
 					relayArrayNew := binWrapperNew.Relays
 					// Proceed to fill up the new relay hash
-					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
 					// Pointer swap the relay array
 					relayArrayMutex.Lock()
@@ -289,7 +287,7 @@ func mainReturnWithCode() int {
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
-					displayLoadedRelays(relayArray_internal)
+					backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -832,19 +830,6 @@ func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp tim
 	return err
 }
 
-func ParseAddress(input string) *net.UDPAddr {
-	address := &net.UDPAddr{}
-	ip_string, port_string, err := net.SplitHostPort(input)
-	if err != nil {
-		address.IP = net.ParseIP(input)
-		address.Port = 0
-		return address
-	}
-	address.IP = net.ParseIP(ip_string)
-	address.Port, _ = strconv.Atoi(port_string)
-	return address
-}
-
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	relayArrayMutex.RLock()
 	relayArrayData := relayArray_internal
@@ -855,35 +840,4 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	relayHashMutex.RUnlock()
 
 	return relayArrayData, relayHashData
-}
-
-func decodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
-	decoder := gob.NewDecoder(file)
-	err := decoder.Decode(binWrapper)
-	return err
-}
-
-func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
-	sort.SliceStable(relayArray, func(i, j int) bool {
-		return relayArray[i].Name < relayArray[j].Name
-	})
-
-	if gcpProjectID == "" {
-		// TODO: hack override for local testing for single relay
-		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-		relayArray[0].ID = 0xde0fb1e9a25b1948
-	}
-
-	for i := range relayArray {
-		relayHash[relayArray[i].ID] = relayArray[i]
-	}
-}
-
-func displayLoadedRelays(relayArray []routing.Relay) {
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
-	for i := range relayArray {
-		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
 }
