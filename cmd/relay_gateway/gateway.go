@@ -119,6 +119,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+    // Get a config for how the Gateway should operate
+    cfg, err := newConfig()
+    if err != nil {
+        level.Error(logger).Log("err", err)
+        return 1
+    }
+
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
@@ -155,13 +162,7 @@ func mainReturnWithCode() int {
 		   defer notify.Stop(fileChan)
 		*/
 
-		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		ticker := time.NewTicker(binSyncInterval)
+		ticker := time.NewTicker(cfg.BinSyncInterval)
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
 		go func() {
@@ -218,13 +219,6 @@ func mainReturnWithCode() int {
 				}
 			}
 		}()
-	}
-
-	// Get a config for how the Gateway should operate
-	cfg, err := newConfig()
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
 	}
 
 	// Create an error channel for goroutines
@@ -409,6 +403,12 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		return nil, err
 	}
 	cfg.ChannelBufferSize = channelBufferSize
+
+    binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+    if err != nil {
+        return nil, err
+    }
+    cfg.BinSyncInterval = binSyncInterval
 
 	// Decide if we are using HTTP to batch-write to relay backends
 	useHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", true)
