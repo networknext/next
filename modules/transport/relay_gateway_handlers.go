@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 
@@ -19,6 +20,25 @@ const (
 	InitRequestMagic = 0x9083708f
 	MaxRelays        = 1024
 )
+
+func GatewayRelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/octet-stream")
+		responseData := make([]byte, 64)
+		index := 0
+		var nilVersion uint32 = 0
+		var nilPubKey []byte = make([]byte, 32)
+
+		encoding.WriteUint32(responseData, &index, nilVersion)
+		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+		encoding.WriteBytes(responseData, &index, nilPubKey, len(nilPubKey))
+		responseData = responseData[:index]
+
+		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
+
+		writer.Write(responseData)
+	}
+}
 
 type GatewayRelayUpdateHandlerConfig struct {
 	Logger       log.Logger
