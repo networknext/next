@@ -105,7 +105,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		// Check if we have too many relays in the ping stats
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
 			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays))
+			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, len(relayUpdateRequest.PingStats), MaxRelays))
 			core.Debug("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return

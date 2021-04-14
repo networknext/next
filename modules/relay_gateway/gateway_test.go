@@ -1,10 +1,9 @@
-package relay_gateway
+package relay_gateway_test
 
 import (
 	"context"
 	"encoding/base64"
 	"net"
-	"net/http"
 	"testing"
 	"time"
 
