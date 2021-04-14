@@ -40,6 +40,10 @@ var (
 	sha           string
 	tag           string
 
+	author    string
+	timestamp string
+	env       string
+
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
@@ -350,6 +354,7 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
 	router.HandleFunc("/relay_update", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
