@@ -51,7 +51,7 @@ export NEXT_BEACON_ADDRESS = 127.0.0.1:35000
 ####################
 
 ifndef RELAY_BACKEND_HOSTNAME
-export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
+export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30002
 endif
 
 ifndef RELAY_ADDRESS
@@ -110,8 +110,8 @@ export BACKEND_LOG_LEVEL = warn
 endif
 
 ifndef ROUTE_MATRIX_URI
-export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
-#export ROUTE_MATRIX_URI = http://127.0.0.1:30002/route_matrix
+# export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
+export ROUTE_MATRIX_URI = http://127.0.0.1:30002/route_matrix
 endif
 
 ifndef ROUTE_MATRIX_SYNC_INTERVAL
@@ -290,7 +290,7 @@ export FEATURE_RB15_ADDRESSES = 127.0.0.1
 endif
 
 ifndef FEATURE_NEW_RELAY_BACKEND_ADDRESSES
-export FEATURE_NEW_RELAY_BACKEND_ADDRESSES = 127.0.0.1:30000
+export FEATURE_NEW_RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
 endif
 
 
@@ -992,10 +992,13 @@ publish-relay-pusher-artifacts-prod:
 #    Relay Backend    #
 #######################
 
-.PHONY: dev-relay-backend
-dev-relay-backend: build-relay-backend ## runs a local relay backend
-	@PORT=30000 ./dist/relay_backend
-	#@PORT=30002 ./dist/relay_backend
+.PHONY: dev-relay-backend-1
+dev-relay-backend-1: build-relay-backend ## runs a local relay backend
+	@PORT=30001 ./dist/relay_backend
+
+.PHONY: dev-relay-backend-2
+dev-relay-backend-2: build-relay-backend ## runs a local relay backend
+	@PORT=30002 ./dist/relay_backend
 
 .PHONY: build-relay-backend
 build-relay-backend:
@@ -1245,7 +1248,7 @@ build-relay-ref:
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
-	@PORT=30001 ./dist/relay_gateway
+	@PORT=30000 ./dist/relay_gateway
 
 .PHONY: build-relay-gateway
 build-relay-gateway:
