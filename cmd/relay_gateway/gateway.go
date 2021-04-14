@@ -7,19 +7,27 @@ package main
 
 import (
 	"context"
+	"encoding/gob"
 	"expvar"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	gateway "github.com/networknext/backend/modules/relay_gateway"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 
 	"github.com/go-kit/kit/log/level"
@@ -31,7 +39,43 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+
+	author    string
+	timestamp string
+	env       string
+
+	relayArray_internal []routing.Relay
+	relayHash_internal  map[uint64]routing.Relay
+
+	relayArrayMutex sync.RWMutex
+	relayHashMutex  sync.RWMutex
 )
+
+func init() {
+	var binWrapper routing.RelayBinWrapper
+	relayHash_internal = make(map[uint64]routing.Relay)
+
+	filePath := envvar.Get("BIN_PATH", "./relays.bin")
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("could not load database binary: %s\n", filePath)
+		return
+	}
+	defer file.Close()
+
+	if err = decodeBinWrapper(file, &binWrapper); err != nil {
+		fmt.Printf("decodeBinWrapper() error: %v\n", err)
+		os.Exit(1)
+	}
+
+	relayArray_internal = binWrapper.Relays
+
+	gcpProjectID := backend.GetGCPProjectID()
+	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	displayLoadedRelays(relayArray_internal)
+
+	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
+}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -77,6 +121,107 @@ func mainReturnWithCode() int {
 	if err != nil {
 		level.Error(logger).Log("msg", "could not create gateway metrics", "err", err)
 		return 1
+	}
+
+	// Setup file watchman on relays.bin
+	{
+		// Get absolute path of relays.bin
+		relaysFilePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+		absPath, err := filepath.Abs(relaysFilePath)
+		if err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
+			return 1
+		}
+
+		// Check if file exists
+		if _, err := os.Stat(absPath); err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("%s does not exist", absPath), "err", err)
+			return 1
+		}
+
+		// Get the directory of the relays.bin
+		// Used to watch over file creation and modification
+		directoryPath := filepath.Dir(absPath)
+
+		// todo: disabled because it doesn't build on macos
+		/*
+		   // Create channel to store notifications of file changing
+		   // Use a size of 2 to ensure a change is detected even with io.EOF error
+		   fileChan := make(chan notify.EventInfo, 2)
+
+		   // Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
+		   // Create covers the case where a file is explicitly deleted and then re-added
+		   // InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
+		   if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
+		       level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
+		       return 1
+		   }
+		   defer notify.Stop(fileChan)
+		*/
+
+		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		ticker := time.NewTicker(binSyncInterval)
+
+		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
+		go func() {
+			level.Debug(logger).Log("msg", fmt.Sprintf("started watchman on %s", directoryPath))
+			for {
+				select {
+				case <-ticker.C:
+					// File has changed
+					file, err := os.Open(absPath)
+					if err != nil {
+						level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
+						continue
+					}
+
+					// Setup relay array and hash to read into
+					var binWrapperNew routing.RelayBinWrapper
+					relayHashNew := make(map[uint64]routing.Relay)
+
+					if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
+						// Sometimes we receive an EOF error since the file is still being replaced
+						// so early out here and proceed on the next notification
+						file.Close()
+						level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
+						continue
+					} else if err != nil {
+						file.Close()
+						level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
+						continue
+					}
+
+					// Close the file since it is no longer needed
+					file.Close()
+
+					// Get the new relay array
+					relayArrayNew := binWrapperNew.Relays
+					// Proceed to fill up the new relay hash
+					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+
+					// Pointer swap the relay array
+					relayArrayMutex.Lock()
+					relayArray_internal = relayArrayNew
+					relayArrayMutex.Unlock()
+
+					// Pointer swap the relay hash
+					relayHashMutex.Lock()
+					relayHash_internal = relayHashNew
+					relayHashMutex.Unlock()
+
+					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
+					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
+
+					// Print the new list of relays
+					displayLoadedRelays(relayArray_internal)
+				}
+			}
+		}()
 	}
 
 	// Get a config for how the Gateway should operate
@@ -185,6 +330,10 @@ func mainReturnWithCode() int {
 				fmt.Printf("%d update requests flushed\n", int(gatewayMetrics.UpdatesFlushed.Value()))
 				fmt.Printf("%d update request read packet failures\n", int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value()))
 				fmt.Printf("%d update request content type failures\n", int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value()))
+				fmt.Printf("%d update request unmarshal failures\n", int(gatewayMetrics.ErrorMetrics.UnmarshalFailure.Value()))
+				fmt.Printf("%d update request exceed max relays errors\n", int(gatewayMetrics.ErrorMetrics.ExceedMaxRelays.Value()))
+				fmt.Printf("%d update request relay not found errors\n", int(gatewayMetrics.ErrorMetrics.RelayNotFound.Value()))
+				fmt.Printf("%d update response marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value()))
 				fmt.Printf("%d batch update request marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value()))
 				fmt.Printf("%d batch update request backend send failures\n", int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value()))
 				fmt.Printf("-----------------------------\n")
@@ -194,11 +343,20 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	updateParams := transport.GatewayRelayUpdateHandlerConfig{
+		Logger:       logger,
+		RequestChan:  updateChan,
+		Metrics:      gatewayMetrics,
+		GetRelayData: GetRelayData,
+	}
+
 	fmt.Printf("starting http server\n")
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(logger, gatewayMetrics, updateChan)).Methods("POST")
+	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
+	router.HandleFunc("/relay_update", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
+	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -232,6 +390,62 @@ func mainReturnWithCode() int {
 		// TODO: implement clean shutdown to flush update requests in buffer
 		return 1
 	}
+}
+
+func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
+	relayArrayMutex.RLock()
+	relayArrayData := relayArray_internal
+	relayArrayMutex.RUnlock()
+
+	relayHashMutex.RLock()
+	relayHashData := relayHash_internal
+	relayHashMutex.RUnlock()
+
+	return relayArrayData, relayHashData
+}
+
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
+
+func decodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
+	decoder := gob.NewDecoder(file)
+	err := decoder.Decode(binWrapper)
+	return err
+}
+
+func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
+	sort.SliceStable(relayArray, func(i, j int) bool {
+		return relayArray[i].Name < relayArray[j].Name
+	})
+
+	if gcpProjectID == "" {
+		// TODO: hack override for local testing for single relay
+		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
+		relayArray[0].ID = 0xde0fb1e9a25b1948
+	}
+
+	for i := range relayArray {
+		relayHash[relayArray[i].ID] = relayArray[i]
+	}
+}
+
+func displayLoadedRelays(relayArray []routing.Relay) {
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
+	for i := range relayArray {
+		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
+	}
+	fmt.Printf("\n=======================================\n")
 }
 
 // Get the config for how this relay gateway should operate

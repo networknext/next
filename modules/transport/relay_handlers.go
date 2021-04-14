@@ -19,10 +19,6 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
-const InitRequestMagic = 0x9083708f
-
-const MaxRelays = 1024
-
 var (
 	MaxJitter float64
 )
