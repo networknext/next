@@ -114,7 +114,7 @@ func mainReturnWithCode() int {
 
 	remoteDBLocations := make([]string, 0)
 
-	relayBackendName := envvar.Get("RELAY_BACKEND_NAME", "")
+	relayBackendName := envvar.Get("RELAY_BACKEND_INSTANCE_NAME", "")
 	if relayBackendName == "" {
 		level.Error(logger).Log("msg", "relay backend name not specified", "err")
 		return 1
@@ -122,7 +122,7 @@ func mainReturnWithCode() int {
 
 	remoteDBLocations = append(remoteDBLocations, relayBackendName)
 
-	debugRelayBackendName := envvar.Get("DEBUG_RELAY_BACKEND_NAME", "")
+	debugRelayBackendName := envvar.Get("DEBUG_RELAY_BACKEND_INSTANCE_NAME", "")
 	if debugRelayBackendName == "" {
 		level.Error(logger).Log("msg", "debug relay backend name not specified", "err")
 		remoteDBLocations = append(remoteDBLocations, debugRelayBackendName)
