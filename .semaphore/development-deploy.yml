@@ -68,6 +68,10 @@ blocks:
           commands:
             - make build-debug-server-backend-artifacts-dev
             - make publish-debug-server-backend-artifacts-dev
+        - name: Debug Relay Backend
+          commands:
+            - make build-debug-relay-backend-artifacts-dev
+            - make publish-debug-relay-backend-artifacts-dev
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-dev

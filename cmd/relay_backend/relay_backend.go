@@ -51,9 +51,11 @@ var (
 	timestamp string
 	env       string
 
+	binWrapper_internal routing.DatabaseBinWrapper
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
+	binWrapperMutex sync.RWMutex
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
 
@@ -61,10 +63,9 @@ var (
 )
 
 func init() {
-	var binWrapper routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
-	filePath := envvar.Get("BIN_PATH", "./relays.bin")
+	filePath := envvar.Get("BIN_PATH", "./database.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
 		// fmt.Printf("could not load relay binary: %s\n", filePath)
@@ -77,7 +78,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	relayArray_internal = binWrapper.Relays
+	relayArray_internal = binWrapper_internal.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
@@ -106,6 +107,16 @@ func mainReturnWithCode() int {
 	serviceName := "relay_backend"
 
 	fmt.Printf("\n%s\n\n", serviceName)
+
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
+	if err != nil {
+		fmt.Println("Failed to get debug status")
+		isDebug = false
+	}
+
+	if isDebug {
+		fmt.Println("Instance is running as a debug instance")
+	}
 
 	ctx := context.Background()
 
@@ -195,7 +206,7 @@ func mainReturnWithCode() int {
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("BIN_PATH", "./relays.bin")
+		relaysFilePath := envvar.Get("BIN_PATH", "./database.bin")
 		absPath, err := filepath.Abs(relaysFilePath)
 		if err != nil {
 			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
@@ -250,7 +261,7 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var binWrapperNew routing.RelayBinWrapper
+					var binWrapperNew routing.DatabaseBinWrapper
 					relayHashNew := make(map[uint64]routing.Relay)
 
 					if err = backend.DecodeBinWrapper(file, &binWrapperNew); err == io.EOF {
@@ -272,6 +283,11 @@ func mainReturnWithCode() int {
 					relayArrayNew := binWrapperNew.Relays
 					// Proceed to fill up the new relay hash
 					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+
+					// Pointer swap the relay bin wrapper
+					binWrapperMutex.Lock()
+					binWrapper_internal = binWrapperNew
+					binWrapperMutex.Unlock()
 
 					// Pointer swap the relay array
 					relayArrayMutex.Lock()
@@ -411,7 +427,16 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 
-			// build set active relays that are *also* in the current relays.bin
+			// Encode the current database.bin to attach to route matrix
+			binWrapperMutex.RLock()
+			binWrapperCopy := binWrapper_internal
+			binWrapperMutex.RUnlock()
+
+			var binWrapperBuffer bytes.Buffer
+			encoder := gob.NewEncoder(&binWrapperBuffer)
+			encoder.Encode(binWrapperCopy)
+
+			// build set active relays that are *also* in the current database.bin
 
 			_, relayHash := GetRelayData()
 
@@ -608,6 +633,8 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				RouteEntries:       routeEntries,
+				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
+				BinFileData:        binWrapperBuffer.Bytes(),
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
