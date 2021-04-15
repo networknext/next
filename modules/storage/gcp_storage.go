@@ -119,25 +119,12 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 		}
 	}
 
-	// setup reader
-	reader, err := g.Bucket.Object(artifactName).NewReader(ctx)
+	runnable := exec.Command("gsutil", "cp", artifactName, outputLocation)
+	buffer, err := runnable.CombinedOutput()
+
+	level.Debug(g.Logger).Log("msg", buffer)
 	if err != nil {
-		err = fmt.Errorf("failed to create bucket reader: %v", err)
-		return err
-	}
-
-	defer reader.Close()
-
-	// read in artifact as bytes to be copied to new file
-	var artifactBytes []byte
-	_, err = reader.Read(artifactBytes)
-	if err != nil {
-		err = fmt.Errorf("failed to read artifact: %v", err)
-		return err
-	}
-
-	if err := ioutil.WriteFile(outputLocation, artifactBytes, 0644); err != nil {
-		err = fmt.Errorf("failed to write local file: %v", err)
+		err = fmt.Errorf("failed to copy file to instance: %v", err)
 		return err
 	}
 
@@ -148,6 +135,7 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName string, instanceNames []string, outputFileName string) error {
 	// grab file from bucket
 	if err := g.CopyFromBucketToLocal(ctx, artifactName, outputFileName); err != nil {
+		fmt.Printf("Failed to fetch file from GCP bucket: %v\n", err)
 		err = fmt.Errorf("failed to fetch file from GCP bucket: %v", err)
 		return err
 	}
