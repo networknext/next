@@ -13,6 +13,7 @@ type ServerInitMetrics struct {
 	BuyerNotActive               Counter
 	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
+	DatacenterMapNotFound        Counter
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
 	DatacenterNotAllowed         Counter
@@ -27,6 +28,7 @@ var EmptyServerInitMetrics = ServerInitMetrics{
 	BuyerNotActive:               &EmptyCounter{},
 	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
+	DatacenterMapNotFound:        &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
 	DatacenterNotAllowed:         &EmptyCounter{},
@@ -41,6 +43,7 @@ type ServerUpdateMetrics struct {
 	BuyerNotFound                Counter
 	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
+	DatacenterMapNotFound        Counter
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
 	DatacenterNotAllowed         Counter
@@ -53,6 +56,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	BuyerNotFound:                &EmptyCounter{},
 	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
+	DatacenterMapNotFound:        &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
 	DatacenterNotAllowed:         &EmptyCounter{},
@@ -87,6 +91,7 @@ type SessionUpdateMetrics struct {
 	BadSliceNumber                             Counter
 	BuyerNotLive                               Counter
 	ClientPingTimedOut                         Counter
+	DatacenterMapNotFound                      Counter
 	DatacenterNotFound                         Counter
 	MisconfiguredDatacenterAlias               Counter
 	DatacenterNotAllowed                       Counter
@@ -130,6 +135,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	BadSliceNumber:                             &EmptyCounter{},
 	BuyerNotLive:                               &EmptyCounter{},
 	ClientPingTimedOut:                         &EmptyCounter{},
+	DatacenterMapNotFound:                      &EmptyCounter{},
 	DatacenterNotFound:                         &EmptyCounter{},
 	MisconfiguredDatacenterAlias:               &EmptyCounter{},
 	DatacenterNotAllowed:                       &EmptyCounter{},
@@ -386,6 +392,17 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		return nil, err
 	}
 
+	m.DatacenterMapNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Map Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_map_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " could not find a datacenter map for a buyer.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.DatacenterNotFound, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Datacenter Not Found",
 		ServiceName: serviceName,
@@ -481,6 +498,17 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		ID:          handlerID + ".sdk_too_old",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an out of date SDK version.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterMapNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Map Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_map_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " could not find a datacenter map for a buyer.",
 	})
 	if err != nil {
 		return nil, err
@@ -790,6 +818,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".client_ping_timed_out",
 		Unit:        "timeouts",
 		Description: "The number of times a " + packetDescription + " contained a client ping timeout reported up from the server.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterMapNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Map Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_map_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " could not find a datacenter map for a buyer.",
 	})
 	if err != nil {
 		return nil, err
