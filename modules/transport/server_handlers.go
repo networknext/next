@@ -686,9 +686,11 @@ func SessionUpdateHandlerFunc(
 			prevSessionData.Location = sessionData.Location
 			prevSessionData.RouteState.ABTest = sessionData.RouteState.ABTest
 
-			if err != nil {
+			// If there is an error reading from mmdb or mmdb doesn't exist veto the session
+			if err != nil || (sessionData.Location == routing.LocationNullIsland) {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ClientLocateFailure.Add(1)
+				sessionData.RouteState.LocationVeto = true
 			}
 
 		} else {
