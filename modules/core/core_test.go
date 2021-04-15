@@ -1920,6 +1920,9 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeState = RouteState{Veto: true}
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
+	routeState = RouteState{LocationVeto: true}
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+
 	routeState = RouteState{Banned: true}
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 

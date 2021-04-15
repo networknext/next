@@ -94,7 +94,40 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Setup GCP storage
+	databaseBinFileName := envvar.Get("DATABASE_FILE_NAME", "")
+	if databaseBinFileName == "" {
+		level.Error(logger).Log("msg", "DB binary file name not specified", "err")
+		return 1
+	}
+
+	databaseBinFileOutputLocation := envvar.Get("DB_OUTPUT_LOCATION", "")
+	if databaseBinFileOutputLocation == "" {
+		level.Error(logger).Log("msg", "DB output file location not specified", "err")
+		return 1
+	}
+
+	dbSyncInterval, err := envvar.GetDuration("DB_SYNC_INTERVAL", time.Minute*1)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to get DB sync interval", "err")
+		return 1
+	}
+
+	remoteDBLocations := make([]string, 0)
+
+	relayBackendName := envvar.Get("RELAY_BACKEND_NAME", "")
+	if relayBackendName == "" {
+		level.Error(logger).Log("msg", "relay backend name not specified", "err")
+		return 1
+	}
+
+	remoteDBLocations = append(remoteDBLocations, relayBackendName)
+
+	debugRelayBackendName := envvar.Get("DEBUG_RELAY_BACKEND_NAME", "")
+	if debugRelayBackendName == "" {
+		level.Error(logger).Log("msg", "debug relay backend name not specified", "err")
+		remoteDBLocations = append(remoteDBLocations, debugRelayBackendName)
+	}
+
 	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
 	if serverBackendMIGName == "" {
 		level.Error(logger).Log("msg", "server backend mig name not specified", "err")
@@ -168,11 +201,11 @@ func mainReturnWithCode() int {
 	}
 
 	// Maxmind sync routine
-	ticker := time.NewTicker(maxmindSyncInterval)
+	maxmindTicker := time.NewTicker(maxmindSyncInterval)
 	go func() {
 		for {
 			select {
-			case <-ticker.C:
+			case <-maxmindTicker.C:
 				start := time.Now()
 
 				ispRes, err := maxmindHttpClient.Get(ispURI)
@@ -223,8 +256,8 @@ func mainReturnWithCode() int {
 
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, ispFileName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to server backends", "err", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.SCPWriteFailure.Add(1)
-					continue
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+					// Don't continue here, we need to try out the city file as well
 				}
 
 				updateTime := time.Since(start)
@@ -280,7 +313,7 @@ func mainReturnWithCode() int {
 
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, cityFileName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind city file to server backends", "err", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.SCPWriteFailure.Add(1)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
 					continue
 				}
 
@@ -289,6 +322,31 @@ func mainReturnWithCode() int {
 
 				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Set(duration)
 				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBTotalUpdateDuration.Set(duration)
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// database binary sync routine
+	dbTicker := time.NewTicker(dbSyncInterval)
+	go func() {
+		for {
+			select {
+			case <-dbTicker.C:
+				start := time.Now()
+
+				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, remoteDBLocations, databaseBinFileOutputLocation); err != nil {
+					level.Error(logger).Log("msg", "failed to copy database bin file to relay backends", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Add(1)
+					continue
+				}
+
+				updateTime := time.Since(start)
+				duration := float64(updateTime.Milliseconds())
+
+				relayPusherServiceMetrics.RelayPusherMetrics.DBBinaryTotalUpdateDuration.Set(duration)
 
 			case <-ctx.Done():
 				return
