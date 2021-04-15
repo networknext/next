@@ -257,7 +257,6 @@ func mainReturnWithCode() int {
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, ispFileName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to server backends", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					continue
 				}
 
 				updateTime := time.Since(start)
