@@ -70,9 +70,9 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 	}
 
 	/*
-	if version != routing.VersionNumberRelayMap {
-		return fmt.Errorf("incorrect relay map version number: %d", version)
-	}
+		if version != routing.VersionNumberRelayMap {
+			return fmt.Errorf("incorrect relay map version number: %d", version)
+		}
 	*/
 
 	var count uint64
@@ -1377,6 +1377,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 			return err
 		}
 
+	// relay.PublicKey
 	case "PublicKey":
 		newPublicKey := string(args.Value)
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newPublicKey)
