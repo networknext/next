@@ -329,7 +329,7 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	// Maxmind sync routine
+	// database binary sync routine
 	dbTicker := time.NewTicker(dbSyncInterval)
 	go func() {
 		for {
