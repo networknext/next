@@ -55,7 +55,8 @@ export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_ADDRESS
-export RELAY_ADDRESS = 127.0.0.1
+#export RELAY_ADDRESS = 127.0.0.1
+export RELAY_ADDRESS = 127.0.0.1:35000
 endif
 
 ifndef RELAY_DEBUG
@@ -121,12 +122,12 @@ ifndef COST_MATRIX_INTERVAL
 export COST_MATRIX_INTERVAL = 1s
 endif
 
-ifndef MAXMIND_CITY_DB_URI
-export MAXMIND_CITY_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
+ifndef MAXMIND_CITY_DB_FILE
+export MAXMIND_CITY_DB_FILE = testdata/GeoIP2-City-Test.mmdb
 endif
 
-ifndef MAXMIND_ISP_DB_URI
-export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
+ifndef MAXMIND_ISP_DB_FILE
+export MAXMIND_ISP_DB_FILE = testdata/GeoIP2-ISP-Test.mmdb
 endif
 
 ifndef LOCAL_RELAYS
@@ -384,10 +385,6 @@ dev-portal: build-portal-local ## runs a local portal
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
-.PHONY: dev-server-backend-valve
-dev-server-backend-valve: build-server-backend
-	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
-
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon
 	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
@@ -502,12 +499,6 @@ build-beacon-inserter:
 build-server-backend:
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
-	@printf "done\n"
-
-.PHONY: build-debug-server-backend
-build-debug-server-backend:
-	@printf "Building debug server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/debug_server_backend ./cmd/debug_server_backend/debug_server_backend.go
 	@printf "done\n"
 
 .PHONY: build-billing
@@ -632,10 +623,6 @@ build-portal-cruncher-artifacts-dev: build-portal-cruncher
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
-.PHONY: build-debug-server-backend-artifacts-dev
-build-debug-server-backend-artifacts-dev: build-debug-server-backend
-	./deploy/build-artifacts.sh -e dev -s debug_server_backend
-
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -676,10 +663,6 @@ build-portal-cruncher-artifacts-staging: build-portal-cruncher
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
-.PHONY: build-debug-server-backend-artifacts-staging
-build-debug-server-backend-artifacts-staging: build-debug-server-backend
-	./deploy/build-artifacts.sh -e staging -s debug_server_backend
-
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
@@ -719,10 +702,6 @@ build-portal-cruncher-artifacts-prod: build-portal-cruncher
 .PHONY: build-server-backend-artifacts-prod
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
-
-.PHONY: build-debug-server-backend-artifacts-prod
-build-debug-server-backend-artifacts-prod: build-debug-server-backend
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
@@ -772,10 +751,6 @@ publish-portal-cruncher-artifacts-dev:
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
-.PHONY: publish-debug-server-backend-artifacts-dev
-publish-debug-server-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend
-
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
@@ -815,10 +790,6 @@ publish-portal-cruncher-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
-
-.PHONY: publish-debug-server-backend-artifacts-staging
-publish-debug-server-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend
 
 .PHONY: publish-fake-server-artifacts-staging
 publish-fake-server-artifacts-staging:
@@ -875,10 +846,6 @@ publish-portal-cruncher-artifacts-prod:
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
-
-.PHONY: publish-debug-server-backend-artifacts-prod
-publish-debug-server-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -938,6 +905,136 @@ build-next:
 	@printf "done\n"
 
 #######################
+#    Relay Pusher    #
+#######################
+
+.PHONY: build-relay-pusher
+build-relay-pusher:
+	@printf "Building relay pusher... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_pusher ./cmd/relay_pusher/relay_pusher.go
+	@printf "done\n"
+
+.PHONY: build-relay-pusher-artifacts-dev
+build-relay-pusher-artifacts-dev: build-relay-pusher
+	./deploy/build-artifacts.sh -e dev -s relay_pusher
+
+.PHONY: build-relay-pusher-artifacts-staging
+build-relay-pusher-artifacts-staging: build-relay-pusher
+	./deploy/build-artifacts.sh -e staging -s relay_pusher
+
+.PHONY: build-relay-pusher-artifacts-prod
+build-relay-pusher-artifacts-prod: build-relay-pusher
+	./deploy/build-artifacts.sh -e prod -s relay_pusher
+
+.PHONY: deploy-relay-pusher-dev
+deploy-relay-pusher-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-pusher -n relay_pusher -b gs://development_artifacts
+
+.PHONY: deploy-relay-pusher-staging
+deploy-relay-pusher-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-pusher -n relay_pusher -b gs://staging_artifacts
+
+.PHONY: deploy-relay-pusher-prod
+deploy-relay-pusher-prod:
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
+
+.PHONY: publish-relay-pusher-artifacts-dev
+publish-relay-pusher-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_pusher
+
+.PHONY: publish-relay-pusher-artifacts-nrb
+publish-relay-pusher-artifacts-nrb:
+	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_pusher
+
+.PHONY: publish-relay-pusher-artifacts-staging
+publish-relay-pusher-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_pusher
+
+.PHONY: publish-relay-pusher-artifacts-prod
+publish-relay-pusher-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_pusher
+
+#############################
+#    Debug Server Backend   #
+#############################
+
+.PHONY: build-debug-server-backend-artifacts-dev
+build-debug-server-backend-artifacts-dev: build-server-backend
+	./deploy/build-artifacts.sh -e dev -s debug_server_backend
+
+.PHONY: build-debug-server-backend-artifacts-staging
+build-debug-server-backend-artifacts-staging: build-server-backend
+	./deploy/build-artifacts.sh -e staging -s debug_server_backend
+
+.PHONY: build-debug-server-backend-artifacts-prod
+build-debug-server-backend-artifacts-prod: build-server-backend
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend
+
+.PHONY: publish-debug-server-backend-artifacts-dev
+publish-debug-server-backend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend
+
+.PHONY: publish-debug-server-backend-artifacts-staging
+publish-debug-server-backend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend
+
+.PHONY: publish-debug-server-backend-artifacts-prod
+publish-debug-server-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend
+
+.PHONY: deploy-debug-server-backend-dev
+deploy-debug-server-backend-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend -b gs://development_artifacts
+
+.PHONY: deploy-debug-server-backend-staging
+deploy-debug-server-backend-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend -b gs://staging_artifacts
+
+.PHONY: deploy-debug-server-backend-prod
+deploy-debug-server-backend-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b gs://prod_artifacts
+
+#############################
+#    Debug Relay Backend   #
+#############################
+
+.PHONY: build-debug-relay-backend-artifacts-dev
+build-debug-relay-backend-artifacts-dev: build-relay-backend
+	./deploy/build-artifacts.sh -e dev -s debug_relay_backend
+
+.PHONY: build-debug-relay-backend-artifacts-staging
+build-debug-relay-backend-artifacts-staging: build-relay-backend
+	./deploy/build-artifacts.sh -e staging -s debug_relay_backend
+
+.PHONY: build-debug-relay-backend-artifacts-prod
+build-debug-relay-backend-artifacts-prod: build-relay-backend
+	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
+
+.PHONY: publish-debug-relay-backend-artifacts-dev
+publish-debug-relay-backend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_relay_backend
+
+.PHONY: publish-debug-relay-backend-artifacts-prod
+publish-debug-relay-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_relay_backend
+
+.PHONY: publish-debug-relay-backend-artifacts-staging
+publish-debug-relay-backend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_relay_backend
+
+.PHONY: deploy-debug-relay-backend-dev
+deploy-debug-relay-backend-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t debug-relay-backend -n debug_relay_backend -b gs://development_artifacts
+
+.PHONY: deploy-debug-relay-backend-staging
+deploy-debug-relay-backend-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t debug-relay-backend -n debug_relay_backend -b gs://staging_artifacts
+
+.PHONY: deploy-debug-relay-backend-prod
+deploy-debug-relay-backend-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-relay-backend -n debug_relay_backend -b gs://prod_artifacts
+
+#######################
 #    Relay Backend    #
 #######################
 
@@ -956,10 +1053,6 @@ build-relay-backend:
 build-relay-backend-artifacts-dev: build-relay-backend
 	./deploy/build-artifacts.sh -e dev -s relay_backend
 
-.PHONY: build-relay-backend-artifacts-nrb
-build-relay-backend-artifacts-nrb: build-relay-backend
-	./deploy/build-artifacts.sh -e nrb -s relay_backend
-
 .PHONY: build-relay-backend-artifacts-staging
 build-relay-backend-artifacts-staging: build-relay-backend
 	./deploy/build-artifacts.sh -e staging -s relay_backend
@@ -971,11 +1064,6 @@ build-relay-backend-artifacts-prod: build-relay-backend
 .PHONY: deploy-relay-backend-dev
 deploy-relay-backend-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
-
-.PHONY: deploy-relay-backend-nrb
-deploy-relay-backend-nrb:
-	./deploy/deploy.sh -e nrb -c 1 -t relay-backend -n relay_backend -b gs://nrb_artifacts
-	./deploy/deploy.sh -e nrb -c 2 -t relay-backend -n relay_backend -b gs://nrb_artifacts
 
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging:
@@ -989,10 +1077,6 @@ deploy-relay-backend-prod:
 publish-relay-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_backend
 
-.PHONY: publish-relay-backend-artifacts-nrb
-publish-relay-backend-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_backend
-
 .PHONY: publish-relay-backend-artifacts-staging
 publish-relay-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_backend
@@ -1000,7 +1084,6 @@ publish-relay-backend-artifacts-staging:
 .PHONY: publish-relay-backend-artifacts-prod
 publish-relay-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_backend
-
 
 #######################
 #     Ghost Army      #
@@ -1128,146 +1211,6 @@ build-fake-relays-artifacts-prod: build-fake-relays
 publish-fake-relays-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s fake_relays
 
-
-#######################
-#   Relay Forwarder   #
-#######################
-
-.PHONY: dev-relay-forwarder
-dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
-	@PORT=30000 ./dist/relay_forwarder
-
-.PHONY: build-relay-forwarder
-build-relay-forwarder:
-	@printf "Building relay forwarder... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
-	@printf "done\n"
-
-.PHONY: build-relay-forwarder-artifacts-nrb
-build-relay-forwarder-artifacts-nrb: build-relay-forwarder
-	./deploy/build-artifacts.sh -e nrb -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-nrb
-publish-relay-forwarder-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-dev
-build-relay-forwarder-artifacts-dev: build-relay-forwarder
-	./deploy/build-artifacts.sh -e dev -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-dev
-publish-relay-forwarder-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-staging
-build-relay-forwarder-artifacts-staging: build-relay-forwarder
-	./deploy/build-artifacts.sh -e staging -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-staging
-publish-relay-forwarder-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-prod
-build-relay-forwarder-artifacts-prod: build-relay-forwarder
-	./deploy/build-artifacts.sh -e prod -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-prod
-publish-relay-forwarder-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
-
-#######################
-#    Relay Gateway    #
-#######################
-
-.PHONY: dev-relay-gateway
-dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
-	@PORT=30001 ./dist/relay_gateway
-
-.PHONY: build-relay-gateway
-build-relay-gateway:
-	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
-	@printf "done\n"
-
-.PHONY: build-relay-gateway-artifacts-dev
-build-relay-gateway-artifacts-dev: build-relay-gateway
-	./deploy/build-artifacts.sh -e dev -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-nrb
-build-relay-gateway-artifacts-nrb: build-relay-gateway
-	./deploy/build-artifacts.sh -e nrb -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-staging
-build-relay-gateway-artifacts-staging: build-relay-gateway
-	./deploy/build-artifacts.sh -e staging -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-prod
-build-relay-gateway-artifacts-prod: build-relay-gateway
-	./deploy/build-artifacts.sh -e prod -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-dev
-publish-relay-gateway-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-nrb
-publish-relay-gateway-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-staging
-publish-relay-gateway-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-prod
-publish-relay-gateway-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
-
-#######################
-##   Relay Frontend  ##
-#######################
-
-.PHONY: dev-relay-frontend
-dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
-	@PORT=30005 ./dist/relay-frontend
-
-.PHONY: build-relay-frontend
-build-relay-frontend:
-	@printf "Building Relay Frontend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
-	@printf "done\n"
-
-.PHONY: build-relay-frontend-artifacts-dev
-build-relay-frontend-artifacts-dev: build-relay-frontend
-	./deploy/build-artifacts.sh -e dev -s relay_frontend
-
-.PHONY: build-relay-frontend-artifacts-nrb
-build-relay-frontend-artifacts-nrb: build-relay-frontend
-	./deploy/build-artifacts.sh -e nrb -s relay_frontend
-
-.PHONY: build-relay-frontend-artifacts-staging
-build-relay-frontend-artifacts-staging: build-relay-frontend
-	./deploy/build-artifacts.sh -e staging -s relay_frontend
-
-.PHONY: build-relay-frontend-artifacts-prod
-build-relay-frontend-artifacts-prod: build-relay-frontend
-	./deploy/build-artifacts.sh -e prod -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-dev
-publish-relay-frontend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-nrb
-publish-relay-frontend-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-staging
-publish-relay-frontend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-prod
-publish-relay-frontend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_frontend
-
-
 #######################
 # Relay Build Process #
 #######################
@@ -1282,21 +1225,143 @@ build-relay-ref:
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-relay
-build-relay:
-	@printf "Building relay... "
-	@mkdir -p $(DIST_DIR)
-	@cd $(RELAY_DIR) && $(MAKE) release
-	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)
-	@echo "done"
+#######################
+#   Relay Forwarder   #
+#######################
 
-.PHONY: dev-relay
-dev-relay: build-relay ## runs a local relay
-	@$(DIST_DIR)/$(RELAY_EXE)
+# .PHONY: dev-relay-forwarder
+# dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
+# 	@PORT=30000 ./dist/relay_forwarder
 
-.PHONY: dev-multi-relays
-dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 10 -p 10000
+# .PHONY: build-relay-forwarder
+# build-relay-forwarder:
+# 	@printf "Building relay forwarder... "
+# 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
+# 	@printf "done\n"
+
+# .PHONY: build-relay-forwarder-artifacts-nrb
+# build-relay-forwarder-artifacts-nrb: build-relay-forwarder
+# 	./deploy/build-artifacts.sh -e nrb -s relay_forwarder
+
+# .PHONY: publish-relay-forwarder-artifacts-nrb
+# publish-relay-forwarder-artifacts-nrb:
+# 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_forwarder
+
+# .PHONY: build-relay-forwarder-artifacts-dev
+# build-relay-forwarder-artifacts-dev: build-relay-forwarder
+# 	./deploy/build-artifacts.sh -e dev -s relay_forwarder
+
+# .PHONY: publish-relay-forwarder-artifacts-dev
+# publish-relay-forwarder-artifacts-dev:
+# 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
+
+# .PHONY: build-relay-forwarder-artifacts-staging
+# build-relay-forwarder-artifacts-staging: build-relay-forwarder
+# 	./deploy/build-artifacts.sh -e staging -s relay_forwarder
+
+# .PHONY: publish-relay-forwarder-artifacts-staging
+# publish-relay-forwarder-artifacts-staging:
+# 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
+
+# .PHONY: build-relay-forwarder-artifacts-prod
+# build-relay-forwarder-artifacts-prod: build-relay-forwarder
+# 	./deploy/build-artifacts.sh -e prod -s relay_forwarder
+
+# .PHONY: publish-relay-forwarder-artifacts-prod
+# publish-relay-forwarder-artifacts-prod:
+# 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
+
+#######################
+#    Relay Gateway    #
+#######################
+
+# .PHONY: dev-relay-gateway
+# dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+# 	@PORT=30001 ./dist/relay_gateway
+
+# .PHONY: build-relay-gateway
+# build-relay-gateway:
+# 	@printf "Building relay gateway... "
+# 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
+# 	@printf "done\n"
+
+# .PHONY: build-relay-gateway-artifacts-dev
+# build-relay-gateway-artifacts-dev: build-relay-gateway
+# 	./deploy/build-artifacts.sh -e dev -s relay_gateway
+
+# .PHONY: build-relay-gateway-artifacts-nrb
+# build-relay-gateway-artifacts-nrb: build-relay-gateway
+# 	./deploy/build-artifacts.sh -e nrb -s relay_gateway
+
+# .PHONY: build-relay-gateway-artifacts-staging
+# build-relay-gateway-artifacts-staging: build-relay-gateway
+# 	./deploy/build-artifacts.sh -e staging -s relay_gateway
+
+# .PHONY: build-relay-gateway-artifacts-prod
+# build-relay-gateway-artifacts-prod: build-relay-gateway
+# 	./deploy/build-artifacts.sh -e prod -s relay_gateway
+
+# .PHONY: publish-relay-gateway-artifacts-dev
+# publish-relay-gateway-artifacts-dev:
+# 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
+
+# .PHONY: publish-relay-gateway-artifacts-nrb
+# publish-relay-gateway-artifacts-nrb:
+# 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_gateway
+
+# .PHONY: publish-relay-gateway-artifacts-staging
+# publish-relay-gateway-artifacts-staging:
+# 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
+
+# .PHONY: publish-relay-gateway-artifacts-prod
+# publish-relay-gateway-artifacts-prod:
+# 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
+
+#######################
+##   Relay Frontend  ##
+#######################
+
+# .PHONY: dev-relay-frontend
+# dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
+# 	@PORT=30005 ./dist/relay-frontend
+
+# .PHONY: build-relay-frontend
+# build-relay-frontend:
+# 	@printf "Building Relay Frontend... "
+# 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
+# 	@printf "done\n"
+
+# .PHONY: build-relay-frontend-artifacts-dev
+# build-relay-frontend-artifacts-dev: build-relay-frontend
+# 	./deploy/build-artifacts.sh -e dev -s relay_frontend
+
+# .PHONY: build-relay-frontend-artifacts-nrb
+# build-relay-frontend-artifacts-nrb: build-relay-frontend
+# 	./deploy/build-artifacts.sh -e nrb -s relay_frontend
+
+# .PHONY: build-relay-frontend-artifacts-staging
+# build-relay-frontend-artifacts-staging: build-relay-frontend
+# 	./deploy/build-artifacts.sh -e staging -s relay_frontend
+
+# .PHONY: build-relay-frontend-artifacts-prod
+# build-relay-frontend-artifacts-prod: build-relay-frontend
+# 	./deploy/build-artifacts.sh -e prod -s relay_frontend
+
+# .PHONY: publish-relay-frontend-artifacts-dev
+# publish-relay-frontend-artifacts-dev:
+# 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_frontend
+
+# .PHONY: publish-relay-frontend-artifacts-nrb
+# publish-relay-frontend-artifacts-nrb:
+# 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_frontend
+
+# .PHONY: publish-relay-frontend-artifacts-staging
+# publish-relay-frontend-artifacts-staging:
+# 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_frontend
+
+# .PHONY: publish-relay-frontend-artifacts-prod
+# publish-relay-frontend-artifacts-prod:
+# 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_frontend
 
 #######################
 
@@ -1306,7 +1371,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-server-backend build-debug-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-backend build-relay-pusher build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

@@ -76,6 +76,10 @@ blocks:
           commands:
             - make build-debug-server-backend-artifacts-staging
             - make publish-debug-server-backend-artifacts-staging
+        - name: Debug Relay Backend
+          commands:
+            - make build-debug-relay-backend-artifacts-staging
+            - make publish-debug-relay-backend-artifacts-staging
         - name: Fake Server
           commands:
             - make build-fake-server-artifacts-staging
@@ -88,21 +92,9 @@ blocks:
             - make build-ghost-army-artifacts-staging
             - make publish-ghost-army-artifacts-staging
             - make publish-ghost-army-bootstrap-script-staging
-        - name: Relay Forwarder
+        - name: Relay Pusher
           commands:
-            - make build-relay-forwarder-artifacts-staging
-            - make publish-relay-forwarder-artifacts-staging
-        - name: Relay Gateway
-          commands:
-            - make build-relay-gateway-artifacts-staging
-            - make publish-relay-gateway-artifacts-staging
-        - name: Relay Frontend
-          commands:
-            - make build-relay-frontend-artifacts-staging
-            - make publish-relay-frontend-artifacts-staging
-        - name: Fake Relays
-          commands:
-            - make build-fake-relays-artifacts-nrb
-            - make publish-fake-relays-artifacts-nrb
+            - make build-relay-pusher-artifacts-staging
+            - make publish-relay-pusher-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging

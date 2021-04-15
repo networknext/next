@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/gob"
 	"expvar"
 	"fmt"
 	"io"
@@ -22,6 +23,10 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
+
+	// "github.com/rjeczalik/notify"
+	// "strings"
+	// "path/filepath"
 
 	"os"
 	"os/signal"
@@ -47,7 +52,6 @@ import (
 )
 
 // MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
-// An equal number of valve relays will also be added
 const MaxRelayCount = 10
 
 var (
@@ -92,6 +96,16 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("%s\n", serviceName)
 
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
+	if err != nil {
+		fmt.Println("Failed to get debug status")
+		isDebug = false
+	}
+
+	if isDebug {
+		fmt.Println("Instance is running as a debug instance")
+	}
+
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
@@ -119,12 +133,6 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
 			return 1
 		}
-	}
-
-	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
 	}
 
 	// Create server backend metrics
@@ -186,14 +194,19 @@ func mainReturnWithCode() int {
 		return routing.NullIsland
 	}
 
+	// Setup maxmind download go routine
+	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
+	if err != nil {
+		maxmindSyncInterval = time.Minute * 1
+	}
+
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
-	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
-	if maxmindCityURI != "" && maxmindISPURI != "" {
+	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
+	if maxmindCityFile != "" && maxmindISPFile != "" {
 		mmdb := &routing.MaxmindDB{
-			HTTPClient: http.DefaultClient,
-			CityURI:    maxmindCityURI,
-			IspURI:     maxmindISPURI,
+			CityFile: maxmindCityFile,
+			IspFile:  maxmindISPFile,
 		}
 		var mmdbMutex sync.RWMutex
 
@@ -210,40 +223,20 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// todo: disable the sync for now until we can find out why it's causing session drops
-
-		// if envvar.Exists("MAXMIND_SYNC_DB_INTERVAL") {
-		// 	syncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
-		// 	if err != nil {
-		// 		level.Error(logger).Log("err", err)
-		// 		return 1
-		// 	}
-
-		// 	// Start a goroutine to sync from Maxmind.com
-		// 	go func() {
-		// 		ticker := time.NewTicker(syncInterval)
-		// 		for {
-		// 			newMMDB := &routing.MaxmindDB{}
-
-		// 			select {
-		// 			case <-ticker.C:
-		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-		// 					level.Error(logger).Log("err", err)
-		// 					continue
-		// 				}
-
-		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
-		// 				mmdbMutex.Lock()
-		// 				mmdb = newMMDB
-		// 				mmdbMutex.Unlock()
-		// 			case <-ctx.Done():
-		// 				return
-		// 			}
-
-		// 			time.Sleep(syncInterval)
-		// 		}
-		// 	}()
-		// }
+		ticker := time.NewTicker(maxmindSyncInterval)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+						level.Error(logger).Log("err", err)
+						continue
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
 	}
 
 	// Use a custom IP locator for staging so that clients
@@ -264,6 +257,34 @@ func mainReturnWithCode() int {
 		rm4 := routeMatrix
 		routeMatrixMutex.RUnlock()
 		return rm4
+	}
+
+	var binWrapperCache routing.DatabaseBinWrapper
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		routeMatrixMutex.RLock()
+		binWrapperData := routeMatrix.BinFileData
+		routeMatrixMutex.RUnlock()
+
+		// Decode the GOB into a DatabaseBinWrapper
+		buffer := bytes.NewBuffer(binWrapperData)
+		decoder := gob.NewDecoder(buffer)
+		var binWrapper routing.DatabaseBinWrapper
+		err := decoder.Decode(&binWrapper)
+		if err == io.EOF {
+			level.Warn(logger).Log("msg", "bin wrapper data is empty", "err", err)
+		} else if err != nil {
+			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
+			backendMetrics.BinWrapperFailure.Add(1)
+		}
+
+		if binWrapper.IsEmpty() {
+			// Received an empty bin wrapper, continue using the old one
+			level.Debug(logger).Log("msg", "bin wrapper data is empty, serving cached version")
+			return binWrapperCache
+		}
+		// Save the current data in case the next route matrix doesn't have one
+		binWrapperCache = binWrapper
+		return binWrapper
 	}
 
 	// Sync route matrix
@@ -527,7 +548,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, getBinWrapperFunc)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -634,9 +655,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getBinWrapperFunc, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getBinWrapperFunc, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, getBinWrapperFunc, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

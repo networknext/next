@@ -229,9 +229,6 @@ func TestInsertSQL(t *testing.T) {
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
 
-		fmt.Printf("checkRelay.DatabaseID: %d\n", checkRelay.DatabaseID)
-		fmt.Printf("checkRelay.Addr: %s\n", checkRelay.Addr.String())
-
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
 		assert.Equal(t, relay.InternalAddr, checkRelay.InternalAddr)

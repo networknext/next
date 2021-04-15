@@ -11,10 +11,10 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"unsafe"
-	"os"
 )
 
 const NEXT_EXPERIMENTAL = false
@@ -44,7 +44,7 @@ func init() {
 
 func Debug(s string, params ...interface{}) {
 	if debugLogs {
-		fmt.Printf(s + "\n", params...)
+		fmt.Printf(s+"\n", params...)
 	}
 }
 
@@ -1133,7 +1133,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
 	if numBestRoutes == 0 {
 		if debug != nil {
-			*debug += "could not find any next routes. this should never happen\n"
+			*debug += "could not find any next routes\n"
 		}
 		return
 	}
@@ -1264,6 +1264,7 @@ type RouteState struct {
 	CommitVeto          bool
 	CommitCounter       int32
 	LatencyWorse        bool
+	LocationVeto        bool
 	MultipathOverload   bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
@@ -1328,7 +1329,7 @@ func NewInternalConfig() InternalConfig {
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
-	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
 		return true
 	}
 

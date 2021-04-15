@@ -4598,9 +4598,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 {
     // build update data
 
-    uint32_t update_version = 0;
+    uint32_t update_version = 3;
 
-    uint8_t update_data[10*1024 + 8 + 8 + 8 + 1]; // + 8 for the session count, + 8 for the bytes sent counter, + 8 for the bytes received counter, + 1 for the shutdown flag
+    uint8_t update_data[10*1024];
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4622,14 +4622,8 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     relay_write_uint64(&p, relay->sessions->size());
-    relay_write_uint64(&p, relay->bytes_sent.load());
-    relay->bytes_sent.store(0);
-    relay_write_uint64(&p, relay->bytes_received.load());
-    relay->bytes_received.store(0);
-    relay_write_uint8(&p, shutdown);
-    relay_write_float64(&p, 0.00); // cpu usage
-    relay_write_float64(&p, 0.00); // memory usage
-    relay_write_string(&p, "1.0.0", sizeof("1.0.0")); // relay version
+    relay_write_uint8(&p, uint8_t(shutdown));
+    relay_write_string(&p, "reference", 32);
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4693,7 +4687,11 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     uint64_t timestamp = relay_read_uint64( &q );
-    (void) timestamp;
+    if ( relay->initialize_router_timestamp == 0 )
+    {
+        printf( "Relay initialized\n" );
+        relay->initialize_router_timestamp = timestamp;
+    }
 
     uint32_t num_relays = relay_read_uint32( &q );
 
@@ -4787,6 +4785,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( packet_bytes == 0 )
             continue;
 
+        if ( relay->initialize_router_timestamp == 0 )
+            continue;
+
         if ( relay->fake_packet_loss_start_time >= 0.0f )
         {
             const double current_time = relay_platform_time();
@@ -4833,7 +4834,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( token.expire_timestamp < relay_timestamp( relay ) )
             {
-                relay_printf( "not a network next packet (%d)\n", packet_bytes );
+                relay_printf( "ignoring route request. route token expired" );
                 continue;
             }
 
@@ -5382,16 +5383,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    {
-        relay_address_t address_without_port = relay_address;
-        address_without_port.port = 0;
-        char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        printf( "    relay address is '%s'\n", relay_address_to_string( &address_without_port, address_buffer ) );
-    }
-
-    uint16_t relay_bind_port = relay_address.port;
-
-    printf( "    relay bind port is %d\n", relay_bind_port);
+    char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    printf( "    relay address is '%s'\n", relay_address_to_string( &relay_address, address_buffer ) );
 
     const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
     if ( !relay_private_key_env )
@@ -5488,7 +5481,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "\nRelay socket opened on port %d\n", relay_address.port );
+    printf( "\nRelay socket opened on port %d\n\n", relay_address.port );
     char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
 
@@ -5505,42 +5498,11 @@ int main( int argc, const char ** argv )
     uint8_t relay_token[RELAY_TOKEN_BYTES];
     relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
-    printf( "\nInitializing relay\n" );
-
-    bool relay_initialized = false;
-
-    uint64_t router_timestamp = 0;
-
-    for ( int i = 0; i < 60; ++i )
-    {
-        if ( relay_init( curl, backend_hostname, relay_token, relay_address_string, router_public_key, relay_private_key, &router_timestamp ) == RELAY_OK )
-        {
-            printf( "\n" );
-            relay_initialized = true;
-            break;
-        }
-
-        printf( "." );
-        fflush( stdout );
-
-        relay_platform_sleep( 1.0 );
-    }
-
-    if ( !relay_initialized )
-    {
-        printf( "\nerror: could not initialize relay\n\n" );
-        relay_platform_socket_destroy( socket );
-        curl_easy_cleanup( curl );
-        relay_term();
-        return 1;
-    }
-
     relay_t relay;
     relay.relay_manager = nullptr;
     relay.socket = nullptr;
     relay.mutex = nullptr;
     relay.initialize_time = relay_platform_time();
-    relay.initialize_router_timestamp = router_timestamp;
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
@@ -5582,8 +5544,6 @@ int main( int argc, const char ** argv )
         printf( "\nerror: could not create ping thread\n\n" );
         quit = 1;
     }
-
-    printf( "Relay initialized\n\n" );
 
     signal( SIGINT, interrupt_handler );
     signal( SIGTERM, interrupt_handler );
@@ -5645,7 +5605,7 @@ int main( int argc, const char ** argv )
         }
     }
 
-    printf( "\nCleaning up\n" );
+    printf( "\n\nCleaning up\n\n" );
 
     if ( receive_thread )
     {
