@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/gob"
 	"expvar"
 	"fmt"
 	"io"
@@ -73,7 +74,7 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = backend.DecodeBinWrapper(file, &binWrapper); err != nil {
+	if err = backend.DecodeBinWrapper(file, &binWrapper_internal); err != nil {
 		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}

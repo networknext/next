@@ -48,7 +48,7 @@ var (
 )
 
 func init() {
-	var binWrapper routing.RelayBinWrapper
+	var binWrapper routing.DatabaseBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("BIN_PATH", "./relays.bin")
@@ -178,7 +178,7 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var binWrapperNew routing.RelayBinWrapper
+					var binWrapperNew routing.DatabaseBinWrapper
 					relayHashNew := make(map[uint64]routing.Relay)
 
 					if err = backend.DecodeBinWrapper(file, &binWrapperNew); err == io.EOF {
