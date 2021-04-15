@@ -1,7 +1,6 @@
 package storage_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -19,7 +18,12 @@ func TestNewMultipathVetoHandlerCouldNotPing(t *testing.T) {
 func TestNewMultipathVetoHandlerSuccess(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
-	_, err = storage.NewMultipathVetoHandler(redisServer.Addr(), nil)
+
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		return routing.DatabaseBinWrapper{}
+	}
+
+	_, err = storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 }
 
@@ -27,12 +31,14 @@ func TestMultipathVetoUserRedisError(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:          123,
-		CompanyCode: "local",
-	})
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		buyerMap := make(map[uint64]routing.Buyer)
+		buyerMap[123] = routing.Buyer{ID: 123, CompanyCode: "local"}
+
+		return routing.DatabaseBinWrapper{BuyerMap: buyerMap}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 
 	redisServer.Close()
@@ -45,12 +51,14 @@ func TestMultipathVetoUserSuccess(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:          123,
-		CompanyCode: "local",
-	})
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		buyerMap := make(map[uint64]routing.Buyer)
+		buyerMap[123] = routing.Buyer{ID: 123, CompanyCode: "local"}
+
+		return routing.DatabaseBinWrapper{BuyerMap: buyerMap}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 	err = multipathVetoHandler.MultipathVetoUser("local", 1234567890)
 	assert.NoError(t, err)
@@ -64,7 +72,12 @@ func TestMultipathVetoUserSuccess(t *testing.T) {
 func TestGetMapCopyNewCustomerCode(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), nil)
+
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		return routing.DatabaseBinWrapper{}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 
 	multipathVetoMap := multipathVetoHandler.GetMapCopy("unknown")
@@ -75,12 +88,14 @@ func TestGetMapCopyExistingCustomerCode(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:          123,
-		CompanyCode: "local",
-	})
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		buyerMap := make(map[uint64]routing.Buyer)
+		buyerMap[123] = routing.Buyer{ID: 123, CompanyCode: "local"}
+
+		return routing.DatabaseBinWrapper{BuyerMap: buyerMap}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 	err = multipathVetoHandler.MultipathVetoUser("local", 1234567890)
 	assert.NoError(t, err)
@@ -93,12 +108,14 @@ func TestMultipathVetoHandlerSyncRedisError(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:          123,
-		CompanyCode: "local",
-	})
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		buyerMap := make(map[uint64]routing.Buyer)
+		buyerMap[123] = routing.Buyer{ID: 123, CompanyCode: "local"}
+
+		return routing.DatabaseBinWrapper{BuyerMap: buyerMap}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 
 	redisServer.Close()
@@ -111,12 +128,14 @@ func TestMultipathVetoHandlerSyncParseError(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:          123,
-		CompanyCode: "local",
-	})
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		buyerMap := make(map[uint64]routing.Buyer)
+		buyerMap[123] = routing.Buyer{ID: 123, CompanyCode: "local"}
+
+		return routing.DatabaseBinWrapper{BuyerMap: buyerMap}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 
 	redisServer.Set("local-zyxwvut", "1")
@@ -129,12 +148,14 @@ func TestMultipathVetoHandlerSyncSuccess(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{
-		ID:          123,
-		CompanyCode: "local",
-	})
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		buyerMap := make(map[uint64]routing.Buyer)
+		buyerMap[123] = routing.Buyer{ID: 123, CompanyCode: "local"}
+
+		return routing.DatabaseBinWrapper{BuyerMap: buyerMap}
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), getBinWrapperFunc)
 	assert.NoError(t, err)
 
 	for i := 0; i < 100; i++ {
