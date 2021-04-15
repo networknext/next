@@ -392,13 +392,28 @@ func main() {
 
 		var dbWrapper routing.DatabaseBinWrapper
 		var enabledRelays []routing.Relay
+		relayMap := make(map[uint64]routing.Relay)
+		buyerMap := make(map[uint64]routing.Buyer)
+		sellerMap := make(map[string]routing.Seller)
+		datacenterMap := make(map[uint64]routing.Datacenter)
 
 		buyers := db.Buyers()
-		relays := db.Relays()
+		for _, buyer := range buyers {
+			buyerMap[buyer.ID] = buyer
+		}
 
-		for _, localRelay := range relays {
+		for _, seller := range db.Sellers() {
+			sellerMap[seller.ShortName] = seller
+		}
+
+		for _, datacenter := range db.Datacenters() {
+			datacenterMap[datacenter.ID] = datacenter
+		}
+
+		for _, localRelay := range db.Relays() {
 			if localRelay.State == routing.RelayStateEnabled {
 				enabledRelays = append(enabledRelays, localRelay)
+				relayMap[localRelay.ID] = localRelay
 			}
 		}
 
@@ -409,9 +424,10 @@ func main() {
 		}
 
 		dbWrapper.Relays = enabledRelays
-		dbWrapper.Sellers = db.Sellers()
-		dbWrapper.Buyers = buyers
-		dbWrapper.Datacenters = db.Datacenters()
+		dbWrapper.RelayMap = relayMap
+		dbWrapper.BuyerMap = buyerMap
+		dbWrapper.SellerMap = sellerMap
+		dbWrapper.DatacenterMap = datacenterMap
 		dbWrapper.DatacenterMaps = datacenterMaps
 
 		var buffer bytes.Buffer
