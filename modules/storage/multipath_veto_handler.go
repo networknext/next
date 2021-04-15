@@ -6,17 +6,19 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/networknext/backend/modules/routing"
+
 	"github.com/gomodule/redigo/redis"
 )
 
 type MultipathVetoHandler struct {
-	storer                     Storer
+	getBinWrapper              func() routing.DatabaseBinWrapper
 	redisPool                  *redis.Pool
 	cachedMultipathVetoes      map[string]map[uint64]bool
 	cachedMultipathVetoesMutex sync.RWMutex
 }
 
-func NewMultipathVetoHandler(redisHost string, storer Storer) (*MultipathVetoHandler, error) {
+func NewMultipathVetoHandler(redisHost string, getBinWrapper func() routing.DatabaseBinWrapper) (*MultipathVetoHandler, error) {
 	redisPool := NewRedisPool(redisHost, 5, 64)
 	conn := redisPool.Get()
 	defer conn.Close()
@@ -26,7 +28,7 @@ func NewMultipathVetoHandler(redisHost string, storer Storer) (*MultipathVetoHan
 	}
 
 	return &MultipathVetoHandler{
-		storer:                storer,
+		getBinWrapper:         getBinWrapper,
 		redisPool:             redisPool,
 		cachedMultipathVetoes: make(map[string]map[uint64]bool),
 	}, nil
@@ -77,8 +79,9 @@ func (mvh *MultipathVetoHandler) Sync() error {
 	conn := mvh.redisPool.Get()
 	defer conn.Close()
 
-	buyers := mvh.storer.Buyers()
-	for _, buyer := range buyers {
+	binWrapper := mvh.getBinWrapper()
+
+	for _, buyer := range binWrapper.BuyerMap {
 		scanMatch := buyer.CompanyCode + "-*"
 		var scanCursor int64
 
