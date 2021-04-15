@@ -254,6 +254,23 @@ func mainReturnWithCode() int {
 		return rm4
 	}
 
+	getBinWrapperFunc := func() *routing.DatabaseBinWrapper {
+		routeMatrixMutex.RLock()
+		binWrapperData := routeMatrix.BinFileData
+		routeMatrixMutex.RUnlock()
+
+		// Decode the GOB into a DatabaseBinWrapper
+		buffer := bytes.NewBuffer(binWrapperData)
+		decoder := gob.NewDecoder(buffer)
+		var binWrapper routing.DatabaseBinWrapper
+		err := decoder.Decode(&binWrapper)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
+			backendMetrics.BinWrapperFailure.Add(1)
+		}
+		return binWrapper
+	}
+
 	// Sync route matrix
 	{
 		uri := ""
@@ -622,7 +639,7 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, backendMetrics.ServerInitMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getBinWrapperFunc, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, postSessionHandler, backendMetrics.ServerUpdateMetrics)
 	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 

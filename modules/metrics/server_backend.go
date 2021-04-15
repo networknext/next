@@ -162,6 +162,8 @@ type ServerBackendMetrics struct {
 	RouteMatrixUpdateLongDuration Counter
 	RouteMatrixNumRoutes          Gauge
 	RouteMatrixBytes              Gauge
+
+	BinWrapperFailure Counter
 }
 
 // EmptyServerBackendMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -176,6 +178,7 @@ var EmptyServerBackendMetrics = ServerBackendMetrics{
 	RouteMatrixUpdateLongDuration: &EmptyCounter{},
 	RouteMatrixNumRoutes:          &EmptyGauge{},
 	RouteMatrixBytes:              &EmptyGauge{},
+	BinWrapperFailure:             &EmptyCounter{},
 }
 
 // NewServerBackendMetrics creates the metrics that the server backend will use.
@@ -300,6 +303,17 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		ID:          "route_matrix_update.bytes",
 		Unit:        "bytes",
 		Description: "The number of bytes read from the route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BinWrapperFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Bin Wrapper Failure",
+		ServiceName: serviceName,
+		ID:          "server_backend.bin_wrapper_failure",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + " failed to decode the database bin wrapper from the route matrix.",
 	})
 	if err != nil {
 		return nil, err
