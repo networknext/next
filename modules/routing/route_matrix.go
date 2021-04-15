@@ -23,6 +23,8 @@ type RouteMatrix struct {
 	RelayLongitudes    []float32
 	RelayDatacenterIDs []uint64
 	RouteEntries       []core.RouteEntry
+	BinFileBytes       int32
+	BinFileData        []byte
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -80,6 +82,15 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
 			}
 		}
+	}
+
+	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
+	if m.BinFileBytes > 0 {
+		if stream.IsReading() {
+			m.BinFileData = make([]byte, MaxDatabaseBinWrapperSize)
+		}
+		binFileData := m.BinFileData[:m.BinFileBytes]
+		stream.SerializeBytes(binFileData)
 	}
 
 	return stream.Error()
