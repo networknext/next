@@ -95,7 +95,7 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("%s\n", serviceName)
 
-	isDebug, err := envvar.GetBool("NEXT_DEBUG", true)
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
 	if err != nil {
 		fmt.Println("Failed to get debug status")
 		isDebug = false
