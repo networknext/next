@@ -125,12 +125,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -269,6 +263,7 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
 			backendMetrics.BinWrapperFailure.Add(1)
 		}
+
 		return binWrapper
 	}
 
@@ -533,7 +528,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, getBinWrapperFunc)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
