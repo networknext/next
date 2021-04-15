@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/gob"
 	"expvar"
 	"fmt"
 	"io"
@@ -20,7 +19,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -53,9 +51,11 @@ var (
 	timestamp string
 	env       string
 
+	binWrapper_internal routing.DatabaseBinWrapper
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
+	binWrapperMutex sync.RWMutex
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
 
@@ -63,10 +63,9 @@ var (
 )
 
 func init() {
-	var binWrapper routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
-	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+	filePath := envvar.Get("BIN_PATH", "./database.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
 		// fmt.Printf("could not load relay binary: %s\n", filePath)
@@ -74,16 +73,16 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeBinWrapper(file, &binWrapper); err != nil {
-		fmt.Printf("decodeBinWrapper() error: %v\n", err)
+	if err = backend.DecodeBinWrapper(file, &binWrapper); err != nil {
+		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
 
-	relayArray_internal = binWrapper.Relays
+	relayArray_internal = binWrapper_internal.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
-	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	displayLoadedRelays(relayArray_internal)
+	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	backend.DisplayLoadedRelays(relayArray_internal)
 
 	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
 }
@@ -207,7 +206,7 @@ func mainReturnWithCode() int {
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+		relaysFilePath := envvar.Get("BIN_PATH", "./database.bin")
 		absPath, err := filepath.Abs(relaysFilePath)
 		if err != nil {
 			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
@@ -262,28 +261,40 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var binWrapperNew routing.RelayBinWrapper
+					var binWrapperNew routing.DatabaseBinWrapper
 					relayHashNew := make(map[uint64]routing.Relay)
 
-					if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
+					if err = backend.DecodeBinWrapper(file, &binWrapperNew); err == io.EOF {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
-						level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
+						level.Debug(logger).Log("msg", "DecodeBinWrapper() EOF error, will wait for next notification")
 						continue
 					} else if err != nil {
 						file.Close()
-						level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
+						level.Error(logger).Log("msg", "DecodeBinWrapper() error", "err", err)
 						continue
 					}
 
 					// Close the file since it is no longer needed
 					file.Close()
 
+					if binWrapperNew.IsEmpty() {
+						// Don't want to use an empty bin wrapper
+						// so early out here and use existing array and hash
+						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
+						continue
+					}
+
 					// Get the new relay array
 					relayArrayNew := binWrapperNew.Relays
 					// Proceed to fill up the new relay hash
-					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+
+					// Pointer swap the relay bin wrapper
+					binWrapperMutex.Lock()
+					binWrapper_internal = binWrapperNew
+					binWrapperMutex.Unlock()
 
 					// Pointer swap the relay array
 					relayArrayMutex.Lock()
@@ -299,7 +310,7 @@ func mainReturnWithCode() int {
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
-					displayLoadedRelays(relayArray_internal)
+					backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -423,7 +434,16 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 
-			// build set active relays that are *also* in the current relays.bin
+			// Encode the current database.bin to attach to route matrix
+			binWrapperMutex.RLock()
+			binWrapperCopy := binWrapper_internal
+			binWrapperMutex.RUnlock()
+
+			var binWrapperBuffer bytes.Buffer
+			encoder := gob.NewEncoder(&binWrapperBuffer)
+			encoder.Encode(binWrapperCopy)
+
+			// build set active relays that are *also* in the current database.bin
 
 			_, relayHash := GetRelayData()
 
@@ -620,6 +640,8 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				RouteEntries:       routeEntries,
+				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
+				BinFileData:        binWrapperBuffer.Bytes(),
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
@@ -786,7 +808,6 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
-	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
@@ -843,19 +864,6 @@ func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp tim
 	return err
 }
 
-func ParseAddress(input string) *net.UDPAddr {
-	address := &net.UDPAddr{}
-	ip_string, port_string, err := net.SplitHostPort(input)
-	if err != nil {
-		address.IP = net.ParseIP(input)
-		address.Port = 0
-		return address
-	}
-	address.IP = net.ParseIP(ip_string)
-	address.Port, _ = strconv.Atoi(port_string)
-	return address
-}
-
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	relayArrayMutex.RLock()
 	relayArrayData := relayArray_internal
@@ -866,35 +874,4 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	relayHashMutex.RUnlock()
 
 	return relayArrayData, relayHashData
-}
-
-func decodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
-	decoder := gob.NewDecoder(file)
-	err := decoder.Decode(binWrapper)
-	return err
-}
-
-func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
-	sort.SliceStable(relayArray, func(i, j int) bool {
-		return relayArray[i].Name < relayArray[j].Name
-	})
-
-	if gcpProjectID == "" {
-		// TODO: hack override for local testing for single relay
-		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-		relayArray[0].ID = 0xde0fb1e9a25b1948
-	}
-
-	for i := range relayArray {
-		relayHash[relayArray[i].ID] = relayArray[i]
-	}
-}
-
-func displayLoadedRelays(relayArray []routing.Relay) {
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
-	for i := range relayArray {
-		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
 }
