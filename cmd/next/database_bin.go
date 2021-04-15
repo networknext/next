@@ -111,15 +111,20 @@ func checkDatacentersInBinFile() {
 		os.Exit(1)
 	}
 
+	var datacenters []routing.Datacenter
+	for _, datacenter := range incomingDB.DatacenterMap {
+		datacenters = append(datacenters, datacenter)
+	}
+
 	// print a list
-	sort.SliceStable(incomingDB.Datacenters, func(i, j int) bool {
-		return incomingDB.Datacenters[i].Name < incomingDB.Datacenters[j].Name
+	sort.SliceStable(datacenters, func(i, j int) bool {
+		return datacenters[i].Name < datacenters[j].Name
 	})
 
 	fmt.Println("Datacenters:")
 	fmt.Printf("\t%-25s %-16s\n", "Name", "ID")
 	fmt.Printf("\t%s\n", strings.Repeat("-", 43))
-	for _, datacenter := range incomingDB.Datacenters {
+	for _, datacenter := range datacenters {
 		id := strings.ToUpper(fmt.Sprintf("%016x", datacenter.ID))
 		fmt.Printf("\t%-25s %016s\n", datacenter.Name, id)
 	}
@@ -143,15 +148,20 @@ func checkSellersInBinFile() {
 		os.Exit(1)
 	}
 
+	var sellers []routing.Seller
+	for _, seller := range incomingDB.SellerMap {
+		sellers = append(sellers, seller)
+	}
+
 	// print a list
-	sort.SliceStable(incomingDB.Sellers, func(i, j int) bool {
-		return incomingDB.Sellers[i].ID < incomingDB.Sellers[j].ID
+	sort.SliceStable(sellers, func(i, j int) bool {
+		return sellers[i].ID < sellers[j].ID
 	})
 
 	fmt.Println("Sellers:")
 	fmt.Printf("\t%-25s\n", "ID")
 	fmt.Printf("\t%s\n", strings.Repeat("-", 25))
-	for _, seller := range incomingDB.Sellers {
+	for _, seller := range sellers {
 		fmt.Printf("\t%-25s\n", seller.ID)
 	}
 	fmt.Println()
@@ -175,15 +185,20 @@ func checkBuyersInBinFile() {
 		os.Exit(1)
 	}
 
+	var buyers []routing.Buyer
+	for _, buyer := range incomingDB.BuyerMap {
+		buyers = append(buyers, buyer)
+	}
+
 	// print a list
-	sort.SliceStable(incomingDB.Buyers, func(i, j int) bool {
-		return incomingDB.Buyers[i].ShortName < incomingDB.Buyers[j].ShortName
+	sort.SliceStable(buyers, func(i, j int) bool {
+		return buyers[i].ShortName < buyers[j].ShortName
 	})
 
 	fmt.Println("Buyers:")
 	fmt.Printf("\t%-25s %-16s  %-5s\n", "ShortName", "ID", "Live")
 	fmt.Printf("\t%s\n", strings.Repeat("-", 50))
-	for _, buyer := range incomingDB.Buyers {
+	for _, buyer := range buyers {
 		id := strings.ToUpper(fmt.Sprintf("%016x", buyer.ID))
 		fmt.Printf("\t%-25s %016s %5t\n", buyer.ShortName, id, buyer.Live)
 	}
@@ -207,26 +222,21 @@ func checkDCMapsInBinFile() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Datacenter Maps:")
-	for _, buyer := range incomingDB.Buyers {
-		if dcMaps, ok := incomingDB.DatacenterMaps[buyer.ID]; ok {
+	for buyerID, buyer := range incomingDB.BuyerMap {
+		if dcMaps, ok := incomingDB.DatacenterMaps[buyerID]; ok {
 			fmt.Printf("\t%s:\n", buyer.ShortName)
 			fmt.Printf("\t\t%-25s %-16s\n", "Datacenter", "Alias")
 			fmt.Printf("\t\t%s\n", strings.Repeat("-", 50))
 			for _, dcMap := range dcMaps {
 
 				dcName := "name not found"
-				for _, dc := range incomingDB.Datacenters {
-					if dc.ID == dcMap.DatacenterID {
-						dcName = dc.Name
-					}
+				if datacenter, ok := incomingDB.DatacenterMap[dcMap.DatacenterID]; ok {
+					dcName = datacenter.Name
 				}
-
 				fmt.Printf("\t\t%-25s %-16s\n", dcName, dcMap.Alias)
 			}
 			fmt.Println()
 		}
-
 	}
 
 }
