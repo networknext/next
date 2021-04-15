@@ -69,9 +69,11 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 		return errors.New("unable to read relay stats version")
 	}
 
+	/*
 	if version != routing.VersionNumberRelayMap {
 		return fmt.Errorf("incorrect relay map version number: %d", version)
 	}
+	*/
 
 	var count uint64
 	if !encoding.ReadUint64(data, &index, &count) {
@@ -1375,6 +1377,15 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 	// net.UDPAddr, time.Time - all sent to storer as strings
 	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate":
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	case "PublicKey":
+		newPublicKey := string(args.Value)
+		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newPublicKey)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
 			level.Error(s.Logger).Log("err", err)
