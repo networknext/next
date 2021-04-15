@@ -244,7 +244,7 @@ func mainReturnWithCode() int {
 		}
 
 		go func() {
-			// Start up goroutins to POST to relay backends
+			// Start up goroutines to POST to relay backends
 			if err := gatewayHTTPClient.Start(ctx); err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err
@@ -373,7 +373,7 @@ func mainReturnWithCode() int {
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1) // TODO: don't os.Exit() here, but find a way to exit using errChan
+			errChan <- err
 		}
 	}()
 
