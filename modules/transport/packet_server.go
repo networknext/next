@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 9
+	SessionDataVersion = 10
 
 	MaxSessionDataSize = 511
 
@@ -51,12 +51,12 @@ const (
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
 	PlatformTypeXBoxOne     = 7
-	PlatformTypeMax_404     = 7 	// SDK 4.0.4 and older
+	PlatformTypeMax_404     = 7 // SDK 4.0.4 and older
 	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
-	PlatformTypeMax_405     = 9 	// SDK 4.0.5 and newer
+	PlatformTypeMax_405     = 9 // SDK 4.0.5 and newer
 	PlatformTypeGDK         = 10
-	PlatformTypeMax_410     = 10 	// SDK 4.0.10 and newer
+	PlatformTypeMax_410     = 10 // SDK 4.0.10 and newer
 	PlatformTypeMax         = 10
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
@@ -749,6 +749,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
 		stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
 		stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
+	}
+
+	if sessionData.Version >= 10 {
+		stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 	}
 
 	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!

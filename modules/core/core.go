@@ -1264,6 +1264,7 @@ type RouteState struct {
 	CommitVeto          bool
 	CommitCounter       int32
 	LatencyWorse        bool
+	LocationVeto        bool
 	MultipathOverload   bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
@@ -1328,7 +1329,7 @@ func NewInternalConfig() InternalConfig {
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
-	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
 		return true
 	}
 
