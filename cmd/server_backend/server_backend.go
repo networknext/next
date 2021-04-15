@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/gob"
 	"expvar"
 	"fmt"
 	"io"
@@ -134,12 +135,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	storer, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -262,6 +257,34 @@ func mainReturnWithCode() int {
 		rm4 := routeMatrix
 		routeMatrixMutex.RUnlock()
 		return rm4
+	}
+
+	var binWrapperCache routing.DatabaseBinWrapper
+	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+		routeMatrixMutex.RLock()
+		binWrapperData := routeMatrix.BinFileData
+		routeMatrixMutex.RUnlock()
+
+		// Decode the GOB into a DatabaseBinWrapper
+		buffer := bytes.NewBuffer(binWrapperData)
+		decoder := gob.NewDecoder(buffer)
+		var binWrapper routing.DatabaseBinWrapper
+		err := decoder.Decode(&binWrapper)
+		if err == io.EOF {
+			level.Warn(logger).Log("msg", "bin wrapper data is empty", "err", err)
+		} else if err != nil {
+			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
+			backendMetrics.BinWrapperFailure.Add(1)
+		}
+
+		if binWrapper.IsEmpty() {
+			// Received an empty bin wrapper, continue using the old one
+			level.Debug(logger).Log("msg", "bin wrapper data is empty, serving cached version")
+			return binWrapperCache
+		}
+		// Save the current data in case the next route matrix doesn't have one
+		binWrapperCache = binWrapper
+		return binWrapper
 	}
 
 	// Sync route matrix
@@ -525,7 +548,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, getBinWrapperFunc)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -632,9 +655,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), storer, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), storer, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, storer, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getBinWrapperFunc, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getBinWrapperFunc, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, getBinWrapperFunc, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
