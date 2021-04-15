@@ -537,6 +537,9 @@ func main() {
 	var relayBWSort bool
 	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
+	var relaysAlphaSort bool
+	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
+
 	// accept session ID as a signed int (next session dump)
 	sessionDumpfs := flag.NewFlagSet("session dump", flag.ExitOnError)
 	var sessionDumpSignedInt bool
@@ -785,68 +788,124 @@ func main() {
 		},
 	}
 
+	var databaseCommand = &ffcli.Command{
+		Name:       "database",
+		ShortUsage: "next database <subcommand>",
+		ShortHelp:  "Generate, check and publish database.bin files",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "get",
+				ShortUsage: "next database get",
+				ShortHelp:  "Generate a local database.bin file based on the current database state.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					getDatabaseBin(env)
+
+					return nil
+				},
+			},
+			{
+				Name:       "check",
+				ShortUsage: "next database check",
+				ShortHelp:  "Sanity check a local database.bin file.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					checkRelaysInBinFile()
+					checkDatacentersInBinFile()
+					checkSellersInBinFile()
+					checkBuyersInBinFile()
+					checkDCMapsInBinFile()
+
+					return nil
+				},
+			},
+
+			{
+				Name:       "commit",
+				ShortUsage: "next database commit",
+				ShortHelp:  "Publish a local database.bin file to the relevant GCP bucket.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					commitDatabaseBin(env)
+					return nil
+				},
+			},
+		},
+	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
 		ShortHelp:  "List relays",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
-			if relaysfs.NFlag() == 0 ||
-				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
-				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
-				// If no flags are given, set the default set of flags
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-			}
 
-			if relaysAllFlag {
-				// Show all relays (except for decommissioned relays) with --all flag
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateShowFlags[routing.RelayStateMaintenance] = true
-				relaysStateShowFlags[routing.RelayStateDisabled] = true
-				relaysStateShowFlags[routing.RelayStateQuarantine] = true
-				relaysStateShowFlags[routing.RelayStateOffline] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-				relaysStateHideFlags[routing.RelayStateMaintenance] = false
-				relaysStateHideFlags[routing.RelayStateDisabled] = false
-				relaysStateHideFlags[routing.RelayStateQuarantine] = false
-				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
-
-			var arg string
+			var regexName string
 			if len(args) > 0 {
-				arg = args[0]
+				regexName = args[0]
 			}
 
-			if relayOpsOutput {
-				opsRelays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-					relayBWSort,
-				)
-			} else {
-				relays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					relaysListFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-				)
-			}
+			queryRelayBackend(env, relaysCount, relaysAlphaSort, regexName)
+
+			// if relaysfs.NFlag() == 0 ||
+			// 	((relaysfs.NFlag() == 1) && relayOpsOutput) ||
+			// 	((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+			// 	// If no flags are given, set the default set of flags
+			// 	relaysStateShowFlags[routing.RelayStateEnabled] = true
+			// 	relaysStateHideFlags[routing.RelayStateEnabled] = false
+			// }
+
+			// if relaysAllFlag {
+			// 	// Show all relays (except for decommissioned relays) with --all flag
+			// 	relaysStateShowFlags[routing.RelayStateEnabled] = true
+			// 	relaysStateShowFlags[routing.RelayStateMaintenance] = true
+			// 	relaysStateShowFlags[routing.RelayStateDisabled] = true
+			// 	relaysStateShowFlags[routing.RelayStateQuarantine] = true
+			// 	relaysStateShowFlags[routing.RelayStateOffline] = true
+			// 	relaysStateHideFlags[routing.RelayStateEnabled] = false
+			// 	relaysStateHideFlags[routing.RelayStateMaintenance] = false
+			// 	relaysStateHideFlags[routing.RelayStateDisabled] = false
+			// 	relaysStateHideFlags[routing.RelayStateQuarantine] = false
+			// 	relaysStateHideFlags[routing.RelayStateOffline] = false
+			// }
+
+			// var arg string
+			// if len(args) > 0 {
+			// 	arg = args[0]
+			// }
+
+			// if relayOpsOutput {
+			// 	opsRelays(
+			// 		rpcClient,
+			// 		env,
+			// 		arg,
+			// 		relaysStateShowFlags,
+			// 		relaysStateHideFlags,
+			// 		relaysDownFlag,
+			// 		csvOutputFlag,
+			// 		relayVersionFilter,
+			// 		relaysCount,
+			// 		relayIDSigned,
+			// 		relayBWSort,
+			// 	)
+			// } else {
+			// 	relays(
+			// 		rpcClient,
+			// 		env,
+			// 		arg,
+			// 		relaysStateShowFlags,
+			// 		relaysStateHideFlags,
+			// 		relaysDownFlag,
+			// 		relaysListFlag,
+			// 		csvOutputFlag,
+			// 		relayVersionFilter,
+			// 		relaysCount,
+			// 		relayIDSigned,
+			// 	)
+			// }
 
 			return nil
 		},
@@ -898,6 +957,36 @@ func main() {
 					}
 
 					validate(rpcClient, env, relaysStateShowFlags, relaysStateHideFlags, args[0])
+					return nil
+				},
+			},
+			{
+				Name:       "binfile",
+				ShortUsage: "next relays binfile",
+				ShortHelp:  "GET relays.bin from the portal",
+				Exec: func(ctx context.Context, args []string) error {
+
+					getRelaysBin(env, "relays.bin")
+					return nil
+				},
+			},
+			{
+				Name:       "bincheck",
+				ShortUsage: "next relays bincheck",
+				ShortHelp:  "Sanity checks a local relays.bin file",
+				Exec: func(ctx context.Context, args []string) error {
+
+					checkRelaysBin()
+					return nil
+				},
+			},
+			{
+				Name:       "bincommit",
+				ShortUsage: "next relays bincommit",
+				ShortHelp:  "Copies the local relays.bin file to the relevant GCP *_artifacts bucket",
+				Exec: func(ctx context.Context, args []string) error {
+
+					commitRelaysBin(env)
 					return nil
 				},
 			},
@@ -2249,6 +2338,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		signedCommand,
 		unsignedCommand,
 		hashCommand,
+		databaseCommand,
 	}
 
 	root := &ffcli.Command{

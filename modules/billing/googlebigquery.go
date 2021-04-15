@@ -206,8 +206,13 @@ func (entry *BillingEntry) Validate() bool {
 	}
 
 	if !(entry.PacketLoss >= 0.0 && entry.PacketLoss <= 100.0) {
-		fmt.Printf("invalid packet loss\n")
-		return false
+		if entry.PacketLoss > 100.0 {
+			fmt.Printf("PacketLoss %v > 100.0. Clamping to 100.0\n%+v\n", entry.PacketLoss, entry)
+			entry.PacketLoss = 100.0
+		} else {
+			fmt.Printf("invalid packet loss\n")
+			return false
+		}
 	}
 
 	if !(entry.JitterClientToServer >= 0.0 && entry.JitterClientToServer <= 1000.0) {
