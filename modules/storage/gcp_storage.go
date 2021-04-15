@@ -83,6 +83,8 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 		return err
 	}
 
+	// If we error somewhere in the loop, don't exit until all instances have been tried (debug instance isn't live)
+	var loopError error
 	for _, name := range instanceNames {
 		// Call gsutil to copy the tmp file over to the instance
 		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
@@ -91,10 +93,13 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 		level.Debug(g.Logger).Log("msg", buffer)
 		if err != nil {
 			err = fmt.Errorf("failed to copy file to instance: %v", err)
-			return err
+			loopError = err
 		}
 	}
 
+	if loopError != nil {
+		return loopError
+	}
 	// delete temp file to clean up
 	if err := os.Remove(outputFileName); err != nil {
 		err = fmt.Errorf("failed to clean up tmp file: %v", err)
@@ -147,6 +152,8 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 		return err
 	}
 
+	// If we error somewhere in the loop, don't exit until all instances have been tried (debug instance isn't live)
+	var loopError error
 	for _, name := range instanceNames {
 		// Call gsutil to copy the tmp file over to the instance
 		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
@@ -156,8 +163,12 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 		level.Debug(g.Logger).Log("msg", buffer)
 		if err != nil {
 			err = fmt.Errorf("failed to copy file to instance: %v", err)
-			return err
+			loopError = err
 		}
+	}
+
+	if loopError != nil {
+		return loopError
 	}
 
 	// delete src file to clean up
