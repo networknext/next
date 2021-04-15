@@ -110,6 +110,16 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("\n%s\n\n", serviceName)
 
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
+	if err != nil {
+		fmt.Println("Failed to get debug status")
+		isDebug = false
+	}
+
+	if isDebug {
+		fmt.Println("Instance is running as a debug instance")
+	}
+
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()

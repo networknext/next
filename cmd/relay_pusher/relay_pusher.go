@@ -96,7 +96,7 @@ func mainReturnWithCode() int {
 
 	// Setup GCP storage
 	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
-	if bucketName == "" {
+	if serverBackendMIGName == "" {
 		level.Error(logger).Log("msg", "server backend mig name not specified", "err")
 		return 1
 	}
@@ -150,6 +150,14 @@ func mainReturnWithCode() int {
 	// Using the method above causes an empty string to be added at the end of the slice - remove it
 	if len(serverBackendInstanceNames) > 0 {
 		serverBackendInstanceNames = serverBackendInstanceNames[:len(serverBackendInstanceNames)-1]
+	}
+
+	// Check if the debug server backend exists and push files to it as well
+	debugServerBackendName := envvar.Get("DEBUG_SERVER_BACKEND_NAME", "")
+	if debugServerBackendName == "" {
+		level.Error(logger).Log("msg", "debug server backend name not specified", "err")
+	} else {
+		serverBackendInstanceNames = append(serverBackendInstanceNames, debugServerBackendName)
 	}
 
 	// Setup maxmind download go routine
