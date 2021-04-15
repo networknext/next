@@ -249,6 +249,7 @@ func mainReturnWithCode() int {
 		return rm4
 	}
 
+	var binWrapperCache routing.DatabaseBinWrapper
 	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
 		routeMatrixMutex.RLock()
 		binWrapperData := routeMatrix.BinFileData
@@ -259,11 +260,20 @@ func mainReturnWithCode() int {
 		decoder := gob.NewDecoder(buffer)
 		var binWrapper routing.DatabaseBinWrapper
 		err := decoder.Decode(&binWrapper)
-		if err != nil {
+		if err == io.EOF {
+			level.Warn(logger).Log("msg", "bin wrapper data is empty", "err", err)
+		} else if err != nil {
 			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
 			backendMetrics.BinWrapperFailure.Add(1)
 		}
 
+		if binWrapper.IsEmpty() {
+			// Received an empty bin wrapper, continue using the old one
+			level.Debug(logger).Log("msg", "bin wrapper data is empty, serving cached version")
+			return binWrapperCache
+		}
+		// Save the current data in case the next route matrix doesn't have one
+		binWrapperCache = binWrapper
 		return binWrapper
 	}
 
