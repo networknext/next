@@ -279,6 +279,13 @@ func mainReturnWithCode() int {
 					// Close the file since it is no longer needed
 					file.Close()
 
+					if binWrapperNew.IsEmpty() {
+						// Don't want to use an empty bin wrapper
+						// so early out here and use existing array and hash
+						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
+						continue
+					}
+
 					// Get the new relay array
 					relayArrayNew := binWrapperNew.Relays
 					// Proceed to fill up the new relay hash
