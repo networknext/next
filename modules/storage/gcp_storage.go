@@ -135,7 +135,6 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName string, instanceNames []string, outputFileName string) error {
 	// grab file from bucket
 	if err := g.CopyFromBucketToLocal(ctx, artifactName, outputFileName); err != nil {
-		fmt.Printf("Failed to fetch file from GCP bucket: %v\n", err)
 		err = fmt.Errorf("failed to fetch file from GCP bucket: %v", err)
 		return err
 	}
