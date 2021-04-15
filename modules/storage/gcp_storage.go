@@ -140,26 +140,28 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 }
 
 // Copy artifact to remote file location (SCP function)
-func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName string, srcFileName string, instanceName string, outputFileName string) error {
+func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName string, instanceNames []string, outputFileName string) error {
 	// grab file from bucket
-	if err := g.CopyFromBucketToLocal(ctx, artifactName, srcFileName); err != nil {
+	if err := g.CopyFromBucketToLocal(ctx, artifactName, outputFileName); err != nil {
 		err = fmt.Errorf("failed to fetch file from GCP bucket: %v", err)
 		return err
 	}
 
-	// Call gsutil to copy the tmp file over to the instance
-	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", instanceName, outputFileName))
+	for _, name := range instanceNames {
+		// Call gsutil to copy the tmp file over to the instance
+		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
 
-	buffer, err := runnable.CombinedOutput()
+		buffer, err := runnable.CombinedOutput()
 
-	level.Debug(g.Logger).Log("msg", buffer)
-	if err != nil {
-		err = fmt.Errorf("failed to copy file to instance: %v", err)
-		return err
+		level.Debug(g.Logger).Log("msg", buffer)
+		if err != nil {
+			err = fmt.Errorf("failed to copy file to instance: %v", err)
+			return err
+		}
 	}
 
 	// delete src file to clean up
-	if err := os.Remove(srcFileName); err != nil {
+	if err := os.Remove(outputFileName); err != nil {
 		err = fmt.Errorf("failed to clean up tmp file: %v", err)
 		return err
 	}
