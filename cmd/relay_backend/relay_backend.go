@@ -49,9 +49,9 @@ var (
 	sha           string
 	tag           string
 
-	author    string
-	timestamp string
-	env       string
+	binCreator      string
+	binCreationTime string
+	env             string
 
 	binWrapper_internal routing.DatabaseBinWrapper
 	relayArray_internal []routing.Relay
@@ -86,7 +86,8 @@ func init() {
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	displayLoadedRelays(relayArray_internal)
 
-	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
+	binCreator = binWrapper_internal.Creator
+	binCreationTime = binWrapper_internal.CreationTime
 }
 
 func uptime() time.Duration {
@@ -289,6 +290,8 @@ func mainReturnWithCode() int {
 					// Pointer swap the relay bin wrapper
 					binWrapperMutex.Lock()
 					binWrapper_internal = binWrapperNew
+					binCreator = binWrapper_internal.Creator
+					binCreationTime = binWrapper_internal.CreationTime
 					binWrapperMutex.Unlock()
 
 					// Pointer swap the relay array
@@ -301,7 +304,6 @@ func mainReturnWithCode() int {
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
 
-					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
@@ -637,6 +639,7 @@ func mainReturnWithCode() int {
 				RouteEntries:       routeEntries,
 				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
 				BinFileData:        binWrapperBuffer.Bytes(),
+				CreatedAt:          uint64(time.Now().Unix()),
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
@@ -802,7 +805,7 @@ func mainReturnWithCode() int {
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
+	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(binCreator, binCreationTime, env))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")

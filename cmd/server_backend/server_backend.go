@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/core"
 
 	// "github.com/rjeczalik/notify"
 	// "strings"
@@ -249,6 +250,11 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+	}
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -361,12 +367,22 @@ func mainReturnWithCode() int {
 				if len(buffer) > 0 {
 					rs := encoding.CreateReadStream(buffer)
 					if err := newRouteMatrix.Serialize(rs); err != nil {
+						core.Debug("failed to serialize route matrix")
 						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 
 						routeMatrixMutex.Lock()
 						routeMatrix = &routing.RouteMatrix{}
 						routeMatrixMutex.Unlock()
 
+						continue
+					}
+					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+						core.Debug("route matrix is stale")
+						level.Error(logger).Log("msg", "route matrix is stale", "err", err)
+						routeMatrixMutex.Lock()
+						routeMatrix = &routing.RouteMatrix{}
+						routeMatrixMutex.Unlock()
+						backendMetrics.StaleRouteMatrix.Add(1)
 						continue
 					}
 				}
