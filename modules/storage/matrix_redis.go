@@ -57,13 +57,19 @@ func (r *RedisMatrixStore) SetRelayBackendLiveData(data RelayBackendLiveData) er
 	}
 
 	conn := r.pool.Get()
+	defer conn.Close()
+
 	key := fmt.Sprintf("%s-%s", relayBackendLiveData, data.Address)
-	_, err = conn.Do("SET", key, bin, "PX", r.matrixTimeout.Milliseconds())
+	reply, err := conn.Do("SET", key, bin, "PX", r.matrixTimeout.Milliseconds())
+	if reply != "OK" {
+		return fmt.Errorf("SetRelayBackendLiveData(): reply is not OK, instead got %s: %v", reply, err)
+	}
 	return err
 }
 
 func (r *RedisMatrixStore) GetRelayBackendLiveData() ([]RelayBackendLiveData, error) {
 	conn := r.pool.Get()
+	defer conn.Close()
 
 	keys, err := redis.Strings(conn.Do("KEYS", relayBackendLiveData+"*"))
 	if err == redis.ErrNil || err != nil {
