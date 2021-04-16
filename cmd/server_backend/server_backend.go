@@ -364,13 +364,6 @@ func mainReturnWithCode() int {
 
 				var newRouteMatrix routing.RouteMatrix
 				if len(buffer) > 0 {
-					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-						backendMetrics.StaleRouteMatrix.Add(1)
-						continue
-					}
 					rs := encoding.CreateReadStream(buffer)
 					if err := newRouteMatrix.Serialize(rs); err != nil {
 						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
@@ -379,6 +372,13 @@ func mainReturnWithCode() int {
 						routeMatrix = &routing.RouteMatrix{}
 						routeMatrixMutex.Unlock()
 
+						continue
+					}
+					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+						routeMatrixMutex.Lock()
+						routeMatrix = &routing.RouteMatrix{}
+						routeMatrixMutex.Unlock()
+						backendMetrics.StaleRouteMatrix.Add(1)
 						continue
 					}
 				}
