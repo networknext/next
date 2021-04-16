@@ -71,8 +71,8 @@ func init() {
 	backend.DisplayLoadedRelays(relayArray_internal)
 
 	// Store the creator and creation time from the binWrapper
-	binCreator = binWrapper_internal.Creator
-	binCreationTime = binWrapper_internal.CreationTime
+	binCreator = binWrapper.Creator
+	binCreationTime = binWrapper.CreationTime
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -206,8 +206,8 @@ func mainReturnWithCode() int {
 					}
 
 					// Store the creator and creation time from the binWrapper
-					binCreator = binWrapper_internal.Creator
-					binCreationTime = binWrapper_internal.CreationTime
+					binCreator = binWrapperNew.Creator
+					binCreationTime = binWrapperNew.CreationTime
 
 					// Get the new relay array
 					relayArrayNew := binWrapperNew.Relays
@@ -357,7 +357,7 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(binCreator, binCreationTime, env))
+	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
