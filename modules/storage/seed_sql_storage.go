@@ -191,7 +191,7 @@ func SeedSQLStorage(
 
 		var localDCID uint64
 		for i := uint64(0); i < 10; i++ {
-			dcName := "happypath.name." + fmt.Sprintf("%d", i)
+			dcName := "local." + fmt.Sprintf("%d", i)
 			localDCID = crypto.HashID(dcName)
 			localDatacenter2 := routing.Datacenter{
 				ID:   localDCID,
@@ -223,10 +223,10 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
 
-		ghostDCID := crypto.HashID("ghost-army.locale.name")
+		ghostDCID := crypto.HashID("ghost-army.local.name")
 		ghostDatacenter := routing.Datacenter{
 			ID:   ghostDCID,
-			Name: "ghost-army.locale.name",
+			Name: "ghost-army.local.name",
 			Location: routing.Location{
 				Latitude:  0,
 				Longitude: 0,
@@ -296,7 +296,7 @@ func SeedSQLStorage(
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
-				Name:                "locale." + fmt.Sprintf("%d", i),
+				Name:                "local." + fmt.Sprintf("%d", i),
 				Addr:                addr,
 				InternalAddr:        internalAddr,
 				ManagementAddr:      "1.2.3.4" + fmt.Sprintf("%d", i),
@@ -315,7 +315,7 @@ func SeedSQLStorage(
 				State:               routing.RelayStateEnabled,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
-				Notes:               "I am relay locale." + fmt.Sprintf("%d", i) + " - hear me roar!",
+				Notes:               "I am relay local." + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
@@ -346,7 +346,7 @@ func SeedSQLStorage(
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
-				Name:                "ghost-army.locale.1" + fmt.Sprintf("%d", i),
+				Name:                "ghost-army.local.1" + fmt.Sprintf("%d", i),
 				Addr:                addr,
 				InternalAddr:        internalAddr,
 				ManagementAddr:      "4.3.2.1" + fmt.Sprintf("%d", i),
@@ -365,7 +365,7 @@ func SeedSQLStorage(
 				State:               ghostRelayState,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
-				Notes:               "I am relay ghost-army.locale.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
+				Notes:               "I am relay ghost-army.local.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding ghost relay: %w", err)
 			}
