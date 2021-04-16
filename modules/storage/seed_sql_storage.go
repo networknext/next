@@ -95,6 +95,7 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
+			Debug:       true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -188,22 +189,7 @@ func SeedSQLStorage(
 			return fmt.Errorf("Error getting happypath seller: %v", err)
 		}
 
-		// fmt.Println("Adding datacenters")
-		// req for happy path
-		localDCID := crypto.HashID("local")
-		localDatacenter := routing.Datacenter{
-			ID:   localDCID,
-			Name: "local",
-			Location: routing.Location{
-				Latitude:  70.5,
-				Longitude: 120.5,
-			},
-			SellerID: localSeller.DatabaseID,
-		}
-		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
-			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
-		}
-
+		var localDCID uint64
 		for i := uint64(0); i < 10; i++ {
 			dcName := "happypath.name." + fmt.Sprintf("%d", i)
 			localDCID = crypto.HashID(dcName)
@@ -211,8 +197,8 @@ func SeedSQLStorage(
 				ID:   localDCID,
 				Name: dcName,
 				Location: routing.Location{
-					Latitude:  70.5,
-					Longitude: 120.5,
+					Latitude:  0,
+					Longitude: 0,
 				},
 				SellerID: hpSeller.DatabaseID,
 			}
@@ -221,13 +207,29 @@ func SeedSQLStorage(
 			}
 		}
 
+		// fmt.Println("Adding datacenters")
+		// req for happy path
+		localDCID = crypto.HashID("local")
+		localDatacenter := routing.Datacenter{
+			ID:   localDCID,
+			Name: "local",
+			Location: routing.Location{
+				Latitude:  0,
+				Longitude: 0,
+			},
+			SellerID: localSeller.DatabaseID,
+		}
+		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
+			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
+		}
+
 		ghostDCID := crypto.HashID("ghost-army.locale.name")
 		ghostDatacenter := routing.Datacenter{
 			ID:   ghostDCID,
 			Name: "ghost-army.locale.name",
 			Location: routing.Location{
-				Latitude:  70.5,
-				Longitude: 120.5,
+				Latitude:  0,
+				Longitude: 0,
 			},
 			SellerID: ghostSeller.DatabaseID,
 		}
@@ -290,7 +292,7 @@ func SeedSQLStorage(
 			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 			rid := crypto.HashID(addr.String())
 
-			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
+			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
@@ -392,7 +394,7 @@ func SeedSQLStorage(
 			Uncommitted:                false,
 			MaxRTT:                     300,
 			HighFrequencyPings:         true,
-			RouteDiversity:             20,
+			RouteDiversity:             5,
 			MultipathThreshold:         35,
 			EnableVanityMetrics:        true,
 		}
