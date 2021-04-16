@@ -39,6 +39,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 )
 
@@ -413,6 +414,72 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Setup redis so that the Relay Frontend knows this backend is live
+	var matrixStore *storage.RedisMatrixStore
+	var backendLiveData storage.RelayBackendLiveData
+	{
+		// Determine which relay backend address this instance is
+		backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+		if len(backendAddresses) == 0 {
+			level.Error(logger).Log("err", "FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+			return 1
+		}
+		foundAddress, backendAddress, err := getBackendAddress(backendAddresses)
+		if err != nil {
+			level.Error(logger).Log("msg", "error searching through list of backend addresses", "err", err)
+			return 1
+		}
+		if !foundAddress {
+			level.Error(logger).Log("msg", fmt.Sprintf("relay backend address not found in list %v", backendAddresses))
+			return 1
+		}
+
+		matrixStoreAddress := envvar.Get("MATRIX_STORE_ADDRESS", "")
+		if matrixStoreAddress == "" {
+			level.Error(logger).Log("err", "MATRIX_STORE_ADDRESS not set")
+			return 1
+		}
+
+		maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_MAX_IDLE_CONNS", "err", err)
+			return 1
+		}
+
+		maxActiveConnections, err := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_MAX_ACTIVE_CONNS", "err", err)
+			return 1
+		}
+
+		readTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250 * time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_READ_TIMEOUT", "err", err)
+			return 1
+		}
+
+		writeTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250 * time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_WRITE_TIMEOUT", "err", err)
+			return 1
+		}
+
+		expireTimeout, err := envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5 * time.Second)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_EXPIRE_TIMEOUT", "err", err)
+			return 1
+		}
+
+		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, maxIdleConnections, maxActiveConnections, readTimeout, writeTimeout, expireTimeout)
+		if err != nil {
+			level.Error(logger).Log("msg", "error creating redis matrix store", "err", err)
+		}
+
+		backendLiveData.ID = gcpProjectID
+		backendLiveData.Address = backendAddress
+		backendLiveData.InitAt = time.Now().UTC()
+	}
+
 	var costMatrixData []byte
 	var routeMatrixData []byte
 	var relaysData []byte
@@ -707,6 +774,14 @@ func mainReturnWithCode() int {
 			statusData = []byte(statusDataString)
 			statusMutex.Unlock()
 
+
+			// Update redis with last update time
+			backendLiveData.UpdatedAt = time.Now().UTC()
+			err = matrixStore.SetRelayBackendLiveData(backendLiveData)
+			if err != nil {
+				level.Error(logger).Log("msg", fmt.Sprintf("error setting relay backend live data for address %s", backendLiveData.Address), "err", err)
+			}
+
 			// optionally write route matrix to cloud storage
 
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
@@ -875,4 +950,34 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	relayHashMutex.RUnlock()
 
 	return relayArrayData, relayHashData
+}
+
+// Determines if this instance is in the backend address list and
+// gets the backend address
+func getBackendAddress(backendAddresses []string) (bool, string, error) {
+	// Get the host
+	host, err := os.Hostname()
+	if err != nil {
+		return false, "", err
+	}
+	// Get a list of IPv4 and IPv6 addresses for the host
+	addresses, err := net.LookupIP(host)
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, address := range addresses {
+		// Get the IPv4 of the address
+		if ipv4 := address.To4(); ipv4 != nil {
+			fmt.Printf("ipv4: %s\n", ipv4.String())
+			// Search through the list to see if there's a match
+			for _, validAddress := range backendAddresses {
+				if ipv4.String() == validAddress {
+					return true, ipv4.String(), nil
+				}
+			}
+		}
+	}
+
+	return false, "", nil
 }

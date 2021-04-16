@@ -19,20 +19,18 @@ type RedisMatrixStore struct {
 	matrixTimeout time.Duration
 }
 
-func NewRedisMatrixStore(addr string, readTimeout, writeTimeout, matrixExpire time.Duration) (*RedisMatrixStore, error) {
-	r := new(RedisMatrixStore)
-	pool := &redis.Pool{
-		MaxIdle:     5,
-		IdleTimeout: 60 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", addr,
+func NewRedisMatrixStore(hostname string, maxIdleConnections int, maxActiveConnections int, readTimeout time.Duration, writeTimeout time.Duration, matrixExpire time.Duration) (*RedisMatrixStore, error) {
+	// Get a standard redis pool
+	pool := NewRedisPool(hostname, maxIdleConnections, maxActiveConnections)
+	// Update the dial func with the read and write timeout
+	pool.Dial = func() (redis.Conn, error) {
+		return redis.Dial("tcp", hostname,
 				redis.DialReadTimeout(readTimeout),
 				redis.DialWriteTimeout(writeTimeout))
-		},
 	}
-	r.pool = pool
+
+	r := &RedisMatrixStore{pool: pool, matrixTimeout: matrixExpire}
 	r.cleanupHook()
-	r.matrixTimeout = matrixExpire
 
 	return r, nil
 }

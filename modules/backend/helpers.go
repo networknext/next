@@ -358,7 +358,7 @@ func ParseAddress(input string) *net.UDPAddr {
 	return address
 }
 
-// Decodes a Relay Bin Wrapper from GOB
+// Decodes a Database Bin Wrapper from GOB
 func DecodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) error {
 	decoder := gob.NewDecoder(file)
 	err := decoder.Decode(binWrapper)
