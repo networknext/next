@@ -19,7 +19,7 @@ import (
 func getDatabaseBin(env Environment) {
 	var err error
 
-	uri := fmt.Sprintf("%s/database.bin", env.PortalHostname())
+	uri := fmt.Sprintf("https://%s/database.bin", env.PortalHostname())
 
 	// GET doesn't seem to like env.PortalHostname() for local
 	if env.Name == "local" {
@@ -58,6 +58,27 @@ func getDatabaseBin(env Environment) {
 	fileSize := f.Size()
 	fmt.Printf("Successfully retrieved ./database.bin (%d bytes)\n", fileSize)
 
+}
+
+func checkMetaData() {
+	f2, err := os.Open("database.bin")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f2.Close()
+
+	var incomingDB routing.DatabaseBinWrapper
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingDB)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Creator     : %s\n", incomingDB.Creator)
+	fmt.Printf("CreationTime: %s\n\n", incomingDB.CreationTime)
 }
 
 func checkRelaysInBinFile() {
