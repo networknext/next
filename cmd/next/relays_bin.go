@@ -23,7 +23,7 @@ import (
 func getRelaysBin(env Environment, filename string) {
 	var err error
 
-	uri := fmt.Sprintf("%s/relays.bin", env.PortalHostname())
+	uri := fmt.Sprintf("https://%s/relays.bin", env.PortalHostname())
 
 	// GET doesn't seem to like env.PortalHostname() for local
 	if env.Name == "local" {
