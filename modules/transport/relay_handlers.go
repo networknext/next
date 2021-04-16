@@ -382,11 +382,11 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 	}
 }
 
-func RelaysBinVersionFunc(author string, timestamp string, env string) func(w http.ResponseWriter, r *http.Request) {
+func RelaysBinVersionFunc(creator string, creationTime string, env string) func(w http.ResponseWriter, r *http.Request) {
 	binInfo := map[string]string{
-		"author":    author,
-		"timestamp": timestamp,
-		"env":       env,
+		"creator":      creator,
+		"creationTime": creationTime,
+		"env":          env,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
