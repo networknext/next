@@ -426,7 +426,7 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("err", "FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
 			return 1
 		}
-		foundAddress, backendAddress, err := getBackendAddress(backendAddresses)
+		foundAddress, backendAddress, err := getBackendAddress(backendAddresses, env)
 		if err != nil {
 			level.Error(logger).Log("msg", "error searching through list of backend addresses", "err", err)
 			return 1
@@ -957,12 +957,21 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 
 // Determines if this instance is in the backend address list and
 // gets the backend address
-func getBackendAddress(backendAddresses []string) (bool, string, error) {
-	// Get the host
-	host, err := os.Hostname()
-	if err != nil {
-		return false, "", err
+func getBackendAddress(backendAddresses []string, env string) (bool, string, error) {
+	var host string
+	var err error
+
+	if env == "local" {
+		// Running local env, default IP to 127.0.0.1
+		host = "127.0.0.1"
+	} else {
+		// Get the host
+		host, err = os.Hostname()
+		if err != nil {
+			return false, "", err
+		}
 	}
+
 	// Get a list of IPv4 and IPv6 addresses for the host
 	addresses, err := net.LookupIP(host)
 	if err != nil {
@@ -972,7 +981,6 @@ func getBackendAddress(backendAddresses []string) (bool, string, error) {
 	for _, address := range addresses {
 		// Get the IPv4 of the address
 		if ipv4 := address.To4(); ipv4 != nil {
-			fmt.Printf("ipv4: %s\n", ipv4.String())
 			// Search through the list to see if there's a match
 			for _, validAddress := range backendAddresses {
 				if ipv4.String() == validAddress {
