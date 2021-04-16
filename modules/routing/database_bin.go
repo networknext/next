@@ -7,6 +7,8 @@ const (
 // DatabaseBinWrapper contains all the data from the database for
 // static use by the relay_backend and server_backend
 type DatabaseBinWrapper struct {
+	CreationTime   string
+	Creator        string
 	Relays         []Relay
 	RelayMap       map[uint64]Relay
 	BuyerMap       map[uint64]Buyer
