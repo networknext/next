@@ -19,6 +19,7 @@ type RelayPusherMetrics struct {
 	SuccessfulMaxmindUpdates       Counter
 	MaxmindSuccessfulHTTPCallsISP  Counter
 	MaxmindSuccessfulHTTPCallsCity Counter
+	DBBinaryTotalUpdateDuration    Gauge
 	MaxmindDBTotalUpdateDuration   Gauge
 	MaxmindDBCityUpdateDuration    Gauge
 	MaxmindDBISPUpdateDuration     Gauge
@@ -30,6 +31,7 @@ var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
 	SuccessfulMaxmindUpdates:       &EmptyCounter{},
 	MaxmindSuccessfulHTTPCallsISP:  &EmptyCounter{},
 	MaxmindSuccessfulHTTPCallsCity: &EmptyCounter{},
+	DBBinaryTotalUpdateDuration:    &EmptyGauge{},
 	MaxmindDBTotalUpdateDuration:   &EmptyGauge{},
 	MaxmindDBCityUpdateDuration:    &EmptyGauge{},
 	MaxmindDBISPUpdateDuration:     &EmptyGauge{},
@@ -42,7 +44,8 @@ type RelayPusherErrorMetrics struct {
 	MaxmindHTTPFailureCity            Counter
 	MaxmindGZIPReadFailure            Counter
 	MaxmindTempFileWriteFailure       Counter
-	SCPWriteFailure                   Counter
+	MaxmindSCPWriteFailure            Counter
+	DatabaseSCPWriteFailure           Counter
 	ServerBackendInstanceCountFailure Counter
 }
 
@@ -52,7 +55,8 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindHTTPFailureCity:            &EmptyCounter{},
 	MaxmindGZIPReadFailure:            &EmptyCounter{},
 	MaxmindTempFileWriteFailure:       &EmptyCounter{},
-	SCPWriteFailure:                   &EmptyCounter{},
+	MaxmindSCPWriteFailure:            &EmptyCounter{},
+	DatabaseSCPWriteFailure:           &EmptyCounter{},
 	ServerBackendInstanceCountFailure: &EmptyCounter{},
 }
 
@@ -134,6 +138,17 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		return nil, err
 	}
 
+	RelayPusherServiceMetrics.RelayPusherMetrics.DBBinaryTotalUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "DB Update Duration",
+		ServiceName: "relay_pusher",
+		ID:          "db_update.duration",
+		Unit:        "ms",
+		Description: "The total amount of time it takes to update database binary file on all relay backends in ms.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics = RelayPusherErrorMetrics{}
 
 	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindTempFileWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
@@ -180,12 +195,23 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		return nil, err
 	}
 
-	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.SCPWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Maxmind SCP Call Failures",
 		ServiceName: "relay_pusher",
 		ID:          "maxmind_scp_call_failure.count",
 		Unit:        "failures",
-		Description: "The total number of SCP file copy failures.",
+		Description: "The total number of Maxmind SCP file copy failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Database SCP Call Failures",
+		ServiceName: "relay_pusher",
+		ID:          "database_scp_call_failure.count",
+		Unit:        "failures",
+		Description: "The total number of database SCP file copy failures.",
 	})
 	if err != nil {
 		return nil, err
