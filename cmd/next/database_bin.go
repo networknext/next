@@ -19,7 +19,7 @@ import (
 func getDatabaseBin(env Environment) {
 	var err error
 
-	uri := fmt.Sprintf("%s/database.bin", env.PortalHostname())
+	uri := fmt.Sprintf("https://%s/database.bin", env.PortalHostname())
 
 	// GET doesn't seem to like env.PortalHostname() for local
 	if env.Name == "local" {
