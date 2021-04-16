@@ -25,6 +25,7 @@ type RouteMatrix struct {
 	RouteEntries       []core.RouteEntry
 	BinFileBytes       int32
 	BinFileData        []byte
+	CreatedAt          uint64
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -92,6 +93,8 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		binFileData := m.BinFileData[:m.BinFileBytes]
 		stream.SerializeBytes(binFileData)
 	}
+
+	stream.SerializeUint64(&m.CreatedAt)
 
 	return stream.Error()
 }
