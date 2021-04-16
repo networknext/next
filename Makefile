@@ -27,6 +27,7 @@ ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_NRB = gs://nrb_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
+ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
@@ -49,6 +50,8 @@ export NEXT_BEACON_ADDRESS = 127.0.0.1:35000
 ####################
 ##    RELAY ENV   ##
 ####################
+
+export RELAY_BINARY_NAME = relay-2.0.6
 
 ifndef RELAY_BACKEND_HOSTNAME
 export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
@@ -261,8 +264,6 @@ ifndef BEACON_ENTRY_VETO
 export BEACON_ENTRY_VETO = false
 endif
 
-export NEXT_DEBUG_LOGS = 1
-
 ## Relay Backend 1.5
 
 ifndef FEATURE_NEW_BACKEND
@@ -430,6 +431,10 @@ dev-client: build-client  ## runs a local client
 dev-multi-clients: build-client  ## runs 10 local clients
 	@./scripts/client-spawner.sh -n 10
 
+.PHONY: dev-multi-relays
+dev-multi-relays: build-relay-local  ## runs 10 local relays
+	@./scripts/relay-spawner.sh -n 2
+
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
 	@./dist/server
@@ -470,13 +475,16 @@ build-portal:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
+.PHONY: build-relay-local
+build-relay-local:
+	@printf "Building relay... \n"
+	@gsutil cp $(ARTIFACT_BUCKET_RELAY)/$(RELAY_BINARY_NAME) $(DIST_DIR)/relay
+	chmod +x $(DIST_DIR)/relay
+	@printf "done\n"
+
 .PHONY: build-portal-local
 build-portal-local:
 	@printf "Building portal... \n"
-	@printf "TIMESTAMP: ${TIMESTAMP}\n"
-	@printf "SHA: ${SHA}\n"
-	@printf "RELEASE: ${RELEASE}\n"
-	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
 	@gsutil cp $(ARTIFACT_BUCKET_PROD)/portal-dist.local.tar.gz $(PORTAL_DIR)/portal-dist.local.tar.gz
 	@$(TAR) -xvf $(PORTAL_DIR)/portal-dist.local.tar.gz --directory $(PORTAL_DIR)
 	@rm -fr $(PORTAL_DIR)/portal-dist.local.tar.gz
