@@ -119,25 +119,12 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 		}
 	}
 
-	// setup reader
-	reader, err := g.Bucket.Object(artifactName).NewReader(ctx)
+	runnable := exec.Command("gsutil", "cp", artifactName, outputLocation)
+	buffer, err := runnable.CombinedOutput()
+
+	level.Debug(g.Logger).Log("msg", buffer)
 	if err != nil {
-		err = fmt.Errorf("failed to create bucket reader: %v", err)
-		return err
-	}
-
-	defer reader.Close()
-
-	// read in artifact as bytes to be copied to new file
-	var artifactBytes []byte
-	_, err = reader.Read(artifactBytes)
-	if err != nil {
-		err = fmt.Errorf("failed to read artifact: %v", err)
-		return err
-	}
-
-	if err := ioutil.WriteFile(outputLocation, artifactBytes, 0644); err != nil {
-		err = fmt.Errorf("failed to write local file: %v", err)
+		err = fmt.Errorf("failed to copy file to instance: %v", err)
 		return err
 	}
 
