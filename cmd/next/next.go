@@ -862,9 +862,9 @@ func main() {
 				FlagSet:    relaysDbFs,
 				Exec: func(ctx context.Context, args []string) error {
 
-					if relaysfs.NFlag() == 0 ||
-						((relaysfs.NFlag() == 1) && relayOpsOutput) ||
-						((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+					if relaysDbFs.NFlag() == 0 ||
+						((relaysDbFs.NFlag() == 1) && relayOpsOutput) ||
+						((relaysDbFs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
 						// If no flags are given, set the default set of flags
 						relaysStateShowFlags[routing.RelayStateEnabled] = true
 						relaysStateHideFlags[routing.RelayStateEnabled] = false
