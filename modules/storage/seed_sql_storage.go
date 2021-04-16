@@ -95,6 +95,7 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
+			Debug:       true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -291,7 +292,7 @@ func SeedSQLStorage(
 			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 			rid := crypto.HashID(addr.String())
 
-			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
+			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
@@ -393,7 +394,7 @@ func SeedSQLStorage(
 			Uncommitted:                false,
 			MaxRTT:                     300,
 			HighFrequencyPings:         true,
-			RouteDiversity:             20,
+			RouteDiversity:             5,
 			MultipathThreshold:         35,
 			EnableVanityMetrics:        true,
 		}
