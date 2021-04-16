@@ -390,6 +390,10 @@ func main() {
 
 	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
 
+		// TODO: pull the sub claim from the auth0 claims to get the "author"
+		//       when we start rolling database.bin files from the admin tool
+		// props, _ := r.Context().Value("props").(jwt.MapClaims)
+
 		var dbWrapper routing.DatabaseBinWrapper
 		var enabledRelays []routing.Relay
 		relayMap := make(map[uint64]routing.Relay)
@@ -430,6 +434,17 @@ func main() {
 		dbWrapper.DatacenterMap = datacenterMap
 		dbWrapper.DatacenterMaps = datacenterMaps
 
+		loc, _ := time.LoadLocation("UTC")
+		if err != nil {
+			level.Error(logger).Log("msg", "error generating database.bin timestamp", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		now := time.Now().In(loc)
+
+		timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+		dbWrapper.CreationTime = timeStamp
+		dbWrapper.Creator = "next" // TODO: pull user_id from sub claim when calling from admin tool
+
 		var buffer bytes.Buffer
 
 		encoder := gob.NewEncoder(&buffer)
@@ -438,6 +453,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		_, err = buffer.WriteTo(w)
 		if err != nil {
+			level.Error(logger).Log("msg", "error writing database.bin gob to ResponseWriter", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

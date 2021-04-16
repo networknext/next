@@ -815,6 +815,7 @@ func main() {
 				ShortHelp:  "Sanity check a local database.bin file.",
 				Exec: func(ctx context.Context, args []string) error {
 
+					checkMetaData()
 					checkRelaysInBinFile()
 					checkDatacentersInBinFile()
 					checkSellersInBinFile()
