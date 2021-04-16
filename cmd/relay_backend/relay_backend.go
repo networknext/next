@@ -637,6 +637,7 @@ func mainReturnWithCode() int {
 				RouteEntries:       routeEntries,
 				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
 				BinFileData:        binWrapperBuffer.Bytes(),
+				CreatedAt:          uint64(time.Now().Unix()),
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
