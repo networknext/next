@@ -32,9 +32,11 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		}
 	}
 
+	// todo: set of destination relay bools should come from cost matrix
+
 	// todo: massive hack to test optimize 2
 	destinationRelays := make([]bool, numRelays)
-	for i := 0; i < numRelays && i < 10; i++ {
+	for i := 0; i < numRelays && i < 100; i++ {
 		destinationRelays[i] = true
 	}
 
