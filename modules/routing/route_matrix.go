@@ -74,12 +74,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
-		for i := 0; i < core.MaxRoutesPerEntry; i++ {
+		for i := 0; i < int(entry.NumRoutes); i++ {
 			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
-
-			for j := 0; j < core.MaxRelaysPerRoute; j++ {
+			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
 			}
 		}
