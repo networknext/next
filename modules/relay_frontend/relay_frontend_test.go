@@ -22,7 +22,7 @@ import (
 
 func TestNew(t *testing.T) {
 	store := storage.MatrixStoreMock{}
-	cfg := &Config{MasterTimeVariance: timeVariance(15)}
+	cfg := &RelayFrontendConfig{MasterTimeVariance: timeVariance(15)}
 	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
@@ -38,21 +38,21 @@ func timeVariance(value int) time.Duration {
 func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	currTime := time.Now()
 	rb1 := storage.RelayBackendLiveData{
-		Id:        "12345",
+		ID:        "12345",
 		Address:   "1.1.1.1",
 		InitAt:    currTime.Add(-10 * time.Second),
 		UpdatedAt: currTime,
 	}
 
 	rb2 := storage.RelayBackendLiveData{
-		Id:        "54321",
+		ID:        "54321",
 		Address:   "2.1.1.1",
 		InitAt:    currTime.Add(-15 * time.Second),
 		UpdatedAt: currTime,
 	}
 
 	rb3 := storage.RelayBackendLiveData{
-		Id:        "67890",
+		ID:        "67890",
 		Address:   "3.1.1.1",
 		InitAt:    currTime.Add(-2 * time.Second),
 		UpdatedAt: currTime,
@@ -64,7 +64,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{MasterTimeVariance: time.Second}
+	cfg := &RelayFrontendConfig{MasterTimeVariance: time.Second}
 	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 
@@ -85,14 +85,14 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	currTime := time.Now()
 	rb1 := storage.RelayBackendLiveData{
-		Id:        "12345",
+		ID:        "12345",
 		Address:   "1.1.1.1",
 		InitAt:    currTime.Add(-10 * time.Second),
 		UpdatedAt: currTime,
 	}
 
 	rb2 := storage.RelayBackendLiveData{
-		Id:        "54321",
+		ID:        "54321",
 		Address:   "2.1.1.1",
 		InitAt:    currTime.Add(-15 * time.Second),
 		UpdatedAt: currTime,
@@ -104,7 +104,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{MasterTimeVariance: time.Second}
+	cfg := &RelayFrontendConfig{MasterTimeVariance: time.Second}
 	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 
@@ -120,19 +120,19 @@ func TestRelayFrontendSvc_ChooseRelayBackendMaster(t *testing.T) {
 	currTime := time.Now()
 	rbArr := []storage.RelayBackendLiveData{
 		{
-			Id:        "12345",
+			ID:        "12345",
 			Address:   "1.1.1.1",
 			InitAt:    currTime.Add(-10 * time.Second),
 			UpdatedAt: currTime,
 		},
 		{
-			Id:        "54321",
+			ID:        "54321",
 			Address:   "2.1.1.1",
 			InitAt:    currTime.Add(-15 * time.Second),
 			UpdatedAt: currTime,
 		},
 		{
-			Id:        "67890",
+			ID:        "67890",
 			Address:   "3.1.1.1",
 			InitAt:    currTime.Add(-5 * time.Second),
 			UpdatedAt: currTime,
@@ -171,11 +171,7 @@ func TestRelayFrontendSvc_GetMatrixAddress(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "http://1.1.1.1/route_matrix", address)
 
-	address, err = svc.GetMatrixAddress(MatrixTypeValve)
-	assert.Nil(t, err)
-	assert.Equal(t, "http://1.1.1.1/route_matrix_valve", address)
-
-	address, err = svc.GetMatrixAddress("dog")
+	address, err = svc.GetMatrixAddress("not_an_address")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", address)
 }
@@ -244,27 +240,6 @@ func TestRelayFrontendSvc_CacheMatrixNormal(t *testing.T) {
 	assert.Equal(t, bin, svc.routeMatrix.GetMatrix())
 }
 
-func TestRelayFrontendSvc_CacheMatrixValve(t *testing.T) {
-	testMatrix := testMatrix(t)
-	bin := testMatrix.GetResponseData()
-	assert.NotEqual(t, 0, len(bin))
-
-	svc := new(RelayFrontendSvc)
-	svc.routeMatrixValve = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		buffer := bytes.NewBuffer(bin)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-
-	err := svc.cacheMatrixInternal(ts.URL, MatrixTypeValve)
-	assert.NoError(t, err)
-	assert.Equal(t, bin, svc.routeMatrixValve.GetMatrix())
-}
-
 func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.costMatrix = new(helpers.MatrixData)
@@ -328,43 +303,6 @@ func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.routeMatrix = new(helpers.MatrixData)
 	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
-
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
-}
-
-func TestRelayFrontendSvc_GetRouteMatrixValve(t *testing.T) {
-	svc := &RelayFrontendSvc{}
-	svc.routeMatrixValve = new(helpers.MatrixData)
-
-	testMatrix := testMatrix(t)
-	svc.routeMatrixValve.SetMatrix(testMatrix.GetResponseData())
-
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixValve()))
-
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.Body)
-
-	buffer, err := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, buffer)
-
-	var newRouteMatrix routing.RouteMatrix
-	rs := encoding.CreateReadStream(buffer)
-	err = newRouteMatrix.Serialize(rs)
-	assert.NoError(t, err)
-
-	err = newRouteMatrix.WriteResponseData(5000)
-	assert.NoError(t, err)
-	assert.Equal(t, testMatrix, newRouteMatrix)
-}
-
-func TestRelayFrontendSvc_GetRouteMatrixValveNotFound(t *testing.T) {
-	svc := &RelayFrontendSvc{}
-	svc.routeMatrixValve = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixValve()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
