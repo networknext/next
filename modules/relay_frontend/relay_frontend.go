@@ -10,18 +10,27 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
-
 	"github.com/networknext/backend/modules/storage"
 )
 
 const (
 	MatrixTypeCost   = "cost"
 	MatrixTypeNormal = "normal"
-	MatrixTypeValve  = "valve"
 )
 
+type RelayFrontendConfig struct {
+	Env                    string
+	MasterTimeVariance     time.Duration
+	MatrixStoreAddress     string
+	MSMaxIdleConnections   int
+	MSMaxActiveConnections int
+	MSReadTimeout          time.Duration
+	MSWriteTimeout         time.Duration
+	MSMatrixExpireTimeout  time.Duration
+}
+
 type RelayFrontendSvc struct {
-	cfg                         *Config
+	cfg                         *RelayFrontendConfig
 	id                          uint64
 	store                       storage.MatrixStore
 	createdAt                   time.Time
@@ -34,7 +43,7 @@ type RelayFrontendSvc struct {
 	routeMatrixValve *helpers.MatrixData
 }
 
-func NewRelayFrontend(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
+func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
 	rand.Seed(time.Now().UnixNano())
 	r := new(RelayFrontendSvc)
 	r.cfg = cfg
@@ -86,8 +95,6 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 		r.costMatrix.SetMatrix(matrixBin)
 	case MatrixTypeNormal:
 		r.routeMatrix.SetMatrix(matrixBin)
-	case MatrixTypeValve:
-		r.routeMatrixValve.SetMatrix(matrixBin)
 	}
 
 	return nil
@@ -96,6 +103,7 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance time.Duration) (string, error) {
 	currentTime := time.Now().UTC()
 	masterRB := storage.NewRelayBackendLiveData("", "", currentTime, currentTime)
+
 	for _, rb := range rbArr {
 		if currentTime.Sub(rb.UpdatedAt) > timeVariance {
 			continue
@@ -103,13 +111,13 @@ func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance
 		if rb.InitAt.After(masterRB.InitAt) {
 			continue
 		}
-		if rb.InitAt.Equal(masterRB.InitAt) && rb.Id < masterRB.Id {
+		if rb.InitAt.Equal(masterRB.InitAt) && rb.ID < masterRB.ID {
 			continue
 		}
 		masterRB = rb
 	}
 
-	if masterRB.Id == "" {
+	if masterRB.ID == "" {
 		return "", fmt.Errorf("relay backend master not found")
 	}
 
@@ -138,8 +146,6 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 		addr = fmt.Sprintf("http://%s/cost_matrix", r.currentMasterBackendAddress)
 	case MatrixTypeNormal:
 		addr = fmt.Sprintf("http://%s/route_matrix", r.currentMasterBackendAddress)
-	case MatrixTypeValve:
-		addr = fmt.Sprintf("http://%s/route_matrix_valve", r.currentMasterBackendAddress)
 	default:
 		return "", errors.New("matrix type not supported")
 	}
@@ -166,22 +172,6 @@ func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *htt
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		data := r.routeMatrix.GetMatrix()
-		if len(data) == 0 {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-}
-
-func (r *RelayFrontendSvc) GetRouteMatrixValve() func(w http.ResponseWriter, req *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		data := r.routeMatrixValve.GetMatrix()
 		if len(data) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return
