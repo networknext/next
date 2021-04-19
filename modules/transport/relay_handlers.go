@@ -382,14 +382,14 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 	}
 }
 
-func RelaysBinVersionFunc(author string, timestamp string, env string) func(w http.ResponseWriter, r *http.Request) {
-	binInfo := map[string]string{
-		"author":    author,
-		"timestamp": timestamp,
-		"env":       env,
-	}
-
+func RelaysBinVersionFunc(creator *string, creationTime *string, env *string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		binInfo := map[string]string{
+			"creator":      *creator,
+			"creationTime": *creationTime,
+			"env":          *env,
+		}
+
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(binInfo); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

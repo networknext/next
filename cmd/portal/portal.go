@@ -359,6 +359,7 @@ func main() {
 		Storage: db,
 	}
 
+	// serverRelayBinFile will be deprecated by serveDatabaseBinFile, below
 	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -385,7 +386,76 @@ func main() {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+	}
 
+	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
+
+		// TODO: pull the sub claim from the auth0 claims to get the "author"
+		//       when we start rolling database.bin files from the admin tool
+		// props, _ := r.Context().Value("props").(jwt.MapClaims)
+
+		var dbWrapper routing.DatabaseBinWrapper
+		var enabledRelays []routing.Relay
+		relayMap := make(map[uint64]routing.Relay)
+		buyerMap := make(map[uint64]routing.Buyer)
+		sellerMap := make(map[string]routing.Seller)
+		datacenterMap := make(map[uint64]routing.Datacenter)
+
+		buyers := db.Buyers()
+		for _, buyer := range buyers {
+			buyerMap[buyer.ID] = buyer
+		}
+
+		for _, seller := range db.Sellers() {
+			sellerMap[seller.ShortName] = seller
+		}
+
+		for _, datacenter := range db.Datacenters() {
+			datacenterMap[datacenter.ID] = datacenter
+		}
+
+		for _, localRelay := range db.Relays() {
+			if localRelay.State == routing.RelayStateEnabled {
+				enabledRelays = append(enabledRelays, localRelay)
+				relayMap[localRelay.ID] = localRelay
+			}
+		}
+
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+		for _, buyer := range buyers {
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
+		}
+
+		dbWrapper.Relays = enabledRelays
+		dbWrapper.RelayMap = relayMap
+		dbWrapper.BuyerMap = buyerMap
+		dbWrapper.SellerMap = sellerMap
+		dbWrapper.DatacenterMap = datacenterMap
+		dbWrapper.DatacenterMaps = datacenterMaps
+
+		loc, _ := time.LoadLocation("UTC")
+		if err != nil {
+			level.Error(logger).Log("msg", "error generating database.bin timestamp", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		now := time.Now().In(loc)
+
+		timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+		dbWrapper.CreationTime = timeStamp
+		dbWrapper.Creator = "next" // TODO: pull user_id from sub claim when calling from admin tool
+
+		var buffer bytes.Buffer
+
+		encoder := gob.NewEncoder(&buffer)
+		encoder.Encode(dbWrapper)
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			level.Error(logger).Log("msg", "error writing database.bin gob to ResponseWriter", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	go func() {
@@ -531,6 +601,9 @@ func main() {
 
 		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
 		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler)).Methods("GET")
+
+		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
+		r.Handle("/database.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler)).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
