@@ -137,10 +137,10 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, getRelayData func() (
 			for k, v := range relayMap.relays {
 				timeSinceLastUpdate := currentTime - v.LastUpdateTime.Unix()
 				if timeSinceLastUpdate > 10 {
-					core.Debug("error: %s - %s hasn't received an update for %d seconds (%d)", v.Addr.String(), v.Name, timeSinceLastUpdate, v.LastUpdateTime.Unix())
+					core.Debug("%s - error: %s hasn't received an update for %d seconds (%d)", v.Addr.String(), v.Name, timeSinceLastUpdate, v.LastUpdateTime.Unix())
 				}
 				if v.LastUpdateTime.Unix() < timeoutTimestamp {
-					core.Debug("error: %s - %s timed out", v.Addr.String(), v.Name)
+					core.Debug("%s - error: %s timed out", v.Addr.String(), v.Name)
 					deleteList = append(deleteList, k)
 				}
 			}

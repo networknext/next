@@ -49,13 +49,15 @@ var (
 	sha           string
 	tag           string
 
-	author    string
-	timestamp string
-	env       string
+	binCreator      string
+	binCreationTime string
+	env             string
 
+	binWrapper_internal routing.DatabaseBinWrapper
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
+	binWrapperMutex sync.RWMutex
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
 
@@ -63,10 +65,9 @@ var (
 )
 
 func init() {
-	var binWrapper routing.RelayBinWrapper
 	relayHash_internal = make(map[uint64]routing.Relay)
 
-	filePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+	filePath := envvar.Get("BIN_PATH", "./database.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
 		// fmt.Printf("could not load relay binary: %s\n", filePath)
@@ -74,18 +75,19 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeBinWrapper(file, &binWrapper); err != nil {
+	if err = decodeBinWrapper(file, &binWrapper_internal); err != nil {
 		fmt.Printf("decodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
 
-	relayArray_internal = binWrapper.Relays
+	relayArray_internal = binWrapper_internal.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	displayLoadedRelays(relayArray_internal)
 
-	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
+	binCreator = binWrapper_internal.Creator
+	binCreationTime = binWrapper_internal.CreationTime
 }
 
 func uptime() time.Duration {
@@ -108,6 +110,16 @@ func mainReturnWithCode() int {
 	serviceName := "relay_backend"
 
 	fmt.Printf("\n%s\n\n", serviceName)
+
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
+	if err != nil {
+		fmt.Println("Failed to get debug status")
+		isDebug = false
+	}
+
+	if isDebug {
+		fmt.Println("Instance is running as a debug instance")
+	}
 
 	ctx := context.Background()
 
@@ -197,7 +209,7 @@ func mainReturnWithCode() int {
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("RELAYS_BIN_PATH", "./relays.bin")
+		relaysFilePath := envvar.Get("BIN_PATH", "./database.bin")
 		absPath, err := filepath.Abs(relaysFilePath)
 		if err != nil {
 			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
@@ -252,7 +264,7 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var binWrapperNew routing.RelayBinWrapper
+					var binWrapperNew routing.DatabaseBinWrapper
 					relayHashNew := make(map[uint64]routing.Relay)
 
 					if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
@@ -275,6 +287,13 @@ func mainReturnWithCode() int {
 					// Proceed to fill up the new relay hash
 					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
+					// Pointer swap the relay bin wrapper
+					binWrapperMutex.Lock()
+					binWrapper_internal = binWrapperNew
+					binCreator = binWrapper_internal.Creator
+					binCreationTime = binWrapper_internal.CreationTime
+					binWrapperMutex.Unlock()
+
 					// Pointer swap the relay array
 					relayArrayMutex.Lock()
 					relayArray_internal = relayArrayNew
@@ -285,7 +304,6 @@ func mainReturnWithCode() int {
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
 
-					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
@@ -413,7 +431,16 @@ func mainReturnWithCode() int {
 		for {
 			syncTimer.Run()
 
-			// build set active relays that are *also* in the current relays.bin
+			// Encode the current database.bin to attach to route matrix
+			binWrapperMutex.RLock()
+			binWrapperCopy := binWrapper_internal
+			binWrapperMutex.RUnlock()
+
+			var binWrapperBuffer bytes.Buffer
+			encoder := gob.NewEncoder(&binWrapperBuffer)
+			encoder.Encode(binWrapperCopy)
+
+			// build set active relays that are *also* in the current database.bin
 
 			_, relayHash := GetRelayData()
 
@@ -610,6 +637,9 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				RouteEntries:       routeEntries,
+				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
+				BinFileData:        binWrapperBuffer.Bytes(),
+				CreatedAt:          uint64(time.Now().Unix()),
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
@@ -775,7 +805,7 @@ func mainReturnWithCode() int {
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(author, timestamp, env))
+	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
@@ -858,7 +888,7 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
-func decodeBinWrapper(file *os.File, binWrapper *routing.RelayBinWrapper) error {
+func decodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) error {
 	decoder := gob.NewDecoder(file)
 	err := decoder.Decode(binWrapper)
 	return err
@@ -871,8 +901,8 @@ func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]rout
 
 	if gcpProjectID == "" {
 		// TODO: hack override for local testing for single relay
-		relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-		relayArray[0].ID = 0xde0fb1e9a25b1948
+		// relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
+		// relayArray[0].ID = 0xde0fb1e9a25b1948
 	}
 
 	for i := range relayArray {
