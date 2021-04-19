@@ -584,6 +584,8 @@ func mainReturnWithCode() int {
 				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
 			}
 
+			core.Debug("Costs: %v", costMatrixNew.Costs)
+
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 			if costMatrixDurationSince.Seconds() > 1.0 {

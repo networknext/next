@@ -95,6 +95,7 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
+			Debug:       true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -188,31 +189,16 @@ func SeedSQLStorage(
 			return fmt.Errorf("Error getting happypath seller: %v", err)
 		}
 
-		// fmt.Println("Adding datacenters")
-		// req for happy path
-		localDCID := crypto.HashID("local")
-		localDatacenter := routing.Datacenter{
-			ID:   localDCID,
-			Name: "local",
-			Location: routing.Location{
-				Latitude:  70.5,
-				Longitude: 120.5,
-			},
-			SellerID: localSeller.DatabaseID,
-		}
-		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
-			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
-		}
-
+		var localDCID uint64
 		for i := uint64(0); i < 10; i++ {
-			dcName := "happypath.name." + fmt.Sprintf("%d", i)
+			dcName := "local." + fmt.Sprintf("%d", i)
 			localDCID = crypto.HashID(dcName)
 			localDatacenter2 := routing.Datacenter{
 				ID:   localDCID,
 				Name: dcName,
 				Location: routing.Location{
-					Latitude:  70.5,
-					Longitude: 120.5,
+					Latitude:  0,
+					Longitude: 0,
 				},
 				SellerID: hpSeller.DatabaseID,
 			}
@@ -221,13 +207,29 @@ func SeedSQLStorage(
 			}
 		}
 
-		ghostDCID := crypto.HashID("ghost-army.locale.name")
+		// fmt.Println("Adding datacenters")
+		// req for happy path
+		localDCID = crypto.HashID("local")
+		localDatacenter := routing.Datacenter{
+			ID:   localDCID,
+			Name: "local",
+			Location: routing.Location{
+				Latitude:  0,
+				Longitude: 0,
+			},
+			SellerID: localSeller.DatabaseID,
+		}
+		if err := db.AddDatacenter(ctx, localDatacenter); err != nil {
+			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
+		}
+
+		ghostDCID := crypto.HashID("ghost-army.local.name")
 		ghostDatacenter := routing.Datacenter{
 			ID:   ghostDCID,
-			Name: "ghost-army.locale.name",
+			Name: "ghost-army.local.name",
 			Location: routing.Location{
-				Latitude:  70.5,
-				Longitude: 120.5,
+				Latitude:  0,
+				Longitude: 0,
 			},
 			SellerID: ghostSeller.DatabaseID,
 		}
@@ -290,11 +292,11 @@ func SeedSQLStorage(
 			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 			rid := crypto.HashID(addr.String())
 
-			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
+			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
-				Name:                "locale." + fmt.Sprintf("%d", i),
+				Name:                "local." + fmt.Sprintf("%d", i),
 				Addr:                addr,
 				InternalAddr:        internalAddr,
 				ManagementAddr:      "1.2.3.4" + fmt.Sprintf("%d", i),
@@ -313,7 +315,7 @@ func SeedSQLStorage(
 				State:               routing.RelayStateEnabled,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
-				Notes:               "I am relay locale." + fmt.Sprintf("%d", i) + " - hear me roar!",
+				Notes:               "I am relay local." + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
@@ -344,7 +346,7 @@ func SeedSQLStorage(
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                  rid,
-				Name:                "ghost-army.locale.1" + fmt.Sprintf("%d", i),
+				Name:                "ghost-army.local.1" + fmt.Sprintf("%d", i),
 				Addr:                addr,
 				InternalAddr:        internalAddr,
 				ManagementAddr:      "4.3.2.1" + fmt.Sprintf("%d", i),
@@ -363,7 +365,7 @@ func SeedSQLStorage(
 				State:               ghostRelayState,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
-				Notes:               "I am relay ghost-army.locale.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
+				Notes:               "I am relay ghost-army.local.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding ghost relay: %w", err)
 			}
@@ -392,7 +394,7 @@ func SeedSQLStorage(
 			Uncommitted:                false,
 			MaxRTT:                     300,
 			HighFrequencyPings:         true,
-			RouteDiversity:             20,
+			RouteDiversity:             5,
 			MultipathThreshold:         35,
 			EnableVanityMetrics:        true,
 		}
