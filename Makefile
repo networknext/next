@@ -936,7 +936,7 @@ deploy-relay-pusher-staging:
 
 .PHONY: deploy-relay-pusher-prod
 deploy-relay-pusher-prod:
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
 
 .PHONY: publish-relay-pusher-artifacts-dev
 publish-relay-pusher-artifacts-dev:
