@@ -978,11 +978,21 @@ func getBackendAddress(backendAddresses []string, env string) (bool, string, err
 		return false, "", err
 	}
 
+	// Get the hosts from the backend addresses
+	var backendAddressHosts []string
+	for _, address := range backendAddresses {
+		backendHost, _, err := net.SplitHostPort(address)
+		if err != nil {
+			return false, "", err
+		}
+		backendAddressHosts = append(backendAddressHosts, backendHost)
+	}
+
 	for _, address := range addresses {
 		// Get the IPv4 of the address
 		if ipv4 := address.To4(); ipv4 != nil {
 			// Search through the list to see if there's a match
-			for _, validAddress := range backendAddresses {
+			for _, validAddress := range backendAddressHosts {
 				if ipv4.String() == validAddress {
 					return true, ipv4.String(), nil
 				}
