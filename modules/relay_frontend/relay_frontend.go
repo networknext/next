@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
-
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -18,6 +17,17 @@ const (
 	MatrixTypeCost   = "cost"
 	MatrixTypeNormal = "normal"
 )
+
+type RelayFrontendConfig struct {
+	Env                    string
+	MasterTimeVariance     time.Duration
+	MatrixStoreAddress     string
+	MSMaxIdleConnections   int
+	MSMaxActiveConnections int
+	MSReadTimeout          time.Duration
+	MSWriteTimeout         time.Duration
+	MSMatrixExpireTimeout  time.Duration
+}
 
 type RelayFrontendSvc struct {
 	cfg                         *RelayFrontendConfig
@@ -93,6 +103,7 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance time.Duration) (string, error) {
 	currentTime := time.Now().UTC()
 	masterRB := storage.NewRelayBackendLiveData("", "", currentTime, currentTime)
+
 	for _, rb := range rbArr {
 		if currentTime.Sub(rb.UpdatedAt) > timeVariance {
 			continue

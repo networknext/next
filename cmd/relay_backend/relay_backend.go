@@ -456,19 +456,19 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		readTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250 * time.Millisecond)
+		readTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
 		if err != nil {
 			level.Error(logger).Log("msg", "error getting MATRIX_STORE_READ_TIMEOUT", "err", err)
 			return 1
 		}
 
-		writeTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250 * time.Millisecond)
+		writeTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
 		if err != nil {
 			level.Error(logger).Log("msg", "error getting MATRIX_STORE_WRITE_TIMEOUT", "err", err)
 			return 1
 		}
 
-		expireTimeout, err := envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5 * time.Second)
+		expireTimeout, err := envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
 		if err != nil {
 			level.Error(logger).Log("msg", "error getting MATRIX_STORE_EXPIRE_TIMEOUT", "err", err)
 			return 1
@@ -479,7 +479,7 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("msg", "error creating redis matrix store", "err", err)
 		}
 
-		backendLiveData.ID = gcpProjectID
+		backendLiveData.ID = env
 		backendLiveData.Address = fmt.Sprintf("%s:%s", backendAddress, port)
 		backendLiveData.InitAt = time.Now().UTC()
 	}
@@ -778,7 +778,6 @@ func mainReturnWithCode() int {
 			statusMutex.Lock()
 			statusData = []byte(statusDataString)
 			statusMutex.Unlock()
-
 
 			// Update redis with last update time
 			backendLiveData.UpdatedAt = time.Now().UTC()

@@ -11,19 +11,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/modules/metrics"
-
-	"github.com/gorilla/mux"
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/metrics"
 
 	frontend "github.com/networknext/backend/modules/relay_frontend"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport"
 
-	//logging
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -51,7 +49,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	cfg, err := frontend.GetConfig()
+	cfg, err := GetRelayFrontendConfig()
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
@@ -183,4 +181,50 @@ func mainReturnWithCode() int {
 		cancelFunc()
 	}
 	return 0
+}
+
+func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
+	cfg := new(frontend.RelayFrontendConfig)
+	var err error
+
+	cfg.Env = envvar.Get("ENV", "local")
+
+	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5000*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MatrixStoreAddress = envvar.Get("MATRIX_STORE_ADDRESS", "")
+	if cfg.MatrixStoreAddress == "" {
+		return nil, fmt.Errorf("MATRIX_STORE_ADDRESS not set")
+	}
+
+	maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
+	if err != nil {
+		return nil, err
+	}
+	cfg.MSMaxIdleConnections = maxIdleConnections
+
+	maxActiveConnections, err := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
+	if err != nil {
+		return nil, err
+	}
+	cfg.MSMaxActiveConnections = maxActiveConnections
+
+	cfg.MSReadTimeout, err = envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MSWriteTimeout, err = envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MSMatrixExpireTimeout, err = envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
