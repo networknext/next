@@ -1328,15 +1328,15 @@ publish-relay-gateway-artifacts-prod:
 ##   Relay Frontend  ##
 #######################
 
-# .PHONY: dev-relay-frontend
-# dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
-# 	@PORT=30005 ./dist/relay-frontend
+.PHONY: dev-relay-frontend
+dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
+	@PORT=30005 ./dist/relay_frontend
 
-# .PHONY: build-relay-frontend
-# build-relay-frontend:
-# 	@printf "Building Relay Frontend... "
-# 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
-# 	@printf "done\n"
+.PHONY: build-relay-frontend
+build-relay-frontend:
+	@printf "Building Relay Frontend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
+	@printf "done\n"
 
 # .PHONY: build-relay-frontend-artifacts-dev
 # build-relay-frontend-artifacts-dev: build-relay-frontend
