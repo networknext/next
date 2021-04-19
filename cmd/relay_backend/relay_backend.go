@@ -416,6 +416,8 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	port := envvar.Get("PORT", "30001")
+
 	// Setup redis so that the Relay Frontend knows this backend is live
 	var matrixStore *storage.RedisMatrixStore
 	var backendLiveData storage.RelayBackendLiveData
@@ -478,7 +480,7 @@ func mainReturnWithCode() int {
 		}
 
 		backendLiveData.ID = gcpProjectID
-		backendLiveData.Address = backendAddress
+		backendLiveData.Address = fmt.Sprintf("%s:%s", backendAddress, port)
 		backendLiveData.InitAt = time.Now().UTC()
 	}
 
@@ -877,8 +879,6 @@ func mainReturnWithCode() int {
 		routeMatrixMutex.RUnlock()
 		return rm
 	}
-
-	port := envvar.Get("PORT", "30000")
 
 	fmt.Printf("starting http server on port %s\n\n", port)
 
