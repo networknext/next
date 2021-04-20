@@ -69,7 +69,7 @@ type StatsEntry struct {
 
 type StatsDatabase struct {
 	Entries map[uint64]*StatsEntry
-	mu sync.Mutex
+	mu      sync.Mutex
 }
 
 func NewStatsDatabase() *StatsDatabase {
@@ -97,7 +97,7 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 // for latency, packet loss and jitter...
 
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
-	
+
 	sourceRelayID := statsUpdate.ID
 
 	if statsUpdate.PingStats == nil {
@@ -146,7 +146,7 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 
 		// By taking the maximum value seen across the last 5 minutes
 		// we plan routes very conservatively. It's better for us to never
-		// accelerate somebody that we otherwise could, than to accelerate 
+		// accelerate somebody that we otherwise could, than to accelerate
 		// somebody and make their packet loss, latency or jitter worse.
 
 		relay.RTT = HistoryMax(relay.RTTHistory[:])
@@ -208,9 +208,9 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 // so the cost matrix generated is conservative.
 
 func (database *StatsDatabase) GetCosts(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
-	
+
 	numRelays := len(relayIDs)
-	
+
 	costs := make([]int32, TriMatrixLength(numRelays))
 
 	for i := 0; i < numRelays; i++ {
@@ -239,15 +239,15 @@ func (database *StatsDatabase) GetCosts(relayIDs []uint64, maxJitter float32, ma
 // This version just assumes all routes between relays are valid
 
 func (database *StatsDatabase) GetCostsLocal(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
-	
+
 	numRelays := len(relayIDs)
-	
+
 	costs := make([]int32, TriMatrixLength(numRelays))
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
 			ijIndex := TriMatrixIndex(i, j)
-			costs[ijIndex] = 0			
+			costs[ijIndex] = 0
 		}
 	}
 
