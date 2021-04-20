@@ -207,6 +207,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	instanceID, err := getInstanceID(env)
+	if err != nil {
+		level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
+		return 1
+	}
+	level.Debug(logger).Log("msg", "got VM Instance ID", "instanceID", instanceID)
+
 	// Setup file watchman on relays.bin
 	{
 		// Get absolute path of relays.bin
@@ -384,7 +391,7 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss))
+				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
@@ -480,13 +487,6 @@ func mainReturnWithCode() int {
 			level.Error(logger).Log("msg", "error creating redis matrix store", "err", err)
 			return 1
 		}
-
-		instanceID, err := getInstanceID(env)
-		if err != nil {
-			level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
-			return 1
-		}
-		level.Debug(logger).Log("msg", "got VM Instance ID", "instanceID", instanceID)
 
 		backendLiveData.ID = instanceID
 		backendLiveData.Address = fmt.Sprintf("%s:%s", backendAddress, port)
