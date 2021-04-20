@@ -19,20 +19,18 @@ type RedisMatrixStore struct {
 	matrixTimeout time.Duration
 }
 
-func NewRedisMatrixStore(addr string, readTimeout, writeTimeout, matrixExpire time.Duration) (*RedisMatrixStore, error) {
-	r := new(RedisMatrixStore)
-	pool := &redis.Pool{
-		MaxIdle:     5,
-		IdleTimeout: 60 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", addr,
+func NewRedisMatrixStore(hostname string, maxIdleConnections int, maxActiveConnections int, readTimeout time.Duration, writeTimeout time.Duration, matrixExpire time.Duration) (*RedisMatrixStore, error) {
+	// Get a standard redis pool
+	pool := NewRedisPool(hostname, maxIdleConnections, maxActiveConnections)
+	// Update the dial func with the read and write timeout
+	pool.Dial = func() (redis.Conn, error) {
+		return redis.Dial("tcp", hostname,
 				redis.DialReadTimeout(readTimeout),
 				redis.DialWriteTimeout(writeTimeout))
-		},
 	}
-	r.pool = pool
+
+	r := &RedisMatrixStore{pool: pool, matrixTimeout: matrixExpire}
 	r.cleanupHook()
-	r.matrixTimeout = matrixExpire
 
 	return r, nil
 }
@@ -59,13 +57,19 @@ func (r *RedisMatrixStore) SetRelayBackendLiveData(data RelayBackendLiveData) er
 	}
 
 	conn := r.pool.Get()
+	defer conn.Close()
+
 	key := fmt.Sprintf("%s-%s", relayBackendLiveData, data.Address)
-	_, err = conn.Do("SET", key, bin, "PX", r.matrixTimeout.Milliseconds())
+	reply, err := conn.Do("SET", key, bin, "PX", r.matrixTimeout.Milliseconds())
+	if reply != "OK" {
+		return fmt.Errorf("SetRelayBackendLiveData(): reply is not OK, instead got %s: %v", reply, err)
+	}
 	return err
 }
 
 func (r *RedisMatrixStore) GetRelayBackendLiveData() ([]RelayBackendLiveData, error) {
 	conn := r.pool.Get()
+	defer conn.Close()
 
 	keys, err := redis.Strings(conn.Do("KEYS", relayBackendLiveData+"*"))
 	if err == redis.ErrNil || err != nil {
