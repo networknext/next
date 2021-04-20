@@ -183,11 +183,15 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay {
 	database.mu.Lock()
 	entry, entryExists := database.Entries[relay1]
-	relay, relayExists := entry.Relays[relay2]
 	database.mu.Unlock()
-	if entryExists && relayExists {
-		return relay
+
+	if entryExists {
+		relay, relayExists := entry.Relays[relay2]
+		if relayExists {
+			return relay
+		}
 	}
+
 	return nil
 }
 
