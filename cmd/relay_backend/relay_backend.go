@@ -84,7 +84,6 @@ func init() {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	displayLoadedRelays(relayArray_internal)
 
 	// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapper
 }
@@ -302,10 +301,6 @@ func mainReturnWithCode() int {
 					relayHashMutex.Unlock()
 
 					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
-					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
-
-					// Print the new list of relays
-					displayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -581,8 +576,6 @@ func mainReturnWithCode() int {
 				RelayDatacenterIDs: relayDatacenterIDs,
 				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
 			}
-
-			core.Debug("Costs: %v", costMatrixNew.Costs)
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
@@ -907,13 +900,4 @@ func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]rout
 	for i := range relayArray {
 		relayHash[relayArray[i].ID] = relayArray[i]
 	}
-}
-
-func displayLoadedRelays(relayArray []routing.Relay) {
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
-	for i := range relayArray {
-		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
 }
