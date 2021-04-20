@@ -98,6 +98,40 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 	assert.Equal(t, expected.CreatedAt, uint64(0))
 }
 
+func TestRouteMatrixSerializeWithVersionBackwardsComp(t *testing.T) {
+	original := getRouteMatrix(t)
+	expected := original
+	original.CreatedAt = 19803
+	original.Version = 1
+
+	ws, err := encoding.CreateWriteStream(10000)
+	assert.NoError(t, err)
+	err = original.Serialize(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected.BinFileBytes, actual.BinFileBytes)
+	assert.Equal(t, expected.BinFileData, actual.BinFileData)
+	assert.Equal(t, expected.RelayAddresses, actual.RelayAddresses)
+	assert.Equal(t, expected.RelayDatacenterIDs, actual.RelayDatacenterIDs)
+	assert.Equal(t, expected.RelayIDs, actual.RelayIDs)
+	assert.Equal(t, expected.RelayIDsToIndices, actual.RelayIDsToIndices)
+	assert.Equal(t, expected.RelayLatitudes, actual.RelayLatitudes)
+	assert.Equal(t, expected.RelayLongitudes, actual.RelayLongitudes)
+	assert.Equal(t, expected.RelayNames, actual.RelayNames)
+	assert.Equal(t, expected.RouteEntries, actual.RouteEntries)
+	assert.NotEqual(t, expected.CreatedAt, actual.CreatedAt)
+	assert.Equal(t, actual.CreatedAt, uint64(19803))
+	assert.Equal(t, expected.CreatedAt, uint64(0))
+}
+
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
