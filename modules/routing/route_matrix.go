@@ -38,6 +38,8 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&m.Version)
+
 	numRelays := uint32(len(m.RelayIDs))
 	stream.SerializeUint32(&numRelays)
 
@@ -98,7 +100,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeUint64(&m.CreatedAt)
-	stream.SerializeUint32(&m.Version)
 
 	return stream.Error()
 }

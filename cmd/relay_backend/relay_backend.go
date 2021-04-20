@@ -666,6 +666,7 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
+				Version:            routing.CostMatrixSerializeVersion,
 			}
 
 			core.Debug("Costs: %v", costMatrixNew.Costs)
