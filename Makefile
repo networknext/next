@@ -432,7 +432,7 @@ dev-multi-clients: build-client  ## runs 10 local clients
 	@./scripts/client-spawner.sh -n 10
 
 .PHONY: dev-multi-relays
-dev-multi-relays: build-relay-local  ## runs 10 local relays
+dev-multi-relays: build-relay-local ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
 
 .PHONY: dev-server
