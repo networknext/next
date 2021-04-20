@@ -666,6 +666,7 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
+				Version:            routing.CostMatrixSerializeVersion,
 			}
 
 			core.Debug("Costs: %v", costMatrixNew.Costs)
@@ -726,6 +727,7 @@ func mainReturnWithCode() int {
 				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
 				BinFileData:        binWrapperBuffer.Bytes(),
 				CreatedAt:          uint64(time.Now().Unix()),
+				Version:            routing.RouteMatrixSerializeVersion,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
