@@ -114,7 +114,7 @@ endif
 
 ifndef ROUTE_MATRIX_URI
 # export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
-export ROUTE_MATRIX_URI = http://127.0.0.1:30002/route_matrix
+export ROUTE_MATRIX_URI = http://127.0.0.1:30005/route_matrix
 endif
 
 ifndef ROUTE_MATRIX_SYNC_INTERVAL
@@ -268,10 +268,6 @@ endif
 
 ifndef FEATURE_NEW_BACKEND
 export FEATURE_NEW_BACKEND = false
-endif
-
-ifndef RELAY_FRONTEND_URI
-export RELAY_FRONTEND_URI = http://127.0.0.1:30005/route_matrix
 endif
 
 ifndef FEATURE_RB15_ENABLED
