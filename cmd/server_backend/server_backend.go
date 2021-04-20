@@ -295,10 +295,10 @@ func mainReturnWithCode() int {
 
 	// Sync route matrix
 	{
-		uri := envvar.Get("RELAY_FRONTEND_URI", "")
+		uri := envvar.Get("ROUTE_MATRIX_URI", "")
 
 		if uri == "" {
-			level.Error(logger).Log("err", fmt.Errorf("no relay frontend uri specified"))
+			level.Error(logger).Log("err", fmt.Errorf("no route matrix uri specified"))
 			return 1
 		}
 

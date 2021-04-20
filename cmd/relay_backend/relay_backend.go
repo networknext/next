@@ -345,7 +345,7 @@ func mainReturnWithCode() int {
 	// relay ping stats
 
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-	{
+	if !isDebug {
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 		if gcpProjectID != "" || emulatorOK {
 
@@ -791,10 +791,13 @@ func mainReturnWithCode() int {
 			statusMutex.Unlock()
 
 			// Update redis with last update time
-			backendLiveData.UpdatedAt = time.Now().UTC()
-			err = matrixStore.SetRelayBackendLiveData(backendLiveData)
-			if err != nil {
-				level.Error(logger).Log("msg", fmt.Sprintf("error setting relay backend live data for address %s", backendLiveData.Address), "err", err)
+			// Debug instance should not store this data in redis
+			if !isDebug {
+				backendLiveData.UpdatedAt = time.Now().UTC()
+				err = matrixStore.SetRelayBackendLiveData(backendLiveData)
+				if err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("error setting relay backend live data for address %s", backendLiveData.Address), "err", err)
+				}
 			}
 
 			// optionally write route matrix to cloud storage
@@ -988,14 +991,18 @@ func getBackendAddress(backendAddresses []string, env string) (bool, string, err
 		return false, "", err
 	}
 
-	// Get the hosts from the backend addresses
+	// Get the hosts from the backend addresses if local
 	var backendAddressHosts []string
-	for _, address := range backendAddresses {
-		backendHost, _, err := net.SplitHostPort(address)
-		if err != nil {
-			return false, "", err
+	if env == "local" {
+		for _, address := range backendAddresses {
+			backendHost, _, err := net.SplitHostPort(address)
+			if err != nil {
+				return false, "", err
+			}
+			backendAddressHosts = append(backendAddressHosts, backendHost)
 		}
-		backendAddressHosts = append(backendAddressHosts, backendHost)
+	} else {
+		backendAddressHosts = backendAddresses
 	}
 
 	for _, address := range addresses {
