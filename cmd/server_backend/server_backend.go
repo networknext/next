@@ -546,40 +546,49 @@ func mainReturnWithCode() int {
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
-	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
-	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
-	multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getBinWrapperFunc)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, getBinWrapperFunc)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "")
+	if redisMultipathVetoHost != "" {
+		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
+		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 
-	if err := multipathVetoHandler.Sync(); err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, getBinWrapperFunc)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 
-	// Start a routine to sync multipath vetoed users from redis to this instance
-	{
-		ticker := time.NewTicker(multipathVetoSyncFrequency)
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ticker.C:
-					if err := multipathVetoHandler.Sync(); err != nil {
-						level.Error(logger).Log("err", err)
+		if err := multipathVetoHandler.Sync(); err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		// Start a routine to sync multipath vetoed users from redis to this instance
+		{
+			ticker := time.NewTicker(multipathVetoSyncFrequency)
+			go func(ctx context.Context) {
+				for {
+					select {
+					case <-ticker.C:
+						if err := multipathVetoHandler.Sync(); err != nil {
+							level.Error(logger).Log("err", err)
+						}
+					case <-ctx.Done():
+						return
 					}
-				case <-ctx.Done():
-					return
 				}
-			}
-		}(ctx)
+			}(ctx)
+		}
 	}
 
 	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
