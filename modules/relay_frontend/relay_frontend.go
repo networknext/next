@@ -40,7 +40,6 @@ type RelayFrontendSvc struct {
 	// cached matrix
 	costMatrix       *helpers.MatrixData
 	routeMatrix      *helpers.MatrixData
-	routeMatrixValve *helpers.MatrixData
 }
 
 func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
@@ -52,7 +51,6 @@ func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*Rel
 	r.createdAt = time.Now().UTC()
 	r.costMatrix = new(helpers.MatrixData)
 	r.routeMatrix = new(helpers.MatrixData)
-	r.routeMatrixValve = new(helpers.MatrixData)
 	return r, nil
 }
 

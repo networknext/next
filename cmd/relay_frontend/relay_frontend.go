@@ -8,6 +8,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"time"
 
@@ -100,14 +101,18 @@ func mainReturnWithCode() int {
 				return
 			default:
 				// Get the oldest relay backend
+				frontendMetrics.MasterSelect.Add(1)
+
 				err := frontendClient.UpdateRelayBackendMaster()
 				if err != nil {
-					frontendMetrics.MasterSelectError.Add(1)
+					frontendMetrics.ErrorMetrics.MasterSelectError.Add(1)
 					_ = level.Error(logger).Log("error", err)
 					continue
 				}
-				frontendMetrics.MasterSelect.Add(1)
 
+				frontendMetrics.MasterSelectSuccess.Add(1)
+
+				// Create waitgroup for worker goroutines
 				wg := sync.WaitGroup{}
 
 				// Cache the cost matrix
@@ -121,7 +126,10 @@ func mainReturnWithCode() int {
 					if err != nil {
 						frontendMetrics.CostMatrix.Error.Add(1)
 						_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
+						return
 					}
+
+					frontendMetrics.CostMatrix.Success.Add(1)
 				}()
 
 				// Cache the route matrix
@@ -135,13 +143,48 @@ func mainReturnWithCode() int {
 					if err != nil {
 						frontendMetrics.RouteMatrix.Error.Add(1)
 						_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
+						return
 					}
+
+					frontendMetrics.RouteMatrix.Success.Add(1)
 				}()
 
 				wg.Wait()
 			}
 		}
 	}()
+
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				frontendMetrics.FrontendServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(frontendMetrics.FrontendServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d master select invocations\n", int(frontendMetrics.MasterSelect.Value()))
+				fmt.Printf("%d cost matrix invocations\n", int(frontendMetrics.CostMatrix.Invocations.Value()))
+				fmt.Printf("%d route matrix invocations\n", int(frontendMetrics.RouteMatrix.Invocations.Value()))
+				fmt.Printf("%d master select success count\n", int(frontendMetrics.MasterSelectSuccess.Value()))
+				fmt.Printf("%d cost matrix success count\n", int(frontendMetrics.CostMatrix.Success.Value()))
+				fmt.Printf("%d route matrix success count\n", int(frontendMetrics.RouteMatrix.Success.Value()))
+				fmt.Printf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
+				fmt.Printf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
+				fmt.Printf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
 
 	fmt.Printf("starting http server\n")
 
@@ -189,7 +232,7 @@ func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
 
 	cfg.Env = envvar.Get("ENV", "local")
 
-	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5000*time.Millisecond)
+	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
