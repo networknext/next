@@ -8,22 +8,21 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/modules/metrics"
-
-	"github.com/gorilla/mux"
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
+
+	frontend "github.com/networknext/backend/modules/relay_frontend"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 
-	rf "github.com/networknext/backend/modules/relay_frontend"
-	"github.com/networknext/backend/modules/storage"
-
-	//logging
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -42,7 +41,8 @@ func mainReturnWithCode() int {
 	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	ctx := context.Background()
+	// Setup the service
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	gcpProjectID := backend.GetGCPProjectID()
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
@@ -50,7 +50,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	cfg, err := rf.GetConfig()
+	cfg, err := GetRelayFrontendConfig()
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
@@ -63,7 +63,7 @@ func mainReturnWithCode() int {
 	}
 
 	if gcpProjectID != "" {
-		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, cfg.ENV); err != nil {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, cfg.Env); err != nil {
 			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
 			return 1
 		}
@@ -75,89 +75,126 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixTimeout)
+	// Get the redis matrix store
+	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSMaxIdleConnections, cfg.MSMaxActiveConnections, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixExpireTimeout)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	svc, err := rf.NewRelayFrontend(store, cfg)
+	// Get the relay frontend
+	frontendClient, err := frontend.NewRelayFrontend(store, cfg)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	shutdown := false
-
-	// core loop
+	// Start a goroutine for updating the master relay backend
 	go func() {
 		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
 		for {
 			syncTimer.Run()
-			if shutdown {
+
+			select {
+			case <-ctx.Done():
+				// Shutdown signal received
 				return
-			}
+			default:
+				// Get the oldest relay backend
+				frontendMetrics.MasterSelect.Add(1)
 
-			frontendMetrics.MasterSelect.Add(1)
-			err := svc.UpdateRelayBackendMaster()
-			if err != nil {
-				frontendMetrics.MasterSelectError.Add(1)
-				_ = level.Error(logger).Log("error", err)
-				continue
-			}
-			wg := sync.WaitGroup{}
-
-			wg.Add(1)
-			go func() {
-				frontendMetrics.CostMatrix.Invocations.Add(1)
-				err = svc.CacheMatrix(rf.MatrixTypeCost)
+				err := frontendClient.UpdateRelayBackendMaster()
 				if err != nil {
-					frontendMetrics.CostMatrix.Error.Add(1)
-					_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
+					frontendMetrics.ErrorMetrics.MasterSelectError.Add(1)
+					_ = level.Error(logger).Log("error", err)
+					continue
 				}
-				wg.Done()
-			}()
 
-			wg.Add(1)
-			go func() {
-				frontendMetrics.RouteMatrix.Invocations.Add(1)
-				err = svc.CacheMatrix(rf.MatrixTypeNormal)
-				if err != nil {
-					frontendMetrics.RouteMatrix.Error.Add(1)
-					_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
-				}
-				wg.Done()
-			}()
+				frontendMetrics.MasterSelectSuccess.Add(1)
 
-			if cfg.ValveMatrix {
+				// Create waitgroup for worker goroutines
+				wg := sync.WaitGroup{}
+
+				// Cache the cost matrix
 				wg.Add(1)
 				go func() {
-					frontendMetrics.ValveMatrix.Invocations.Add(1)
-					err = svc.CacheMatrix(rf.MatrixTypeValve)
+					defer wg.Done()
+
+					frontendMetrics.CostMatrix.Invocations.Add(1)
+
+					err = frontendClient.CacheMatrix(frontend.MatrixTypeCost)
 					if err != nil {
-						frontendMetrics.ValveMatrix.Error.Add(1)
-						_ = level.Error(logger).Log("msg", "error getting valve matrix", "error", err)
+						frontendMetrics.CostMatrix.Error.Add(1)
+						_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
+						return
 					}
-					wg.Done()
+
+					frontendMetrics.CostMatrix.Success.Add(1)
 				}()
+
+				// Cache the route matrix
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+
+					frontendMetrics.RouteMatrix.Invocations.Add(1)
+
+					err = frontendClient.CacheMatrix(frontend.MatrixTypeNormal)
+					if err != nil {
+						frontendMetrics.RouteMatrix.Error.Add(1)
+						_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
+						return
+					}
+
+					frontendMetrics.RouteMatrix.Success.Add(1)
+				}()
+
+				wg.Wait()
 			}
-			wg.Wait()
 		}
 	}()
+
+	// Setup the stats print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				frontendMetrics.FrontendServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d goroutines\n", int(frontendMetrics.FrontendServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d master select invocations\n", int(frontendMetrics.MasterSelect.Value()))
+				fmt.Printf("%d cost matrix invocations\n", int(frontendMetrics.CostMatrix.Invocations.Value()))
+				fmt.Printf("%d route matrix invocations\n", int(frontendMetrics.RouteMatrix.Invocations.Value()))
+				fmt.Printf("%d master select success count\n", int(frontendMetrics.MasterSelectSuccess.Value()))
+				fmt.Printf("%d cost matrix success count\n", int(frontendMetrics.CostMatrix.Success.Value()))
+				fmt.Printf("%d route matrix success count\n", int(frontendMetrics.RouteMatrix.Success.Value()))
+				fmt.Printf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
+				fmt.Printf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
+				fmt.Printf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
 
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/cost_matrix", svc.GetCostMatrix()).Methods("GET")
-	router.HandleFunc("/route_matrix", svc.GetRouteMatrix()).Methods("GET")
-	router.HandleFunc("relay_stats", svc.GetRelayStats())
+	router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrix()).Methods("GET")
+	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrix()).Methods("GET")
+	router.HandleFunc("/relay_stats", frontendClient.GetRelayStats())
 	router.Handle("/debug/vars", expvar.Handler())
-
-	if cfg.ValveMatrix {
-		router.HandleFunc("/route_matrix_valve", svc.GetRouteMatrixValve()).Methods("GET")
-	}
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
@@ -175,7 +212,7 @@ func mainReturnWithCode() int {
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			_ = level.Error(logger).Log("err", err)
-			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			os.Exit(1) // TODO: don't os.Exit() here, but find a way to exit
 		}
 	}()
 
@@ -184,8 +221,53 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-sigint:
-		shutdown = true
-		time.Sleep(5 * time.Second)
+		cancelFunc()
 	}
 	return 0
+}
+
+func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
+	cfg := new(frontend.RelayFrontendConfig)
+	var err error
+
+	cfg.Env = envvar.Get("ENV", "local")
+
+	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MatrixStoreAddress = envvar.Get("MATRIX_STORE_ADDRESS", "")
+	if cfg.MatrixStoreAddress == "" {
+		return nil, fmt.Errorf("MATRIX_STORE_ADDRESS not set")
+	}
+
+	maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
+	if err != nil {
+		return nil, err
+	}
+	cfg.MSMaxIdleConnections = maxIdleConnections
+
+	maxActiveConnections, err := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
+	if err != nil {
+		return nil, err
+	}
+	cfg.MSMaxActiveConnections = maxActiveConnections
+
+	cfg.MSReadTimeout, err = envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MSWriteTimeout, err = envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MSMatrixExpireTimeout, err = envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }

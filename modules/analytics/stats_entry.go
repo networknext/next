@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	PingStatsEntryVersion      = uint8(2)
+	PingStatsEntryVersion      = uint8(3)
 	RelayStatsEntryVersion     = uint8(2)
 	RelayNamesHashEntryVersion = uint8(1)
+
+	MaxInstanceIDLength = 64
 )
 
 type PingStatsEntry struct {
@@ -23,9 +25,11 @@ type PingStatsEntry struct {
 	Jitter     float32
 	PacketLoss float32
 	Routable   bool
+
+	InstanceID string
 }
 
-func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32) []PingStatsEntry {
+func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32, instanceID string) []PingStatsEntry {
 	length := routing.TriMatrixLength(len(statsdb.Entries))
 	entries := make([]PingStatsEntry, length)
 
@@ -61,6 +65,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPack
 					Jitter:     jitter,
 					PacketLoss: pl,
 					Routable:   routable,
+					InstanceID: instanceID,
 				}
 			}
 		}
@@ -70,7 +75,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPack
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+4+1)
+	length := 1 + 8 + len(entries)*(8+8+4+4+4+1+MaxInstanceIDLength)
 	data := make([]byte, length)
 
 	index := 0
@@ -85,6 +90,7 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.Jitter)
 		encoding.WriteFloat32(data, &index, entry.PacketLoss)
 		encoding.WriteBool(data, &index, entry.Routable)
+		encoding.WriteString(data, &index, entry.InstanceID, uint32(MaxInstanceIDLength))
 	}
 
 	return data
@@ -133,6 +139,12 @@ func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
 				return nil, false
 			}
 		}
+		if version >= 3 {
+			if !encoding.ReadString(data, &index, &entry.InstanceID, uint32(MaxInstanceIDLength)) {
+				return nil, false
+			}
+		}
+
 		entries[i] = entry
 	}
 
@@ -149,6 +161,7 @@ func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["jitter"] = e.Jitter
 	bqEntry["packet_loss"] = e.PacketLoss
 	bqEntry["routable"] = e.Routable
+	bqEntry["instanceID"] = e.InstanceID
 
 	return bqEntry, "", nil
 }
