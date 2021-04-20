@@ -345,7 +345,7 @@ func mainReturnWithCode() int {
 	// relay ping stats
 
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-	if !isDebug {
+	{
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 		if gcpProjectID != "" || emulatorOK {
 
@@ -391,7 +391,7 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID)
+				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID, isDebug)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
