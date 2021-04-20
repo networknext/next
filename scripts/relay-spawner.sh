@@ -7,11 +7,13 @@ export RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000
 
 num_relays=1
 start_port=10000
+binary=./dist/reference_relay
 
 print_usage() {
-    printf "Usage: relay-spawner.sh -n number -p port\n\n"
+    printf "Usage: relay-spawner.sh -n number -p port -b ./dist/relay\n\n"
     printf "n [number]\tNumber of relays to spawn\n"
     printf "p [port]\tStarting port\n\n"
+    printf "b [port]\tBinary file\n\n"
 
     printf "Example:\n\n"
     printf "> relay-spawner.sh -n 5 -p 20000\n"
@@ -33,10 +35,11 @@ print_env() {
   printf "RELAY_BACKEND_HOSTNAME: ${RELAY_BACKEND_HOSTNAME}\n"
 }
 
-while getopts 'n:p:h' flag; do
+while getopts 'n:p:b:h' flag; do
   case "${flag}" in
     n) num_relays="${OPTARG}" ;;
     p) start_port="${OPTARG}" ;;
+    b) binary="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
     *) print_usage
@@ -51,7 +54,7 @@ port="$start_port"
 if [[ ! "$start_port" -eq 0 ]]; then
 	port=$((start_port+r))
 fi
-RELAY_ADDRESS=127.0.0.1:${port} ./dist/relay &
+RELAY_ADDRESS=127.0.0.1:${port} ${binary} &
 pid="$!"
 printf "PID ${pid}: Relay socket opened on port ${port}\n"
 done
