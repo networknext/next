@@ -95,7 +95,7 @@ func mainReturnWithCode() int {
 
 	serviceName := "server_backend"
 
-	fmt.Printf("%s\n", serviceName)
+	fmt.Printf("\n%s\n\n", serviceName)
 
 	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
 	if err != nil {
@@ -277,15 +277,15 @@ func mainReturnWithCode() int {
 		var binWrapper routing.DatabaseBinWrapper
 		err := decoder.Decode(&binWrapper)
 		if err == io.EOF {
-			level.Warn(logger).Log("msg", "bin wrapper data is empty", "err", err)
+			core.Debug("bin wrapper data is empty")
 		} else if err != nil {
-			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
+			core.Debug("failed to decode bin wrapper: %v", err)
 			backendMetrics.BinWrapperFailure.Add(1)
 		}
 
 		if binWrapper.IsEmpty() {
 			// Received an empty bin wrapper, continue using the old one
-			level.Debug(logger).Log("msg", "bin wrapper data is empty, serving cached version")
+			core.Debug("bin wrapper data is empty, serving cached version")
 			return binWrapperCache
 		}
 		// Save the current data in case the next route matrix doesn't have one
