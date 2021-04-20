@@ -170,6 +170,8 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: address})
 		}
 
+		core.Debug("Number of relays to ping: %d", len(relaysToPing))
+
 		// build and write the response
 
 		var responseData []byte
@@ -177,6 +179,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		response := RelayUpdateResponse{}
 
 		for i := range relaysToPing {
+			core.Debug("Adding address to ping: %s", relaysToPing[i].Address)
 			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
 				ID:      relaysToPing[i].ID,
 				Address: relaysToPing[i].Address,
