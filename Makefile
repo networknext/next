@@ -306,6 +306,10 @@ dist:
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
 
+ifndef NEXT_DEBUG_LOGS
+export NEXT_DEBUG_LOGS=1
+endif
+
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
@@ -450,25 +454,6 @@ dev-mock-relay: ## runs a local mock relay
 	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
 	./dist/mock_relay
 
-<<<<<<< HEAD
-=======
-.PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@./dist/client
-
-.PHONY: dev-multi-clients
-dev-multi-clients: build-client  ## runs 10 local clients
-	@./scripts/client-spawner.sh -n 10
-
-.PHONY: dev-multi-relays
-dev-multi-relays: build-relay-local ## runs 10 local relays
-	@./scripts/relay-spawner.sh -n 10
-
-.PHONY: dev-server
-dev-server: build-sdk build-server  ## runs a local server
-	@./dist/server
-
->>>>>>> 0273bc3d39e07e043a5e721fde0cd359d8163e49
 .PHONY: dev-api
 dev-api: build-api ## runs a local api endpoint service
 	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
