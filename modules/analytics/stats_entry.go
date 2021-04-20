@@ -67,7 +67,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPack
 					PacketLoss: pl,
 					Routable:   routable,
 					InstanceID: instanceID,
-					Debug:		isDebug,
+					Debug:      isDebug,
 				}
 			}
 		}
