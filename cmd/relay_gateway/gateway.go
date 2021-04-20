@@ -357,7 +357,7 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
+	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
