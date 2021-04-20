@@ -609,6 +609,14 @@ func main() {
 			env.Name = args[0]
 			env.Write()
 
+			if args[0] == "local" {
+				// Set up everything needed to run the database.bin generator
+				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+				os.Setenv("FEATURE_POSTGRESQL", "false")
+				os.Setenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "10s")
+				getLocalDatabaseBin()
+			}
+
 			fmt.Printf("Selected %s environment\n", env.Name)
 			return nil
 		},

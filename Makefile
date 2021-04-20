@@ -306,10 +306,6 @@ dist:
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
 
-ifndef NEXT_DEBUG_LOGS
-export NEXT_DEBUG_LOGS=1
-endif
-
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30000 ./dist/relay_backend
