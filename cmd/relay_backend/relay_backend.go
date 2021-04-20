@@ -345,7 +345,7 @@ func mainReturnWithCode() int {
 	// relay ping stats
 
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-	{
+	if !isDebug {
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 		if gcpProjectID != "" || emulatorOK {
 
