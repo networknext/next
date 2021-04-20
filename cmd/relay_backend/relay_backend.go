@@ -27,6 +27,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	gcStorage "cloud.google.com/go/storage"
+	"cloud.google.com/go/compute/metadata"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
@@ -477,9 +478,17 @@ func mainReturnWithCode() int {
 		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, maxIdleConnections, maxActiveConnections, readTimeout, writeTimeout, expireTimeout)
 		if err != nil {
 			level.Error(logger).Log("msg", "error creating redis matrix store", "err", err)
+			return 1
 		}
 
-		backendLiveData.ID = env
+		instanceID, err := getInstanceID(env)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
+			return 1
+		}
+		level.Debug(logger).Log("msg", "got VM Instance ID", "instanceID", instanceID)
+
+		backendLiveData.ID = instanceID
 		backendLiveData.Address = fmt.Sprintf("%s:%s", backendAddress, port)
 		backendLiveData.InitAt = time.Now().UTC()
 	}
@@ -1000,4 +1009,12 @@ func getBackendAddress(backendAddresses []string, env string) (bool, string, err
 	}
 
 	return false, "", nil
+}
+
+func getInstanceID(env string) (string, error) {
+	if env != "local" {
+		return metadata.InstanceID()
+	}
+
+	return "local", nil
 }
