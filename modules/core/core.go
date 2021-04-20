@@ -850,6 +850,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 	for i := range sourceRelays {
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
+			Debug("Source Relay is unroutable!")
 			continue
 		}
 		firstRouteFromThisRelay := true
@@ -861,8 +862,11 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
 			entry := &routeMatrix[index]
+			Debug("Number of routes in entry: %v", int(entry.NumRoutes))
 			for k := 0; k < int(entry.NumRoutes); k++ {
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
+				Debug("route cost: %v", cost)
+				Debug("max cost: %v", cost)
 				if cost > maxCost {
 					break
 				}
