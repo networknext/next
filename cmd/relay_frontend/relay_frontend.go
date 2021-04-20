@@ -193,7 +193,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrix()).Methods("GET")
 	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrix()).Methods("GET")
-	router.HandleFunc("relay_stats", frontendClient.GetRelayStats())
+	router.HandleFunc("/relay_stats", frontendClient.GetRelayStats())
 	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)

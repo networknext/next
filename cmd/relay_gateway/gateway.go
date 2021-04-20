@@ -121,12 +121,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-    // Get a config for how the Gateway should operate
-    cfg, err := newConfig()
-    if err != nil {
-        level.Error(logger).Log("err", err)
-        return 1
-    }
+	// Get a config for how the Gateway should operate
+	cfg, err := newConfig()
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
 	// Setup file watchman on relays.bin
 	{
@@ -357,7 +357,7 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(&binCreator, &binCreationTime, &env))
+	router.HandleFunc("/bin_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
@@ -417,11 +417,11 @@ func newConfig() (*gateway.GatewayConfig, error) {
 	}
 	cfg.ChannelBufferSize = channelBufferSize
 
-    binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
-    if err != nil {
-        return nil, err
-    }
-    cfg.BinSyncInterval = binSyncInterval
+	binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+	if err != nil {
+		return nil, err
+	}
+	cfg.BinSyncInterval = binSyncInterval
 
 	// Decide if we are using HTTP to batch-write to relay backends
 	useHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", true)

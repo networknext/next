@@ -25,9 +25,9 @@ import (
 
 	// "strings"
 
+	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/pubsub"
 	gcStorage "cloud.google.com/go/storage"
-	"cloud.google.com/go/compute/metadata"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
@@ -894,7 +894,7 @@ func mainReturnWithCode() int {
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(&binCreator, &binCreationTime, &env))
+	router.HandleFunc("/bin_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
