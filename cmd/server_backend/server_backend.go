@@ -95,7 +95,7 @@ func mainReturnWithCode() int {
 
 	serviceName := "server_backend"
 
-	fmt.Printf("%s\n", serviceName)
+	fmt.Printf("\n%s\n\n", serviceName)
 
 	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
 	if err != nil {
@@ -277,15 +277,15 @@ func mainReturnWithCode() int {
 		var binWrapper routing.DatabaseBinWrapper
 		err := decoder.Decode(&binWrapper)
 		if err == io.EOF {
-			level.Warn(logger).Log("msg", "bin wrapper data is empty", "err", err)
+			core.Debug("bin wrapper data is empty")
 		} else if err != nil {
-			level.Error(logger).Log("msg", "failed to decode bin wrapper", "err", err)
+			core.Debug("failed to decode bin wrapper: %v", err)
 			backendMetrics.BinWrapperFailure.Add(1)
 		}
 
 		if binWrapper.IsEmpty() {
 			// Received an empty bin wrapper, continue using the old one
-			level.Debug(logger).Log("msg", "bin wrapper data is empty, serving cached version")
+			core.Debug("bin wrapper data is empty, serving cached version")
 			return binWrapperCache
 		}
 		// Save the current data in case the next route matrix doesn't have one
@@ -295,20 +295,10 @@ func mainReturnWithCode() int {
 
 	// Sync route matrix
 	{
-		uri := ""
-		newBackend, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND", false)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-		}
-
-		if newBackend {
-			uri = envvar.Get("RELAY_FRONTEND_URI", "")
-		} else {
-			uri = envvar.Get("ROUTE_MATRIX_URI", "")
-		}
+		uri := envvar.Get("ROUTE_MATRIX_URI", "")
 
 		if uri == "" {
-			level.Error(logger).Log("err", fmt.Errorf("no matrix uri specified"))
+			level.Error(logger).Log("err", fmt.Errorf("no route matrix uri specified"))
 			return 1
 		}
 
@@ -354,7 +344,7 @@ func mainReturnWithCode() int {
 				routeEntriesReader.Close()
 
 				if err != nil {
-					level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+					level.Error(logger).Log("envvar", "RELAY_FRONTEND_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 
 					routeMatrixMutex.Lock()
 					routeMatrix = &routing.RouteMatrix{}
