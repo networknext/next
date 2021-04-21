@@ -265,7 +265,7 @@ func mainReturnWithCode() int {
 
 	// function to get the database under mutex
 
-	var database *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
+	database := routing.CreateEmptyDatabaseBinWrapper()
 	var databaseMutex sync.RWMutex
 
 	getDatabase := func() *routing.DatabaseBinWrapper {
@@ -280,7 +280,7 @@ func mainReturnWithCode() int {
 	clearEverything := func() {
 		routeMatrixMutex.RLock()
 		databaseMutex.RLock()
-		database = &routing.DatabaseBinWrapper{}
+		database = routing.CreateEmptyDatabaseBinWrapper()
 		routeMatrix = &routing.RouteMatrix{}
 		databaseMutex.RUnlock()
 		routeMatrixMutex.RUnlock()
