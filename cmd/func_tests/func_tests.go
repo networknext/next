@@ -17,8 +17,6 @@ import (
 	"time"
 )
 
-const NEXT_EXPERIMENTAL = false
-
 const (
 	relayBin   = "./dist/reference_relay"
 	backendBin = "./dist/func_backend"
@@ -2855,10 +2853,6 @@ func main() {
 		test_next_stats,
 		test_report_session,
 		test_client_ping_timed_out,
-	}
-
-	if NEXT_EXPERIMENTAL {
-		allTests = append(allTests, test_server_internal_address)
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
