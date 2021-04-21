@@ -27,7 +27,6 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 	var sqlite3 *sql.DB
 
-	fmt.Println("Creating SQLite3 Storer.")
 	// pwd, _ := os.Getwd()
 	// fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 

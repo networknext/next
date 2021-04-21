@@ -447,11 +447,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			totalCount = secondTotalCount
 		}
 
-		if totalCount > 0 {
-			reply.Direct = totalCount - reply.Next
-		} else {
-			reply.Direct = reply.Next
-		}
+		reply.Direct = totalCount - reply.Next
 
 	default:
 		var ghostArmyNextCount int
@@ -559,11 +555,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			totalCount = secondTotalCount
 		}
 
-		if totalCount > 0 {
-			reply.Direct = totalCount - reply.Next
-		} else {
-			reply.Direct = reply.Next
-		}
+		reply.Direct = totalCount - reply.Next
 	}
 
 	return nil
