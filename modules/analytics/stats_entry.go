@@ -27,9 +27,10 @@ type PingStatsEntry struct {
 	Routable   bool
 
 	InstanceID string
+	Debug      bool
 }
 
-func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32, instanceID string) []PingStatsEntry {
+func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []PingStatsEntry {
 	length := routing.TriMatrixLength(len(statsdb.Entries))
 	entries := make([]PingStatsEntry, length)
 
@@ -66,6 +67,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPack
 					PacketLoss: pl,
 					Routable:   routable,
 					InstanceID: instanceID,
+					Debug:      isDebug,
 				}
 			}
 		}
@@ -75,7 +77,7 @@ func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPack
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+4+1+MaxInstanceIDLength)
+	length := 1 + 8 + len(entries)*(8+8+4+4+4+1+MaxInstanceIDLength+1)
 	data := make([]byte, length)
 
 	index := 0
@@ -91,6 +93,7 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.PacketLoss)
 		encoding.WriteBool(data, &index, entry.Routable)
 		encoding.WriteString(data, &index, entry.InstanceID, uint32(MaxInstanceIDLength))
+		encoding.WriteBool(data, &index, entry.Debug)
 	}
 
 	return data
@@ -143,6 +146,9 @@ func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
 			if !encoding.ReadString(data, &index, &entry.InstanceID, uint32(MaxInstanceIDLength)) {
 				return nil, false
 			}
+			if !encoding.ReadBool(data, &index, &entry.Debug) {
+				return nil, false
+			}
 		}
 
 		entries[i] = entry
@@ -162,6 +168,7 @@ func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["packet_loss"] = e.PacketLoss
 	bqEntry["routable"] = e.Routable
 	bqEntry["instanceID"] = e.InstanceID
+	bqEntry["debug"] = e.Debug
 
 	return bqEntry, "", nil
 }

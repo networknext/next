@@ -85,19 +85,17 @@ func init() {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	backend.DisplayLoadedRelays(relayArray_internal)
+	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	binCreator = binWrapper_internal.Creator
 	binCreationTime = binWrapper_internal.CreationTime
+
+	est, _ := time.LoadLocation("EST")
+	startTime = time.Now().In(est)
 }
 
 func uptime() time.Duration {
 	return time.Since(startTime)
-}
-
-func init() {
-	est, _ := time.LoadLocation("EST")
-	startTime = time.Now().In(est)
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -322,7 +320,7 @@ func mainReturnWithCode() int {
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
-					backend.DisplayLoadedRelays(relayArray_internal)
+					// backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -345,7 +343,7 @@ func mainReturnWithCode() int {
 	// relay ping stats
 
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-	if !isDebug {
+	{
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 		if gcpProjectID != "" || emulatorOK {
 
@@ -391,7 +389,7 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID)
+				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID, isDebug)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
@@ -658,6 +656,13 @@ func mainReturnWithCode() int {
 			costMatrixMetrics.Invocations.Add(1)
 			costMatrixDurationStart := time.Now()
 
+			var costs []int32
+			if env == "local" {
+				costs = statsdb.GetCostsLocal(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			} else {
+				costs = statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			}
+
 			costMatrixNew := routing.CostMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
@@ -668,8 +673,6 @@ func mainReturnWithCode() int {
 				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
 				Version:            routing.CostMatrixSerializeVersion,
 			}
-
-			core.Debug("Costs: %v", costMatrixNew.Costs)
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
