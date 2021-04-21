@@ -671,6 +671,7 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				Costs:              costs,
+				Version:            routing.CostMatrixSerializeVersion,
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
@@ -729,6 +730,7 @@ func mainReturnWithCode() int {
 				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
 				BinFileData:        binWrapperBuffer.Bytes(),
 				CreatedAt:          uint64(time.Now().Unix()),
+				Version:            routing.RouteMatrixSerializeVersion,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
