@@ -616,6 +616,23 @@ func main() {
 				os.Setenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "10s")
 				os.Setenv("NEXT_CUSTOMER_PUBLIC_KEY", "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
 				getLocalDatabaseBin()
+
+				// Start redis server if it isn't already
+				runnable := exec.Command("ps", "aux")
+				buffer, err := runnable.CombinedOutput()
+
+				if err != nil {
+					fmt.Printf("Failed to run ps aux: %v\n", err)
+				}
+
+				psAuxOutput := string(buffer)
+
+				if !strings.Contains(psAuxOutput, "redis-server") {
+					runnable := exec.Command("redis-server")
+					if err := runnable.Start(); err != nil {
+						fmt.Printf("Failed to start redis: %v\n", err)
+					}
+				}
 			}
 
 			fmt.Printf("Selected %s environment\n", env.Name)
