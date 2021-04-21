@@ -359,35 +359,6 @@ func main() {
 		Storage: db,
 	}
 
-	// serverRelayBinFile will be deprecated by serveDatabaseBinFile, below
-	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
-
-		w.Header().Set("Content-Type", "application/octet-stream")
-
-		var enabledRelays []routing.Relay
-		var relayWrapper routing.RelayBinWrapper
-
-		relays := db.Relays()
-
-		for _, localRelay := range relays {
-			if localRelay.State == routing.RelayStateEnabled {
-				enabledRelays = append(enabledRelays, localRelay)
-			}
-		}
-
-		relayWrapper.Relays = enabledRelays
-
-		var buffer bytes.Buffer
-
-		encoder := gob.NewEncoder(&buffer)
-		encoder.Encode(relayWrapper)
-
-		_, err = buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
 	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: pull the sub claim from the auth0 claims to get the "author"
@@ -599,11 +570,8 @@ func main() {
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
-		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
-		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler)).Methods("GET")
-
 		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
-		r.Handle("/database.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler)).Methods("GET")
+		r.Handle("/database.bin", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, strings.Split(allowedOrigins, ","))).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
