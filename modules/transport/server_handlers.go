@@ -523,10 +523,11 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
-		datacenterNotEnabled := !datacenterEnabled(database, packet.CustomerID, packet.DatacenterID)
-
-		// todo: actually use datacenter not enabled as input into route decisions
-		_ = datacenterNotEnabled
+		if !datacenterEnabled(database, packet.CustomerID, packet.DatacenterID) {
+			core.Debug("datacenter not enabled")
+			// todo: add a metric for this condition
+			return
+		}
 
 		var err error
 
