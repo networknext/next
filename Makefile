@@ -46,6 +46,7 @@ export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4Z
 export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 40000
 export NEXT_BEACON_ADDRESS = 127.0.0.1:35000
+export NEXT_DEBUG_LOGS=1
 
 ####################
 ##    RELAY ENV   ##
@@ -184,7 +185,7 @@ export PORTAL_CRUNCHER_HOSTS = tcp://127.0.0.1:5555,tcp://127.0.0.1:5556
 endif
 
 ifndef ALLOWED_ORIGINS
-export ALLOWED_ORIGINS = http://127.0.0.1:8080
+export ALLOWED_ORIGINS=http://127.0.0.1:8080,http://127.0.0.1:8081,http://192.168.1.107:20000/rpc
 endif
 
 ifndef BILLING_CLIENT_COUNT
@@ -300,6 +301,89 @@ dist:
 	mkdir -p $(DIST_DIR)
 
 #####################
+##   Happy Path    ##
+#####################
+
+# Always run sqlite3
+export FEATURE_POSTGRESQL=false
+
+.PHONY: dev-relay-gateway
+dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+	@PORT=30000 ./dist/relay_gateway
+
+.PHONY: dev-relay-backend-1
+dev-relay-backend-1: build-relay-backend ## runs a local relay backend
+	@PORT=30001 ./dist/relay_backend
+
+.PHONY: dev-relay-backend-2
+dev-relay-backend-2: build-relay-backend ## runs a local relay backend
+	@PORT=30002 ./dist/relay_backend
+
+.PHONY: dev-relay-frontend
+dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
+	@PORT=30005 ./dist/relay_frontend
+
+.PHONY: dev-server-backend
+dev-server-backend: build-server-backend ## runs a local server backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+
+.PHONY: dev-relay
+dev-relay: build-reference-relay  ## runs 10 local relays
+	@./scripts/relay-spawner.sh -n 1
+
+.PHONY: dev-relays
+dev-relays: build-reference-relay  ## runs 10 local relays
+	@./scripts/relay-spawner.sh -n 10
+
+.PHONY: dev-client
+dev-client: build-client  ## runs a local client
+	@./scripts/client-spawner.sh -n 1
+
+.PHONY: dev-clients
+dev-clients: build-client  ## runs 10 local clients
+	@./scripts/client-spawner.sh -n 10
+
+.PHONY: dev-server
+dev-server: build-sdk build-server  ## runs a local server
+	@./dist/server
+
+.PHONY: dev-portal
+dev-portal: build-portal-local ## runs a local portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
+
+.PHONY: dev-beacon
+dev-beacon: build-beacon ## runs a local beacon
+	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
+
+.PHONY: dev-beacon-inserter
+dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
+	@PORT=35001 ./dist/beacon_inserter
+
+.PHONY: dev-billing
+dev-billing: build-billing ## runs a local billing service
+	@PORT=41000 ./dist/billing
+
+.PHONY: dev-analytics
+dev-analytics: build-analytics ## runs a local analytics service
+	@PORT=41001 ./dist/analytics
+
+.PHONY: dev-portal-cruncher-1
+dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+
+.PHONY: dev-portal-cruncher-2
+dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
+	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
+
+.PHONY: dev-api
+dev-api: build-api ## runs a local api endpoint service
+	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
+
+.PHONY: dev-vanity
+dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
+	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
+
+#####################
 ## ESSENTIAL TOOLS ##
 #####################
 
@@ -354,7 +438,7 @@ build-functional-tests: dist
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean dist build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests
+build-test-func: clean dist build-sdk build-reference-relay build-functional-server build-functional-client build-functional-backend build-functional-tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -378,74 +462,14 @@ test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs
 
 #######################
 
-.PHONY: dev-portal
-dev-portal: build-portal-local ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
-
-.PHONY: dev-server-backend
-dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
-
-.PHONY: dev-beacon
-dev-beacon: build-beacon ## runs a local beacon
-	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
-
-.PHONY: dev-beacon-inserter
-dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
-	@PORT=35001 ./dist/beacon_inserter
-
-.PHONY: dev-billing
-dev-billing: build-billing ## runs a local billing service
-	@PORT=41000 ./dist/billing
-
-.PHONY: dev-analytics
-dev-analytics: build-analytics ## runs a local analytics service
-	@PORT=41001 ./dist/analytics
-
-.PHONY: dev-portal-cruncher-1
-dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
-
-.PHONY: dev-portal-cruncher-2
-dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
-
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/backend.go
-
-.PHONY: dev-reference-relay
-dev-reference-relay: build-relay-ref ## runs a local reference relay
-	@$(DIST_DIR)/reference_relay
 
 .PHONY: dev-mock-relay
 dev-mock-relay: ## runs a local mock relay
 	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
 	./dist/mock_relay
-
-.PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@./dist/client
-
-.PHONY: dev-multi-clients
-dev-multi-clients: build-client  ## runs 10 local clients
-	@./scripts/client-spawner.sh -n 10
-
-.PHONY: dev-multi-relays
-dev-multi-relays: build-relay-local ## runs 10 local relays
-	@./scripts/relay-spawner.sh -n 10
-
-.PHONY: dev-server
-dev-server: build-sdk build-server  ## runs a local server
-	@./dist/server
-
-.PHONY: dev-api
-dev-api: build-api ## runs a local api endpoint service
-	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
-
-.PHONY: dev-vanity
-dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
-	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
 .PHONY: dev-fake-server
 dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
@@ -473,13 +497,6 @@ build-portal:
 	@printf "RELEASE: ${RELEASE}\n"
 	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
-	@printf "done\n"
-
-.PHONY: build-relay-local
-build-relay-local:
-	@printf "Building relay... \n"
-	@gsutil cp $(ARTIFACT_BUCKET_RELAY)/$(RELAY_BINARY_NAME) $(DIST_DIR)/relay
-	chmod +x $(DIST_DIR)/relay
 	@printf "done\n"
 
 .PHONY: build-portal-local
@@ -1046,14 +1063,6 @@ deploy-debug-relay-backend-prod:
 #    Relay Backend    #
 #######################
 
-.PHONY: dev-relay-backend-1
-dev-relay-backend-1: build-relay-backend ## runs a local relay backend
-	@PORT=30001 ./dist/relay_backend
-
-.PHONY: dev-relay-backend-2
-dev-relay-backend-2: build-relay-backend ## runs a local relay backend
-	@PORT=30002 ./dist/relay_backend
-
 .PHONY: build-relay-backend
 build-relay-backend:
 	@printf "Building relay backend... "
@@ -1230,8 +1239,8 @@ RELAY_DIR := ./relay
 RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
-.PHONY: build-relay-ref
-build-relay-ref:
+.PHONY: build-reference-relay
+build-reference-relay:
 	@printf "Building reference relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
@@ -1286,10 +1295,6 @@ build-relay-ref:
 #    Relay Gateway    #
 #######################
 
-.PHONY: dev-relay-gateway
-dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
-	@PORT=30000 ./dist/relay_gateway
-
 .PHONY: build-relay-gateway
 build-relay-gateway:
 	@printf "Building relay gateway... "
@@ -1331,10 +1336,6 @@ publish-relay-gateway-artifacts-prod:
 #######################
 ##   Relay Frontend  ##
 #######################
-
-.PHONY: dev-relay-frontend
-dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
-	@PORT=30005 ./dist/relay_frontend
 
 .PHONY: build-relay-frontend
 build-relay-frontend:
