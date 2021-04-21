@@ -87,19 +87,17 @@ func init() {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	backend.DisplayLoadedRelays(relayArray_internal)
+	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	binCreator = binWrapper_internal.Creator
 	binCreationTime = binWrapper_internal.CreationTime
+
+	est, _ := time.LoadLocation("EST")
+	startTime = time.Now().In(est)
 }
 
 func uptime() time.Duration {
 	return time.Since(startTime)
-}
-
-func init() {
-	est, _ := time.LoadLocation("EST")
-	startTime = time.Now().In(est)
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -660,6 +658,13 @@ func mainReturnWithCode() int {
 			costMatrixMetrics.Invocations.Add(1)
 			costMatrixDurationStart := time.Now()
 
+			var costs []int32
+			if env == "local" {
+				costs = statsdb.GetCostsLocal(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			} else {
+				costs = statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			}
+
 			costMatrixNew := routing.CostMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
@@ -667,10 +672,8 @@ func mainReturnWithCode() int {
 				RelayLatitudes:     relayLatitudes,
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
-				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
+				Costs:              costs,
 			}
-
-			core.Debug("Costs: %v", costMatrixNew.Costs)
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
