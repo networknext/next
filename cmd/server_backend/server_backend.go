@@ -378,22 +378,23 @@ func mainReturnWithCode() int {
 				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
 				// decode the database in the route matrix
-
 				var newDatabase routing.DatabaseBinWrapper
 
-				databaseBuffer := bytes.NewBuffer(routeMatrix.BinFileData)
+				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
 				decoder := gob.NewDecoder(databaseBuffer)
 				err := decoder.Decode(&newDatabase)
 				if err == io.EOF {
 					core.Debug("database.bin is empty :(")
+					level.Error(logger).Log("msg", "database.bin is empty", "err", err)
 					// todo: there should be a metric here
 				} else if err != nil {
 					core.Debug("failed to read database.bin: %v", err)
+					level.Error(logger).Log("msg", "failed to read database.bin", "err", err)
 					backendMetrics.BinWrapperFailure.Add(1)
 				}
 
 				routeMatrixMutex.Lock()
-				databaseMutex.Lock();
+				databaseMutex.Lock()
 				routeMatrix = &newRouteMatrix
 				database = &newDatabase
 				databaseMutex.Unlock()
