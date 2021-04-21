@@ -29,6 +29,6 @@ func (ts *matrixTestSuite) TestRelayBackendLiveData(t *testing.T, store MatrixSt
 
 	rbArr, err = store.GetRelayBackendLiveData()
 	assert.Nil(t, err)
-	assert.Equal(t, ld.Id, rbArr[0].Id)
-	assert.Equal(t, ld2.Id, rbArr[1].Id)
+	assert.Equal(t, ld.ID, rbArr[0].ID)
+	assert.Equal(t, ld2.ID, rbArr[1].ID)
 }
