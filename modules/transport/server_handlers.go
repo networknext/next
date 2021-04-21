@@ -77,111 +77,14 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	return nil
 }
 
-type ErrDatacenterNotFound struct {
-	buyer          uint64
-	datacenter     uint64
-	datacenterName string
+func datacenterExists(database *routing.DatabaseBinWrapper, datacenterID uint64) bool {
+	_, exists := database.DatacenterMap[datacenterID]	
+	return exists
 }
 
-func (e ErrDatacenterNotFound) Error() string {
-	if e.datacenterName != "" {
-		return fmt.Sprintf("datacenter %s for buyer %016x not found", e.datacenterName, e.buyer)
-	}
-
-	return fmt.Sprintf("datacenter %016x for buyer %016x not found", e.datacenter, e.buyer)
-}
-
-type ErrDatacenterMapNotFound struct {
-	buyer          uint64
-	datacenter     uint64
-	datacenterName string
-}
-
-func (e ErrDatacenterMapNotFound) Error() string {
-	if e.datacenterName != "" {
-		return fmt.Sprintf("datacenter map for buyer %016x not found. Request for datacenter %s", e.buyer, e.datacenterName)
-	}
-	return fmt.Sprintf("datacenter map for buyer %016x not found. Request for datacenter id %016x", e.buyer, e.datacenter)
-}
-
-type ErrDatacenterMapMisconfigured struct {
-	buyer         uint64
-	datacenterMap routing.DatacenterMap
-}
-
-func (e ErrDatacenterMapMisconfigured) Error() string {
-	return fmt.Sprintf("datacenter alias %s misconfigured for buyer %016x: mapped to datacenter \"%016x\" which doesn't exist", e.datacenterMap.Alias, e.buyer, e.datacenterMap.DatacenterID)
-}
-
-type ErrDatacenterNotAllowed struct {
-	buyer          uint64
-	datacenter     uint64
-	datacenterName string
-}
-
-func (e ErrDatacenterNotAllowed) Error() string {
-	if e.datacenterName != "" {
-		return fmt.Sprintf("buyer %016x tried to use datacenter %s when they are not configured to do so", e.buyer, e.datacenterName)
-	}
-
-	return fmt.Sprintf("buyer %016x tried to use datacenter %016x when they are not configured to do so", e.buyer, e.datacenter)
-}
-
-func getDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
-	// We should always support the "local" datacenter, even without a datacenter mapping
-	if crypto.HashID("local") == datacenterID {
-		return routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
-		}, nil
-	}
-
-	// enforce that whatever datacenter the server says it's in, we have a mapping for it
-	datacenterAliases, ok := database.DatacenterMaps[buyerID]
-	if !ok {
-		fmt.Printf("BuyerID %016x does not have a Datacenter map\n", buyerID)
-		return routing.UnknownDatacenter, ErrDatacenterMapNotFound{buyerID, datacenterID, datacenterName}
-	}
-
-	for _, dcMap := range datacenterAliases {
-		if datacenterID == dcMap.DatacenterID {
-			// We found the datacenter
-			datacenter, exists := database.DatacenterMap[datacenterID]
-			if !exists {
-				// The datacenter map is misconfigured in our database
-				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
-				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
-			}
-
-			return datacenter, nil
-		}
-
-		if datacenterID == crypto.HashID(dcMap.Alias) {
-			// We found the datacenter from the mapped alias
-			datacenter, exists := database.DatacenterMap[datacenterID]
-			if !exists {
-				// The datacenter map is misconfigured in our database
-				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
-				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
-			}
-
-			datacenter.AliasName = dcMap.Alias
-			return datacenter, nil
-		}
-	}
-
-	// We couldn't find the datacenter, check if it is a datacenter that we have in our database
-	_, exists := database.DatacenterMap[datacenterID]
-	if !exists {
-		// This isn't a datacenter we know about. It's either brand new and not configured yet
-		// or there is a typo in the server's integration of the SDK
-		fmt.Printf("Datacenter not found: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
-		return routing.UnknownDatacenter, ErrDatacenterNotFound{buyerID, datacenterID, datacenterName}
-	}
-
-	// This is a datacenter we know about, but the buyer isn't configured to use it
-	fmt.Printf("Datacenter use not allowed: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
-	return routing.UnknownDatacenter, ErrDatacenterNotAllowed{buyerID, datacenterID, datacenterName}
+func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64) bool {
+	// todo: look up whether datacenter is enabled per-customer, via per-buyer map[uint64]bool keyed on datacenter id
+	return true
 }
 
 type nearRelayGroup struct {
@@ -282,6 +185,7 @@ func handleNearAndDestRelays(
 }
 
 func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+	
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		core.Debug("-----------------------------------------")
@@ -352,39 +256,18 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		if _, err := getDatacenter(database, packet.CustomerID, packet.DatacenterID, packet.DatacenterName); err != nil {
-
-			core.Debug("could not get datacenter: %s [%x]", packet.DatacenterName, packet.DatacenterID)
-
-			switch err.(type) {
-			case ErrDatacenterMapNotFound:
-				core.Debug("datacenter map not found")
-				metrics.DatacenterMapNotFound.Add(1)
-
-			case ErrDatacenterNotFound:
-				core.Debug("datacenter not found")
-				metrics.DatacenterNotFound.Add(1)
-
-			case ErrDatacenterMapMisconfigured:
-				core.Debug("datacenter map misconfigured")
-				metrics.MisconfiguredDatacenterAlias.Add(1)
-
-			case ErrDatacenterNotAllowed:
-				core.Debug("datacenter not allowed")
-				metrics.DatacenterNotAllowed.Add(1)
-				if err := writeServerInitResponse(w, &packet, InitResponseDataCenterNotEnabled); err != nil {
-					core.Debug("failed to write server init response: %s", err)
-					metrics.WriteResponseFailure.Add(1)
-				}
-				return
-			}
-
+		if !datacenterExists(database, packet.DatacenterID) {
+			core.Debug("datacenter does not exist: %s [%x]", packet.DatacenterName, packet.DatacenterID)
+			metrics.DatacenterNotFound.Add(1)
 			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
 				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
+				return
 			}
 
-			return
+			// todo: queue up something via pubsub here!
+			// we need to store the buyer id, datacenter id, datacenter name in bigquery somewhere
+			// otherwise we're pretty blind to this because we don't have logs in production
 		}
 
 		if err := writeServerInitResponse(w, &packet, InitResponseOK); err != nil {
@@ -436,6 +319,13 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 			return
 		}
 
+		if !buyer.Live {
+			core.Debug("customer not active")
+			// todo: add buyer not active metric here
+			// metrics.BuyerNotActive.Add(1)
+			return
+		}
+
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
@@ -445,27 +335,6 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
 			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
-			return
-		}
-
-		if _, err := getDatacenter(database, packet.CustomerID, packet.DatacenterID, ""); err != nil {
-
-			core.Debug("could not get datacenter: %x]", packet.DatacenterID)
-
-			switch err.(type) {
-			case ErrDatacenterNotFound:
-				core.Debug("datacenter not found")
-				metrics.DatacenterNotFound.Add(1)
-
-			case ErrDatacenterMapMisconfigured:
-				core.Debug("datacenter map misconfigured")
-				metrics.MisconfiguredDatacenterAlias.Add(1)
-
-			case ErrDatacenterNotAllowed:
-				core.Debug("datacenter not allowed")
-				metrics.DatacenterNotAllowed.Add(1)
-			}
-
 			return
 		}
 
@@ -496,6 +365,7 @@ func SessionUpdateHandlerFunc(
 	postSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,
 ) UDPHandlerFunc {
+
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		core.Debug("-----------------------------------------")
@@ -645,6 +515,12 @@ func SessionUpdateHandlerFunc(
 			return
 		}
 
+		if !buyer.Live {
+			core.Debug("buyer is not live")
+			metrics.BuyerNotLive.Add(1)
+			return
+		}
+
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
@@ -656,42 +532,20 @@ func SessionUpdateHandlerFunc(
 			debug = new(string)
 		}
 
-		// If a player has the "pro" tag, set pro mode in the route shader
-		if packet.Version.AtLeast(SDKVersion{4, 0, 3}) {
-			for i := int32(0); i < packet.NumTags; i++ {
-				if packet.Tags[i] == crypto.HashID("pro") {
-					core.Debug("pro mode enabled")
-					buyer.RouteShader.ProMode = true
-					break
-				}
+		for i := int32(0); i < packet.NumTags; i++ {
+			if packet.Tags[i] == crypto.HashID("pro") {
+				core.Debug("pro mode enabled")
+				buyer.RouteShader.ProMode = true
+				break
 			}
-			// Case for older SDK versions where there was only 1 tag
-		} else if len(packet.Tags) > 0 && packet.Tags[0] == crypto.HashID("pro") {
-			core.Debug("pro mode enabled")
-			buyer.RouteShader.ProMode = true
 		}
 
-		datacenter, err := getDatacenter(database, packet.CustomerID, packet.DatacenterID, "")
-		if err != nil {
+		datacenterNotEnabled := !datacenterEnabled(database, packet.CustomerID, packet.DatacenterID)
 
-			core.Debug("could not find datacenter")
+		// todo: actually use datacenter not enabled as input into route decisions
+		_ = datacenterNotEnabled
 
-			switch err.(type) {
-			case ErrDatacenterNotFound:
-				core.Debug("datacenter not found")
-				metrics.DatacenterNotFound.Add(1)
-
-			case ErrDatacenterMapMisconfigured:
-				core.Debug("datacenter misconfigured")
-				metrics.MisconfiguredDatacenterAlias.Add(1)
-
-			case ErrDatacenterNotAllowed:
-				core.Debug("datacenter not allowed")
-				metrics.DatacenterNotAllowed.Add(1)
-			}
-
-			return
-		}
+		var err error
 
 		if newSession {
 
@@ -771,13 +625,6 @@ func SessionUpdateHandlerFunc(
 			if slicePacketLossServerToClient > slicePacketLossClientToServer {
 				slicePacketLoss = slicePacketLossServerToClient
 			}
-		}
-
-		// Don't accelerate any sessions if the buyer is not yet live
-		if !buyer.Live {
-			core.Debug("buyer is not live")
-			metrics.BuyerNotLive.Add(1)
-			return
 		}
 
 		if packet.FallbackToDirect {
@@ -931,12 +778,15 @@ func SessionUpdateHandlerFunc(
 				metrics.RouteDoesNotExist.Add(1)
 			}
 
-			// The SDK sent up "next = false" but didn't fall back to direct - the SDK "aborted" this session
 			if !packet.Next {
+
+				// the sdk "aborted" this session
+
+				core.Debug("aborted")
 				sessionData.RouteState.Next = false
 				sessionData.RouteState.Veto = true
-				core.Debug("aborted")
 				metrics.SDKAborted.Add(1)
+
 			} else {
 				var stay bool
 				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, slicePacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {

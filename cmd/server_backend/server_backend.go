@@ -326,9 +326,7 @@ func mainReturnWithCode() int {
 				}
 
 				if routeMatrixReader == nil {
-					core.Debug("error: route matrix reader is nil")
 					clearEverything()
-					// todo: there should be a metric for this condition
 					continue
 				}
 
@@ -384,6 +382,7 @@ func mainReturnWithCode() int {
 				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
 				// decode the database in the route matrix
+
 				var newDatabase routing.DatabaseBinWrapper
 
 				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
@@ -412,7 +411,6 @@ func mainReturnWithCode() int {
 				routeMatrixMutex.Unlock()
 			}
 		}()
-
 	}
 
 	// Create a local biller
