@@ -17,7 +17,7 @@ func wrap(pre, err, post string) error {
 }
 
 type RelayBackendLiveData struct {
-	Id        string    `json:"id"`
+	ID        string    `json:"id"`
 	Address   string    `json:"address"`
 	InitAt    time.Time `json:"init_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -25,7 +25,7 @@ type RelayBackendLiveData struct {
 
 func NewRelayBackendLiveData(id, address string, InitAt, UpdatedAt time.Time) RelayBackendLiveData {
 	rb := new(RelayBackendLiveData)
-	rb.Id = id
+	rb.ID = id
 	rb.Address = address
 	rb.InitAt = InitAt
 	rb.UpdatedAt = UpdatedAt
