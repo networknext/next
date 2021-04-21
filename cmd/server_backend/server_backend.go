@@ -386,6 +386,7 @@ func mainReturnWithCode() int {
 				err := decoder.Decode(&newDatabase)
 				if err == io.EOF {
 					core.Debug("database.bin is empty :(")
+					// todo: there should be a metric here
 				} else if err != nil {
 					core.Debug("failed to read database.bin: %v", err)
 					backendMetrics.BinWrapperFailure.Add(1)
