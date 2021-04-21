@@ -17,7 +17,11 @@ func saveCostMatrix(env Environment, filename string) {
 
 	uri += "/cost_matrix"
 
-	r, err := http.Get(uri)
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
+
+	r, err := client.Do(req)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not get the route matrix from the backend: %v\n", err), 1)
 	}
