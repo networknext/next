@@ -14,7 +14,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 1
+const RouteMatrixSerializeVersion = 2
 
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
@@ -29,6 +29,7 @@ type RouteMatrix struct {
 	BinFileData        []byte
 	CreatedAt          uint64
 	Version            uint32
+	DestRelays         []bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -100,6 +101,12 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeUint64(&m.CreatedAt)
+
+	if m.Version >= 2 {
+		for _, v := range m.DestRelays {
+			stream.SerializeBool(&v)
+		}
+	}
 
 	return stream.Error()
 }
