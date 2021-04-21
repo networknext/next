@@ -54,7 +54,7 @@ func TestGetRouteAddressesAndPublicKeysFailure(t *testing.T) {
 	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
 	routeRelays := []int32{1, 0, 2}
 
-	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, binWrapper)
+	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &binWrapper)
 	assert.Nil(t, routeAddresses)
 	assert.Nil(t, routePublicKeys)
 }
@@ -106,7 +106,7 @@ func TestGetRouteAddressesAndPublicKeysSuccess(t *testing.T) {
 	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
 	routeRelays := []int32{1, 0, 2}
 
-	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, binWrapper)
+	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &binWrapper)
 	assert.Equal(t, expectedRouteAddresses, routeAddresses)
 	assert.Equal(t, expectedRoutePublicKeys, routePublicKeys)
 }
