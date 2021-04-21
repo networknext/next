@@ -169,6 +169,7 @@ type ServerBackendMetrics struct {
 	RouteMatrixNumRoutes          Gauge
 	RouteMatrixBytes              Gauge
 
+	BinWrapperEmpty   Counter
 	BinWrapperFailure Counter
 	StaleRouteMatrix  Counter
 }
@@ -185,6 +186,7 @@ var EmptyServerBackendMetrics = ServerBackendMetrics{
 	RouteMatrixUpdateLongDuration: &EmptyCounter{},
 	RouteMatrixNumRoutes:          &EmptyGauge{},
 	RouteMatrixBytes:              &EmptyGauge{},
+	BinWrapperEmpty:			   &EmptyCounter{},
 	BinWrapperFailure:             &EmptyCounter{},
 	StaleRouteMatrix:              &EmptyCounter{},
 }
@@ -311,6 +313,17 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		ID:          "route_matrix_update.bytes",
 		Unit:        "bytes",
 		Description: "The number of bytes read from the route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BinWrapperEmpty, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Bin Wrapper Empty",
+		ServiceName: serviceName,
+		ID:          "server_backend.bin_wrapper_empty",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + " received an empty database bin wrapper from the route matrix.",
 	})
 	if err != nil {
 		return nil, err
