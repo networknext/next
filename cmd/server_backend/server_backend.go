@@ -386,7 +386,7 @@ func mainReturnWithCode() int {
 				if err == io.EOF {
 					core.Debug("database.bin is empty :(")
 					level.Error(logger).Log("msg", "database.bin is empty", "err", err)
-					// todo: there should be a metric here
+					backendMetrics.BinWrapperEmpty.Add(1)
 				} else if err != nil {
 					core.Debug("failed to read database.bin: %v", err)
 					level.Error(logger).Log("msg", "failed to read database.bin", "err", err)
