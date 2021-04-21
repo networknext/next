@@ -359,35 +359,6 @@ func main() {
 		Storage: db,
 	}
 
-	// serverRelayBinFile will be deprecated by serveDatabaseBinFile, below
-	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
-
-		w.Header().Set("Content-Type", "application/octet-stream")
-
-		var enabledRelays []routing.Relay
-		var relayWrapper routing.RelayBinWrapper
-
-		relays := db.Relays()
-
-		for _, localRelay := range relays {
-			if localRelay.State == routing.RelayStateEnabled {
-				enabledRelays = append(enabledRelays, localRelay)
-			}
-		}
-
-		relayWrapper.Relays = enabledRelays
-
-		var buffer bytes.Buffer
-
-		encoder := gob.NewEncoder(&buffer)
-		encoder.Encode(relayWrapper)
-
-		_, err = buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
 	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: pull the sub claim from the auth0 claims to get the "author"
@@ -400,10 +371,13 @@ func main() {
 		buyerMap := make(map[uint64]routing.Buyer)
 		sellerMap := make(map[string]routing.Seller)
 		datacenterMap := make(map[uint64]routing.Datacenter)
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
 
 		buyers := db.Buyers()
 		for _, buyer := range buyers {
 			buyerMap[buyer.ID] = buyer
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
 		}
 
 		for _, seller := range db.Sellers() {
@@ -419,12 +393,6 @@ func main() {
 				enabledRelays = append(enabledRelays, localRelay)
 				relayMap[localRelay.ID] = localRelay
 			}
-		}
-
-		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
-		for _, buyer := range buyers {
-			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
-			datacenterMaps[buyer.ID] = dcMapsForBuyer
 		}
 
 		dbWrapper.Relays = enabledRelays
@@ -598,9 +566,6 @@ func main() {
 		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
-
-		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
-		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler)).Methods("GET")
 
 		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
 		r.Handle("/database.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler)).Methods("GET")
