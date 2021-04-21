@@ -197,11 +197,9 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
 			metrics.HandlerMetrics.Duration.Set(milliseconds)
-
 			if milliseconds > 100 {
 				metrics.HandlerMetrics.LongDuration.Add(1)
 			}
-
 			core.Debug("server init duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
@@ -216,63 +214,48 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 
 		database := getDatabase()
 
+		responseType := InitResponseOK
+
+		defer func() {
+			if err := writeServerInitResponse(w, &packet, uint32(responseType)); err != nil {
+				core.Debug("failed to write server init response: %s", err)
+				metrics.WriteResponseFailure.Add(1)
+			}			
+		}()
+
 		buyer, exists := database.BuyerMap[packet.CustomerID]
 		if !exists {
 			core.Debug("unknown customer")
 			metrics.BuyerNotFound.Add(1)
-			if err := writeServerInitResponse(w, &packet, InitResponseUnknownCustomer); err != nil {
-				core.Debug("failed to write server init response: %s", err)
-				metrics.WriteResponseFailure.Add(1)
-			}
+			responseType = InitResponseUnknownCustomer
 			return
 		}
 
 		if !buyer.Live {
 			core.Debug("customer not active")
 			metrics.BuyerNotActive.Add(1)
-			if err := writeServerInitResponse(w, &packet, InitResponseCustomerNotActive); err != nil {
-				core.Debug("failed to write server init response: %s", err)
-				metrics.WriteResponseFailure.Add(1)
-			}
+			responseType = InitResponseCustomerNotActive
+			return
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
-			if err := writeServerInitResponse(w, &packet, InitResponseSignatureCheckFailed); err != nil {
-				core.Debug("failed to write server init response: %s", err)
-				metrics.WriteResponseFailure.Add(1)
-			}
+			responseType = InitResponseSignatureCheckFailed
 			return
 		}
 
 		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) {
 			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
-			if err := writeServerInitResponse(w, &packet, InitResponseOldSDKVersion); err != nil {
-				core.Debug("failed to write server init response: %s", err)
-				metrics.WriteResponseFailure.Add(1)
-			}
+			responseType = InitResponseOldSDKVersion
 			return
 		}
 
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist: %s [%x]", packet.DatacenterName, packet.DatacenterID)
 			metrics.DatacenterNotFound.Add(1)
-			if err := writeServerInitResponse(w, &packet, InitResponseUnknownDatacenter); err != nil {
-				core.Debug("failed to write server init response: %s", err)
-				metrics.WriteResponseFailure.Add(1)
-				return
-			}
-
-			// todo: queue up something via pubsub here!
-			// we need to store the buyer id, datacenter id, datacenter name in bigquery somewhere
-			// otherwise we're pretty blind to this because we don't have logs in production
-		}
-
-		if err := writeServerInitResponse(w, &packet, InitResponseOK); err != nil {
-			core.Debug("failed to write server init response: %s", err)
-			metrics.WriteResponseFailure.Add(1)
+			responseType = InitResponseUnknownDatacenter
 			return
 		}
 
