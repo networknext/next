@@ -904,13 +904,11 @@ func mainReturnWithCode() int {
 	if !found {
 		level.Error(logger).Log("msg", "unable to parse ALLOWED_ORIGINS environment variable")
 	}
-	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
 
 	audience, found := os.LookupEnv("JWT_AUDIENCE")
 	if !found {
 		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
 	}
-	fmt.Printf("audience: %s\n", audience)
 
 	fmt.Printf("starting http server on port %s\n\n", port)
 
