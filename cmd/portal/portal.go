@@ -371,10 +371,13 @@ func main() {
 		buyerMap := make(map[uint64]routing.Buyer)
 		sellerMap := make(map[string]routing.Seller)
 		datacenterMap := make(map[uint64]routing.Datacenter)
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
 
 		buyers := db.Buyers()
 		for _, buyer := range buyers {
 			buyerMap[buyer.ID] = buyer
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
 		}
 
 		for _, seller := range db.Sellers() {
@@ -390,12 +393,6 @@ func main() {
 				enabledRelays = append(enabledRelays, localRelay)
 				relayMap[localRelay.ID] = localRelay
 			}
-		}
-
-		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
-		for _, buyer := range buyers {
-			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
-			datacenterMaps[buyer.ID] = dcMapsForBuyer
 		}
 
 		dbWrapper.Relays = enabledRelays
