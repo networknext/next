@@ -43,7 +43,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 var (
@@ -904,13 +904,11 @@ func mainReturnWithCode() int {
 	if !found {
 		level.Error(logger).Log("msg", "unable to parse ALLOWED_ORIGINS environment variable")
 	}
-	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
 
 	audience, found := os.LookupEnv("JWT_AUDIENCE")
 	if !found {
 		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
 	}
-	fmt.Printf("audience: %s\n", audience)
 
 	fmt.Printf("starting http server on port %s\n\n", port)
 
@@ -927,11 +925,12 @@ func mainReturnWithCode() int {
 
 	// Wrap the following endpoints in auth and CORS middleware
 	//	Note: the next tool is unaware of CORS and its requests simply pass through
+
 	costMatrixHandler := http.HandlerFunc(serveCostMatrixFunc)
-	router.Handle("/cost_matrix", jsonrpc.AuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(serveRelaysFunc)
-	router.Handle("/relays", jsonrpc.AuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
