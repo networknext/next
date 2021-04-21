@@ -184,7 +184,7 @@ export PORTAL_CRUNCHER_HOSTS = tcp://127.0.0.1:5555,tcp://127.0.0.1:5556
 endif
 
 ifndef ALLOWED_ORIGINS
-export ALLOWED_ORIGINS=http://127.0.0.1:8080,http://127.0.0.1:8081,http://192.168.1.107:20000/rpc
+export ALLOWED_ORIGINS = http://127.0.0.1:8080,http://127.0.0.1:8081
 endif
 
 ifndef BILLING_CLIENT_COUNT
