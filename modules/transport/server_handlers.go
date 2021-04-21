@@ -127,7 +127,7 @@ func (e ErrDatacenterNotAllowed) Error() string {
 	return fmt.Sprintf("buyer %016x tried to use datacenter %016x when they are not configured to do so", e.buyer, e.datacenter)
 }
 
-func getDatacenter(binWrapper routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
+func getDatacenter(binWrapper *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
 	// We should always support the "local" datacenter, even without a datacenter mapping
 	if crypto.HashID("local") == datacenterID {
 		return routing.Datacenter{
@@ -281,7 +281,7 @@ func handleNearAndDestRelays(
 	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
 
-func ServerInitHandlerFunc(logger log.Logger, getBinWrapper func() routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc(logger log.Logger, getBinWrapper func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		core.Debug("-----------------------------------------")
@@ -399,7 +399,7 @@ func ServerInitHandlerFunc(logger log.Logger, getBinWrapper func() routing.Datab
 	}
 }
 
-func ServerUpdateHandlerFunc(logger log.Logger, getBinWrapper func() routing.DatabaseBinWrapper, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, getBinWrapper func() *routing.DatabaseBinWrapper, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -490,7 +490,7 @@ func SessionUpdateHandlerFunc(
 	getIPLocator func(sessionID uint64) routing.IPLocator,
 	getRouteMatrix func() *routing.RouteMatrix,
 	multipathVetoHandler storage.MultipathVetoHandler,
-	getBinWrapper func() routing.DatabaseBinWrapper,
+	getBinWrapper func() *routing.DatabaseBinWrapper,
 	maxNearRelays int,
 	routerPrivateKey [crypto.KeySize]byte,
 	postSessionHandler *PostSessionHandler,
@@ -1008,7 +1008,7 @@ func SessionUpdateHandlerFunc(
 
 func HandleNextToken(
 	sessionData *SessionData,
-	binWrapper routing.DatabaseBinWrapper,
+	binWrapper *routing.DatabaseBinWrapper,
 	buyer *routing.Buyer,
 	packet *SessionUpdatePacket,
 	routeNumRelays int32,
@@ -1040,7 +1040,7 @@ func HandleNextToken(
 
 func HandleContinueToken(
 	sessionData *SessionData,
-	binWrapper routing.DatabaseBinWrapper,
+	binWrapper *routing.DatabaseBinWrapper,
 	buyer *routing.Buyer,
 	packet *SessionUpdatePacket,
 	routeNumRelays int32,
@@ -1074,7 +1074,7 @@ func GetRouteAddressesAndPublicKeys(
 	numTokens int32,
 	routeRelays []int32,
 	allRelayIDs []uint64,
-	binWrapper routing.DatabaseBinWrapper,
+	binWrapper *routing.DatabaseBinWrapper,
 ) ([]*net.UDPAddr, [][]byte) {
 	routeAddresses := make([]*net.UDPAddr, numTokens)
 	routePublicKeys := make([][]byte, numTokens)
@@ -1112,7 +1112,7 @@ func GetRouteAddressesAndPublicKeys(
 	return routeAddresses, routePublicKeys
 }
 
-func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, binWrapper routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
+func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, binWrapper *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
 	totalNumRelays := int32(len(allRelayIDs))
 	routeAddresses[index+1] = &relay.Addr
 	if enableInternalIPs {

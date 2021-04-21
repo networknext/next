@@ -85,7 +85,7 @@ func init() {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	backend.DisplayLoadedRelays(relayArray_internal)
+	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	binCreator = binWrapper_internal.Creator
 	binCreationTime = binWrapper_internal.CreationTime
@@ -320,7 +320,7 @@ func mainReturnWithCode() int {
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
-					backend.DisplayLoadedRelays(relayArray_internal)
+					// backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()

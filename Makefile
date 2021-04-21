@@ -315,12 +315,12 @@ export FEATURE_POSTGRESQL=false
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 	@PORT=30000 ./dist/relay_gateway
 
-.PHONY: dev-relay-backend-1
-dev-relay-backend-1: build-relay-backend ## runs a local relay backend
+.PHONY: dev-relay-backend
+dev-relay-backend: build-relay-backend ## runs a local relay backend
 	@PORT=30001 ./dist/relay_backend
 
-.PHONY: dev-relay-backend-2
-dev-relay-backend-2: build-relay-backend ## runs a local relay backend
+.PHONY: dev-debug-relay-backend
+dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
 	@PORT=30002 ./dist/relay_backend
 
 .PHONY: dev-relay-frontend
@@ -1387,7 +1387,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-pusher build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

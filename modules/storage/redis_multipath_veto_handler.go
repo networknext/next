@@ -12,13 +12,13 @@ import (
 )
 
 type RedisMultipathVetoHandler struct {
-	getBinWrapper              func() routing.DatabaseBinWrapper
+	getBinWrapper              func() *routing.DatabaseBinWrapper
 	redisPool                  *redis.Pool
 	cachedMultipathVetoes      map[string]map[uint64]bool
 	cachedMultipathVetoesMutex sync.RWMutex
 }
 
-func NewRedisMultipathVetoHandler(redisHost string, getBinWrapper func() routing.DatabaseBinWrapper) (*RedisMultipathVetoHandler, error) {
+func NewRedisMultipathVetoHandler(redisHost string, getBinWrapper func() *routing.DatabaseBinWrapper) (*RedisMultipathVetoHandler, error) {
 	redisPool := NewRedisPool(redisHost, 5, 64)
 	conn := redisPool.Get()
 	defer conn.Close()
