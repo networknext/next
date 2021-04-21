@@ -32,8 +32,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const NEXT_EXPERIMENTAL = false
-
 const NEXT_MAX_TAGS = 8
 
 const NEXT_MAX_ROUTE_RELAYS = 5
@@ -196,17 +194,7 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
-	if NEXT_EXPERIMENTAL {
-		hasInternalAddress := false
-		stream.SerializeBool(&hasInternalAddress)
-		if hasInternalAddress {
-			stream.SerializeAddress(&packet.ServerInternalAddress)
-		} else {
-			packet.ServerInternalAddress = packet.ServerAddress
-		}
-	} else {
-		packet.ServerInternalAddress = packet.ServerAddress
-	}
+	packet.ServerInternalAddress = packet.ServerAddress
 	return stream.Error()
 }
 
@@ -291,17 +279,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 
 	stream.SerializeAddress(&packet.ServerAddress)
 
-	if NEXT_EXPERIMENTAL {
-		hasInternalAddress := false
-		stream.SerializeBool(&hasInternalAddress)
-		if hasInternalAddress {
-			stream.SerializeAddress(&packet.ServerInternalAddress)
-		} else {
-			packet.ServerInternalAddress = packet.ServerAddress
-		}
-	} else {
-		packet.ServerInternalAddress = packet.ServerAddress
-	}
+	packet.ServerInternalAddress = packet.ServerAddress
 
 	if stream.IsReading() {
 		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
@@ -563,7 +541,6 @@ type RelayEntry struct {
 
 type ServerEntry struct {
 	address    		*net.UDPAddr
-	internalAddress *net.UDPAddr
 	publicKey  		[]byte
 	lastUpdate 		int64
 }
@@ -605,7 +582,7 @@ func TimeoutThread() {
 				fmt.Printf("relay: %s\n", v.address)
 			}
 			for _, v := range backend.serverDatabase {
-				fmt.Printf("server: %s (%s)\n", v.address, v.internalAddress)
+				fmt.Printf("server: %s\n", v.address)
 			}
 			for k := range backend.sessionDatabase {
 				fmt.Printf("session: %x\n", k)
@@ -2382,11 +2359,7 @@ func main() {
 
 	defer connection.Close()
 
-	if NEXT_EXPERIMENTAL {
-		fmt.Printf("\nreference backend (sdk4-experimental)\n\n")
-	} else {
-		fmt.Printf("\nreference backend (sdk4)\n\n")
-	}
+	fmt.Printf("\nreference backend (sdk4)\n\n")
 
 	multipath := false
 	if os.Getenv("BACKEND_MULTIPATH") == "1" {
@@ -2479,7 +2452,6 @@ func main() {
 
 			serverEntry := ServerEntry{}
 			serverEntry.address = &serverUpdate.ServerAddress
-			serverEntry.internalAddress = &serverUpdate.ServerInternalAddress
 			serverEntry.lastUpdate = time.Now().Unix()
 
 			key := string(from.String())

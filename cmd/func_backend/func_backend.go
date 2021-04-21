@@ -718,8 +718,7 @@ func main() {
 
 const InitRequestMagic = uint32(0x9083708f)
 const InitRequestVersion = 0
-const InitResponseVersion = 0
-const UpdateRequestVersion = 0
+const UpdateRequestVersion = 3
 const UpdateResponseVersion = 0
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
