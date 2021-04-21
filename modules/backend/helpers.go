@@ -232,14 +232,12 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 				return nil, fmt.Errorf("could not parse POSTGRESQL_PASSWORD string: %v", err)
 			}
 
-			level.Info(logger).Log("msg", "Setting up PostgreSQL storage")
 			db, err = storage.NewPostgreSQL(ctx, logger, pgsqlHostIP, pgsqlUserName, pgsqlPassword)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
 			}
 		} else {
-			level.Info(logger).Log("msg", "Setting up SQLite storage")
 			db, err = storage.NewSQLite3(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)

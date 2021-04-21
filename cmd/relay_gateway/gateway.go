@@ -68,7 +68,7 @@ func init() {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	backend.DisplayLoadedRelays(relayArray_internal)
+	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	// Store the creator and creation time from the binWrapper
 	binCreator = binWrapper.Creator
@@ -225,10 +225,6 @@ func mainReturnWithCode() int {
 					relayHashMutex.Unlock()
 
 					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
-					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
-
-					// Print the new list of relays
-					backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
