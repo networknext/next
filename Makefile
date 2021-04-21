@@ -24,7 +24,6 @@ DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 PORTAL_DIR=./cmd/portal
 ARTIFACT_BUCKET = gs://development_artifacts
-ARTIFACT_BUCKET_NRB = gs://nrb_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
@@ -620,10 +619,6 @@ build-beacon-inserter-artifacts-dev: build-beacon-inserter
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
-.PHONY: build-analytics-artifacts-nrb
-build-analytics-artifacts-nrb: build-analytics
-	./deploy/build-artifacts.sh -e nrb -s analytics
-
 .PHONY: build-api-artifacts-dev
 build-api-artifacts-dev: build-api
 	./deploy/build-artifacts.sh -e dev -s api
@@ -747,10 +742,6 @@ publish-beacon-inserter-artifacts-dev:
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
-
-.PHONY: publish-analytics-artifacts-nrb
-publish-analytics-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s analytics
 
 .PHONY: publish-api-artifacts-dev
 publish-api-artifacts-dev:
@@ -882,12 +873,6 @@ publish-bootstrap-script-dev:
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET)/bootstrap.sh
 	@printf "done\n"
 
-.PHONY: publish-bootstrap-script-nrb
-publish-bootstrap-script-nrb:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_NRB)/bootstrap.sh
-	@printf "done\n"
-
 .PHONY: publish-bootstrap-script-staging
 publish-bootstrap-script-staging:
 	@printf "Publishing bootstrap script... \n\n"
@@ -970,10 +955,6 @@ deploy-relay-pusher-prod:
 .PHONY: publish-relay-pusher-artifacts-dev
 publish-relay-pusher-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_pusher
-
-.PHONY: publish-relay-pusher-artifacts-nrb
-publish-relay-pusher-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_pusher
 
 .PHONY: publish-relay-pusher-artifacts-staging
 publish-relay-pusher-artifacts-staging:
@@ -1203,14 +1184,6 @@ build-fake-relays:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_relays ./cmd/fake_relays/fake_relays.go
 	@printf "done\n"
 
-.PHONY: build-fake-relays-artifacts-nrb
-build-fake-relays-artifacts-nrb: build-fake-relays
-	./deploy/build-artifacts.sh -e nrb -s fake_relays
-
-.PHONY: publish-fake-relays-artifacts-nrb
-publish-fake-relays-artifacts-nrb:
-	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s fake_relays
-
 .PHONY: build-fake-relays-artifacts-dev
 build-fake-relays-artifacts-dev: build-fake-relays
 	./deploy/build-artifacts.sh -e dev -s fake_relays
@@ -1263,14 +1236,6 @@ build-reference-relay:
 # 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
 # 	@printf "done\n"
 
-# .PHONY: build-relay-forwarder-artifacts-nrb
-# build-relay-forwarder-artifacts-nrb: build-relay-forwarder
-# 	./deploy/build-artifacts.sh -e nrb -s relay_forwarder
-
-# .PHONY: publish-relay-forwarder-artifacts-nrb
-# publish-relay-forwarder-artifacts-nrb:
-# 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_forwarder
-
 # .PHONY: build-relay-forwarder-artifacts-dev
 # build-relay-forwarder-artifacts-dev: build-relay-forwarder
 # 	./deploy/build-artifacts.sh -e dev -s relay_forwarder
@@ -1309,10 +1274,6 @@ build-relay-gateway:
 build-relay-gateway-artifacts-dev: build-relay-gateway
 	./deploy/build-artifacts.sh -e dev -s relay_gateway
 
-# .PHONY: build-relay-gateway-artifacts-nrb
-# build-relay-gateway-artifacts-nrb: build-relay-gateway
-# 	./deploy/build-artifacts.sh -e nrb -s relay_gateway
-
 .PHONY: build-relay-gateway-artifacts-staging
 build-relay-gateway-artifacts-staging: build-relay-gateway
 	./deploy/build-artifacts.sh -e staging -s relay_gateway
@@ -1324,10 +1285,6 @@ build-relay-gateway-artifacts-prod: build-relay-gateway
 .PHONY: publish-relay-gateway-artifacts-dev
 publish-relay-gateway-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
-
-# .PHONY: publish-relay-gateway-artifacts-nrb
-# publish-relay-gateway-artifacts-nrb:
-# 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_gateway
 
 .PHONY: publish-relay-gateway-artifacts-staging
 publish-relay-gateway-artifacts-staging:
@@ -1343,17 +1300,13 @@ publish-relay-gateway-artifacts-prod:
 
 .PHONY: build-relay-frontend
 build-relay-frontend:
-	@printf "Building Relay Frontend... "
+	@printf "Building relay frontend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
 	@printf "done\n"
 
 .PHONY: build-relay-frontend-artifacts-dev
 build-relay-frontend-artifacts-dev: build-relay-frontend
 	./deploy/build-artifacts.sh -e dev -s relay_frontend
-
-# .PHONY: build-relay-frontend-artifacts-nrb
-# build-relay-frontend-artifacts-nrb: build-relay-frontend
-# 	./deploy/build-artifacts.sh -e nrb -s relay_frontend
 
 .PHONY: build-relay-frontend-artifacts-staging
 build-relay-frontend-artifacts-staging: build-relay-frontend
@@ -1366,10 +1319,6 @@ build-relay-frontend-artifacts-prod: build-relay-frontend
 .PHONY: publish-relay-frontend-artifacts-dev
 publish-relay-frontend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_frontend
-
-# .PHONY: publish-relay-frontend-artifacts-nrb
-# publish-relay-frontend-artifacts-nrb:
-# 	./deploy/publish.sh -e nrb -b $(ARTIFACT_BUCKET_NRB) -s relay_frontend
 
 .PHONY: publish-relay-frontend-artifacts-staging
 publish-relay-frontend-artifacts-staging:

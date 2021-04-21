@@ -275,6 +275,17 @@ func mainReturnWithCode() int {
 		return db
 	}
 
+	// function to clear route matrix and database at the same time
+
+	clearEverything := func() {
+		routeMatrixMutex.RLock()
+		databaseMutex.RLock()
+		database = &routing.DatabaseBinWrapper{}
+		routeMatrix = &routing.RouteMatrix{}
+		databaseMutex.RUnlock()
+		routeMatrixMutex.RUnlock()
+	}
+
 	// Sync route matrix
 	{
 		uri := envvar.Get("RELAY_FRONTEND_URI", "")
@@ -296,75 +307,70 @@ func mainReturnWithCode() int {
 			}
 
 			syncTimer := helpers.NewSyncTimer(syncInterval)
+
 			for {
+
 				syncTimer.Run()
 
 				var buffer []byte
 				start := time.Now()
 
-				var routeEntriesReader io.ReadCloser
+				var routeMatrixReader io.ReadCloser
 
-				// Default to reading route matrix from file
 				if f, err := os.Open(uri); err == nil {
-					routeEntriesReader = f
+					routeMatrixReader = f
 				}
 
-				// Prefer to get it remotely if possible
 				if r, err := httpClient.Get(uri); err == nil {
-					routeEntriesReader = r.Body
+					routeMatrixReader = r.Body
 				}
 
-				if routeEntriesReader == nil {
-					routeMatrixMutex.Lock()
-					routeMatrix = &routing.RouteMatrix{}
-					routeMatrixMutex.Unlock()
-
+				if routeMatrixReader == nil {
+					core.Debug("error: route matrix reader is nil")
+					clearEverything()
+					// todo: there should be a metric for this condition
 					continue
 				}
 
-				buffer, err = ioutil.ReadAll(routeEntriesReader)
-				routeEntriesReader.Close()
+				buffer, err = ioutil.ReadAll(routeMatrixReader)
+				
+				routeMatrixReader.Close()
 
 				if err != nil {
-					level.Error(logger).Log("envvar", "RELAY_FRONTEND_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+					core.Debug("error: failed to read route matrix data: %v", err)
+					clearEverything()
+					// todo: there should be a metric for this condition
+					continue
+				}
 
-					routeMatrixMutex.Lock()
-					routeMatrix = &routing.RouteMatrix{}
-					routeMatrixMutex.Unlock()
-
+				if len(buffer) == 0 {
+					core.Debug("error: route matrix buffer is empty")
+					clearEverything()
+					// todo: there should be a metric for this condition
 					continue
 				}
 
 				var newRouteMatrix routing.RouteMatrix
-				if len(buffer) > 0 {
-					rs := encoding.CreateReadStream(buffer)
-					if err := newRouteMatrix.Serialize(rs); err != nil {
-						core.Debug("failed to serialize route matrix")
-						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+				readStream := encoding.CreateReadStream(buffer)
+				if err := newRouteMatrix.Serialize(readStream); err != nil {
+					core.Debug("error: failed to serialize route matrix: %v", err)
+					clearEverything()
+					// todo: there should be a metric for this condition
+					continue
+				}
 
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-
-						continue
-					}
-					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-						core.Debug("route matrix is stale")
-						level.Error(logger).Log("msg", "route matrix is stale", "err", err)
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-						backendMetrics.StaleRouteMatrix.Add(1)
-						continue
-					}
+				if newRouteMatrix.CreatedAt + uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+					core.Debug("error: route matrix is stale")
+					clearEverything()
+					backendMetrics.StaleRouteMatrix.Add(1)
+					continue
 				}
 
 				routeEntriesTime := time.Since(start)
-
 				duration := float64(routeEntriesTime.Milliseconds())
 				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-
 				if duration > 100 {
+					core.Debug("error: long route matrix duration %dms", duration)
 					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 				}
 
@@ -384,14 +390,19 @@ func mainReturnWithCode() int {
 				decoder := gob.NewDecoder(databaseBuffer)
 				err := decoder.Decode(&newDatabase)
 				if err == io.EOF {
-					core.Debug("database.bin is empty :(")
-					level.Error(logger).Log("msg", "database.bin is empty", "err", err)
+					core.Debug("error: database.bin is empty")
+					clearEverything()
 					backendMetrics.BinWrapperEmpty.Add(1)
-				} else if err != nil {
-					core.Debug("failed to read database.bin: %v", err)
-					level.Error(logger).Log("msg", "failed to read database.bin", "err", err)
-					backendMetrics.BinWrapperFailure.Add(1)
+					continue
 				}
+				if err != nil {
+					core.Debug("error: failed to read database.bin: %v", err)
+					clearEverything()
+					backendMetrics.BinWrapperFailure.Add(1)
+					continue
+				}
+
+				// pointer swap route matrix and database atomically
 
 				routeMatrixMutex.Lock()
 				databaseMutex.Lock()
