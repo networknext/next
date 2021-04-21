@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"expvar"
 	"fmt"
@@ -68,7 +69,7 @@ func init() {
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	backend.DisplayLoadedRelays(relayArray_internal)
+	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	// Store the creator and creation time from the binWrapper
 	binCreator = binWrapper.Creator
@@ -84,6 +85,9 @@ func main() {
 func mainReturnWithCode() int {
 	serviceName := "relay_gateway"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
 
 	// Setup the service
 	ctx := context.Background()
@@ -225,10 +229,6 @@ func mainReturnWithCode() int {
 					relayHashMutex.Unlock()
 
 					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
-					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
-
-					// Print the new list of relays
-					backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -312,7 +312,9 @@ func mainReturnWithCode() int {
 		// }()
 	}
 
-	// Setup the stats print routine
+	// Setup the status handler info
+	var statusData []byte
+	var statusMutex sync.RWMutex
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
@@ -325,25 +327,44 @@ func mainReturnWithCode() int {
 				gatewayMetrics.GatewayServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(gatewayMetrics.GatewayServiceMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d update requests received\n", int(gatewayMetrics.UpdatesReceived.Value()))
-				fmt.Printf("%d update requests queued\n", int(gatewayMetrics.UpdatesQueued.Value()))
-				fmt.Printf("%d update requests flushed\n", int(gatewayMetrics.UpdatesFlushed.Value()))
-				fmt.Printf("%d update request read packet failures\n", int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value()))
-				fmt.Printf("%d update request content type failures\n", int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value()))
-				fmt.Printf("%d update request unmarshal failures\n", int(gatewayMetrics.ErrorMetrics.UnmarshalFailure.Value()))
-				fmt.Printf("%d update request exceed max relays errors\n", int(gatewayMetrics.ErrorMetrics.ExceedMaxRelays.Value()))
-				fmt.Printf("%d update request relay not found errors\n", int(gatewayMetrics.ErrorMetrics.RelayNotFound.Value()))
-				fmt.Printf("%d update response marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value()))
-				fmt.Printf("%d batch update request marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value()))
-				fmt.Printf("%d batch update request backend send failures\n", int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value()))
-				fmt.Printf("-----------------------------\n")
+				statusDataString := fmt.Sprintf("%s\n", serviceName)
+				statusDataString += fmt.Sprintf("git hash %s\n", sha)
+				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
+				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
+
+				statusDataString += fmt.Sprintf("%d goroutines\n", int(gatewayMetrics.GatewayServiceMetrics.Goroutines.Value()))
+				statusDataString += fmt.Sprintf("%.2f mb allocated\n", gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Value())
+				statusDataString += fmt.Sprintf("%d update requests received\n", int(gatewayMetrics.UpdatesReceived.Value()))
+				statusDataString += fmt.Sprintf("%d update requests queued\n", int(gatewayMetrics.UpdatesQueued.Value()))
+				statusDataString += fmt.Sprintf("%d update requests flushed\n", int(gatewayMetrics.UpdatesFlushed.Value()))
+				statusDataString += fmt.Sprintf("%d update request read packet failures\n", int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value()))
+				statusDataString += fmt.Sprintf("%d update request content type failures\n", int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value()))
+				statusDataString += fmt.Sprintf("%d update request unmarshal failures\n", int(gatewayMetrics.ErrorMetrics.UnmarshalFailure.Value()))
+				statusDataString += fmt.Sprintf("%d update request exceed max relays errors\n", int(gatewayMetrics.ErrorMetrics.ExceedMaxRelays.Value()))
+				statusDataString += fmt.Sprintf("%d update request relay not found errors\n", int(gatewayMetrics.ErrorMetrics.RelayNotFound.Value()))
+				statusDataString += fmt.Sprintf("%d update response marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value()))
+				statusDataString += fmt.Sprintf("%d batch update request marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value()))
+				statusDataString += fmt.Sprintf("%d batch update request backend send failures\n", int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value()))
+
+				statusMutex.Lock()
+				statusData = []byte(statusDataString)
+				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
 			}
 		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	updateParams := transport.GatewayRelayUpdateHandlerConfig{
@@ -353,10 +374,13 @@ func mainReturnWithCode() int {
 		GetRelayData: GetRelayData,
 	}
 
-	fmt.Printf("starting http server\n")
+	port := envvar.Get("PORT", "30000")
+	fmt.Printf("starting http server on :%s\n", port)
+
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
@@ -369,9 +393,6 @@ func mainReturnWithCode() int {
 	if enablePProf {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
-
-	port := envvar.Get("PORT", "30000")
-	fmt.Printf("starting http server on :%s\n", port)
 
 	go func() {
 		level.Info(logger).Log("addr", ":"+port)

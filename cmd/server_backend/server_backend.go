@@ -25,10 +25,6 @@ import (
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 
-	// "github.com/rjeczalik/notify"
-	// "strings"
-	// "path/filepath"
-
 	"os"
 	"os/signal"
 
@@ -131,7 +127,7 @@ func mainReturnWithCode() int {
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
 			return 1
 		}
 	}
@@ -255,42 +251,39 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 	}
 
+	// function to get the route matrix pointer under mutex
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
+	getRouteMatrix := func() *routing.RouteMatrix {
 		routeMatrixMutex.RLock()
-		rm4 := routeMatrix
+		rm := routeMatrix
 		routeMatrixMutex.RUnlock()
-		return rm4
+		return rm
 	}
 
-	var binWrapperCache routing.DatabaseBinWrapper
-	getBinWrapperFunc := func() routing.DatabaseBinWrapper {
+	// function to get the database under mutex
+
+	var database *routing.DatabaseBinWrapper
+	var databaseMutex sync.RWMutex
+
+	getDatabase := func() *routing.DatabaseBinWrapper {
+		databaseMutex.RLock()
+		db := database
+		databaseMutex.RUnlock()
+		return db
+	}
+
+	// function to clear route matrix and database at the same time
+
+	clearEverything := func() {
 		routeMatrixMutex.RLock()
-		binWrapperData := routeMatrix.BinFileData
+		databaseMutex.RLock()
+		database = &routing.DatabaseBinWrapper{}
+		routeMatrix = &routing.RouteMatrix{}
+		databaseMutex.RUnlock()
 		routeMatrixMutex.RUnlock()
-
-		// Decode the GOB into a DatabaseBinWrapper
-		buffer := bytes.NewBuffer(binWrapperData)
-		decoder := gob.NewDecoder(buffer)
-		var binWrapper routing.DatabaseBinWrapper
-		err := decoder.Decode(&binWrapper)
-		if err == io.EOF {
-			core.Debug("bin wrapper data is empty")
-		} else if err != nil {
-			core.Debug("failed to decode bin wrapper: %v", err)
-			backendMetrics.BinWrapperFailure.Add(1)
-		}
-
-		if binWrapper.IsEmpty() {
-			// Received an empty bin wrapper, continue using the old one
-			core.Debug("bin wrapper data is empty, serving cached version")
-			return binWrapperCache
-		}
-		// Save the current data in case the next route matrix doesn't have one
-		binWrapperCache = binWrapper
-		return binWrapper
 	}
 
 	// Sync route matrix
@@ -314,77 +307,74 @@ func mainReturnWithCode() int {
 			}
 
 			syncTimer := helpers.NewSyncTimer(syncInterval)
+
 			for {
+
 				syncTimer.Run()
 
 				var buffer []byte
 				start := time.Now()
 
-				var routeEntriesReader io.ReadCloser
+				var routeMatrixReader io.ReadCloser
 
-				// Default to reading route matrix from file
 				if f, err := os.Open(uri); err == nil {
-					routeEntriesReader = f
+					routeMatrixReader = f
 				}
 
-				// Prefer to get it remotely if possible
 				if r, err := httpClient.Get(uri); err == nil {
-					routeEntriesReader = r.Body
+					routeMatrixReader = r.Body
 				}
 
-				if routeEntriesReader == nil {
-					routeMatrixMutex.Lock()
-					routeMatrix = &routing.RouteMatrix{}
-					routeMatrixMutex.Unlock()
-
+				if routeMatrixReader == nil {
+					core.Debug("error: route matrix reader is nil")
+					clearEverything()
+					backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
 					continue
 				}
 
-				buffer, err = ioutil.ReadAll(routeEntriesReader)
-				routeEntriesReader.Close()
+				buffer, err = ioutil.ReadAll(routeMatrixReader)
+
+				routeMatrixReader.Close()
 
 				if err != nil {
-					level.Error(logger).Log("envvar", "RELAY_FRONTEND_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+					core.Debug("error: failed to read route matrix data: %v", err)
+					clearEverything()
+					backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
+					continue
+				}
 
-					routeMatrixMutex.Lock()
-					routeMatrix = &routing.RouteMatrix{}
-					routeMatrixMutex.Unlock()
-
+				if len(buffer) == 0 {
+					core.Debug("error: route matrix buffer is empty")
+					clearEverything()
+					backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
 					continue
 				}
 
 				var newRouteMatrix routing.RouteMatrix
-				if len(buffer) > 0 {
-					rs := encoding.CreateReadStream(buffer)
-					if err := newRouteMatrix.Serialize(rs); err != nil {
-						core.Debug("failed to serialize route matrix")
-						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+				readStream := encoding.CreateReadStream(buffer)
+				if err := newRouteMatrix.Serialize(readStream); err != nil {
+					core.Debug("error: failed to serialize route matrix: %v", err)
+					clearEverything()
+					backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
+					continue
+				}
 
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-
-						continue
-					}
-					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-						core.Debug("route matrix is stale")
-						level.Error(logger).Log("msg", "route matrix is stale", "err", err)
-						routeMatrixMutex.Lock()
-						routeMatrix = &routing.RouteMatrix{}
-						routeMatrixMutex.Unlock()
-						backendMetrics.StaleRouteMatrix.Add(1)
-						continue
-					}
+				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+					core.Debug("error: route matrix is stale")
+					clearEverything()
+					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
+					continue
 				}
 
 				routeEntriesTime := time.Since(start)
-
 				duration := float64(routeEntriesTime.Milliseconds())
 				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-
 				if duration > 100 {
+					core.Debug("error: long route matrix duration %dms", duration)
 					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 				}
+
+				// update some statistics from the route matrix
 
 				numRoutes := int32(0)
 				for i := range newRouteMatrix.RouteEntries {
@@ -393,8 +383,32 @@ func mainReturnWithCode() int {
 				backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
 				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
+				// decode the database in the route matrix
+				var newDatabase routing.DatabaseBinWrapper
+
+				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+				decoder := gob.NewDecoder(databaseBuffer)
+				err := decoder.Decode(&newDatabase)
+				if err == io.EOF {
+					core.Debug("error: database.bin is empty")
+					clearEverything()
+					backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
+					continue
+				}
+				if err != nil {
+					core.Debug("error: failed to read database.bin: %v", err)
+					clearEverything()
+					backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
+					continue
+				}
+
+				// pointer swap route matrix and database atomically
+
 				routeMatrixMutex.Lock()
+				databaseMutex.Lock()
 				routeMatrix = &newRouteMatrix
+				database = &newDatabase
+				databaseMutex.Unlock()
 				routeMatrixMutex.Unlock()
 			}
 		}()
@@ -546,40 +560,49 @@ func mainReturnWithCode() int {
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
-	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
-	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
-	multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
 
-	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, getBinWrapperFunc)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "")
+	if redisMultipathVetoHost != "" {
+		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
+		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 
-	if err := multipathVetoHandler.Sync(); err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, getDatabase)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
 
-	// Start a routine to sync multipath vetoed users from redis to this instance
-	{
-		ticker := time.NewTicker(multipathVetoSyncFrequency)
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ticker.C:
-					if err := multipathVetoHandler.Sync(); err != nil {
-						level.Error(logger).Log("err", err)
+		if err := multipathVetoHandler.Sync(); err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		// Start a routine to sync multipath vetoed users from redis to this instance
+		{
+			ticker := time.NewTicker(multipathVetoSyncFrequency)
+			go func(ctx context.Context) {
+				for {
+					select {
+					case <-ticker.C:
+						if err := multipathVetoHandler.Sync(); err != nil {
+							level.Error(logger).Log("err", err)
+						}
+					case <-ctx.Done():
+						return
 					}
-				case <-ctx.Done():
-					return
 				}
-			}
-		}(ctx)
+			}(ctx)
+		}
 	}
 
 	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
@@ -661,9 +684,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getBinWrapperFunc, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getBinWrapperFunc, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrixFunc, multipathVetoHandler, getBinWrapperFunc, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getDatabase, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
