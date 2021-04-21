@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,6 +43,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
 )
 
 var (
@@ -322,7 +324,7 @@ func mainReturnWithCode() int {
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
-					backend.DisplayLoadedRelays(relayArray_internal)
+					// backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -904,7 +906,15 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
+
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
+
+	audience := os.Getenv("JWT_AUDIENCE")
+	fmt.Printf("audience: %s\n", audience)
+
+	relaysCsvHandler := http.HandlerFunc(serveRelaysFunc)
+	router.Handle("/relays", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())

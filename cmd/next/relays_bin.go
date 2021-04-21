@@ -268,12 +268,12 @@ func queryRelayBackend(
 
 	// GET doesn't seem to like env.PortalHostname() for local
 	if env.Name == "local" {
-		uri = "http://127.0.0.1:30000/relays"
+		uri = "http://127.0.0.1:30001/relays"
 	}
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
-	// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
 
 	r, err := client.Do(req)
 	if err != nil {
