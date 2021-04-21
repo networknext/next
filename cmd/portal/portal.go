@@ -568,7 +568,7 @@ func main() {
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
 		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
-		r.Handle("/database.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler)).Methods("GET")
+		r.Handle("/database.bin", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, strings.Split(allowedOrigins, ","))).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
