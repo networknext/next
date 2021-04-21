@@ -7,14 +7,14 @@ import (
 )
 
 type LocalMultipathVetoHandler struct {
-	getBinWrapper              func() *routing.DatabaseBinWrapper
+	getDatabase                func() *routing.DatabaseBinWrapper
 	cachedMultipathVetoes      map[string]map[uint64]bool
 	cachedMultipathVetoesMutex sync.RWMutex
 }
 
-func NewLocalMultipathVetoHandler(redisHost string, getBinWrapper func() *routing.DatabaseBinWrapper) (*LocalMultipathVetoHandler, error) {
+func NewLocalMultipathVetoHandler(redisHost string, getDatabase func() *routing.DatabaseBinWrapper) (*LocalMultipathVetoHandler, error) {
 	return &LocalMultipathVetoHandler{
-		getBinWrapper:         getBinWrapper,
+		getDatabase:           getDatabase,
 		cachedMultipathVetoes: make(map[string]map[uint64]bool),
 	}, nil
 }
