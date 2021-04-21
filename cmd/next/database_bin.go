@@ -80,8 +80,6 @@ func getLocalDatabaseBin() {
 	if err != nil {
 		fmt.Printf("Failed to write database file")
 	}
-
-	fmt.Printf("Successfully retrieved ./database.bin")
 }
 
 func getDatabaseBin(env Environment) {
@@ -118,14 +116,10 @@ func getDatabaseBin(env Environment) {
 		handleRunTimeError(fmt.Sprintf("error writing data to database.bin: %v\n", err), 1)
 	}
 
-	f, err := os.Stat("./database.bin")
+	_, err = os.Stat("./database.bin")
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not find database.bin? %v\n", err), 1)
 	}
-
-	fileSize := f.Size()
-	fmt.Printf("Successfully retrieved ./database.bin (%d bytes)\n", fileSize)
-
 }
 
 func checkMetaData() {
