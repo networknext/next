@@ -394,7 +394,7 @@ func SeedSQLStorage(
 			Uncommitted:                false,
 			MaxRTT:                     300,
 			HighFrequencyPings:         true,
-			RouteDiversity:             5,
+			RouteDiversity:             1,
 			MultipathThreshold:         35,
 			EnableVanityMetrics:        true,
 		}
