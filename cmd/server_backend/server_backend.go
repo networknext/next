@@ -288,10 +288,10 @@ func mainReturnWithCode() int {
 
 	// Sync route matrix
 	{
-		uri := envvar.Get("RELAY_FRONTEND_URI", "")
+		uri := envvar.Get("ROUTE_MATRIX_URI", "")
 
 		if uri == "" {
-			level.Error(logger).Log("err", fmt.Errorf("no relay frontend uri specified"))
+			level.Error(logger).Log("err", fmt.Errorf("no route matrix uri specified"))
 			return 1
 		}
 
@@ -327,24 +327,25 @@ func mainReturnWithCode() int {
 
 				if routeMatrixReader == nil {
 					clearEverything()
+					backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
 					continue
 				}
 
 				buffer, err = ioutil.ReadAll(routeMatrixReader)
-				
+
 				routeMatrixReader.Close()
 
 				if err != nil {
 					core.Debug("error: failed to read route matrix data: %v", err)
 					clearEverything()
-					// todo: there should be a metric for this condition
+					backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
 					continue
 				}
 
 				if len(buffer) == 0 {
 					core.Debug("error: route matrix buffer is empty")
 					clearEverything()
-					// todo: there should be a metric for this condition
+					backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
 					continue
 				}
 
@@ -353,14 +354,14 @@ func mainReturnWithCode() int {
 				if err := newRouteMatrix.Serialize(readStream); err != nil {
 					core.Debug("error: failed to serialize route matrix: %v", err)
 					clearEverything()
-					// todo: there should be a metric for this condition
+					backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
 					continue
 				}
 
-				if newRouteMatrix.CreatedAt + uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
 					core.Debug("error: route matrix is stale")
 					clearEverything()
-					backendMetrics.StaleRouteMatrix.Add(1)
+					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
 					continue
 				}
 
@@ -391,13 +392,13 @@ func mainReturnWithCode() int {
 				if err == io.EOF {
 					core.Debug("error: database.bin is empty")
 					clearEverything()
-					backendMetrics.BinWrapperEmpty.Add(1)
+					backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
 					continue
 				}
 				if err != nil {
 					core.Debug("error: failed to read database.bin: %v", err)
 					clearEverything()
-					backendMetrics.BinWrapperFailure.Add(1)
+					backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
 					continue
 				}
 

@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,6 +43,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
 )
 
 var (
@@ -389,7 +391,7 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID)
+				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID, isDebug)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
@@ -671,6 +673,7 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				Costs:              costs,
+				Version:            routing.CostMatrixSerializeVersion,
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
@@ -729,6 +732,7 @@ func mainReturnWithCode() int {
 				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
 				BinFileData:        binWrapperBuffer.Bytes(),
 				CreatedAt:          uint64(time.Now().Unix()),
+				Version:            routing.RouteMatrixSerializeVersion,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
@@ -794,10 +798,13 @@ func mainReturnWithCode() int {
 			statusMutex.Unlock()
 
 			// Update redis with last update time
-			backendLiveData.UpdatedAt = time.Now().UTC()
-			err = matrixStore.SetRelayBackendLiveData(backendLiveData)
-			if err != nil {
-				level.Error(logger).Log("msg", fmt.Sprintf("error setting relay backend live data for address %s", backendLiveData.Address), "err", err)
+			// Debug instance should not store this data in redis
+			if !isDebug {
+				backendLiveData.UpdatedAt = time.Now().UTC()
+				err = matrixStore.SetRelayBackendLiveData(backendLiveData)
+				if err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("error setting relay backend live data for address %s", backendLiveData.Address), "err", err)
+				}
 			}
 
 			// optionally write route matrix to cloud storage
@@ -893,6 +900,18 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
+	allowedOrigins, found := os.LookupEnv("ALLOWED_ORIGINS")
+	if !found {
+		level.Error(logger).Log("msg", "unable to parse ALLOWED_ORIGINS environment variable")
+	}
+	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
+
+	audience, found := os.LookupEnv("JWT_AUDIENCE")
+	if !found {
+		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
+	}
+	fmt.Printf("audience: %s\n", audience)
+
 	fmt.Printf("starting http server on port %s\n\n", port)
 
 	router := mux.NewRouter()
@@ -901,13 +920,18 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
-	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-
 	router.Handle("/debug/vars", expvar.Handler())
+
+	// Wrap the following endpoints in auth and CORS middleware
+	//	Note: the next tool is unaware of CORS and its requests simply pass through
+	costMatrixHandler := http.HandlerFunc(serveCostMatrixFunc)
+	router.Handle("/cost_matrix", jsonrpc.AuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+
+	relaysCsvHandler := http.HandlerFunc(serveRelaysFunc)
+	router.Handle("/relays", jsonrpc.AuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
@@ -991,14 +1015,18 @@ func getBackendAddress(backendAddresses []string, env string) (bool, string, err
 		return false, "", err
 	}
 
-	// Get the hosts from the backend addresses
+	// Get the hosts from the backend addresses if local
 	var backendAddressHosts []string
-	for _, address := range backendAddresses {
-		backendHost, _, err := net.SplitHostPort(address)
-		if err != nil {
-			return false, "", err
+	if env == "local" {
+		for _, address := range backendAddresses {
+			backendHost, _, err := net.SplitHostPort(address)
+			if err != nil {
+				return false, "", err
+			}
+			backendAddressHosts = append(backendAddressHosts, backendHost)
 		}
-		backendAddressHosts = append(backendAddressHosts, backendHost)
+	} else {
+		backendAddressHosts = backendAddresses
 	}
 
 	for _, address := range addresses {

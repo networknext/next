@@ -27,7 +27,6 @@ type UDPPacket struct {
 	Data       []byte
 }
 
-// UDPHandlerFunc acts the same way http.HandlerFunc does, but for UDP packets and address
 type UDPHandlerFunc func(io.Writer, *UDPPacket)
 
 func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, response uint32) error {
@@ -77,14 +76,83 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	return nil
 }
 
+/*
+func getDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
+	// We should always support the "local" datacenter, even without a datacenter mapping
+	if crypto.HashID("local") == datacenterID {
+		return routing.Datacenter{
+			ID:   crypto.HashID("local"),
+			Name: "local",
+		}, nil
+	}
+
+	// enforce that whatever datacenter the server says it's in, we have a mapping for it
+	datacenterAliases, ok := database.DatacenterMaps[buyerID]
+	if !ok {
+		fmt.Printf("BuyerID %016x does not have a Datacenter map\n", buyerID)
+		return routing.UnknownDatacenter, ErrDatacenterMapNotFound{buyerID, datacenterID, datacenterName}
+	}
+
+	for _, dcMap := range datacenterAliases {
+		if datacenterID == dcMap.DatacenterID {
+			// We found the datacenter
+			datacenter, exists := database.DatacenterMap[datacenterID]
+			if !exists {
+				// The datacenter map is misconfigured in our database
+				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
+				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
+			}
+
+			return datacenter, nil
+		}
+
+		if datacenterID == crypto.HashID(dcMap.Alias) {
+			// We found the datacenter from the mapped alias
+			datacenter, exists := database.DatacenterMap[datacenterID]
+			if !exists {
+				// The datacenter map is misconfigured in our database
+				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
+				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
+			}
+
+			datacenter.AliasName = dcMap.Alias
+			return datacenter, nil
+		}
+	}
+
+	// We couldn't find the datacenter, check if it is a datacenter that we have in our database
+	_, exists := database.DatacenterMap[datacenterID]
+	if !exists {
+		// This isn't a datacenter we know about. It's either brand new and not configured yet
+		// or there is a typo in the server's integration of the SDK
+		fmt.Printf("Datacenter not found: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
+		return routing.UnknownDatacenter, ErrDatacenterNotFound{buyerID, datacenterID, datacenterName}
+	}
+
+	// This is a datacenter we know about, but the buyer isn't configured to use it
+	fmt.Printf("Datacenter use not allowed: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
+	return routing.UnknownDatacenter, ErrDatacenterNotAllowed{buyerID, datacenterID, datacenterName}
+}
+*/
+
 func datacenterExists(database *routing.DatabaseBinWrapper, datacenterID uint64) bool {
 	_, exists := database.DatacenterMap[datacenterID]	
 	return exists
 }
 
 func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64) bool {
-	// todo: look up whether datacenter is enabled per-customer, via per-buyer map[uint64]bool keyed on datacenter id
-	return true
+	datacenterAliases, ok := database.DatacenterMaps[buyerID]
+	if !ok {
+		return false
+	}
+	// todo: this should be reworked so that it's a map lookup to check if a datacenter is enabled
+	// the linear walk below is not acceptable (this is in the hot path)
+	for _, dcMap := range datacenterAliases {
+		if datacenterID == dcMap.DatacenterID {
+			return true
+		}
+	}
+	return false
 }
 
 type nearRelayGroup struct {
