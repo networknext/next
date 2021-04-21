@@ -895,6 +895,16 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
+	allowedOrigins, found := os.LookupEnv("ALLOWED_ORIGINS")
+	if !found {
+		level.Error(logger).Log("msg", "failed parse ALLOWED_ORIGINS environment variable")
+	}
+
+	audience, found := os.LookupEnv("JWT_AUDIENCE")
+	if !found {
+		level.Error(logger).Log("msg", "failed parse JWT_AUDIENCE environment variable")
+	}
+
 	fmt.Printf("starting http server on port %s\n\n", port)
 
 	router := mux.NewRouter()
@@ -903,19 +913,17 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
-	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
-	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
-
-	audience := os.Getenv("JWT_AUDIENCE")
-	fmt.Printf("audience: %s\n", audience)
+	// Apply both auth and CORS handling to the following endpoints
+	// Note: the next tool is unconcerned with CORS and its requests pass-through
+	costMatrixHandler := http.HandlerFunc(serveCostMatrixFunc)
+	router.Handle("/relays", jsonrpc.AuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(serveRelaysFunc)
-	router.Handle("/relays", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), relaysCsvHandler, strings.Split(allowedOrigins, ",")))
-	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+	router.Handle("/relays", jsonrpc.AuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 
 	router.Handle("/debug/vars", expvar.Handler())
 
