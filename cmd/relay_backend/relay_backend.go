@@ -672,23 +672,15 @@ func mainReturnWithCode() int {
 			for _, buyer := range buyers {
 				// If live check for dest relays
 				if buyer.Live {
-					fmt.Printf("Checking for dest relays for buyer: %v\n", buyer.ShortName)
 					for _, dc := range buyerDCMaps[buyer.ID] {
-						fmt.Printf("Checking for dest relays in dc: %v\n", dc.Alias)
 						relaysInDC := routeMatrix.GetDatacenterRelayIDs(dc.DatacenterID)
 
 						if len(relaysInDC) == 0 {
-							fmt.Println("No relays found in DC")
 							continue
 						}
 
 						for _, relayID := range relaysInDC {
-							fmt.Println("Getting relay index from ID...")
 							relayIndex, ok := relayIDsToIndices[relayID]
-							fmt.Println("ok")
-							fmt.Println(ok)
-							fmt.Println("relayIndex")
-							fmt.Println(relayIndex)
 							if ok {
 								destRelays[relayIndex] = true
 							}
