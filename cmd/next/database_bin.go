@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,8 +16,71 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/routing"
 )
+
+func getLocalDatabaseBin() {
+	ctx := context.Background()
+	logger := log.NewLogfmtLogger(os.Stdout)
+	gcpProjectID := ""
+	db, err := backend.GetStorer(ctx, logger, gcpProjectID, "local")
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+	var dbWrapper routing.DatabaseBinWrapper
+	var enabledRelays []routing.Relay
+	relayMap := make(map[uint64]routing.Relay)
+	buyerMap := make(map[uint64]routing.Buyer)
+	sellerMap := make(map[string]routing.Seller)
+	datacenterMap := make(map[uint64]routing.Datacenter)
+
+	buyers := db.Buyers()
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+	}
+
+	for _, seller := range db.Sellers() {
+		sellerMap[seller.ShortName] = seller
+	}
+
+	for _, datacenter := range db.Datacenters() {
+		datacenterMap[datacenter.ID] = datacenter
+	}
+
+	for _, localRelay := range db.Relays() {
+		if localRelay.State == routing.RelayStateEnabled {
+			enabledRelays = append(enabledRelays, localRelay)
+			relayMap[localRelay.ID] = localRelay
+		}
+	}
+
+	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+	for _, buyer := range buyers {
+		dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+		datacenterMaps[buyer.ID] = dcMapsForBuyer
+	}
+
+	dbWrapper.Relays = enabledRelays
+	dbWrapper.RelayMap = relayMap
+	dbWrapper.BuyerMap = buyerMap
+	dbWrapper.SellerMap = sellerMap
+	dbWrapper.DatacenterMap = datacenterMap
+	dbWrapper.DatacenterMaps = datacenterMaps
+
+	var buffer bytes.Buffer
+
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(dbWrapper)
+
+	err = ioutil.WriteFile("./database.bin", buffer.Bytes(), 0644)
+	if err != nil {
+		fmt.Printf("Failed to write database file")
+	}
+}
 
 func getDatabaseBin(env Environment) {
 	var err error
@@ -50,14 +116,10 @@ func getDatabaseBin(env Environment) {
 		handleRunTimeError(fmt.Sprintf("error writing data to database.bin: %v\n", err), 1)
 	}
 
-	f, err := os.Stat("./database.bin")
+	_, err = os.Stat("./database.bin")
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not find database.bin? %v\n", err), 1)
 	}
-
-	fileSize := f.Size()
-	fmt.Printf("Successfully retrieved ./database.bin (%d bytes)\n", fileSize)
-
 }
 
 func checkMetaData() {
