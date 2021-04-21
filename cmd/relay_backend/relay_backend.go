@@ -54,7 +54,6 @@ var (
 	binCreationTime string
 	env             string
 
-	database_internal   routing.DatabaseBinWrapper
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
@@ -64,6 +63,8 @@ var (
 
 	startTime time.Time
 )
+
+var database_internal *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
 
 func init() {
 	relayHash_internal = make(map[uint64]routing.Relay)
@@ -76,7 +77,7 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = backend.DecodeBinWrapper(file, &database_internal); err != nil {
+	if err = backend.DecodeBinWrapper(file, database_internal); err != nil {
 		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
@@ -270,10 +271,10 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var databaseNew routing.DatabaseBinWrapper
+					var databaseNew *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
 					relayHashNew := make(map[uint64]routing.Relay)
 
-					if err = backend.DecodeBinWrapper(file, &databaseNew); err == io.EOF {
+					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
@@ -495,6 +496,7 @@ func mainReturnWithCode() int {
 	var routeMatrixData []byte
 	var relaysData []byte
 	var statusData []byte
+	var destRelaysData []byte
 
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
@@ -503,6 +505,7 @@ func mainReturnWithCode() int {
 	var routeMatrixMutex sync.RWMutex
 	var relaysMutex sync.RWMutex
 	var statusMutex sync.RWMutex
+	var destRelaysMutex sync.RWMutex
 
 	_ = costMatrix
 
@@ -689,7 +692,18 @@ func mainReturnWithCode() int {
 				}
 			}
 
-			fmt.Println(destRelays)
+			destRelaysDataString := fmt.Sprintf("[")
+			for i, v := range destRelays {
+				destRelaysDataString += fmt.Sprintf("%v", v)
+				if i < len(destRelays)-1 {
+					destRelaysDataString += fmt.Sprintf(",")
+				}
+			}
+			destRelaysDataString += fmt.Sprintf("]")
+
+			destRelaysMutex.Lock()
+			destRelaysData = []byte(destRelaysDataString)
+			destRelaysMutex.Unlock()
 
 			var costs []int32
 			if env == "local" {
@@ -880,6 +894,18 @@ func mainReturnWithCode() int {
 		GetRelayData: GetRelayData,
 	}
 
+	destRelayFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		destRelaysMutex.RLock()
+		data := destRelaysData
+		destRelaysMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	serveRelaysFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
 		relaysMutex.RLock()
@@ -948,6 +974,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+	router.HandleFunc("/dest_relays", destRelayFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())
 
