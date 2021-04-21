@@ -915,15 +915,18 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
-	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+	router.Handle("/debug/vars", expvar.Handler())
+
+	// Wrap the following endpoints in auth and CORS middleware
+	//	Note: the next tool is unaware of CORS and its requests simply pass through
+	costMatrixHandler := http.HandlerFunc(serveCostMatrixFunc)
+	router.Handle("/cost_matrix", jsonrpc.AuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(serveRelaysFunc)
 	router.Handle("/relays", jsonrpc.AuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
-	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-
-	router.Handle("/debug/vars", expvar.Handler())
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
