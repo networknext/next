@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"expvar"
 	"fmt"
@@ -40,6 +41,9 @@ func mainReturnWithCode() int {
 
 	serviceName := "relay_frontend"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
 
 	// Setup the service
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -154,7 +158,10 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	// Setup the stats print routine
+	// Setup the status handler info
+	var statusData []byte
+	var statusMutex sync.RWMutex
+
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
@@ -167,23 +174,41 @@ func mainReturnWithCode() int {
 				frontendMetrics.FrontendServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(frontendMetrics.FrontendServiceMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d master select invocations\n", int(frontendMetrics.MasterSelect.Value()))
-				fmt.Printf("%d cost matrix invocations\n", int(frontendMetrics.CostMatrix.Invocations.Value()))
-				fmt.Printf("%d route matrix invocations\n", int(frontendMetrics.RouteMatrix.Invocations.Value()))
-				fmt.Printf("%d master select success count\n", int(frontendMetrics.MasterSelectSuccess.Value()))
-				fmt.Printf("%d cost matrix success count\n", int(frontendMetrics.CostMatrix.Success.Value()))
-				fmt.Printf("%d route matrix success count\n", int(frontendMetrics.RouteMatrix.Success.Value()))
-				fmt.Printf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
-				fmt.Printf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
-				fmt.Printf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
-				fmt.Printf("-----------------------------\n")
+				statusDataString := fmt.Sprintf("%s\n", serviceName)
+				statusDataString += fmt.Sprintf("git hash %s\n", sha)
+				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
+				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
+				statusDataString += fmt.Sprintf("%d goroutines\n", int(frontendMetrics.FrontendServiceMetrics.Goroutines.Value()))
+				statusDataString += fmt.Sprintf("%.2f mb allocated\n", frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Value())
+				statusDataString += fmt.Sprintf("%d master select invocations\n", int(frontendMetrics.MasterSelect.Value()))
+				statusDataString += fmt.Sprintf("%d cost matrix invocations\n", int(frontendMetrics.CostMatrix.Invocations.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix invocations\n", int(frontendMetrics.RouteMatrix.Invocations.Value()))
+				statusDataString += fmt.Sprintf("%d master select success count\n", int(frontendMetrics.MasterSelectSuccess.Value()))
+				statusDataString += fmt.Sprintf("%d cost matrix success count\n", int(frontendMetrics.CostMatrix.Success.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix success count\n", int(frontendMetrics.RouteMatrix.Success.Value()))
+				statusDataString += fmt.Sprintf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
+				statusDataString += fmt.Sprintf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
+
+				statusMutex.Lock()
+				statusData = []byte(statusDataString)
+				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
 			}
 		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	fmt.Printf("starting http server\n")
@@ -191,6 +216,7 @@ func mainReturnWithCode() int {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 	router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrix()).Methods("GET")
 	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrix()).Methods("GET")
 	router.HandleFunc("/relay_stats", frontendClient.GetRelayStats())
