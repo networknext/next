@@ -265,7 +265,7 @@ func mainReturnWithCode() int {
 
 	// function to get the database under mutex
 
-	var database *routing.DatabaseBinWrapper
+	var database *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
 	var databaseMutex sync.RWMutex
 
 	getDatabase := func() *routing.DatabaseBinWrapper {
