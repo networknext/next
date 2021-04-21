@@ -166,9 +166,9 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
 17. Install SQLite3
-	`sudo apt install sqlite3`  
+	`sudo apt install sqlite3`
 
-	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing. 
+	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing.
 
 18. Run tests to confirm everything is working properly
 	`make test`
@@ -178,25 +178,20 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
 
-1. `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://127.0.0.1:20000 to view currently connected sessions.
-2. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints. You will then need to clone the portal repo, https://github.com/networknext/portal, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
-3. OPTIONAL - This step is only necessary if you do not have a valid `database.bin` file in the root of the backend repo - `./next select local && ./next auth && ./next database get`
-4. `make BACKEND_LOG_LEVEL=info dev-relay-backend`: run the relay backend
-5. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
-	1. Issues with `pkg-config` not finding `libgtop-2.0` (Linux)
-		1. Install gtk, gtop2, and rsvg2 `sudo apt-get install libgtk-3-dev libgtop2-dev librsvg2-dev`
-		2. Find the path where libgtop-2.0 was placed `locate libgtop-2.0`
-		3. Add that path to your `PKG_CONFIG_PATH` environment variable `export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/bin/pkg-config`
-	2. Issues with boost `boost/beast.hpp: No such file or directory` (Linux)
-		1. Clone boost directly from its repo outside of this directory `git clone --recursive https://github.com/boostorg/boost.git`
-		2. Enter the directory `cd boost`
-		3. Use the bootstrap setup with the prefix for where the parent of the `include` directory for header files is located (_i.e._ `/usr/`) `./bootstrap.sh --prefix=/usr/`
-		4. Build boost `./b2`
-		5. Install boost `sudo ./b2 install`
-6. `redis-cli flushall &&make BACKEND_LOG_LEVEL=info dev-server-backend`: this will clear your local redis completely to start fresh and then run the server backend and start pulling route information from the relay backend every second
-7. `make dev-portal-cruncher`: this will run the portal cruncher service that takes portal data from the server backend and inserts it into redis for the portal to use
+1. `./next select local`: setup local environment
+2. `make dev-relay-gateway`: run the relay gateway
+3. `make dev-relay-backend-1`: run the relay backend 1 (require redis-server)
+4. `make dev-relay-backend-2`: run the relay backend 2 (require redis-server)
+5. `make dev-relay-frontend`: run the relay frontend (require redis-server)
+6. `make dev-relay`: this will run a reference relay that will talk to the relay gateway. You can also run `make dev-relays` to create 10 relays.
+7. `make dev-server-backend`: run the server backend
 8. `make dev-server`: this will run a fake game server and register itself with the server backend
-9. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
+9. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients` to create 10 client sessions.
+------ The Following steps `require redis-server` ------
+10. `make dev-portal-cruncher-1`: run portal cruncher 1
+11. `make dev-portal-cruncher-2`: run portal cruncher 2
+12. `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://127.0.0.1:20000 to view currently connected sessions.
+13. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints. You will then need to clone the portal repo, https://github.com/networknext/portal, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
