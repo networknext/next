@@ -259,17 +259,14 @@ func queryRelayBackend(
 	regexName string,
 ) {
 
-	relayBackendURI, err := env.RelayBackendHostname()
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not get env.RelayBackendHostname() from env: %s\n", env.Name), 1)
+	var uri string
+	var err error
+
+	if uri, err = env.RelayBackendURL(); err != nil {
+		handleRunTimeError(fmt.Sprintf("Cannot get get relay backend hostname: %v\n", err), 1)
 	}
 
-	uri := fmt.Sprintf("http://%s/relays", relayBackendURI)
-
-	// GET doesn't seem to like env.PortalHostname() for local
-	if env.Name == "local" {
-		uri = "http://127.0.0.1:30001/relays"
-	}
+	uri += "/relays"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)

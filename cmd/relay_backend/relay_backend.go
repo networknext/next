@@ -895,6 +895,18 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
+	allowedOrigins, found := os.LookupEnv("ALLOWED_ORIGINS")
+	if !found {
+		level.Error(logger).Log("msg", "unable to parse ALLOWED_ORIGINS environment variable")
+	}
+	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
+
+	audience, found := os.LookupEnv("JWT_AUDIENCE")
+	if !found {
+		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
+	}
+	fmt.Printf("audience: %s\n", audience)
+
 	fmt.Printf("starting http server on port %s\n\n", port)
 
 	router := mux.NewRouter()
@@ -907,14 +919,8 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 
-	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-	fmt.Printf("allowedOrigins: '%s'\n", allowedOrigins)
-
-	audience := os.Getenv("JWT_AUDIENCE")
-	fmt.Printf("audience: %s\n", audience)
-
 	relaysCsvHandler := http.HandlerFunc(serveRelaysFunc)
-	router.Handle("/relays", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/relays", jsonrpc.AuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 	router.Handle("/debug/vars", expvar.Handler())
