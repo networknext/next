@@ -56,6 +56,7 @@ var (
 	binCreationTime string
 	env             string
 
+	database_internal   *routing.DatabaseBinWrapper = routing.CreateEmptyDatabaseBinWrapper()
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
@@ -65,8 +66,6 @@ var (
 
 	startTime time.Time
 )
-
-var database_internal *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
 
 func init() {
 	relayHash_internal = make(map[uint64]routing.Relay)
@@ -215,13 +214,13 @@ func mainReturnWithCode() int {
 	}
 	level.Debug(logger).Log("msg", "got VM Instance ID", "instanceID", instanceID)
 
-	// Setup file watchman on relays.bin
+	// Setup file watchman on database.bin
 	{
-		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("BIN_PATH", "./database.bin")
-		absPath, err := filepath.Abs(relaysFilePath)
+		// Get absolute path of database.bin
+		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
+		absPath, err := filepath.Abs(databaseFilePath)
 		if err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
+			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", databaseFilePath), "err", err)
 			return 1
 		}
 
@@ -273,7 +272,7 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var databaseNew *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
+					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
 					relayHashNew := make(map[uint64]routing.Relay)
 
 					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
