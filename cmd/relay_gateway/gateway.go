@@ -227,8 +227,6 @@ func mainReturnWithCode() int {
 					relayHashMutex.Lock()
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
-
-					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in databaseNew
 				}
 			}
 		}()
