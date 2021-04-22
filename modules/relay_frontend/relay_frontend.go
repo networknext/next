@@ -206,6 +206,17 @@ func (r *RelayFrontendSvc) GetRelayBackendHandlerFunc(endpoint string) func(w ht
 
 func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, password string) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := req.BasicAuth()
+		if u != username && p != password {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
 		if r.currentMasterBackendAddress == "" {
 			w.WriteHeader(http.StatusNotFound)
 			return
