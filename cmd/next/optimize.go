@@ -32,6 +32,14 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		}
 	}
 
+	// todo: set of destination relay bools should come from cost matrix
+
+	// todo: massive hack to test optimize 2
+	destinationRelays := make([]bool, numRelays)
+	for i := 0; i < numRelays && i < 100; i++ {
+		destinationRelays[i] = true
+	}
+
 	routeMatrix := &routing.RouteMatrix{
 		RelayIDs:           costMatrix.RelayIDs,
 		RelayAddresses:     costMatrix.RelayAddresses,
@@ -39,7 +47,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		RelayLatitudes:     costMatrix.RelayLatitudes,
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIDs: costMatrix.RelayDatacenterIDs,
-		RouteEntries:       core.Optimize(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, destinationRelays),
 	}
 
 	routeFile, err := os.Create(routeFilename)
@@ -48,7 +56,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 	defer routeFile.Close()
 
-	if _, err := routeMatrix.WriteTo(routeFile, 100000000); err != nil {
+	if _, err := routeMatrix.WriteTo(routeFile, 100*1000*1000); err != nil {
 		handleRunTimeError(fmt.Sprintf("error writing route matrix: %v\n", err), 1)
 	}
 }
