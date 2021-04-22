@@ -155,6 +155,11 @@ func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, dat
 	return false
 }
 
+func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) routing.Datacenter {
+	value, _ := database.DatacenterMap[datacenterID]	
+	return value
+}
+
 type nearRelayGroup struct {
 	Count        int32
 	IDs          []uint64
@@ -455,9 +460,8 @@ func SessionUpdateHandlerFunc(
 
 		ipLocator := getIPLocator(packet.SessionID)
 		routeMatrix := getRouteMatrix()
-		buyer := routing.Buyer{}
-		datacenter := routing.UnknownDatacenter
 		database := getDatabase()
+		buyer := routing.Buyer{}
 
 		response := SessionResponsePacket{
 			Version:     packet.Version,
@@ -471,6 +475,8 @@ func SessionUpdateHandlerFunc(
 		var slicePacketLoss float32
 
 		var debug *string
+
+		datacenter := routing.UnknownDatacenter
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -596,6 +602,8 @@ func SessionUpdateHandlerFunc(
 			// todo: add a metric for this condition
 			return
 		}
+
+		datacenter = getDatacenter(database, packet.DatacenterID)
 
 		var err error
 
