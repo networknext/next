@@ -327,6 +327,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	totalRoutes := uint64(0)
 	maxRouteLength := int32(0)
 	maxRoutesPerRelayPair := int32(0)
+	relayPairs := 0
 	relayPairsWithNoRoutes := 0
 	relayPairsWithOneRoute := 0
 	totalRouteLength := uint64(0)
@@ -337,6 +338,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 				if !m.DestRelays[i] && !m.DestRelays[j] {
 					continue
 				}
+				relayPairs++
 				ijFlatIndex := TriMatrixIndex(i, j)
 				n := m.RouteEntries[ijFlatIndex].NumRoutes
 				if n > maxRoutesPerRelayPair {
@@ -371,6 +373,8 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
 
 	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
+	fmt.Fprintf(writer, "    %d total routes\n", totalRoutes)
+	fmt.Fprintf(writer, "    %d relay pairs\n", relayPairs)
 	fmt.Fprintf(writer, "    %d destination relays\n", numDestRelays)
 	fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
