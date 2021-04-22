@@ -39,7 +39,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		RelayLatitudes:     costMatrix.RelayLatitudes,
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIDs: costMatrix.RelayDatacenterIDs,
-		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, costMatrix.DestRelay),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, costMatrix.DestRelays),
 	}
 
 	routeFile, err := os.Create(routeFilename)
