@@ -348,7 +348,13 @@ func TestRelayFrontendSvc_GetRelayDashboardHandler(t *testing.T) {
 	assert.NotEqual(t, svc.currentMasterBackendAddress, bSvr.URL)
 
 	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayDashboardHandlerFunc("testUsername", "testPassword")))
-	resp, err := http.Get(fSvr.URL)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", fSvr.URL, nil)
+	assert.NoError(t, err)
+	req.SetBasicAuth("testUsername", "testPassword")
+
+	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
