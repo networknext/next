@@ -57,6 +57,7 @@ var (
 	env             string
 
 	database_internal   *routing.DatabaseBinWrapper = routing.CreateEmptyDatabaseBinWrapper()
+
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
@@ -66,6 +67,8 @@ var (
 
 	startTime time.Time
 )
+
+var database_internal *routing.DatabaseBinWrapper = &routing.DatabaseBinWrapper{}
 
 func init() {
 	relayHash_internal = make(map[uint64]routing.Relay)
@@ -273,6 +276,7 @@ func mainReturnWithCode() int {
 
 					// Setup relay array and hash to read into
 					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
+
 					relayHashNew := make(map[uint64]routing.Relay)
 
 					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {

@@ -50,6 +50,7 @@ var (
 
 func init() {
 	database := routing.CreateEmptyDatabaseBinWrapper()
+
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("BIN_PATH", "./database.bin")
@@ -185,6 +186,7 @@ func mainReturnWithCode() int {
 
 					// Setup relay array and hash to read into
 					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
+
 					relayHashNew := make(map[uint64]routing.Relay)
 
 					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
@@ -227,6 +229,8 @@ func mainReturnWithCode() int {
 					relayHashMutex.Lock()
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
+
+					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in databaseNew
 				}
 			}
 		}()
