@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -672,24 +673,43 @@ func main() {
 	}
 
 	var usersCommand = &ffcli.Command{
-		Name:       "users (sorting argument)",
+		Name:       "users",
 		ShortUsage: "next users",
-		ShortHelp:  "Sort through auth0 users to get more information",
+		ShortHelp:  "Sort through auth0 users to get more information about associated company and/or buyer account",
 		Exec: func(_ context.Context, args []string) error {
-			if len(args) != 1 {
-				handleRunTimeError(fmt.Sprintf("Please provided a so"), 0)
-			}
+			reply := localjsonrpc.UserDatabaseReply{}
+			fmt.Println("Looking up all accounts associated to a company/buyer account")
+			fmt.Println("")
+			if err := rpcClient.CallFor(&reply, "AuthService.UserDatabase", localjsonrpc.UserDatabaseArgs{}); err == nil {
+				usersCSV := [][]string{{}}
 
-			if args[0] == "buyer" {
-				fmt.Println("Looking up all accounts associated to a buyer account")
+				usersCSV = append(usersCSV, []string{
+					"Email", "Company Code", "Buyer ID", "IsOwner"})
+
+				for _, entry := range reply.Entries {
+					fmt.Printf("Email: %s - Company Code: %s - IsOwner: %s\n\n", entry.Email, entry.CompanyCode, strconv.FormatBool(entry.IsOwner))
+					usersCSV = append(usersCSV, []string{
+						entry.Email,
+						entry.CompanyCode,
+						entry.BuyerID,
+						strconv.FormatBool(entry.IsOwner),
+					})
+				}
+
+				fileName := "./users.csv"
+				f, err := os.Create(fileName)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+				}
+
+				writer := csv.NewWriter(f)
+				err = writer.WriteAll(usersCSV)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+				}
+				fmt.Println("CSV file written: users.csv")
 				return nil
 			}
-
-			if args[0] == "company" {
-				fmt.Println("Looking up all accounts associated to a company account")
-				return nil
-			}
-
 			return nil
 		},
 	}
