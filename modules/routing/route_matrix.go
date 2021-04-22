@@ -39,6 +39,7 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
+
 	stream.SerializeUint32(&m.Version)
 
 	numRelays := uint32(len(m.RelayIDs))
@@ -267,6 +268,9 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
+				if !m.DestRelays[i] || !m.DestRelays[j] {
+					continue
+				}
 				numRelayPairs++
 				abFlatIndex := TriMatrixIndex(i, j)
 				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {

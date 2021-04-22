@@ -40,6 +40,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		RelayLatitudes:     costMatrix.RelayLatitudes,
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIDs: costMatrix.RelayDatacenterIDs,
+		DestRelays:         costMatrix.DestRelays,
 		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, costMatrix.DestRelays),
 	}
 
