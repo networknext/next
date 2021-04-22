@@ -39,7 +39,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		RelayLatitudes:     costMatrix.RelayLatitudes,
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIDs: costMatrix.RelayDatacenterIDs,
-		RouteEntries:       core.Optimize(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, costMatrix.DestRelay),
 	}
 
 	routeFile, err := os.Create(routeFilename)
@@ -48,7 +48,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 	defer routeFile.Close()
 
-	if _, err := routeMatrix.WriteTo(routeFile, 100000000); err != nil {
+	if _, err := routeMatrix.WriteTo(routeFile, 100*1000*1000); err != nil {
 		handleRunTimeError(fmt.Sprintf("error writing route matrix: %v\n", err), 1)
 	}
 }
