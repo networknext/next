@@ -671,6 +671,29 @@ func main() {
 		},
 	}
 
+	var usersCommand = &ffcli.Command{
+		Name:       "users (sorting argument)",
+		ShortUsage: "next users",
+		ShortHelp:  "Sort through auth0 users to get more information",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a so"), 0)
+			}
+
+			if args[0] == "buyer" {
+				fmt.Println("Looking up all accounts associated to a buyer account")
+				return nil
+			}
+
+			if args[0] == "company" {
+				fmt.Println("Looking up all accounts associated to a company account")
+				return nil
+			}
+
+			return nil
+		},
+	}
+
 	var hashCommand = &ffcli.Command{
 		Name:       "hash",
 		ShortUsage: "next hash (string)",
@@ -2353,6 +2376,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		authCommand,
 		selectCommand,
 		envCommand,
+		usersCommand,
 		sessionCommand,
 		sessionsCommand,
 		relaysCommand,
