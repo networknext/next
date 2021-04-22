@@ -674,6 +674,7 @@ func mainReturnWithCode() int {
 				relayIDsToIndices[relayIDs[i]] = int32(i)
 			}
 
+			destRelayNames := []string{}
 			// Loop over buyers
 			for _, buyer := range buyers {
 				// If live check for dest relays
@@ -689,20 +690,20 @@ func mainReturnWithCode() int {
 							relayIndex, ok := relayIDsToIndices[relayID]
 							if ok {
 								destRelays[relayIndex] = true
+								destRelayNames = append(destRelayNames, relayNames[relayIndex])
 							}
 						}
 					}
 				}
 			}
 
-			destRelaysDataString := fmt.Sprintf("[")
-			for i, v := range destRelays {
-				destRelaysDataString += fmt.Sprintf("%v", v)
-				if i < len(destRelays)-1 {
-					destRelaysDataString += fmt.Sprintf(",")
-				}
+			sort.Strings(destRelayNames)
+
+			destRelaysDataString := ""
+			for _, name := range destRelayNames {
+				destRelaysDataString += fmt.Sprintf("%s", name)
+				destRelaysDataString += fmt.Sprintf("\n")
 			}
-			destRelaysDataString += fmt.Sprintf("]")
 
 			destRelaysMutex.Lock()
 			destRelaysData = []byte(destRelaysDataString)
