@@ -92,7 +92,7 @@ var roleDescriptions []string = []string{
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
-	var accountList *management.UserList
+	var totalUsers []*management.User
 
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -101,11 +101,22 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	}
 
 	reply.UserAccounts = make([]account, 0)
-	accountList, err := s.UserManager.List()
-	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-		return &err
+	keepSearching := true
+	page := 0
+
+	for keepSearching {
+		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		totalUsers = append(totalUsers, accountList.Users...)
+		if len(totalUsers)%100 != 0 {
+			keepSearching = false
+		}
+		page++
 	}
 
 	requestUser := r.Context().Value(Keys.UserKey)
@@ -122,7 +133,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return &err
 	}
 
-	for _, a := range accountList.Users {
+	for _, a := range totalUsers {
 		companyCode, ok := a.AppMetadata["company_code"].(string)
 		if !ok || requestCompany != companyCode {
 			continue
@@ -291,15 +302,29 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	buyer, _ := s.Storage.BuyerWithCompanyCode(userCompanyCode)
 
 	registered := make(map[string]*management.User)
-	accountList, err := s.UserManager.List()
-	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to get user list", err.Error()))
-		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-		return &err
+
+	var totalUsers []*management.User
+	keepSearching := true
+	page := 0
+
+	for keepSearching {
+		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		totalUsers = append(totalUsers, accountList.Users...)
+		if len(totalUsers)%100 != 0 {
+			keepSearching = false
+		}
+		page++
 	}
+
 	emailString := strings.Join(emails, ",")
 
-	for _, a := range accountList.Users {
+	for _, a := range totalUsers {
 		if strings.Contains(emailString, *a.Email) {
 			registered[*a.Email] = a
 		}
@@ -344,7 +369,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 					"company_code": userCompanyCode,
 				},
 			}
-			if err = s.UserManager.Update(*user.ID, newUser); err != nil {
+			if err := s.UserManager.Update(*user.ID, newUser); err != nil {
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to update user account", err.Error()))
 				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
@@ -361,13 +386,13 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 					Description: &roleDescriptions[1],
 				},
 			}
-			if err = s.UserManager.RemoveRoles(*user.ID, roles...); err != nil {
+			if err := s.UserManager.RemoveRoles(*user.ID, roles...); err != nil {
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to remove exist roles from user account", err.Error()))
 				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
 			if len(args.Roles) > 0 {
-				if err = s.UserManager.AssignRoles(*user.ID, args.Roles...); err != nil {
+				if err := s.UserManager.AssignRoles(*user.ID, args.Roles...); err != nil {
 					s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to assign new roles to user account", err.Error()))
 					err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 					return &err
@@ -429,6 +454,90 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 	}
 
 	return account
+}
+
+type databaseEntry struct {
+	Email        string
+	CompanyCode  string
+	BuyerID      string
+	IsOwner      bool
+	CreationTime string
+}
+
+type UserDatabaseArgs struct{}
+
+type UserDatabaseReply struct {
+	Entries []databaseEntry
+}
+
+func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, reply *UserDatabaseReply) error {
+	reply.Entries = make([]databaseEntry, 0)
+
+	if !VerifyAnyRole(r, AdminRole, OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
+		return &err
+	}
+
+	var totalUsers []*management.User
+	keepSearching := true
+	page := 0
+
+	for keepSearching {
+		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		totalUsers = append(totalUsers, accountList.Users...)
+		if len(totalUsers)%100 != 0 {
+			keepSearching = false
+		}
+		page++
+	}
+
+	for _, account := range totalUsers {
+		var companyCode string
+		companyCode, ok := account.AppMetadata["company_code"].(string)
+		if !ok || (companyCode == "" || companyCode == "next") {
+			continue
+		}
+
+		userRoles, err := s.UserManager.Roles(*account.ID)
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to get user roles", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		isOwner := false
+		for _, role := range userRoles.Roles {
+			// Check if the role is an owner role
+			if *role.ID == roleIDs[1] {
+				isOwner = true
+				break
+			}
+		}
+
+		entry := databaseEntry{
+			Email:        *account.Email,
+			CompanyCode:  companyCode,
+			IsOwner:      isOwner,
+			CreationTime: account.CreatedAt.String(),
+		}
+
+		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
+
+		if buyer.ID != 0 {
+			entry.BuyerID = fmt.Sprintf("%016x", buyer.ID)
+		}
+
+		reply.Entries = append(reply.Entries, entry)
+	}
+
+	return nil
 }
 
 type RolesArgs struct {
