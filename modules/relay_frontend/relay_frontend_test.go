@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -70,14 +71,12 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
-	assert.Equal(t, "http://2.1.1.1/relay_stats", svc.relayStatsAddress)
 
 	// change to rb1 as master
 	rb2.UpdatedAt = rb2.UpdatedAt.Add(-6 * time.Second)
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "1.1.1.1", svc.currentMasterBackendAddress)
-	assert.Equal(t, "http://1.1.1.1/relay_stats", svc.relayStatsAddress)
 }
 
 func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
@@ -111,7 +110,6 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
-	assert.Equal(t, "http://2.1.1.1/relay_stats", svc.relayStatsAddress)
 }
 
 func TestRelayFrontendSvc_ChooseRelayBackendMaster(t *testing.T) {
@@ -244,7 +242,7 @@ func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 	testMatrix := testMatrix(t)
 	svc.costMatrix.SetMatrix(testMatrix.GetResponseData())
 
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
@@ -266,7 +264,7 @@ func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 func TestRelayFrontendSvc_GetCostMatrixNotFound(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.costMatrix = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
@@ -278,7 +276,7 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	svc.routeMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
 	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
@@ -300,14 +298,14 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.routeMatrix = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 }
 
-func TestRelayFrontendSvc_GetRelayStats(t *testing.T) {
+func TestRelayFrontendSvc_GetRelayBackendHandler(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 
 	backendHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -316,12 +314,43 @@ func TestRelayFrontendSvc_GetRelayStats(t *testing.T) {
 	}
 
 	bSvr := httptest.NewServer(http.HandlerFunc(backendHandler))
-	svc.relayStatsAddress = bSvr.URL
+	svc.currentMasterBackendAddress = strings.TrimLeft(bSvr.URL, "http://")
+	assert.NotEqual(t, svc.currentMasterBackendAddress, bSvr.URL)
 
-	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayStats()))
+	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayBackendHandlerFunc("/database_version")))
 	resp, err := http.Get(fSvr.URL)
 	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, body)
+	assert.Equal(t, []byte("test"), body)
+}
+
+func TestRelayFrontendSvc_GetRelayDashboardHandler(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+
+	backendHandler := func(w http.ResponseWriter, r *http.Request) {
+		u, p, _ := r.BasicAuth()
+		if u != "testUsername" || p != "testPassword" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("test"))
+	}
+
+	bSvr := httptest.NewServer(http.HandlerFunc(backendHandler))
+	svc.currentMasterBackendAddress = strings.TrimLeft(bSvr.URL, "http://")
+	assert.NotEqual(t, svc.currentMasterBackendAddress, bSvr.URL)
+
+	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayDashboardHandlerFunc("testUsername", "testPassword")))
+	resp, err := http.Get(fSvr.URL)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	defer resp.Body.Close()
 
