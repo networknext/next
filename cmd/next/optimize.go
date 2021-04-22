@@ -24,6 +24,14 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 
 	numRelays := len(costMatrix.RelayIDs)
+
+	numDestRelays := 0
+	for i := range costMatrix.DestRelays {
+		if costMatrix.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
 	numCPUs := runtime.NumCPU()
 	numSegments := numRelays
 	if numCPUs < numRelays {
@@ -34,6 +42,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 
 	routeMatrix := &routing.RouteMatrix{
+		Version:            routing.RouteMatrixSerializeVersion,
 		RelayIDs:           costMatrix.RelayIDs,
 		RelayAddresses:     costMatrix.RelayAddresses,
 		RelayNames:         costMatrix.RelayNames,

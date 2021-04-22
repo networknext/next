@@ -106,8 +106,8 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		if stream.IsReading() {
 			m.DestRelays = make([]bool, numRelays)
 		}
-		for _, v := range m.DestRelays {
-			stream.SerializeBool(&v)
+		for i := range m.DestRelays {
+			stream.SerializeBool(&m.DestRelays[i])
 		}
 	}
 
@@ -253,6 +253,8 @@ func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 		return int64(writeStream.GetBytesProcessed()), err
 	}
 
+	writeStream.Flush()
+
 	n, err := writer.Write(writeStream.GetData()[:writeStream.GetBytesProcessed()])
 	return int64(n), err
 }
@@ -271,7 +273,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
-				if !m.DestRelays[i] || !m.DestRelays[j] {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
 					continue
 				}
 				numRelayPairs++
@@ -325,6 +327,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	totalRoutes := uint64(0)
 	maxRouteLength := int32(0)
 	maxRoutesPerRelayPair := int32(0)
+	relayPairs := 0
 	relayPairsWithNoRoutes := 0
 	relayPairsWithOneRoute := 0
 	totalRouteLength := uint64(0)
@@ -332,6 +335,10 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				relayPairs++
 				ijFlatIndex := TriMatrixIndex(i, j)
 				n := m.RouteEntries[ijFlatIndex].NumRoutes
 				if n > maxRoutesPerRelayPair {
@@ -355,10 +362,21 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 		}
 	}
 
+	numDestRelays := 0
+	for i := range m.DestRelays {
+		if m.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
 	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
 	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
 
 	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
+	fmt.Fprintf(writer, "    %d relays\n", len(m.RelayIDs))
+	fmt.Fprintf(writer, "    %d total routes\n", totalRoutes)
+	fmt.Fprintf(writer, "    %d relay pairs\n", relayPairs)
+	fmt.Fprintf(writer, "    %d destination relays\n", numDestRelays)
 	fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)
