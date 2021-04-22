@@ -498,7 +498,6 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 		page++
 	}
 
-	fmt.Println(len(totalUsers))
 	for _, account := range totalUsers {
 		var companyCode string
 		companyCode, ok := account.AppMetadata["company_code"].(string)
