@@ -373,6 +373,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
 
 	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
+	fmt.Fprintf(writer, "    %d relays\n", len(m.RelayIDs))
 	fmt.Fprintf(writer, "    %d total routes\n", totalRoutes)
 	fmt.Fprintf(writer, "    %d relay pairs\n", relayPairs)
 	fmt.Fprintf(writer, "    %d destination relays\n", numDestRelays)
