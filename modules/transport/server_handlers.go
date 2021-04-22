@@ -304,6 +304,13 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
+		if !buyer.Live {
+			core.Debug("customer not active")
+			metrics.BuyerNotActive.Add(1)
+			responseType = InitResponseCustomerNotActive
+			return
+		}
+
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
@@ -318,7 +325,13 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
+		if datacenterExists(database, packet.DatacenterID) {
+			core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
+		} else {
+			// IMPORTANT: We must print this here always, otherwise we don't get the datacenter name corresponding to the id
+			fmt.Printf("error: unknown datacenter %s [%x]", packet.DatacenterName, packet.DatacenterID)
+			metrics.DatacenterNotFound.Add(1)
+		}
 
 		core.Debug("server initialized successfully")
 	}
