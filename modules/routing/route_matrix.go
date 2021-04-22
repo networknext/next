@@ -14,7 +14,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 1
+const RouteMatrixSerializeVersion = 2
 
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
@@ -29,6 +29,7 @@ type RouteMatrix struct {
 	BinFileData        []byte
 	CreatedAt          uint64
 	Version            uint32
+	DestRelays         []bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -79,12 +80,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
-		for i := 0; i < core.MaxRoutesPerEntry; i++ {
+		for i := 0; i < int(entry.NumRoutes); i++ {
 			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
-
-			for j := 0; j < core.MaxRelaysPerRoute; j++ {
+			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
 			}
 		}
@@ -100,6 +100,12 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeUint64(&m.CreatedAt)
+
+	if m.Version >= 2 {
+		for _, v := range m.DestRelays {
+			stream.SerializeBool(&v)
+		}
+	}
 
 	return stream.Error()
 }
