@@ -684,15 +684,16 @@ func main() {
 				usersCSV := [][]string{{}}
 
 				usersCSV = append(usersCSV, []string{
-					"Email", "Company Code", "Buyer ID", "IsOwner"})
+					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
 
 				for _, entry := range reply.Entries {
-					fmt.Printf("Email: %s - Company Code: %s - IsOwner: %s\n\n", entry.Email, entry.CompanyCode, strconv.FormatBool(entry.IsOwner))
+					fmt.Printf("Email: %s - Company Code: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
 					usersCSV = append(usersCSV, []string{
 						entry.Email,
 						entry.CompanyCode,
 						entry.BuyerID,
 						strconv.FormatBool(entry.IsOwner),
+						entry.CreationTime,
 					})
 				}
 
