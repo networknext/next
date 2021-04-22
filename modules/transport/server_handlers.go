@@ -304,13 +304,6 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		if !buyer.Live {
-			core.Debug("customer not active")
-			metrics.BuyerNotActive.Add(1)
-			responseType = InitResponseCustomerNotActive
-			return
-		}
-
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
@@ -322,13 +315,6 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			core.Debug("sdk version is too old: %s", packet.Version.String())
 			metrics.SDKTooOld.Add(1)
 			responseType = InitResponseOldSDKVersion
-			return
-		}
-
-		if !datacenterExists(database, packet.DatacenterID) {
-			core.Debug("datacenter does not exist: %s [%x]", packet.DatacenterName, packet.DatacenterID)
-			metrics.DatacenterNotFound.Add(1)
-			responseType = InitResponseUnknownDatacenter
 			return
 		}
 
@@ -478,9 +464,20 @@ func SessionUpdateHandlerFunc(
 
 		datacenter := routing.UnknownDatacenter
 
+		signatureCheckFailed := false
+		unknownDatacenter := false
+		datacenterNotEnabled := false
+		buyerNotFound := false
+		buyerNotLive := false
+
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
+
+			if buyerNotFound || signatureCheckFailed {
+				core.Debug("not responding")
+				return
+			}
 
 			if response.RouteType != routing.RouteTypeDirect {
 				core.Debug("session takes network next")
@@ -555,7 +552,23 @@ func SessionUpdateHandlerFunc(
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, routeDiversity, slicePacketLossClientToServer, slicePacketLossServerToClient, debug)
+				go PostSessionUpdate(postSessionHandler,
+					&packet, 
+					&prevSessionData, 
+					&buyer, 
+					multipathVetoHandler, 
+					routeRelayNames, 
+					routeRelaySellers, 
+					nearRelays, 
+					&datacenter, 
+					routeDiversity, 
+					slicePacketLossClientToServer, 
+					slicePacketLossServerToClient, 
+					debug, 
+					unknownDatacenter,
+					datacenterNotEnabled, 
+					buyerNotLive,
+				)
 			}
 		}()
 
@@ -569,18 +582,21 @@ func SessionUpdateHandlerFunc(
 		if !exists {
 			core.Debug("buyer not found")
 			metrics.BuyerNotFound.Add(1)
+			buyerNotFound = true
 			return
 		}
 
 		if !buyer.Live {
-			core.Debug("buyer is not live")
+			core.Debug("buyer not live")
 			metrics.BuyerNotLive.Add(1)
+			buyerNotLive = true
 			return
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
+			signatureCheckFailed = true
 			return
 		}
 
@@ -597,9 +613,17 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
+		if !datacenterExists(database, packet.DatacenterID) {
+			core.Debug("unknown datacenter")
+			// todo: add a metric for this condition
+			unknownDatacenter = true
+			return
+		}
+
 		if !datacenterEnabled(database, packet.CustomerID, packet.DatacenterID) {
 			core.Debug("datacenter not enabled")
 			// todo: add a metric for this condition
+			datacenterNotEnabled = true
 			return
 		}
 
@@ -1056,6 +1080,9 @@ func PostSessionUpdate(
 	slicePacketLossClientToServer float32,
 	slicePacketLossServerToClient float32,
 	debug *string,
+	unknownDatacenter bool,
+	datacenterNotEnabled bool,
+	buyerNotLive bool,
 ) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
@@ -1200,6 +1227,9 @@ func PostSessionUpdate(
 		MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
 		ClientToServerPacketsSent:       packet.PacketsSentClientToServer,
 		ServerToClientPacketsSent:       packet.PacketsSentServerToClient,
+		BuyerNotLive:                    buyerNotLive,
+		UnknownDatacenter:               unknownDatacenter,
+		DatacenterNotEnabled:            datacenterNotEnabled,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
