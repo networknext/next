@@ -35,11 +35,10 @@ type RelayFrontendSvc struct {
 	store                       storage.MatrixStore
 	createdAt                   time.Time
 	currentMasterBackendAddress string
-	relayStatsAddress           string
 
 	// cached matrix
-	costMatrix       *helpers.MatrixData
-	routeMatrix      *helpers.MatrixData
+	costMatrix  *helpers.MatrixData
+	routeMatrix *helpers.MatrixData
 }
 
 func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
@@ -63,12 +62,10 @@ func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 	masterAddress, err := chooseRelayBackendMaster(rbArr, r.cfg.MasterTimeVariance)
 	if err != nil {
 		r.currentMasterBackendAddress = ""
-		r.relayStatsAddress = ""
 		return err
 	}
 
 	r.currentMasterBackendAddress = masterAddress
-	r.relayStatsAddress = fmt.Sprintf("http://%s/relay_stats", r.currentMasterBackendAddress)
 
 	return nil
 }
@@ -150,7 +147,7 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 	return addr, nil
 }
 
-func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		data := r.costMatrix.GetMatrix()
@@ -166,7 +163,7 @@ func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http
 	}
 }
 
-func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetRouteMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		data := r.routeMatrix.GetMatrix()
@@ -182,20 +179,55 @@ func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *htt
 	}
 }
 
-func (r *RelayFrontendSvc) GetRelayStats() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetRelayBackendHandlerFunc(endpoint string) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-
-		if r.relayStatsAddress == "" {
+		if r.currentMasterBackendAddress == "" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		resp, err := http.Get(r.relayStatsAddress)
-		defer resp.Body.Close()
+		resp, err := http.Get(fmt.Sprintf("http://%s/%s", r.currentMasterBackendAddress, endpoint))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		defer resp.Body.Close()
+
+		bin, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(bin)
+	}
+}
+
+func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, password string) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if r.currentMasterBackendAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: time.Second * 10,
+		}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/relay_dashboard", r.currentMasterBackendAddress), nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		req.SetBasicAuth(username, password)
+		resp, err := client.Do(req)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
 		bin, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
