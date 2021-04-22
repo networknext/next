@@ -28,6 +28,7 @@ type CostMatrix struct {
 }
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
+	
 	stream.SerializeUint32(&m.Version)
 
 	numRelays := uint32(len(m.RelayIDs))
@@ -65,8 +66,8 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 		if stream.IsReading() {
 			m.DestRelays = make([]bool, numRelays)
 		}
-		for _, v := range m.DestRelays {
-			stream.SerializeBool(&v)
+		for i := range m.DestRelays {
+			stream.SerializeBool(&m.DestRelays[i])
 		}
 	}
 
