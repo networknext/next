@@ -217,14 +217,12 @@ func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, passwor
 
 		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/relay_dashboard", r.currentMasterBackendAddress), nil)
 		if err != nil {
-			fmt.Printf("error making new request: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		req.SetBasicAuth(username, password)
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Printf("error doing request: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -232,7 +230,6 @@ func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, passwor
 
 		bin, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("error reading body: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
