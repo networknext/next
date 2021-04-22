@@ -476,7 +476,8 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 
 		isOwner := false
 		for _, role := range userRoles.Roles {
-			if *role.ID == "rol_8r0281hf2oC4cvrD" {
+			// Check if the role is an owner role
+			if *role.ID == roleIDs[1] {
 				isOwner = true
 				break
 			}
