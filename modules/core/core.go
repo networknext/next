@@ -672,7 +672,7 @@ func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32
 
 				for j := 0; j < i; j++ {
 
-					if !destinationRelay[i] || !destinationRelay[j] {
+					if !destinationRelay[i] && !destinationRelay[j] {
 						continue
 					}
 
