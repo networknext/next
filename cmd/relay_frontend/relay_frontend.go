@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/transport/middleware"
 
 	frontend "github.com/networknext/backend/modules/relay_frontend"
 	"github.com/networknext/backend/modules/storage"
@@ -211,19 +213,35 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	allowedOrigins, found := os.LookupEnv("ALLOWED_ORIGINS")
+	if !found {
+		level.Error(logger).Log("msg", "unable to parse ALLOWED_ORIGINS environment variable")
+	}
+
+	audience, found := os.LookupEnv("JWT_AUDIENCE")
+	if !found {
+		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
+	}
+
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-	router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrixHandlerFunc()).Methods("GET")
 	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
 	router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
 	router.HandleFunc("/relay_dashboard", frontendClient.GetRelayDashboardHandlerFunc("local", "local")).Methods("GET")
 	router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
-	router.HandleFunc("/relays", frontendClient.GetRelayBackendHandlerFunc("/relays")).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
+
+	// Wrap the following endpoints in auth and CORS middleware
+	//	Note: the next tool is unaware of CORS and its requests simply pass through
+	costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
+	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+
+	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
+	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
