@@ -62,6 +62,9 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	if m.Version >= 2 {
+		if stream.IsReading() {
+			m.DestRelays = make([]bool, numRelays)
+		}
 		for _, v := range m.DestRelays {
 			stream.SerializeBool(&v)
 		}

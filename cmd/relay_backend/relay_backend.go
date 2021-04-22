@@ -763,7 +763,7 @@ func mainReturnWithCode() int {
 
 			costThreshold := int32(1)
 
-			routeEntries := core.Optimize(numActiveRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
+			routeEntries := core.Optimize2(numActiveRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs, costMatrixNew.DestRelays)
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))

@@ -122,7 +122,12 @@ func OptimizeThread() {
 			}
 		}
 
-		core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenterIDs)
+		destRelays := make([]bool, numRelays)
+		for i := 0; i < numRelays; i++ {
+			destRelays[i] = true
+		}
+
+		core.Optimize2(numRelays, numSegments, costMatrix, 1, relayDatacenterIDs, destRelays)
 
 		backend.mutex.Unlock()
 
