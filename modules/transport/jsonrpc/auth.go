@@ -431,6 +431,76 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 	return account
 }
 
+type databaseEntry struct {
+	Email       string
+	CompanyCode string
+	BuyerID     string
+	IsOwner     bool
+}
+
+type UserDatabaseArgs struct{}
+
+type UserDatabaseReply struct {
+	Entries []databaseEntry
+}
+
+func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, reply *UserDatabaseReply) error {
+	reply.Entries = make([]databaseEntry, 0)
+
+	if !VerifyAnyRole(r, AdminRole, OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
+		return &err
+	}
+
+	accountList, err := s.UserManager.List()
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
+	for _, account := range accountList.Users {
+		var companyCode string
+		companyCode, ok := account.AppMetadata["company_code"].(string)
+		if !ok || (companyCode == "" || companyCode == "next") {
+			continue
+		}
+
+		userRoles, err := s.UserManager.Roles(*account.ID)
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to get user roles", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		isOwner := false
+		for _, role := range userRoles.Roles {
+			// Check if the role is an owner role
+			if *role.ID == roleIDs[1] {
+				isOwner = true
+				break
+			}
+		}
+
+		entry := databaseEntry{
+			Email:       *account.Email,
+			CompanyCode: companyCode,
+			IsOwner:     isOwner,
+		}
+
+		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
+
+		if buyer.ID != 0 {
+			entry.BuyerID = fmt.Sprintf("%016x", buyer.ID)
+		}
+
+		reply.Entries = append(reply.Entries, entry)
+	}
+
+	return nil
+}
+
 type RolesArgs struct {
 	UserID string             `json:"user_id"`
 	Roles  []*management.Role `json:"roles"`
