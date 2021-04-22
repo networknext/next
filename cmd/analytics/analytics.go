@@ -215,6 +215,7 @@ func main() {
 		}
 	}
 
+	/*
 	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
 	{
 		// BigQuery
@@ -311,6 +312,7 @@ func main() {
 			go pubsubForwarder.Forward(ctx)
 		}
 	}
+	*/
 
 	// Setup the stats print routine
 	{
