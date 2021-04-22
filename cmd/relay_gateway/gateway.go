@@ -49,7 +49,8 @@ var (
 )
 
 func init() {
-	var binWrapper routing.DatabaseBinWrapper
+	database := routing.CreateEmptyDatabaseBinWrapper()
+
 	relayHash_internal = make(map[uint64]routing.Relay)
 
 	filePath := envvar.Get("BIN_PATH", "./database.bin")
@@ -60,20 +61,20 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = backend.DecodeBinWrapper(file, &binWrapper); err != nil {
+	if err = backend.DecodeBinWrapper(file, database); err != nil {
 		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
 
-	relayArray_internal = binWrapper.Relays
+	relayArray_internal = database.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
 	// backend.DisplayLoadedRelays(relayArray_internal)
 
-	// Store the creator and creation time from the binWrapper
-	binCreator = binWrapper.Creator
-	binCreationTime = binWrapper.CreationTime
+	// Store the creator and creation time from the database
+	binCreator = database.Creator
+	binCreationTime = database.CreationTime
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -132,13 +133,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Setup file watchman on relays.bin
+	// Setup file watchman on database.bin
 	{
-		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("BIN_PATH", "./database.bin")
-		absPath, err := filepath.Abs(relaysFilePath)
+		// Get absolute path of database.bin
+		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
+		absPath, err := filepath.Abs(databaseFilePath)
 		if err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
+			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", databaseFilePath), "err", err)
 			return 1
 		}
 
@@ -184,10 +185,11 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var binWrapperNew routing.DatabaseBinWrapper
+					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
+
 					relayHashNew := make(map[uint64]routing.Relay)
 
-					if err = backend.DecodeBinWrapper(file, &binWrapperNew); err == io.EOF {
+					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
@@ -202,19 +204,19 @@ func mainReturnWithCode() int {
 					// Close the file since it is no longer needed
 					file.Close()
 
-					if binWrapperNew.IsEmpty() {
+					if databaseNew.IsEmpty() {
 						// Don't want to use an empty bin wrapper
 						// so early out here and use existing array and hash
 						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
 						continue
 					}
 
-					// Store the creator and creation time from the binWrapper
-					binCreator = binWrapperNew.Creator
-					binCreationTime = binWrapperNew.CreationTime
+					// Store the creator and creation time from the database
+					binCreator = databaseNew.Creator
+					binCreationTime = databaseNew.CreationTime
 
 					// Get the new relay array
-					relayArrayNew := binWrapperNew.Relays
+					relayArrayNew := databaseNew.Relays
 					// Proceed to fill up the new relay hash
 					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
@@ -228,7 +230,7 @@ func mainReturnWithCode() int {
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
 
-					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in binWrapperNew
+					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in databaseNew
 				}
 			}
 		}()

@@ -327,7 +327,7 @@ dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
 .PHONY: dev-relay
-dev-relay: build-reference-relay  ## runs 10 local relays
+dev-relay: build-reference-relay  ## runs a local relay
 	@./scripts/relay-spawner.sh -n 1
 
 .PHONY: dev-relays
@@ -484,7 +484,7 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so
 
 PHONY: build-portal-cruncher
 build-portal-cruncher:
-	@printf "Building portal_cruncher... "
+	@printf "Building portal cruncher... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
 	@printf "done\n"
 
