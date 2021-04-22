@@ -312,15 +312,15 @@ dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 
 .PHONY: dev-relay-backend-1
 dev-relay-backend-1: build-relay-backend ## runs a local relay backend
-	@PORT=30001 ./dist/relay_backend
+	@PORT=30001 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_backend
 
 .PHONY: dev-relay-backend-2
 dev-relay-backend-2: build-relay-backend ## runs a local relay backend
-	@PORT=30002 ./dist/relay_backend
+	@PORT=30002 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_backend
 
 .PHONY: dev-debug-relay-backend
 dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
-	@PORT=30003 ./dist/relay_backend
+	@PORT=30003 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_backend
 
 .PHONY: dev-relay-frontend
 dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
