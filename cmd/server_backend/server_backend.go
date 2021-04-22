@@ -265,7 +265,7 @@ func mainReturnWithCode() int {
 
 	// function to get the database under mutex
 
-	var database *routing.DatabaseBinWrapper
+	database := routing.CreateEmptyDatabaseBinWrapper()
 	var databaseMutex sync.RWMutex
 
 	getDatabase := func() *routing.DatabaseBinWrapper {
@@ -280,7 +280,7 @@ func mainReturnWithCode() int {
 	clearEverything := func() {
 		routeMatrixMutex.RLock()
 		databaseMutex.RLock()
-		database = &routing.DatabaseBinWrapper{}
+		database = routing.CreateEmptyDatabaseBinWrapper()
 		routeMatrix = &routing.RouteMatrix{}
 		databaseMutex.RUnlock()
 		routeMatrixMutex.RUnlock()
@@ -326,7 +326,6 @@ func mainReturnWithCode() int {
 				}
 
 				if routeMatrixReader == nil {
-					core.Debug("error: route matrix reader is nil")
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
 					continue
@@ -384,6 +383,7 @@ func mainReturnWithCode() int {
 				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
 
 				// decode the database in the route matrix
+
 				var newDatabase routing.DatabaseBinWrapper
 
 				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
@@ -412,7 +412,6 @@ func mainReturnWithCode() int {
 				routeMatrixMutex.Unlock()
 			}
 		}()
-
 	}
 
 	// Create a local biller
