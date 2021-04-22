@@ -103,6 +103,9 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&m.CreatedAt)
 
 	if m.Version >= 2 {
+		if stream.IsReading() {
+			m.DestRelays = make([]bool, numRelays)
+		}
 		for _, v := range m.DestRelays {
 			stream.SerializeBool(&v)
 		}
