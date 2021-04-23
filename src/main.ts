@@ -111,9 +111,11 @@ if (window.location.pathname === '/get-access') {
 
     if (query.includes('signup') && Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       setTimeout(() => {
-        Vue.prototype.$gtag.event('Auth0 account created', {
-          event_category: 'Account Creation'
-        })
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Auth0 account created', {
+            event_category: 'Account Creation'
+          })
+        }
         Vue.prototype.$apiService.sendSignUpSlackNotification({ email: store.getters.userProfile.email })
       }, 5000)
     }
