@@ -114,6 +114,7 @@ if (window.location.pathname === '/get-access') {
         Vue.prototype.$gtag.event('Auth0 account created', {
           event_category: 'Account Creation'
         })
+        Vue.prototype.$apiService.sendSignUpSlackNotification({ email: store.getters.userProfile.email })
       }, 5000)
     }
 
@@ -121,7 +122,6 @@ if (window.location.pathname === '/get-access') {
       router.push('/map')
     }
 
-    // TODO: Set this back up before deploying
     const isReturning = localStorage.returningUser || 'false'
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
       if (!(isReturning === 'true') && store.getters.isAnonymous) {
