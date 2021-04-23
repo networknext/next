@@ -442,6 +442,10 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["datacenterNotEnabled"] = entry.DatacenterNotEnabled
 	}
 
+	if entry.StaleRouteMatrix {
+		e["staleRouteMatrix"] = entry.StaleRouteMatrix
+	}
+
 	if entry.RouteDiversity > 0 {
 		e["routeDiversity"] = entry.RouteDiversity
 	}
