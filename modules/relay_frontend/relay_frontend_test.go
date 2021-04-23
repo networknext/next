@@ -271,6 +271,37 @@ func TestRelayFrontendSvc_GetCostMatrixNotFound(t *testing.T) {
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 }
 
+func TestRelayFrontendSvc_ResetCostMatrix(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+	svc.costMatrix = new(helpers.MatrixData)
+	testMatrix := testMatrix(t)
+	svc.costMatrix.SetMatrix(testMatrix.GetResponseData())
+
+	err := svc.ResetCachedMatrix(MatrixTypeCost)
+	assert.NoError(t, err)
+
+	expectedEmptyCostMatrix := routing.CostMatrix{
+		RelayIDs:           []uint64{},
+		RelayAddresses:     []net.UDPAddr{},
+		RelayNames:         []string{},
+		RelayLatitudes:     []float32{},
+		RelayLongitudes:    []float32{},
+		RelayDatacenterIDs: []uint64{},
+		Costs:              []int32{},
+		Version:            routing.CostMatrixSerializeVersion,
+		DestRelays:         []bool{},
+	}
+
+	receivedCostMatrixBin := svc.costMatrix.GetMatrix()
+	var receivedCostMatrix routing.CostMatrix
+
+	readStream := encoding.CreateReadStream(receivedCostMatrixBin)
+	err = receivedCostMatrix.Serialize(readStream)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedEmptyCostMatrix, receivedCostMatrix)
+}
+
 func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.routeMatrix = new(helpers.MatrixData)
@@ -303,6 +334,41 @@ func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+}
+
+func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+	svc.routeMatrix = new(helpers.MatrixData)
+	testMatrix := testMatrix(t)
+	testMatrix.Version = routing.RouteMatrixSerializeVersion
+	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
+
+	err := svc.ResetCachedMatrix(MatrixTypeNormal)
+	assert.NoError(t, err)
+
+	expectedEmptyRouteMatrix := routing.RouteMatrix{
+		RelayIDsToIndices:  make(map[uint64]int32),
+		RelayIDs:           []uint64{},
+		RelayAddresses:     []net.UDPAddr{},
+		RelayNames:         []string{},
+		RelayLatitudes:     []float32{},
+		RelayLongitudes:    []float32{},
+		RelayDatacenterIDs: []uint64{},
+		RouteEntries:       []core.RouteEntry{},
+		BinFileBytes:       0,
+		CreatedAt:          0,
+		Version:            routing.RouteMatrixSerializeVersion,
+		DestRelays:         []bool{},
+	}
+
+	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()
+	var receivedRouteMatrix routing.RouteMatrix
+
+	readStream := encoding.CreateReadStream(receivedRouteMatrixBin)
+	err = receivedRouteMatrix.Serialize(readStream)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedEmptyRouteMatrix, receivedRouteMatrix)
 }
 
 func TestRelayFrontendSvc_GetRelayBackendHandler(t *testing.T) {

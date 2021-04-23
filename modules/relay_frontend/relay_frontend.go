@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -21,6 +22,7 @@ const (
 type RelayFrontendConfig struct {
 	Env                    string
 	MasterTimeVariance     time.Duration
+	UpdateRetryCount       int
 	MatrixStoreAddress     string
 	MSMaxIdleConnections   int
 	MSMaxActiveConnections int
@@ -30,6 +32,8 @@ type RelayFrontendConfig struct {
 }
 
 type RelayFrontendSvc struct {
+	RetryCount int
+
 	cfg                         *RelayFrontendConfig
 	id                          uint64
 	store                       storage.MatrixStore
@@ -44,6 +48,7 @@ type RelayFrontendSvc struct {
 func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
 	rand.Seed(time.Now().UnixNano())
 	r := new(RelayFrontendSvc)
+	r.RetryCount = 0
 	r.cfg = cfg
 	r.id = rand.Uint64()
 	r.store = store
@@ -91,6 +96,35 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 		r.costMatrix.SetMatrix(matrixBin)
 	case MatrixTypeNormal:
 		r.routeMatrix.SetMatrix(matrixBin)
+	}
+
+	return nil
+}
+
+func (r *RelayFrontendSvc) ReachedRetryLimit() bool {
+	return r.RetryCount > r.cfg.UpdateRetryCount
+}
+
+func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
+	switch matrixType {
+	case MatrixTypeCost:
+		emptyCostMatrix := routing.CostMatrix{Version: routing.CostMatrixSerializeVersion}
+		err := emptyCostMatrix.WriteResponseData(10000)
+		if err != nil {
+			return err
+		}
+
+		emptyCostMatrixBin := emptyCostMatrix.GetResponseData()
+		r.costMatrix.SetMatrix(emptyCostMatrixBin)
+	case MatrixTypeNormal:
+		emptyRouteMatrix := routing.RouteMatrix{Version: routing.RouteMatrixSerializeVersion}
+		err := emptyRouteMatrix.WriteResponseData(10000)
+		if err != nil {
+			return err
+		}
+
+		emptyRouteMatrixBin := emptyRouteMatrix.GetResponseData()
+		r.routeMatrix.SetMatrix(emptyRouteMatrixBin)
 	}
 
 	return nil

@@ -100,22 +100,30 @@ func mainReturnWithCode() int {
 		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
 		for {
 			syncTimer.Run()
-
 			select {
 			case <-ctx.Done():
 				// Shutdown signal received
 				return
 			default:
+				if frontendClient.ReachedRetryLimit() {
+					// Couldn't get the master relay backend for UPDATE_RETRY_COUNT attempts
+					// Reset the cost and route matrix cache
+					frontendClient.ResetCachedMatrix(frontend.MatrixTypeCost)
+					frontendClient.ResetCachedMatrix(frontend.MatrixTypeNormal)
+					level.Debug(logger).Log("msg", "reached retry limit, reset cost and route matrix cache")
+				}
+
 				// Get the oldest relay backend
 				frontendMetrics.MasterSelect.Add(1)
 
 				err := frontendClient.UpdateRelayBackendMaster()
 				if err != nil {
+					frontendClient.RetryCount++
 					frontendMetrics.ErrorMetrics.MasterSelectError.Add(1)
 					_ = level.Error(logger).Log("error", err)
 					continue
 				}
-
+				frontendClient.RetryCount = 0
 				frontendMetrics.MasterSelectSuccess.Add(1)
 
 				// Create waitgroup for worker goroutines
@@ -282,6 +290,11 @@ func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
 	cfg.Env = envvar.Get("ENV", "local")
 
 	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.UpdateRetryCount, err = envvar.GetInt("UPDATE_RETRY_COUNT", 5)
 	if err != nil {
 		return nil, err
 	}
