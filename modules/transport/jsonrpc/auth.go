@@ -451,7 +451,7 @@ type UserDatabaseReply struct {
 func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, reply *UserDatabaseReply) error {
 	reply.Entries = make([]databaseEntry, 0)
 
-	if !VerifyAnyRole(r, AdminRole, OpsRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
 		return &err
