@@ -33,7 +33,7 @@ const (
 	RelayBackendHostnameStaging = "10.128.0.4"
 	RelayBackendHostnameProd    = "relay_backend.prod.networknext.com"
 
-	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30001"
+	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30005"
 	RelayBackendURLDev     = "http://" + RelayBackendHostnameDev
 	RelayBackendURLNRB     = "http://" + RelayBackendHostnameNRB
 	RelayBackendURLStaging = "http://" + RelayBackendHostnameStaging
