@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/middleware"
 
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
@@ -35,6 +37,10 @@ import (
 const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
+)
+
+var (
+	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
 
 type BuyersService struct {
@@ -73,7 +79,7 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if !VerifyAllRoles(r, OpsRole) {
+	if !middleware.VerifyAllRoles(r, middleware.OpsRole) {
 		return fmt.Errorf("FlushSessions(): %v", ErrInsufficientPrivileges)
 	}
 
@@ -187,7 +193,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 
-				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 					session.Anonymise()
 				}
 
@@ -287,7 +293,7 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 					sessionMeta.Anonymise()
 				}
 
@@ -459,7 +465,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -645,7 +651,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+	if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -1053,7 +1059,7 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1073,7 +1079,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1094,7 +1100,7 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1114,7 +1120,7 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1141,7 +1147,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1154,7 +1160,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return err
 	}
 
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1186,7 +1192,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err = fmt.Errorf("UpdateBuyerInformation(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1194,7 +1200,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateBuyerInformation(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1265,7 +1271,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1273,7 +1279,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1381,7 +1387,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1399,7 +1405,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
+		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
@@ -1430,7 +1436,7 @@ type DatacenterMapsReply struct {
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1550,7 +1556,7 @@ type UpdateDatacenterMapArgs struct {
 type UpdateDatacenterMapReply struct{}
 
 func (s *BuyersService) UpdateDatacenterMap(r *http.Request, args *UpdateDatacenterMapArgs, reply *UpdateDatacenterMapReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1631,18 +1637,18 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
+func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 	return func(req *http.Request) (bool, error) {
-		if VerifyAnyRole(req, AdminRole, OpsRole) {
+		if middleware.VerifyAnyRole(req, middleware.AdminRole, middleware.OpsRole) {
 			return true, nil
 		}
-		if VerifyAllRoles(req, AnonymousRole) {
+		if middleware.VerifyAllRoles(req, middleware.AnonymousRole) {
 			return false, nil
 		}
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
 		if !ok {
 			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
 			level.Error(s.Logger).Log("err", err)
@@ -1689,7 +1695,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
 			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return sessions, err
@@ -1761,7 +1767,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -1823,7 +1829,7 @@ type InternalConfigReply struct {
 }
 
 func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1871,7 +1877,7 @@ type JSAddInternalConfigArgs struct {
 type JSAddInternalConfigReply struct{}
 
 func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalConfigArgs, reply *JSAddInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1920,7 +1926,7 @@ type UpdateInternalConfigArgs struct {
 type UpdateInternalConfigReply struct{}
 
 func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1981,7 +1987,7 @@ type RemoveInternalConfigArg struct {
 type RemoveInternalConfigReply struct{}
 
 func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInternalConfigArg, reply *RemoveInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2026,7 +2032,7 @@ type RouteShaderReply struct {
 }
 
 func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2071,7 +2077,7 @@ type JSAddRouteShaderArgs struct {
 type JSAddRouteShaderReply struct{}
 
 func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderArgs, reply *JSAddRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2114,7 +2120,7 @@ type RemoveRouteShaderArg struct {
 type RemoveRouteShaderReply struct{}
 
 func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2144,7 +2150,7 @@ type UpdateRouteShaderArgs struct {
 type UpdateRouteShaderReply struct{}
 
 func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShaderArgs, reply *UpdateRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2234,7 +2240,7 @@ type GetBannedUserReply struct {
 }
 
 func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, reply *GetBannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2263,7 +2269,7 @@ type BannedUserArgs struct {
 type BannedUserReply struct{}
 
 func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2278,7 +2284,7 @@ func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, repl
 }
 
 func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2327,7 +2333,7 @@ type UpdateBuyerArgs struct {
 type UpdateBuyerReply struct{}
 
 func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
