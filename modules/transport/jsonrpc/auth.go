@@ -891,6 +891,12 @@ type GenericSlackNotificationReply struct {
 }
 
 func (s *AuthService) CustomerSignedUpSlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v", err.Error()))
+		return &err
+	}
+
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
@@ -909,6 +915,12 @@ func (s *AuthService) CustomerSignedUpSlackNotification(r *http.Request, args *C
 }
 
 func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsSlackNotification(): %v", err.Error()))
+		return &err
+	}
+
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
@@ -927,6 +939,12 @@ func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, ar
 }
 
 func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKSlackNotification(): %v", err.Error()))
+		return &err
+	}
+
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
@@ -945,6 +963,12 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 }
 
 func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeySlackNotification(): %v", err.Error()))
+		return &err
+	}
+
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
