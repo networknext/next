@@ -135,6 +135,10 @@ func getDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacen
 }
 */
 
+func isStaleRouteMatrix(routeMatrix *routing.RouteMatrix, staleDuration time.Duration) bool {
+	return routeMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix())
+}
+
 func datacenterExists(database *routing.DatabaseBinWrapper, datacenterID uint64) bool {
 	_, exists := database.DatacenterMap[datacenterID]
 	return exists
@@ -419,7 +423,7 @@ func SessionUpdateHandlerFunc(
 	routerPrivateKey [crypto.KeySize]byte,
 	postSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,
-	getRouteMatrixStale func() *bool,
+	staleDuration time.Duration,
 ) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -483,6 +487,7 @@ func SessionUpdateHandlerFunc(
 		datacenterNotEnabled := false
 		buyerNotFound := false
 		buyerNotLive := false
+		staleRouteMatrix := false
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -565,9 +570,6 @@ func SessionUpdateHandlerFunc(
 				}
 			}
 
-			// Record if we are using a stale route matrix
-			staleRouteMatrix := *getRouteMatrixStale()
-
 			if !packet.ClientPingTimedOut {
 				go PostSessionUpdate(postSessionHandler,
 					&packet,
@@ -589,6 +591,13 @@ func SessionUpdateHandlerFunc(
 				)
 			}
 		}()
+
+		if isStaleRouteMatrix(routeMatrix, staleDuration) {
+			// Don't serve next routes with a stale route matrix
+			// Metric incremented in during route matrix sync
+			staleRouteMatrix = true
+			return
+		}
 
 		if packet.ClientPingTimedOut {
 			core.Debug("client ping timed out")
