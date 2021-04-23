@@ -19,20 +19,17 @@ type SlackClient struct {
 }
 
 type SimpleSlackRequest struct {
-	Text      string
-	IconEmoji string
+	Text string
 }
 
 type SlackJobNotification struct {
-	Color     string
-	IconEmoji string
-	Details   string
-	Text      string
+	Color   string
+	Details string
+	Text    string
 }
 
 type SlackMessage struct {
 	Username    string       `json:"username,omitempty"`
-	IconEmoji   string       `json:"icon_emoji,omitempty"`
 	Channel     string       `json:"channel,omitempty"`
 	Text        string       `json:"text,omitempty"`
 	Attachments []Attachment `json:"attachments,omitempty"`
@@ -63,10 +60,9 @@ type Attachment struct {
 // some text and the slack channel is saved within Slack.
 func (sc SlackClient) SendSlackNotification(sr SimpleSlackRequest) error {
 	slackRequest := SlackMessage{
-		Text:      sr.Text,
-		Username:  sc.UserName,
-		IconEmoji: sr.IconEmoji,
-		Channel:   sc.Channel,
+		Text:     sr.Text,
+		Username: sc.UserName,
+		Channel:  sc.Channel,
 	}
 	return sc.sendHttpRequest(slackRequest)
 }
@@ -80,34 +76,28 @@ func (sc SlackClient) SendJobNotification(job SlackJobNotification) error {
 	slackRequest := SlackMessage{
 		Text:        job.Text,
 		Username:    sc.UserName,
-		IconEmoji:   job.IconEmoji,
 		Channel:     sc.Channel,
 		Attachments: []Attachment{attachment},
 	}
 	return sc.sendHttpRequest(slackRequest)
 }
 
-func (sc SlackClient) SendError(message string, options ...string) (err error) {
-	return sc.funcName("danger", message, options)
+func (sc SlackClient) SendError(message string) (err error) {
+	return sc.sendFunc("danger", message)
 }
 
-func (sc SlackClient) SendInfo(message string, options ...string) (err error) {
-	return sc.funcName("good", message, options)
+func (sc SlackClient) SendInfo(message string) (err error) {
+	return sc.sendFunc("good", message)
 }
 
-func (sc SlackClient) SendWarning(message string, options ...string) (err error) {
-	return sc.funcName("warning", message, options)
+func (sc SlackClient) SendWarning(message string) (err error) {
+	return sc.sendFunc("warning", message)
 }
 
-func (sc SlackClient) funcName(color string, message string, options []string) error {
-	emoji := ":hammer_and_wrench"
-	if len(options) > 0 {
-		emoji = options[0]
-	}
+func (sc SlackClient) sendFunc(color string, message string) error {
 	sjn := SlackJobNotification{
-		Color:     color,
-		IconEmoji: emoji,
-		Details:   message,
+		Color:   color,
+		Details: message,
 	}
 	return sc.SendJobNotification(sjn)
 }

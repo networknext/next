@@ -549,6 +549,19 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
+
+		webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+		if webHookUrl == "" {
+			level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
+			os.Exit(1)
+		}
+
+		channel := envvar.Get("SLACK_CHANNEL", "")
+		if channel == "" {
+			level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.AuthService{
 			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
@@ -558,9 +571,9 @@ func main() {
 			UserManager: userManager,
 			JobManager:  jobManager,
 			SlackClient: notifications.SlackClient{
-				WebHookUrl: "https://hooks.slack.com/services/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", // TODO - fill these in
-				UserName:   "PortalBot",                                                                       // TODO - fill these in
-				Channel:    "portal-test",                                                                     // TODO - fill these in
+				WebHookUrl: webHookUrl,
+				UserName:   "PortalBot",
+				Channel:    channel,
 			},
 			Storage: db,
 		}, "")
