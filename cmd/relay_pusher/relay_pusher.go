@@ -314,7 +314,7 @@ func mainReturnWithCode() int {
 					level.Error(logger).Log("msg", "failed to fetch server backend mig instance names", "err", err)
 				} else {
 					// Add the server backend mig instance names to the list
-					maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIGInstanceNames)
+					maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIGInstanceNames...)
 				}
 
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
@@ -352,7 +352,7 @@ func mainReturnWithCode() int {
 					level.Error(logger).Log("msg", "failed to fetch relay gateway mig instance names", "err", err)
 				} else {
 					// Add the gateway mig instance names to the list
-					databaseInstanceNames := append(databaseInstanceNames, relayGatewayMIGInstanceNames)
+					databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
 				}
 
 				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
