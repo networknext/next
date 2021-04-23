@@ -879,7 +879,7 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 }
 
 type CustomerSlackNotification struct {
-	Email string
+	Email string `json:"email"`
 }
 
 type GenericSlackNotificationArgs struct {
