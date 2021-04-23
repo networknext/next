@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(26)
+	BillingEntryVersion = uint8(27)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -87,7 +87,11 @@ const (
 		1 + // Pro
 		1 + // MultipathRestricted
 		8 + // ClientToServerPacketsSent
-		8 // ServerToClientPacketsSent
+		8 + // ServerToClientPacketsSent
+		1 + // UnknownDatacenter
+		1 + // DatacenterNotEnabled
+		1 + // BuyerNotLive
+		1 // StaleRouteMatrix
 )
 
 type BillingEntry struct {
@@ -167,6 +171,7 @@ type BillingEntry struct {
 	UnknownDatacenter               bool
 	DatacenterNotEnabled            bool
 	BuyerNotLive                    bool
+	StaleRouteMatrix                bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -296,6 +301,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.UnknownDatacenter)
 	encoding.WriteBool(data, &index, entry.DatacenterNotEnabled)
 	encoding.WriteBool(data, &index, entry.BuyerNotLive)
+
+	encoding.WriteBool(data, &index, entry.StaleRouteMatrix)
 
 	return data[:index]
 }
@@ -699,6 +706,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			return false
 		}
 
+	}
+
+	if entry.Version >= 27 {
+		if !encoding.ReadBool(data, &index, &entry.StaleRouteMatrix) {
+			return false
+		}
 	}
 
 	return true
