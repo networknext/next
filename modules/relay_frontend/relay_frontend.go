@@ -56,6 +56,7 @@ func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*Rel
 func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 	rbArr, err := r.store.GetRelayBackendLiveData()
 	if err != nil {
+		r.currentMasterBackendAddress = ""
 		return err
 	}
 
@@ -198,6 +199,20 @@ func (r *RelayFrontendSvc) GetRelayBackendHandlerFunc(endpoint string) func(w ht
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(bin)
+	}
+}
+
+func (r *RelayFrontendSvc) GetRelayBackendMasterHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if r.currentMasterBackendAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		bin := []byte(r.currentMasterBackendAddress)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write(bin)

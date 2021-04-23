@@ -233,6 +233,8 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
 	router.HandleFunc("/relay_dashboard", frontendClient.GetRelayDashboardHandlerFunc("local", "local")).Methods("GET")
 	router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
+	router.HandleFunc("/master_status", frontendClient.GetRelayBackendHandlerFunc("/status")).Methods("GET")
+	router.HandleFunc("/master", frontendClient.GetRelayBackendMasterHandlerFunc()).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	// Wrap the following endpoints in auth and CORS middleware
