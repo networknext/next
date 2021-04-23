@@ -305,6 +305,7 @@ dist:
 
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
+export JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
