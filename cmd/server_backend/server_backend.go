@@ -275,6 +275,18 @@ func mainReturnWithCode() int {
 		return db
 	}
 
+	// function to get route matrix stale bool under mutex
+
+	var routeMatrixStale *bool
+	var routeMatrixStaleMutex sync.RWMutex
+
+	getRouteMatrixStale := func() *bool {
+		routeMatrixStaleMutex.RLock()
+		stale := routeMatrixStale
+		routeMatrixStaleMutex.RUnlock()
+		return stale
+	}
+
 	// function to clear route matrix and database at the same time
 
 	clearEverything := func() {
@@ -360,10 +372,17 @@ func mainReturnWithCode() int {
 
 				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
 					core.Debug("error: route matrix is stale")
+					routeMatrixStaleMutex.Lock()
+					routeMatrixStale = func() *bool { b := true; return &b }()
+					routeMatrixStaleMutex.Unlock()
 					clearEverything()
 					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
 					continue
 				}
+				// pointer swap route matrix stale under mutex atomically
+				routeMatrixStaleMutex.Lock()
+				routeMatrixStale = func() *bool { b := false; return &b }()
+				routeMatrixStaleMutex.Unlock()
 
 				routeEntriesTime := time.Since(start)
 				duration := float64(routeEntriesTime.Milliseconds())
@@ -685,7 +704,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getDatabase, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, getRouteMatrixStale)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

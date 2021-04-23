@@ -136,7 +136,7 @@ func getDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacen
 */
 
 func datacenterExists(database *routing.DatabaseBinWrapper, datacenterID uint64) bool {
-	_, exists := database.DatacenterMap[datacenterID]	
+	_, exists := database.DatacenterMap[datacenterID]
 	return exists
 }
 
@@ -156,7 +156,7 @@ func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, dat
 }
 
 func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) routing.Datacenter {
-	value, _ := database.DatacenterMap[datacenterID]	
+	value, _ := database.DatacenterMap[datacenterID]
 	return value
 }
 
@@ -258,7 +258,7 @@ func handleNearAndDestRelays(
 }
 
 func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
-	
+
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		core.Debug("-----------------------------------------")
@@ -293,7 +293,7 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			if err := writeServerInitResponse(w, &packet, uint32(responseType)); err != nil {
 				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
-			}			
+			}
 		}()
 
 		buyer, exists := database.BuyerMap[packet.CustomerID]
@@ -419,6 +419,7 @@ func SessionUpdateHandlerFunc(
 	routerPrivateKey [crypto.KeySize]byte,
 	postSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,
+	getRouteMatrixStale func() *bool,
 ) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -564,23 +565,27 @@ func SessionUpdateHandlerFunc(
 				}
 			}
 
+			// Record if we are using a stale route matrix
+			staleRouteMatrix := *getRouteMatrixStale()
+
 			if !packet.ClientPingTimedOut {
 				go PostSessionUpdate(postSessionHandler,
-					&packet, 
-					&prevSessionData, 
-					&buyer, 
-					multipathVetoHandler, 
-					routeRelayNames, 
-					routeRelaySellers, 
-					nearRelays, 
-					&datacenter, 
-					routeDiversity, 
-					slicePacketLossClientToServer, 
-					slicePacketLossServerToClient, 
-					debug, 
+					&packet,
+					&prevSessionData,
+					&buyer,
+					multipathVetoHandler,
+					routeRelayNames,
+					routeRelaySellers,
+					nearRelays,
+					&datacenter,
+					routeDiversity,
+					slicePacketLossClientToServer,
+					slicePacketLossServerToClient,
+					debug,
 					unknownDatacenter,
-					datacenterNotEnabled, 
+					datacenterNotEnabled,
 					buyerNotLive,
+					staleRouteMatrix,
 				)
 			}
 		}()
@@ -1096,6 +1101,7 @@ func PostSessionUpdate(
 	unknownDatacenter bool,
 	datacenterNotEnabled bool,
 	buyerNotLive bool,
+	staleRouteMatrix bool,
 ) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
@@ -1243,6 +1249,7 @@ func PostSessionUpdate(
 		BuyerNotLive:                    buyerNotLive,
 		UnknownDatacenter:               unknownDatacenter,
 		DatacenterNotEnabled:            datacenterNotEnabled,
+		StaleRouteMatrix:                staleRouteMatrix,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
