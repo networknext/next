@@ -126,6 +126,7 @@ func mainReturnWithCode() int {
 	debugRelayBackendName := envvar.Get("DEBUG_RELAY_BACKEND_INSTANCE_NAME", "")
 	if debugRelayBackendName == "" {
 		level.Error(logger).Log("msg", "debug relay backend name not specified", "err")
+	} else {
 		remoteDBLocations = append(remoteDBLocations, debugRelayBackendName)
 	}
 
@@ -139,6 +140,16 @@ func mainReturnWithCode() int {
 	if serverBackendMIGName == "" {
 		level.Error(logger).Log("msg", "server backend mig name not specified", "err")
 		return 1
+	}
+
+	serverBackendInstanceNames := make([]string, 0)
+
+	// Check if the debug server backend exists and push files to it as well
+	debugServerBackendName := envvar.Get("DEBUG_SERVER_BACKEND_NAME", "")
+	if debugServerBackendName == "" {
+		level.Error(logger).Log("msg", "debug server backend name not specified", "err")
+	} else {
+		serverBackendInstanceNames = append(serverBackendInstanceNames, debugServerBackendName)
 	}
 
 	gcpStorage, err := storage.NewGCPStorageClient(ctx, bucketName, logger)
@@ -174,30 +185,6 @@ func mainReturnWithCode() int {
 	if cityURI == "" {
 		level.Error(logger).Log("msg", "maxmind DB city location not defined", "err", err)
 		return 1
-	}
-
-	// Call gsutil to copy the tmp file over to the instance
-	runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", serverBackendMIGName, "--zone", "us-central1-a", "--format", "value(instance)")
-
-	buffer, err := runnable.CombinedOutput()
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to fetch server backend instance names", "err", err)
-		return 1
-	}
-
-	serverBackendInstanceNames := strings.Split(string(buffer), "\n")
-
-	// Using the method above causes an empty string to be added at the end of the slice - remove it
-	if len(serverBackendInstanceNames) > 0 {
-		serverBackendInstanceNames = serverBackendInstanceNames[:len(serverBackendInstanceNames)-1]
-	}
-
-	// Check if the debug server backend exists and push files to it as well
-	debugServerBackendName := envvar.Get("DEBUG_SERVER_BACKEND_NAME", "")
-	if debugServerBackendName == "" {
-		level.Error(logger).Log("msg", "debug server backend name not specified", "err")
-	} else {
-		serverBackendInstanceNames = append(serverBackendInstanceNames, debugServerBackendName)
 	}
 
 	// Setup maxmind download go routine
@@ -318,7 +305,19 @@ func mainReturnWithCode() int {
 				}
 				gz.Close()
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, cityFileName); err != nil {
+				// Store the known list of instance names
+				maxmindInstanceNames := serverBackendInstanceNames
+
+				// The names of instances in a MIG can change, so get them each time
+				serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to fetch server backend mig instance names", "err", err)
+				} else {
+					// Add the server backend mig instance names to the list
+					maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIGInstanceNames)
+				}
+
+				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind city file to server backends", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
 					continue
@@ -348,12 +347,12 @@ func mainReturnWithCode() int {
 				databaseInstanceNames := remoteDBLocations
 
 				// The names of instances in a MIG can change, so get them each time
-				relayGatewayInstanceNames, err := getMIGInstanceNames(gcpProjectID, relayGatewayMIGName)
+				relayGatewayMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, relayGatewayMIGName)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to fetch relay gateway mig instance names", "err", err)
 				} else {
 					// Add the gateway mig instance names to the list
-					databaseInstanceNames := append(databaseInstanceNames, relayGatewayInstanceNames)
+					databaseInstanceNames := append(databaseInstanceNames, relayGatewayMIGInstanceNames)
 				}
 
 				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
