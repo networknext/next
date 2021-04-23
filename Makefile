@@ -324,7 +324,7 @@ dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
 
 .PHONY: dev-relay-frontend
 dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
-	@PORT=30005 ./dist/relay_frontend
+	@PORT=30005 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_frontend
 
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
