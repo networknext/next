@@ -271,7 +271,7 @@ func queryRelayBackend(
 
 	r, err := client.Do(req)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not get relays.bin from the portal: %v\n", err), 1)
+		handleRunTimeError(fmt.Sprintf("could not get relays csv from the portal: %v\n", err), 1)
 	}
 	defer r.Body.Close()
 
