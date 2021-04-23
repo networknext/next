@@ -20,6 +20,7 @@ const (
 	ERROR_MISSING_FIELD               json2.ErrorCode = 6
 	ERROR_PASSWORD_GENERATION_FAILURE json2.ErrorCode = 7
 	ERROR_ILLEGAL_OPERATION           json2.ErrorCode = 8
+	ERROR_SLACK_FAILURE               json2.ErrorCode = 9
 )
 
 var JSONRPCErrorCodes []json2.Error = []json2.Error{
@@ -84,6 +85,13 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 		Code:    ERROR_ILLEGAL_OPERATION,
 		Data: &JSONRPCErrorData{
 			Name: "ERROR_ILLEGAL_OPERATION",
+		},
+	},
+	{
+		Message: "Slack notification failed to send",
+		Code:    ERROR_SLACK_FAILURE,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_SLACK_FAILURE",
 		},
 	},
 }
