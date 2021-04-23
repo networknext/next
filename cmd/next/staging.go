@@ -30,6 +30,7 @@ type StagingConfig struct {
 	RelayBackend   StagingServiceConfig `json:"relay-backend"`
 	Relays         StagingServiceConfig `json:"relays"`
 	RelayFrontend  StagingServiceConfig `json:"relay-gateway"`
+	RelayPusher    StagingServiceConfig `json:"relay-pusher"`
 	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
 	Api            StagingServiceConfig `json:"api"`
@@ -61,6 +62,11 @@ var DefaultStagingConfig = StagingConfig{
 	RelayFrontend: StagingServiceConfig{
 		Cores: 1,
 		Count: -1,
+	},
+
+	RelayPusher: StagingServiceConfig{
+		Cores: 1,
+		Count: 1,
 	},
 
 	PortalCruncher: StagingServiceConfig{
@@ -564,6 +570,7 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-pusher", config.RelayPusher))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
