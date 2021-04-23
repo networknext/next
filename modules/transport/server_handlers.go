@@ -135,8 +135,12 @@ func getDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacen
 }
 */
 
+func isStaleRouteMatrix(routeMatrix *routing.RouteMatrix, staleDuration time.Duration) bool {
+	return routeMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix())
+}
+
 func datacenterExists(database *routing.DatabaseBinWrapper, datacenterID uint64) bool {
-	_, exists := database.DatacenterMap[datacenterID]	
+	_, exists := database.DatacenterMap[datacenterID]
 	return exists
 }
 
@@ -156,7 +160,7 @@ func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, dat
 }
 
 func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) routing.Datacenter {
-	value, _ := database.DatacenterMap[datacenterID]	
+	value, _ := database.DatacenterMap[datacenterID]
 	return value
 }
 
@@ -258,7 +262,7 @@ func handleNearAndDestRelays(
 }
 
 func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
-	
+
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		core.Debug("-----------------------------------------")
@@ -293,7 +297,7 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			if err := writeServerInitResponse(w, &packet, uint32(responseType)); err != nil {
 				core.Debug("failed to write server init response: %s", err)
 				metrics.WriteResponseFailure.Add(1)
-			}			
+			}
 		}()
 
 		buyer, exists := database.BuyerMap[packet.CustomerID]
@@ -325,14 +329,13 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		if !datacenterExists(database, packet.DatacenterID) {
-			core.Debug("datacenter does not exist: %s [%x]", packet.DatacenterName, packet.DatacenterID)
+		if datacenterExists(database, packet.DatacenterID) {
+			core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
+		} else {
+			// IMPORTANT: We must print this here always, otherwise we don't get the datacenter name corresponding to the id
+			fmt.Printf("error: unknown datacenter %s [%x]", packet.DatacenterName, packet.DatacenterID)
 			metrics.DatacenterNotFound.Add(1)
-			responseType = InitResponseUnknownDatacenter
-			return
 		}
-
-		core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
 
 		core.Debug("server initialized successfully")
 	}
@@ -420,6 +423,7 @@ func SessionUpdateHandlerFunc(
 	routerPrivateKey [crypto.KeySize]byte,
 	postSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,
+	staleDuration time.Duration,
 ) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -478,9 +482,21 @@ func SessionUpdateHandlerFunc(
 
 		datacenter := routing.UnknownDatacenter
 
+		signatureCheckFailed := false
+		unknownDatacenter := false
+		datacenterNotEnabled := false
+		buyerNotFound := false
+		buyerNotLive := false
+		staleRouteMatrix := false
+
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
+
+			if buyerNotFound || signatureCheckFailed {
+				core.Debug("not responding")
+				return
+			}
 
 			if response.RouteType != routing.RouteTypeDirect {
 				core.Debug("session takes network next")
@@ -555,9 +571,33 @@ func SessionUpdateHandlerFunc(
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler, &packet, &prevSessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, routeDiversity, slicePacketLossClientToServer, slicePacketLossServerToClient, debug)
+				go PostSessionUpdate(postSessionHandler,
+					&packet,
+					&prevSessionData,
+					&buyer,
+					multipathVetoHandler,
+					routeRelayNames,
+					routeRelaySellers,
+					nearRelays,
+					&datacenter,
+					routeDiversity,
+					slicePacketLossClientToServer,
+					slicePacketLossServerToClient,
+					debug,
+					unknownDatacenter,
+					datacenterNotEnabled,
+					buyerNotLive,
+					staleRouteMatrix,
+				)
 			}
 		}()
+
+		if isStaleRouteMatrix(routeMatrix, staleDuration) {
+			// Don't serve next routes with a stale route matrix
+			// Metric incremented in during route matrix sync
+			staleRouteMatrix = true
+			return
+		}
 
 		if packet.ClientPingTimedOut {
 			core.Debug("client ping timed out")
@@ -569,18 +609,21 @@ func SessionUpdateHandlerFunc(
 		if !exists {
 			core.Debug("buyer not found")
 			metrics.BuyerNotFound.Add(1)
+			buyerNotFound = true
 			return
 		}
 
 		if !buyer.Live {
-			core.Debug("buyer is not live")
+			core.Debug("buyer not live")
 			metrics.BuyerNotLive.Add(1)
+			buyerNotLive = true
 			return
 		}
 
 		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
+			signatureCheckFailed = true
 			return
 		}
 
@@ -597,9 +640,17 @@ func SessionUpdateHandlerFunc(
 			}
 		}
 
+		if !datacenterExists(database, packet.DatacenterID) {
+			core.Debug("unknown datacenter")
+			// todo: add a metric for this condition
+			unknownDatacenter = true
+			return
+		}
+
 		if !datacenterEnabled(database, packet.CustomerID, packet.DatacenterID) {
 			core.Debug("datacenter not enabled")
 			// todo: add a metric for this condition
+			datacenterNotEnabled = true
 			return
 		}
 
@@ -1056,6 +1107,10 @@ func PostSessionUpdate(
 	slicePacketLossClientToServer float32,
 	slicePacketLossServerToClient float32,
 	debug *string,
+	unknownDatacenter bool,
+	datacenterNotEnabled bool,
+	buyerNotLive bool,
+	staleRouteMatrix bool,
 ) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
@@ -1200,6 +1255,10 @@ func PostSessionUpdate(
 		MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
 		ClientToServerPacketsSent:       packet.PacketsSentClientToServer,
 		ServerToClientPacketsSent:       packet.PacketsSentServerToClient,
+		BuyerNotLive:                    buyerNotLive,
+		UnknownDatacenter:               unknownDatacenter,
+		DatacenterNotEnabled:            datacenterNotEnabled,
+		StaleRouteMatrix:                staleRouteMatrix,
 	}
 
 	postSessionHandler.SendBillingEntry(billingEntry)
