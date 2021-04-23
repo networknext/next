@@ -1,11 +1,11 @@
-package transport_test
+package notifications_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/notifications"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +15,7 @@ func TestMailChimpIntegrationStatusOK(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}),
 	)
-	mailChimpHandler := transport.MailChimpHandler{
+	mailChimpHandler := notifications.MailChimpHandler{
 		HTTPHandler: *HTTPServer.Client(),
 		MembersURI:  HTTPServer.URL,
 	}
@@ -43,7 +43,7 @@ func TestMailChimpIntegrationStatusNotOK(t *testing.T) {
 			w.WriteHeader(http.StatusBadRequest)
 		}),
 	)
-	mailChimpHandler := transport.MailChimpHandler{
+	mailChimpHandler := notifications.MailChimpHandler{
 		HTTPHandler: *HTTPServer.Client(),
 		MembersURI:  HTTPServer.URL,
 	}

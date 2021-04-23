@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -667,6 +668,49 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var usersCommand = &ffcli.Command{
+		Name:       "users",
+		ShortUsage: "next users",
+		ShortHelp:  "Sort through auth0 users to get more information about associated company and/or buyer account",
+		Exec: func(_ context.Context, args []string) error {
+			reply := localjsonrpc.UserDatabaseReply{}
+			fmt.Println("Looking up all accounts associated to a company/buyer account")
+			fmt.Println("")
+			if err := rpcClient.CallFor(&reply, "AuthService.UserDatabase", localjsonrpc.UserDatabaseArgs{}); err == nil {
+				usersCSV := [][]string{{}}
+
+				usersCSV = append(usersCSV, []string{
+					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
+
+				for _, entry := range reply.Entries {
+					fmt.Printf("Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
+					usersCSV = append(usersCSV, []string{
+						entry.Email,
+						entry.CompanyCode,
+						entry.BuyerID,
+						strconv.FormatBool(entry.IsOwner),
+						entry.CreationTime,
+					})
+				}
+
+				fileName := "./users.csv"
+				f, err := os.Create(fileName)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+				}
+
+				writer := csv.NewWriter(f)
+				err = writer.WriteAll(usersCSV)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+				}
+				fmt.Println("CSV file written: users.csv")
+				return nil
+			}
 			return nil
 		},
 	}
@@ -2353,6 +2397,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		authCommand,
 		selectCommand,
 		envCommand,
+		usersCommand,
 		sessionCommand,
 		sessionsCommand,
 		relaysCommand,
