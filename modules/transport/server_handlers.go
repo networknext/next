@@ -892,7 +892,7 @@ type SessionHandlerState struct {
 	*/
 }
 
-func sessionEarlyOut(state *SessionHandlerState) bool {
+func sessionPre(state *SessionHandlerState) bool {
 
 	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
 		core.Debug("stale route matrix")
@@ -962,10 +962,12 @@ func sessionEarlyOut(state *SessionHandlerState) bool {
 		}
 	}
 
+	state.datacenter = getDatacenter(state.database, state.packet.DatacenterID)
+
 	return false
 }
 
-func sessionInitialize(state *SessionHandlerState) {
+func sessionUpdateNewSession(state *SessionHandlerState) {
 
 	core.Debug("new session")
 
@@ -991,7 +993,7 @@ func sessionInitialize(state *SessionHandlerState) {
 	state.input = state.output
 }
 
-func sessionUpdate(state *SessionHandlerState) {
+func sessionUpdateExistingSession(state *SessionHandlerState) {
 
 	core.Debug("existing session")
 
@@ -1048,6 +1050,100 @@ func sessionUpdate(state *SessionHandlerState) {
 	if slicePacketLossServerToClient > slicePacketLossClientToServer {
 		state.slicePacketLoss = slicePacketLossServerToClient
 	}
+}
+
+func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
+
+	if state.packet.FallbackToDirect && !state.output.FellBackToDirect {
+
+		core.Debug("fallback to direct")
+
+		state.output.FellBackToDirect = true
+
+		reported := false
+
+		if state.packet.Flags & FallbackFlagsBadRouteToken != 0 {
+			// todo
+			// state.metrics.FallbackToDirectBadRouteToken.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsNoNextRouteToContinue != 0 {
+			// todo
+			// state.metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsPreviousUpdateStillPending != 0 {
+			// todo
+			// state.metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsBadContinueToken != 0 {
+			// todo
+			// metrics.FallbackToDirectBadContinueToken.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsRouteExpired != 0 {
+			// todo
+			// metrics.FallbackToDirectRouteExpired.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsRouteRequestTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsContinueRequestTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsClientTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectClientTimedOut.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsUpgradeResponseTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
+			reported = true
+		}
+
+				
+		if state.packet.Flags & FallbackFlagsRouteUpdateTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
+			reported = true
+		}
+				
+		if state.packet.Flags & FallbackFlagsDirectPongTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectDirectPongTimedOut.Add(1)
+			reported = true
+		}
+
+		if state.packet.Flags & FallbackFlagsNextPongTimedOut != 0 {
+			// todo
+			// metrics.FallbackToDirectNextPongTimedOut.Add(1)
+			reported = true
+		}
+
+		if !reported {
+			// todo
+			// metrics.FallbackToDirectUnknownReason.Add(1)
+		}
+				
+		return true
+	}
+
+	return false
 }
 
 func sessionPost(state *SessionHandlerState) {
@@ -1214,7 +1310,11 @@ func SessionUpdateHandlerFunc(
 		core.Debug("slice number is %d", state.packet.SliceNumber)
 		core.Debug("retry number is %d", state.packet.RetryNumber)
 
-		// build session handler state
+		/* 
+			Build session handler state
+
+			Putting everything in this state struct makes it much easier to call subfunctions from this handler.
+		*/
 
 		state.writer = w
 
@@ -1235,72 +1335,67 @@ func SessionUpdateHandlerFunc(
 			RouteType:   routing.RouteTypeDirect,
 		}
 
-		// blah stuff that needs to be cleaned up
+		/* 
+			Run session post at the end of this function
 
-		// todo
-		// var routeDiversity int32
+			Session post sends session data to:
+
+				1. Billing
+				2. Vanity Metrics
+				3. Portal
+
+			by pushing slice data from this session on to different queues.
+
+			Session post also writes the response data back to the caller.
+		*/
 
 		defer sessionPost(&state)
 
-		if sessionEarlyOut(&state) {
+		/*
+			Call session pre function
+
+			This function checks for early out conditions, and does some setup of the handler state.
+
+			If it returns true, it means that one of the early out conditions has been met, so we return.
+
+			ps. Returning here kicks off the sessionPost which was deferred, sending the response packet to the caller.
+		*/
+
+		if sessionPre(&state) {
 			return
 		}
 
-		state.datacenter = getDatacenter(state.database, state.packet.DatacenterID)
+		/*
+			Update the session
+
+			We need to do special setup on slice 0, because this is the first slice of the session.
+
+			Once we have done the setup, we perform a transformation of state.input -> state.output
+			and it is returned back down to the caller via the response packet sent in sessionPost.
+		*/
 
 		if state.packet.SliceNumber == 0 {
 
-			sessionInitialize(&state)
+			sessionUpdateNewSession(&state)
 
 		} else {
 
-			sessionUpdate(&state)
+			sessionUpdateExistingSession(&state)
 
 		}
-
-		// todo: handle fallback to direct function
 
 		/*
-		if state.packet.FallbackToDirect {
+			Handle fallback to direct.
 
-			core.Debug("fallback to direct")
+			Fallback to direct is a condition where the SDK indicates that it has seen
+			a fatal error, and has decided to go direct for the rest of the session.
 
-			if !sessionData.FellBackToDirect {
-				sessionData.FellBackToDirect = true
+			When this happens, we early out to save on processing time.
+		*/
 
-				// todo: these are bit flags. they are not mutually exclusive!
-				switch packet.Flags {
-				case FallbackFlagsBadRouteToken:
-					metrics.FallbackToDirectBadRouteToken.Add(1)
-				case FallbackFlagsNoNextRouteToContinue:
-					metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
-				case FallbackFlagsPreviousUpdateStillPending:
-					metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
-				case FallbackFlagsBadContinueToken:
-					metrics.FallbackToDirectBadContinueToken.Add(1)
-				case FallbackFlagsRouteExpired:
-					metrics.FallbackToDirectRouteExpired.Add(1)
-				case FallbackFlagsRouteRequestTimedOut:
-					metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
-				case FallbackFlagsContinueRequestTimedOut:
-					metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
-				case FallbackFlagsClientTimedOut:
-					metrics.FallbackToDirectClientTimedOut.Add(1)
-				case FallbackFlagsUpgradeResponseTimedOut:
-					metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
-				case FallbackFlagsRouteUpdateTimedOut:
-					metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
-				case FallbackFlagsDirectPongTimedOut:
-					metrics.FallbackToDirectDirectPongTimedOut.Add(1)
-				case FallbackFlagsNextPongTimedOut:
-					metrics.FallbackToDirectNextPongTimedOut.Add(1)
-				default:
-					metrics.FallbackToDirectUnknownReason.Add(1)
-				}
-			}
+		if sessionHandleFallbackToDirect(&state) {
 			return
 		}
-		*/
 
 		// todo
 		/*
